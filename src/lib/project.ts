@@ -392,6 +392,10 @@ export interface ProjectDesign {
          *  '', 'parallel' or 'series'. Empty = not stated. */
         wiringMeasured?: string;
         wiringDesired?: string;
+        /** A5e.3 — the coil family (brand|series|gauge) this way is wound
+         *  with, the id the catalogue fit is keyed on. Empty = not stated:
+         *  lossless coils, reported as a deviation from any build. */
+        coilFamily?: string;
       }
     >
   >;

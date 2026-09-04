@@ -111,6 +111,13 @@ export interface AdapterBranch {
    * not stated, and the level-work block says so.
    */
   wiring?: WayWiring;
+  /**
+   * A5e.3 — the COIL FAMILY this way is wound with (the id `coilDcr.ts` fits
+   * per brand, series and gauge). Re-keyed from role to driver id into
+   * `ReportSettings.coilDcrFamilyByDriver`, exactly as the wiring is. Absent =
+   * not stated: lossless coils, and the report says so.
+   */
+  coilFamily?: string;
 }
 
 /** Cabinet geometry, already parsed to numbers by the caller. */
@@ -363,8 +370,15 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     if (!b.wiring) continue;
     wiringByDriver[ids[b.role] ?? b.role] = b.wiring;
   }
+  /* A5e.3 — the coil family per way, re-keyed like the rest. */
+  const coilFamilyByDriver: Record<string, string> = { ...(args.settings.coilDcrFamilyByDriver ?? {}) };
+  for (const b of args.branches) {
+    if (!b.coilFamily) continue;
+    coilFamilyByDriver[ids[b.role] ?? b.role] = b.coilFamily;
+  }
   const settings: ReportSettings = {
     ...args.settings,
+    ...(Object.keys(coilFamilyByDriver).length > 0 ? { coilDcrFamilyByDriver: coilFamilyByDriver } : {}),
     ...(Object.keys(wiringByDriver).length > 0 ? { wiringByDriver } : {}),
     ...(Object.keys(driveByDriver).length > 0 ? { maxDriveOnFsDbByDriver: driveByDriver } : {}),
     ...(Object.keys(reByDriver).length > 0 ? { reOhmByDriver: reByDriver } : {}),

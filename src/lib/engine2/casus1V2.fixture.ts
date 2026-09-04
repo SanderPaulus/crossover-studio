@@ -60,9 +60,13 @@ import {
   CASUS1_WOOFER_DC_OHM,
   loadGolden,
   type GoldenRefs,
+  casus1CoilDcrFits,
+  casus1CoilDcrModel,
+  casus1CoilFamilyByDriver,
 } from './casus1.fixture.ts';
 import type { WayWiring } from './ingest/wiring.ts';
 import type { LowestWayLevelWork } from '../levelWork.ts';
+import type { CoilDcrFit, CoilDcrModel } from '../coilDcr.ts';
 import { peakInputVolts } from './metrics/driveExcursion.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
 import {
@@ -348,6 +352,25 @@ export const CASUS1_LEVEL_WORK_SETTINGS: {
   ...(CASUS1_LOWEST_WAY_LEVEL_WORK !== undefined ? { lowestWayLevelWork: CASUS1_LOWEST_WAY_LEVEL_WORK } : {}),
 };
 
+/**
+ * A5e.3 — THE COIL FAMILIES OF CASUS 1 AND THE MODEL THEY RESOLVE TO, read
+ * from `driverkaart.spoelfamilie` and fitted on the catalogue that block
+ * names. `CASUS1_COIL_DCR.stated` is false while the block is a PROPOSAL
+ * (`gesteld_door` empty): the route then declares the key ABSENT with its
+ * reason and nothing is armed (P4) — the measuring scripts and the diagnosis
+ * arm pass `{ coilDcr: true }` to `casus1V2Declaration` to run on the
+ * proposal explicitly. The moment the block is stated the same fixture arms
+ * the model on every casus-1 run, and the corpus has to be regenerated.
+ */
+export const CASUS1_COIL_DCR: { model: CoilDcrModel | null; stated: boolean; missing: { way: string; family: string }[] } = casus1CoilDcrModel();
+export const CASUS1_COIL_FAMILY_BY_DRIVER: Record<string, string> = casus1CoilFamilyByDriver().familyByWay;
+
+/** A5e.3 — the report settings the coil-DCR block reads, spread into every casus-1 report. */
+export const CASUS1_COIL_DCR_SETTINGS: { coilDcrFamilyByDriver?: Record<string, string>; coilDcrFits?: readonly CoilDcrFit[] } =
+  Object.keys(CASUS1_COIL_FAMILY_BY_DRIVER).length > 0
+    ? { coilDcrFamilyByDriver: { ...CASUS1_COIL_FAMILY_BY_DRIVER }, coilDcrFits: casus1CoilDcrFits().fits }
+    : {};
+
 /** V50 — the peak input voltage the coil gate reads currents at (V49's amplifier peak). */
 export const CASUS1_PEAK_INPUT_VOLTS: number | null =
   CASUS1_EXCURSION.amplifierPeakPowerW !== undefined && CASUS1_EXCURSION.amplifierNominalLoadOhm !== undefined
@@ -544,7 +567,14 @@ export function casus1V2Declaration(
     t: GriddedResponse;
     z: Record<string, Complex[]>;
   },
+  /**
+   * A5e.3 — `coilDcr: true` runs on the manifest's coil families even while
+   * they are a PROPOSAL (the measuring arm); default: only a STATED block arms
+   * the model, a proposal is declared absent with its reason (P4).
+   */
+  opts: { coilDcr?: boolean } = {},
 ) {
+  const armCoilDcr = opts.coilDcr === true || CASUS1_COIL_DCR.stated;
   return {
     declaration: declareCandidateChoices({
       cages: c.crossings.map((x) => x.cageHz),
@@ -599,6 +629,18 @@ export function casus1V2Declaration(
        * leaving the search bounded by a ceiling solved for its seed. */
       ...(CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined
         ? { lfBumpBudgetDb: CASUS1_V2_BUDGETS.lfBumpBudgetDb }
+        : {}),
+      /* A5e.3 — the coil family per way and the catalogue's fits, so the
+       * candidate can declare WHAT PHYSICS its coils are judged on. Only when
+       * the block is stated (or the caller asks for the proposal); otherwise
+       * nothing is handed over and the derivation declares the key absent
+       * with the P4 reason. */
+      ...(armCoilDcr && Object.keys(CASUS1_COIL_FAMILY_BY_DRIVER).length > 0
+        ? {
+            coilDcrFamilyByWay: { ...CASUS1_COIL_FAMILY_BY_DRIVER },
+            coilDcrFits: casus1CoilDcrFits().fits,
+            coilDcrCatalogLabel: casus1CoilDcrFits().label,
+          }
         : {}),
     }),
     /* V41 — the two settings the DESIGN and SYNTHESIS steps read, which run

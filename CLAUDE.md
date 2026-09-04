@@ -48,6 +48,12 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná A5e.3 (04-09-2026) gemeten op 342 s — 150 geslaagd + 1 overgeslagen bestand, 1676 geslaagd +
+    2 overgeslagen tests, in één keer groen, alleen gedraaid op een lege machine ná de volle run en NOOIT ernaast.**
+    +2 bestanden (`coilDcr.test.ts` 12, `optimizer/coilDcrRoute.test.ts` 2 — twee ketenruns, 47 s) en +14 tests,
+    exact die twee; het corpus is niet geregenereerd, dus de `it.each` over het levende corpus staat op nul. Het
+    langste bestand blijft `lowestWayLevelWork` (341 s), dan `threeWayChain` (289 s) en `frozenNetlistGates`
+    (277 s). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná M-1 (04-09-2026) gemeten op 348 s — 148 geslaagd + 1 overgeslagen bestand, 1662 geslaagd +
     2 overgeslagen tests, in één keer groen, alleen gedraaid op een lege machine ná de volle run en
     NOOIT ernaast.** +1 bestand (`ingest/mergeBlock.test.ts`, 11 claims) en netto +8 tests (zie de
@@ -182,7 +188,14 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 04-09-2026 (M-1): 149 bestanden, 1664 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 04-09-2026 (A5e.3, ná M-1-diagnose): 151 bestanden,
+  1678 tests, 1152 s (19 min 12), niets overgeslagen, in één keer groen, alleen gedraaid op een lege machine met
+  `nohup` ná de arm `m1+dcr` en NOOIT ernaast.** +2 bestanden (`coilDcr.test.ts` 12 claims,
+  `optimizer/coilDcrRoute.test.ts` 2 claims, twee ketenruns op de kleine fixture) en +14 tests, exact die twee
+  bestanden; het corpus is NIET geregenereerd en blijft leeg, dus de `it.each` over het levende corpus beweegt
+  niet. De wandkloktijd is nog steeds die van de VERWERPINGSRUN alleen (1118 s op kandidaat 1); `lowestWayLevelWork`
+  347 s en `threeWayChain` 298 s ernaast. GEEN nieuwe referentie: dezelfde laag op dezelfde machine.
+  (De stand ervoor: **04-09-2026 (M-1): 149 bestanden, 1664 tests,
   1187 s (19 min 47), niets overgeslagen, in één keer groen, alleen gedraaid op een lege machine met
   `nohup`.** +1 bestand (`ingest/mergeBlock.test.ts`, 11 claims) en netto +8 tests: 11 daar, 1 in
   `gates.test.ts` (de reflexvormige tegenproef op de beschermingsregel), 1 in `corpusPairing` (V51b → M-1,
@@ -834,6 +847,24 @@
     tot de tak alleen de vloer haalt (`meetsAmpFloor`, tolerantie erin), met de kost in de takoverdracht; en de
     gecombineerde lezing, opgeschaald tot het SYSTEEM de vloer haalt. Schrijft `samenvatting.json` naast de
     armen. De vloer wordt uit het manifest gelezen (`casus1AmpMinLoadOhm`), nooit getypt.
+- **Wat een DCR-model doet op de netlists die er liggen (A5e.3, 04-09-2026)**:
+  `npx vite-node scripts/measure-a5e3-dcr.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen tune. Zonder
+  argumenten HUIDIG, de drie V51b-netlists met een M-1-tegenhanger en élk arm-netwerk uit
+  `test-fixtures/casus1_m1_diagnose/`. Drie tabellen: de FITS per spoelfamilie van de catalogus die
+  `driverkaart.spoelfamilie.catalogus` noemt (k, A, bereik, n, residu); per netlist vóór/ná stempelen min |Z| van
+  som en takken, DCR-totaal, serie-R op de woofer (R + DCR = totaal) met de ruimte in V51b's 1,0 Ω, Q_es× (M-E), lift
+  en opslingering (M-D) uit `buildReport`; en per spoel weg, L, model-DCR en of één enkel onderdeel van de familie
+  de waarde dekt. **Leest de families als VOORSTEL** (`gesteld_door: null`) en stelt niets. Gemeten 04-09-2026: de
+  geweigerde M-1-tune van 429,1·1994,6 gaat van 1,63 naar 2,82 Ω (tweeter alleen 1,99 → 2,81), drie van vier
+  geweigerde `'none'`-tunes halen de vloer, de zaden nergens (1,3–1,6 Ω); V51b-netlists +0,1–0,5 Ω, Q_es× +0,15–0,23,
+  lift +0,9–1,0 dB, opslingering omlaag; 0,33–0,42 Ω van de 1,0 Ω blijft over voor een component, de M-1-zaden
+  dragen 1,35–1,57 Ω koper op de wooferweg. **De arm ernaast:** `M1_ARM=m1+dcr npx vite-node
+  scripts/measure-m1-diagnose-arms.ts` — één ketenrun (429,1·1994,6 met M-1's instellingen plus het model),
+  bestand `casus1_m1_diagnose/m1+dcr.json`, leesbaar door `measure-m1-diagnose.ts` en `measure-a5e3-dcr.ts`.
+  **Gemeten 04-09-2026: GELEVERD in 2012 s — zaad 1,32 → 2,62 Ω (vloer gehaald, minimum bij 1159 Hz in de
+  W-M-overlap in plaats van 337 Hz in de tweeter-HP), rimpel 2,36 dB, M-K 14,3°/12,6°, M-C −34,6/−37,8 dB,
+  M-A/part 1,34 W, woofer 0,94 Ω puur koper zonder R of pad; waar M-1 dezelfde kandidaat verliesvrij op 1,23 Ω
+  weigerde. Geen nieuw element: de gedempte shunt-pool van de M-1-diagnose is op deze kandidaat overbodig.**
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -2100,6 +2131,41 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   aan een bandrand wordt niet scherper door hem te hermeten op een set waarvan die rand verschoof.
 - `coverage`, `manualWindowAndLobing`, `versionAndCapability` (de stempel), `borderFacts` (lek 2),
   `newMeasurement`, `corpusPairing` (de gedateerde claims) — lezen `'gated'`, met de reden bij de aanroep.
+
+### A5e.3-guards (de DCR van elke continue spoel uit de catalogusfit; alleen v2-runs)
+- `src/lib/coilDcr.ts` — **één huis, één functie, tien lezers.** `fitCoilDcrFamilies` fit per (merk, serie,
+  draaddikte) `DCR = A·(L/mH)^k` op de SKU-DCR van de catalogus (log-log, `coil-dcr-fit/1.0`); `dcrOf(henry, fit)`
+  is DE lezing en geeft `{ ohm, inRange }` — buiten het enkel-onderdeel-bereik wordt de machtswet VOORTGEZET en
+  gevlagd, nooit op nul gezet (een DCR die aan de rand wegvalt beloont de zoektocht voor het verlaten van de
+  catalogus; boven het grootste onderdeel is een stapel). `stampCoilDcr` zet de `DCR`-param op elke aanwezige,
+  niet-gesnapte spoel — serie én SHUNT (`waysOfElements`: van elk element door niet-massa-, niet-busknopen tot een
+  busknoop) — en `crossoverToNetlist` is de ene lezer van die param, dus solver, `dcSeriesR`, barrière, box
+  (`fixedSI`/`pathRBaseOhm`), `levelWork`, audit, poorten en rapport lezen één getal. De familie per weg is
+  GESTELD (manifest `driverkaart.spoelfamilie.per_weg`, het veld "coil family" per weg in het A5a-meetblok),
+  nergens een default (P6); een weg zonder familie houdt verliesvrije spoelen en wordt bij naam gemeld. Het model
+  (`CoilDcrModel`) draagt de fits IN de waarde (V51b-regel) en is daarmee reproduceerbaar zonder de catalogus.
+- `src/lib/coilDcr.test.ts` — twaalf claims: de exacte machtswet met residu nul en een handberekening; de 25
+  families van v8 (k ∈ (0,5, 0,7) op lucht, de 1,4 mm-fit binnen 10 % van `coilDcr(1.4)`); **élke SKU binnen het
+  maximale residu van zijn familie** (de snap-continuïteitsclaim); de familie-gebonden snap met de 25 %-terugval;
+  serie- én shuntspoelen aan hun weg; stempel idempotent, gesnapt blijft, een gedeelde spoel leest de laagste
+  DCR; buiten bereik voortgezet en continu aan de rand; de afleiding in vier toestanden (model / geen catalogus /
+  onbekende familie / niets, met P4); de vingerafdruk beweegt met familie ÉN fitgetallen.
+- `src/lib/engine2/optimizer/coilDcrRoute.test.ts` — twee ketenruns op de kleine fixture (47 s): P2 zonder model;
+  het model BEREIKT de zoektocht (de inducties zelf bewegen, V23); één implementatie (elke geleverde spoel draagt
+  `roundDcr(dcrOf(L_geschreven))`, de niveauwerk-inventaris hetzelfde, het `stated-series-r`-bound is op een
+  GESTEMPELD zaad opgelost); en een poort leest de param. **De test loopt op een maximum van 2,0 Ω, en dat is een
+  gemeten bevinding:** op 1,0 Ω wordt de gemodelleerde arm op `topology` geweigerd met 1,005 Ω PUUR koper — onder
+  `series-r-max` bindt de DCR zelf, en de box heeft daar alleen via het opslingeringsbudget grip op.
+- `choices.ts` / `choiceKeyGuard.test.ts` — `coilDcrModel` is CHOICE (35/5/11, 51 sleutels), de derde zonder
+  polish-tweeling; `candidateDeclaration.ts` leidt hem af uit `coilDcrFamilyByWay` + `coilDcrFits` en verklaart
+  anders ABSENT met reden. `casus1V2Declaration` wapent het model ALLEEN als `driverkaart.spoelfamilie.gesteld_door`
+  gevuld is (`CASUS1_COIL_DCR.stated`) of de aanroeper `{ coilDcr: true }` vraagt (de scripts en de arm) — zolang
+  het blok een VOORSTEL is verandert de route niets en blijft het lege corpus wat het is.
+- `netOptimizer.ts` — het zaad wordt bij binnenkomst gestempeld, `refreshDcr` leest elke vrije spoel per evaluatie
+  af, de somgroepen dragen `coilIds`/`seedCoilDcrOhm` zodat de zaad-DCR in `fixedSI` en `pathRBaseOhm` door de
+  levende som vervangen wordt, en het terugschrijven zet de DCR van de GESCHREVEN mH in de param (anders lag de
+  lezer één cijfer naast de schrijver — nagemeten: 0,5588 tegen 0,5589). `pickCandidates(…, only)` snapt binnen de
+  familie. Alles achter `opts.coilDcrModel`; afwezig = P2 (`f4cRegression`, `workerRouteRegression` reproduceren).
 
 ### V51b-guards (serieweerstand op de laagste weg tot een gesteld maximum, geen pad)
 - `src/lib/levelWork.ts` — **het ene huis draagt sinds V51b de EIS als type** (`LowestWayLevelWork`:

@@ -155,9 +155,15 @@ describe('F4c — every tuner option has a class', () => {
     // the measured near field and sweep the inversion re-reads travel inside
     // `valueSumCeilings`, which has been polish since F2 precisely because it
     // is data the run already holds. Split becomes 34/5/11.
-    expect(keys.length).toBe(50);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(50);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([34, 5, 11]);
+    // 51 since A5e.3 added `coilDcrModel` (choice — WHAT PHYSICS the coils
+    // are judged on: lossless, or the DCR their stated family has at their
+    // inductance). The THIRD without a polish companion: the fits travel
+    // inside the value on the V51b rule (a mode without its numbers means
+    // nothing), and they are catalogue data, not a measurement the run holds
+    // elsewhere. Split becomes 35/5/11.
+    expect(keys.length).toBe(51);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(51);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([35, 5, 11]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -282,7 +288,7 @@ describe('F4c — every tuner option has a class', () => {
      * compares against. Folding them together would make "watch the full band
      * against a stated requirement" unsayable. */
     expect(CHOICE_KEYS).toContain('safety');
-    expect(CHOICE_KEYS.length).toBe(34);
+    expect(CHOICE_KEYS.length).toBe(35);
     expect(GREY_KEYS.length).toBe(5);
     expect(POLISH_KEYS.length).toBe(11);
   });

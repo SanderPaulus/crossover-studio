@@ -824,8 +824,20 @@ export function pickCandidates(
    *  budget. Wins over the refOhms-derived per-part allowance; omitted = the
    *  historical behaviour. */
   dcrCeilOhms?: number,
+  /** A5e.3 — restrict the pool to one coil FAMILY (the DCR model's family for
+   *  this coil's way), so a continuous value snaps to the gauge it was fitted
+   *  on. Applied only while the family can COVER the value (within 25 %, the
+   *  same reach every other pool rule uses); otherwise the whole pool stands
+   *  and the caller reports it. Omitted = the historical behaviour. */
+  only?: (p: CatalogPart) => boolean,
 ): CatalogPick[] {
   const stacksOk = prefs?.allowStacks !== false;
+  const withinFamily = (parts: readonly CatalogPart[]): readonly CatalogPart[] => {
+    if (!only) return parts;
+    const kept = parts.filter(only);
+    const covers = kept.some((p) => Math.abs(Math.log(p.value / value)) <= Math.log(1.25));
+    return covers ? kept : parts;
+  };
   // Coil DCR guard (see dcrCeilingOhms): drop gauges whose resistance costs
   // more level than this position may spend. Applied to the POOL, before the
   // nearest-value walk, so the shortlist is filled with usable gauges instead
@@ -886,7 +898,7 @@ export function pickCandidates(
     return covers ? real : parts;
   };
   const usable = (parts: readonly CatalogPart[]) =>
-    preferReal(withinDcr(parts.filter((p) => p.kind === kind)));
+    preferReal(withinDcr(withinFamily(parts.filter((p) => p.kind === kind))));
   /* STACKS CARRY THE SUM. Two coils in series add their DCR, and the pool
    * filter above only sees the parts one at a time — so a stack of two coils
    * that each cleared the budget handed over twice it. That is literally the

@@ -435,6 +435,16 @@ export interface SearchBox {
     pathRBaseOhm?: number;
     /** The inversion, as a function of the path resistance. */
     ceilingAt?: SeriesInductanceCeiling;
+    /* ---- A5e.3: the seed's coil DCR, named so a DCR model can replace it ----
+     *
+     * `fixedSI` (the resistance rules) and `pathRBaseOhm` (the inductance rule)
+     * both hold the DCR of the way's series coils AS STAMPED ON THE SEED. With
+     * a DCR model that resistance moves with the inductance the tune is
+     * choosing, so the group names its coils and what their DCR summed to; the
+     * tuner subtracts the seed sum and adds the live one before projecting.
+     * Without a model the tuner never reads them (P2). */
+    coilIds?: string[];
+    seedCoilDcrOhm?: number;
   }[];
   /** What was bounded and why — the report shows this, never a bare number. */
   bounds: InvertedBound[];
@@ -516,11 +526,14 @@ export function searchBoxFor(
         );
         continue;
       }
+      const seedCoilDcrOhm = coils.reduce((s, p) => s + (p.params.find((q) => q.name === 'DCR')?.value ?? 0), 0);
       valueSumCeilings.push({
         ids: free,
         maxSI: b.maxSI,
         fixedSI,
         label: `${b.subject} ${b.quantity}`,
+        coilIds: coils.map((p) => p.partId!),
+        seedCoilDcrOhm,
       });
       // A single element can never exceed the total either — a necessary
       // condition, and the one a per-element box can express.
@@ -583,6 +596,7 @@ export function searchBoxFor(
             .reduce((sum, p) => sum + (valueSI(p) ?? 0), 0) +
           all.reduce((sum, p) => sum + (p.params.find((q) => q.name === 'DCR')?.value ?? 0), 0);
         const tracker = trackers[b.subject];
+        const seedCoilDcrOhm = all.reduce((sum, p) => sum + (p.params.find((q) => q.name === 'DCR')?.value ?? 0), 0);
         valueSumCeilings.push({
           ids: coils.map((p) => p.partId!),
           maxSI: b.maxSI,
@@ -593,6 +607,8 @@ export function searchBoxFor(
                 resistanceIds: freeR.map((p) => p.partId!),
                 pathRBaseOhm,
                 ceilingAt: tracker,
+                coilIds: all.map((p) => p.partId!),
+                seedCoilDcrOhm,
               }
             : {}),
         });

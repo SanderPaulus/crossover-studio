@@ -17,10 +17,12 @@ import {
   nearestParts,
   pickCandidates,
   seriesValueRange,
+  type CatalogPart,
   type CatalogPick,
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
+import { catalogFamilyOf, dcrOf, roundDcr, stampCoilDcr, type CoilDcrFit, type CoilDcrModel } from './coilDcr.ts';
 import { floorCurve, type FloorShape } from './impedanceFloor.ts';
 import { ampFloorSlackOhm, minImpedanceAt } from './impedanceFloor.ts';
 import {
@@ -367,6 +369,24 @@ export interface NetOptimizeOptions {
    *  position. Position = on the source→driver bus (BFS over the netlist,
    *  never through ground) vs hanging off it (shunt/notch chains). */
   snapPrefs?: SnapPrefs;
+  /**
+   * A5e.3 — THE DCR OF EVERY CONTINUOUS COIL, FROM THE CATALOGUE FIT.
+   *
+   * Absent (every v1 run, and every v2 run that states no coil family): a
+   * coil is as lossless as its `DCR` param says, which for a synthesised coil
+   * is nothing. Stated: every un-snapped coil on a way with a family reads its
+   * DCR from the family's fit at its OWN inductance — on the seed (stamped
+   * into the `DCR` param, so every reader of the part list sees it), inside
+   * the objective (re-read as the inductance moves, so the solver, the source
+   * probe, the barrier and the sum ceilings all see the same ohms), and on the
+   * delivered network (written back into the param). A snapped coil keeps
+   * the real part's DCR — the real part beats the fit (`coilDcr.ts`).
+   *
+   * A CHOICE (A3j): it decides what PHYSICS the network is judged on, and on
+   * casus 1 that is the difference between a tune refused on a ladder
+   * resonance of 1.99 Ω and one that clears the floor (M-1 diagnosis).
+   */
+  coilDcrModel?: CoilDcrModel;
   /** Target ACOUSTIC slopes beside the crossing (dB/oct) — same steering as
    *  the design optimizer, so the tuner keeps the achieved orders. In 3-way
    *  `mid`/`tweeter` steer the TOP pair (their historical meaning: lower and
@@ -748,6 +768,15 @@ export interface NetOptimizeOptions {
      *  nothing to answer with, and then `maxSI` stands (P4: a solve with no
      *  data is not a ceiling of zero). */
     ceilingAt?: (pathROhm: number) => number | null;
+    /* ---- A5e.3: the coil DCR inside `fixedSI` / `pathRBaseOhm` is the SEED's.
+     * With a DCR model the coils' resistance moves with their inductance, so
+     * the group names its coils and what their DCR summed to at the seed; the
+     * tuner then replaces that seed sum by the live one before it projects.
+     * Absent = the seed's numbers stand, byte-identical to every run before. */
+    /** Every series coil of this way (free or locked), by id. */
+    coilIds?: readonly string[];
+    /** Their DCR summed at the seed, ohms — the part of `fixedSI`/`pathRBaseOhm` that a DCR model re-reads. */
+    seedCoilDcrOhm?: number;
   }[];
   /**
    * V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES.
@@ -1412,7 +1441,7 @@ export function busPositions(parts: readonly VxpPart[]): (partId: string) => 'se
 }
 
 export function optimizeNetworkValues(
-  parts: readonly VxpPart[],
+  partsIn: readonly VxpPart[],
   grid: readonly number[],
   wBase: GriddedResponse,
   tBase: GriddedResponse,
@@ -1420,6 +1449,14 @@ export function optimizeNetworkValues(
   adjust: TweeterAdjust,
   opts: NetOptimizeOptions = {},
 ): NetOptimizeResult {
+  /* A5e.3 — the seed with its coils' DCR stamped from the stated model, so
+   * that `before`, the seed's gate verdict, the source probe and every pass
+   * below read the same ohms the objective will. Absent model = the seed as
+   * handed over, and `dcrFitById` is empty: every line that reads it does
+   * nothing (P2). */
+  const dcrStamp = opts.coilDcrModel ? stampCoilDcr(partsIn, opts.coilDcrModel) : null;
+  const parts: readonly VxpPart[] = dcrStamp ? dcrStamp.parts : partsIn;
+  const dcrFitById: Record<string, CoilDcrFit> = dcrStamp?.fitById ?? {};
   const {
     phasePriority = 0.5,
     maxIterations,
@@ -3223,6 +3260,39 @@ export function optimizeNetworkValues(
       const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
       return { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m };
     }
+    /* A5e.3 — THE DCR THAT MOVES WITH THE INDUCTANCE. A free coil on a way
+     * with a stated family re-reads its DCR from the fit at every evaluation,
+     * so the network the solver stamps is the network a builder would wind at
+     * that value. Absent model = `dcrFit` is all null and `refreshDcr` is a
+     * no-op: byte-identical to every run before (P2). */
+    const dcrFit: (CoilDcrFit | null)[] = free.map((e) => (e.kind === 'L' ? (dcrFitById[e.id] ?? null) : null));
+    const anyDcr = dcrFit.some((f) => f !== null);
+    const elementById = new Map(work.elements.map((e) => [e.id, e] as const));
+    const freeIndexById = new Map(free.map((e, i) => [e.id, i] as const));
+    const refreshDcr = (): void => {
+      if (!anyDcr) return;
+      for (let i = 0; i < free.length; i++) {
+        const f = dcrFit[i];
+        if (!f) continue;
+        const r = dcrOf(free[i].value, f);
+        if (r) free[i].seriesR = r.ohm;
+      }
+    };
+    /** The live DCR sum of a group's coils: the fit at the current value for a free coil, the stamped param for a locked one. */
+    const dcrNow = (ids: readonly string[]): number => {
+      let sum = 0;
+      for (const id of ids) {
+        const i = freeIndexById.get(id);
+        if (i !== undefined && dcrFit[i]) {
+          const r = dcrOf(free[i].value, dcrFit[i]!);
+          sum += r ? r.ohm : 0;
+        } else {
+          const e = elementById.get(id);
+          sum += e && e.kind === 'L' ? (e.seriesR ?? 0) : 0;
+        }
+      }
+      return sum;
+    };
     // Realism anchor: per element the effective soft window = buildability
     // bounds, with the CEILING tightened for series-path parts (position via
     // the same bus BFS the snap's tier doctrine uses). A bound series (value
@@ -3305,13 +3375,16 @@ export function optimizeNetworkValues(
     const projectSums = (): void => {
       for (const g of sumGroups) {
         let maxSI = g.maxSI;
+        /* A5e.3 — the seed's coil DCR inside the group's fixed sums, replaced
+         * by the live one. Zero without a model or without named coils. */
+        const dcrAdj = anyDcr && g.coilIds ? dcrNow(g.coilIds) - (g.seedCoilDcrOhm ?? 0) : 0;
         if (tracking && g.ceilingAt) {
-          let pathR = g.pathRBaseOhm ?? 0;
+          let pathR = (g.pathRBaseOhm ?? 0) + dcrAdj;
           for (const i of g.rIdx) pathR += free[i].value;
           const solved = g.ceilingAt(pathR);
           if (solved !== null && solved > 0) maxSI = solved;
         }
-        const room = maxSI - (g.fixedSI ?? 0);
+        const room = maxSI - ((g.fixedSI ?? 0) + dcrAdj);
         let total = 0;
         for (const i of g.idx) total += free[i].value;
         if (room <= 0) {
@@ -3349,6 +3422,7 @@ export function optimizeNetworkValues(
         }
       }
       projectSums();
+      refreshDcr();
       let m;
       try {
         m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
@@ -3476,6 +3550,7 @@ export function optimizeNetworkValues(
     // point that was scored. Skipping it here is how a box constraint comes to
     // hold everywhere except in the answer.
     projectSums();
+    refreshDcr();
     const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
     const valueOf = new Map(free.map((e) => [e.id, e.value]));
     const out = cloneParts(ps).map((q) => {
@@ -3485,14 +3560,25 @@ export function optimizeNetworkValues(
       // A retuned value invalidates any earlier snap attribution.
       const { catalog: _stale, ...rest } = q;
       void _stale;
-      return {
-        ...rest,
-        params: q.params.map((par) =>
-          par.name === u.name
-            ? { ...par, value: Number((valueOf.get(q.partId!)! * u.factor).toPrecision(4)) }
-            : par,
-        ),
-      };
+      const value = valueOf.get(q.partId!)!;
+      const shown = Number((value * u.factor).toPrecision(4));
+      let params = q.params.map((par) => (par.name === u.name ? { ...par, value: shown } : par));
+      /* A5e.3 — the DCR of this coil goes into the param, read off the fit at
+       * the inductance WRITTEN (the rounded mH every later reader sees), so a
+       * reader that recomputes `dcrOf` from the param lands on the same digit.
+       * The objective scored the unrounded value; the two differ by the
+       * rounding of L, which is below the param's own resolution. */
+      const fit = kind === 'L' ? dcrFitById[q.partId] : undefined;
+      if (fit) {
+        const r = dcrOf(shown * 1e-3, fit); // mH → H, the reader's own conversion (vxpNetwork.ts)
+        if (r) {
+          const dcr = roundDcr(r.ohm);
+          params = params.some((par) => par.name === 'DCR')
+            ? params.map((par) => (par.name === 'DCR' ? { ...par, value: dcr } : par))
+            : [...params, { name: 'DCR', value: dcr, unit: 'Ω' }];
+        }
+      }
+      return { ...rest, params };
     });
     return { parts: out, freeCount: free.length, fx: fxOf(m), metrics: m };
   };
@@ -4424,7 +4510,13 @@ export function optimizeNetworkValues(
       const kind = KIND_OF[q.type];
       const u = PARAM_OF[kind];
       const raw = q.params.find((p) => p.name === u.name)?.value ?? 0;
-      return pickCandidates(kind, raw / u.factor, 3, snapPrefs, posOfPart(q.partId!), dcrCeilFor(q));
+      /* A5e.3 — a coil the DCR model gave a family snaps INSIDE that family,
+       * so the continuous → snapped transition is the family's own residual
+       * and not a jump to another gauge; `pickCandidates` keeps the whole
+       * pool when the family cannot cover the value (the 25 % reach rule). */
+      const fit = kind === 'L' ? dcrFitById[q.partId!] : undefined;
+      const only = fit ? (p: CatalogPart) => catalogFamilyOf(p) === fit.family : undefined;
+      return pickCandidates(kind, raw / u.factor, 3, snapPrefs, posOfPart(q.partId!), dcrCeilFor(q), only);
     });
     const applied = (ch: (CatalogPick | null)[]): VxpPart[] => {
       const out = cloneParts(cur.parts);

@@ -33,6 +33,7 @@ import type { EstimatorStamp } from '../version.ts';
 import type { DriverCard } from './driveExcursion.ts';
 import type { WayWiring } from '../ingest/wiring.ts';
 import type { LowestWayLevelWork } from '../../levelWork.ts';
+import type { CoilDcrFit } from '../../coilDcr.ts';
 
 export type { DriverCard };
 
@@ -230,6 +231,21 @@ export interface ProjectSettings {
    * (`levelWork.ts`).
    */
   lowestWayLevelWork?: LowestWayLevelWork;
+  /* ---- A5e.3: the coil family per way, and the catalogue's fits ---------- */
+  /**
+   * WHICH COIL FAMILY each way is wound with (driver id → family id, the key
+   * `coilDcr.ts` fits per brand, series and gauge), stated on the driver card
+   * or in the per-way field of the A5a form. Absent for a way = its coils are
+   * lossless in every judgement, and the report says so as a deviation from
+   * any build. Never a default (P6).
+   */
+  coilDcrFamilyByDriver?: Record<string, string>;
+  /**
+   * The fits of the catalogue in use (`fitCoilDcrFamilies`), so a stated
+   * family can be resolved to a DCR. Absent = no catalogue: a stated family
+   * cannot be resolved and the report names it as unresolved.
+   */
+  coilDcrFits?: readonly CoilDcrFit[];
 }
 
 /**

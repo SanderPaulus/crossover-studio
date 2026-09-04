@@ -29,7 +29,7 @@ import { fromPolar } from '../complex.ts';
 import { toComplex } from '../dsp.ts';
 import type { Netlist } from '../network.ts';
 import { unwrapPhaseDeg } from '../timing.ts';
-import { DEG_PER_HALF_TURN, MM_PER_M } from './constants.ts';
+import { DEG_PER_HALF_TURN, MM_PER_M, H_PER_MH } from './constants.ts';
 import { buildCapabilityMatrix, isActive, type CapabilityMatrix } from './capability.ts';
 import { runIngest, type IngestResult, type MeasurementFile } from './ingest/derive.ts';
 import { passbandLevel } from './ingest/spl.ts';
@@ -122,6 +122,7 @@ import {
   type LevelWorkVerdict,
   type LowestWayLevelWork,
 } from '../levelWork.ts';
+import { coilDcrInventoryOfNetlist, coilDcrModelFor, describeCoilDcrModel, type CoilDcrInventory, type CoilDcrModel } from '../coilDcr.ts';
 import {
   gateVerdicts,
   isHighPassProtected,
@@ -344,6 +345,19 @@ export interface LevelWorkAnalysis {
   verdict: LevelWorkVerdict | null;
   /** V51 item 4 — whether the stated plateau lies inside the judged band at all. */
   plateau: PlateauCoverage | null;
+  /**
+   * A5e.3 — the coil families the project states, the model they resolve to
+   * on the catalogue handed over (null when none resolves), and what the
+   * LOADED netlist's coils carry against it. Reporting, never a gate: a coil
+   * outside its family's single-part range is a FLAG.
+   */
+  coilDcr: {
+    statedFamilyByDriver: Record<string, string>;
+    model: CoilDcrModel | null;
+    /** Families stated for a way that the catalogue's fits do not contain. */
+    unresolved: { way: string; family: string }[];
+    inventory: CoilDcrInventory | null;
+  };
   /** One paragraph a reader can act on. */
   sentence: string;
   notes: string[];
@@ -1159,6 +1173,53 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     if (verdict && verdict.ok === false) {
       notes.push(`FLAG (no gate): the loaded netlist does not honour the stated rule — ${verdict.why}.`);
     }
+    /* ---- A5e.3: the coil families and what the loaded netlist carries ---- */
+    const statedFamilyByDriver: Record<string, string> = {};
+    for (const [drv, fam] of Object.entries(input.settings.coilDcrFamilyByDriver ?? {})) {
+      if (typeof fam === 'string' && fam !== '') statedFamilyByDriver[drv] = fam;
+    }
+    const resolved =
+      Object.keys(statedFamilyByDriver).length > 0
+        ? coilDcrModelFor(statedFamilyByDriver, input.settings.coilDcrFits ?? [])
+        : { model: null, missing: [] as { way: string; family: string }[] };
+    const coilInventory = input.filter ? coilDcrInventoryOfNetlist(input.filter.netlist, resolved.model) : null;
+    if (Object.keys(statedFamilyByDriver).length === 0) {
+      notes.push(
+        'No coil family is stated for any way (A5e.3): a continuous coil is lossless in every judgement here ' +
+          'unless the netlist itself carries a DCR param, which no built loudspeaker is. State the family per way ' +
+          'on the driver card to model it.',
+      );
+    } else {
+      if (resolved.model) {
+        notes.push(`Coil DCR model (A5e.3, ${resolved.model.fitVersion}): ${describeCoilDcrModel(resolved.model)}.`);
+      }
+      if (resolved.missing.length > 0) {
+        notes.push(
+          `A coil family is stated for ${resolved.missing.map((m) => `${m.way} (${m.family})`).join(', ')} but the ` +
+            (input.settings.coilDcrFits && input.settings.coilDcrFits.length > 0
+              ? 'catalogue in use has no fit for it — its coils stay lossless here.'
+              : 'no catalogue is loaded, so it cannot be resolved — its coils stay lossless here.'),
+        );
+      }
+      if (coilInventory) {
+        const without = coilInventory.waysWithoutFamily;
+        if (without.length > 0) notes.push(`Ways without a stated coil family: ${without.join(', ')} — their coils are lossless unless the netlist carries DCR.`);
+        const bare = coilInventory.coils.filter((c) => c.family !== null && c.carriedOhm === 0);
+        if (bare.length > 0) {
+          notes.push(
+            `The loaded netlist carries NO DCR on ${bare.map((c) => `${c.id} (${(c.henry / H_PER_MH).toFixed(2)} mH, fit ${c.fitOhm!.toFixed(3)} Ω)`).join(', ')} ` +
+              'although a family is stated for its way: this netlist was made without the model, and every electrical ' +
+              'figure above is that of lossless coils.',
+          );
+        }
+        if (coilInventory.outOfRange.length > 0) {
+          notes.push(
+            `FLAG (no gate): ${coilInventory.outOfRange.join(', ')} lie(s) outside the single-part range of the stated family — ` +
+              'no single catalogue part covers the value; a stack of two in series can.',
+          );
+        }
+      }
+    }
     return {
       lowestWay: lowest,
       anchor,
@@ -1172,6 +1233,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       maxSeriesOhm,
       verdict,
       plateau,
+      coilDcr: { statedFamilyByDriver, model: resolved.model, unresolved: resolved.missing, inventory: coilInventory },
       sentence,
       notes,
     };

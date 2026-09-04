@@ -58,6 +58,7 @@ import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../../vfOptimizer.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
 import { isImplemented as isImplementedCurve, type TargetCurve } from '../requirements/targetCurve.ts';
 import type { ChoiceDeclaration, ChoiceKey } from './choices.ts';
+import { coilDcrModelFor, type CoilDcrFit } from '../../coilDcr.ts';
 import type { ChainChoiceDeclaration, ChainChoiceKey } from './chainChoices.ts';
 
 /** The values the designer (or the app) has settled, in the tuner's own names. */
@@ -88,6 +89,7 @@ export type StatedByDesigner = Partial<
     | 'amplitudeReference'
     | 'protectionRule'
     | 'seriesInductanceCeilingSource'
+    | 'coilDcrModel'
   >
 >;
 
@@ -107,6 +109,18 @@ export interface CandidateDeclarationInput {
    */
   windowFloorsHz: readonly (number | null)[];
   stated: StatedByDesigner;
+  /**
+   * A5e.3 — the COIL FAMILY the project states per way (driver model →
+   * family id), and the catalogue's fits to resolve them with. Both present
+   * and at least one family resolving ⇒ the candidate declares `coilDcrModel`;
+   * anything less ⇒ ABSENT with the reason. A way whose family is not among
+   * the fits is named in the absent reason rather than silently lossless.
+   * Never derived from nothing (P4) and never a default family (P6).
+   */
+  coilDcrFamilyByWay?: Readonly<Record<string, string>>;
+  coilDcrFits?: readonly CoilDcrFit[];
+  /** Where those fits came from, for a reader of the declaration and the notes. */
+  coilDcrCatalogLabel?: string;
   /** True when this design has more than one way — i.e. is not a solo design. */
   multiWay: boolean;
   /**
@@ -209,6 +223,57 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
   put('ampMinLoadOhm', 'amplifier minimum load');
   put('rSourceDisqualifyOhm', 'source-resistance disqualification limit');
   put('zFloorStrict', 'strict impedance-floor setting for the repair pass');
+
+  /* ---- A5e.3: WHAT PHYSICS THE COILS ARE JUDGED ON ---------------------
+   *
+   * Derived from a STATED family per way and the catalogue's fits, in the V51b
+   * shape (the numbers travel inside the value). An explicit model wins. With
+   * families but no fit for any of them — no catalogue, or a family the
+   * catalogue does not stock — the key is ABSENT and the reason names the
+   * families that could not be resolved, so "lossless" is never mistaken for
+   * "nobody said". With nothing stated it is ABSENT with P4: every coil is
+   * lossless, which every built loudspeaker is not, and the notes say so. */
+  if (s.coilDcrModel !== undefined) {
+    stated.coilDcrModel = s.coilDcrModel;
+  } else {
+    const families = input.coilDcrFamilyByWay ?? {};
+    const named = Object.entries(families).filter(([, v]) => typeof v === 'string' && v !== '');
+    if (named.length > 0 && input.coilDcrFits && input.coilDcrFits.length > 0) {
+      const { model, missing } = coilDcrModelFor(families, input.coilDcrFits, input.coilDcrCatalogLabel);
+      if (model) {
+        stated.coilDcrModel = model;
+      } else {
+        absent.push({
+          key: 'coilDcrModel',
+          why:
+            'a coil family is stated for ' +
+            named.map(([w, f]) => `${w} (${f})`).join(', ') +
+            ' but the catalogue handed over has no fit for any of them (' +
+            missing.map((m) => m.family).join(', ') +
+            '), so every coil stays lossless — a deviation from any built loudspeaker, and a catalogue ' +
+            'question rather than a design one',
+        });
+      }
+    } else if (named.length > 0) {
+      absent.push({
+        key: 'coilDcrModel',
+        why:
+          'a coil family is stated for ' +
+          named.map(([w, f]) => `${w} (${f})`).join(', ') +
+          ' but no catalogue fits reached this run (no catalogue imported), so every coil stays ' +
+          'lossless — a deviation from any built loudspeaker',
+      });
+    } else {
+      absent.push({
+        key: 'coilDcrModel',
+        why:
+          'no coil family is stated for any way, so every continuous coil is lossless: the search ' +
+          'and every gate judge a network whose coils have no copper, which no built loudspeaker ' +
+          'has. Absent rather than a default family (P6/P4): which wire a way is wound with is the ' +
+          "designer's statement, and nothing here may make it for them",
+      });
+    }
+  }
 
   /* ---- V30: is the stated floor a SEARCH GOAL, or only a veto? ---------
    *

@@ -29,6 +29,8 @@ import { FLAT_TARGET, type TargetCurve } from './requirements/targetCurve.ts';
 import { ctcKey } from './metrics/types.ts';
 import type { WayWiring, WiringKind } from './ingest/wiring.ts';
 import type { LowestWayLevelWork } from '../levelWork.ts';
+import { deserializeCatalog } from '../catalogFile.ts';
+import { coilDcrModelFor, fitCoilDcrFamilies, type CoilDcrFit, type CoilDcrModel } from '../coilDcr.ts';
 
 export const CASUS1_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -935,3 +937,75 @@ export function casus1FilterFromParts(
   }
   return { name, netlist, driverZ };
 }
+
+/* ================================================================== *
+ * A5e.3 — the coil family per way, and the catalogue it is fitted on
+ * ================================================================== */
+
+/** The `driverkaart.spoelfamilie` block, as the manifest carries it. */
+interface CoilFamilyBlock {
+  gesteld_door?: unknown;
+  catalogus?: unknown;
+  per_weg?: Record<string, unknown>;
+}
+
+function coilFamilyBlock(golden: GoldenRefs): CoilFamilyBlock | null {
+  const b = (golden.manifest_en_geometrie as unknown as { driverkaart?: { spoelfamilie?: CoilFamilyBlock } }).driverkaart?.spoelfamilie;
+  return b && typeof b === 'object' ? b : null;
+}
+
+/**
+ * A5e.3 — the coil family per way (`driverkaart.spoelfamilie.per_weg`), and
+ * whether the block is STATED (`gesteld_door` filled) or still a proposal.
+ * The families are returned either way — the measuring scripts and the
+ * diagnosis arm read the proposal explicitly — and `stated` says which it
+ * is, so the route can decline to arm a proposal (P4).
+ */
+export function casus1CoilFamilyByDriver(golden: GoldenRefs = loadGolden()): { familyByWay: Record<string, string>; stated: boolean } {
+  const b = coilFamilyBlock(golden);
+  const out: Record<string, string> = {};
+  for (const [drv, fam] of Object.entries(b?.per_weg ?? {})) {
+    if (typeof fam === 'string' && fam !== '') out[drv] = fam;
+  }
+  const stated = typeof b?.gesteld_door === 'string' && b.gesteld_door.trim() !== '';
+  return { familyByWay: out, stated };
+}
+
+/** The catalogue file the families are fitted on (`driverkaart.spoelfamilie.catalogus`), relative to the repo root; null when none. */
+export function casus1CoilCatalogPath(golden: GoldenRefs = loadGolden()): string | null {
+  const c = coilFamilyBlock(golden)?.catalogus;
+  return typeof c === 'string' && c !== '' ? join(CASUS1_DIR, '..', '..', c) : null;
+}
+
+let coilFitsCache: { path: string; fits: CoilDcrFit[]; label: string } | null = null;
+
+/**
+ * A5e.3 — the fits of every coil family in the casus-1 catalogue file, read
+ * from disk once (a fixture; nothing in the bundle reaches it). Empty when
+ * the manifest names no catalogue.
+ */
+export function casus1CoilDcrFits(golden: GoldenRefs = loadGolden()): { fits: CoilDcrFit[]; label: string } {
+  const path = casus1CoilCatalogPath(golden);
+  if (path === null) return { fits: [], label: 'no catalogue' };
+  if (coilFitsCache && coilFitsCache.path === path) return { fits: coilFitsCache.fits, label: coilFitsCache.label };
+  const imported = deserializeCatalog(readFileSync(path, 'utf-8'));
+  const fits = fitCoilDcrFamilies(imported.parts);
+  const label = `${path.split('/').pop()} (${imported.parts.filter((p) => p.kind === 'L').length} coils, ${fits.length} families)`;
+  coilFitsCache = { path, fits, label };
+  return { fits, label };
+}
+
+/**
+ * A5e.3 — the DCR model casus 1 would run with: the families per way resolved
+ * on the catalogue's fits. `stated` travels beside it; a caller that arms a
+ * run on it is expected to look (`casus1V2Declaration` does, and declines a
+ * proposal). Null when no family names a way.
+ */
+export function casus1CoilDcrModel(golden: GoldenRefs = loadGolden()): { model: CoilDcrModel | null; stated: boolean; missing: { way: string; family: string }[] } {
+  const { familyByWay, stated } = casus1CoilFamilyByDriver(golden);
+  if (Object.keys(familyByWay).length === 0) return { model: null, stated, missing: [] };
+  const { fits, label } = casus1CoilDcrFits(golden);
+  const r = coilDcrModelFor(familyByWay, fits, label);
+  return { model: r.model, stated, missing: r.missing };
+}
+

@@ -159,6 +159,79 @@
    "zonder_min_hz": 1081.2301378496352
   }
  },
+ "arm:m1+dcr": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "M-1 als gedraaid (plateau 0 · none · gemergde set · M-1-band) PLUS het DCR-model uit de catalogusfit (A5e.3)",
+  "refusal": null,
+  "tuned": 38,
+  "zaad": {
+   "som_min_ohm": 1.0454151084770542,
+   "som_min_hz": 424.8562541251616,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 1.672291932459629,
+     "min_hz": 27.305829321717514,
+     "bij_som_min_ohm": 14.820551499081345
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 1.2395764656716606,
+     "min_hz": 689.5926120128722,
+     "bij_som_min_ohm": 1.8231611506706624
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 1.9157465922519583,
+     "min_hz": 17215.572968837787,
+     "bij_som_min_ohm": 2.129379011780931
+    }
+   ]
+  },
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.6174468895806235,
+   "som_min_hz": 1158.6925805228414,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 3.0928014095867904,
+     "min_hz": 52.086217129539946,
+     "bij_som_min_ohm": 19.321118374619797
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 3.1449819572450513,
+     "min_hz": 439.8119825706044,
+     "bij_som_min_ohm": 3.4575603616584183
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 3.3960543947608324,
+     "min_hz": 15698.375155054706,
+     "bij_som_min_ohm": 8.210696098348949
+    }
+   ]
+  },
+  "houder": {
+   "groep": "B·L2",
+   "tak": "mid",
+   "rol": "pole",
+   "samenstelling": "L 1.33 mH",
+   "lift_ohm": 0.483042848294577
+  },
+  "beschermer": {
+   "groep": "C·R7",
+   "tak": "tweeter",
+   "rol": "series-pad",
+   "samenstelling": "R 48.99 Ω",
+   "zonder_min_ohm": 2.095891809931344,
+   "zonder_min_hz": 1270.6765172457385
+  }
+ },
  "arm:m1-429.1x1994.6": {
   "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
   "what": "M-1 als gedraaid (tegenhanger van V51B_KAND_6 (466,5·1981,2))",

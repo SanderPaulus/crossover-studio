@@ -37,6 +37,7 @@
  */
 
 import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from '../../catalog.ts';
+import { coilDcrInventory, describeCoilDcrModel, stampCoilDcr, type CoilDcrInventory, type CoilDcrModel } from '../../coilDcr.ts';
 import type { Complex } from '../../complex.ts';
 import { runDesignChain, type ChainInput, type ChainResult, type ChainStageProgress } from '../../designChain.ts';
 import { runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
@@ -351,7 +352,21 @@ export interface V2CandidateResult<R> {
    * delivered design shows that it honoured the rule.
    */
   levelWork: V2LevelWorkColumn;
+  /**
+   * A5e.3 — what the coils of the delivered network (the refused one, on a
+   * refusal) CARRY as DCR against the stated model: per coil the ohms in the
+   * `DCR` param, the family, what the fit says and whether a single part of
+   * that family covers the value. Null only when there is no network at all.
+   */
+  coilDcr: V2CoilDcrColumn | null;
   notes: string[];
+}
+
+/** A5e.3 — see `V2CandidateResult.coilDcr`. */
+export interface V2CoilDcrColumn {
+  /** The model this candidate declared, or null (lossless coils). */
+  model: CoilDcrModel | null;
+  inventory: CoilDcrInventory;
 }
 
 /** V51 — see `V2CandidateResult.levelWork`. */
@@ -698,7 +713,7 @@ function pruneUndefinedValues<T extends object>(o: T): T {
 }
 
 function tuneOptionsFor(
-  seedParts: readonly VxpPart[],
+  seedIn: readonly VxpPart[],
   facts: Facts,
   network: NetworkFacts,
   v2: V2RunSettings,
@@ -711,6 +726,33 @@ function tuneOptionsFor(
     lowestModel: string | null;
   },
 ): Partial<NetOptimizeOptions> {
+  /* ---- A5e.3: THE SEED WITH ITS COILS' DCR, before anything reads it ----
+   *
+   * Every number below that touches series resistance — the gate reference,
+   * the path resistance the inversions are solved at, the sum ceilings' fixed
+   * part, the stated series-R maximum's seed reading — is read off `seedParts`.
+   * With a DCR model stated those coils are not lossless, so the seed is
+   * stamped HERE, by the same function the tuner stamps its own seed with
+   * (`coilDcr.ts`): one number, however many readers. Absent model = the seed
+   * as the chain handed it over, byte-identical (P2). */
+  const coilModel = network.declaration?.stated.coilDcrModel;
+  const seedStamp = coilModel ? stampCoilDcr(seedIn, coilModel) : null;
+  const seedParts: readonly VxpPart[] = seedStamp ? seedStamp.parts : seedIn;
+  if (coilModel && seedStamp) {
+    collect.notes.push(
+      `Coil DCR (A5e.3): every un-snapped coil is judged with the DCR its stated family has at its ` +
+        `inductance — ${describeCoilDcrModel(coilModel)}; fit ${coilModel.fitVersion}` +
+        (coilModel.catalogLabel ? ` on ${coilModel.catalogLabel}` : '') +
+        `. On the seed: ${seedStamp.stamped.length} coil(s) stamped` +
+        (seedStamp.stamped.length > 0
+          ? ` (${seedStamp.stamped.map((c) => `${c.id} ${(c.henry / H_PER_MH).toFixed(2)} mH → ${c.dcrOhm.toFixed(3)} Ω${c.inRange ? '' : ', outside the family\'s single-part range'}`).join(', ')})`
+          : '') +
+        (seedStamp.lossless.length > 0
+          ? `; ${seedStamp.lossless.length} coil(s) on a way with no stated family stay lossless (${seedStamp.lossless.map((c) => `${c.id} on ${c.ways.join('+') || 'no way'}`).join(', ')}) — a deviation from any build`
+          : '') +
+        '. The DCR follows the inductance inside the search and is written into the delivered `DCR` params.',
+    );
+  }
   let reference: GateReference;
   try {
     reference = freezeGateReference({
@@ -2174,7 +2216,13 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
         'allows. The search box capped the seed\'s discrete resistors at the maximum with the coils\' ' +
         'DCR charged first, so a total above it means either a DCR the box did not see (a catalogue ' +
         'snap after the box was built) or a pad the synthesis was told not to place — a finding about ' +
-        'the repair rather than about the candidate (casebook V51b).',
+        'the repair rather than about the candidate (casebook V51b)' +
+        (network.declaration?.stated.coilDcrModel
+          ? ' — or, with a coil DCR model stated (A5e.3), coil copper that by itself reaches the maximum: the ' +
+            'model makes the DCR follow the inductance, the box holds only the discrete resistors, and a ' +
+            'maximum the stated family fills with copper alone is a finding about the maximum against ' +
+            'that family, not about the candidate.'
+          : '.'),
       fields: {
         ...(delivered.net as WholesaleRejectionFields),
         rejectedParts: [...delivered.parts],
@@ -2410,6 +2458,22 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     : judge(result);
   if (rejection) collect.notes.push(rejection.note, `Refusing rule: ${rejection.reason}`);
 
+  /* ---- A5e.3: the coil DCR column, on the network this candidate produced --
+   * The same inventory the report shows for a loaded netlist, read here off
+   * the delivered (or refused) parts. A coil outside its family's single-part
+   * range is a buildability FLAG (V50's shape: reported, never a gate here):
+   * a stack can realise it, and the note says so. */
+  const coilModelForColumn = network.declaration?.stated.coilDcrModel ?? null;
+  const coilDcr: V2CoilDcrColumn | null =
+    partsForLevel.length > 0 ? { model: coilModelForColumn, inventory: coilDcrInventory(partsForLevel, coilModelForColumn) } : null;
+  if (coilDcr && coilDcr.inventory.outOfRange.length > 0 && coilModelForColumn) {
+    collect.notes.push(
+      `FLAG (no gate): ${coilDcr.inventory.outOfRange.join(', ')} lie(s) outside the single-part range of the stated coil family — ` +
+        'no single catalogue part of that family covers the value; a stack of two in series can, with the DCR ' +
+        'the power law continues to (A5e.3, V50 buildability).',
+    );
+  }
+
   return {
     result,
     gates,
@@ -2422,6 +2486,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     dissipation,
     rejection,
     levelWork,
+    coilDcr,
     notes: collect.notes,
   };
 }

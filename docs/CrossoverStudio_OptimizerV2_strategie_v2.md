@@ -5519,6 +5519,237 @@ helpt en `'none'` dat verbiedt — of de LP-ladder daar met een vrije waarde uit
 op de MID (B·R9, 3–8 Ω in serie met de ankerweg, enkele dB verzwakking) is wat V51b én HUIDIG de vloer laat halen; dat is
 niveauwerk op de stilste weg en hoort tegen X en het anker gelezen te worden — niet in deze sessie.
 
+### A5e.3 — elke continue spoel draagt de DCR van haar gestelde familie, uit de catalogusfit (04-09-2026, alleen v2-runs; het corpus beweegt NIET tot Sander de families stelt)
+
+**AANLEIDING.** De M-1-diagnose liet als openstaand punt (2) staan: `catalogSnap: false` betekent ideale spoelen in
+zaad, tune én poortoordeel, en op 429,1·1994,6 werd de tune geweigerd op een serieresonantie van 1,99 Ω in de
+tweeter-HP-ladder die 0,24 Ω in serie met de shunt-spoel — een derde van de DCR die diezelfde spoel als 1,4 mm
+luchtspoel heeft — naar de vloer tilt. De vloer werd geoordeeld op een strengere fysica dan de gebouwde
+luidspreker heeft. Deze sessie sluit dat: elke continue spoel draagt de DCR die haar GESTELDE familie (merk,
+serie, draaddikte) bij haar eigen inductie heeft, gefit op de catalogus, en de tuner en alle poorten lezen
+hetzelfde getal.
+
+**INVENTARISATIE — waar een continue spoel haar R kreeg: nergens.** Letterlijk, bestand:regel vóór deze sessie.
+De synthese modelleert DCR alleen in catalogus-snap-modus (`synthesis.ts:806`, `modelSrs`: `coilDcr(L, 1.4)` op
+élke spoel, ongeacht weg) en schrijft haar alleen dan in het schema (`synthSchematic.ts:43`); op de v2-route
+staat `catalogSnap: false` en komt er dus GEEN `DCR`-param. `vxpNetwork.ts:114` leest `param(p, 'DCR') ?? 0` en
+`network.ts:165` stempelt `seriesR ?? 0` — nul. De lezers die een DCR zouden ophalen als hij er was, allemaal via
+diezelfde param: de bronweerstandsterugval `dcSeriesR` van de tuner (`netOptimizer.ts:2015`, `e.seriesR ?? 0`), de
+somplafonds van de box (`bounds.ts:509` `fixedSI`, `:584` `pathRBaseOhm`), de niveauwerk-inventaris
+(`levelWork.ts`, `seriesCoils`/`dcrOhm`, V51b), de padweerstand van de worker (`worker.ts:1597`) waarop de
+M-D-inversie wordt opgelost en de M-E-lezing rust, de audit (`partAudit.ts:492`, `:659`), en de |Z|-solver zelf.
+Met `catalogSnap` aan vervangt het echte onderdeel de waarde (`netOptimizer.ts:4437`, `upsert(params, 'DCR', …)`).
+Eén param, tien lezers, en niemand schreef hem.
+
+**DE CATALOGUS ALS FIT.** De v8-catalogus draagt 2116 spoelen met gemeten DCR en draaddikte in 25 families;
+per familie een log-log kleinste-kwadratenfit `DCR = A · (L/mH)^k` (`coilDcr.ts`, `coil-dcr-fit/1.0`):
+
+| familie | n | L-bereik mH (enkel onderdeel) | k | A Ω @ 1 mH | rms % | max % |
+| --- | --- | --- | --- | --- | --- | --- |
+| Jantzen Air Core 0,3 / 0,4 / 0,5 / 0,63 mm | 73 / 86 / 131 / 83 | 0,057–10 / 0,007–39 / 0,033–65 / 0,020–22 | 0,578 / 0,605 / 0,600 / 0,607 | 3,93 / 2,36 / 1,61 / 1,11 | 7,1 / 8,9 / 8,1 / 7,2 | 22 / 33 / 39 / 24 |
+| Jantzen Air Core 0,7 / 0,8 mm | 168 / 139 | 0,022–35 / 0,005–100 | 0,605 / 0,577 | 0,945 / 0,750 | 9,4 / 10,0 | 27 / 53 |
+| **Jantzen Air Core 1,0 mm** (mid, tweeter) | 250 | 0,016–34 | 0,589 | 0,523 | 7,0 | 40 |
+| Jantzen Air Core 1,2 mm | 199 | 0,007–24 | 0,595 | 0,393 | 7,2 | 38 |
+| **Jantzen Air Core 1,4 mm** (woofer) | 170 | 0,010–22 | 0,581 | 0,307 | 7,2 | 35 |
+| Jantzen Air Core 1,6 / 1,8 mm | 94 / 89 | 0,005–22 / 0,0025–12 | 0,556 / 0,564 | 0,251 / 0,208 | 9,6 / 7,7 | 43 / 34 |
+| Jantzen P-Core 0,3–1,8 mm (11 families) | 4–147 | 0,022–27 | 0,39–0,69 | 0,079–1,80 | 1,6–22,7 | 2,6–96 |
+| Jantzen Wax Coil (Foil) 1,6 mm | 9 | 0,15–2,7 | 0,573 | 0,251 | 3,6 | 6,1 |
+| Mundorf Aronit 1,4 mm / Zero-Ohm N270 1,8 mm | 7 / 7 | 1–10 | 0,619 / 0,658 | 0,136 / 0,052 | 2,0 / 2,9 | 3,3 / 3,8 |
+
+Wat de fits zeggen. (a) **Lucht bij vaste draaddikte: k = 0,56–0,61**, binnen de verwachte 0,5–0,7 en over elf
+draaddiktes verrassend constant; A schaalt met de draaddoorsnede (0,3 → 1,8 mm: 3,93 → 0,21 Ω @ 1 mH, factor 19
+tegen een oppervlakteverhouding van 36 — dikker draad wikkelt ook een grotere spoel). De 1,4 mm-fit landt op
+0,307 Ω @ 1 mH waar de app-schatter `coilDcr(1.4)` al op 0,29·L^0,65 gekalibreerd was: één meting, twee keer
+gelezen. (b) **Het residu is 6–10 % rms maar 22–53 % maximaal**, en dat maximum is geen ruis: 449 keer komt
+dezelfde L binnen één familie met meer dan één DCR voor (verschillende wikkelvormen onder één gauge). Een
+enkele fit per familie is dus een MIDDENSCHATTING; de snap, als hij aan staat, vervangt haar door het echte
+onderdeel en de test bewaakt dat élke SKU binnen het maximale residu van zijn eigen familie ligt — dat is
+precies wat de overgang continu → gesnapt ten hoogste kan verschuiven. (c) P-Core is vlakker noch lager dan
+de M-1-diagnose vermoedde: k 0,54–0,59 op de grote families en A 0,24 Ω @ 1 mH bij 1,0 mm (lucht 0,52), en de
+1,4 mm-P-Core-familie (29 SKU's, k 0,39, max 96 %) is geen fit maar twee productlijnen door elkaar.
+(d) **Buiten het enkel-onderdeel-bereik wordt de machtswet VOORTGEZET en GEVLAGD, niet op nul gezet.** De
+opdracht vroeg "geen DCR buiten het bereik, gemeld"; dat is bewust anders gedaan, met reden: een DCR die aan
+de rand van het bereik naar nul valt beloont de zoektocht voor het verlaten van de catalogus (het omgekeerde
+van bouwbaarheid), en een waarde boven het grootste enkele onderdeel is geen onbouwbare spoel maar een
+STAPEL — twee in serie tellen hun DCR op, en de snap bouwt stapels. Wat de lezer toekomt is de vlag
+(`inRange: false`, "geen enkel onderdeel dekt de waarde") en die staat op elke kolom en in elke notitie
+(V50-vorm: gerapporteerd, geen poort). Gemeten op de liggende netlists: twee spoelen, allebei de L5 van de
+woofer-LP-ladder in een geweigerde M-1-tune — 22,21 mH (429,1·1994,6) en 28,29 mH (485,6·2304) — boven de 22,0 mH
+van de 1,4 mm-familie; elk ander van de 250 gestempelde spoelen ligt erbinnen.
+
+**HOEVEEL EEN DCR-MODEL VERANDERT OP DE NETLISTS DIE ER LIGGEN — de meting vóór er iets in de zoektocht
+verandert** (`scripts/measure-a5e3-dcr.ts`, seconden, geen tune; de families als VOORSTEL gelezen: woofer 1,4 mm,
+mid en tweeter 1,0 mm lucht; |Z| over 20 Hz–20 kHz, Q_es× en lift uit `buildReport` op de gemergede set):
+
+| netwerk | DCR totaal Ω | som min \|Z\| vóór → ná (Hz) | vloer 2,6 | woofer / mid / tweeter alleen, ná | serie-R woofer R + DCR = totaal | ruimte in 1,0 Ω | Q_es× vóór → ná | lift dB vóór → ná | opslingering dB vóór → ná |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| HUIDIG (draagt al DCR) | 3,78 | 3,46 → 3,46 (218) | ja → ja | 3,28 / 3,71 / 5,60 | 3,30 + 0,46 = 3,76 | — | 2,306 → 2,306 | 4,69 → 4,69 | −0,94 → −0,94 |
+| V51B_KAND_1 (466,5·2283,5) | 0 → 4,46 | 2,73 → 3,23 (136 → 231) | ja → ja | 3,06 / 3,39 / 4,70 | 1,00 + 0,63 = 1,62 | 0,37 | 1,328 → 1,546 | 1,79 → 2,64 | −0,69 → −0,41 |
+| V51B_KAND_6 (466,5·1981,2) | 0 → 7,44 | 2,59 → 2,73 (256 → 11 107) | ja → ja | 2,68 / 3,03 / 2,71 | 0,87 + 0,67 = 1,55 | 0,33 | 1,286 → 1,517 | 1,60 → 2,54 | −0,61 → −0,44 |
+| V51B_KAND_3 (548,5·2283,5) | 0 → 3,43 | 2,89 → 3,33 (136 → 241) | ja → ja | 3,18 / 4,16 / 5,28 | 1,00 + 0,65 = 1,65 | 0,35 | 1,328 → 1,553 | 1,79 → 2,67 | −0,48 → −0,30 |
+| M-1 429,1·1994,6 ZAAD | 0 → 8,68 | 1,05 → 1,32 (425 → 698) | nee → nee | 3,41 / 1,38 / 1,92 | 0 + 1,52 = 1,52 | −0,52 | 1,319 → 1,492 | 0,00 → 2,50 | 1,72 → 0,25 |
+| **M-1 429,1·1994,6 GEWEIGERDE TUNE** | 0 → 8,86 | **1,63 → 2,82 (337 → 1227)** | **nee → JA** | 2,99 / 2,99 / **2,81** | 0 + 0,52 = 0,52 | 0,48 | 1,040 → 1,202 | 0,00 → 1,02 | 0,02 → −0,50 |
+| M-1 485,6·2304 ZAAD | 0 → 9,00 | 1,47 → 1,58 (706 → 714) | nee → nee | 3,09 / 1,59 / 3,80 | 0 + 1,37 = 1,37 | −0,37 | 1,268 → 1,426 | 0,00 → 2,32 | 1,64 → 0,28 |
+| M-1 485,6·2304 tune (topologie-weigering) | 0 → 7,62 | 2,56 → 2,57 (383 → 13 989) | ja → ja | 3,08 / 2,64 / 2,52 | 0 + 0,52 = 0,52 | 0,48 | 1,027 → 1,203 | 0,00 → 1,02 | 0,54 → −0,20 |
+| M-1 549,7·2304 ZAAD | 0 → 7,66 | 0,82 → 1,28 (554) | nee → nee | 3,10 / 1,55 / 1,50 | 0 + 1,35 = 1,35 | −0,35 | 1,262 → 1,417 | 0,00 → 2,29 | 1,30 → 0,06 |
+| M-1 549,7·2304 GEWEIGERDE TUNE | 0 → 9,19 | 2,31 → 2,34 (47 → 20 000) | nee → nee | 2,72 / 2,93 / 2,30 | 0 + 0,62 = 0,62 | 0,38 | 1,055 → 1,203 | 0,00 → 1,18 | −0,77 → −1,07 |
+| `v51b+none` GEWEIGERDE TUNE | 0 → 9,24 | 2,24 → 2,42 (102 → 1511) | nee → nee | 2,75 / 2,46 / 3,76 | 0 + 0,62 = 0,62 | 0,38 | 1,000 → 1,210 | 0,00 → 1,18 | −0,19 → −0,11 |
+| `v51b+none+merged` GEWEIGERDE TUNE | 0 → 8,48 | 2,10 → 2,65 (829 → 1032) | nee → JA | 2,92 / 2,67 / 2,68 | 0 + 0,60 = 0,60 | 0,40 | 1,000 → 1,204 | 0,00 → 1,15 | −0,01 → 0,10 |
+| `v51b+none+band` GEWEIGERDE TUNE | 0 → 12,05 | 2,48 → 2,73 (136 → 1227) | nee → JA | 2,70 / 2,82 / 5,74 | 0 + 0,58 = 0,58 | 0,42 | 1,035 → 1,218 | 0,00 → 1,11 | 0,31 → −0,49 |
+
+Zes bevindingen, in de volgorde waarin de opdracht ze vroeg. (1) **De voorspelling van de M-1-diagnose klopt
+op het getal:** de geweigerde tune van 429,1·1994,6 gaat van 1,63 naar 2,82 Ω en de tweetertak alleen van 1,99
+naar 2,81 Ω — de HP-ladderresonantie op 337 Hz is met de DCR van C·L2 en C·L4 (0,81 + 0,90 Ω als 1,0 mm lucht)
+weg, en het systeemminimum verhuist naar 1227 Hz in de W-M-overlap. Drie van de vier geweigerde `'none'`-tunes
+halen de vloer zodra hun spoelen koper dragen (429,1·1994,6, `v51b+none+merged`, `v51b+none+band`); de vierde
+(549,7·2304, minimum bij 47 Hz in de woofer tussen de reflexpieken, en de tweeter op 20 kHz) niet — zoals de
+diagnose voorspelde is dat een pad-kwestie en geen DCR-kwestie. (2) **De ZADEN halen de vloer nergens**, ook niet
+met DCR (1,28–1,58 Ω): de mid-HP-resonantie op 700 Hz (B·C1 ~105 µF met B·L2 ~0,7 mH, DCR 0,42 Ω) blijft er ver
+onder; het model tilt het zaad 0,1–0,5 Ω op, geen 1,3. (3) **De V51b-netlists winnen 0,1–0,5 Ω** op de som
+(2,59–2,89 → 2,73–3,33) en de wooferweg 0,3–0,4 Ω. (4) **Q_es× op de woofer stijgt 0,15–0,23** (1,29–1,33 →
+1,52–1,55 op V51b; de M-1-tunes van 1,03–1,06 naar 1,20–1,22): dat is `1 + R_s/R_e` met 0,52–0,67 Ω koper op een
+R_e van 3,05 — de grens van 2,4 (V45) bijt nergens. (5) **De lift stijgt 0,9–1,0 dB** (V51b 1,79 → 2,64–2,67;
+de M-1-zaden van 0,00 naar 2,3–2,5 dB, want zij droegen niets), de resonante opslingering ZAKT overal
+(−0,1 tot −1,5 dB) — precies de V43-scheiding: serieweerstand dempt de reactieve helft en tilt de resistieve.
+(6) **De ruimte in V51b's 1,0 Ω:** de V51b-netlists dragen 0,58–0,67 Ω spoelkoper op de wooferweg, dus 0,33–0,42 Ω
+blijft over voor een component; de M-1-zaden dragen 1,35–1,57 Ω (LR4 op 430–550 Hz met 8–10 mH seriespoelen) —
+méér dan het hele maximum, dus onder `series-r-max` zou het koper alleen de regel al vullen. Dat is de bevinding
+die de routetest onafhankelijk vond (hieronder).
+
+**WAT ER GEBOUWD IS.**
+
+1. **Eén huis, één functie** — `src/lib/coilDcr.ts` (in `src/lib/`, want de tuner leest hem in zijn hot loop en mag
+   niets uit `engine2/` importeren): `fitCoilDcrFamilies(catalogParts)` → per familie `CoilDcrFit` (k, A, bereik, n,
+   residu; V15: alles wat een lezer nodig heeft om het getal na te rekenen), `dcrOf(henry, fit)` → `{ ohm, inRange }`,
+   `stampCoilDcr(parts, model)` (de `DCR`-param op elke aanwezige, niet-gesnapte spoel op een weg met een familie —
+   serie- ÉN shuntspoelen, want de M-1-bevinding zit in een shuntspoel: `waysOfElements` loopt van elk element
+   door niet-massa-, niet-busknopen tot een busknoop en leest af van welke weg die is), `coilDcrInventory` (wat een
+   lijst draagt tegen het model; één implementatie voor de worker-kolom en het rapportblok), en het model zelf:
+   `CoilDcrModel = { source: 'catalog-fit', fitVersion, familyByWay, fits, catalogLabel }` — de fits reizen IN de
+   waarde (V51b-regel: een modus zonder haar getallen betekent niets), zodat een run reproduceerbaar is zonder de
+   catalogus waarop hij gefit is en twee catalogusrevisies twee runs zijn. Een gedeelde spoel (op de romp vóór de
+   splitsing) leest de familie met de laagste DCR van de wegen erachter — de bouwer wikkelt haar voor de zwaarste;
+   een weg zonder familie houdt verliesvrije spoelen en wordt bij naam gemeld. **De familie per weg is gesteld en
+   nergens een default (P6):** `driverkaart.<weg>` in het manifest (`driverkaart.spoelfamilie.per_weg`), het veld
+   "coil family" per weg in het A5a-meetblok van de app (een `<select>` over de families van de geladen catalogus;
+   leeg = "not stated (lossless)"), opgeslagen in `v2Measurement.<rol>.coilFamily`, via de adapter naar
+   `ReportSettings.coilDcrFamilyByDriver` naast `coilDcrFits` (de fits van de geladen catalogus, opnieuw gefit bij
+   elke import).
+2. **De tuner rekent elke continue spoel met `dcrOf`** (`netOptimizer.ts`): bij binnenkomst wordt het zaad gestempeld
+   (zodat `before`, het zaadoordeel en de probe hetzelfde koper zien), in `tune()` leest elke vrije spoel met een fit
+   haar `seriesR` opnieuw af bij ÉLKE evaluatie (`refreshDcr`, na de waardetoewijzing en na de somprojectie), en bij
+   het terugschrijven gaat de DCR van de GESCHREVEN mH (de afgeronde waarde die elke latere lezer ziet) in de param.
+   Daarmee lezen de |Z|-solver, `dcSeriesR`, de barrière, de poorthook (`partsKey` ziet de param), de audit en het
+   rapport één getal — de V32-vorm. De somplafonds bewegen mee: `bounds.ts` geeft elke groep `coilIds` en
+   `seedCoilDcrOhm`, en de tuner vervangt de zaad-DCR in `fixedSI` (weerstandsregels) en `pathRBaseOhm` (de
+   V48-tracker) door de levende som, zodat "DCR eerst van het budget af" ook geldt terwijl L beweegt. Met
+   `catalogSnap` aan snapt een gemodelleerde spoel BINNEN haar familie (`pickCandidates(…, only)`, met de
+   25 %-dekkingsregel als terugval), zodat de overgang continu → gesnapt de residu van de familie is en geen sprong
+   naar een andere draaddikte; de test legt vast dat élke SKU binnen het maximale residu van zijn familie ligt.
+3. **De F4c-sleutel: `coilDcrModel`, CHOICE** (`choices.ts`, 35/5/11, 51 sleutels; `choiceKeyGuard` bijgewerkt):
+   afwezig = huidig gedrag (verliesvrij; v1 byte-identiek — `f4cRegression` en `workerRouteRegression`
+   reproduceren), gesteld = het model. De derde sleutel zonder polish-tweeling: de fits zijn catalogusdata en geen
+   meting die de run elders vasthoudt. **De afleiding** (`candidateDeclaration.ts`): familie per weg + fits ⇒ het
+   model; families zonder fit (geen catalogus, of een familie die de catalogus niet voert) ⇒ ABSENT met de families
+   bij naam; niets gesteld ⇒ ABSENT met de P4-reden ("elke spoel is verliesvrij, wat geen gebouwde luidspreker is").
+   De vingerafdruk beweegt met de familie ÉN met de fitgetallen (`choicesKey` digest van de waarde); de fitversie
+   reist erin mee (A5e.5). De worker stempelt het zaad in `tuneOptionsFor` VÓÓR de referentie, de wegen en de box
+   ervan lezen (één functie, twee stempelplekken, hetzelfde getal) en rapporteert per kandidaat de kolom `coilDcr`
+   (model, per spoel: weg, L, gedragen DCR, familie, fit-DCR, `inRange`) plus een `FLAG (no gate)` op spoelen buiten
+   het enkel-onderdeel-bereik.
+4. **De lezers lezen mee zonder wijziging:** M-D's somplafond (V42/V48) telt de DCR in `pathRBaseOhm` en volgt hem;
+   de Q_es-term (V37) leest `dcSeriesR`/`seriesPathResistance` met de param; `levelWork.ts` telt hem als serie-
+   weerstand op de laagste weg (de V51b-inventaris), en `levelWorkVerdict` oordeelt op het totaal — wat de routetest
+   meteen liet zien (zie de bevinding).
+5. **Het rapport** (`report.ts`, `predesign.levelWork.coilDcr`): de gestelde families, het model waarop zij oplossen,
+   onopgeloste families, en de inventaris van de geladen netlist tegen het model — met de zin "de geladen netlist
+   draagt GEEN DCR op … hoewel een familie gesteld is: elk elektrisch cijfer hierboven is dat van verliesvrije
+   spoelen" voor de netlists die vóór het model gemaakt zijn.
+
+**DE ARM VÓÓR REGENERATIE — `m1+dcr` (429,1·1994,6 met M-1's instellingen: plateau 0, `'none'`, gemergde set,
+M-1-band, plus het model; dezelfde kandidaat en seed als `m1-429.1x1994.6`, één factor verzet).** **GELEVERD, in
+2012 s (33 min), 38 vrije waarden, 287 986 evaluaties.** De volle vector, zaad → geleverd:
+
+| grootheid | `m1-429.1x1994.6` (M-1, verliesvrij) | `m1+dcr` zaad | `m1+dcr` geleverd |
+| --- | --- | --- | --- |
+| uitkomst | GEWEIGERD op de vloer (1,23 Ω; élke tussenstap geweigerd, zaad terug) | — | **GELEVERD** |
+| min \|Z\| som (Hz) | 1,06 zaad → 1,63 geweigerde tune (337, tweeter-HP) | 1,32 (698, mid-HP) | **2,62 (1159, mid 3,46 ∥ tweeter 8,21 ∥ woofer 19,3)** |
+| M-B/\|Z\| poort | 1,23 → faalt | — | 2,616 tegen 2,60 → **slaagt** |
+| rimpel / gemiddelde afwijking | — | 3,52 / 1,50 dB | **2,36 / 0,98 dB** |
+| fase M-K W-M / M-T | — | 36,9° / 13,8° | **14,3° / 12,6°** (systeem 13,2°) |
+| kruispunten | 429,1 · 1994,6 gesteld | 434,6 · 2258 | 478,8 · 2258 |
+| M-C tweeter / mid | — | — | **−34,6 dB (grens −20) / −37,8 dB (afgeleid −13,1)** |
+| M-A dissipatie / M-A/part heetste R | — | 49,7 % (zaad) | 23,1 % / **1,34 W tegen 5 W** |
+| M-L drukste spoel | — | — | 20,1 A (geen klasse, niet geoordeeld) |
+| M-B/EPDR | — | — | 1,35 Ω (geen grens) |
+| bronweerstand woofer (probe) | — | 1,52 Ω | 1,18 Ω |
+| niveauwerk woofer | `'none'` | — | **geen R, geen pad; DCR 0,94 Ω** (L1 2,80 mH 0,56 + L3 1,45 mH 0,38) |
+| Q_es× woofer / lift / opslingering (rapport) | — | 1,49 / 2,50 / 0,25 dB | **1,38 / 1,70 / −1,73 dB** (budget 1,4: ruim binnen; Q_es-grens 2,4: binnen) |
+| X (A5d.4-gap woofer → anker mid) | — | 0,90 dB | 0,90 dB |
+| spoelen, DCR (Ω) | 13 spoelen, 0 Ω | 8,68 Ω totaal | 11 spoelen, 9,87 Ω: woofer L5 15,5 mH 1,51; mid B·L4 16,9 mH 2,76, B·L11 12,7 mH 2,33; tweeter C·L2 0,77 mH 0,45, C·L4 0,38 mH 0,30; alle binnen bereik |
+| beschermer / houder (diagnose) | C·R6 tweeter-shuntpad → 0,92 | B·R9 mid-pad → 0,52 | **C·R7 (tweeter-serie-pad 49 Ω) → 2,10; B·R9 3,19 Ω → 2,12; houder B·L2 (mid-pool)** |
+| weerstandsvrijheid | C·R5 0,80 → 0,20, C·R6 1,41 → 4,31, C·R7 13,9 → 51 | 3,89 / 0,80 / 1,41 / 13,9 | B·R9 3,19, C·R5 1,56, C·R6 9,31, C·R7 49,0 |
+| poortweigeringen onderweg | negen (value tune, basin, barrier, escalation, delivered) | — | zeven: vier audit-verwijderingen (L8/C9/R10, de wooferval) en drie basin challenges (2,10 / 2,40 / 2,31), de hoofdlijn nooit |
+
+Wat het zegt, tegen de verwachting van de opdracht. **(1) De verwachting is gehaald en overtroffen:** niet "de
+tweeter-ladderresonantie van 1,99 naar ~2,5 Ω en de vloer bijna", maar 2,62 Ω met de vloer gehaald, en het
+minimum zit niet meer in de tweeter-HP maar op 1159 Hz in de W-M-overlap, met de tweeter er op 8,2 Ω naast. De
+tweeter-HP-resonantie van 337 Hz bestaat in het geleverde netwerk niet: C·L2 is van 4,61 naar 0,77 mH gegaan
+(de tuner kon, met koper in de shunt, een ándere ladder kiezen) en draagt 0,45 Ω. **(2) Geen nieuw element:** de
+synthese-topologie is die van M-1 (dezelfde slots, de wooferval L8+C9+R10 die de audit vier keer wilde verwijderen
+en de vloer vier keer hield); wat de vloer haalt is het koper plus de bestaande pads (C·R7 49 Ω, B·R9 3,19 Ω).
+**De gedempte shunt-pool van de M-1-diagnose is op deze kandidaat overbodig geworden** — de 0,24 Ω die de probe
+zocht zit in de 0,45 Ω van C·L2 zodra hij koper draagt. **(3) De prijs, tegen M-1's verliesvrije verwachting:**
+lift 1,70 dB (V51b-netlists 1,79 zonder model), Q_es× 1,38, dissipatie 23 %, en 9,87 Ω koper waarvan 5,1 Ω in de
+twee Fs-trapspoelen van de mid (16,9 en 12,7 mH — spoelen die in een gebouwde luidspreker precies zo zwaar zijn).
+**(4) De ruimte onder V51b's 1,0 Ω:** de woofer draagt 0,94 Ω puur koper — 0,06 Ω over. Op M-1 (`'none'`) is dat
+geen eis; onder `series-r-max` 1,0 zou deze kandidaat op 0,06 Ω na op de grens staan, en de M-1-zaden erboven.
+De vloer vraagt niets meer (`floorNeedsSeriesOhm` = het geleverde totaal, 0,94). **Eén arm is geen veld:** wat
+115 kandidaten doen zegt de regeneratie, en die wacht op de gestelde families.
+
+**WAT DE ROUTETEST VOND, en het is een bevinding over V51b.** Op de kleine fixture (de mid als woofer, LR4 op
+~400 Hz) draagt de gestempelde wooferweg 1,005 Ω koper in twee seriespoelen, en met `series-r-max` 1,0 Ω wordt de
+gemodelleerde arm geweigerd op `topology`: "1,005 Ω serieweerstand (0,000 discreet + 1,005 spoel-DCR) tegen een
+gesteld maximum van 1,00". De box houdt de vrije WEERSTANDEN onder het maximum met de DCR eerst afgetrokken; op
+de spoelen heeft hij alleen via het opslingeringsbudget grip, en dat bindt hier niet. **Onder een serie-R-maximum
+bindt het koper zelf**, en de M-1-zaden dragen 1,35–1,57 Ω. De weigeringstekst zegt dat sindsdien ("koper dat
+uit zichzelf het maximum haalt is een bevinding over het maximum tegen die familie"), de test loopt op 2,0 Ω, en
+op casus 1 is het maximum sinds M-1 ingetrokken (`'none'`), dus daar bindt niets. Wat het voor V51b's vraag
+betekent: "≤ 1,0 Ω totaal" was op DCR-schaal gesteld, en de DCR-schaal van een LR4-woofer op 430–550 Hz met
+1,4 mm lucht IS 1,35–1,57 Ω.
+
+**TESTS.** `coilDcr.test.ts` (12: de exacte machtswet met residu nul en een handberekening op 4 mH; de 25
+families van v8 met k ∈ (0,5, 0,7) op lucht en de 1,4 mm-fit binnen 10 % van `coilDcr(1.4)`; élke SKU binnen het
+residu van zijn familie; de familie-gebonden snap; serie- én shuntspoelen aan hun weg; stempel idempotent, gesnapt
+blijft, gedeeld leest de laagste; buiten bereik voortgezet en gevlagd, continu aan de rand; de afleiding in vier
+toestanden; de vingerafdruk beweegt met familie én fitgetallen), `optimizer/coilDcrRoute.test.ts` (2, twee
+ketenruns op de kleine fixture, 47 s: P2 zonder model; het model BEREIKT de zoektocht — de inducties zelf bewegen,
+niet alleen de param; één implementatie — elke geleverde spoel draagt `roundDcr(dcrOf(L_geschreven))`, de
+niveauwerk-inventaris leest hetzelfde, en het `stated-series-r`-bound is op een GESTEMPELD zaad opgelost; en de
+poort leest de param), `choiceKeyGuard` (51, 35/5/11), en ongewijzigd groen: `levelWork`, `p6Lint`,
+`toggleRegression`, `noWeights`, `ciLayer`, `casus1V2Candidates` (de snelle claims), `goldenClassification`,
+`chainChoices`, `browserSafe`, `versionAndCapability`, `catalog`. `tsc -b` groen (ook `scripts/`), productiebuild
+groen. **Volle run 04-09-2026, ná de arm en alleen gedraaid: 151 bestanden, 1678 tests, 1152 s (19 min 12), niets
+overgeslagen, in één keer groen** — +2 bestanden en +14 tests, precies de twee nieuwe bestanden; het corpus is leeg
+gebleven, dus de `it.each` over het levende corpus beweegt niet; de wandkloktijd is die van de verwerpingsrun
+(1118 s). **Snelle laag daarna, apart: 342 s — 150 geslaagd + 1 overgeslagen bestand, 1676 + 2 overgeslagen tests,
+groen.** GEEN nieuwe referentie (V43: 289 s).
+
+**WAT ER NIET VERANDERD IS.** Geen metriek, geen poortregel, geen inversieformule; het corpus is NIET geregenereerd
+(leeg sinds M-1 en blijft dat) en `casus1V2Declaration` verklaart `coilDcrModel` ABSENT zolang
+`driverkaart.spoelfamilie.gesteld_door` leeg is — het blok staat als VOORSTEL in het manifest (woofer 1,4 mm, mid
+en tweeter 1,0 mm lucht, met de fits erbij) en alleen de meetscripts en de arm lezen het expliciet (`{ coilDcr:
+true }`). Met de toggle uit is de app byte-identiek; op de v2-route zonder gestelde familie ook.
+
+**OPENSTAAND.** (1) **Sander stelt de families** (`gesteld_door` invullen, of andere families kiezen — C-Coil
+bestaat niet in v8, de foil-series zijn er wel maar met 9 SKU's); daarna regenereren, en de eerste golf shards
+lezen (V51b-les). (2) Onder `series-r-max` bindt het koper zelf; of het maximum dan een grens op het DISCRETE deel
+moet worden of op het totaal blijft, is een gestelde vraag. (3) De catalogus-SPANWIJDTE als zoekgrens (A5d.6's
+"catalogus-spanwijdte ∩ meetafgeleide budgetgrenzen", de `TODO(A5e.3)` in `searchBoxFor`) staat nog open: het
+model vlagt buiten bereik maar begrenst niet, met opzet (stapels). (4) De gedempte shunt-pool van de M-1-diagnose
+is met DCR op de shuntspoel misschien overbodig — de arm zegt het. (5) 549,7·2304 haalt de vloer ook met koper
+niet (2,34 Ω, woofer tussen de reflexpieken): dat blijft de pad-vraag van de diagnose, punt (3) daar.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

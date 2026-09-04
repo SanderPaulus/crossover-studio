@@ -120,7 +120,23 @@ de app byte-identiek aan vóór F1.
 1. **Componenten-eisen** — A5e.3, het catalogus-schema: optimalisatiegrenzen
    uit de catalogus-spanwijdte in plaats van uit vaste componentgrenzen. V50
    bracht de opgave PER ONDERDEEL (vermogen, verzadigingsstroom) in de poort;
-   de spanwijdte als zoekgrens staat nog open.
+   de spanwijdte als zoekgrens staat nog open. **SINDS 04-09-2026 (A5e.3,
+   parasietmodel): elke continue spoel draagt op de v2-route de DCR die haar
+   GESTELDE familie (merk, serie, draaddikte) bij haar inductie heeft, gefit op
+   de catalogus (`coilDcr.ts`, 25 families in v8, k 0,56–0,61 op lucht) — in de
+   tuner per evaluatie, in elke poort, inversie en inventaris via dezelfde
+   `DCR`-param. Gemeten op de liggende netlists: de geweigerde M-1-tune van
+   429,1·1994,6 gaat van 1,63 naar 2,82 Ω (de tweeter-HP-resonantie is met het
+   koper van haar shunt-spoel weg), drie van vier geweigerde `'none'`-tunes
+   halen de vloer, Q_es× +0,15–0,23, lift +1 dB, opslingering omlaag. **De arm
+   `m1+dcr` (dezelfde kandidaat als M-1's weigering op 1,23 Ω, plus het model)
+   LEVERT: 2,62 Ω, rimpel 2,36 dB, M-K 14/13°, M-C −35/−38 dB, geen R en geen
+   pad op de woofer — de gedempte shunt-pool van de diagnose is daar overbodig,
+   het koper van de shunt-spoel doet het.** De families
+   staan als VOORSTEL in het manifest (woofer 1,4 mm, mid/tweeter 1,0 mm lucht);
+   Sander stelt ze, dan regenereren. Buiten het enkel-onderdeel-bereik wordt de
+   machtswet voortgezet en gevlagd (stapels), niet begrensd — de spanwijdte als
+   zoekgrens blijft dus open, met reden (casusboek A5e.3).**
 2. **De vloer als de as van het veld, en de configuraties die het openen** —
    SINDS M-1 scherper: op de gemergede set haalt niets de vloer én de tweeter
    tegelijk; het minimum zit bij M-T ≥ 1727 Hz in de mid- en tweetertak (84 van
@@ -136,7 +152,11 @@ de app byte-identiek aan vóór F1.
    tweeter-HP het systeem naar de vloer zonder verlies in de doorlaatband; dat
    element (een gedempte shunt-pool) bestaat niet in het synthese-vocabulaire,
    en dat is de aanbeveling: één arm met dat slot vóór enige regeneratie
-   (casusboek M-1-diagnose, `scripts/measure-m1-diagnose*.ts`).
+   (casusboek M-1-diagnose, `scripts/measure-m1-diagnose*.ts`). **A5e.3
+   (04-09-2026) sluit het openstaande punt (2) van die diagnose — DCR in de
+   v2-route — en de meting zegt dat de 0,24 Ω die de diagnose zocht fysisch al in
+   de shunt-spoel zit zodra zij koper draagt: zie de A5e.3-entry en de arm
+   `m1+dcr`.**
    Oorspronkelijke formulering (V51b):
    zonder wooferpad haalde op casus 1 één kandidaat van vijftien de gestelde
    2,6 Ω (V51); met 1,0 Ω serieweerstand op DCR-schaal zes (V51b), en vier

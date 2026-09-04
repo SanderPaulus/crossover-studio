@@ -69,6 +69,8 @@ import type { GeneratedCandidate } from '../src/lib/engine2/predesign/candidates
 import { handleV2Request, type V2Chain3Payload, type V2Response } from '../src/lib/engine2/optimizer/worker.ts';
 import type { GateVerdict } from '../src/lib/engine2/optimizer/gates.ts';
 import {
+  casus1CoilDcrFits,
+  casus1CoilFamilyByDriver,
   casus1Files,
   casus1Filter,
   casus1Geometry,
@@ -130,6 +132,8 @@ interface ArmSpec {
   levelWork: LowestWayLevelWork | undefined;
   /** 'm1' = de afgeleide M-1-band en het M-1-raster; 'v51b' = de gedateerde band en het precedent-raster. */
   band: 'm1' | 'v51b';
+  /** A5e.3 — het DCR-model van de spoelen (de families uit `driverkaart.spoelfamilie`, het VOORSTEL expliciet gelezen). */
+  coilDcr?: boolean;
 }
 
 const M1_PLATEAU_DB = 0;
@@ -218,6 +222,22 @@ const ARMS: ArmSpec[] = [
     plateauDb: V51B_PLATEAU_DB,
     levelWork: { kind: 'series-r-max', maxOhm: V51B_SERIES_R_MAX_OHM },
     band: 'm1',
+  },
+  /* A5e.3 — ÉÉN ARM VÓÓR REGENERATIE: M-1 als gedraaid (plateau 0, 'none',
+   * gemergde set, M-1-band) plus het DCR-model op elke continue spoel (de
+   * families van het A5e.3-voorstel, de fits van de v8-catalogus). Verwachting
+   * uit de M-1-diagnose: de tweeter-ladderresonantie van 1,99 naar ~2,5 Ω en de
+   * vloer bijna of helemaal gehaald zonder nieuw element. Dezelfde kandidaat en
+   * seed als `m1-429.1x1994.6`, één factor verzet. */
+  {
+    name: 'm1+dcr',
+    label: ARM_CANDIDATE,
+    what: 'M-1 als gedraaid (plateau 0 · none · gemergde set · M-1-band) PLUS het DCR-model uit de catalogusfit (A5e.3)',
+    set: 'merged',
+    plateauDb: M1_PLATEAU_DB,
+    levelWork: CASUS1_LOWEST_WAY_LEVEL_WORK,
+    band: 'm1',
+    coilDcr: true,
   },
 ];
 
@@ -338,6 +358,14 @@ function payloadFor(arm: ArmSpec, c: GeneratedCandidate): V2Chain3Payload {
       ? { driveCeilingDerived: true }
       : {}),
     ...(CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined ? { lfBumpBudgetDb: CASUS1_V2_BUDGETS.lfBumpBudgetDb } : {}),
+    /* A5e.3 — de families en de fits, alleen op de arm die erom vraagt. */
+    ...(arm.coilDcr
+      ? {
+          coilDcrFamilyByWay: { ...casus1CoilFamilyByDriver().familyByWay },
+          coilDcrFits: casus1CoilDcrFits().fits,
+          coilDcrCatalogLabel: casus1CoilDcrFits().label,
+        }
+      : {}),
   });
   const chainDeclaration = declareCandidateChainChoices({
     stated: {},
@@ -418,6 +446,8 @@ interface ArmOutput {
     targetCurve: TargetCurve;
     levelWork: LowestWayLevelWork | null;
     ampMinLoadOhm: number | null;
+    /** A5e.3 — de families per weg van het DCR-model, of null (verliesvrij). */
+    coilDcrFamilyByWay: Record<string, string> | null;
   };
   seconds: number;
   seedParts: VxpPart[] | null;
@@ -487,6 +517,7 @@ function runArm(arm: ArmSpec): ArmOutput {
       targetCurve: payload.v2.targetCurve as TargetCurve,
       levelWork: arm.levelWork ?? null,
       ampMinLoadOhm: payload.v2.gates.ampMinLoadOhm ?? null,
+      coilDcrFamilyByWay: (payload.candidate!.declaration.stated as { coilDcrModel?: { familyByWay: Record<string, string> } }).coilDcrModel?.familyByWay ?? null,
     },
     seconds: (Date.now() - t0) / 1000,
     seedParts: cap.seed,
@@ -534,6 +565,7 @@ if (process.env.M1_DRY === '1') {
       `[${arm.name}] ${arm.label}\n    set ${arm.set} · band ${p.v2.judgeBandHz?.map((v) => v.toFixed(1)).join('–')} · raster ${p.input.grid[0].toFixed(1)}–${p.input.grid[p.input.grid.length - 1].toFixed(0)}/${p.input.grid.length}` +
         ` · doelcurve ${JSON.stringify(p.v2.targetCurve)} · niveauwerk ${JSON.stringify(cd.stated.lowestWayLevelWork ?? null)}` +
         ` · amplitudeReference ${JSON.stringify((d.stated as Record<string, unknown>).amplitudeReference ?? null)} · vloer ${p.v2.gates.ampMinLoadOhm}` +
+        ` · spoel-DCR ${(d.stated as { coilDcrModel?: { familyByWay: Record<string, string> } }).coilDcrModel ? JSON.stringify((d.stated as { coilDcrModel?: { familyByWay: Record<string, string> } }).coilDcrModel!.familyByWay) : 'absent'}` +
         ` · xo ${p.input.xoLow}/${p.input.xoHigh} kooi ${p.input.xoLowRange?.map((v) => v.toFixed(1)).join('–')} · venstervloeren ${JSON.stringify((p.input.settings as unknown as { xoFloorPairs: number[] }).xoFloorPairs)}` +
         ` · geldigheid ${JSON.stringify(p.v2.validHzByModel)}`,
     );

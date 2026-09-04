@@ -761,6 +761,25 @@ const meetopstelling = {
     gewapend_op_de_zoektocht: CASUS1_BUILDABILITY_ON_SEARCH,
     waar: 'manifest_en_geometrie.gestelde_eisen.weerstandsklasse_*, .spoelklasse_*, .versterker_continu_vermogen_W, .thermisch_ontwerpvermogen_W, .bouwbaarheid_op_de_zoektocht',
   },
+  /* ---- A5e.3: OP WELKE FYSICA DE SPOELEN BEOORDEELD ZIJN ---------------
+   *
+   * Het ELFDE besluit: verliesvrije spoelen (absent, met de P4-reden — de
+   * toestand zolang `driverkaart.spoelfamilie` een voorstel is), of de DCR die
+   * de gestelde familie per weg bij de eigen inductie heeft, gefit op de
+   * catalogus die dat blok noemt. Afgelezen van de verklaring. */
+  spoel_dcr_model: ((): unknown => {
+    const m = (lastPayload.candidate?.declaration.stated as { coilDcrModel?: { familyByWay: Record<string, string>; fitVersion: string; catalogLabel?: string } }).coilDcrModel;
+    return m ? { families_per_weg: m.familyByWay, fit: m.fitVersion, catalogus: m.catalogLabel ?? null } : null;
+  })(),
+  spoel_dcr_waarom:
+    (lastPayload.candidate?.declaration.stated as { coilDcrModel?: unknown }).coilDcrModel
+      ? 'ELKE CONTINUE SPOEL DRAAGT DE DCR DIE HAAR GESTELDE FAMILIE BIJ HAAR INDUCTIE HEEFT (coilDcr.ts, A5e.3): ' +
+        'gestempeld op het zaad, meebewegend in de zoektocht, teruggeschreven in de geleverde DCR-params; de ' +
+        'tuner, de poorten, de inversies en de niveauwerk-inventaris lezen hetzelfde getal. GESTELD in ' +
+        'manifest_en_geometrie.driverkaart.spoelfamilie.'
+      : 'VERLIESVRIJE SPOELEN: geen gestelde spoelfamilie per weg (driverkaart.spoelfamilie is een voorstel of ' +
+        'ontbreekt), dus de zoektocht en elke poort oordelen op spoelen zonder koper — wat geen gebouwde ' +
+        'luidspreker heeft (A5e.3, M-1-diagnose). Absent met de P4-reden, nooit een default-familie (P6).',
   /* ---- V51: MAG DE LAAGSTE WEG NIVEAUWERK DRAGEN ------------------------
    *
    * Het TIENDE besluit in dit blok, en het derde op ketenniveau naast het

@@ -193,11 +193,13 @@ import {
   setDisabledSeries,
   formatCatalogPart,
   hasImportedCatalog,
+  catalogParts,
   setCustomSeries,
   type CatalogPart,
   type CatalogSeries,
   type SnapPrefs,
 } from './lib/catalog.ts';
+import { fitCoilDcrFamilies } from './lib/coilDcr.ts';
 import {
   cancelOptimTasks,
   CancelledError,
@@ -938,6 +940,11 @@ interface V2MeasurementMeta {
   wiringMeasured: string;
   /** V51 — how the design intends to wire them. '' = not stated. */
   wiringDesired: string;
+  /** A5e.3 — the COIL FAMILY this way is wound with (brand|series|gauge, the
+   *  id `coilDcr.ts` fits per family on the loaded catalogue). '' = not
+   *  stated: the way's coils are lossless in every judgement, and the report
+   *  says so as a deviation from any build. Never a default (P6). */
+  coilFamily: string;
 }
 
 const emptyV2Meas = (): V2MeasurementMeta => ({
@@ -954,6 +961,7 @@ const emptyV2Meas = (): V2MeasurementMeta => ({
   driveOnFsMaxDb: '',
   wiringMeasured: '',
   wiringDesired: '',
+  coilFamily: '',
 });
 
 /** Cabinet geometry + measurement context, as typed (strings so a field can be
@@ -1691,6 +1699,13 @@ export default function App() {
    *  guard with hasImportedCatalog(), so without one the design stays at
    *  theoretically ideal (continuous) values. */
   const [catalogSnap, setCatalogSnap] = useState(true);
+  /** A5e.3 — bumped whenever the catalogue module state is replaced, so the
+   *  coil-family fits (a memo over `catalogParts()`) follow an import. */
+  const [catalogRev, setCatalogRev] = useState(0);
+  const applyCatalogSeries = (series: CatalogSeries[], parts: CatalogPart[] = []) => {
+    setCustomSeries(series, parts);
+    setCatalogRev((r) => r + 1);
+  };
   /** Breakup guard: stopband leakage beside the crossover must stay ≥20 dB
    *  down — resonance phase can't be filtered, only made irrelevant. */
   const [breakupGuard, setBreakupGuard] = useState(true);
@@ -2919,7 +2934,7 @@ export default function App() {
     if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) {
       try {
         const imp = deserializeCatalog(demoCatalog);
-        setCustomSeries(imp.series, imp.parts);
+        applyCatalogSeries(imp.series, imp.parts);
         void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
         setPersistNote(
           t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
@@ -2999,7 +3014,7 @@ export default function App() {
     if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) {
       try {
         const imp = deserializeCatalog(demoCatalog);
-        setCustomSeries(imp.series, imp.parts);
+        applyCatalogSeries(imp.series, imp.parts);
         void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
       } catch {
         // Demo catalog fixture unreadable: run with built-ins.
@@ -3380,6 +3395,28 @@ export default function App() {
   }, [v2Meas]);
 
   /**
+   * A5e.3 — the loaded catalogue's coil fits (one per brand, series and
+   * gauge), and the coil family per way as stated in the measurement block.
+   * The fits are what a stated family resolves to, in the report and in the
+   * scan; the family per way travels keyed by role here and is re-keyed to
+   * driver id (report) or model (scan) where it is read. Re-fitted when the
+   * catalogue changes: the fit is closed-form and takes milliseconds.
+   */
+  const coilDcrFits = useMemo(() => fitCoilDcrFamilies(catalogParts()), [catalogRev]);
+  const coilCatalogLabel = useMemo(
+    () => `loaded catalogue (${catalogParts().filter((p) => p.kind === 'L').length} coils, ${coilDcrFits.length} families)`,
+    [coilDcrFits],
+  );
+  const coilFamilyByRole = useMemo(() => {
+    const out: Partial<Record<BranchRole, string>> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const raw = v2Meas[role].coilFamily.trim();
+      if (raw !== '') out[role] = raw;
+    }
+    return out;
+  }, [v2Meas]);
+
+  /**
    * UI-1 — THE v2 REPORT AS A FUNCTION OF A NETWORK, not of the active tab.
    *
    * It was a memo over the active design and nothing else, which is what the
@@ -3513,6 +3550,9 @@ export default function App() {
             const n = Number.isFinite(count) && count >= 1 ? Math.floor(count) : 1;
             return { wiring: { count: n, measured: meas, desired: want, source: 'cabinet form (count) and the Engine v2 measurement block (wiring)' } };
           })(),
+          /* A5e.3 — the coil family of this way, re-keyed to the driver id by
+           * the adapter like the wiring. Empty = not stated. */
+          ...(v2Meas[role].coilFamily.trim() !== '' ? { coilFamily: v2Meas[role].coilFamily.trim() } : {}),
           ...(driveV !== undefined && driveV > 0 && Number.isFinite(micMm) && micMm > 0
             ? {
                 responseDrive: {
@@ -3655,6 +3695,10 @@ export default function App() {
           ...Object.fromEntries(
             Object.entries(gateAndBudget).filter(([, v]) => v !== undefined),
           ),
+          /* A5e.3 — the loaded catalogue's coil fits, so a stated family per
+           * way can be resolved to a DCR model in the report. Only when some
+           * way states one: without a family there is nothing to resolve. */
+          ...(coilDcrFits.length > 0 ? { coilDcrFits } : {}),
         },
       });
       return {
@@ -7115,6 +7159,11 @@ export default function App() {
           ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
           : {}),
       });
+      /* A5e.3 — the coil family per way keyed by MODEL, what the worker's
+       * `driverZ` is keyed by (the same re-keying the M-C figures use). */
+      const coilFamilyByModel: Record<string, string> = Object.fromEntries(
+        (Object.entries(coilFamilyByRole) as [BranchRole, string][]).map(([r, v]) => [canonicalModelForRole(r, threeWay), v]),
+      );
       /** The A5d declaration that travels beside one generated candidate. */
       const declarationFor = (cand: GeneratedCandidate, input: Chain3Input) => ({
         declaration: declareCandidateChoices({
@@ -7181,6 +7230,13 @@ export default function App() {
            * Absent leaves the ceiling solved at the seed (P4). */
           ...(engineV2Gates.lfBumpBudgetDb !== undefined
             ? { lfBumpBudgetDb: engineV2Gates.lfBumpBudgetDb }
+            : {}),
+          /* A5e.3 — the coil family per way, keyed by MODEL like the M-C
+           * figures, and the loaded catalogue's fits, so the candidate can
+           * declare WHAT PHYSICS its coils are judged on. Nothing stated =
+           * nothing handed over = absent with the P4 reason. */
+          ...(Object.keys(coilFamilyByModel).length > 0
+            ? { coilDcrFamilyByWay: coilFamilyByModel, coilDcrFits, coilDcrCatalogLabel: coilCatalogLabel }
             : {}),
         }),
         chainDeclaration: chainDecl,
@@ -9215,7 +9271,7 @@ export default function App() {
       void (async () => {
         try {
           const imp = deserializeCatalog(await unpackFromStorage(stored));
-          setCustomSeries(imp.series, imp.parts);
+          applyCatalogSeries(imp.series, imp.parts);
         } catch {
           // Unreadable custom catalog: leave it in place, run with built-ins.
         }
@@ -9251,7 +9307,7 @@ export default function App() {
   function loadDemoCatalogNow() {
     try {
       const imp = deserializeCatalog(demoCatalog);
-      setCustomSeries(imp.series, imp.parts);
+      applyCatalogSeries(imp.series, imp.parts);
       void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
       setPersistNote(
         t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
@@ -9275,7 +9331,7 @@ export default function App() {
   /** Commit the catalog manager's edited catalog (custom series + exact
    *  SKUs): same persistence path as a file import. */
   function saveCatalogParts(series: CatalogSeries[], parts: CatalogPart[], off: string[] = []) {
-    setCustomSeries(series, parts);
+    applyCatalogSeries(series, parts);
     setDisabledSeries(off);
     if (off.length > 0) localStorage.setItem(CATALOG_OFF_KEY, JSON.stringify(off));
     else localStorage.removeItem(CATALOG_OFF_KEY);
@@ -9304,7 +9360,7 @@ export default function App() {
     setError(null);
     try {
       const imp = deserializeCatalog(await file.text());
-      setCustomSeries(imp.series, imp.parts);
+      applyCatalogSeries(imp.series, imp.parts);
       void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
       setPersistNote(t('Imported catalog {name} — series available in the editor inspector', { name: file.name }));
     } catch (err) {
@@ -11417,6 +11473,31 @@ export default function App() {
                                   <option value="">{t('not stated')}</option>
                                   <option value="parallel">{t('parallel')}</option>
                                   <option value="series">{t('series')}</option>
+                                </select>
+                              </span>{' '}
+                              {/* A5e.3 — the COIL FAMILY of this way. The search
+                                  and every gate then judge each coil with the DCR
+                                  that family has at its inductance (fitted on the
+                                  loaded catalogue); not stated = lossless coils,
+                                  reported as a deviation from any build. */}
+                              <span
+                                className="inline-num"
+                                title={t("Which coil family (brand, series, wire gauge) this way is wound with (A5e.3). Every continuous coil on the way is then judged — in the search, in every gate and inversion, in the report — with the DCR that family has at the coil's inductance, fitted on the loaded catalogue (DCR ∝ L^k per family). Not stated = the way's coils are lossless, which no built loudspeaker is; the report says so. Needs an imported catalogue with coil DCR data.")}
+                              >
+                                {t('coil family') + ' '}
+                                <select
+                                  value={v2Meas[role].coilFamily}
+                                  onChange={(e) => setV2MeasField(role, 'coilFamily', e.target.value)}
+                                >
+                                  <option value="">{coilDcrFits.length > 0 ? t('not stated (lossless)') : t('no catalogue with coil DCR loaded')}</option>
+                                  {coilDcrFits.map((f) => (
+                                    <option key={f.family} value={f.family}>
+                                      {`${f.label} · ${(f.rangeH[0] * 1e3).toPrecision(2)}–${(f.rangeH[1] * 1e3).toPrecision(3)} mH · ${f.ohmAt1mH.toFixed(2)} Ω @ 1 mH`}
+                                    </option>
+                                  ))}
+                                  {v2Meas[role].coilFamily !== '' && !coilDcrFits.some((f) => f.family === v2Meas[role].coilFamily) && (
+                                    <option value={v2Meas[role].coilFamily}>{`${v2Meas[role].coilFamily} (${t('not in the loaded catalogue')})`}</option>
+                                  )}
                                 </select>
                               </span>
                             </span>

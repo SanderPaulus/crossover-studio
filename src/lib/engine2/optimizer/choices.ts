@@ -212,6 +212,25 @@ export const CHOICE_KEYS = [
    * exactly the stated reason — it is a measurement the run already holds.
    */
   'seriesInductanceCeilingSource',
+  /**
+   * A5e.3 — WHAT PHYSICS THE COILS ARE JUDGED ON.
+   *
+   * A choice by the plainest test in this file: with it absent every coil the
+   * synthesis wrote is lossless, and with it stated every coil carries the
+   * DCR its family has at its inductance — in the solver, in the source
+   * probe, in the barrier, in the sum ceilings and in every gate. Two
+   * different loudspeakers are being searched for. Measured on casus 1 (M-1
+   * diagnosis): a tune refused on a 1.99 Ω ladder resonance in the tweeter's
+   * HP section that 0.24 Ω in series with its shunt coil — a third of that
+   * coil's DCR as a 1.4 mm air core — lifts to the stated floor.
+   *
+   * The value carries the families per way AND the fits they resolve to, on
+   * the V51b rule that a mode without its numbers means nothing; there is no
+   * polish twin, because the fits are catalogue data and not a measurement
+   * the run holds elsewhere. Absent = lossless, stated as absent with the
+   * reason (P4) — never a default family (P6).
+   */
+  'coilDcrModel',
   'breakupGuard',
   'safety',
   'audit',
