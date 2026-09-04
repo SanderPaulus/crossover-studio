@@ -809,6 +809,31 @@
   KAND_B R8 1,61 Ω; het V50-corpus 1,61–3,70 Ω serie plus op KAND_V2_1 een shunt-pad van 9,09 Ω.
   Bij 10 W thermisch halen alle drie de referentiefilters M-A/part (2,55 / 3,09 / 1,96 W tegen
   5 W); bij 100 W continu geen van drie (factor 5,1 / 6,2 / 3,9).**
+- **Waar het |Z|-minimum zit en welk element het houdt (M-1-diagnose, 04-09-2026)** — twee scripts, en de
+  volgorde is de reden dat het er twee zijn:
+  - `M1_JOBS=<n> npx vite-node scripts/measure-m1-diagnose-arms.ts` — **ELF KETENRUNS** (15–45 min per stuk,
+    `M1_JOBS` tegelijk; gemeten: acht armen in 2553 s met acht tegelijk, de drie paren in 3238 s met drie
+    tegelijk), `M1_ARM=<naam>` draait er één, `M1_DRY=1` drukt alleen de payload per arm af (seconden — DOE DAT
+    EERST, het is de controle dat elke arm precies één factor verzet), `M1_REDO=1` overschrijft bestaande
+    armbestanden. Schrijft per arm één JSON in `test-fixtures/casus1_m1_diagnose/`: zaad, geleverd of
+    GEWEIGERD netwerk, weigering, de poortweigeringen van de tuner, vóór/ná. **Het geweigerde netwerk is hier
+    voor het eerst leesbaar:** `runCandidate` wist `rejectedParts` vóór het resultaat de worker verlaat (V31),
+    en dit script legt een OBSERVATOR op de keten-export `runThreeWayChain` (de vite-node-module-namespace is
+    configureerbaar; het script controleert dat de observator vuurde) — dezelfde route, hetzelfde resultaat,
+    een kopie ervóór. Geen engine-wijziging. De drie `m1-*`-armen reproduceren de generator byte-voor-byte op
+    de weigering (1,23 / 2,31 Ω en de topologie-weigering van cand-110). De V51b-parameters (band 397–19500,
+    raster 200–20k/96, plateau 2,5, serie-R-max 1,0, gepoorte set) staan bovenaan als benoemde constanten met
+    hun bron (de herkomst op ca4b4fe).
+  - `npx vite-node scripts/measure-m1-diagnose.ts [SLEUTEL ...]` — seconden, geen tune. Per netlist (casusboek-
+    sleutels én elk armbestand): de topologie per tak (`decompose` uit `v38-groups.ts`), |Z| per tak ALLEEN aan
+    de generator en van de som over 20 Hz–20 kHz, in welke tak het som-minimum zit, en per groep de ablatie
+    (serie → draad, shunt → open) met het nieuwe minimum — de HOUDER (ablatie tilt op) en de BESCHERMER (ablatie
+    laat zakken; poolelementen tellen niet mee, want een kortgesloten seriespoel zegt niets over de vloer). Op
+    een netwerk dat de vloer mist ook de PROBE: per falende tak een pad aan de kop (`withSeriesResistanceInFront`,
+    de V51b-Y-probe op een andere weg), een R in serie met elke shunt-pool en de R van elke val, gebisecteerd
+    tot de tak alleen de vloer haalt (`meetsAmpFloor`, tolerantie erin), met de kost in de takoverdracht; en de
+    gecombineerde lezing, opgeschaald tot het SYSTEEM de vloer haalt. Schrijft `samenvatting.json` naast de
+    armen. De vloer wordt uit het manifest gelezen (`casus1AmpMinLoadOhm`), nooit getypt.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.

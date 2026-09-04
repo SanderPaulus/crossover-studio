@@ -5341,6 +5341,184 @@ zoekband wel — geen wijziging aan de metriek in deze sessie. (7) Het geleverde
 geweigerde tunes leest ±74 dB: een null in de som binnen de oordeelband vanaf f_p, niet onderzocht omdat er
 geen geleverd netwerk is.
 
+### M-1-diagnose — waarom het minimum in M-1 in de mid- en tweetertak zit waar het in V51b in de wooferweg zat (04-09-2026, geen regeneratie, geen engine-wijziging)
+
+**AANLEIDING.** M-1 leverde nul van 115 en liet als openstaand punt (1) staan: bij M-T ≥ 1727 Hz zit het minimum in
+de mid- en tweetertak, en op 84 van 115 kandidaten laat zelfs 20 Ω aan de kop van de woofer het systeem op
+1,8–2,5 Ω staan. Sanders vraag: WAAR zit dat minimum precies, welk element houdt het daar, welke van de vier
+M-1-instellingen verplaatst het van de wooferweg (V51b) naar de mid- of tweetertak, en mag de synthese het element
+plaatsen dat het zou optillen. Zijn verwachting vooraf: een serieresonantie van C_serie + L_shunt in de HP-ladder
+van mid of tweeter, ónder het kruispunt, met alleen de DCR van de spoel als demping. **Die verwachting is
+BEVESTIGD, met een scherpere vorm dan verwacht: de spoelen in de v2-route hebben géén DCR (catalogSnap staat uit,
+dus het zaad en de tune worden op ideale spoelen geoordeeld), en op de kandidaat waar het gemeten is tilt 0,24 Ω in
+serie met de shunt-spoel van de tweeter-HP — een derde van de DCR die diezelfde spoel als luchtspoel zou hebben —
+het systeemminimum naar de vloer, zonder verlies in de doorlaatband.** Twee scripts, geen ketenrun in het tweede
+(`scripts/measure-m1-diagnose-arms.ts`, `scripts/measure-m1-diagnose.ts`, zie CLAUDE.md), en het bewijsmateriaal
+staat in `test-fixtures/casus1_m1_diagnose/`.
+
+**HOE HET GEWEIGERDE NETWERK LEESBAAR IS GEWORDEN — een observator, geen engine-wijziging.** V31 wist
+`rejectedParts` in `runCandidate` vóór het resultaat de worker verlaat, en `measure-v47-rejections.ts` en
+`measure-v48-ceiling-tracking.ts` liepen daar allebei tegenaan ("van buitenaf is een geweigerd netwerk principieel
+onmeetbaar"). Dit script gaat er niet doorheen maar eromheen: de module-namespace van vite-node is configureerbaar,
+en het legt op de keten-export `runThreeWayChain` een wrapper die het ketenresultaat (mét `net.rejectedParts`) en
+het zaad (het argument van `hooks.tuneOptionsFor`) kopieert vóórdat de worker er zijn wissing op doet — dezelfde
+functie, hetzelfde resultaat, en het script controleert dat de wrapper vuurde in plaats van dat aan te nemen. De
+drie M-1-armen reproduceren de generator exact (weigering op 1,23 en 2,31 Ω, en de topologie-weigering met de tune
+op 2,57 Ω — shards cand-104, cand-115, cand-110), dus wat hier geanalyseerd wordt is het netwerk dat M-1 weigerde en
+niet een hermeting ernaast.
+
+**DE MEETMETHODE (`measure-m1-diagnose.ts`, seconden).** Per netwerk drie tabellen plus een probe. De topologie per
+tak uit de netlist-graaf (`decompose`, V38). |Z| van elke tak ALLEEN aan de generator over 20 Hz–20 kHz en van de
+som, met per tak de |Z| op de frequentie van het som-minimum: dat zegt in welke tak het zit. Per groep de ablatie
+zoals de snoeipas van de tuner (serie → draad, shunt → open) met het nieuwe minimum: de groep waarvan de ablatie het
+minimum het diepst laat ZAKKEN is de BESCHERMER — het element dat de weg boven de vloer houdt (poolelementen tellen
+daar niet mee: een kortgesloten seriespoel zet de driver kaal aan de generator en zegt niets over de vloer). En op
+een netwerk dat de vloer mist de PROBE: per falende tak een pad aan de kop (`withSeriesResistanceInFront`, de V51b-Y-
+probe op een andere weg), een R in serie met élke shunt-pool en de R van élke val, gebisecteerd tot de tak alleen de
+vloer haalt (`meetsAmpFloor`, tolerantie erin), met de kost in de takoverdracht; daarna de goedkoopste probe per
+tak samen op het hele netwerk, opgeschaald tot het SYSTEEM de vloer haalt. De vloer wordt uit het manifest gelezen.
+
+**1. DRIE PAREN, NETLIST NAAST NETLIST.** De V51b-kruispunten bestaan niet op het M-1-raster (397–549 tegen
+124–550 Hz, andere posities); de dichtstbijzijnde LR4·LR4-tegenhangers zijn 466,5·2283,5 ↔ 485,6·2304,
+466,5·1981,2 ↔ 429,1·1994,6 en 548,5·2283,5 ↔ 549,7·2304.
+
+| netwerk | som min \|Z\| | laagste tak bij het som-minimum | woofer alleen | mid alleen | tweeter alleen | beschermer (zonder → min) |
+| --- | --- | --- | --- | --- | --- | --- |
+| V51B_KAND_1 (466,5·2283,5, geleverd) | 2,73 Ω @ 136 Hz | woofer 2,76 (mid 28, tweeter 391) | 2,65 @ 236 | 3,28 @ 963 | 4,71 @ 20k | B·R9 mid-pad 7,68 Ω (→ 1,20 @ 1145); R5 1,00 Ω (→ 2,20 @ 99) |
+| M-1 485,6·2304 ZAAD | 1,47 @ 706 | **mid 1,47** (woofer 26, tweeter 77) | 1,49 @ 28 | 1,47 @ 698 | 3,79 @ 13,8k | B·R9 4,28 (→ 0,63 @ 829) |
+| M-1 485,6·2304 tune (topologie-weigering, 2,57 Ω) | 2,56 @ 383 | **mid 2,79 ∥ woofer 3,77** | 2,63 @ 136 | 2,55 @ 1528 | 2,53 @ 11,1k | B·R9 4,85 (→ 0,91 @ 379) |
+| V51B_KAND_6 (466,5·1981,2, geleverd) | 2,59 @ 256 | woofer 2,46 (mid 16, tweeter 61) | 2,41 @ 297 | 2,63 @ 1094 | 2,69 @ 10,4k | C·R5 tweeter-pad 0,61 (→ 2,21 @ 11,4k); R5 0,87 (→ 2,23 @ 99) |
+| M-1 429,1·1994,6 ZAAD | 1,05 @ 425 | **mid 1,82 ∥ tweeter 2,13** | 1,67 @ 27 | 1,24 @ 690 | 1,92 @ 17,2k | B·R9 3,89 (→ 0,52 @ 783) |
+| M-1 429,1·1994,6 GEWEIGERDE tune (1,23/1,59 Ω) | 1,63 @ 337 | **tweeter 1,99** (woofer 3,24, mid 5,23) | 2,55 @ 136 | 2,74 @ 1271 | 1,99 @ 337 | C·R6 tweeter-shuntpad 4,31 (→ 0,92 @ 337); ablatie C·L2 óf C·L4 → 2,59 |
+| V51B_KAND_3 (548,5·2283,5, geleverd) | 2,89 @ 136 | woofer 2,90 (mid 40, tweeter 442) | 2,80 @ 244 | 3,87 @ 1021 | 5,28 @ 20k | B·R9 5,74 (→ 1,59 @ 1081); R5 1,00 (→ 2,28 @ 99) |
+| M-1 549,7·2304 ZAAD | 0,82 @ 554 | **tweeter 1,58 ∥ mid 1,64** | 1,49 @ 29 | 1,43 @ 706 | 1,50 @ 20k | B·R9 4,56 (→ 0,57 @ 849) |
+| M-1 549,7·2304 GEWEIGERDE tune (2,31 Ω) | 2,31 @ 47 | woofer 2,31 (mid 42, tweeter 391) | 2,31 @ 47 | 2,72 @ 1638 | 2,30 @ 20k | B·R9 2,20 (→ 1,24 @ 706) |
+
+Wat de tabel zegt, in vier zinnen. (a) **In de V51b-netlists zit het minimum in de wooferweg (2,4–2,9 Ω bij
+136–297 Hz: de L1–C2-resonantie van de LP-ladder op de reflexflank, gedempt door R5 ≈ 1 Ω en de driver) ómdat de
+midweg erboven getild is:** haal B·R9 weg (5,7–7,7 Ω in serie in het mid-pad) en de midweg zakt naar 1,2–1,6 Ω bij
+1,1 kHz — de HP-ladder van de mid (B·C1 28–40 µF met B·L2 1,45–1,7 mH) resoneert daar en niets anders dan die pad
+houdt haar op. (b) **In élk M-1-zaad zit het minimum in de HP-ladder van mid of tweeter, 0,8–1,5 Ω bij
+425–706 Hz** — B·C1 101–109 µF met B·L2 0,67–0,71 mH (nominaal 580–600 Hz) — met als enige bescherming de
+top-octaafhold-pad B·R9 (3,9–4,6 Ω), en het is de gemergede mid die de synthese daar brengt: haar Fs-trap
+(B·L11+C12+R13, R 1,9–4,3 Ω) staat in het zaad omdat f_s = 88,8 Hz nu binnen de geldige band ligt. (c) **In de
+geweigerde tune van 429,1·1994,6 zit het minimum in de TWEETERTAK, 1,99 Ω bij 337 Hz — 2,6 octaaf onder het
+M-T-kruispunt:** C·C1 (13,6 µF) resoneert met C·L2 (4,61 mH) parallel aan C·C3 + C·L4 (31,9 µF, 0,48 mH — die laatste
+is bij 337 Hz 1,0 Ω reactantie, een kortsluiting naar massa), en de enige demping is de L-pad-poot C·R6 (4,31 Ω)
+achter de ladder; de DCR van C·L2 is nul, want het is een ideale spoel. Dat is Sanders verwachting, met de tweeter
+in plaats van de mid. (d) In de tune van 485,6·2304 (topologie-weigering — de vloer werd gehaald op 2,57) zit het
+minimum in de mid-HP (2,79 ∥ woofer 3,77 bij 383 Hz), en in die van 549,7·2304 is het in de tune naar de WOOFER
+verhuisd (2,31 Ω bij 47 Hz, tussen de reflexpieken, waar alleen een pad helpt — precies wat `'none'` verbiedt),
+terwijl de tweeter er op 20 kHz óók onder zit (2,30).
+
+**2. WELKE INSTELLING VERPLAATST HET MINIMUM — vijf enkelvoudige armen en drie paren op 429,1·1994,6.** Dezelfde
+kandidaat (positie, kooi, orde uit het M-1-veld), dezelfde seed, en per arm één factor verzet ten opzichte van de
+V51b-instellingen (gepoorte set, plateau −2,5 dB, `series-r-max` 1,0 Ω, band 397–19500 op 200–20k/96;
+`M1_DRY=1` drukt af dat elke arm precies één factor verschilt). De gepoorte set draagt onder 397 Hz geen geldige
+wooferdata, dus de arm met de M-1-band op die set isoleert de instelling en beschrijft geen ontwerp.
+
+| arm | uitkomst | som min \|Z\| | laagste tak | beschermer | mid-pad B·R9 | woofer-R R5 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `v51b` | GELEVERD, rimpel 1,67 dB | 2,60 @ 136 | woofer 2,63 | B·R9 (→ 1,18 @ 1021), R5 (→ 2,12) | 6,69 Ω | 1,00 Ω |
+| `v51b+merged` | GELEVERD, 1,41 dB | 2,60 @ 133 | woofer 2,62 | B·R9 (→ 1,10 @ 1009), R5 (→ 2,02) | 7,21 | 1,00 |
+| `v51b+plateau0` | GELEVERD, 1,71 dB | 2,64 @ 136 | woofer 2,67 | B·R9 (→ 1,47 @ 997), R5 (→ 2,15) | 4,92 | 1,00 |
+| `v51b+band` | GELEVERD, 2,15 dB | 2,60 @ 1044 | **mid 2,89** (woofer 12,3) | R5 (→ 0,51 @ 1057), B·R9 (→ 1,01 @ 1081) | 7,48 | 1,00 |
+| `v51b+none` | **GEWEIGERD** 2,24 Ω | 2,24 @ 102 | **woofer 2,32** (mid 24) — mid alleen óók 2,22 @ 535 | B·R9 (→ 1,16 @ 952) | 4,58 | — |
+| M-1 (alle vier) | **GEWEIGERD** 1,23 Ω | 1,63 @ 337 | **tweeter 1,99** | C·R6 (→ 0,92) | 3,94 | — |
+| `v51b+merged+band` (= M-1 met plateau −2,5 en serie-R-max 1,0) | GELEVERD, 2,32 dB | 2,59 @ 35 | **woofer 2,60** (mid 97, tweeter 670) | B·R9 (→ 1,18 @ 1331), R5 (→ 1,63 @ 35) | 3,19 | 1,00 |
+| `v51b+none+band` | **GEWEIGERD** 2,47 Ω | 2,48 @ 136 | woofer 2,45 (mid 19) — mid alleen óók 2,45 @ 430 | B·R9 (→ 1,63 @ 1069) | 1,36 | — |
+| `v51b+none+merged` | **GEWEIGERD** 2,10 Ω | 2,10 @ 829 | **woofer 3,84 ∥ mid 4,04** (de overlap; woofer alleen 2,37 @ 108, mid alleen 2,33 @ 1021) | B·R9 (→ 0,42 @ 1009) | 5,42 | — |
+
+Het antwoord is niet één instelling. De gemergede set en het plateau verplaatsen op deze kandidaat NIETS (beide
+leveren, minimum in de wooferweg, B·R9 doet het werk). De M-1-band verplaatst het minimum wél naar de midweg —
+maar levert, óp de vloer, en met de merkwaardigheid dat R5 op de woofer daar de beschermer is (zonder R5 zakt de
+LP-ladder L3–C4 van de woofer bij 1 kHz naar 0,51 Ω). `'none'` alléén weigert in de WOOFERWEG: zonder R5 staat de
+L1–C2-resonantie van de LP-ladder op 2,3 Ω bij 108 Hz (Y ≈ 0,24 Ω op de tak alleen), en de midweg staat er met
+2,22 Ω bij 535 Hz naast — de gecombineerde probe vraagt dan 1,48 Ω op de woofer én 2,56 Ω op de mid (4–6 dB
+verlies in de doorlaatband), wat zegt hoe ver die tune van een oplossing af zat. Het M-1-beeld — minimum in de
+TWEETERTAK, ver onder de vloer — ontstaat pas in de combinatie: de wooferweg mag geen R meer dragen, de tune moet
+de LP-ladder verplaatsen om haar eigen resonantie boven de vloer te krijgen, en de HP-ladders van mid en tweeter
+krijgen daarbij de waarden waarop hun serieresonantie op 340–380 Hz landt, waar niets haar dempt.
+De drie paren maken dat scherp. **`'none'` is de noodzakelijke factor:** de gemergede set mét de M-1-band maar
+met 1,0 Ω op de woofer toegestaan levert gewoon (2,59 Ω — en het minimum ligt dan bij 35 Hz in de woofer, in het
+reflexdal dat op de gemergede set voor het eerst binnen het veiligheidsraster van de barrière valt, gehouden door
+R5 = 1,00 Ω). Met `'none'` weigert élke combinatie, en WAAR het minimum dan zit hangt van de meetset af: op de
+gepoorte set in de wooferweg (2,24–2,48 Ω bij 102–136 Hz, met de mid er alleen óók onder), op de gemergede set in
+de W-M-OVERLAP (829 Hz: woofer 3,84 parallel aan mid 4,04 geeft 2,10 — geen van beide takken is daar zelf het
+minimum, de parallelschakeling is het), en met alle vier de instellingen in de tweeter-HP bij 337 Hz. Het antwoord
+op de vraag van de sessie is dus: **niet de meetset, niet het plateau en niet de band verplaatsen het minimum naar
+de mid- en tweetertak; het verbod op de woofer-R doet dat, en de gemergede set bepaalt waar het dan landt** — de
+tuner die de wooferweg zonder R boven de vloer moet krijgen, verplaatst de LP-ladder en laat de HP-ladders van mid
+en tweeter de waarden aannemen waarop hun serieresonantie onder de vloer zakt.
+
+**3. MAG DE SYNTHESE EEN GEDEMPTE SHUNT PLAATSEN, EN WAAROM KOOS DE TUNER HEM NIET.** Drie feiten, nagegaan in de
+code en gemeten op de netwerken. (i) **De gedempte shunt als VAL bestaat en staat op mid en tweeter aan:**
+`deriveTopology` legt een serie-L-C-R over de driver voor een gemeten piek-cut (`notch`), een Fs-trap
+(`fsPeak.ratio > 1,6` onder de HP-hoek) en een Zobel, en `noLevelWork` (V51) verbiedt op de laagste weg alleen de
+PADS — L-pad, top-octaafhold, shelf-cut; "peak cuts (LCR across or beside the driver), the Zobel and the Fs trap
+are impedance corrections and stay". De M-1-zaden dragen ze: een Fs-trap op de mid (R 1,9–4,3 Ω), notches op de
+tweeter (R 0,22–9,2 Ω), en op de woofer twee gedempte vallen (37 en 122–207 Hz, R 0,2–49 Ω) die de synthese uit de
+gemergede basband haalde. **Maar geen van die vallen houdt het minimum:** in de ablatietabellen staan zij alle op
+±0,00 tot −0,12 Ω, en HUIDIG's eigen gedempte val B·L14+C15+R16 (4,5 kHz, Q 9,5) draagt aan HUIDIG's minimum
+exact niets bij (−0,00). Een val hangt ACHTER de ladder, aan de driverknoop; de serieresonantie van C_serie met
+L_shunt zit VÓÓR in de ladder, en een R over de driver ziet haar niet. (ii) **Het element dat haar wél dempt — een
+R in serie met de shunt-spoel van de HP-ladder, de "gedempte shunt-pool" — bestaat NIET in het vocabulaire:**
+shunt-polen zijn kale L of C (`rungs` van type `series`/`shunt`), de R-slots zijn L-pad, top-octaafhold, shelf-
+bypass, notch-R, Zobel-R en Fs-trap-R, en de tuner maakt nooit een weerstand aan (V51). De tuner kan alleen de R's
+bewegen die er zijn — en dat deed hij: op 429,1·1994,6 bracht hij C·R6 van 1,41 naar 4,31 Ω, C·R7 van 13,9 naar
+51 Ω, en C·R5 juist van 0,80 naar 0,20 Ω (de vloer van de box). (iii) **De barrière bereikt de dip en weegt zwaar
+genoeg; de weigering is geen gewichtsvraag.** Bron `'safety'`, 21–20 000 Hz op 240 punten: 337 Hz ligt erin. Het
+gewicht: `1200 · (tekort / 2,6)²` — bij 1,0 Ω tekort 177, bij 0,5 Ω 44, bij 0,1 Ω 1,8 — tegen een amplitudeterm
+`2(1−p)·rimpel²` = 25 bij 5 dB rimpel en 6,3 op het doel van 2,5 dB, en een faseterm `(φ/15)²` van 1,5 bij 18,6°.
+Boven ~0,4 Ω tekort is de barrière de grootste term van het objectief. Wat de run laat zien is een tuner die
+ONDER de barrière géén netwerk vindt dat de poort accepteert: "value tune refused 1,23 · basin challenge 1,73 ·
+target barrier tune 0,86 · escalation C10 1,21 · delivered network 1,04" — élke tussenstap geweigerd, dus het zaad
+terug. **De probe zegt waarom, in één getal: 0,24 Ω in serie met C·L2 (4,61 mH) tilt het systeem naar 2,55 Ω bij
+341 Hz met 0,00 dB verlies in de doorlaatband van de tweeter (−7,2 dB op 337 Hz, 2,6 octaaf onder haar kruispunt).**
+`coilDcr(4,61 mH, 1,4 mm)` — de DCR-schatter van de catalogus, die de synthese alleen in catalogus-snap-modus
+meesimuleert — geeft 0,78 Ω voor diezelfde spoel; HUIDIG's 1,8 mH heeft 0,34 Ω, zijn 10 mH 0,52. De tune is dus
+geweigerd op een resonantie die in een gebouwde spoel niet bestaat, en het pad aan de kop van de tweeter — wat de
+tuner vandaag WEL kan — kost voor hetzelfde resultaat 0,71 Ω en 1,9 dB in de doorlaatband. Op 549,7·2304 vindt de
+probe geen enkel element (het minimum zit in de tune bij 47 Hz in de woofer, tussen de reflexpieken, en de tweeter
+zit tegelijk op 20 kHz onder de vloer); op `v51b+none` alleen pads, op twee wegen tegelijk.
+
+**4. HUIDIG IN DEZELFDE VORM.** Minimum **3,46 Ω bij 218 Hz, in de WOOFERWEG** (3,34 Ω; mid 11,6 en tweeter 332 Ω
+ernaast): de L1–C2-resonantie van zijn LP-ladder (3 mH met 75 µF, nominaal 335 Hz) op de reflexflank van het
+wooferpaar, gedempt door R8 (3,3 Ω) en de driver. Beide wegen worden door een PAD gehouden en niet door een
+gedempte shunt: zonder B·R9 (4,7 Ω in het mid-pad) zakt het systeem naar 1,88 Ω bij 952 Hz — de HP-ladder van de
+mid (B·C1 51 µF, B·L2 1,8 mH) — en zonder R8 naar 2,30 Ω bij 98 Hz; zijn gedempte val B·L14+C15+R16 (2,2 Ω,
+4,5 kHz) en zijn tweeter-shelf C·L13+R15 (27 Ω) dragen niets bij (−0,00). HUIDIG haalt de vloer dus met het element
+dat V51 op de woofer verbiedt (R8) en met hetzelfde element op de mid dat de V51b-tunes gebruiken (B·R9) — en zijn
+spoelen dragen DCR (0,28–0,52 Ω), waar de v2-route op nul rekent.
+
+**5. AANBEVELING — één, en géén regeneratie tot zij er is.** Leer de synthese de GEDEMPTE SHUNT-POOL op élke weg
+die niet de laagste is: een weerstand in serie met de shunt-spoel van de eerste HP-sectie, als slot naast de kale
+pool, met een gemeten aanleiding — de eigen |Z|-dip van de tak onder de gestelde vloer, met haar frequentie uit het
+netwerk zelf (de serieresonantie van C_serie met L_shunt, 337–706 Hz op deze kandidaten) — en gezaaid op de ohm die
+de tak alleen op de vloer brengt (de probe van `measure-m1-diagnose.ts`, bisectie tegen `meetsAmpFloor`). P6-schoon:
+geen frequentie, geen ohm en geen drempel in de code, alleen de vloer die het project stelt en een resonantie die
+uit de netlist komt; het is het impedantie-analogon van de Fs-trap, die óók op een gemeten piek vuurt. Het is de
+tweede topologie die de generator na `eqBands` (V41) leert, en de vergelijking is er al: dezelfde arm
+(`m1-429.1x1994.6`) met en zonder dat slot, één ketenrun, vóór er iets geregenereerd wordt. Wat dit NIET is:
+niveauwerk (0,00 dB in de doorlaatband op de kandidaat waar het gemeten is; een pad aan de kop kost 1,9 dB voor
+hetzelfde), en geen versoepeling van de vloer. **Wat er ernaast opgeschreven moet worden, en wat deze diagnose niet
+beslist:** de v2-route oordeelt op DCR-loze spoelen. Een gedempte shunt-pool van 0,24 Ω is fysisch de DCR van de spoel
+die er toch al zit; of de route die DCR uit de catalogus mee moet simuleren (zoals de snap-modus doet) is een
+A5e.3-vraag (het catalogus-schema) en geen topologievraag, en zij staat als openstaand punt hieronder.
+
+**WAT ER NIET VERANDERD IS.** Geen enkele bron in `src/`: geen metriek, geen poort, geen inversie, geen synthese.
+Het corpus is niet geregenereerd (het is leeg sinds M-1 en blijft dat). Twee scripts, elf armbestanden en een
+samenvatting in `test-fixtures/casus1_m1_diagnose/`, deze entry, de CLAUDE.md-commandoregels en de ROADMAP.
+`tsc -b` groen (ook `scripts/`).
+
+**OPENSTAAND.** (1) De gedempte shunt-pool als synthese-slot — de aanbeveling hierboven; eerst één arm, dan pas
+het veld. (2) DCR in de v2-route: `catalogSnap: false` betekent ideale spoelen in zaad, tune én poortoordeel; de
+vloer wordt daarmee op een strengere fysica geoordeeld dan de gebouwde luidspreker heeft. Een besluit onder A5e.3.
+(3) 549,7·2304: de tune verhuist het minimum naar de woofer tussen de reflexpieken (47 Hz), waar alleen een pad
+helpt en `'none'` dat verbiedt — of de LP-ladder daar met een vrije waarde uit blijft is niet gemeten. (4) Het pad
+op de MID (B·R9, 3–8 Ω in serie met de ankerweg, enkele dB verzwakking) is wat V51b én HUIDIG de vloer laat halen; dat is
+niveauwerk op de stilste weg en hoort tegen X en het anker gelezen te worden — niet in deze sessie.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als

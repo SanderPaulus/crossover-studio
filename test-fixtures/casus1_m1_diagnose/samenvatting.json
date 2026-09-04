@@ -1,0 +1,1482 @@
+{
+ "HUIDIG": {
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "som_min_ohm": 3.463882437169469,
+  "som_min_hz": 217.64960106396043,
+  "takken": [
+   {
+    "tak": "woofer",
+    "min_ohm": 3.279833926869154,
+    "min_hz": 235.94800312923255,
+    "bij_som_min_ohm": 3.344126363423016
+   },
+   {
+    "tak": "mid",
+    "min_ohm": 3.707553925967576,
+    "min_hz": 899.0515345500337,
+    "bij_som_min_ohm": 11.589762749871811
+   },
+   {
+    "tak": "tweeter",
+    "min_ohm": 5.60158145378664,
+    "min_hz": 20000,
+    "bij_som_min_ohm": 331.8447419471875
+   }
+  ],
+  "houder": null,
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 4.70 Ω",
+   "zonder_min_ohm": 1.8781735511580262,
+   "zonder_min_hz": 952.4152109588595
+  }
+ },
+ "V51B_KAND_1": {
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "som_min_ohm": 2.7349695170586332,
+  "som_min_hz": 135.64870074327902,
+  "takken": [
+   {
+    "tak": "woofer",
+    "min_ohm": 2.6487662191891226,
+    "min_hz": 235.94800312923255,
+    "bij_som_min_ohm": 2.7560938019909296
+   },
+   {
+    "tak": "mid",
+    "min_ohm": 3.2804139398845953,
+    "min_hz": 963.462177129648,
+    "bij_som_min_ohm": 28.245471211897947
+   },
+   {
+    "tak": "tweeter",
+    "min_ohm": 4.706101821975072,
+    "min_hz": 20000,
+    "bij_som_min_ohm": 390.8341436531075
+   }
+  ],
+  "houder": {
+   "groep": "C2",
+   "tak": "woofer",
+   "rol": "pole",
+   "samenstelling": "C 152.0 µF",
+   "lift_ohm": 0.39168166445867314
+  },
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 7.68 Ω",
+   "zonder_min_ohm": 1.1957777613330944,
+   "zonder_min_hz": 1145.4071210172972
+  }
+ },
+ "V51B_KAND_6": {
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "som_min_ohm": 2.5856199706053014,
+  "som_min_hz": 255.78480230851525,
+  "takken": [
+   {
+    "tak": "woofer",
+    "min_ohm": 2.4121644218843614,
+    "min_hz": 297.15514292962047,
+    "bij_som_min_ohm": 2.4649137041122096
+   },
+   {
+    "tak": "mid",
+    "min_ohm": 2.6343326245291694,
+    "min_hz": 1093.7712151216338,
+    "bij_som_min_ohm": 15.786217592309807
+   },
+   {
+    "tak": "tweeter",
+    "min_ohm": 2.6899203904457836,
+    "min_hz": 10364.639535622176,
+    "bij_som_min_ohm": 60.84941249361466
+   }
+  ],
+  "houder": null,
+  "beschermer": {
+   "groep": "C·R5",
+   "tak": "tweeter",
+   "rol": "series-pad",
+   "samenstelling": "R 0.61 Ω",
+   "zonder_min_ohm": 2.2090724989535704,
+   "zonder_min_hz": 11366.34883921417
+  }
+ },
+ "V51B_KAND_3": {
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "som_min_ohm": 2.8874816175854376,
+  "som_min_hz": 135.64870074327902,
+  "takken": [
+   {
+    "tak": "woofer",
+    "min_ohm": 2.804338296890799,
+    "min_hz": 244.25381062949288,
+    "bij_som_min_ohm": 2.902115190692473
+   },
+   {
+    "tak": "mid",
+    "min_ohm": 3.87380129245849,
+    "min_hz": 1020.6489810854652,
+    "bij_som_min_ohm": 40.22199968261461
+   },
+   {
+    "tak": "tweeter",
+    "min_ohm": 5.279228758351284,
+    "min_hz": 20000,
+    "bij_som_min_ohm": 442.2906469926789
+   }
+  ],
+  "houder": {
+   "groep": "C2",
+   "tak": "woofer",
+   "rol": "pole",
+   "samenstelling": "C 143.1 µF",
+   "lift_ohm": 0.7586861500824322
+  },
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 5.74 Ω",
+   "zonder_min_ohm": 1.592627836152909,
+   "zonder_min_hz": 1081.2301378496352
+  }
+ },
+ "arm:m1-429.1x1994.6": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "M-1 als gedraaid (tegenhanger van V51B_KAND_6 (466,5·1981,2))",
+  "refusal": {
+   "by": "active-gate",
+   "kinds": [
+    "gate"
+   ],
+   "reason": "M-B/|Z|: 1.23 Ω falls below the stated floor of 2.60 Ω"
+  },
+  "tuned": 0,
+  "zaad": {
+   "som_min_ohm": 1.0454151084770542,
+   "som_min_hz": 424.8562541251616,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 1.672291932459629,
+     "min_hz": 27.305829321717514,
+     "bij_som_min_ohm": 14.820551499081345
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 1.2395764656716606,
+     "min_hz": 689.5926120128722,
+     "bij_som_min_ohm": 1.8231611506706624
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 1.9157465922519583,
+     "min_hz": 17215.572968837787,
+     "bij_som_min_ohm": 2.129379011780931
+    }
+   ]
+  },
+  "probe": {
+   "branches": [
+    {
+     "model": "tweeter",
+     "branchMinOhm": 1.9878885018492116,
+     "branchMinHz": 337.3456161300222,
+     "probes": [
+      {
+       "what": "pad aan de kop van tweeter",
+       "ohm": 0.7066466053947806,
+       "minOhm": 2.548000016848097,
+       "minHz": 337.3456161300222,
+       "passbandMaxAbsDb": 1.8862189154887596,
+       "atOldMinDb": -2.155850959284175,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C·L2 (L 4.61 mH, tweeter)",
+       "ohm": 0.05694333557039499,
+       "minOhm": 2.548000050730805,
+       "minHz": 337.3456161300222,
+       "passbandMaxAbsDb": 0.00009646936124330097,
+       "atOldMinDb": -2.1639741186598673,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C·L4 (L 0.48 mH, tweeter)",
+       "ohm": 0.0980908302590251,
+       "minOhm": 2.5480001905217335,
+       "minHz": 337.3456161300222,
+       "passbandMaxAbsDb": 0.030726494138064275,
+       "atOldMinDb": -2.4290350711050355,
+       "note": ""
+      },
+      {
+       "what": "de R van de val C·L9+C·C10+C·R11 (L 0.05 mH + C 0.3 µF + R 0.22 Ω, tweeter)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val C·L9+C·C10+C·R11 haalt de vloer"
+      },
+      {
+       "what": "de R van de val C·L12+C·C13+C·R14 (L 0.37 mH + C 96.7 µF + R 0.21 Ω, tweeter)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val C·L12+C·C13+C·R14 haalt de vloer"
+      }
+     ]
+    }
+   ],
+   "combined": {
+    "minOhm": 2.54800013412481,
+    "minHz": 341.2584532690893,
+    "using": [
+     "R in serie met C·L2 (L 4.61 mH, tweeter) 0.24 Ω (kost 0.00 dB in de doorlaatband)"
+    ]
+   }
+  },
+  "tune": {
+   "som_min_ohm": 1.6317840995271753,
+   "som_min_hz": 337.3456161300222,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.5527916696808104,
+     "min_hz": 135.64870074327902,
+     "bij_som_min_ohm": 3.24322390698182
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.743900588714238,
+     "min_hz": 1270.6765172457385,
+     "bij_som_min_ohm": 5.227727724973791
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 1.9878885018492116,
+     "min_hz": 337.3456161300222,
+     "bij_som_min_ohm": 1.9878885018492116
+    }
+   ]
+  },
+  "houder": {
+   "groep": "C·L4",
+   "tak": "tweeter",
+   "rol": "pole",
+   "samenstelling": "L 0.48 mH",
+   "lift_ohm": 0.9609916377265473
+  },
+  "beschermer": {
+   "groep": "C·R6",
+   "tak": "tweeter",
+   "rol": "shunt-pad",
+   "samenstelling": "R 4.31 Ω",
+   "zonder_min_ohm": 0.9230092869535572,
+   "zonder_min_hz": 337.3456161300222
+  }
+ },
+ "arm:m1-485.6x2304": {
+  "label": "woofer→mid 485.6 LR4 · mid→tweeter 2304 LR4",
+  "what": "M-1 als gedraaid (tegenhanger van V51B_KAND_1 (466,5·2283,5))",
+  "refusal": {
+   "by": "worker",
+   "kinds": [
+    "topology"
+   ],
+   "reason": "this configuration asks 0.90 dB of level work on the lowest way (woofer sits that far above the anchor mid after the target curve, A5d.4) and the project forbids level work there; without more the delivered network misses the ripple goal: 4.90 dB peak deviation against 2.5 dB"
+  },
+  "tuned": 35,
+  "zaad": {
+   "som_min_ohm": 1.4660262736466243,
+   "som_min_hz": 705.6824136547027,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 1.4864566130064616,
+     "min_hz": 28.267045178488,
+     "bij_som_min_ohm": 25.928413625894088
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 1.4661192937964873,
+     "min_hz": 697.5911258636357,
+     "bij_som_min_ohm": 1.4668874291298017
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 3.791098989780387,
+     "min_hz": 13828.111852993878,
+     "bij_som_min_ohm": 77.24831256826597
+    }
+   ]
+  },
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.5605927066063963,
+   "som_min_hz": 382.9718833070902,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.6280488883173865,
+     "min_hz": 135.64870074327902,
+     "bij_som_min_ohm": 3.773373392493798
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.5512699511157515,
+     "min_hz": 1528.1590577469226,
+     "bij_som_min_ohm": 2.788454268826801
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.525077783391117,
+     "min_hz": 11107.192177979465,
+     "bij_som_min_ohm": 42.99397012937074
+    }
+   ]
+  },
+  "houder": null,
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 4.85 Ω",
+   "zonder_min_ohm": 0.9131177040135195,
+   "zonder_min_hz": 378.5807639256728
+  }
+ },
+ "arm:m1-549.7x2304": {
+  "label": "woofer→mid 549.7 LR4 · mid→tweeter 2304 LR4",
+  "what": "M-1 als gedraaid (tegenhanger van V51B_KAND_3 (548,5·2283,5))",
+  "refusal": {
+   "by": "active-gate",
+   "kinds": [
+    "gate"
+   ],
+   "reason": "M-B/|Z|: 2.31 Ω falls below the stated floor of 2.60 Ω"
+  },
+  "tuned": 0,
+  "zaad": {
+   "som_min_ohm": 0.8228138228620325,
+   "som_min_hz": 553.9033634938008,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 1.4862551035444798,
+     "min_hz": 29.262097616906356,
+     "bij_som_min_ohm": 17.27071991327542
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 1.4274850448780774,
+     "min_hz": 705.6824136547027,
+     "bij_som_min_ohm": 1.637878511773103
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 1.5008253383017116,
+     "min_hz": 20000,
+     "bij_som_min_ohm": 1.5836056921610067
+    }
+   ]
+  },
+  "probe": {
+   "branches": [
+    {
+     "model": "woofer",
+     "branchMinOhm": 2.3076838642325788,
+     "branchMinHz": 47.495890981219816,
+     "probes": [
+      {
+       "what": "pad aan de kop van woofer",
+       "ohm": 0.24063180852681398,
+       "minOhm": 2.5480000107895613,
+       "minHz": 47.495890981219816,
+       "passbandMaxAbsDb": 0.8604998391423663,
+       "atOldMinDb": -0.8601087948836055,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C2 (C 167.2 µF, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met C2 haalt de vloer"
+      },
+      {
+       "what": "R in serie met C4 (C 0.0 µF, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met C4 haalt de vloer"
+      },
+      {
+       "what": "de R van de val L5+C6+R7 (L 17.80 mH + C 554.9 µF + R 2.66 Ω, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val L5+C6+R7 haalt de vloer"
+      },
+      {
+       "what": "de R van de val L8+C9+R10 (L 3.88 mH + C 0.3 µF + R 0.15 Ω, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val L8+C9+R10 haalt de vloer"
+      }
+     ]
+    },
+    {
+     "model": "tweeter",
+     "branchMinOhm": 2.3017762434122746,
+     "branchMinHz": 20000,
+     "probes": [
+      {
+       "what": "pad aan de kop van tweeter",
+       "ohm": 0.2678417218849063,
+       "minOhm": 2.5480000120590103,
+       "minHz": 20000,
+       "passbandMaxAbsDb": 0.8824530458605493,
+       "atOldMinDb": -0.8824530458605493,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C·L2 (L 1.57 mH, tweeter)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met C·L2 haalt de vloer"
+      },
+      {
+       "what": "R in serie met C·L4 (L 0.39 mH, tweeter)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met C·L4 haalt de vloer"
+      },
+      {
+       "what": "de R van de val C·L9+C·C10+C·R11 (L 4.45 mH + C 0.2 µF + R 43.76 Ω, tweeter)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val C·L9+C·C10+C·R11 haalt de vloer"
+      },
+      {
+       "what": "de R van de val C·L12+C·C13+C·R14 (L 0.61 mH + C 54.7 µF + R 0.15 Ω, tweeter)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val C·L12+C·C13+C·R14 haalt de vloer"
+      }
+     ]
+    }
+   ],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.308713313626167,
+   "som_min_hz": 46.95130758876726,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.3076838642325788,
+     "min_hz": 47.495890981219816,
+     "bij_som_min_ohm": 2.30858386171526
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.7215159392469923,
+     "min_hz": 1637.6407760809004,
+     "bij_som_min_ohm": 42.071432157298716
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.3017762434122746,
+     "min_hz": 20000,
+     "bij_som_min_ohm": 391.05416273171863
+    }
+   ]
+  },
+  "houder": null,
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 2.20 Ω",
+   "zonder_min_ohm": 1.2391493117775985,
+   "zonder_min_hz": 705.6824136547027
+  }
+ },
+ "arm:v51b+band": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b, maar de M-1-oordeelband (52–19500) op het M-1-raster (20,5–20k/143) — op GEPOORTE data onder 397 Hz",
+  "refusal": null,
+  "tuned": 19,
+  "zaad": {
+   "som_min_ohm": 0.8303233771492151,
+   "som_min_hz": 1008.9463164309047,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.319665599265957,
+     "min_hz": 64.10221957251694,
+     "bij_som_min_ohm": 22.319657835907343
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 0.8355825049870478,
+     "min_hz": 1008.9463164309047,
+     "bij_som_min_ohm": 0.8355825049870478
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 4.72715251071825,
+     "min_hz": 13828.111852993878,
+     "bij_som_min_ohm": 39.859563382179935
+    }
+   ]
+  },
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.5968868440434045,
+   "som_min_hz": 1044.4630988203794,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.8333841710267973,
+     "min_hz": 135.64870074327902,
+     "bij_som_min_ohm": 12.276609370661427
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.886722922028947,
+     "min_hz": 888.7430947132374,
+     "bij_som_min_ohm": 2.8932998904829983
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 5.218344698951137,
+     "min_hz": 20000,
+     "bij_som_min_ohm": 47.07427278736064
+    }
+   ]
+  },
+  "houder": {
+   "groep": "B·L2",
+   "tak": "mid",
+   "rol": "pole",
+   "samenstelling": "L 1.25 mH",
+   "lift_ohm": 0.23187225063654493
+  },
+  "beschermer": {
+   "groep": "R5",
+   "tak": "woofer",
+   "rol": "series-pad",
+   "samenstelling": "R 1.00 Ω",
+   "zonder_min_ohm": 0.5099228490870716,
+   "zonder_min_hz": 1056.5777189845087
+  }
+ },
+ "arm:v51b+merged+band": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b, maar de gemergede meetset ÉN de M-1-band/het M-1-raster (= M-1 met plateau −2,5 en series-r-max 1,0)",
+  "refusal": null,
+  "tuned": 21,
+  "zaad": {
+   "som_min_ohm": 1.0917751974516783,
+   "som_min_hz": 705.6824136547027,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 1.9086157984352512,
+     "min_hz": 26.992743266091534,
+     "bij_som_min_ohm": 33.60107799354466
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 1.1245403426269207,
+     "min_hz": 705.6824136547027,
+     "bij_som_min_ohm": 1.1245403426269207
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 1.9289387221749503,
+     "min_hz": 19098.383361720284,
+     "bij_som_min_ohm": 24.789424903865196
+    }
+   ]
+  },
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.5925655280673956,
+   "som_min_hz": 34.78809628641769,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.6023312375855947,
+     "min_hz": 35.19159984075015,
+     "bij_som_min_ohm": 2.602613314089806
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.770363295822982,
+     "min_hz": 1256.1070605164164,
+     "bij_som_min_ohm": 96.90859649390691
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 5.392642145172292,
+     "min_hz": 20000,
+     "bij_som_min_ohm": 669.644850526196
+    }
+   ]
+  },
+  "houder": null,
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 3.19 Ω",
+   "zonder_min_ohm": 1.1807003239906368,
+   "zonder_min_hz": 1330.6639553509126
+  }
+ },
+ "arm:v51b+merged": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b, maar de GEMERGEDE meetset",
+  "refusal": null,
+  "tuned": 20,
+  "zaad": {
+   "som_min_ohm": 0.46616494319514373,
+   "som_min_hz": 985.9419935449844,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 1.8743785027044524,
+     "min_hz": 222.7278731445163,
+     "bij_som_min_ohm": 5.8136082602683725
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 0.468675595460698,
+     "min_hz": 985.9419935449844,
+     "bij_som_min_ohm": 0.468675595460698
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.5806041035965954,
+     "min_hz": 9783.91039153781,
+     "bij_som_min_ohm": 13.2669017730619
+    }
+   ]
+  },
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.599411254341961,
+   "som_min_hz": 132.55586373090696,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.579836505279816,
+     "min_hz": 191.71939761567336,
+     "bij_som_min_ohm": 2.6164047431944226
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.9783382949110813,
+     "min_hz": 878.5528504723388,
+     "bij_som_min_ohm": 26.80527906848834
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 5.410488628759545,
+     "min_hz": 20000,
+     "bij_som_min_ohm": 423.45173082282673
+    }
+   ]
+  },
+  "houder": {
+   "groep": "C2",
+   "tak": "woofer",
+   "rol": "pole",
+   "samenstelling": "C 131.3 µF",
+   "lift_ohm": 0.3081984488939917
+  },
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 7.21 Ω",
+   "zonder_min_ohm": 1.1026239860151812,
+   "zonder_min_hz": 1008.9463164309047
+  }
+ },
+ "arm:v51b+none+band": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b, maar 'none' ÉN de M-1-band/het M-1-raster",
+  "refusal": {
+   "by": "active-gate",
+   "kinds": [
+    "gate"
+   ],
+   "reason": "M-B/|Z|: 2.47 Ω falls below the stated floor of 2.60 Ω"
+  },
+  "tuned": 0,
+  "zaad": {
+   "som_min_ohm": 0.8300631685513467,
+   "som_min_hz": 1008.9463164309047,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.1313207456857493,
+     "min_hz": 63.36722958754449,
+     "bij_som_min_ohm": 21.703728043030523
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 0.8355825049870478,
+     "min_hz": 1008.9463164309047,
+     "bij_som_min_ohm": 0.8355825049870478
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 4.72715251071825,
+     "min_hz": 13828.111852993878,
+     "bij_som_min_ohm": 39.859563382179935
+    }
+   ]
+  },
+  "probe": {
+   "branches": [
+    {
+     "model": "woofer",
+     "branchMinOhm": 2.357739217774585,
+     "branchMinHz": 238.68473977375714,
+     "probes": [
+      {
+       "what": "pad aan de kop van woofer",
+       "ohm": 0.22439697664231062,
+       "minOhm": 2.5480000184783664,
+       "minHz": 244.25381062949288,
+       "passbandMaxAbsDb": 0.7539908222532166,
+       "atOldMinDb": -0.6792047869038347,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C2 (C 187.3 µF, woofer)",
+       "ohm": 18.489615213125944,
+       "minOhm": 2.5480000002577734,
+       "minHz": 64.10221957251694,
+       "passbandMaxAbsDb": 4.140130620178816,
+       "atOldMinDb": -4.081801849006061,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C4 (C 17.3 µF, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met C4 haalt de vloer"
+      },
+      {
+       "what": "de R van de val L5+C6+R7 (L 16.87 mH + C 386.0 µF + R 4.43 Ω, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val L5+C6+R7 haalt de vloer"
+      },
+      {
+       "what": "de R van de val L8+C9+R10 (L 1.21 mH + C 1.0 µF + R 0.81 Ω, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val L8+C9+R10 haalt de vloer"
+      }
+     ]
+    },
+    {
+     "model": "mid",
+     "branchMinOhm": 2.4530109530423845,
+     "branchMinHz": 429.7841181625739,
+     "probes": [
+      {
+       "what": "pad aan de kop van mid",
+       "ohm": 0.12713681068271399,
+       "minOhm": 2.54800001050747,
+       "minHz": 424.8562541251616,
+       "passbandMaxAbsDb": 0.4254561638189913,
+       "atOldMinDb": -0.3324619705092706,
+       "note": ""
+      },
+      {
+       "what": "R in serie met B·L2 (L 1.16 mH, mid)",
+       "ohm": 1.5360507480800152,
+       "minOhm": 2.548000001479181,
+       "minHz": 1185.7275769246367,
+       "passbandMaxAbsDb": 8.226898054498049,
+       "atOldMinDb": -8.190146073009672,
+       "note": ""
+      },
+      {
+       "what": "R in serie met B·L4 (L 20.60 mH, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·L4 haalt de vloer"
+      },
+      {
+       "what": "R in serie met B·C6 (C 22.9 µF, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·C6 haalt de vloer"
+      },
+      {
+       "what": "R in serie met B·C8 (C 2.4 µF, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·C8 haalt de vloer"
+      },
+      {
+       "what": "de R van de val B·L11+B·C12+B·R13 (L 18.33 mH + C 2.9 µF + R 1.80 Ω, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val B·L11+B·C12+B·R13 haalt de vloer"
+      }
+     ]
+    }
+   ],
+   "combined": {
+    "minOhm": 2.548000005902645,
+    "minHz": 429.7841181625739,
+    "using": [
+     "pad aan de kop van woofer 2.31 Ω (kost 5.75 dB in de doorlaatband)",
+     "pad aan de kop van mid 1.31 Ω (kost 3.62 dB in de doorlaatband)"
+    ]
+   }
+  },
+  "tune": {
+   "som_min_ohm": 2.475577033094577,
+   "som_min_hz": 135.64870074327902,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.357739217774585,
+     "min_hz": 238.68473977375714,
+     "bij_som_min_ohm": 2.4453288018960566
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.4530109530423845,
+     "min_hz": 429.7841181625739,
+     "bij_som_min_ohm": 18.846080745007402
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 5.748330573983619,
+     "min_hz": 13053.324892666667,
+     "bij_som_min_ohm": 234.52880308778433
+    }
+   ]
+  },
+  "houder": null,
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 1.36 Ω",
+   "zonder_min_ohm": 1.631937919433255,
+   "zonder_min_hz": 1068.8328553831386
+  }
+ },
+ "arm:v51b+none+merged": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b, maar 'none' ÉN de gemergede meetset",
+  "refusal": {
+   "by": "active-gate",
+   "kinds": [
+    "gate"
+   ],
+   "reason": "M-B/|Z|: 2.10 Ω falls below the stated floor of 2.60 Ω"
+  },
+  "tuned": 0,
+  "zaad": {
+   "som_min_ohm": 0.3471661995565931,
+   "som_min_hz": 505.0882021476707,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 0.3700384479965259,
+     "min_hz": 510.9466683063246,
+     "bij_som_min_ohm": 0.3953624718208303
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 0.468675595460698,
+     "min_hz": 985.9419935449844,
+     "bij_som_min_ohm": 2.382900353379196
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.5806041035965954,
+     "min_hz": 9783.91039153781,
+     "bij_som_min_ohm": 28.63965944097363
+    }
+   ]
+  },
+  "probe": {
+   "branches": [
+    {
+     "model": "woofer",
+     "branchMinOhm": 2.367407891537516,
+     "branchMinHz": 107.70818149707061,
+     "probes": [
+      {
+       "what": "pad aan de kop van woofer",
+       "ohm": 0.18317646998912096,
+       "minOhm": 2.5480000324520073,
+       "minHz": 107.70818149707061,
+       "passbandMaxAbsDb": 0.6394934467511606,
+       "atOldMinDb": -0.6382778971973222,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C2 (C 108.4 µF, woofer)",
+       "ohm": 21.11777358688414,
+       "minOhm": 2.548000000378707,
+       "minHz": 101.67330880934215,
+       "passbandMaxAbsDb": 3.0748926057216255,
+       "atOldMinDb": -0.7299290874292854,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C4 (C 0.3 µF, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met C4 haalt de vloer"
+      },
+      {
+       "what": "de R van de val L5+C6+R7 (L 17.19 mH + C 5.4 µF + R 11.85 Ω, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val L5+C6+R7 haalt de vloer"
+      },
+      {
+       "what": "de R van de val L8+C9+R10 (L 1.84 mH + C 20.8 µF + R 0.24 Ω, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val L8+C9+R10 haalt de vloer"
+      }
+     ]
+    },
+    {
+     "model": "mid",
+     "branchMinOhm": 2.326211104966487,
+     "branchMinHz": 1020.6489810854652,
+     "probes": [
+      {
+       "what": "pad aan de kop van mid",
+       "ohm": 0.22288753744214773,
+       "minOhm": 2.5480000345943346,
+       "minHz": 1020.6489810854652,
+       "passbandMaxAbsDb": 0.7658907112028643,
+       "atOldMinDb": -0.79068603714434,
+       "note": ""
+      },
+      {
+       "what": "R in serie met B·L2 (L 1.16 mH, mid)",
+       "ohm": 4.3158713867887855,
+       "minOhm": 2.548000001611338,
+       "minHz": 1493.3165058559443,
+       "passbandMaxAbsDb": 8.208872860549246,
+       "atOldMinDb": -1.9873269497344204,
+       "note": ""
+      },
+      {
+       "what": "R in serie met B·L4 (L 5.56 mH, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·L4 haalt de vloer"
+      },
+      {
+       "what": "R in serie met B·C6 (C 13.8 µF, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·C6 haalt de vloer"
+      },
+      {
+       "what": "R in serie met B·C8 (C 2.1 µF, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·C8 haalt de vloer"
+      },
+      {
+       "what": "de R van de val B·L11+B·C12+B·R13 (L 5.44 mH + C 4.5 µF + R 1.52 Ω, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val B·L11+B·C12+B·R13 haalt de vloer"
+      }
+     ]
+    }
+   ],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.097948872871505,
+   "som_min_hz": 829.3276706545386,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.367407891537516,
+     "min_hz": 107.70818149707061,
+     "bij_som_min_ohm": 3.843057235949067
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.326211104966487,
+     "min_hz": 1020.6489810854652,
+     "bij_som_min_ohm": 4.039934641149911
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.6504498817012867,
+     "min_hz": 8819.36549685626,
+     "bij_som_min_ohm": 19.844674666793203
+    }
+   ]
+  },
+  "houder": {
+   "groep": "B·L2",
+   "tak": "mid",
+   "rol": "pole",
+   "samenstelling": "L 1.16 mH",
+   "lift_ohm": 0.24030959406716468
+  },
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 5.42 Ω",
+   "zonder_min_ohm": 0.4210365396249631,
+   "zonder_min_hz": 1008.9463164309047
+  }
+ },
+ "arm:v51b+none": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b, maar lowestWayLevelWork 'none' (geen serie-R op de woofer)",
+  "refusal": {
+   "by": "active-gate",
+   "kinds": [
+    "gate"
+   ],
+   "reason": "M-B/|Z|: 2.24 Ω falls below the stated floor of 2.60 Ω"
+  },
+  "tuned": 0,
+  "zaad": {
+   "som_min_ohm": 0.5174361175370833,
+   "som_min_hz": 1020.6489810854652,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.101699211671429,
+     "min_hz": 99.35512241365379,
+     "bij_som_min_ohm": 11.723021448014135
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 0.5184467230717464,
+     "min_hz": 1020.6489810854652,
+     "bij_som_min_ohm": 0.5184467230717464
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.3204495894496424,
+     "min_hz": 8042.120262265171,
+     "bij_som_min_ohm": 16.329574667270762
+    }
+   ]
+  },
+  "probe": {
+   "branches": [
+    {
+     "model": "woofer",
+     "branchMinOhm": 2.313659182593689,
+     "branchMinHz": 107.70818149707061,
+     "probes": [
+      {
+       "what": "pad aan de kop van woofer",
+       "ohm": 0.2399659026414156,
+       "minOhm": 2.5480000054390026,
+       "minHz": 107.70818149707061,
+       "passbandMaxAbsDb": 0.848586836439218,
+       "atOldMinDb": -0.8376801882680296,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C2 (C 162.9 µF, woofer)",
+       "ohm": 14.979226789437234,
+       "minOhm": 2.5480000007880013,
+       "minHz": 101.67330880934215,
+       "passbandMaxAbsDb": 5.9794583999840905,
+       "atOldMinDb": -0.9869182425510514,
+       "note": ""
+      },
+      {
+       "what": "R in serie met C4 (C 0.3 µF, woofer)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met C4 haalt de vloer"
+      }
+     ]
+    },
+    {
+     "model": "mid",
+     "branchMinOhm": 2.215424268470657,
+     "branchMinHz": 535.0679778796745,
+     "probes": [
+      {
+       "what": "pad aan de kop van mid",
+       "ohm": 0.4151844186708331,
+       "minOhm": 2.54800002657136,
+       "minHz": 522.868244030006,
+       "passbandMaxAbsDb": 1.35208404645708,
+       "atOldMinDb": -1.2495987364137662,
+       "note": ""
+      },
+      {
+       "what": "R in serie met B·L2 (L 0.96 mH, mid)",
+       "ohm": 6.463694682344794,
+       "minOhm": 2.5480000016463014,
+       "minHz": 1545.8840176386475,
+       "passbandMaxAbsDb": 8.70168768700797,
+       "atOldMinDb": -8.70168768700797,
+       "note": ""
+      },
+      {
+       "what": "R in serie met B·L4 (L 12.44 mH, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·L4 haalt de vloer"
+      },
+      {
+       "what": "R in serie met B·C6 (C 17.2 µF, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·C6 haalt de vloer"
+      },
+      {
+       "what": "R in serie met B·C8 (C 3.7 µF, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in serie met B·C8 haalt de vloer"
+      },
+      {
+       "what": "de R van de val B·L11+B·C12+B·R13 (L 4.17 mH + C 1.3 µF + R 27.35 Ω, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val B·L11+B·C12+B·R13 haalt de vloer"
+      },
+      {
+       "what": "de R van de val B·L14+B·C15+B·R16 (L 0.61 mH + C 52.9 µF + R 9.82 Ω, mid)",
+       "ohm": null,
+       "minOhm": null,
+       "minHz": null,
+       "passbandMaxAbsDb": null,
+       "atOldMinDb": null,
+       "note": "geen R tot 47 Ω in de val B·L14+B·C15+B·R16 haalt de vloer"
+      }
+     ]
+    }
+   ],
+   "combined": {
+    "minOhm": 2.5480000033397214,
+    "minHz": 455.29418040695793,
+    "using": [
+     "pad aan de kop van woofer 1.48 Ω (kost 4.26 dB in de doorlaatband)",
+     "pad aan de kop van mid 2.56 Ω (kost 6.30 dB in de doorlaatband)"
+    ]
+   }
+  },
+  "tune": {
+   "som_min_ohm": 2.240532413926892,
+   "som_min_hz": 101.67330880934215,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.313659182593689,
+     "min_hz": 107.70818149707061,
+     "bij_som_min_ohm": 2.3233939494759497
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 2.215424268470657,
+     "min_hz": 535.0679778796745,
+     "bij_som_min_ohm": 24.255338208562154
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 3.743184957727691,
+     "min_hz": 10364.639535622176,
+     "bij_som_min_ohm": 228.04311080281073
+    }
+   ]
+  },
+  "houder": null,
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 4.58 Ω",
+   "zonder_min_ohm": 1.163473957156926,
+   "zonder_min_hz": 952.4152109588595
+  }
+ },
+ "arm:v51b+plateau0": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b, maar het plateau op 0 dB (vlak: de zoektocht meet tegen horizontaal)",
+  "refusal": null,
+  "tuned": 22,
+  "zaad": {
+   "som_min_ohm": 0.5175193383093485,
+   "som_min_hz": 1020.6489810854652,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.6784148526352185,
+     "min_hz": 99.35512241365379,
+     "bij_som_min_ohm": 12.256214654771316
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 0.5184467230717464,
+     "min_hz": 1020.6489810854652,
+     "bij_som_min_ohm": 0.5184467230717464
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.3204495894496424,
+     "min_hz": 8042.120262265171,
+     "bij_som_min_ohm": 16.329574667270762
+    }
+   ]
+  },
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.637019040898039,
+   "som_min_hz": 135.64870074327902,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.4904883406530587,
+     "min_hz": 235.94800312923255,
+     "bij_som_min_ohm": 2.6685150523931256
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 3.424344489726933,
+     "min_hz": 974.6372759259704,
+     "bij_som_min_ohm": 24.26671935787405
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 4.56949368470417,
+     "min_hz": 20000,
+     "bij_som_min_ohm": 341.36148193699177
+    }
+   ]
+  },
+  "houder": {
+   "groep": "C2",
+   "tak": "woofer",
+   "rol": "pole",
+   "samenstelling": "C 165.2 µF",
+   "lift_ohm": 0.5721598970912214
+  },
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 4.92 Ω",
+   "zonder_min_ohm": 1.4687767251941932,
+   "zonder_min_hz": 997.3778334220964
+  }
+ },
+ "arm:v51b": {
+  "label": "woofer→mid 429.1 LR4 · mid→tweeter 1994.6 LR4",
+  "what": "V51b-instellingen: gepoorte set · plateau −2,5 · series-r-max 1,0 · band 397–19500 op 200–20k/96",
+  "refusal": null,
+  "tuned": 34,
+  "zaad": {
+   "som_min_ohm": 0.5175193383093485,
+   "som_min_hz": 1020.6489810854652,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.6784148526352185,
+     "min_hz": 99.35512241365379,
+     "bij_som_min_ohm": 12.256214654771316
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 0.5184467230717464,
+     "min_hz": 1020.6489810854652,
+     "bij_som_min_ohm": 0.5184467230717464
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 2.3204495894496424,
+     "min_hz": 8042.120262265171,
+     "bij_som_min_ohm": 16.329574667270762
+    }
+   ]
+  },
+  "probe": {
+   "branches": [],
+   "combined": null
+  },
+  "tune": {
+   "som_min_ohm": 2.5965739394091436,
+   "som_min_hz": 135.64870074327902,
+   "takken": [
+    {
+     "tak": "woofer",
+     "min_ohm": 2.446300169999925,
+     "min_hz": 235.94800312923255,
+     "bij_som_min_ohm": 2.6326825735260946
+    },
+    {
+     "tak": "mid",
+     "min_ohm": 3.1566038841467274,
+     "min_hz": 985.9419935449844,
+     "bij_som_min_ohm": 22.575328656615543
+    },
+    {
+     "tak": "tweeter",
+     "min_ohm": 4.681273740678194,
+     "min_hz": 20000,
+     "bij_som_min_ohm": 307.11914954371485
+    }
+   ]
+  },
+  "houder": {
+   "groep": "C2",
+   "tak": "woofer",
+   "rol": "pole",
+   "samenstelling": "C 160.2 µF",
+   "lift_ohm": 0.3523569884736326
+  },
+  "beschermer": {
+   "groep": "B·R9",
+   "tak": "mid",
+   "rol": "series-pad",
+   "samenstelling": "R 6.69 Ω",
+   "zonder_min_ohm": 1.1807161086335878,
+   "zonder_min_hz": 1020.6489810854652
+  }
+ }
+}

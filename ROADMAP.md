@@ -126,7 +126,18 @@ de app byte-identiek aan vóór F1.
    tegelijk; het minimum zit bij M-T ≥ 1727 Hz in de mid- en tweetertak (84 van
    115 onoplosbaar met 20 Ω op de woofer). De vraag is dus de HP-ladder van de
    mid en de tweetertak, en de tweetereis van −20 dB op 1294–1495 Hz — niet het
-   wooferpad. Oorspronkelijke formulering (V51b):
+   wooferpad. **GEDIAGNOSTICEERD (M-1-diagnose, 04-09-2026):** het minimum is de
+   serieresonantie van C_serie met L_shunt in de HP-ladder van mid of tweeter,
+   2,6 octaaf onder het kruispunt, op ideale spoelen zonder DCR; wat haar in
+   V51b en in HUIDIG boven de vloer houdt is een PAD in serie in het mid-pad
+   (B·R9, 4–8 Ω), en het verbod op de woofer-R (`'none'`) is de factor die de
+   weigering naar de mid-/tweetertak verplaatst — niet de meetset, het plateau
+   of de band. Op 429,1·1994,6 tilt 0,24 Ω in serie met de shunt-spoel van de
+   tweeter-HP het systeem naar de vloer zonder verlies in de doorlaatband; dat
+   element (een gedempte shunt-pool) bestaat niet in het synthese-vocabulaire,
+   en dat is de aanbeveling: één arm met dat slot vóór enige regeneratie
+   (casusboek M-1-diagnose, `scripts/measure-m1-diagnose*.ts`).
+   Oorspronkelijke formulering (V51b):
    zonder wooferpad haalde op casus 1 één kandidaat van vijftien de gestelde
    2,6 Ω (V51); met 1,0 Ω serieweerstand op DCR-schaal zes (V51b), en vier
    kandidaten halen haar ook met 20 Ω niet omdat hun minimum in de mid- en
