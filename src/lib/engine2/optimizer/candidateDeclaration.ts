@@ -335,7 +335,17 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
   if (s.zFloorBarrierSource !== undefined) {
     stated.zFloorBarrierSource = s.zFloorBarrierSource;
   } else if (stated.zFloorBarrier === true) {
-    stated.zFloorBarrierSource = 'safety';
+    /* A5e.3b (c2) — `'safety-extended'` and no longer `'safety'`: the safety
+     * grid spans the drivers' RESPONSE extent, the sweeps the gate judges on
+     * reach further (10 Hz against 20.5 on the merged set), and the A5e.3-veld
+     * field delivered a design whose minimum sits between the two floors
+     * (KAND_V2_2, 2.55 Ω at 10.07 Hz) — passed within the tolerance because
+     * the barrier could not see it. The extended source is the same reader
+     * over the union of the two extents, at the safety resolution where the
+     * responses live and the gate's own points where only the sweeps do. An
+     * explicit `'safety'` still wins, which is what keeps the A5e.3-veld
+     * corpus reproducible as the run its generator made. */
+    stated.zFloorBarrierSource = 'safety-extended';
   } else {
     absent.push({
       key: 'zFloorBarrierSource',
@@ -703,7 +713,7 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
  * thing for both.
  */
 export type StatedByDesignerChain = Partial<
-  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork'>
+  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry'>
 >;
 
 export interface ChainDeclarationInput {
@@ -728,6 +738,23 @@ export interface ChainDeclarationInput {
    * derived from nothing (P4).
    */
   lowestWaySeriesRMaxOhm?: number;
+  /**
+   * A5e.3b — the single-part SPAN of the lowest way's stated coil family,
+   * henry (`rangeH[1]` of its fit, A5e.3). Resolved by the caller from the
+   * stated model, because this layer must not read a catalogue: what it
+   * derives is the FOURTH chain key, `lowestWayCoilMaxHenry` — a ceiling on
+   * every coil the design and synthesis steps may propose on that way. Absent
+   * = no family stated = no span = the key is absent (P4).
+   */
+  lowestWayCoilSpanH?: number;
+  /**
+   * A5e.3b — TRUE when the project STATES the stack exception: coils above the
+   * single-part span may be built as a stack (two in series add L and DCR),
+   * so the span caps nothing and the out-of-range flag does the talking. A
+   * stated act, never a default: the derivation then declares the key ABSENT
+   * with this reason rather than deriving a cap the designer lifted.
+   */
+  coilStackAllowed?: boolean;
 }
 
 /**
@@ -824,6 +851,42 @@ export function declareCandidateChainChoices(
         'quietest way and padded to realise it. Absent rather than a stated \'allowed\' (P4): ' +
         'naming it here would claim somebody decided the lowest way may be padded, and with ' +
         'nothing stated nobody decided anything',
+    });
+  }
+
+  /* ---- A5e.3b: THE COIL-SPAN CEILING OF THE LOWEST WAY ------------------
+   *
+   * DERIVED from the stated coil family (A5e.3), in the shape every other
+   * derivation here takes: a family that is stated and whose span never
+   * reaches the step that seeds the coils is a statement that decides
+   * nothing — the A5e.3-veld corpus seeded 22–36 mH traps against a family
+   * whose largest single part is 22.0 mH, flagged them out-of-range and built
+   * them anyway. An explicit value wins; the STACK EXCEPTION is a stated act
+   * and produces an absent key with that reason (a lifted cap is a decision,
+   * not a hole); no family, no span, absent with the P4 reason. */
+  if (s.lowestWayCoilMaxHenry !== undefined) {
+    stated.lowestWayCoilMaxHenry = s.lowestWayCoilMaxHenry;
+  } else if (input.coilStackAllowed === true) {
+    absent.push({
+      key: 'lowestWayCoilMaxHenry',
+      why:
+        'the project states the STACK EXCEPTION (A5e.3b): coils above the family\'s single-part ' +
+        'span may be built as a series stack, so no span ceiling is derived and the ' +
+        'out-of-range flag on each coil says when a value needs one',
+    });
+  } else if (
+    typeof input.lowestWayCoilSpanH === 'number' &&
+    Number.isFinite(input.lowestWayCoilSpanH) &&
+    input.lowestWayCoilSpanH > 0
+  ) {
+    stated.lowestWayCoilMaxHenry = input.lowestWayCoilSpanH;
+  } else {
+    absent.push({
+      key: 'lowestWayCoilMaxHenry',
+      why:
+        'this project states no coil family for its lowest way (A5e.3), so there is no ' +
+        'catalogue span to cap the coils with — the design and synthesis steps keep their own ' +
+        'behaviour and every coil value is free (P4)',
     });
   }
   return { stated, absent };

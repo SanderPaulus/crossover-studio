@@ -49,7 +49,7 @@ export interface XoLimit {
   side: 'floor' | 'ceiling';
   hz: number;
   /** Short machine-readable tag, for tests and for the UI to group on. */
-  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive';
+  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive' | 'drive-stated';
   /** Human sentence — always shown next to the number. */
   source: string;
   /** Set when this limit carries an uncalibrated component. */
@@ -138,14 +138,36 @@ export interface XoWindowInput {
    * handover below which a filter of the candidate's order cannot hold that
    * drive under the ceiling (the inversion of A5d.3(ii), see `crossoverWindow`).
    *
-   * Absent or null = no such floor; k·f_s alone (P4). The STATED M-C figure is
-   * deliberately NOT fed here: it is passband-relative, it is a project
-   * convention rather than a driver property, and the order derivation
-   * already reads it as a demand at the reference crossing (A5d.3(ii)).
+   * Absent or null = no such floor; k·f_s alone (P4).
    */
   upperDriveCeilingDb?: number | null;
   /** Where that ceiling came from — attribution, exactly as every limit has. */
   upperDriveCeilingSource?: string;
+  /**
+   * A5e.3b — THE STATED M-C FIGURE of the upper driver (dB, negative,
+   * passband-relative: how far under its own passband drive the way must sit
+   * at f_s). Until A5e.3b it was deliberately NOT fed here — "a project
+   * convention rather than a driver property" — and the M-T floor stood on
+   * k·f_s while the field laid positions the requirement then refused with
+   * 0.4 dB to spare (two 1495 Hz candidates at −20.4/−21.2 against −20). A
+   * position a stated requirement forbids at the stated order is not a
+   * position, so the floor now takes the STRICTEST known bound: the same
+   * A5d.3(ii) inversion, with the stated figure as the demanded attenuation.
+   *
+   * DELIBERATELY STRICT, and the strictness is stated on the limit itself: the
+   * inversion reads the bare ladder's asymptotic slope with the passband at
+   * the input. A real network has more tools — an L-pad across the way loads
+   * the driver's resonance peak and restores the ladder's division there, so a
+   * padded way can meet the stated figure at a handover this floor forbids.
+   * The floor assumes no pad for the same reason the excursion floor does not:
+   * a floor that assumes a pad assumes a design (Sander, 05-09-2026).
+   *
+   * Absent or null = no such floor (P4): a project that states no figure for
+   * this driver gets exactly the window it always got.
+   */
+  upperStatedDriveLimitDb?: number | null;
+  /** Where that figure came from — attribution, exactly as every limit has. */
+  upperStatedDriveLimitSource?: string;
   /** Breakups of the LOWER driver, ascending, with their height over trend. */
   lowerBreakups: readonly { fHz: number; dB: number }[];
   /** -6 dB@theta point of the LOWER driver, when it was measured off axis. */
@@ -231,6 +253,31 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
         `takes ${octaves.toFixed(2)} octaves at order ${input.order} (${DB_PER_OCTAVE_PER_ORDER} dB/oct per order) - ` +
         `the excursion ceiling of M-C v2.0 (${input.upperDriveCeilingSource ?? 'source not stated'}), read as ` +
         'A5d.3(ii) inverted, with the passband at the input',
+    });
+  }
+
+  /* A5e.3b — THE SAME INVERSION ON THE STATED FIGURE. The stated M-C figure is
+   * passband-relative, and with the passband taken at the input — the same
+   * strictest honest reading the excursion floor takes — the demanded
+   * attenuation at f_s is the figure itself. The floor combination below takes
+   * the HIGHEST floor, so whichever of the two demands more is what binds and
+   * `floorBy` says which. See `upperStatedDriveLimitDb` for why the floor is
+   * deliberately strict (a pad can meet the requirement where this assumes
+   * none). */
+  const statedLimit = input.upperStatedDriveLimitDb ?? null;
+  if (input.upperFsHz !== null && statedLimit !== null && Number.isFinite(input.order) && input.order > 0) {
+    const needDb = Math.abs(statedLimit);
+    const octaves = needDb / (DB_PER_OCTAVE_PER_ORDER * input.order);
+    limits.push({
+      side: 'floor',
+      hz: input.upperFsHz * 2 ** octaves,
+      rule: 'drive-stated',
+      source:
+        `${needDb.toFixed(1)} dB of attenuation at ${input.upper}'s resonance (${input.upperFsHz.toFixed(0)} Hz) ` +
+        `takes ${octaves.toFixed(2)} octaves at order ${input.order} (${DB_PER_OCTAVE_PER_ORDER} dB/oct per order) - ` +
+        `the STATED M-C figure (${input.upperStatedDriveLimitSource ?? 'source not stated'}), read as A5d.3(ii) ` +
+        'inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated ' +
+        'figure below this floor, and the floor assumes no pad (A5e.3b)',
     });
   }
 

@@ -1,0 +1,220 @@
+{
+ "_": "A5e.3b (a) — de ablatietabel op KAND_V2_5 (scripts/measure-a5e3b-ablatie.ts). Documentatie, geen acceptatiewaarde; Sander kiest.",
+ "val": "L 27.85 mH + C 279.9 µF",
+ "rijen": [
+  {
+   "arm": "met val (geleverd)",
+   "crossingsHz": [
+    478.7819795637668,
+    1974.0056163997979
+   ],
+   "minZ": {
+    "ohm": 2.695461286562023,
+    "hz": 53.30150987961939,
+    "branch": "woofer"
+   },
+   "gateMinZ": 2.694128270202783,
+   "floorPass": true,
+   "resonantDb": -0.9271214614688841,
+   "liftDb": 1.6993777208346366,
+   "rmsFull": 1.0291401402948404,
+   "windowFull": 2.5024341400263888,
+   "rms397": 0.8497574837404489,
+   "window397": 2.106242925291438,
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 3.8363493813744642
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 5.826893359607152
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -30.3059220399136,
+     "limit": -13.86181170720422,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -23.97340616503477,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "dissPct": 13.804368076170077,
+   "trap": {
+    "lMh": 27.85,
+    "cUf": 279.9,
+    "rOhm": null,
+    "dcrOhm": 2.118
+   },
+   "tune": null
+  },
+  {
+   "arm": "zonder val (waarden vast)",
+   "crossingsHz": [
+    479.281755397424,
+    1974.0056163997979
+   ],
+   "minZ": {
+    "ohm": 3.010182373298206,
+    "hz": 909.4795409212998,
+    "branch": "mid"
+   },
+   "gateMinZ": 3.010162829334721,
+   "floorPass": true,
+   "resonantDb": 2.287983755639943,
+   "liftDb": 1.6993777208359777,
+   "rmsFull": 1.7366473029131975,
+   "windowFull": 3.9933009659630976,
+   "rms397": 0.846237671650352,
+   "window397": 2.07642320791656,
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 3.6591153754474077
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 5.826893359607155
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -30.306626199962146,
+     "limit": -13.86181117336506,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -23.973406233150193,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "dissPct": 14.047668044911758,
+   "trap": {
+    "lMh": null,
+    "cUf": null,
+    "rOhm": null,
+    "dcrOhm": null
+   },
+   "tune": null
+  },
+  {
+   "arm": "zonder val, herpolijst",
+   "crossingsHz": [
+    462.9920556392529,
+    2151.253085078482
+   ],
+   "minZ": {
+    "ohm": 2.6623510732319935,
+    "hz": 963.462177129648,
+    "branch": "mid"
+   },
+   "gateMinZ": 2.6622000230053766,
+   "floorPass": true,
+   "resonantDb": 1.3661038554370766,
+   "liftDb": 1.5348570780545865,
+   "rmsFull": 1.4017449097676942,
+   "windowFull": 3.565659291600287,
+   "rms397": 0.8855140617963588,
+   "window397": 2.0435369856036782,
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 7.156062738865231
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 3.7664359449934652
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -31.793383493145168,
+     "limit": -15.516429608402037,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -28.847515153308294,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "dissPct": 10.744701445204507,
+   "trap": {
+    "lMh": null,
+    "cUf": null,
+    "rOhm": null,
+    "dcrOhm": null
+   },
+   "tune": {
+    "evaluations": 83329,
+    "audited": []
+   }
+  },
+  {
+   "arm": "bouwbare val (L ≤ 22 mH), herpolijst",
+   "crossingsHz": [
+    454.88677906531865,
+    2102.1656105635257
+   ],
+   "minZ": {
+    "ohm": 2.58876824517591,
+    "hz": 50.898633471974605,
+    "branch": "woofer"
+   },
+   "gateMinZ": 2.5878484018753256,
+   "floorPass": true,
+   "resonantDb": -1.4764720264154994,
+   "liftDb": 1.6967774530324995,
+   "rmsFull": 0.8634076043404906,
+   "windowFull": 1.9268736551579746,
+   "rms397": 0.7251935792614466,
+   "window397": 1.7037117509991795,
+   "mk": [
+    {
+     "pair": "woofer→mid",
+     "deg": 3.9028480363239115
+    },
+    {
+     "pair": "mid→tweeter",
+     "deg": 4.719472063553876
+    }
+   ],
+   "mc": [
+    {
+     "way": "mid",
+     "db": -28.328221597794503,
+     "limit": -14.289734290076277,
+     "pass": true
+    },
+    {
+     "way": "tweeter",
+     "db": -27.49931426331122,
+     "limit": -20,
+     "pass": true
+    }
+   ],
+   "dissPct": 13.162851822333065,
+   "trap": {
+    "lMh": 22,
+    "cUf": 377.1,
+    "rOhm": null,
+    "dcrOhm": 1.847
+   },
+   "tune": {
+    "evaluations": 73882,
+    "audited": []
+   }
+  }
+ ]
+}

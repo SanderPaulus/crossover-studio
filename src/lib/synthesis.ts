@@ -173,6 +173,19 @@ interface ZInfo {
    * only go UP. Undefined = not stated, byte-identical.
    */
   seriesRMaxOhm?: number;
+  /**
+   * A5e.3b — the CATALOGUE SPAN of this branch's stated coil family, henry: a
+   * hard ceiling on EVERY coil slot this derivation proposes, seed and
+   * delivery both. The slot it exists for is the damped trap on a reflex
+   * woofer — `X/ω₀` at ~48 Hz seeds 22–36 mH against a family whose largest
+   * single part is 22.0 mH, and until A5e.3b such a coil was flagged as
+   * out-of-range and built anyway. Ladder poles (1–3 mH here) sit far inside
+   * any span and are capped identically for the same one rule. A stack of two
+   * coils remains a stated exception the CALLER makes by not passing this
+   * (`coilStackAllowed` in the chain declaration). Undefined = no cap,
+   * byte-identical.
+   */
+  coilMaxHenry?: number;
 }
 
 /** Floor of a proposed series pad resistor, Ω — the same floor the L-pad's series R has always had. */
@@ -428,6 +441,21 @@ function deriveTopology(
     rungs.push({ type: 'notch', lSlot: li, cSlot: li + 1, rSlot: li + 2 });
   }
 
+  /* A5e.3b — the coil-span ceiling, applied to every L slot at derivation:
+   * the SEED starts inside the family (a trap seeded at 28 mH against a 22 mH
+   * span would spend the fit defending a coil no single part builds), and the
+   * delivered value is clamped by the same `maxValue` mechanism the V51b
+   * series-R cap uses. The tuner's box holds the same number afterwards
+   * (`searchBoxFor`, reading the same stated chain key). */
+  if (zInfo.coilMaxHenry !== undefined && zInfo.coilMaxHenry > 0) {
+    for (const s of slots) {
+      if (s.kind !== 'L') continue;
+      s.maxValue = Math.min(s.maxValue ?? Infinity, zInfo.coilMaxHenry);
+      s.initial = Math.min(s.initial, s.maxValue);
+      if (s.altInitial !== undefined) s.altInitial = Math.min(s.altInitial, s.maxValue);
+    }
+  }
+
   if (slots.length === 0) {
     throw new SynthesisError('Target spec has no active blocks to synthesise.');
   }
@@ -578,6 +606,12 @@ export interface SynthesizeOptions {
    * the maximum. See `ZInfo.seriesRMaxOhm`. Undefined = byte-identical.
    */
   seriesRMaxOhm?: number;
+  /**
+   * A5e.3b — hard ceiling (henry) on every coil slot this branch proposes,
+   * from the stated coil family's single-part span. See `ZInfo.coilMaxHenry`.
+   * Undefined = byte-identical.
+   */
+  coilMaxHenry?: number;
 }
 
 export function synthesize(
@@ -679,6 +713,7 @@ export function synthesize(
     zobelOk: allowCorr,
     ...(opts.noLevelWork === true ? { noLevelWork: true } : {}),
     ...(opts.seriesRMaxOhm !== undefined ? { seriesRMaxOhm: opts.seriesRMaxOhm } : {}),
+    ...(opts.coilMaxHenry !== undefined ? { coilMaxHenry: opts.coilMaxHenry } : {}),
   });
   // Acoustic mode: the target is the ideal crossover SHAPE (HP/LP/gain) only.
   // EQ bands stay in the TOPOLOGY as free tools — the optimiser may move and

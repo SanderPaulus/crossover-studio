@@ -127,6 +127,7 @@ import {
   gateVerdicts,
   isHighPassProtected,
   resistorJudgementPowerW,
+  statedDriveLimitDb,
   violationText,
   type GateSettings,
   type GateVerdict,
@@ -1013,6 +1014,14 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         upperDriveCeilingSource:
           'driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; ' +
           'the ceiling the M-C gate judges the way against',
+        /* A5e.3b — the STATED M-C figure of the upper driver, through the ONE
+         * rule the gate reads it by (per-way first, then the single field). It
+         * used to be deliberately withheld from the windows; A5e.3b feeds it,
+         * and the window takes the strictest known floor — see `xoWindow.ts`. */
+        upperStatedDriveLimitDb: statedDriveLimitDb(input.settings, upper) ?? null,
+        upperStatedDriveLimitSource:
+          'the stated maximum drive on the driver\'s own resonance (gestelde_eisen, V47b/V50), ' +
+          'passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads',
         lowerBreakups: dLower?.breakups?.peaks.map((p) => ({ fHz: p.fHz, dB: p.dB })) ?? [],
         significantBreakupDb: input.settings.significantBreakupDb,
         lowerMinus6Hz: dir?.minus6Hz ?? null,

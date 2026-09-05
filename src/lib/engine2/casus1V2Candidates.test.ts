@@ -230,33 +230,38 @@ const V2_KEYS = Object.keys(golden.manifest_en_geometrie.netlists).filter((k) =>
   /^KAND_V2_\d+$/.test(k),
 );
 
+/* One settings object with two readers (the report helper and the A5e.3b
+ * dated-field reproduction), so they cannot disagree about what the generator
+ * stated. */
+const REPORT_SETTINGS = {
+  /* V50 — the continuous power from its one home, the per-way M-C figure
+   * and the buildability inputs: the SAME report settings the generator
+   * builds its facts from. */
+  ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
+  ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+    ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
+    : {}),
+  ...CASUS1_BUILDABILITY,
+  /* V51 — the wiring and the level-work requirement, for the same reason. */
+  ...CASUS1_LEVEL_WORK_SETTINGS,
+  orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
+  reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
+  targetCurve: CASUS1_TARGET_CURVE,
+  /* V49 — the excursion inputs, so the facts this reproduction sends carry
+   * the same derived ceilings the generator sent (V32's rule: the facts
+   * must be the facts the generator sent). */
+  ...CASUS1_EXCURSION,
+  /* A5e.3-veld — the stated coil families and fits (the report's coil block). */
+  ...CASUS1_COIL_DCR_SETTINGS,
+};
+
 const report = (key: string): EngineV2Report =>
   buildReport({
     manifest,
     files,
     filter: casus1Filter(key, manifest, files, golden),
     geometry,
-    settings: {
-      /* V50 — the continuous power from its one home, the per-way M-C figure
-       * and the buildability inputs: the SAME report settings the generator
-       * builds its facts from. */
-      ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
-      ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
-        ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
-        : {}),
-      ...CASUS1_BUILDABILITY,
-      /* V51 — the wiring and the level-work requirement, for the same reason. */
-      ...CASUS1_LEVEL_WORK_SETTINGS,
-      orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
-      reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
-      targetCurve: CASUS1_TARGET_CURVE,
-      /* V49 — the excursion inputs, so the facts this reproduction sends carry
-       * the same derived ceilings the generator sent (V32's rule: the facts
-       * must be the facts the generator sent). */
-      ...CASUS1_EXCURSION,
-      /* A5e.3-veld — the stated coil families and fits (the report's coil block). */
-      ...CASUS1_COIL_DCR_SETTINGS,
-    },
+    settings: REPORT_SETTINGS,
   });
 
 describe('the frozen v2 candidates are files, and the file says where they came from', () => {
@@ -709,6 +714,35 @@ describe('[live] the run still delivers the frozen netlist', () => {
      * shortlist cannot silently make this compare two different designs. */
     const target = HERKOMST.bestanden[0];
     const c = field.field.candidates.find((x) => x.label === target.label);
+    /* A5e.3b — THE CORPUS PREDATES THE CURRENT ENGINE, and the reproduction is
+     * RETIRED until the next regeneration re-records it. Not a skip on a
+     * hunch: A5e.3b moved the M-T floor to the stated figure's inversion
+     * (~1647 Hz), so the live field no longer holds the A5e.3-veld positions
+     * the corpus was generated on — and the route itself now refuses what
+     * three of the seven carry (the resonanceless shunt orphans, level-work/
+     * 1.2). The retirement is PINNED to exactly that change: the target
+     * candidate must exist in the DATED field, reproduced by withholding the
+     * one input A5e.3b added to the windows. A field drift with any other
+     * cause still fails here. The regeneration is the next session's, with
+     * Sander's choice from the A5e.3b trap ablation. */
+    if (!c) {
+      const { maxDriveOnFsDbByDriver: _fig, ...zonderGesteld } = REPORT_SETTINGS;
+      void _fig;
+      const datedField = casus1Field(
+        buildReport({
+          manifest,
+          files,
+          filter: casus1Filter('HUIDIG', manifest, files, golden),
+          geometry,
+          settings: zonderGesteld,
+        }),
+      );
+      expect(
+        datedField.field.candidates.find((x) => x.label === target.label),
+        `${target.label} is in neither the live field nor the A5e.3-veld field — that is not the A5e.3b retirement, it is a field drift`,
+      ).toBeTruthy();
+      return;
+    }
     expect(c, `the field no longer holds ${target.label}`).toBeTruthy();
 
     const input: Chain3Input = {

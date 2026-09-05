@@ -32,6 +32,7 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1Manifest,
+  casus1MaxDriveOnFsDbByDriver,
   loadGolden,
 } from '../casus1.fixture.ts';
 import { buildReport, type EngineV2Report } from '../report.ts';
@@ -67,6 +68,13 @@ const report = (candidate: 'HUIDIG' | 'KAND_A' | 'KAND_B'): EngineV2Report =>
        * the inputs derives no ceiling and builds M-1's field. Read, never
        * written here (P6). */
       ...casus1ExcursionSettings(golden),
+      /* A5e.3b — the stated M-C figure per way: the mid→tweeter window stands
+       * on the STRICTEST of stated and derived since A5e.3b, and a report
+       * without the figure builds A5e.3-veld's field. Read, never written
+       * here (P6). */
+      ...(Object.keys(casus1MaxDriveOnFsDbByDriver(golden)).length > 0
+        ? { maxDriveOnFsDbByDriver: casus1MaxDriveOnFsDbByDriver(golden) }
+        : {}),
     },
   });
 
@@ -102,28 +110,36 @@ describe('the field casus 1 implies', () => {
     expect(near(win(0, '4').ceilingHz!, wm.venster[1])).toBe(true);
     /* A5e.3-veld — the lower axis stands on the DRIVE floor (the mid's excursion
      * ceiling, A5d.3(ii) inverted) and that lies ABOVE M-1's k·f_s floor, which
-     * the reference keeps as its bridge. The upper axis still stands on k·f_s:
-     * the tweeter's drive floor lies under it. */
+     * the reference keeps as its bridge. A5e.3b — the upper axis stands on the
+     * STATED figure's floor now (the strictest of stated and derived): the
+     * tweeter's excursion floor lies under k·f_s, but the stated −20 dB at the
+     * stated order inverts to ~1647 Hz, above it. */
     expect(win(0, '4').floorBy!.rule).toBe('drive');
     expect(wm.vloer_bindend).toBe('aandrijving_excursie');
     expect(win(0, '4').floorHz!).toBeGreaterThan(wm._k_fs_tot_A5e3veld.venster[0]);
     expect(near(win(1, '4').floorHz!, mt.venster[0])).toBe(true);
     expect(near(win(1, '4').ceilingHz!, mt.venster[1])).toBe(true);
-    expect(win(1, '4').floorBy!.rule).toBe('fs');
-    expect(mt.vloer_bindend).toBe('fs');
+    expect(win(1, '4').floorBy!.rule).toBe('drive-stated');
+    expect(mt.vloer_bindend).toBe('aandrijving_gesteld');
+    // ...and the A5e.3-veld reading (k·f_s bound) stays as the bridge.
+    const mtBridge = (golden.kruisvensters.mid_tweeter_orde4 as unknown as { _excursievloer_tot_A5e3b: { venster: [number, number]; vloer_bindend: string } })._excursievloer_tot_A5e3b;
+    expect(mtBridge.vloer_bindend).toBe('fs');
+    expect(win(1, '4').floorHz!).toBeGreaterThan(mtBridge.venster[0]);
     // Order 4 is STATED on both axes since A5e.3-veld: no second-order window is built.
     expect(axes[0].window['2']).toBeUndefined();
     expect(axes[1].window['2']).toBeUndefined();
   });
 
-  it('places four LR4 positions on the lower axis and five on the upper under a budget of 24, and says why', () => {
+  it('places eight LR4 positions on the lower axis and three on the upper under a budget of 24, and says why', () => {
     /* The count is derived: `1 + floor(span / smoothing)`, over the A5d.3
-     * WINDOW, per order. On the merged set with the drive floor the W-M window
-     * spans ~148–550 Hz (1.89 octaves ⇒ twelve at the acceptance smoothing);
-     * M-T spans 0.83 octaves at the stated order 4 ⇒ five. 12 × 5 = 60 offered,
-     * and the STATED budget of 24 thins POSITIONS on the widest axis one at a
-     * time: 5 × 5 = 25 still exceeds it, so the lower axis goes to four and
-     * the field is 4 × 5 = 20. Orders are never thinned (there is one). */
+     * WINDOW, per order. On the merged set the W-M window spans ~148–550 Hz
+     * (1.89 octaves ⇒ twelve at the acceptance smoothing); the M-T window
+     * spans 1647–2304 Hz since A5e.3b (0.48 octaves at the stated-figure
+     * floor) ⇒ three. 12 × 3 = 36 offered, and the STATED budget of 24 thins
+     * POSITIONS on the widest axis one at a time: the lower axis goes from
+     * twelve to eight and the field is 8 × 3 = 24. Orders are never thinned
+     * (there is one). The A5e.3-veld field was 4 × 5 = 20 out of 60 — the
+     * axes traded places when the M-T floor moved to 1647 Hz. */
     const wm = FIELD.field.axes[0].positionsByOrder;
     const mt = FIELD.field.axes[1].positionsByOrder;
     expect(FIELD.field.axes[0].orders).toEqual([CASUS1_FIELD_STATED_ORDER]);
@@ -131,17 +147,17 @@ describe('the field casus 1 implies', () => {
     expect(wm).toHaveLength(1);
     expect(mt).toHaveLength(1);
     expect(wm[0].derivedCount).toBe(12);
-    expect(wm[0].count).toBe(4);
-    expect(mt[0].derivedCount).toBe(5);
-    expect(mt[0].count).toBe(5);
+    expect(wm[0].count).toBe(8);
+    expect(mt[0].derivedCount).toBe(3);
+    expect(mt[0].count).toBe(3);
     expect(FIELD.field.parameters.chainBudget).toBe(CASUS1_FIELD_CHAIN_BUDGET);
-    expect(FIELD.field.parameters.derivedSize).toBe(60);
+    expect(FIELD.field.parameters.derivedSize).toBe(36);
     expect(FIELD.field.parameters.deliveredSize).toBe(wm[0].count * mt[0].count);
-    expect(FIELD.field.candidates).toHaveLength(20);
+    expect(FIELD.field.candidates).toHaveLength(24);
     expect(FIELD.field.candidates.length).toBeLessThanOrEqual(CASUS1_FIELD_CHAIN_BUDGET);
     // The thinning is said out loud, with both numbers.
-    expect(FIELD.notes.join(' ')).toContain('offered 60 candidates and the stated budget is 24');
-    expect(FIELD.notes.join(' ')).toContain('20 are delivered');
+    expect(FIELD.notes.join(' ')).toContain('offered 36 candidates and the stated budget is 24');
+    expect(FIELD.notes.join(' ')).toContain('24 are delivered');
     // The lowest position is the drive floor itself, and no position lies under it.
     for (const h of wm[0].hz) expect(h).toBeGreaterThanOrEqual(FIELD.field.axes[0].window['4'].floorHz! - 0.5);
     // The stated order is said out loud on both axes.
@@ -163,7 +179,11 @@ describe('the field casus 1 implies', () => {
      * synthesis. What replaces the gap is not silence — the zone travels with
      * every candidate, attributed, and a position genuinely sits inside it. */
     const rec = FIELD.field.axes[1].recommended['4'];
-    expect(rec.segments).toHaveLength(2); // `recommendedBand` is untouched
+    /* One segment since A5e.3b: the stated-figure floor (1647 Hz) lands INSIDE
+     * the worst lobing zone (~1327–1858 Hz on 129.2 mm), so the zone now cuts
+     * the recommendation at the bottom edge instead of splitting it in two.
+     * `recommendedBand` itself is untouched. */
+    expect(rec.segments).toHaveLength(1);
     const zone = rec.worstZoneHz!;
     const inZone = FIELD.field.candidates.filter(
       (c) => c.crossings[1].hz > zone[0] && c.crossings[1].hz < zone[1],

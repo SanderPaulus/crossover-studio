@@ -1182,6 +1182,13 @@ const meetopstelling = {
         '`minImpedanceAt`), dus doel en poort zien per constructie één getal. Dit is de dure ' +
         'arm van V33: ruim tien minuten per ketenrun tegen één op het veiligheidsraster.',
       grid: 'De barrière leest het EVALUATIERASTER, zoals altijd — de vóór-arm van V33.',
+      'safety-extended':
+        'De barrièreterm leest zijn tekort op het veiligheidsraster VERLENGD tot de gemeten ' +
+        'sweep-uitgestrektheid (A5e.3b (c)2): de veiligheidsresolutie waar de responsen geldig ' +
+        'zijn, plus de eigen punten van het poortraster daarbuiten (10–20,5 Hz op de gemergede ' +
+        'set). Dezelfde lezer (`minImpedanceAt`, via `extendGridToSweepExtent`); de aanleiding ' +
+        'is KAND_V2_2 van het A5e.3-veld, wiens minimum op 10,07 Hz buiten de barrière-' +
+        'uitgestrektheid lag terwijl de poort er wél op oordeelde.',
     }[lastPayload.candidate?.declaration.stated.zFloorBarrierSource ?? 'grid'],
   vloer_is_zoekdoel:
     lastPayload.candidate?.declaration.stated.zFloorBarrier === true,

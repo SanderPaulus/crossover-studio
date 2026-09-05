@@ -28,15 +28,20 @@
  *   fourth-order midrange branch carrying 42 µF. So they carry `slack: true`,
  *   they widen per order, and no verdict is ever taken on one.
  *
- * WHAT THIS FILE DOES NOT DO. It does not read the catalogue. A5e.3 —
- * "optimalisatiegrenzen = catalogus-spanwijdte ∩ meetafgeleide budgetgrenzen"
- * — is an open specification decision, so the intersection here is with the
- * app's own bounds and nothing else. See the TODO at `searchBoxFor`.
+ * WHAT THIS FILE STILL DOES NOT DO. It does not read the catalogue ITSELF.
+ * A5d.6's closing line — "optimalisatiegrenzen = catalogus-spanwijdte ∩
+ * meetafgeleide budgetgrenzen" — is filled in since A5e.3b, but the span
+ * arrives RESOLVED (the stated family's fit, one number per way): reading the
+ * catalogue is the fixture's and the app's business, and a bound that read it
+ * here would be a second opinion about which family was stated. See
+ * `searchBoxFor`'s `catalog` parameter.
  */
 
-import type { VxpPart } from '../../parsers/vxp.ts';
+import type { VxpCrossover, VxpPart } from '../../parsers/vxp.ts';
 import type { Complex } from '../../complex.ts';
 import { busTopology } from '../../netOptimizer.ts';
+import { waysOfElements } from '../../coilDcr.ts';
+import { crossoverToNetlist } from '../../vxpNetwork.ts';
 import { effectiveDriveLimit } from './gates.ts';
 import {
   BOUND_BRACKET_DOUBLINGS,
@@ -391,7 +396,17 @@ export interface InvertedBound {
    * inverts nothing, but it bounds the same sum `qes-series-r` bounds and is
    * filed the same way (coil DCR charged first, free resistors capped).
    */
-  rule: 'qes-series-r' | 'bump-series-l' | 'gap-pad-r' | 'drive-series-c' | 'stated-series-r';
+  rule:
+    | 'qes-series-r'
+    | 'bump-series-l'
+    | 'gap-pad-r'
+    | 'drive-series-c'
+    | 'stated-series-r'
+    /* A5e.3b — the CATALOGUE half of A5d.6's closing intersection: the
+     * single-part span of a way's stated coil family, filed as a per-coil
+     * ceiling. Like `stated-series-r` it inverts nothing — it is a project
+     * statement (the family, A5e.3) read for the span it implies. */
+    | 'catalog-span-l';
   /** The way it constrains. */
   subject: string;
   /** What is bounded, in words. */
@@ -472,12 +487,19 @@ const valueSI = (p: VxpPart): number | null => {
  * own bus walk (`busTopology`) rather than a second opinion about what
  * "series" means.
  *
- * TODO(A5e.3): the intersection here is with the app's existing bounds only.
- * A5d.6's closing line asks for "catalogus-spanwijdte ∩ meetafgeleide
- * budgetgrenzen", and the catalogue schema — families, parasitic models, the
- * rule that optimisation bounds follow the catalogue's span — is an open
- * specification decision (A5e.3). Filling it in here would be inventing that
- * decision, so the catalogue side of the intersection is deliberately absent.
+ * A5e.3b — THE CATALOGUE SIDE OF THE INTERSECTION IS NO LONGER ABSENT. The
+ * TODO(A5e.3) that stood here said filling it in would be inventing an open
+ * decision; A5e.3 closed the schema half (the family per way is a STATED
+ * project input, fitted on the catalogue) and A5e.3b closes the span half:
+ * `catalog.coilSpanHByWay` carries, per way the caller names, the largest
+ * single-part inductance of that way's stated family (`rangeH[1]` of its
+ * fit), and every free, un-snapped coil of that way — series or shunt, which
+ * is why the walk is `waysOfElements` and not the bus walk alone: the damped
+ * trap this exists for is a SHUNT coil — is capped at it. A coil above the
+ * span was, until A5e.3b, "flagged and carried on"; now it is not built. The
+ * stack exception is a stated act one layer up (`coilStackAllowed` in the
+ * chain declaration): with it stated the caller passes no span and nothing is
+ * capped (P4).
  */
 export function searchBoxFor(
   parts: readonly VxpPart[],
@@ -486,6 +508,10 @@ export function searchBoxFor(
    * every bound and every caller that does not hand one in, and then this
    * function builds exactly the box it always built. */
   trackers: Readonly<Record<string, SeriesInductanceCeiling>> = {},
+  /* A5e.3b — the catalogue span per way (see the module note above). Absent
+   * for every caller that states no coil family, and then this function
+   * builds exactly the box it always built. */
+  catalog?: { coilSpanHByWay: Readonly<Record<string, number>>; source: string },
 ): SearchBox {
   const bus = busTopology(parts);
   const valueCeilings: Record<string, number> = {};
@@ -670,7 +696,66 @@ export function searchBoxFor(
     }
   }
 
-  return { valueCeilings, valueSumCeilings, bounds: [...bounds], notes };
+  /* ---- A5e.3b: the catalogue span, per named way ----------------------- *
+   * A per-COIL ceiling and never a sum: the span is a property of one part,
+   * and two coils in series are exactly the stack the exception exists for.
+   * The walk is `waysOfElements` (A5e.3) because the coil this rule exists
+   * for is a SHUNT coil — the damped trap across the woofer — which the bus
+   * walk cannot attribute. Snapped coils keep their real part (a catalogue
+   * part is inside the catalogue by definition); locked coils are not the
+   * tune's to move and are left to the delivered-network readers. */
+  const spanBounds: InvertedBound[] = [];
+  if (catalog && Object.keys(catalog.coilSpanHByWay).length > 0) {
+    let ways: Map<string, string[]> | null = null;
+    try {
+      ways = waysOfElements(crossoverToNetlist({ name: 'coil-span', parts: [...parts] } as VxpCrossover).netlist);
+    } catch {
+      notes.push(
+        'the coil-span ceiling could not be walked on this seed (the netlist does not build); ' +
+          'no coil was capped and the delivered-network readers still see the flags',
+      );
+    }
+    if (ways) {
+      for (const way of Object.keys(catalog.coilSpanHByWay).sort()) {
+        const spanH = catalog.coilSpanHByWay[way];
+        if (!(spanH > 0)) continue;
+        const capped: string[] = [];
+        for (const p of parts) {
+          if (p.type !== 'Inductor' || p.partId === undefined || p.open || p.shorted || p.locked || p.catalog) continue;
+          if (!(ways.get(p.partId) ?? []).includes(way)) continue;
+          valueCeilings[p.partId] = Math.min(valueCeilings[p.partId] ?? Infinity, spanH);
+          capped.push(p.partId);
+        }
+        spanBounds.push({
+          rule: 'catalog-span-l',
+          subject: way,
+          quantity: 'inductance per coil (catalogue single-part span)',
+          maxSI: spanH,
+          unit: 'H',
+          slack: false,
+          parameters: {
+            span_mH: Number((spanH / H_PER_MH).toFixed(3)),
+            source: catalog.source,
+            capped_coils: capped.join(', ') || 'none on this seed',
+          },
+          notes: [
+            `Every free coil of ${way} is capped at the largest single part of its stated family ` +
+              `(${(spanH / H_PER_MH).toFixed(1)} mH). A value above it is a STACK, and a stack is a stated ` +
+              'exception the designer makes, not one the search may assume (A5e.3b).',
+          ],
+        });
+        if (capped.length > 0) {
+          notes.push(
+            `${way}: ${capped.length} coil(s) capped at the family's single-part span of ` +
+              `${(spanH / H_PER_MH).toFixed(1)} mH (${capped.join(', ')}) — A5d.6's catalogue ∩ measurement ` +
+              'intersection, the catalogue half (A5e.3b).',
+          );
+        }
+      }
+    }
+  }
+
+  return { valueCeilings, valueSumCeilings, bounds: [...bounds, ...spanBounds], notes };
 }
 
 /* ================================================================== *

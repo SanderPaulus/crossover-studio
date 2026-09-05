@@ -484,16 +484,21 @@ describe('F4d — a generated candidate declares every choice key', () => {
     expect(off.absent.some((a) => a.key === 'zFloorBarrier')).toBe(false);
   });
 
-  it('V33 — an armed barrier states WHERE it aims; an unarmed one states nothing', () => {
+  it('V33/A5e.3b — an armed barrier states WHERE it aims; an unarmed one states nothing', () => {
     /* The second half of V30's derivation. A barrier that steers must steer at
      * a band that covers what will be enforced, and since V32 that is the
      * drivers' whole measured extent — so the two are derived together and
-     * neither is a default anyone has to remember. `'safety'` and not
-     * `'sweep'`: same reader, same extent, coarser grid, and a chain run of one
-     * minute instead of eleven. Absent when the barrier is not armed, for the
-     * same P4 reason `zFloorBarrier` itself is: naming a band for a term nobody
-     * switched on reads as a decision about where to aim. */
-    expect(full().stated.zFloorBarrierSource).toBe('safety');
+     * neither is a default anyone has to remember. `'safety-extended'` since
+     * A5e.3b and no longer `'safety'`: the safety grid spans the drivers'
+     * RESPONSE extent, the sweeps the gate judges on reach further (10 Hz
+     * against 20.5 on the merged set), and the A5e.3-veld field delivered a
+     * design whose minimum sat between the two floors — passed within the
+     * tolerance because the barrier could not see it (KAND_V2_2, 2.55 Ω at
+     * 10.07 Hz). Same reader, the gate's own points where only the sweeps
+     * live, safety resolution everywhere else. Absent when the barrier is not
+     * armed, for the same P4 reason `zFloorBarrier` itself is: naming a band
+     * for a term nobody switched on reads as a decision about where to aim. */
+    expect(full().stated.zFloorBarrierSource).toBe('safety-extended');
     expect(full().absent.some((a) => a.key === 'zFloorBarrierSource')).toBe(false);
 
     const d = bare();
@@ -964,8 +969,8 @@ describe('F4d — a generated candidate declares every choice key', () => {
     });
     expect(holed.complete).toBe(false);
     /* V51 — the third key is missing here as well; a key with an ABSENT state
-     * still has to be declared in one. */
-    expect(holed.missing).toEqual(['leanTargetDb', 'lowestWayLevelWork']);
+     * still has to be declared in one. A5e.3b — and the fourth. */
+    expect(holed.missing).toEqual(['leanTargetDb', 'lowestWayLevelWork', 'lowestWayCoilMaxHenry']);
   });
 
   it('V41 — neither chain key may migrate into the tuner\'s own classification', () => {
@@ -980,10 +985,15 @@ describe('F4d — a generated candidate declares every choice key', () => {
       expect(GREY_KEYS as readonly string[]).not.toContain(k);
       expect(POLISH_KEYS as readonly string[]).not.toContain(k);
     }
-    // And the list is exactly the list: a fourth key is a decision somebody has
+    // And the list is exactly the list: a new key is a decision somebody has
     // to write down, not something that arrives with a rename. V51 wrote the
     // third down (`lowestWayLevelWork`): whether the LOWEST way may carry level
-    // work, decided before the tuner exists and therefore a chain key.
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayLevelWork']);
+    // work, decided before the tuner exists and therefore a chain key. A5e.3b
+    // wrote the fourth down (`lowestWayCoilMaxHenry`): the catalogue span of
+    // the stated coil family as a ceiling on every coil the design and
+    // synthesis steps may propose on that way — the seed is placed before the
+    // tuner exists, and a value only the box caps is a seed the tune spends
+    // its budget defending.
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork']);
   });
 });

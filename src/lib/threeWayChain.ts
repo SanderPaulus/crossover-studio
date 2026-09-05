@@ -116,6 +116,18 @@ export interface Chain3Settings {
    * and the tuner's box holds the total there (`levelWork.ts`).
    */
   lowestWayLevelWork?: LowestWayLevelWork;
+  /**
+   * A5e.3b — the CATALOGUE SPAN of the lowest way's stated coil family, henry:
+   * a hard ceiling on every coil the synthesis proposes on that way (the
+   * damped trap on a reflex woofer is the slot it exists for — 22–36 mH seeds
+   * against a family whose largest single part is 22.0 mH). Derived from the
+   * stated family's fit (`rangeH[1]`), never typed; the fourth chain-level
+   * choice key (`chainChoices.ts`), and the search box reads the same value
+   * (`searchBoxFor`). ABSENT = no cap, byte-identical for every v1 caller and
+   * for every project that states no coil family or states the stack
+   * exception (P4).
+   */
+  lowestWayCoilMaxHenry?: number;
   breakupGuard?: boolean;
   /** In-room weight for the assembled tune (0..1): blends energy-average
    *  flatness into the amplitude term — the 2-way recipe, now three-branch.
@@ -358,6 +370,8 @@ export function runThreeWayChain(
     /** V51 — the rule for the LOWEST way; undefined on every other way and on
      *  every run that states none. */
     lowestRule: LowestWayLevelWork | undefined = undefined,
+    /** A5e.3b — the coil-span ceiling for the LOWEST way; undefined elsewhere. */
+    coilMaxHenry: number | undefined = undefined,
   ): SynthesisResult => {
     const noLevelWork = lowestRule === 'none';
     const seriesRMaxOhm = seriesRMaxOhmOf(lowestRule);
@@ -383,13 +397,15 @@ export function runThreeWayChain(
       ...(noLevelWork ? { noLevelWork: true } : {}),
       /* V51b — the capped plain series R, the same way. */
       ...(seriesRMaxOhm !== null ? { seriesRMaxOhm } : {}),
+      /* A5e.3b — the coil-span ceiling of the stated family, the same way. */
+      ...(coilMaxHenry !== undefined ? { coilMaxHenry } : {}),
     });
   };
   /* V51 — the woofer slot IS the lowest way of this three-way chain, by the
    * chain's own construction (its LP flank meets the mid's HP flank at the low
    * handover). The requirement names "the lowest way" and this is where that
    * way is synthesised. */
-  const synthWoofer = synthOne(specs.woofer, w, 'woofer', s.lowestWayLevelWork);
+  const synthWoofer = synthOne(specs.woofer, w, 'woofer', s.lowestWayLevelWork, s.lowestWayCoilMaxHenry);
   const synthMid = synthOne(specs.mid, m, 'mid');
   const synthTweeter = synthOne(specs.tweeter, t, 'tweeter');
   /* Degenerate-load refusal (see synthesis.ts): a branch that offers the

@@ -114,7 +114,7 @@ import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
 import { BUILDABILITY_VERSION } from './metrics/buildability.ts';
 import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay, seriesRMaxOhmOf } from '../levelWork.ts';
 import type { LevelWorkAnalysis } from './report.ts';
-import { busTopology, systemMinImpedanceOhm } from '../netOptimizer.ts';
+import { busTopology, extendGridToSweepExtent, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
   sourceProbeIndex,
   sourceResistanceOhm,
@@ -710,103 +710,97 @@ describe('V32 — the search gate and the file measurement agree on every frozen
     ).toBeGreaterThan(0);
   });
 
-  it('V33 — the barrier grid sits INSIDE the gate\'s, and the resolution gap is under the floor slack', () => {
-    /* THE MEASUREMENT THAT JUSTIFIES `'safety'` AS THE v2 DEFAULT.
+  it('V33/A5e.3b — the barrier grid covers the gate\'s whole extent, and the resolution gap is under the floor slack', () => {
+    /* THE MEASUREMENT THAT JUSTIFIES `'safety-extended'` AS THE v2 DEFAULT.
      *
      * The barrier could read the gate's own reference and then goal and limit
      * would be one number by construction — which is true, and which costs a
      * casus-1 chain run eleven minutes instead of one, because that grid is the
-     * analysis resolution and the barrier runs inside the objective. So the v2
-     * route aims at the tuner's own full-band safety grid instead: the same
-     * reader, the same extent, 240 points against 1600.
+     * analysis resolution and the barrier runs inside the objective. Until
+     * A5e.3b the v2 route aimed at the tuner's full-band safety grid: same
+     * reader, coarser resolution — and, on the merged set, a SMALLER EXTENT.
+     * The safety grid starts where the responses are valid (20.5 Hz); the
+     * sweeps the gate judges on start where the impedance was measured
+     * (10 Hz), and the A5e.3-veld field delivered a design whose minimum sits
+     * between the two floors: KAND_V2_2, 2.55 Ω at 10.07 Hz in a shunt L+R the
+     * parts audit left standing, 2.85 Ω on the safety grid, passed within the
+     * tolerance. A minimum between the two floors is not a coarser reading —
+     * it is one the barrier cannot see at all.
      *
-     * That is a defensible substitution only if it is MEASURED, and this is the
-     * measurement. Two claims, and the first is what makes the second mean
-     * anything:
+     * Since A5e.3b (c2) the barrier reads `'safety-extended'`: the safety grid
+     * plus the gate reference's own points outside its extent
+     * (`extendGridToSweepExtent`, one construction, this test and the term
+     * both read it). Three claims:
      *
-     *  1. CONTAINMENT. The safety grid lies inside the extent the gate judges
-     *     on. If it did not, the barrier could be blind somewhere the gate
-     *     looks — which is V33 itself, restated one grid over.
-     *  2. THE GAP IS SMALLER THAN THE SLACK. Not "approximately equal": the
-     *     difference between the two readings is held against
-     *     `ampFloorSlackOhm`, the tolerance the tuner ALREADY treats as
-     *     indistinguishable from meeting the floor. A search aiming within the
-     *     slack of the enforced number is aiming at it in the only sense this
-     *     app has ever used.
-     *
-     * The largest gap travels in the failure message, so a run that widens it
-     * says by how much rather than only that it did. */
+     *  1. THE BLIND SPOT EXISTED AND IS CLOSED. The safety grid starts above
+     *     the gate's floor (the dated premise — remove it and this measurement
+     *     describes nothing), and the extended grid's extent IS the gate's.
+     *  2. THE GAP IS SMALLER THAN THE SLACK, per live design, on the grid the
+     *     barrier now actually reads.
+     *  3. The bookkeeping list `minimum_buiten_barriere_uitgestrektheid` is
+     *     EMPTY and can no longer fill: with the extents equal, no sweep
+     *     minimum can lie outside the barrier's reach. The A5e.3-veld reading
+     *     stays in the recorded block as the dated bridge, never overwritten. */
     expect(STATED_FLOOR_OHM).not.toBeNull();
     const slack = ampFloorSlackOhm(STATED_FLOOR_OHM!);
     const safety = gridded.safety;
 
-    // 1. Containment, once — the grids do not vary per netlist.
+    // 1. The extents, once — the grids do not vary per netlist.
     const anyRef = searchRef(NETLIST_KEYS[0]).ref.impedance!;
-    expect(safety.freqs[0], 'the safety grid starts below the gate\'s extent').toBeGreaterThanOrEqual(
+    expect(safety.freqs[0], 'the dated premise: the safety grid alone starts ABOVE the gate\'s floor').toBeGreaterThan(
       anyRef.grid[0],
     );
-    expect(
-      safety.freqs[safety.freqs.length - 1],
-      'the safety grid ends above the gate\'s extent',
-    ).toBeLessThanOrEqual(anyRef.grid[anyRef.grid.length - 1]);
+    const ext = extendGridToSweepExtent({ freqs: safety.freqs, z: safety.z }, { grid: anyRef.grid, driverZ: anyRef.driverZ });
+    expect(ext, 'the extended barrier grid could not be built').not.toBeNull();
+    expect(ext!.grid[0], 'the extended grid starts where the gate\'s does').toBeLessThanOrEqual(anyRef.grid[0]);
+    expect(ext!.grid[ext!.grid.length - 1], 'the extended grid ends where the gate\'s does').toBeGreaterThanOrEqual(
+      anyRef.grid[anyRef.grid.length - 1],
+    );
+    expect(ext!.addedBelow, 'nothing was added below: the blind spot this closes is gone from the data').toBeGreaterThan(0);
     // ...and it really is the coarser of the two, or there is no gap to measure.
-    expect(safety.freqs.length).toBeLessThan(anyRef.grid.length);
+    expect(ext!.grid.length).toBeLessThan(anyRef.grid.length);
 
     // 2. The gap, netlist by netlist, over the designs that are in play.
-    /* A5e.3-veld — RESOLUTION AND EXTENT ARE TWO DIFFERENT GAPS, and the claim
-     * is about the first. The sweep the gate judges on starts where the
-     * impedance was measured (10 Hz); the barrier's safety grid starts where the
-     * RESPONSES are valid (20.5 Hz on the merged set). Containment (claim 1)
-     * holds, but a system minimum that lies BETWEEN the two floors is not a
-     * coarser reading of the same minimum — it is a minimum the barrier cannot
-     * see at all. Measured on the A5e.3-veld field: KAND_V2_2's minimum sits at
-     * 10.07 Hz in the woofer branch (a shunt L+R the parts audit left standing
-     * when it removed the C of a damped trap), 2.55 Ω on the sweep against 2.85
-     * on the safety grid, and the gate let it through within the tolerance. So
-     * the resolution claim is made over the netlists whose sweep minimum lies
-     * inside the barrier's extent, and the others are NAMED — in the recorded
-     * block and here — with both grids still reaching the same verdict on them
-     * (the claim below). Bookkeeping, not a waiver: the barrier's extent is an
-     * open point of the case book, and the list is meant to be empty. */
     const live = NETLIST_KEYS.filter((k) => /^KAND_V2_\d+$/.test(k) || V1_BASELINES.includes(k));
     expect(live.length, 'no live design to measure the gap on').toBeGreaterThan(0);
-    const barrierFloorHz = safety.freqs[0];
     const recordedOutside = ((golden.manifest_en_geometrie as unknown as {
       v33_barriere_raster?: { minimum_buiten_barriere_uitgestrektheid?: { netlist: string; poortraster_min_bij_hz: number | null }[] };
     }).v33_barriere_raster?.minimum_buiten_barriere_uitgestrektheid ?? []).map((r) => r.netlist);
-    let worst = { key: '', gap: 0, onSafety: 0, onSweep: 0 };
+    let worst = { key: '', gap: 0, onBarrier: 0, onSweep: 0 };
     const outside: string[] = [];
     for (const key of live) {
       const { filter, ref } = searchRef(key);
       const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
-      const onSafety = systemMinImpedanceOhm(filter.netlist, safety.freqs, safety.z);
+      const onBarrier = systemMinImpedanceOhm(filter.netlist, ext!.grid, ext!.driverZ);
       expect(onSweep, `${key}: the gate grid produced no reading`).not.toBeNull();
-      expect(onSafety, `${key}: the safety grid produced no reading`).not.toBeNull();
+      expect(onBarrier, `${key}: the extended barrier grid produced no reading`).not.toBeNull();
       const sweepMin = minImpedanceAt(solveNetwork(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ).inputZ);
       const sweepMinHz = sweepMin ? ref.impedance!.grid[sweepMin.index] : null;
-      if (sweepMinHz !== null && sweepMinHz < barrierFloorHz) {
-        outside.push(key);
-        // The barrier is blind there by construction, and the gate is the stricter reader.
-        expect(onSweep!, `${key}: a minimum under the barrier floor read HIGHER on the sweep`).toBeLessThanOrEqual(onSafety! + 1e-9);
-        continue;
-      }
-      const gap = Math.abs(onSafety! - onSweep!);
-      if (gap > worst.gap) worst = { key, gap, onSafety: onSafety!, onSweep: onSweep! };
+      if (sweepMinHz !== null && sweepMinHz < ext!.grid[0]) outside.push(key);
+      const gap = Math.abs(onBarrier! - onSweep!);
+      if (gap > worst.gap) worst = { key, gap, onBarrier: onBarrier!, onSweep: onSweep! };
     }
     expect(
       worst.gap,
       `the coarser barrier grid reads ${worst.gap.toFixed(4)} Ω away from the grid the gate ` +
-        `enforces on, worst at ${worst.key} (${worst.onSafety.toFixed(4)} against ` +
+        `enforces on, worst at ${worst.key} (${worst.onBarrier.toFixed(4)} against ` +
         `${worst.onSweep.toFixed(4)} Ω), against a floor slack of ${slack.toFixed(4)} Ω. Either ` +
         'the safety grid needs more points or the v2 route needs the expensive source',
     ).toBeLessThan(slack);
-    // Every netlist whose minimum lies under the barrier's floor is NAMED in the case book — the
-    // V30 form: a list that is bookkeeping and is meant to shrink to nothing.
-    expect(
-      [...outside].sort(),
-      `netlists whose sweep minimum lies under the barrier floor (${barrierFloorHz.toFixed(1)} Hz) must be ` +
-        'named in manifest_en_geometrie.v33_barriere_raster.minimum_buiten_barriere_uitgestrektheid',
-    ).toEqual(recordedOutside.filter((k) => live.includes(k)).sort());
+    // 3. The bookkeeping list is closed: nothing lies outside the extended extent,
+    // and the recorded block says the same (the dated reading is its bridge).
+    expect(outside).toEqual([]);
+    expect(recordedOutside.filter((k) => live.includes(k))).toEqual([]);
+    /* And the DATED finding is still measurable, not merely remembered: on the
+     * un-extended safety grid at least one live design's sweep minimum was
+     * invisible — its minimum lies under that grid's floor — whenever the
+     * corpus predates the extension. Asserted only when the recorded bridge
+     * names one, so a regenerated corpus (which the route now refuses such
+     * designs on… by the barrier steering away from them) does not fail here. */
+    const bridge = (golden.manifest_en_geometrie as unknown as {
+      v33_barriere_raster?: { _veiligheidsraster_tot_A5e3b?: { minimum_buiten: { netlist: string }[] } };
+    }).v33_barriere_raster?._veiligheidsraster_tot_A5e3b;
+    expect(bridge, 'the dated A5e.3-veld reading must stay in the recorded block as a bridge').toBeDefined();
     /* And the gap is not ZERO either, or the two grids would be the same grid
      * and this whole measurement would be describing nothing. */
     expect(worst.gap).toBeGreaterThan(0);
@@ -829,10 +823,10 @@ describe('V32 — the search gate and the file measurement agree on every frozen
     for (const key of NETLIST_KEYS) {
       const { filter, ref } = searchRef(key);
       const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
-      const onSafety = systemMinImpedanceOhm(filter.netlist, safety.freqs, safety.z);
-      if (meetsAmpFloor(onSweep, STATED_FLOOR_OHM) !== meetsAmpFloor(onSafety, STATED_FLOOR_OHM)) {
+      const onBarrier = systemMinImpedanceOhm(filter.netlist, ext!.grid, ext!.driverZ);
+      if (meetsAmpFloor(onSweep, STATED_FLOOR_OHM) !== meetsAmpFloor(onBarrier, STATED_FLOOR_OHM)) {
         disagree.push(
-          `${key}: sweep ${onSweep?.toFixed(4)} Ω, safety ${onSafety?.toFixed(4)} Ω`,
+          `${key}: sweep ${onSweep?.toFixed(4)} Ω, barrier (safety-extended) ${onBarrier?.toFixed(4)} Ω`,
         );
       }
     }
@@ -3179,6 +3173,7 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
         spoel_DCR_ohm: number | null;
         serie_R_totaal_ohm: number | null;
         binnen_eis: boolean | null;
+        resonantieloze_shunts?: string[];
         serie_L_mH_per_weg: Record<string, number>;
       }[];
     };
@@ -3360,6 +3355,42 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     if (max !== null) {
       expect(RECORD!.levend_corpus_binnen_eis).toBe(live.length);
       expect(RECORD!.levend_corpus_buiten_eis).toBe(0);
+    }
+  });
+
+  it('A5e.3b (c3) — the audit\'s orphans, named: a live verdict fails ONLY on a resonanceless shunt chain, and the record agrees', () => {
+    /* The finding of A5e.3b (c3), as bookkeeping meant to empty. The A5e.3-veld
+     * corpus was generated under level-work/1.1, which did not know the shape:
+     * a shunt chain from the lowest way's bus to ground carrying an L and no C
+     * — the rest of a damped trap whose C the parts audit removed. It traps
+     * nothing and loads everything (KAND_V2_2's chain drags the system minimum
+     * to 2.55 Ω at 10.07 Hz), and no rule counted it: the R sits in a shunt
+     * CHAIN, which the pad definition deliberately exempts. Since
+     * level-work/1.2 every pad-forbidding rule refuses it, and the worker
+     * refuses a delivered network that carries one (the V31 form).
+     *
+     * The claim is CONSISTENCY, not a count: measured on 05-09-2026 three of
+     * the seven carry one (KAND_V2_1, _2, _7 — the entry names them), and the
+     * next regeneration is expected to deliver none. A pinned count would go
+     * red on exactly the regeneration that proves the repair (the UI-2
+     * lesson); what must hold on ANY corpus is that a failing verdict under
+     * this corpus's rule has the orphan as its only ground, and that the
+     * recorded block names the same chains the fresh walk finds. */
+    const live = FIELD.filter((x) => /^KAND_V2_\d+$/.test(x.key));
+    for (const f of live) {
+      const inv = f.levelWork!.delivered!;
+      const row = RECORD!.per_netlist.find((r) => r.netlist === f.key)!;
+      expect(row.resonantieloze_shunts ?? [], `${f.key}: recorded orphans`).toEqual(
+        inv.resonancelessShunts.map((c) => c.label),
+      );
+      if (inv.resonancelessShunts.length > 0) {
+        expect(f.levelWork!.verdict?.ok, `${f.key}: an orphan must fail the verdict since level-work/1.2`).toBe(false);
+        expect(f.levelWork!.verdict?.why).toMatch(/without a resonance/);
+        // ...and the orphan is the ONLY ground: no pad, no series R beyond the rule.
+        expect(inv.none, `${f.key}: the orphan was not the only ground`).toBe(true);
+      } else if (CASUS1_LOWEST_WAY_LEVEL_WORK !== undefined) {
+        expect(f.levelWork!.verdict?.ok, `${f.key}: ${f.levelWork!.verdict?.why}`).toBe(true);
+      }
     }
   });
 
@@ -3587,8 +3618,18 @@ describe('A5e.3-veld — the stated coil families, and every live netlist judged
     /* The A5e.3-veld field stands on the drive floor (A5d.3(ii) inverted with
      * the V49 ceiling); the generator's record of its positions must not
      * reach under it, and the window the report derives must say which rule
-     * bound it. Rounded to the hertz the record prints. */
-    const field = casus1Field(report('HUIDIG'));
+     * bound it. Rounded to the hertz the record prints.
+     *
+     * ANCHORED ON THE FIELD OF GENERATION SINCE A5e.3b (the V47b lesson, one
+     * surface further): A5e.3b feeds the STATED M-C figure into the windows,
+     * so the LIVE derivation now yields a different field (M-T floor 1647 Hz
+     * instead of k·f_s 1294) while the recorded positions are A5e.3-veld's.
+     * The field the corpus came from is reproduced by withholding the stated
+     * figure — the one input A5e.3b added — and the forward-looking claim
+     * below is the session's pre-measurement, asserted rather than remembered. */
+    const { maxDriveOnFsDbByDriver: _drive, ...withoutStated } = BASE;
+    void _drive;
+    const field = casus1Field(report('HUIDIG', withoutStated));
     const wm = field.field.axes[0];
     expect(wm.window['4'].floorBy!.rule).toBe('drive');
     const recorded = LIVE_HERKOMST.veld_uitlijningen.per_as[0].posities_per_orde[0];
@@ -3596,5 +3637,31 @@ describe('A5e.3-veld — the stated coil families, and every live netlist judged
     expect(recorded.hz).toEqual(wm.positionsByOrder[0].hz);
     for (const hz of recorded.hz) expect(hz).toBeGreaterThanOrEqual(wm.window['4'].floorHz! - 0.5);
     expect(LIVE_HERKOMST.veld_uitlijningen.positiebudget).toBe(field.field.parameters.chainBudget);
+  });
+
+  it('A5e.3b — the STATED M-C figure now bounds the M-T window, and it forbids two of the recorded live positions: the pre-measurement of the next regeneration', () => {
+    /* The M-T floor is the STRICTEST of stated and derived since A5e.3b: the
+     * stated −20 dB at the stated order 4 inverts to ~1647 Hz, above both
+     * k·f_s (1294) and the tweeter's excursion floor (1184). The A5e.3-veld
+     * field laid two M-T positions at 1294 and two at 1495; the delivered
+     * 1495-candidates measured −20.4/−21.2 dB against −20 — 0.4 dB of margin
+     * on a stated requirement is not a design, and a position the requirement
+     * forbids at the stated order is not a position. Asserted against the
+     * RECORDED positions (the corpus's own bookkeeping), never against the
+     * live corpus files (the UI-2 lesson). */
+    const field = casus1Field(report('HUIDIG'));
+    const mt = field.field.axes[1];
+    expect(mt.window['4'].floorBy!.rule).toBe('drive-stated');
+    const kfs = mt.window['4'].limits.find((l) => l.rule === 'fs')!;
+    const excursion = mt.window['4'].limits.find((l) => l.rule === 'drive')!;
+    expect(mt.window['4'].floorHz!).toBeGreaterThan(kfs.hz);
+    expect(excursion.hz).toBeLessThan(kfs.hz);
+    // The recorded A5e.3-veld M-T positions under the new floor, by name:
+    const recordedMt = LIVE_HERKOMST.veld_uitlijningen.per_as[1].posities_per_orde[0];
+    const under = recordedMt.hz.filter((hz) => hz < mt.window['4'].floorHz! - 0.5);
+    expect(under.length).toBeGreaterThan(0);
+    for (const hz of under) expect(hz).toBeLessThan(1647); // P6-OK: the recorded finding of the pre-measurement, not an engine number
+    // ...and no position of the NEW field lies under the new floor.
+    for (const hz of mt.positionsByOrder[0].hz) expect(hz).toBeGreaterThanOrEqual(mt.window['4'].floorHz! - 0.5);
   });
 });

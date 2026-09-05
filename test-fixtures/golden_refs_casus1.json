@@ -238,7 +238,7 @@
    "dir_m6_30": 5433,
    "semi_inductantie_n": 0.59,
    "NF_fmax": 1078,
-   "breakups_opmerking": "De vierde piek van de 25-08-analyse (14434 Hz, +5,2 dB) is er in werkelijkheid TWEE: 14379 Hz +2,83 dB en 14955 Hz +3,17 dB. De andere drie reproduceren op dezelfde schatter en dezelfde trendbreedte tot binnen 0,06 dB, dus de schatter staat niet ter discussie - de referentie las de twee pieken als een breder kenmerk op een grover raster. SINDS M-1 gemeten op de gemergede set (scanband 60-20000 Hz): 7 significante pieken; de gepoorte lezing staat in _breakups_gepoort_tot_M1. SINDS M-1 gemeten op de gemergede set (scanband 60-20000 Hz): 7 significante pieken; de gepoorte lezing staat in _breakups_gepoort_tot_M1.",
+   "breakups_opmerking": "De vierde piek van de 25-08-analyse (14434 Hz, +5,2 dB) is er in werkelijkheid TWEE: 14379 Hz +2,83 dB en 14955 Hz +3,17 dB. De andere drie reproduceren op dezelfde schatter en dezelfde trendbreedte tot binnen 0,06 dB, dus de schatter staat niet ter discussie - de referentie las de twee pieken als een breder kenmerk op een grover raster. SINDS M-1 gemeten op de gemergede set (scanband 60-20000 Hz): 7 significante pieken; de gepoorte lezing staat in _breakups_gepoort_tot_M1.",
    "excursie_x_per_V_op_f0_mm_per_V": 0.3628,
    "excursie_Q_ms": 7.34,
    "excursie_Z_max_op_f0_ohm": 44.22,
@@ -395,8 +395,8 @@
    },
    "band_per_weg_M1": "SINDS M-1 loopt de band van de laagste weg over haar HELE gemergede geldigheid: de woofer wordt gemiddeld over 20.5-285 Hz (20,5 Hz tot het meetkundig midden van het geopende W-M-venster) in plaats van over 397-466 Hz. Dit is de eerste keer dat X over de hele wooferband gemeten wordt."
   },
-  "woofer_tov_mid": 0.85,
-  "tweeter_tov_mid": 3.516,
+  "woofer_tov_mid": 0.777,
+  "tweeter_tov_mid": 3.426,
   "_waarden_voor_A5e2": {
    "_": "DE VORIGE WAARDEN VAN DIT BLOK, bewaard als BRUG en niet als referentie (V15-vorm). Tot V45 stonden hier 1,5 en 4,1: de handberekening van de sessie van 25-08-2026 op de KALE gemeten niveaus, met een status die zei dat de waarden geen acceptatiecriterium waren omdat A5d.4(a) het ankerniveau NA baffle step wil en dat het doelcurve-object was - een open A5e-besluit. De engine las op diezelfde kale niveaus 0,89 (woofer) en 3,44 (tweeter), en ook die twee staan hier: zij zijn wat de nieuwe waarden worden zodra de doelcurve op flat wordt gezet, en dus de directe brug.",
    "sessie_25_08_2026": {
@@ -429,6 +429,12 @@
     "tweeter_tov_mid": 2.749,
     "plateau_diepte_dB": 2.5
    }
+  },
+  "_waarden_veld_tot_A5e3b": {
+   "_": "DE VORIGE WAARDEN VAN DIT BLOK (M-1 t/m A5e.3-veld), bewaard als BRUG (V15-vorm): dezelfde grootheid vóórdat het gestelde M-C-getal de vensters bereikte (A5e.3b) — de wegbanden van A5d.4 zijn venstercentra, en het M-T-venster stond toen op k maal f_s (1294 Hz) in plaats van op de gestelde aandrijfvloer (1647 Hz). Reproduceerbaar met maxDriveOnFsDbByDriver weggelaten uit de rapportinstellingen.",
+   "anker": "mid",
+   "woofer_tov_mid": 0.85,
+   "tweeter_tov_mid": 3.516
   }
  },
  "kandidaten": {
@@ -3351,10 +3357,13 @@
    "aandrijfvloer": {
     "_": "A5e.3-veld (04-09-2026) - DE AANDRIJFVLOER: A5d.3(ii) omgekeerd. Regel (ii) van de orde-afleiding deelt de verzwakking die M-C op de resonantie van de bovenliggende driver vraagt door de octaafafstand tot het kruispunt en antwoordt met een ORDE; bij een GEGEVEN orde antwoordt dezelfde regel met een frequentie: f_vloer = f_s x 2^(|plafond| / (6 dB/oct x orde)). Asymptotische helling, doorlaatband op de ingang (de niet-verzwakte weg - de strengste eerlijke lezing: een pad maakt de eis makkelijker en een vloer die een pad aanneemt neemt een ontwerp aan). k maal f_s blijft ernaast staan als conventie; de HOOGSTE vloer bindt.",
     "invoer": "het excursieplafond van M-C v2.0 per driver (V49): driverkaart + versterkerpiek + gemeten sweep, klasse A",
-    "invoer_niet": "het GESTELDE M-C-getal (tweeter -20 dB): passband-relatief, een projectconventie en geen drivereigenschap; de orde-afleiding leest het al als eis op het referentiekruispunt",
+    "invoer_gesteld": "SINDS A5e.3b ook het GESTELDE M-C-getal per weg (tweeter -20 dB, passband-relatief), dezelfde inversie met de doorlaatband op de ingang: |gesteld| / (6 dB/oct x orde) octaven boven f_s. De STRENGSTE van gesteld en afgeleid bindt; tot A5e.3b werd het gestelde getal met opzet niet gelezen (de brug _excursievloer_tot_A5e3b).",
     "plafond_re_ingang_dB": {
      "mid": -17.67,
      "tweeter": -8.58
+    },
+    "gesteld_dB": {
+     "tweeter": -20
     },
     "octaven_bij_orde_4": {
      "woofer_mid": 0.74,
@@ -3364,9 +3373,12 @@
      "woofer_mid": 148,
      "mid_tweeter": 1184
     },
+    "gestelde_vloer_hz_bij_orde_4": {
+     "mid_tweeter": 1647
+    },
     "bindt": {
      "woofer_mid": "aandrijving_excursie",
-     "mid_tweeter": "fs"
+     "mid_tweeter": "aandrijving_gesteld"
     },
     "dB_per_octaaf_per_orde": 6,
     "klasse": "A",
@@ -3406,15 +3418,24 @@
    "klasse": "A",
    "afhankelijkheid": "meting",
    "venster": [
-    1294,
+    1647,
     2304
    ],
-   "vloer_bindend": "fs",
+   "vloer_bindend": "aandrijving_gesteld",
    "plafond_bindend": "breakup_ernst",
    "spanning": "lobing-goed boven breakup-plafond",
-   "vloer_toelichting": "De aandrijfvloer van de tweeter (excursieplafond -8.6 dB re ingang, 1184 Hz bij orde 4) ligt ONDER k maal f_s, dus hier bindt de conventie nog (A5e.3-veld: de M-T-as beweegt niet). Het GESTELDE tweetergetal (-20 dB, passband-relatief) wordt met opzet niet als vensterinvoer gelezen; zie kruisvensters.parameters.aandrijfvloer.",
+   "vloer_toelichting": "SINDS A5e.3b (05-09-2026) is de vloer de STRENGSTE van gesteld en afgeleid, en hier bindt het GESTELDE tweetergetal (-20 dB, passband-relatief, bij de gestelde orde 4): 1647 Hz, boven k maal f_s (1294 Hz) en boven de excursievloer (1184 Hz, plafond -8.6 dB re ingang). De vloer is BEWUST STRENG: hij leest de kale ladder (asymptotische helling, doorlaatband op de ingang, geen pad aangenomen) — een pad over de tweeter belast diens resonantiepiek en kan de eis halen op een kruispunt dat deze vloer verbiedt, en een vloer die een pad aanneemt neemt een ontwerp aan. De aanleiding: het A5e.3-veld leverde twee 1495-kandidaten op -20,4/-21,2 dB — 0,4 dB marge op een gestelde eis is geen ontwerp, en een positie die de eis bij de gestelde orde vooraf niet kan halen is geen positie (Sander, 05-09-2026).",
+   "_excursievloer_tot_A5e3b": {
+    "_": "Zonder het gestelde getal (de stand van A5e.3-veld): k maal f_s bindt, want de excursievloer van de tweeter ligt eronder. Brug, reproduceerbaar met upperStatedDriveLimitDb: null.",
+    "venster": [
+     1294,
+     2304
+    ],
+    "vloer_bindend": "fs",
+    "plafond_bindend": "breakup_ernst"
+   },
    "_k_fs_tot_A5e3veld": {
-    "_": "Zonder de aandrijfvloer: identiek, want k maal f_s bindt. Brug.",
+    "_": "Zonder beide aandrijfvloeren (de stand van M-1): k maal f_s. Brug.",
     "venster": [
      1294,
      2304
@@ -3423,7 +3444,7 @@
     "plafond_bindend": "breakup_ernst"
    },
    "_gepoort_tot_M1": {
-    "_": "Hetzelfde venster op de GEPOORTE set: de vloer is dezelfde (k x f_s van de tweeter), het plafond bewoog met de breakup-scan van de mid mee (de scanband begint op 60 in plaats van 397 Hz, de trend verschuift). Brug.",
+    "_": "Hetzelfde venster op de GEPOORTE set, zonder het gestelde getal (dat er toen niet als vensterinvoer was): de vloer is k x f_s van de tweeter, het plafond bewoog met de breakup-scan van de mid mee (de scanband begint op 60 in plaats van 397 Hz, de trend verschuift). Brug.",
     "venster": [
      1294,
      2283
@@ -4385,11 +4406,28 @@
    ]
   },
   "v33_barriere_raster": {
-   "_": "DOCUMENTATIE (V33). De barrièreterm mikt op het VEILIGHEIDSRASTER van de tuner, de poort M-B/|Z| oordeelt op de gemeten SWEEP. Zelfde functie (`minImpedanceAt`), zelfde uitgestrektheid, andere resolutie — dus het verschil tussen de twee is wat die keuze rechtvaardigt, en het wordt gemeten in plaats van beweerd.",
+   "_": "DOCUMENTATIE (V33, verlengd bij A5e.3b). De barrièreterm mikt sinds A5e.3b op het VERLENGDE veiligheidsraster (safety-extended: het veiligheidsraster van de tuner plus de eigen punten van het poortraster buiten diens uitgestrektheid, `extendGridToSweepExtent`); de poort M-B/|Z| oordeelt op de gemeten SWEEP. Zelfde functie (`minImpedanceAt`), zelfde uitgestrektheid — sinds A5e.3b per constructie — andere resolutie waar de responsen geldig zijn; het verschil wordt gemeten in plaats van beweerd.",
    "barriereraster": {
+    "punten": 394,
+    "van_hz": 10.1,
+    "tot_hz": 20317,
+    "verlengd_met_poortrasterpunten": 154
+   },
+   "_veiligheidsraster_tot_A5e3b": {
+    "_": "Het raster dat de barrière tot A5e.3b las (de A5e.3-veld-stand), als GEDATEERDE BRUG: de kolommen _veiligheidsraster_ohm_tot_A5e3b en binnen_veiligheidsraster_tot_A5e3b in per_netlist zijn de lezing erop. De blinde vlek die A5e.3b sloot: een minimum tussen 10 en 20,5 Hz — gemeten aanleiding KAND_V2_2 (229,1 · 1994,6 -> 229,1 · 1727), minimum 2,55 Ohm op 10,07 Hz in de woofertak (L5+R7, de wees van een gedempte val waarvan de audit de C verwijderde) tegen 2,85 Ohm op het veiligheidsraster, door de poort binnen de tolerantie toegelaten (2,5499 >= 2,548).",
     "punten": 240,
     "van_hz": 20.5,
-    "tot_hz": 20000
+    "tot_hz": 20000,
+    "minimum_buiten": [
+     {
+      "netlist": "V51_KAND_1",
+      "poortraster_min_bij_hz": 10.07
+     },
+     {
+      "netlist": "KAND_V2_2",
+      "poortraster_min_bij_hz": 10.07
+     }
+    ]
    },
    "poortraster": {
     "punten": 1600,
@@ -4397,13 +4435,15 @@
     "tot_hz": 20317
    },
    "vloerspeling_ohm": 0.052,
-   "barrierebodem_hz": 20.51,
+   "barrierebodem_hz": 10.07,
    "grootste_verschil_levend": {
     "netlist": "KAND_V2_1",
     "poortraster_ohm": 2.8063,
     "poortraster_min_bij_hz": 321.88,
     "barriereraster_ohm": 2.8099,
+    "_veiligheidsraster_ohm_tot_A5e3b": 2.8099,
     "binnen_barriere_uitgestrektheid": true,
+    "binnen_veiligheidsraster_tot_A5e3b": true,
     "verschil_ohm": 0.0036,
     "zelfde_oordeel": true
    },
@@ -4412,32 +4452,15 @@
     "poortraster_ohm": 0.0062,
     "poortraster_min_bij_hz": 3915.2,
     "barriereraster_ohm": 0.079,
+    "_veiligheidsraster_ohm_tot_A5e3b": 0.079,
     "binnen_barriere_uitgestrektheid": true,
+    "binnen_veiligheidsraster_tot_A5e3b": true,
     "verschil_ohm": 0.0728,
     "zelfde_oordeel": true
    },
-   "grootste_verschil_regel": "gemeten over de netlists waarvan het sweep-minimum BINNEN de uitgestrektheid van het barrièreraster ligt; een minimum eronder is geen resolutieverschil maar een blinde vlek, en staat apart in minimum_buiten_barriere_uitgestrektheid (A5e.3-veld).",
-   "minimum_buiten_barriere_uitgestrektheid": [
-    {
-     "netlist": "V51_KAND_1",
-     "poortraster_ohm": 2.5717,
-     "poortraster_min_bij_hz": 10.07,
-     "barriereraster_ohm": 2.5881,
-     "binnen_barriere_uitgestrektheid": false,
-     "verschil_ohm": 0.0163,
-     "zelfde_oordeel": true
-    },
-    {
-     "netlist": "KAND_V2_2",
-     "poortraster_ohm": 2.5499,
-     "poortraster_min_bij_hz": 10.07,
-     "barriereraster_ohm": 2.8515,
-     "binnen_barriere_uitgestrektheid": false,
-     "verschil_ohm": 0.3015,
-     "zelfde_oordeel": true
-    }
-   ],
-   "minimum_buiten_barriere_regel": "A5e.3-veld: op de gemergede set begint het veiligheidsraster van de barrière op de geldigheidsvloer van de responsen (20,5 Hz) en de sweep waarop M-B/|Z| oordeelt op 10 Hz. Een netlist waarvan het systeemminimum daartussen ligt wordt door de poort geoordeeld waar de barrière niet kijkt. Gemeten aanleiding: KAND_V2_2 (229,1 · 1994,6 -> 229,1 · 1727), minimum 2,55 Ohm op 10,07 Hz in de woofertak - een shunt L+R naar massa (L5+R7), het overblijfsel van een gedempte val waarvan de audit de C verwijderde - terwijl het veiligheidsraster 2,85 Ohm op 25,8 Hz leest. De poort liet hem door binnen de tolerantie (2,5499 >= 2,548). frozenNetlistGates.test.ts eist dat elke rij hier ook in de guard geregistreerd staat en dat beide rasters hetzelfde OORDEEL vellen; de uitgestrektheid van de barrière is een open punt.",
+   "grootste_verschil_regel": "gemeten over de netlists waarvan het sweep-minimum binnen de uitgestrektheid van het barrièreraster ligt — sinds A5e.3b zijn dat ze allemaal (de uitgestrektheden zijn gelijk).",
+   "minimum_buiten_barriere_uitgestrektheid": [],
+   "minimum_buiten_barriere_regel": "SINDS A5e.3b per constructie leeg: de barrière leest de volle sweep-uitgestrektheid (safety-extended), dus geen enkel sweep-minimum kan buiten haar bereik liggen. De A5e.3-veld-lezing met de blinde vlek staat als gedateerde brug in _veiligheidsraster_tot_A5e3b; de uitgestrektheid van de barrière is daarmee geen open punt meer.",
    "oordeel_wijkt_af_op": [],
    "regel": "Elke LEVENDE netlist leest op beide rasters binnen de vloerspeling, en op ELKE bevroren netlist vellen de twee rasters hetzelfde oordeel over de gestelde vloer. Het eerste is de rechtvaardiging, het tweede is wat er werkelijk toe doet — beide staan als assert in frozenNetlistGates.test.ts.",
    "per_netlist": [
@@ -4446,7 +4469,9 @@
      "poortraster_ohm": 3.4639,
      "poortraster_min_bij_hz": 217.88,
      "barriereraster_ohm": 3.4639,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.4639,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -4455,7 +4480,9 @@
      "poortraster_ohm": 3.3157,
      "poortraster_min_bij_hz": 264.82,
      "barriereraster_ohm": 3.3162,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.3162,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
      "zelfde_oordeel": true
     },
@@ -4464,7 +4491,9 @@
      "poortraster_ohm": 3.4433,
      "poortraster_min_bij_hz": 181.83,
      "barriereraster_ohm": 3.4435,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.4435,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -4473,7 +4502,9 @@
      "poortraster_ohm": 0.0137,
      "poortraster_min_bij_hz": 3751.05,
      "barriereraster_ohm": 0.012,
+     "_veiligheidsraster_ohm_tot_A5e3b": 0.012,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0017,
      "zelfde_oordeel": true
     },
@@ -4482,7 +4513,9 @@
      "poortraster_ohm": 0.0062,
      "poortraster_min_bij_hz": 3915.2,
      "barriereraster_ohm": 0.079,
+     "_veiligheidsraster_ohm_tot_A5e3b": 0.079,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0728,
      "zelfde_oordeel": true
     },
@@ -4491,7 +4524,9 @@
      "poortraster_ohm": 1.3774,
      "poortraster_min_bij_hz": 934.65,
      "barriereraster_ohm": 1.3777,
+     "_veiligheidsraster_ohm_tot_A5e3b": 1.3777,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -4500,7 +4535,9 @@
      "poortraster_ohm": 1.1653,
      "poortraster_min_bij_hz": 1008.6,
      "barriereraster_ohm": 1.1659,
+     "_veiligheidsraster_ohm_tot_A5e3b": 1.1659,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
@@ -4509,7 +4546,9 @@
      "poortraster_ohm": 1.1566,
      "poortraster_min_bij_hz": 849.79,
      "barriereraster_ohm": 1.1567,
+     "_veiligheidsraster_ohm_tot_A5e3b": 1.1567,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -4518,7 +4557,9 @@
      "poortraster_ohm": 1.1355,
      "poortraster_min_bij_hz": 948.09,
      "barriereraster_ohm": 1.1356,
+     "_veiligheidsraster_ohm_tot_A5e3b": 1.1356,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -4527,7 +4568,9 @@
      "poortraster_ohm": 1.0442,
      "poortraster_min_bij_hz": 806.45,
      "barriereraster_ohm": 1.0451,
+     "_veiligheidsraster_ohm_tot_A5e3b": 1.0451,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
      "zelfde_oordeel": true
     },
@@ -4536,7 +4579,9 @@
      "poortraster_ohm": 0.9458,
      "poortraster_min_bij_hz": 939.11,
      "barriereraster_ohm": 0.946,
+     "_veiligheidsraster_ohm_tot_A5e3b": 0.946,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -4545,7 +4590,9 @@
      "poortraster_ohm": 0.8725,
      "poortraster_min_bij_hz": 886.98,
      "barriereraster_ohm": 0.8726,
+     "_veiligheidsraster_ohm_tot_A5e3b": 0.8726,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -4554,7 +4601,9 @@
      "poortraster_ohm": 0.8594,
      "poortraster_min_bij_hz": 853.85,
      "barriereraster_ohm": 0.8607,
+     "_veiligheidsraster_ohm_tot_A5e3b": 0.8607,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -4563,7 +4612,9 @@
      "poortraster_ohm": 2.4465,
      "poortraster_min_bij_hz": 82.53,
      "barriereraster_ohm": 2.447,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.447,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
      "zelfde_oordeel": true
     },
@@ -4572,7 +4623,9 @@
      "poortraster_ohm": 2.3578,
      "poortraster_min_bij_hz": 83.71,
      "barriereraster_ohm": 2.3581,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.3581,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -4581,7 +4634,9 @@
      "poortraster_ohm": 2.5899,
      "poortraster_min_bij_hz": 1125.26,
      "barriereraster_ohm": 2.5902,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5902,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -4590,7 +4645,9 @@
      "poortraster_ohm": 2.5809,
      "poortraster_min_bij_hz": 1231.75,
      "barriereraster_ohm": 2.5821,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5821,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -4599,7 +4656,9 @@
      "poortraster_ohm": 2.5715,
      "poortraster_min_bij_hz": 132.19,
      "barriereraster_ohm": 2.5737,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5737,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0022,
      "zelfde_oordeel": true
     },
@@ -4608,7 +4667,9 @@
      "poortraster_ohm": 2.3879,
      "poortraster_min_bij_hz": 82.13,
      "barriereraster_ohm": 2.3883,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.3883,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
      "zelfde_oordeel": true
     },
@@ -4617,7 +4678,9 @@
      "poortraster_ohm": 2.6038,
      "poortraster_min_bij_hz": 1032.89,
      "barriereraster_ohm": 2.604,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.604,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -4626,7 +4689,9 @@
      "poortraster_ohm": 2.5916,
      "poortraster_min_bij_hz": 1243.53,
      "barriereraster_ohm": 2.5949,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5949,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
      "zelfde_oordeel": true
     },
@@ -4635,7 +4700,9 @@
      "poortraster_ohm": 2.5677,
      "poortraster_min_bij_hz": 132.19,
      "barriereraster_ohm": 2.571,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.571,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0033,
      "zelfde_oordeel": true
     },
@@ -4644,7 +4711,9 @@
      "poortraster_ohm": 2.5516,
      "poortraster_min_bij_hz": 420.17,
      "barriereraster_ohm": 2.5561,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5561,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
      "zelfde_oordeel": true
     },
@@ -4653,7 +4722,9 @@
      "poortraster_ohm": 2.5899,
      "poortraster_min_bij_hz": 1125.26,
      "barriereraster_ohm": 2.5902,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5902,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -4662,7 +4733,9 @@
      "poortraster_ohm": 2.5809,
      "poortraster_min_bij_hz": 1231.75,
      "barriereraster_ohm": 2.5821,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5821,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -4671,7 +4744,9 @@
      "poortraster_ohm": 2.5715,
      "poortraster_min_bij_hz": 132.19,
      "barriereraster_ohm": 2.5737,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5737,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0022,
      "zelfde_oordeel": true
     },
@@ -4680,7 +4755,9 @@
      "poortraster_ohm": 2.6038,
      "poortraster_min_bij_hz": 1032.89,
      "barriereraster_ohm": 2.604,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.604,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -4689,7 +4766,9 @@
      "poortraster_ohm": 2.5916,
      "poortraster_min_bij_hz": 1243.53,
      "barriereraster_ohm": 2.5949,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5949,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
      "zelfde_oordeel": true
     },
@@ -4698,7 +4777,9 @@
      "poortraster_ohm": 2.5677,
      "poortraster_min_bij_hz": 132.19,
      "barriereraster_ohm": 2.571,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.571,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0033,
      "zelfde_oordeel": true
     },
@@ -4707,7 +4788,9 @@
      "poortraster_ohm": 2.5516,
      "poortraster_min_bij_hz": 420.17,
      "barriereraster_ohm": 2.5561,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5561,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
      "zelfde_oordeel": true
     },
@@ -4716,7 +4799,9 @@
      "poortraster_ohm": 2.5967,
      "poortraster_min_bij_hz": 222.06,
      "barriereraster_ohm": 2.6,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
      "zelfde_oordeel": true
     },
@@ -4725,7 +4810,9 @@
      "poortraster_ohm": 2.6035,
      "poortraster_min_bij_hz": 899.74,
      "barriereraster_ohm": 2.607,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.607,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0035,
      "zelfde_oordeel": true
     },
@@ -4734,7 +4821,9 @@
      "poortraster_ohm": 2.5608,
      "poortraster_min_bij_hz": 81.74,
      "barriereraster_ohm": 2.5608,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5608,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -4743,7 +4832,9 @@
      "poortraster_ohm": 2.5905,
      "poortraster_min_bij_hz": 98.88,
      "barriereraster_ohm": 2.5911,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5911,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
@@ -4752,7 +4843,9 @@
      "poortraster_ohm": 2.5952,
      "poortraster_min_bij_hz": 970.92,
      "barriereraster_ohm": 2.5951,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5951,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -4761,7 +4854,9 @@
      "poortraster_ohm": 2.5494,
      "poortraster_min_bij_hz": 975.55,
      "barriereraster_ohm": 2.5497,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5497,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -4770,7 +4865,9 @@
      "poortraster_ohm": 2.5927,
      "poortraster_min_bij_hz": 1249.46,
      "barriereraster_ohm": 2.5947,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5947,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
      "zelfde_oordeel": true
     },
@@ -4779,7 +4876,9 @@
      "poortraster_ohm": 2.6148,
      "poortraster_min_bij_hz": 1032.89,
      "barriereraster_ohm": 2.6154,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6154,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
@@ -4788,7 +4887,9 @@
      "poortraster_ohm": 2.6124,
      "poortraster_min_bij_hz": 961.72,
      "barriereraster_ohm": 2.6187,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6187,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0063,
      "zelfde_oordeel": true
     },
@@ -4797,7 +4898,9 @@
      "poortraster_ohm": 2.5995,
      "poortraster_min_bij_hz": 1180.11,
      "barriereraster_ohm": 2.6027,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6027,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0032,
      "zelfde_oordeel": true
     },
@@ -4806,7 +4909,9 @@
      "poortraster_ohm": 2.5586,
      "poortraster_min_bij_hz": 83.31,
      "barriereraster_ohm": 2.5606,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5606,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
      "zelfde_oordeel": true
     },
@@ -4815,7 +4920,9 @@
      "poortraster_ohm": 2.5569,
      "poortraster_min_bij_hz": 80.97,
      "barriereraster_ohm": 2.5614,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5614,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
      "zelfde_oordeel": true
     },
@@ -4824,7 +4931,9 @@
      "poortraster_ohm": 2.6094,
      "poortraster_min_bij_hz": 1141.44,
      "barriereraster_ohm": 2.6115,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6115,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0021,
      "zelfde_oordeel": true
     },
@@ -4833,7 +4942,9 @@
      "poortraster_ohm": 2.5918,
      "poortraster_min_bij_hz": 1237.63,
      "barriereraster_ohm": 2.5947,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5947,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.003,
      "zelfde_oordeel": true
     },
@@ -4842,7 +4953,9 @@
      "poortraster_ohm": 2.5931,
      "poortraster_min_bij_hz": 934.65,
      "barriereraster_ohm": 2.6007,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6007,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0075,
      "zelfde_oordeel": true
     },
@@ -4851,7 +4964,9 @@
      "poortraster_ohm": 2.6259,
      "poortraster_min_bij_hz": 1037.81,
      "barriereraster_ohm": 2.6266,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6266,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0007,
      "zelfde_oordeel": true
     },
@@ -4860,7 +4975,9 @@
      "poortraster_ohm": 2.5907,
      "poortraster_min_bij_hz": 1008.6,
      "barriereraster_ohm": 2.5937,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5937,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.003,
      "zelfde_oordeel": true
     },
@@ -4869,7 +4986,9 @@
      "poortraster_ohm": 2.6108,
      "poortraster_min_bij_hz": 970.92,
      "barriereraster_ohm": 2.6111,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6111,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -4878,7 +4997,9 @@
      "poortraster_ohm": 2.5867,
      "poortraster_min_bij_hz": 234,
      "barriereraster_ohm": 2.5879,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5879,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -4887,7 +5008,9 @@
      "poortraster_ohm": 2.5819,
      "poortraster_min_bij_hz": 1146.89,
      "barriereraster_ohm": 2.587,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.587,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0051,
      "zelfde_oordeel": true
     },
@@ -4896,7 +5019,9 @@
      "poortraster_ohm": 2.5839,
      "poortraster_min_bij_hz": 132.19,
      "barriereraster_ohm": 2.5895,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5895,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0056,
      "zelfde_oordeel": true
     },
@@ -4905,7 +5030,9 @@
      "poortraster_ohm": 2.5586,
      "poortraster_min_bij_hz": 83.31,
      "barriereraster_ohm": 2.5606,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5606,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
      "zelfde_oordeel": true
     },
@@ -4914,7 +5041,9 @@
      "poortraster_ohm": 2.5569,
      "poortraster_min_bij_hz": 80.97,
      "barriereraster_ohm": 2.5614,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5614,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
      "zelfde_oordeel": true
     },
@@ -4923,7 +5052,9 @@
      "poortraster_ohm": 2.5696,
      "poortraster_min_bij_hz": 1119.92,
      "barriereraster_ohm": 2.5696,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5696,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -4932,7 +5063,9 @@
      "poortraster_ohm": 2.6026,
      "poortraster_min_bij_hz": 1067.87,
      "barriereraster_ohm": 2.6041,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6041,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0015,
      "zelfde_oordeel": true
     },
@@ -4941,7 +5074,9 @@
      "poortraster_ohm": 2.5858,
      "poortraster_min_bij_hz": 227.41,
      "barriereraster_ohm": 2.5885,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5885,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0027,
      "zelfde_oordeel": true
     },
@@ -4950,7 +5085,9 @@
      "poortraster_ohm": 2.6085,
      "poortraster_min_bij_hz": 1163.38,
      "barriereraster_ohm": 2.6103,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6103,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
      "zelfde_oordeel": true
     },
@@ -4959,7 +5096,9 @@
      "poortraster_ohm": 2.5757,
      "poortraster_min_bij_hz": 1072.97,
      "barriereraster_ohm": 2.5818,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5818,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0061,
      "zelfde_oordeel": true
     },
@@ -4968,7 +5107,9 @@
      "poortraster_ohm": 2.5841,
      "poortraster_min_bij_hz": 1208.53,
      "barriereraster_ohm": 2.5875,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5875,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
      "zelfde_oordeel": true
     },
@@ -4977,7 +5118,9 @@
      "poortraster_ohm": 2.5931,
      "poortraster_min_bij_hz": 966.31,
      "barriereraster_ohm": 2.595,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.595,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
      "zelfde_oordeel": true
     },
@@ -4986,7 +5129,9 @@
      "poortraster_ohm": 2.5586,
      "poortraster_min_bij_hz": 83.31,
      "barriereraster_ohm": 2.5606,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5606,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
      "zelfde_oordeel": true
     },
@@ -4995,7 +5140,9 @@
      "poortraster_ohm": 2.5569,
      "poortraster_min_bij_hz": 80.97,
      "barriereraster_ohm": 2.5614,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5614,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
      "zelfde_oordeel": true
     },
@@ -5004,7 +5151,9 @@
      "poortraster_ohm": 2.569,
      "poortraster_min_bij_hz": 904.03,
      "barriereraster_ohm": 2.5807,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5807,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0117,
      "zelfde_oordeel": true
     },
@@ -5013,7 +5162,9 @@
      "poortraster_ohm": 2.5954,
      "poortraster_min_bij_hz": 1202.79,
      "barriereraster_ohm": 2.5974,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5974,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
      "zelfde_oordeel": true
     },
@@ -5022,7 +5173,9 @@
      "poortraster_ohm": 2.5892,
      "poortraster_min_bij_hz": 1072.97,
      "barriereraster_ohm": 2.5939,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5939,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0047,
      "zelfde_oordeel": true
     },
@@ -5031,7 +5184,9 @@
      "poortraster_ohm": 2.6077,
      "poortraster_min_bij_hz": 1062.8,
      "barriereraster_ohm": 2.6077,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6077,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5040,7 +5195,9 @@
      "poortraster_ohm": 2.5821,
      "poortraster_min_bij_hz": 132.19,
      "barriereraster_ohm": 2.5863,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5863,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0041,
      "zelfde_oordeel": true
     },
@@ -5049,7 +5206,9 @@
      "poortraster_ohm": 2.6116,
      "poortraster_min_bij_hz": 1157.86,
      "barriereraster_ohm": 2.6116,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6116,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5058,7 +5217,9 @@
      "poortraster_ohm": 2.5908,
      "poortraster_min_bij_hz": 970.92,
      "barriereraster_ohm": 2.5907,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5907,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5067,7 +5228,9 @@
      "poortraster_ohm": 3.5283,
      "poortraster_min_bij_hz": 1461.93,
      "barriereraster_ohm": 3.5333,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.5333,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.005,
      "zelfde_oordeel": true
     },
@@ -5076,7 +5239,9 @@
      "poortraster_ohm": 2.586,
      "poortraster_min_bij_hz": 424.19,
      "barriereraster_ohm": 2.5877,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5877,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
      "zelfde_oordeel": true
     },
@@ -5085,7 +5250,9 @@
      "poortraster_ohm": 2.5611,
      "poortraster_min_bij_hz": 414.22,
      "barriereraster_ohm": 2.5697,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5697,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0085,
      "zelfde_oordeel": true
     },
@@ -5094,7 +5261,9 @@
      "poortraster_ohm": 2.5821,
      "poortraster_min_bij_hz": 428.25,
      "barriereraster_ohm": 2.599,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.599,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0169,
      "zelfde_oordeel": true
     },
@@ -5103,7 +5272,9 @@
      "poortraster_ohm": 2.5681,
      "poortraster_min_bij_hz": 1174.51,
      "barriereraster_ohm": 2.5692,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5692,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.001,
      "zelfde_oordeel": true
     },
@@ -5112,7 +5283,9 @@
      "poortraster_ohm": 2.5859,
      "poortraster_min_bij_hz": 132.19,
      "barriereraster_ohm": 2.5926,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5926,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0067,
      "zelfde_oordeel": true
     },
@@ -5121,7 +5294,9 @@
      "poortraster_ohm": 2.5944,
      "poortraster_min_bij_hz": 404.48,
      "barriereraster_ohm": 2.6217,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6217,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0273,
      "zelfde_oordeel": true
     },
@@ -5130,7 +5305,9 @@
      "poortraster_ohm": 2.5555,
      "poortraster_min_bij_hz": 1008.6,
      "barriereraster_ohm": 2.5567,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5567,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -5139,7 +5316,9 @@
      "poortraster_ohm": 2.6104,
      "poortraster_min_bij_hz": 1146.89,
      "barriereraster_ohm": 2.6109,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6109,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
      "zelfde_oordeel": true
     },
@@ -5148,7 +5327,9 @@
      "poortraster_ohm": 2.5711,
      "poortraster_min_bij_hz": 83.31,
      "barriereraster_ohm": 2.5735,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5735,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0024,
      "zelfde_oordeel": true
     },
@@ -5157,7 +5338,9 @@
      "poortraster_ohm": 2.601,
      "poortraster_min_bij_hz": 980.21,
      "barriereraster_ohm": 2.6037,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6037,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0027,
      "zelfde_oordeel": true
     },
@@ -5166,7 +5349,9 @@
      "poortraster_ohm": 3.2885,
      "poortraster_min_bij_hz": 72.92,
      "barriereraster_ohm": 3.2885,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.2885,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5175,7 +5360,9 @@
      "poortraster_ohm": 3.4002,
      "poortraster_min_bij_hz": 853.85,
      "barriereraster_ohm": 3.4011,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.4011,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
      "zelfde_oordeel": true
     },
@@ -5184,7 +5371,9 @@
      "poortraster_ohm": 2.9855,
      "poortraster_min_bij_hz": 1062.8,
      "barriereraster_ohm": 2.9855,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.9855,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5193,7 +5382,9 @@
      "poortraster_ohm": 3.7502,
      "poortraster_min_bij_hz": 75.03,
      "barriereraster_ohm": 3.7502,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.7502,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5202,7 +5393,9 @@
      "poortraster_ohm": 3.6419,
      "poortraster_min_bij_hz": 75.75,
      "barriereraster_ohm": 3.6422,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.6422,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -5211,7 +5404,9 @@
      "poortraster_ohm": 3.4997,
      "poortraster_min_bij_hz": 77.57,
      "barriereraster_ohm": 3.4998,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.4998,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5220,7 +5415,9 @@
      "poortraster_ohm": 2.6409,
      "poortraster_min_bij_hz": 975.55,
      "barriereraster_ohm": 2.6411,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6411,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -5229,7 +5426,9 @@
      "poortraster_ohm": 2.6377,
      "poortraster_min_bij_hz": 10045.66,
      "barriereraster_ohm": 2.6377,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6377,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5238,7 +5437,9 @@
      "poortraster_ohm": 3.2885,
      "poortraster_min_bij_hz": 72.92,
      "barriereraster_ohm": 3.2885,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.2885,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5247,7 +5448,9 @@
      "poortraster_ohm": 2.9855,
      "poortraster_min_bij_hz": 1062.8,
      "barriereraster_ohm": 2.9855,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.9855,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5256,7 +5459,9 @@
      "poortraster_ohm": 3.6419,
      "poortraster_min_bij_hz": 75.75,
      "barriereraster_ohm": 3.6422,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.6422,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -5265,7 +5470,9 @@
      "poortraster_ohm": 2.6377,
      "poortraster_min_bij_hz": 10045.66,
      "barriereraster_ohm": 2.6377,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6377,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5274,7 +5481,9 @@
      "poortraster_ohm": 2.9425,
      "poortraster_min_bij_hz": 357.4,
      "barriereraster_ohm": 2.9433,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.9433,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0008,
      "zelfde_oordeel": true
     },
@@ -5283,7 +5492,9 @@
      "poortraster_ohm": 3.9684,
      "poortraster_min_bij_hz": 1093.59,
      "barriereraster_ohm": 3.9684,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.9684,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5292,7 +5503,9 @@
      "poortraster_ohm": 2.5867,
      "poortraster_min_bij_hz": 1003.81,
      "barriereraster_ohm": 2.5868,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5868,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5301,7 +5514,9 @@
      "poortraster_ohm": 2.5974,
      "poortraster_min_bij_hz": 263.56,
      "barriereraster_ohm": 2.5986,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5986,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -5310,7 +5525,9 @@
      "poortraster_ohm": 2.558,
      "poortraster_min_bij_hz": 449.12,
      "barriereraster_ohm": 2.5592,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5592,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0011,
      "zelfde_oordeel": true
     },
@@ -5319,7 +5536,9 @@
      "poortraster_ohm": 2.6178,
      "poortraster_min_bij_hz": 975.55,
      "barriereraster_ohm": 2.6187,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6187,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
      "zelfde_oordeel": true
     },
@@ -5328,7 +5547,9 @@
      "poortraster_ohm": 2.61,
      "poortraster_min_bij_hz": 235.11,
      "barriereraster_ohm": 2.6121,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6121,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0021,
      "zelfde_oordeel": true
     },
@@ -5337,7 +5558,9 @@
      "poortraster_ohm": 3.4567,
      "poortraster_min_bij_hz": 1078.09,
      "barriereraster_ohm": 3.4574,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.4574,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0007,
      "zelfde_oordeel": true
     },
@@ -5346,7 +5569,9 @@
      "poortraster_ohm": 3.612,
      "poortraster_min_bij_hz": 312.81,
      "barriereraster_ohm": 3.6121,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.6121,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5355,7 +5580,9 @@
      "poortraster_ohm": 2.5864,
      "poortraster_min_bij_hz": 758.07,
      "barriereraster_ohm": 2.5882,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5882,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
      "zelfde_oordeel": true
     },
@@ -5364,7 +5591,9 @@
      "poortraster_ohm": 2.5804,
      "poortraster_min_bij_hz": 226.33,
      "barriereraster_ohm": 2.5808,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5808,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0004,
      "zelfde_oordeel": true
     },
@@ -5373,7 +5602,9 @@
      "poortraster_ohm": 2.6267,
      "poortraster_min_bij_hz": 263.56,
      "barriereraster_ohm": 2.6279,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6279,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -5382,7 +5613,9 @@
      "poortraster_ohm": 2.6058,
      "poortraster_min_bij_hz": 9578.79,
      "barriereraster_ohm": 2.6064,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6064,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
@@ -5391,7 +5624,9 @@
      "poortraster_ohm": 2.5929,
      "poortraster_min_bij_hz": 230.68,
      "barriereraster_ohm": 2.5929,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5929,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5400,7 +5635,9 @@
      "poortraster_ohm": 2.693,
      "poortraster_min_bij_hz": 349,
      "barriereraster_ohm": 2.6938,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6938,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
      "zelfde_oordeel": true
     },
@@ -5409,7 +5646,9 @@
      "poortraster_ohm": 3.0245,
      "poortraster_min_bij_hz": 359.11,
      "barriereraster_ohm": 3.0257,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.0257,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -5418,7 +5657,9 @@
      "poortraster_ohm": 2.5964,
      "poortraster_min_bij_hz": 1008.6,
      "barriereraster_ohm": 2.5967,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5967,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -5427,7 +5668,9 @@
      "poortraster_ohm": 2.6094,
      "poortraster_min_bij_hz": 248.93,
      "barriereraster_ohm": 2.6097,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6097,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
      "zelfde_oordeel": true
     },
@@ -5436,7 +5679,9 @@
      "poortraster_ohm": 2.5683,
      "poortraster_min_bij_hz": 1119.92,
      "barriereraster_ohm": 2.5683,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5683,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5445,7 +5690,9 @@
      "poortraster_ohm": 2.5511,
      "poortraster_min_bij_hz": 1078.09,
      "barriereraster_ohm": 2.5516,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5516,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
@@ -5454,7 +5701,9 @@
      "poortraster_ohm": 2.8127,
      "poortraster_min_bij_hz": 438.56,
      "barriereraster_ohm": 2.8343,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.8343,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0216,
      "zelfde_oordeel": true
     },
@@ -5463,7 +5712,9 @@
      "poortraster_ohm": 2.9267,
      "poortraster_min_bij_hz": 294.05,
      "barriereraster_ohm": 2.9284,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.9284,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0017,
      "zelfde_oordeel": true
     },
@@ -5472,7 +5723,9 @@
      "poortraster_ohm": 3.5519,
      "poortraster_min_bij_hz": 276.41,
      "barriereraster_ohm": 3.552,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.552,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -5481,7 +5734,9 @@
      "poortraster_ohm": 2.5946,
      "poortraster_min_bij_hz": 234,
      "barriereraster_ohm": 2.5964,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5964,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
      "zelfde_oordeel": true
     },
@@ -5490,7 +5745,9 @@
      "poortraster_ohm": 2.5979,
      "poortraster_min_bij_hz": 238.5,
      "barriereraster_ohm": 2.5981,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5981,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -5499,7 +5756,9 @@
      "poortraster_ohm": 3.717,
      "poortraster_min_bij_hz": 1023.1,
      "barriereraster_ohm": 3.7175,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.7175,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
      "zelfde_oordeel": true
     },
@@ -5508,7 +5767,9 @@
      "poortraster_ohm": 3.5856,
      "poortraster_min_bij_hz": 984.88,
      "barriereraster_ohm": 3.5868,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.5868,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     },
@@ -5517,7 +5778,9 @@
      "poortraster_ohm": 2.9228,
      "poortraster_min_bij_hz": 263.56,
      "barriereraster_ohm": 2.9242,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.9242,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0013,
      "zelfde_oordeel": true
     },
@@ -5526,7 +5789,9 @@
      "poortraster_ohm": 2.6454,
      "poortraster_min_bij_hz": 268.63,
      "barriereraster_ohm": 2.6464,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6464,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.001,
      "zelfde_oordeel": true
     },
@@ -5535,7 +5800,9 @@
      "poortraster_ohm": 2.6038,
      "poortraster_min_bij_hz": 1104.05,
      "barriereraster_ohm": 2.6116,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6116,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0078,
      "zelfde_oordeel": true
     },
@@ -5544,7 +5811,9 @@
      "poortraster_ohm": 4.1686,
      "poortraster_min_bij_hz": 1057.76,
      "barriereraster_ohm": 4.1686,
+     "_veiligheidsraster_ohm_tot_A5e3b": 4.1686,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5553,7 +5822,9 @@
      "poortraster_ohm": 3.6256,
      "poortraster_min_bij_hz": 984.88,
      "barriereraster_ohm": 3.627,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.627,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0014,
      "zelfde_oordeel": true
     },
@@ -5562,7 +5833,9 @@
      "poortraster_ohm": 2.9763,
      "poortraster_min_bij_hz": 267.35,
      "barriereraster_ohm": 2.9765,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.9765,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -5571,7 +5844,9 @@
      "poortraster_ohm": 2.6959,
      "poortraster_min_bij_hz": 257.36,
      "barriereraster_ohm": 2.6965,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6965,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
@@ -5580,7 +5855,9 @@
      "poortraster_ohm": 2.5898,
      "poortraster_min_bij_hz": 135.37,
      "barriereraster_ohm": 2.5906,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5906,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0008,
      "zelfde_oordeel": true
     },
@@ -5589,7 +5866,9 @@
      "poortraster_ohm": 2.6556,
      "poortraster_min_bij_hz": 10336.64,
      "barriereraster_ohm": 2.6556,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6556,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5598,7 +5877,9 @@
      "poortraster_ohm": 2.582,
      "poortraster_min_bij_hz": 1047.74,
      "barriereraster_ohm": 2.5861,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5861,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0041,
      "zelfde_oordeel": true
     },
@@ -5607,7 +5888,9 @@
      "poortraster_ohm": 4.1686,
      "poortraster_min_bij_hz": 1057.76,
      "barriereraster_ohm": 4.1686,
+     "_veiligheidsraster_ohm_tot_A5e3b": 4.1686,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5616,7 +5899,9 @@
      "poortraster_ohm": 3.6256,
      "poortraster_min_bij_hz": 984.88,
      "barriereraster_ohm": 3.627,
+     "_veiligheidsraster_ohm_tot_A5e3b": 3.627,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0014,
      "zelfde_oordeel": true
     },
@@ -5625,7 +5910,9 @@
      "poortraster_ohm": 2.9763,
      "poortraster_min_bij_hz": 267.35,
      "barriereraster_ohm": 2.9765,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.9765,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
      "zelfde_oordeel": true
     },
@@ -5634,7 +5921,9 @@
      "poortraster_ohm": 2.6959,
      "poortraster_min_bij_hz": 257.36,
      "barriereraster_ohm": 2.6965,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6965,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
      "zelfde_oordeel": true
     },
@@ -5643,7 +5932,9 @@
      "poortraster_ohm": 2.5898,
      "poortraster_min_bij_hz": 135.37,
      "barriereraster_ohm": 2.5906,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5906,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0008,
      "zelfde_oordeel": true
     },
@@ -5652,7 +5943,9 @@
      "poortraster_ohm": 2.6556,
      "poortraster_min_bij_hz": 10336.64,
      "barriereraster_ohm": 2.6556,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6556,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5661,7 +5954,9 @@
      "poortraster_ohm": 2.582,
      "poortraster_min_bij_hz": 1047.74,
      "barriereraster_ohm": 2.5861,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5861,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0041,
      "zelfde_oordeel": true
     },
@@ -5669,9 +5964,11 @@
      "netlist": "V51_KAND_1",
      "poortraster_ohm": 2.5717,
      "poortraster_min_bij_hz": 10.07,
-     "barriereraster_ohm": 2.5881,
-     "binnen_barriere_uitgestrektheid": false,
-     "verschil_ohm": 0.0163,
+     "barriereraster_ohm": 2.5717,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5881,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": false,
+     "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
     {
@@ -5679,7 +5976,9 @@
      "poortraster_ohm": 2.7348,
      "poortraster_min_bij_hz": 136.02,
      "barriereraster_ohm": 2.7376,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.7376,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0028,
      "zelfde_oordeel": true
     },
@@ -5688,7 +5987,9 @@
      "poortraster_ohm": 2.8681,
      "poortraster_min_bij_hz": 136.02,
      "barriereraster_ohm": 2.8706,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.8706,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0025,
      "zelfde_oordeel": true
     },
@@ -5697,7 +5998,9 @@
      "poortraster_ohm": 2.8872,
      "poortraster_min_bij_hz": 136.02,
      "barriereraster_ohm": 2.8905,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.8905,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0033,
      "zelfde_oordeel": true
     },
@@ -5706,7 +6009,9 @@
      "poortraster_ohm": 2.5921,
      "poortraster_min_bij_hz": 133.45,
      "barriereraster_ohm": 2.5921,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5921,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5715,7 +6020,9 @@
      "poortraster_ohm": 2.5909,
      "poortraster_min_bij_hz": 1067.87,
      "barriereraster_ohm": 2.5914,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5914,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
      "zelfde_oordeel": true
     },
@@ -5724,7 +6031,9 @@
      "poortraster_ohm": 2.5856,
      "poortraster_min_bij_hz": 254.93,
      "barriereraster_ohm": 2.5857,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5857,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
@@ -5733,7 +6042,9 @@
      "poortraster_ohm": 2.6164,
      "poortraster_min_bij_hz": 1163.38,
      "barriereraster_ohm": 2.619,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.619,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0027,
      "zelfde_oordeel": true
     },
@@ -5742,7 +6053,9 @@
      "poortraster_ohm": 2.8063,
      "poortraster_min_bij_hz": 321.88,
      "barriereraster_ohm": 2.8099,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.8099,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0036,
      "zelfde_oordeel": true
     },
@@ -5750,9 +6063,11 @@
      "netlist": "KAND_V2_2",
      "poortraster_ohm": 2.5499,
      "poortraster_min_bij_hz": 10.07,
-     "barriereraster_ohm": 2.8515,
-     "binnen_barriere_uitgestrektheid": false,
-     "verschil_ohm": 0.3015,
+     "barriereraster_ohm": 2.5499,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.8515,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": false,
+     "verschil_ohm": 0,
      "zelfde_oordeel": true
     },
     {
@@ -5760,7 +6075,9 @@
      "poortraster_ohm": 2.5883,
      "poortraster_min_bij_hz": 312.81,
      "barriereraster_ohm": 2.5905,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5905,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0022,
      "zelfde_oordeel": true
     },
@@ -5769,7 +6086,9 @@
      "poortraster_ohm": 2.6005,
      "poortraster_min_bij_hz": 975.55,
      "barriereraster_ohm": 2.6006,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6006,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5778,7 +6097,9 @@
      "poortraster_ohm": 2.6941,
      "poortraster_min_bij_hz": 53.01,
      "barriereraster_ohm": 2.694,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.694,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
      "zelfde_oordeel": true
     },
@@ -5787,7 +6108,9 @@
      "poortraster_ohm": 2.664,
      "poortraster_min_bij_hz": 52.76,
      "barriereraster_ohm": 2.6644,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6644,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0004,
      "zelfde_oordeel": true
     },
@@ -5796,7 +6119,9 @@
      "poortraster_ohm": 2.6,
      "poortraster_min_bij_hz": 13950.42,
      "barriereraster_ohm": 2.6012,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6012,
      "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
      "zelfde_oordeel": true
     }
@@ -28398,12 +28723,12 @@
   },
   "v51_niveauwerk": {
    "_": "V51 — NIVEAUWERK OP DE LAAGSTE WEG, op élke bevroren netlist. X is hoeveel dB niveauwerk deze CONFIGURATIE op de laagste weg vraagt: de A5d.4-gap van die weg tot het anker na de doelcurve (klasse A: een eigenschap van de meetset en de voicing, niet van een filter). De inventaris per netlist is wat het bestand daar werkelijk draagt (levelWork.ts: weerstanden in het serie-pad, weerstanden alleen van dat pad naar massa), naast de seriespoel per weg (de tilt die het pad vervangt), de opslingering en M-E. Afgeleid; frozenNetlistGates.test.ts herrekent het. Zie gestelde_eisen.geen_niveauwerk_* voor de eis en driverkaart.woofer.schakeling voor de meetgeometrie. SINDS V51b (level-work/1.1) per netlist ook de DCR van de seriespoelen en het TOTAAL (discrete R plus DCR), want de gestelde variant series-r-max (gestelde_eisen.max_serie_R_laagste_weg_ohm) oordeelt op die som; binnen_eis is het oordeel van levelWorkVerdict onder de eis die het casusboek vandaag stelt.",
-   "schatter": "level-work/1.1",
+   "schatter": "level-work/1.2",
    "eis": "none",
    "max_serie_R_ohm": null,
    "laagste_weg": "woofer",
    "anker": "mid",
-   "gevraagd_X_dB": 0.85,
+   "gevraagd_X_dB": 0.78,
    "serie_zou_leveren_dB": 6.02,
    "baffle_step_hz": null,
    "thermisch_ontwerpvermogen_W": 10,
@@ -28449,8 +28774,8 @@
     "KAND_V2_6",
     "KAND_V2_7"
    ],
-   "levend_corpus_binnen_eis": 7,
-   "levend_corpus_buiten_eis": 0,
+   "levend_corpus_binnen_eis": 4,
+   "levend_corpus_buiten_eis": 3,
    "referentiefilters_buiten_eis": [
     "HUIDIG",
     "KAND_A",
@@ -28470,6 +28795,7 @@
      "serie_R_ohm": 3.3,
      "spoel_DCR_ohm": 0.46,
      "serie_R_totaal_ohm": 3.76,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3,
@@ -28493,6 +28819,7 @@
      "serie_R_ohm": 4,
      "spoel_DCR_ohm": 0.42,
      "serie_R_totaal_ohm": 4.42,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.51,
@@ -28516,6 +28843,7 @@
      "serie_R_ohm": 1.61,
      "spoel_DCR_ohm": 0.74,
      "serie_R_totaal_ohm": 2.35,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.13,
@@ -28534,6 +28862,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 3.96,
@@ -28562,6 +28891,7 @@
      "serie_R_ohm": 0.95,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0.95,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 11.11,
@@ -28580,6 +28910,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 3.34,
@@ -28608,6 +28939,7 @@
      "serie_R_ohm": 1.39,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.39,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.67,
@@ -28626,6 +28958,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 3.34,
@@ -28654,6 +28987,7 @@
      "serie_R_ohm": 1.32,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.32,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.02,
@@ -28672,6 +29006,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 3.34,
@@ -28700,6 +29035,7 @@
      "serie_R_ohm": 1.44,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.44,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.66,
@@ -28728,6 +29064,7 @@
      "serie_R_ohm": 1.38,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.38,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.62,
@@ -28756,6 +29093,7 @@
      "serie_R_ohm": 1.35,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.35,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.76,
@@ -28774,6 +29112,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.66,
@@ -28792,6 +29131,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.15,
@@ -28820,6 +29160,7 @@
      "serie_R_ohm": 1.35,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.35,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.32,
@@ -28848,6 +29189,7 @@
      "serie_R_ohm": 1.06,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.06,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.2,
@@ -28876,6 +29218,7 @@
      "serie_R_ohm": 1.13,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.13,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.95,
@@ -28894,6 +29237,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.65,
@@ -28922,6 +29266,7 @@
      "serie_R_ohm": 1.84,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.84,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.85,
@@ -28950,6 +29295,7 @@
      "serie_R_ohm": 1.14,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.14,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.52,
@@ -28978,6 +29324,7 @@
      "serie_R_ohm": 1.25,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.25,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.33,
@@ -29006,6 +29353,7 @@
      "serie_R_ohm": 1.46,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.46,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.13,
@@ -29034,6 +29382,7 @@
      "serie_R_ohm": 1.35,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.35,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.32,
@@ -29062,6 +29411,7 @@
      "serie_R_ohm": 1.06,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.06,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.2,
@@ -29090,6 +29440,7 @@
      "serie_R_ohm": 1.13,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.13,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.95,
@@ -29118,6 +29469,7 @@
      "serie_R_ohm": 1.84,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.84,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.85,
@@ -29146,6 +29498,7 @@
      "serie_R_ohm": 1.14,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.14,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.52,
@@ -29174,6 +29527,7 @@
      "serie_R_ohm": 1.25,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.25,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.33,
@@ -29202,6 +29556,7 @@
      "serie_R_ohm": 1.46,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.46,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.13,
@@ -29230,6 +29585,7 @@
      "serie_R_ohm": 1.13,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.13,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.34,
@@ -29258,6 +29614,7 @@
      "serie_R_ohm": 1.25,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.25,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.63,
@@ -29276,6 +29633,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.81,
@@ -29304,6 +29662,7 @@
      "serie_R_ohm": 1.01,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.01,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.34,
@@ -29332,6 +29691,7 @@
      "serie_R_ohm": 1.14,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.14,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.46,
@@ -29350,6 +29710,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 5.37,
@@ -29378,6 +29739,7 @@
      "serie_R_ohm": 2.88,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.88,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.93,
@@ -29406,6 +29768,7 @@
      "serie_R_ohm": 1.86,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.86,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.37,
@@ -29434,6 +29797,7 @@
      "serie_R_ohm": 1.25,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.25,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.59,
@@ -29462,6 +29826,7 @@
      "serie_R_ohm": 1.97,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.97,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.26,
@@ -29480,6 +29845,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.51,
@@ -29498,6 +29864,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 5.24,
@@ -29526,6 +29893,7 @@
      "serie_R_ohm": 1.6,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.6,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.91,
@@ -29554,6 +29922,7 @@
      "serie_R_ohm": 1.23,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.23,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.94,
@@ -29582,6 +29951,7 @@
      "serie_R_ohm": 0.85,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0.85,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.09,
@@ -29610,6 +29980,7 @@
      "serie_R_ohm": 1.66,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.66,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.68,
@@ -29638,6 +30009,7 @@
      "serie_R_ohm": 1.33,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.33,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.41,
@@ -29666,6 +30038,7 @@
      "serie_R_ohm": 1.22,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.22,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.9,
@@ -29694,6 +30067,7 @@
      "serie_R_ohm": 1.38,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.38,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.19,
@@ -29722,6 +30096,7 @@
      "serie_R_ohm": 1.52,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.52,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.22,
@@ -29750,6 +30125,7 @@
      "serie_R_ohm": 1.09,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.09,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.39,
@@ -29768,6 +30144,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.51,
@@ -29786,6 +30163,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 5.24,
@@ -29804,6 +30182,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 5.01,
@@ -29832,6 +30211,7 @@
      "serie_R_ohm": 1.41,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.41,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.51,
@@ -29860,6 +30240,7 @@
      "serie_R_ohm": 1.46,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.46,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.37,
@@ -29888,6 +30269,7 @@
      "serie_R_ohm": 1.36,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.36,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.03,
@@ -29916,6 +30298,7 @@
      "serie_R_ohm": 1.47,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.47,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.29,
@@ -29944,6 +30327,7 @@
      "serie_R_ohm": 2.8,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.8,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.39,
@@ -29972,6 +30356,7 @@
      "serie_R_ohm": 1.08,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.08,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.53,
@@ -29990,6 +30375,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.51,
@@ -30008,6 +30394,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 5.24,
@@ -30036,6 +30423,7 @@
      "serie_R_ohm": 0.84,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0.84,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.7,
@@ -30064,6 +30452,7 @@
      "serie_R_ohm": 1.42,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.42,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.73,
@@ -30092,6 +30481,7 @@
      "serie_R_ohm": 1.4,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.4,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.27,
@@ -30120,6 +30510,7 @@
      "serie_R_ohm": 3.02,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.02,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.77,
@@ -30148,6 +30539,7 @@
      "serie_R_ohm": 1.07,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.07,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.22,
@@ -30176,6 +30568,7 @@
      "serie_R_ohm": 1.5,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.5,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.62,
@@ -30204,6 +30597,7 @@
      "serie_R_ohm": 1.03,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.03,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.52,
@@ -30232,6 +30626,7 @@
      "serie_R_ohm": 1.2,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.2,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 8.4,
@@ -30260,6 +30655,7 @@
      "serie_R_ohm": 3.71,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.71,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.84,
@@ -30288,6 +30684,7 @@
      "serie_R_ohm": 3.41,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.41,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.89,
@@ -30316,6 +30713,7 @@
      "serie_R_ohm": 3.32,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.32,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.66,
@@ -30334,6 +30732,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.49,
@@ -30362,6 +30761,7 @@
      "serie_R_ohm": 1.19,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.19,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.6,
@@ -30390,6 +30790,7 @@
      "serie_R_ohm": 1.52,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.52,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.29,
@@ -30408,6 +30809,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 5.14,
@@ -30436,6 +30838,7 @@
      "serie_R_ohm": 3.1,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.1,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.43,
@@ -30454,6 +30857,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.4,
@@ -30482,6 +30886,7 @@
      "serie_R_ohm": 1.31,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.31,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.29,
@@ -30505,6 +30910,7 @@
      "serie_R_ohm": 1,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 7.34,
@@ -30528,6 +30934,7 @@
      "serie_R_ohm": 1.72,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.72,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 6.35,
@@ -30551,6 +30958,7 @@
      "serie_R_ohm": 3.79,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.79,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.29,
@@ -30574,6 +30982,7 @@
      "serie_R_ohm": 1.59,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.59,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 6.55,
@@ -30597,6 +31006,7 @@
      "serie_R_ohm": 1.26,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.26,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 6.6,
@@ -30620,6 +31030,7 @@
      "serie_R_ohm": 1.79,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.79,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 6.33,
@@ -30643,6 +31054,7 @@
      "serie_R_ohm": 1.01,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.01,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.23,
@@ -30675,6 +31087,7 @@
      "serie_R_ohm": 2.6,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.6,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.15,
@@ -30698,6 +31111,7 @@
      "serie_R_ohm": 1,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 7.34,
@@ -30721,6 +31135,7 @@
      "serie_R_ohm": 3.79,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.79,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.29,
@@ -30744,6 +31159,7 @@
      "serie_R_ohm": 1.26,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.26,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 6.6,
@@ -30776,6 +31192,7 @@
      "serie_R_ohm": 2.6,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.6,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.15,
@@ -30804,6 +31221,7 @@
      "serie_R_ohm": 4.46,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.46,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.23,
@@ -30827,6 +31245,7 @@
      "serie_R_ohm": 2.39,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.39,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.57,
@@ -30850,6 +31269,7 @@
      "serie_R_ohm": 3.53,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.53,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.7,
@@ -30873,6 +31293,7 @@
      "serie_R_ohm": 5.79,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 5.79,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.82,
@@ -30905,6 +31326,7 @@
      "serie_R_ohm": 3.26,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.26,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.27,
@@ -30937,6 +31359,7 @@
      "serie_R_ohm": 2.25,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.25,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.92,
@@ -30960,6 +31383,7 @@
      "serie_R_ohm": 1.04,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.04,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.57,
@@ -30983,6 +31407,7 @@
      "serie_R_ohm": 2.91,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.91,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.29,
@@ -31011,6 +31436,7 @@
      "serie_R_ohm": 3.33,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.33,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.24,
@@ -31034,6 +31460,7 @@
      "serie_R_ohm": 3.98,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.98,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.7,
@@ -31057,6 +31484,7 @@
      "serie_R_ohm": 1,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.55,
@@ -31080,6 +31508,7 @@
      "serie_R_ohm": 5.65,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 5.65,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.82,
@@ -31112,6 +31541,7 @@
      "serie_R_ohm": 2.58,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.58,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.27,
@@ -31135,6 +31565,7 @@
      "serie_R_ohm": 0.98,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0.98,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.57,
@@ -31163,6 +31594,7 @@
      "serie_R_ohm": 4.27,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.27,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 1.79,
@@ -31191,6 +31623,7 @@
      "serie_R_ohm": 3.77,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.77,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.24,
@@ -31214,6 +31647,7 @@
      "serie_R_ohm": 2.76,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.76,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.82,
@@ -31237,6 +31671,7 @@
      "serie_R_ohm": 4.27,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.27,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.7,
@@ -31260,6 +31695,7 @@
      "serie_R_ohm": 1.03,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.03,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.56,
@@ -31283,6 +31719,7 @@
      "serie_R_ohm": 1.08,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.08,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.55,
@@ -31315,6 +31752,7 @@
      "serie_R_ohm": 2.62,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.62,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.27,
@@ -31338,6 +31776,7 @@
      "serie_R_ohm": 4.12,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.12,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.28,
@@ -31366,6 +31805,7 @@
      "serie_R_ohm": 3.29,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.29,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.24,
@@ -31389,6 +31829,7 @@
      "serie_R_ohm": 3.24,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.24,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.7,
@@ -31412,6 +31853,7 @@
      "serie_R_ohm": 4.27,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.27,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.82,
@@ -31435,6 +31877,7 @@
      "serie_R_ohm": 4.02,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.02,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.83,
@@ -31458,6 +31901,7 @@
      "serie_R_ohm": 3.65,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.65,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.8,
@@ -31481,6 +31925,7 @@
      "serie_R_ohm": 4.27,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.27,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.98,
@@ -31504,6 +31949,7 @@
      "serie_R_ohm": 4.27,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.27,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.04,
@@ -31536,6 +31982,7 @@
      "serie_R_ohm": 2.56,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.56,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.81,
@@ -31564,6 +32011,7 @@
      "serie_R_ohm": 3.45,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.45,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.71,
@@ -31587,6 +32035,7 @@
      "serie_R_ohm": 3.7,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.7,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.82,
@@ -31610,6 +32059,7 @@
      "serie_R_ohm": 4.27,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.27,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.98,
@@ -31633,6 +32083,7 @@
      "serie_R_ohm": 4.25,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.25,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.08,
@@ -31656,6 +32107,7 @@
      "serie_R_ohm": 1.02,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.02,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.54,
@@ -31688,6 +32140,7 @@
      "serie_R_ohm": 2.55,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.55,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.3,
@@ -31711,6 +32164,7 @@
      "serie_R_ohm": 1.08,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.08,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.57,
@@ -31739,6 +32193,7 @@
      "serie_R_ohm": 3.45,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.45,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.71,
@@ -31762,6 +32217,7 @@
      "serie_R_ohm": 3.7,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 3.7,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.82,
@@ -31785,6 +32241,7 @@
      "serie_R_ohm": 4.27,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.27,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.98,
@@ -31808,6 +32265,7 @@
      "serie_R_ohm": 4.25,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 4.25,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.08,
@@ -31831,6 +32289,7 @@
      "serie_R_ohm": 1.02,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.02,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.54,
@@ -31863,6 +32322,7 @@
      "serie_R_ohm": 2.55,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 2.55,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 3.3,
@@ -31886,6 +32346,7 @@
      "serie_R_ohm": 1.08,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1.08,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.57,
@@ -31904,7 +32365,10 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0,
-     "binnen_eis": true,
+     "resonantieloze_shunts": [
+      "L5 16.60 mH + R7 4.86 Ω"
+     ],
+     "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.13,
       "mid": 1.36
@@ -31927,6 +32391,7 @@
      "serie_R_ohm": 1,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.52,
@@ -31950,6 +32415,7 @@
      "serie_R_ohm": 0.97,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0.97,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.52,
@@ -31973,6 +32439,7 @@
      "serie_R_ohm": 1,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.54,
@@ -31996,6 +32463,7 @@
      "serie_R_ohm": 1,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 1,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.54,
@@ -32019,6 +32487,7 @@
      "serie_R_ohm": 0.87,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0.87,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.47,
@@ -32042,6 +32511,7 @@
      "serie_R_ohm": 0.87,
      "spoel_DCR_ohm": 0,
      "serie_R_totaal_ohm": 0.87,
+     "resonantieloze_shunts": [],
      "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 2.47,
@@ -32060,6 +32530,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0.94,
      "serie_R_totaal_ohm": 0.94,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.25,
@@ -32078,7 +32549,10 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 1.06,
      "serie_R_totaal_ohm": 1.06,
-     "binnen_eis": true,
+     "resonantieloze_shunts": [
+      "L8 15.12 mH + R10 48.60 Ω"
+     ],
+     "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 5.17,
       "mid": 0.94
@@ -32096,7 +32570,10 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 1.06,
      "serie_R_totaal_ohm": 1.06,
-     "binnen_eis": true,
+     "resonantieloze_shunts": [
+      "L5 5.39 mH + R7 1.10 Ω"
+     ],
+     "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 5.19,
       "mid": 1.93
@@ -32114,6 +32591,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 1.18,
      "serie_R_totaal_ohm": 1.18,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 6.19,
@@ -32132,6 +32610,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0.88,
      "serie_R_totaal_ohm": 0.88,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 3.85,
@@ -32150,6 +32629,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0.94,
      "serie_R_totaal_ohm": 0.94,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 4.25,
@@ -32168,6 +32648,7 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0.9,
      "serie_R_totaal_ohm": 0.9,
+     "resonantieloze_shunts": [],
      "binnen_eis": true,
      "serie_L_mH_per_weg": {
       "woofer": 3.91,
@@ -32186,7 +32667,10 @@
      "serie_R_ohm": 0,
      "spoel_DCR_ohm": 0.95,
      "serie_R_totaal_ohm": 0.95,
-     "binnen_eis": true,
+     "resonantieloze_shunts": [
+      "L8 16.74 mH + R10 28.18 Ω"
+     ],
+     "binnen_eis": false,
      "serie_L_mH_per_weg": {
       "woofer": 4.32,
       "mid": 2.61

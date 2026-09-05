@@ -41,6 +41,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  extendGridToSweepExtent,
   optimizeNetworkValues,
   systemMinImpedanceOhm,
   type NetOptimizeOptions,
@@ -181,8 +182,11 @@ describe('V33 — the barrier source is a choice, and its default is what it alw
      * an unsteered barrier and an unarmed one are not the same run. Measured
      * here: the unarmed arm comes back with `ampFloorRepair: 'lifted'`. One
      * source for one term means a source with no data stops both. */
-    for (const source of ['safety', 'sweep'] as const) {
-      const withData = source === 'sweep' ? { safety } : {};
+    for (const source of ['safety', 'sweep', 'safety-extended'] as const) {
+      /* `'safety-extended'` needs BOTH the safety set and the reference; the
+       * arm below withholds the reference, which is the missing half a caller
+       * is most likely to forget. */
+      const withData = source === 'sweep' || source === 'safety-extended' ? { safety } : {};
       const control = run({ ...ARMED, ...withData, zFloorBarrierSource: 'grid' });
       const asked = run({ ...ARMED, ...withData, zFloorBarrierSource: source });
       expect(
@@ -219,5 +223,42 @@ describe('V33 — the barrier source is a choice, and its default is what it alw
     const onSweep = run({ ...ARMED, safety, zFloorBarrierSource: 'sweep', ...sweepData });
     expect(shape(onSweep)).not.toBe(shape(onGrid));
     expect(onSweep.zFloorSourceNote).toContain(impedance!.span);
+  });
+
+  it('A5e.3b — `safety-extended` is the IDENTITY where the extents already coincide, and the merge is the gate\'s own points where they do not', () => {
+    /* Two halves, and the fixture decides which one runs live. ON THIS
+     * FIXTURE the safety grid already spans the sweeps' extent (both floors at
+     * the same hertz — asserted, because it is the premise), so the extension
+     * adds nothing and `'safety-extended'` must deliver byte-for-byte what
+     * `'safety'` delivers: widening a grid by zero points may not change a
+     * bit. The half where the extents DIFFER — the blind spot A5e.3b closes —
+     * is measured where it exists, on casus 1's merged set
+     * (`frozenNetlistGates.test.ts`: KAND_V2_2's minimum at 10.07 Hz, under
+     * the safety floor of 20.5 Hz). */
+    const ext = extendGridToSweepExtent({ freqs: safety.freqs, z: safety.z }, impedance!);
+    expect(ext).not.toBeNull();
+    expect(ext!.addedBelow + ext!.addedAbove, 'this fixture\'s extents coincide — the premise of the identity claim').toBe(0);
+    const onSafety = run({ ...ARMED, safety, zFloorBarrierSource: 'safety' });
+    const onExtended = run({ ...ARMED, safety, zFloorBarrierSource: 'safety-extended', ...sweepData });
+    expect(shape(onExtended)).toBe(shape(onSafety));
+    expect(onExtended.zFloorSourceNote).toContain('extended');
+    /* The merge itself, on a reference that DOES reach further: the added
+     * points are the reference's own, in order, and a model the reference does
+     * not carry refuses the merge instead of inventing impedance. */
+    const model = Object.keys(safety.z)[0];
+    const deeper = {
+      grid: [safety.freqs[0] / 4, safety.freqs[0] / 2, ...impedance!.grid],
+      driverZ: Object.fromEntries(
+        Object.keys(impedance!.driverZ).map((m) => [m, [impedance!.driverZ[m][0], impedance!.driverZ[m][0], ...impedance!.driverZ[m]]]),
+      ),
+    };
+    const ext2 = extendGridToSweepExtent({ freqs: safety.freqs, z: safety.z }, deeper)!;
+    expect(ext2.addedBelow).toBe(2);
+    expect(ext2.grid.slice(0, 2)).toEqual([safety.freqs[0] / 4, safety.freqs[0] / 2]);
+    expect(ext2.grid.length).toBe(safety.freqs.length + 2);
+    expect(ext2.driverZ[model].length).toBe(ext2.grid.length);
+    const { [model]: _dropped, ...partial } = deeper.driverZ;
+    void _dropped;
+    expect(extendGridToSweepExtent({ freqs: safety.freqs, z: safety.z }, { grid: deeper.grid, driverZ: partial })).toBeNull();
   });
 });

@@ -6042,7 +6042,134 @@ plus 0,1 dB op de tweeter — een ANDERE tweeter-eis of een tweeter die lager ma
 meer dan een actieve woofer. Alle drie de arm-uitkomsten dragen `verdict.ok: true` op het niveauwerk, dus de
 worker-reparatie van stap 5 zou ze niet anders hebben geoordeeld. Bewijsmateriaal: `test-fixtures/casus1_a5e3_nad/`.
 
+### A5e.3b — de val gewogen, de vensters gesteld, drie reparaties (05-09-2026, alleen v2-runs; **het corpus beweegt NIET** — de regeneratie volgt op Sanders keuze uit de ablatietabel)
+
+**AANLEIDING EN OMVANG.** Drie delen, één sessie, geen regeneratie. (a) Alle zeven A5e.3-veld-netlists dragen een
+gedempte val op de bovenste reflexpiek van de woofer (22–36 mH, 280–730 µF, gedempt door het eigen koper — op
+KAND_V2_5 is er geen discrete R meer), elke spoel buiten het enkel-onderdeel-bereik van de gestelde familie: wat
+is dat onderdeel wáárd? Gemeten, tabel, geen besluit — Sander kiest, en de regeneratie is de volgende sessie mét
+die keuze. (b) Twee vensterfixes in A5d.3, allebei gesteld door Sander: de catalogus-spanwijdte als bound
+(A5d.6's slotregel eindelijk compleet) en de M-T-vloer als de strengste van gesteld en afgeleid — open punt (3)
+van A5e.3-veld, nu een besluit. (c) Drie reparaties: het NAD-vloer-script dat op een lege werklijst hing, de
+barrière-uitgestrektheid (open punt (2) van A5e.3-veld, gesloten), en de L+R-wees van de audit (V31-vorm).
+
+**DEEL (a) — DE ABLATIE VAN DE VAL OP KAND_V2_5 (354,9 · 1994,6 → levering 479/1974).** De val is L5 27,85 mH +
+C6 279,9 µF naar massa, f₀ 57,0 Hz, demping 2,118 Ω koper (de familiefit). Vier armen door één meetbank
+(`scripts/measure-a5e3b-ablatie.ts`; de twee tune-armen zijn WAARDEN-ONLY hertunes op vaste topologie met de
+echte worker-opties — poorten, zoekdoos, barrière, doelcurve, DCR-model — geoogst via `hooks.tuneOptionsFor` op
+het eigen zaad; bewust zónder `staged` en zónder `branchTargets`, de v38-bank-les; de audit bleef aan en sneed
+niets; 83 329 resp. 73 882 evaluaties, ~250 s per arm):
+
+| arm | val L/C/DCR | kruisp. | min \|Z\| @ Hz, tak | opslingering / lift dB | RMS vol / ±venster | M-K W-M / M-T ° | M-C mid / tweeter dB | diss. % | BOM val € |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| met val (geleverd) | 27,85 mH / 280 µF / 2,12 Ω | 479 · 1974 | 2,70 @ 53 woofer ✓ | **−0,93** / 1,70 | 1,03 / ±2,50 | 3,8 / 5,8 | −30,3 / −24,0 | 14 | **151** (22+4,7 mH-stapel; elco 270 µF) |
+| zonder val (waarden vast) | geen | 479 · 1974 | 3,01 @ 909 mid ✓ | **2,29** / 1,70 | 1,74 / ±3,99 | 3,7 / 5,8 | −30,3 / −24,0 | 14 | 0 |
+| zonder val, herpolijst | geen | 463 · 2151 | 2,66 @ 963 mid ✓ | **1,37** / 1,53 | 1,40 / ±3,57 | 7,2 / 3,8 | −31,8 / −28,8 | 11 | 0 |
+| bouwbare val (L ≤ 22 mH), herpolijst | 22,00 mH / 377 µF / 1,85 Ω | 455 · 2102 | 2,58 @ 51 woofer ✓ | **−1,48** / 1,70 | **0,86** / ±1,93 | 3,9 / 4,7 | −29,6 / −27,5 | 13 | **113** (22 mH enkel; elco's 390 µF) |
+
+**Wat de tabel zegt, zonder te kiezen.** (1) De val is het anti-opslingeringsmechanisme: hem knippen met vaste
+waarden jaagt de opslingering van −0,93 naar 2,29 dB (budget 1,4) en de RMS van 1,03 naar 1,74. (2) De
+herpolijsting zonder val haalt de vloer (2,66 ✓) en het budget — met 0,03 dB marge (1,37 tegen 1,4) — maar
+betaalt in RMS (1,40) en in W-M-fase (3,8 → 7,2°); de derde arm was dus formeel niet nodig en is toch gedraaid.
+(3) De BOUWBARE val (L op de spanwijdte geklemd, C en de rest vrij hertuned) is op élke kolom minstens zo goed
+als de geleverde: opslingering −1,48, RMS 0,86, min |Z| 2,58 ✓, en €38 goedkoper met één enkel catalogusonderdeel
+in plaats van een stapel. De vraag aan Sander is daarmee niet "val of geen val" maar "geen val (en 1,37 dB tegen
+een budget van 1,4), of de bouwbare val van €113". BOM uit de catalogus die de familie stelt (goedkoopste
+realisatie binnen ±5 %, spoelstapel toegestaan voor de 27,85 mH — dat een stapel nodig is, is precies (b)1).
+Bewijsmateriaal: `test-fixtures/casus1_a5e3b_ablatie/` (armbestanden + tabel.json).
+
+**DEEL (b)1 — DE CATALOGUS-SPANWIJDTE ALS BOUND (de TODO(A5e.3) bij `searchBoxFor` vervuld).** A5d.6's slotregel
+— "optimalisatiegrenzen = catalogus-spanwijdte ∩ meetafgeleide budgetgrenzen" — had sinds F2 alleen zijn tweede
+helft. De spanwijdte van de gestelde spoelfamilie van de laagste weg (1,4 mm lucht: grootste enkele onderdeel
+**22,0 mH**, `rangeH[1]` van de fit, nooit getypt) is nu een plafond op élke vrije, niet-gesnapte spoel van die
+weg — serie én shunt, want de val ís een shuntspoel (`waysOfElements`, A5e.3) — én op de synthese-slots: de
+VIERDE ketensleutel `lowestWayCoilMaxHenry` (`chainChoices.ts`, 3 → 4), afgeleid uit de gestelde familie zodra
+het DCR-model gewapend is, met de STAPEL als gestelde uitzondering (`coilStackAllowed` → absent mét die reden;
+default gecapt: een stapel is een bouwkeuze van de ontwerper, niet een aanname van de zoektocht). Wat het sluit:
+"gevlagd en doorgezet" bestaat niet meer — een spoel boven de spanwijdte wordt niet gebóuwd. **Geen W-M-vloer
+hiervan, bewust:** de val staat op de reflexpiek van de driver en schaalt niet met het kruispunt — een vloer uit
+de spanwijdte zou posities verbieden om een onderdeel dat elke positie evenveel nodig heeft. **En de bound-bug
+die de meting zelf ving:** de eerste bouwbare-val-arm leverde 31,59 mH DWARS DOOR het harde plafond van 22,0 —
+`netOptimizer.ts` paste een `valueCeilings`-plafond alleen toe als het BINNEN het zachte venster lag
+(`lg < winHi`), en de zachte spoelrand is 15 mH: een plafond erboven werd stil genegeerd, terwijl het zachte
+venster zelf een STRAF is en geen klem (de val leeft er al sinds V41 voorbij). Sinds A5e.3b klemt een gesteld
+plafond ook bóven de zachte rand (`capLg`), de zachte straf eronder blijft staan (de doos wordt niet verruimd),
+en de herhaalde arm leverde exact 22,00 mH. De byte-baselines (`f4cRegression`, `workerRouteRegression`)
+reproduceren — nagemeten, want die runs dragen geen plafond boven een zachte rand.
+
+**DEEL (b)2 — DE M-T-VLOER: DE STRENGSTE VAN GESTELD EN AFGELEID (open punt (3) gesloten, en keuze (a) van
+A5e.3-veld stap 1 door Sander teruggedraaid).** Het gestelde tweetergetal (−20 dB, V47b) bij de gestelde orde 4
+inverteert door dezelfde A5d.3(ii)-regel naar **1647 Hz** (`xoWindow.ts`, rule `'drive-stated'`;
+`upperStatedDriveLimitDb`, door `report.ts` gevuld via `statedDriveLimitDb` — dezelfde regel die de M-C-poort
+leest) — boven k·f_s (1294) en boven de excursievloer (1184). De vloer neemt de strengste bekende grens, en hij
+is BEWUST STRENG: hij leest de kale ladder met de doorlaatband op de ingang, en **een pad op de tweeter kan de
+eis halen waar de vloer dat niet aanneemt** (het shuntbeen belast de resonantiepiek van de tweeter en herstelt
+daar de deling van de ladder) — een vloer die een pad aanneemt neemt een ontwerp aan. De aanleiding is het veld
+zelf: de twee geleverde 1495-kandidaten meten −20,4/−21,2 dB — 0,4 dB marge op een gestelde eis is geen ontwerp,
+en een positie die de eis bij de gestelde orde vooraf niet kan halen is geen positie. **De cascade die erbij
+hoort en opgeschreven is:** de A5d.4-wegbanden zijn vénstercentra, dus de verankerde gaps bewegen mee
+(woofer_tov_mid 0,85 → 0,777; tweeter 3,516 → 3,426), met de A5e.3-veld-lezing als brug
+(`_waarden_veld_tot_A5e3b`) en de gedateerde gepoorte bruggen sindsdien expliciet ZONDER het gestelde getal
+herrekend — een gedateerd blok wordt niet stil herschreven. `kruisvensters.mid_tweeter_orde4` staat op
+1647–2304 (`aandrijving_gesteld`) met `_excursievloer_tot_A5e3b` als brug.
+
+**DEEL (b)3 — DE VÓÓRMETING VAN HET VELD (geen regeneratie; `scripts/measure-a5e3b-voormeting.ts`, seconden).**
+Het veld onder de nieuwe grenzen en budget 24: de M-T-as krimpt van vijf naar DRIE posities (1647, 1948, 2304;
+0,48 octaaf), de W-M-as krijgt er de ruimte van terug (twaalf afgeleid, ACHT geleverd: 148–550 Hz), dus
+**8 × 3 = 24 uit 36** waar A5e.3-veld 4 × 5 = 20 uit 60 had — de assen wisselden van rol. Van de zeven geleverde
+netlists liggen er VIJF binnen het nieuwe venster; de twee 1495-kandidaten (KAND_V2_1, KAND_V2_7) vallen eruit —
+dat is bedoeld, zie (b)2. De spanwijdte-cap beweegt het veld niet ((b)1, geen vensterinvoer).
+
+**DEEL (c)1 — HET NAD-SCRIPT.** `measure-a5e3-nad-floor.ts` wachtte bij een lege werklijst op een kind dat nooit
+gestart werd (de promise resolvet alleen in de `close`-handler); bij bestaande armbestanden valt hij nu meteen
+door naar lezen en rapporteren.
+
+**DEEL (c)2 — DE BARRIÈRE LEEST DE VOLLE SWEEP-UITGESTREKTHEID (open punt (2) gesloten).** Het veiligheidsraster
+begint waar de responsen geldig zijn (20,5 Hz), de sweep waarop M-B/|Z| oordeelt op 10 Hz, en KAND_V2_2's
+minimum zit op 10,07 Hz — de poort oordeelde waar de barrière niet keek. Sinds A5e.3b is de VIERDE waarde van de
+V33-sleutel wat de v2-verklaring afleidt: **`'safety-extended'`** — het veiligheidsraster plus de eigen punten
+van het poortraster buiten diens uitgestrektheid (`extendGridToSweepExtent`, één constructie met drie lezers:
+de term, de guard, de recorder; op casus 1: 240 + 150 eronder + 4 erboven = 394 punten, 10,1–20 317 Hz).
+`'safety'` blijft stelbaar — dat is wat de A5e.3-veld-reproductie gedateerd houdt — en geen van beide valt bij
+ontbrekende data stil terug (V32-regel). **Gemeten op de zeven:** alleen KAND_V2_2 beweegt (2,85 → 2,55 Ω, nu de
+lezing van de poort zelf), álle vloeroordelen ongewijzigd (✓ op alle rasters), en het opslingeringsplafond
+beweegt niet (2,130 mH op alle zeven — de A5d.6-inversie las de sweep altijd al; de kolom is de controle). De
+oude lezing staat als gedateerde brug in `v33_barriere_raster._veiligheidsraster_tot_A5e3b`;
+`minimum_buiten_barriere_uitgestrektheid` is per constructie leeg en kan niet meer vollopen — de
+uitgestrektheid van de barrière is geen open punt meer. De prijs (154 extra punten in de objective) wordt bij de
+volgende regeneratie gemeten.
+
+**DEEL (c)3 — DE L+R-WEES: EEN SHUNT ZONDER RESONANTIE IS EEN BELASTING, GEEN FILTERELEMENT (level-work/1.1 →
+1.2).** A5e.3-veld ving de kale pad-R-wees (R10); de tweede wees-vorm is de shunt-keten met een L en ZONDER C —
+de rest van een val waarvan de audit de C verwijderde. Hij vangt geen resonantie, hij belast (KAND_V2_2's L5+R7
+sleept het systeemminimum naar 10 Hz), en géén regel telde hem: de R zit in een shunt-keten, die de
+pad-definitie met opzet vrijstelt. `levelWork.ts` inventariseert de vorm sinds 1.2 (`resonancelessShunts`; op
+een hoogdoorlaatweg is de ladder-shunt-L dezelfde vorm en legitiem — de inventaris benoemt, het OORDEEL is aan
+de gestelde regel gebonden, en die gaat over de laagste weg, wiens legitieme shunts allemaal een C dragen), en
+élke pad-verbiedende regel weigert hem; de worker-weigering van A5e.3-veld vuurt er nu ook op (V31: een verbod
+dat alleen vlagt is geen verbod). **Gemeten op de zeven: DRIE dragen er een** — KAND_V2_2 (L5 5,39 mH + R7
+1,10 Ω), KAND_V2_7 (L8 16,74 mH + R10 28,18 Ω), KAND_V2_1 (L8 15,12 mH + R10 48,60 Ω) — boekhouding die bij de
+volgende regeneratie leeg hoort te raken (`v51_niveauwerk.per_netlist[].resonantieloze_shunts`, met de
+consistentie-guard in `frozenNetlistGates`). Op de kleine fixture bleek de losse-doel-arm van
+`lowestWayLevelWork.test.ts` precies dit geval te zijn (audit gut een val, kale L 14,28 mH naar massa —
+geweigerd), en die arm assert het nu met naam.
+
+**DE TWEE LIVE KETENRUNS ZIJN GEDATEERD GEPARKEERD, EN DAT IS GEBOEKT EN NIET VERSTOPT.** De byte-reproductie en
+de verwerpingsrun kiezen hun kandidaat uit het VELD, en het A5e.3b-veld draagt de A5e.3-veld-posities niet meer;
+bovendien zou de route drie van de zeven nu zelf weigeren ((c)3). Beide tests trekken zich terug MET EEN PIN: de
+opgenomen kandidaat moet in het GEDATEERDE veld bestaan (gereproduceerd door het ene venster-invoerveld van
+A5e.3b weg te laten) — elke andere velddrift faalt nog steeds. Zij komen tot leven bij de eerstvolgende
+regeneratie, die de volgende sessie is; tot die tijd kost de volle suite navenant minder en bewijst hij
+navenant minder, en dát is de reden dat de regeneratie de EERSTE stap van die sessie hoort te zijn.
+
+**WAT ER BEWUST NIET GEBEURD IS.** Geen regeneratie; geen keuze voor of tegen de val; geen wijziging aan vloer
+(2,6), budgetten, plateau (0), M-C-getallen of het DCR-model. De sectie-4-bruggen van de kandidaten-blokken
+(`_gepoort_tot_M1` van HUIDIG_2e/KAND_A_2e/KAND_B_3e) bleken al vóór deze sessie door een herhaalde
+recorder-run met live waarden overschreven — genoteerd als losse taak, niet hier gerepareerd; de append-bug in
+`breakups_opmerking` van dezelfde recorder is wél gerepareerd (idempotent, de tekst staat weer één keer).
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
+
 
 *De eerste casus in dit boek die geen luidspreker is. A7 noemt synthetische grondwaarheid als
 onderdeel van de teststrategie; tot F3b bestond dat onderdeel alleen op papier, en de oude

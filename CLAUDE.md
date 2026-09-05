@@ -48,6 +48,11 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná A5e.3b (05-09-2026) gemeten op 359 s — 150 geslaagd + 1 overgeslagen bestand, 1695 geslaagd +
+    2 overgeslagen tests, in één keer groen, gedraaid nadat de ablatie-armen klaar waren.** Geen nieuw
+    bestand; +5 tests, precies de vijf nieuwe claims (1 in `levelWork` (c)3, 1 in `chainChoices` voor de
+    vierde ketensleutel, 1 in `barrierSource` voor `'safety-extended'`, 2 in `frozenNetlistGates`: de
+    (b)3-vóórmeting en de wezen-consistentie). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná A5e.3-veld (04-09-2026) gemeten op 357 s — 150 geslaagd + 1 overgeslagen bestand, 1690 geslaagd +
     2 overgeslagen tests, in één keer groen, alleen gedraaid op een lege machine ná de volle run en de herhaling van
     `casus1V2Candidates`, en NOOIT ernaast.** Geen nieuw bestand; +14 tests (zes A5e.3-veld-blokken in
@@ -194,7 +199,13 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 04-09-2026 (A5e.3-veld, ná de regeneratie en de NAD-arm, alleen
+- `npx vitest run` — volledige testsuite. **GEMETEN 05-09-2026 (A5e.3b): 151 bestanden, 1697 tests, 359 s
+  (5 min 59), niets overgeslagen, in één keer groen — en die tijd is TIJDELIJK die van de snelle laag, want de
+  twee live ketenruns zijn gedateerd geparkeerd** (hun kandidaat bestaat niet meer in het A5e.3b-veld en de
+  route zou drie van de zeven nu zelf weigeren; zie de A5e.3b-guards). +5 tests, dezelfde vijf als in de snelle
+  laag; het langste bestand is `lowestWayLevelWork` (349 s). **De volle run bewijst tot de regeneratie navenant
+  minder — de regeneratie is de EERSTE stap van de volgende sessie, mét Sanders keuze uit de ablatietabel.**
+  (De stand ervoor: **GEMETEN 04-09-2026 (A5e.3-veld, ná de regeneratie en de NAD-arm, alleen
   gedraaid met `nohup`): 151 bestanden, 1692 tests, 1360 s (22 min 40), niets overgeslagen — 150 bestanden groen en
   ÉÉN rode claim, de `[bytes]`-reproductie in `casus1V2Candidates`, en die was GEEN byte-verschil:** de V34-assert
   "de probe landt ONDER het ketenraster" was het bewijs op het 200 Hz-raster en is sinds M-1 (raster vanaf 20,5 Hz,
@@ -205,7 +216,7 @@
   `frozenNetlistGates`, +1 in `corpusPairing`, +7 uit de `it.each` over het levende corpus (van NUL naar ZEVEN — de
   corpusgrootte in de testtelling, weer terug), en de byte-reproductie treft KAND-V2-1 (549,7 · 1495, 674 s live;
   de verwerping 147,9 · 1294 ernaast). Het corpus is GEREGENEREERD (7795 s, `V2_JOBS=8`, twintig kandidaten; één
-  kandidaat opnieuw onder de gerepareerde worker en samengevoegd met `V2_MERGE=1`): zeven van twintig geleverd.
+  kandidaat opnieuw onder de gerepareerde worker en samengevoegd met `V2_MERGE=1`): zeven van twintig geleverd.)
   (De stand ervoor: **04-09-2026 (A5e.3, ná M-1-diagnose): 151 bestanden,
   1678 tests, 1152 s (19 min 12), niets overgeslagen, in één keer groen, alleen gedraaid op een lege machine met
   `nohup` ná de arm `m1+dcr` en NOOIT ernaast.** +2 bestanden (`coilDcr.test.ts` 12 claims,
@@ -919,6 +930,21 @@
   beweegt niet: de aandrijfvloer van de tweeter (1184 Hz) ligt onder k·f_s (1294). **`measure-m1-diagnose-arms.ts`
   herbouwt sinds A5e.3-veld het M-1-VELD expliciet** (vensterinvoer zonder aandrijfvloer, W-M onthoudt zich,
   geen budget), zodat zijn armbestanden reproduceerbaar blijven en `M1_DRY=1` nog zegt wat er gedraaid is.
+- **De A5e.3b-vóórmeting: het veld onder de nieuwe grenzen, de barrière-uitgestrektheid, de wezen
+  (A5e.3b, 05-09-2026)**: `npx vite-node scripts/measure-a5e3b-voormeting.ts` — seconden, geen ketenrun en
+  geen tune. Drie tabellen: (b)3 het veld met de gestelde M-T-vloer (1647 Hz) en budget 24 (8 × 3 = 24 uit 36;
+  vijf van de zeven geleverde binnen), (c)2 min |Z| per raster op de zeven (veiligheid / verlengd / poort, met
+  het opslinger-plafond als controle die NIET beweegt), (c)3 de resonantieloze shunt-ketens per levende netlist
+  met het oordeel dat level-work/1.2 erover velt.
+- **De ablatie van de val op KAND_V2_5 (A5e.3b (a))**: `npx vite-node scripts/measure-a5e3b-ablatie.ts` —
+  vier armen, waarvan twee WAARDEN-ONLY hertunes (~250 s per stuk, parallel als kindproces; bestaande
+  armbestanden in `test-fixtures/casus1_a5e3b_ablatie/` worden gelezen, `A5E3B_REDO=1` overschrijft,
+  `A5E3B_DRY=1` is de rookproef zonder tune). De tune-armen oogsten de ECHTE worker-opties via
+  `hooks.tuneOptionsFor` op een eigen zaad (een stomp op `runThreeWayChain`), bewust zonder `staged` en
+  `branchTargets` (de v38-bank-les); de audit blijft aan. BOM in euro's uit de catalogus die de familie stelt.
+  **De meting ving een bound-bug:** de eerste bouwbare-val-arm leverde 31,59 mH door een hard plafond van 22,0 —
+  `valueCeilings` boven de ZACHTE rand (15 mH voor spoelen) werd stil genegeerd; sinds A5e.3b klemt zo'n plafond
+  ook daarboven (`capLg` in `netOptimizer.ts`) en de herhaalde arm leverde exact 22,00 mH.
 - **De vloer als zoekdoel meten (V30)**: `npx vite-node scripts/measure-v30-floor-goal.ts` —
   dertig ketenruns (vijftien kandidaten × twee armen), gemeten 45–70 s per stuk, ~30 min.
   Schrijft `test-fixtures/casus1_v30_vloer_vergelijking.json` en drukt de vóór/ná-tabel af.
@@ -2260,6 +2286,70 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   draait alleen díé opnieuw (`V2_ONLY=9`, 2566 s) en zijn de negentien andere shards wat een herhaling zou
   opleveren. Elke shard moet er zijn; wie élke kandidaat opnieuw wil zien draait zonder de vlag.
 
+### A5e.3b-guards (de val gewogen, de vensters gesteld, drie reparaties; alleen v2-runs, corpus NIET geregenereerd)
+- `src/lib/engine2/predesign/xoWindow.ts` — **de gestelde-M-C-vloer** (`'drive-stated'`): dezelfde
+  A5d.3(ii)-inversie als de aandrijfvloer, op het GESTELDE getal per weg
+  (`upperStatedDriveLimitDb`, door `report.ts` gevuld via `statedDriveLimitDb` — de ene regel die
+  ook de poort leest). De strengste vloer bindt; op casus 1 legt −20 dB bij orde 4 de M-T-vloer op
+  1647 Hz. De A5e.3-veld-regel "het gestelde getal wordt niet gelezen" is door Sander teruggedraaid
+  (05-09-2026); de vloer is bewust streng (kale ladder, geen pad aangenomen — een pad op de tweeter
+  kan de eis halen waar de vloer dat niet aanneemt). `goldenCasus1` rekent de inversie na en de brug
+  `_excursievloer_tot_A5e3b` reproduceert met `upperStatedDriveLimitDb: null`; `casus1Field.test`
+  pint het nieuwe veld (8 × 3 = 24 uit 36; de assen wisselden van rol) en `frozenNetlistGates` de
+  vóórmeting (de twee 1495-posities liggen onder de nieuwe vloer — bedoeld). **De verankerde gaps
+  bewegen mee** (wegbanden zijn venstercentra): 0,85 → 0,777 en 3,516 → 3,426, met
+  `_waarden_veld_tot_A5e3b` als brug; de GEDATEERDE gepoorte bruggen worden sindsdien expliciet
+  ZONDER het gestelde getal herrekend (recorder én goldenCasus1) — een gedateerd blok wordt niet
+  stil herschreven.
+- `src/lib/engine2/optimizer/chainChoices.ts` + `bounds.ts` — **de VIERDE ketensleutel
+  `lowestWayCoilMaxHenry`** (3 → 4): de spanwijdte van de gestelde spoelfamilie van de laagste weg
+  (`rangeH[1]` van de fit, 22,0 mH op casus 1) als plafond op élke vrije spoel van die weg — in de
+  synthese (Slot.maxValue + geklemde initial, `SynthesizeOptions.coilMaxHenry`) én in de zoekdoos
+  (`searchBoxFor`'s `catalog`-parameter, rule `'catalog-span-l'`; de TODO(A5e.3) is vervuld — de
+  spanwijdte-helft van A5d.6's slotregel). Afgeleid zodra het DCR-model gewapend is; de STAPEL is
+  een gestelde uitzondering (`coilStackAllowed` → absent mét die reden), default gecapt. Geen
+  W-M-vloer hiervan: de val schaalt niet met het kruispunt. Per-spoel en nooit een som (twee
+  spoelen in serie zijn precies de stapel waar de uitzondering over gaat).
+  **`netOptimizer.ts` klemt sinds A5e.3b ook een plafond BOVEN de zachte rand** (`capLg`): tot
+  A5e.3b werd een `valueCeilings`-plafond alleen toegepast als het binnen het zachte venster lag,
+  en de zachte spoelrand (15 mH) is een STRAF en geen klem — gemeten: 31,59 mH geleverd door een
+  hard plafond van 22,0. De zachte straf eronder blijft (de doos wordt niet verruimd); de
+  byte-baselines reproduceren (geen bestaand plafond lag boven een zachte rand).
+- `src/lib/netOptimizer.ts` + `candidateDeclaration.ts` — **(c)2: `zFloorBarrierSource` kent een
+  vierde waarde, `'safety-extended'`** (veiligheidsraster + de eigen punten van het poortraster
+  buiten diens uitgestrektheid; `extendGridToSweepExtent`, één constructie met drie lezers: term,
+  guard, recorder). De verklaring leidt hem af waar zij `'safety'` afleidde; `'safety'` blijft
+  stelbaar (de gedateerde A5e.3-veld-run blijft een run die je kunt vragen), en ontbrekende data
+  valt luid stil (V32-regel). Gemeten op de zeven: alleen KAND_V2_2 beweegt (2,85 → 2,55 Ω), geen
+  oordeel wijkt af, het opslinger-plafond beweegt niet. De V33-guard in `frozenNetlistGates` meet
+  sindsdien op het verlengde raster; `minimum_buiten_barriere_uitgestrektheid` is per constructie
+  leeg (geen open punt meer) en de oude lezing staat als brug
+  (`v33_barriere_raster._veiligheidsraster_tot_A5e3b`).
+- `src/lib/levelWork.ts` 1.1 → 1.2 — **(c)3: `resonancelessShunts`** (een shunt-keten van de bus
+  naar massa met een L en zonder C — de wees van een val waarvan de audit de C verwijderde; geen
+  resonantie = een belasting, geen filterelement) en élke pad-verbiedende regel weigert erop; de
+  worker-weigering van A5e.3-veld vuurt er nu ook op (V31). Op een hoogdoorlaatweg is de
+  ladder-shunt-L dezelfde vorm en legitiem: de inventaris benoemt, het oordeel is aan de gestelde
+  regel gebonden (die over de laagste weg gaat, wiens legitieme shunts allemaal een C dragen).
+  Gemeten: DRIE van de zeven dragen er een (KAND_V2_1/_2/_7) — boekhouding in
+  `v51_niveauwerk.per_netlist[].resonantieloze_shunts` die bij de regeneratie leeg hoort te raken,
+  met de consistentie-guard in `frozenNetlistGates` (fresh = recorded, en een falend oordeel heeft
+  de wees als enige grond).
+- **DE TWEE LIVE KETENRUNS ZIJN GEDATEERD GEPARKEERD** (`casus1V2Candidates` [bytes],
+  `casus1V2Refusal` [live]): hun kandidaat bestaat niet meer in het A5e.3b-veld en de route zou
+  drie van de zeven nu zelf weigeren. Beide trekken zich terug MET EEN PIN — de opgenomen kandidaat
+  moet in het GEDATEERDE veld bestaan (gereproduceerd door `maxDriveOnFsDbByDriver` uit de
+  rapportinstellingen weg te laten); elke andere velddrift faalt nog steeds. Zij komen tot leven
+  bij de eerstvolgende regeneratie (de volgende sessie, mét Sanders keuze uit de ablatietabel);
+  tot die tijd is de volle suite navenant korter én bewijst hij navenant minder.
+- `measure-a5e3-nad-floor.ts` — **(c)1**: een lege werklijst resolvet nu meteen (bestaande
+  armbestanden worden gelezen en gerapporteerd; tot A5e.3b wachtte de promise eeuwig op een kind
+  dat nooit gestart werd).
+- `record-casus1-m1-references.ts` — **idempotent op `breakups_opmerking`** (de zin wordt gestript
+  en één keer geschreven; hij stond er al twee keer) en de gedateerde bruggen lopen zonder het
+  gestelde getal. LET OP: de sectie-4-bruggen (`kandidaten.*._gepoort_tot_M1`) waren al vóór
+  A5e.3b door een herhaalde run met live waarden overschreven — losse taak, niet hier gerepareerd.
+
 ### A5e.3-guards (de DCR van elke continue spoel uit de catalogusfit; alleen v2-runs)
 - `src/lib/coilDcr.ts` — **één huis, één functie, tien lezers.** `fitCoilDcrFamilies` fit per (merk, serie,
   draaddikte) `DCR = A·(L/mH)^k` op de SKU-DCR van de catalogus (log-log, `coil-dcr-fit/1.0`); `dcrOf(henry, fit)`
@@ -2697,7 +2787,12 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   Zie casusboek V19 en `.claude/skills/casus-toevoegen/SKILL.md`.
 
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
-`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden — **ZEVEN sinds A5e.3-veld (04-09-2026): het veld van twintig (orde 4 gesteld, de aandrijfvloer op 148 Hz, budget 24) leverde er acht, waarvan één (229,1 · 1994,6, R10) na de worker-reparatie opnieuw gedraaid en geweigerd is; de laagste W-M-positie en elke 1294-positie zijn weg** — daarvoor **NUL sinds M-1
+`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden — **ZEVEN sinds
+A5e.3-veld, en SINDS A5e.3b (05-09-2026) staan zij ACHTER op de engine: de M-T-vloer verhuisde naar 1647 Hz
+(twee van de zeven posities liggen eronder), de route weigert drie van de zeven op de L+R-wees
+(level-work/1.2), en de twee live ketenruns zijn gedateerd geparkeerd tot de regeneratie — de EERSTE stap van
+de volgende sessie, mét Sanders keuze uit de ablatietabel (`test-fixtures/casus1_a5e3b_ablatie/`)** —
+**ZEVEN sinds A5e.3-veld (04-09-2026): het veld van twintig (orde 4 gesteld, de aandrijfvloer op 148 Hz, budget 24) leverde er acht, waarvan één (229,1 · 1994,6, R10) na de worker-reparatie opnieuw gedraaid en geweigerd is; de laagste W-M-positie en elke 1294-positie zijn weg** — daarvoor **NUL sinds M-1
 (04-09-2026): het veld van 115 leverde niets, het levende corpus is LEEG, de recorder snoeide de blokken en
 de zes V51b-bestanden zijn met de hand verwijderd (byte-identiek aan `V51B-KAND-*`, nagemeten met `cmp`); de
 suite eist dat manifest, schijf en herkomst het daarover eens zijn en de live byte-reproductie stopt met

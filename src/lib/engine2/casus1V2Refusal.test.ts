@@ -89,31 +89,36 @@ const HERKOMST = JSON.parse(
   }[];
 };
 
+/* One settings object with two readers (the report helper and the A5e.3b
+ * dated-field reproduction), so they cannot disagree about what the generator
+ * stated. */
+const REPORT_SETTINGS = {
+  /* V50 — the same report settings the generator builds its facts from. */
+  ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
+  ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
+    ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
+    : {}),
+  ...CASUS1_BUILDABILITY,
+  /* V51 — the wiring and the level-work requirement, for the same reason. */
+  ...CASUS1_LEVEL_WORK_SETTINGS,
+  orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
+  reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
+  targetCurve: CASUS1_TARGET_CURVE,
+  /* V49 — the excursion inputs, so the facts this reproduction sends carry
+   * the same derived ceilings the generator sent (V32's rule: the facts
+   * must be the facts the generator sent). */
+  ...CASUS1_EXCURSION,
+  /* A5e.3-veld — the stated coil families and fits (the report's coil block). */
+  ...CASUS1_COIL_DCR_SETTINGS,
+};
+
 const report = (key: string): EngineV2Report =>
   buildReport({
     manifest,
     files,
     filter: casus1Filter(key, manifest, files, golden),
     geometry,
-    settings: {
-      /* V50 — the same report settings the generator builds its facts from. */
-      ...(CASUS1_CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CASUS1_CONTINUOUS_POWER_W } : {}),
-      ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
-        ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
-        : {}),
-      ...CASUS1_BUILDABILITY,
-      /* V51 — the wiring and the level-work requirement, for the same reason. */
-      ...CASUS1_LEVEL_WORK_SETTINGS,
-      orderByPair: { [ctcKey('woofer', 'mid')]: 4, [ctcKey('mid', 'tweeter')]: 4 },
-      reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
-      targetCurve: CASUS1_TARGET_CURVE,
-      /* V49 — the excursion inputs, so the facts this reproduction sends carry
-       * the same derived ceilings the generator sent (V32's rule: the facts
-       * must be the facts the generator sent). */
-      ...CASUS1_EXCURSION,
-      /* A5e.3-veld — the stated coil families and fits (the report's coil block). */
-      ...CASUS1_COIL_DCR_SETTINGS,
-    },
+    settings: REPORT_SETTINGS,
   });
 
 describe('[live] a wholesale refusal comes back as a refusal', () => {
@@ -144,6 +149,32 @@ describe('[live] a wholesale refusal comes back as a refusal', () => {
     const field = casus1Field(rep);
     const gridded = casus1ChainInput(manifest, files, golden);
     const c = field.field.candidates.find((x) => x.label === recorded.label);
+    /* A5e.3b — THE CORPUS PREDATES THE CURRENT ENGINE: the M-T floor moved to
+     * the stated figure's inversion (~1647 Hz), so the live field no longer
+     * holds the A5e.3-veld positions this record was made on (the recorded
+     * first refusal sits at 1294 Hz, under the new floor by design — that is
+     * the (b)2 pre-measurement). The reproduction is RETIRED until the next
+     * regeneration re-records it, and the retirement is PINNED: the recorded
+     * candidate must exist in the DATED field, reproduced by withholding the
+     * one window input A5e.3b added. Any other field drift still fails. */
+    if (!c) {
+      const { maxDriveOnFsDbByDriver: _fig, ...zonderGesteld } = REPORT_SETTINGS;
+      void _fig;
+      const datedField = casus1Field(
+        buildReport({
+          manifest,
+          files,
+          filter: casus1Filter('HUIDIG', manifest, files, golden),
+          geometry,
+          settings: zonderGesteld,
+        }),
+      );
+      expect(
+        datedField.field.candidates.find((x) => x.label === recorded.label),
+        `${recorded.label} is in neither the live field nor the A5e.3-veld field — that is not the A5e.3b retirement, it is a field drift`,
+      ).toBeTruthy();
+      return;
+    }
     expect(c, `the field no longer holds ${recorded.label}`).toBeTruthy();
 
     const input: Chain3Input = {

@@ -272,10 +272,22 @@ describe('V51 — may the lowest way carry level work', () => {
     const anchor = through(c, NONE, { facts: { gapBudgetDbByModel: { mid: 1 }, gapAnchorModel: 'woofer' }, staged: tight });
     expect(anchor.levelWork.askedDb).toBe(0);
     expect(anchor.rejection?.kinds ?? []).not.toContain('topology');
-    /* ...and with the goal met (a loose one) the same configuration delivers. */
+    /* ...and with the goal met (a loose one) the same configuration is NOT
+     * refused on the X-rule — a met goal is never this rule's business.
+     *
+     * A5e.3b (c3) — WHAT IT IS REFUSED ON INSTEAD, since level-work/1.2, and
+     * the arm is sharper for it: under the loose goal the tune barely moves,
+     * the parts audit finds the trap's capacitor inert and removes it, and
+     * what stands is a BARE shunt L from the woofer bus to ground (measured
+     * here: L5, 14.28 mH) — no resonance, so a load and not a filter element,
+     * and the orphan refusal names its own ground. Deterministic (A5e.4):
+     * same fixture, same options, same outcome. The X-claim of this arm is
+     * unchanged and asserted the sharp way — whatever refuses here, it is not
+     * the level-work gap. */
     const loose = through(c, NONE, { facts: { gapBudgetDbByModel: { woofer: X }, gapAnchorModel: 'mid' }, staged: { rippleDb: 60, phaseDeg: 180 } });
-    expect(loose.rejection?.kinds ?? []).not.toContain('topology');
-    expect(loose.result.parts.length).toBeGreaterThan(0);
+    expect(loose.rejection?.reason ?? '').not.toContain('dB of level work on the lowest way');
+    expect(loose.rejection?.reason ?? '').toContain('without a resonance');
+    expect(loose.rejection?.reason ?? '').toContain('refused since A5e.3-veld');
   }, 300_000);
 });
 

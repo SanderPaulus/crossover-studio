@@ -227,8 +227,40 @@ describe('V41 — the chain-level choice keys', () => {
     expect(cover.complete).toBe(true);
     // The list itself, so a key that is added without a case fails here rather
     // than in a run nobody reads. V51 added the third (`lowestWayLevelWork`),
-    // with the ABSENT state this file's derivation always kept room for.
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayLevelWork']);
+    // with the ABSENT state this file's derivation always kept room for;
+    // A5e.3b added the fourth (`lowestWayCoilMaxHenry`, the catalogue span of
+    // the stated coil family — absent without a family, absent with the stated
+    // stack exception).
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork']);
+  });
+
+  it('A5e.3b — the coil-span key derives from the stated family\'s span, the stack exception suppresses it, an explicit value wins', () => {
+    /* The fourth key, in the derivation shapes the other three set. From
+     * nothing: absent with the P4 reason (no family, no span). From a span:
+     * stated, verbatim — the span is `rangeH[1]` of the family's fit, resolved
+     * by the CALLER because this layer reads no catalogue. With the stack
+     * exception stated: absent WITH THAT REASON — a lifted cap is a decision,
+     * not a hole. An explicit value beats all of it, so the A5e.3b
+     * before/after is a run somebody can ask for. */
+    const bare = declareCandidateChainChoices({ stated: {} });
+    expect(bare.stated.lowestWayCoilMaxHenry).toBeUndefined();
+    expect(bare.absent.find((a) => a.key === 'lowestWayCoilMaxHenry')?.why).toMatch(/P4/);
+
+    const derived = declareCandidateChainChoices({ stated: {}, lowestWayCoilSpanH: 0.022 });
+    expect(derived.stated.lowestWayCoilMaxHenry).toBe(0.022);
+    expect(derived.absent.some((a) => a.key === 'lowestWayCoilMaxHenry')).toBe(false);
+
+    const stacked = declareCandidateChainChoices({ stated: {}, lowestWayCoilSpanH: 0.022, coilStackAllowed: true });
+    expect(stacked.stated.lowestWayCoilMaxHenry).toBeUndefined();
+    expect(stacked.absent.find((a) => a.key === 'lowestWayCoilMaxHenry')?.why).toMatch(/STACK/i);
+
+    const explicit = declareCandidateChainChoices({ stated: { lowestWayCoilMaxHenry: 0.015 }, lowestWayCoilSpanH: 0.022 });
+    expect(explicit.stated.lowestWayCoilMaxHenry).toBe(0.015);
+
+    // ...and the key moves the fingerprint ingredient, or the choice is a label.
+    const a = JSON.stringify(chainDeclarationKey(bare));
+    const b = JSON.stringify(chainDeclarationKey(derived));
+    expect(a).not.toBe(b);
   });
 
   it('derives the two ENGINE defaults, and an explicit value wins', () => {
@@ -255,7 +287,9 @@ describe('V41 — the chain-level choice keys', () => {
     expect(withDeclaredChainChoices(input, { stated: {}, absent: [] })).toBe(input);
     /* V51 — the third key is ABSENT on a declaration that states nothing, and
      * an absent key leaves the settings alone: `lowestWayLevelWork` is not
-     * written, so the chain reads its own default. */
+     * written, so the chain reads its own default. A5e.3b — the fourth key
+     * (`lowestWayCoilMaxHenry`) behaves the same way: no family, no span, no
+     * cap written. */
     expect(
       withDeclaredChainChoices(input, declareCandidateChainChoices({ stated: {} })).settings,
     ).toEqual({ eqBands: DEFAULT_EQ_BANDS_PER_DRIVER, leanTargetDb: SYNTHESIS_LEAN_DEFAULT_DB });

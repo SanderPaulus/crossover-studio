@@ -68,7 +68,7 @@ import { DRIVE_EXCURSION_VERSION, derivedDriveLimitDb } from '../src/lib/engine2
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor, minImpedanceAt } from '../src/lib/impedanceFloor.ts';
 import { solveNetwork } from '../src/lib/network.ts';
-import { busTopology, systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
+import { busTopology, extendGridToSweepExtent, systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
 import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
 import { sourceProbeIndex, sourceResistanceOhm } from '../src/lib/partAudit.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
@@ -680,10 +680,17 @@ const barrierGrids = (() => {
    * de barrière onzichtbaar, en dat is een andere bevinding dan een
    * resolutieverschil — de guard houdt beide uit elkaar. */
   const barrierFloorHz = gridded.safety.freqs[0];
+  /* A5e.3b (c2) — de barrière leest sinds A5e.3b het VERLENGDE raster
+   * ('safety-extended'): het veiligheidsraster plus de eigen punten van het
+   * poortraster buiten diens uitgestrektheid. Dezelfde constructie als de
+   * term zelf (`extendGridToSweepExtent`), dus het blok meet wat er stuurt. */
+  const extended = extendGridToSweepExtent({ freqs: gridded.safety.freqs, z: gridded.safety.z }, ref);
+  if (!extended) return null;
   const rows = Object.keys(netlists).map((key) => {
     const netlist = casus1Filter(key, manifest, files, golden).netlist;
     const onSweep = systemMinImpedanceOhm(netlist, ref.grid, ref.driverZ);
     const onSafety = systemMinImpedanceOhm(netlist, gridded.safety.freqs, gridded.safety.z);
+    const onBarrier = systemMinImpedanceOhm(netlist, extended.grid, extended.driverZ);
     const sweepAt = (() => {
       try {
         const m = minImpedanceAt(solveNetwork(netlist, ref.grid, ref.driverZ).inputZ);
@@ -696,29 +703,50 @@ const barrierGrids = (() => {
       netlist: key,
       poortraster_ohm: r4(onSweep),
       poortraster_min_bij_hz: sweepAt === null ? null : Number(sweepAt.toFixed(2)),
-      barriereraster_ohm: r4(onSafety),
-      binnen_barriere_uitgestrektheid: sweepAt === null ? null : sweepAt >= barrierFloorHz,
-      verschil_ohm: onSweep === null || onSafety === null ? null : r4(Math.abs(onSweep - onSafety)),
+      barriereraster_ohm: r4(onBarrier),
+      _veiligheidsraster_ohm_tot_A5e3b: r4(onSafety),
+      binnen_barriere_uitgestrektheid: sweepAt === null ? null : sweepAt >= extended.grid[0],
+      binnen_veiligheidsraster_tot_A5e3b: sweepAt === null ? null : sweepAt >= barrierFloorHz,
+      verschil_ohm: onSweep === null || onBarrier === null ? null : r4(Math.abs(onSweep - onBarrier)),
       zelfde_oordeel:
-        meetsAmpFloor(onSweep, statedFloorOhm) === meetsAmpFloor(onSafety, statedFloorOhm),
+        meetsAmpFloor(onSweep, statedFloorOhm) === meetsAmpFloor(onBarrier, statedFloorOhm),
     };
   });
   const live = rows.filter((r) => LIVE_V2.test(r.netlist) || ['HUIDIG', 'KAND_A', 'KAND_B'].includes(r.netlist));
   const inside = (r: (typeof rows)[number]) => r.binnen_barriere_uitgestrektheid !== false;
   const worstLive = live.filter(inside).reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), live.filter(inside)[0]);
   const worstAll = rows.filter(inside).reduce((a, b) => ((b.verschil_ohm ?? 0) > (a.verschil_ohm ?? 0) ? b : a), rows.filter(inside)[0]);
-  /* De netlists waarvan het sweep-minimum ÓNDER de barrièrebodem ligt: boekhouding, geen vrijstelling. */
+  /* De netlists waarvan het sweep-minimum ÓNDER de barrièrebodem ligt: sinds
+   * A5e.3b per constructie leeg (de uitgestrektheden zijn gelijk); de
+   * A5e.3-veld-lezing staat als gedateerde brug eronder. */
   const outside = rows.filter((r) => r.binnen_barriere_uitgestrektheid === false);
+  const outsideDated = rows.filter((r) => r.binnen_veiligheidsraster_tot_A5e3b === false);
   return {
     _:
-      'DOCUMENTATIE (V33). De barrièreterm mikt op het VEILIGHEIDSRASTER van de tuner, de poort ' +
-      'M-B/|Z| oordeelt op de gemeten SWEEP. Zelfde functie (`minImpedanceAt`), zelfde ' +
-      'uitgestrektheid, andere resolutie — dus het verschil tussen de twee is wat die keuze ' +
-      'rechtvaardigt, en het wordt gemeten in plaats van beweerd.',
+      'DOCUMENTATIE (V33, verlengd bij A5e.3b). De barrièreterm mikt sinds A5e.3b op het VERLENGDE ' +
+      'veiligheidsraster (safety-extended: het veiligheidsraster van de tuner plus de eigen punten van het ' +
+      'poortraster buiten diens uitgestrektheid, `extendGridToSweepExtent`); de poort M-B/|Z| oordeelt op de ' +
+      'gemeten SWEEP. Zelfde functie (`minImpedanceAt`), zelfde uitgestrektheid — sinds A5e.3b per ' +
+      'constructie — andere resolutie waar de responsen geldig zijn; het verschil wordt gemeten in plaats ' +
+      'van beweerd.',
     barriereraster: {
+      punten: extended.grid.length,
+      van_hz: Number(extended.grid[0].toFixed(1)),
+      tot_hz: Number(extended.grid[extended.grid.length - 1].toFixed(0)),
+      verlengd_met_poortrasterpunten: extended.addedBelow + extended.addedAbove,
+    },
+    _veiligheidsraster_tot_A5e3b: {
+      _:
+        'Het raster dat de barrière tot A5e.3b las (de A5e.3-veld-stand), als GEDATEERDE BRUG: de ' +
+        'kolommen _veiligheidsraster_ohm_tot_A5e3b en binnen_veiligheidsraster_tot_A5e3b in per_netlist ' +
+        'zijn de lezing erop. De blinde vlek die A5e.3b sloot: een minimum tussen 10 en 20,5 Hz — gemeten ' +
+        'aanleiding KAND_V2_2 (229,1 · 1994,6 -> 229,1 · 1727), minimum 2,55 Ohm op 10,07 Hz in de ' +
+        'woofertak (L5+R7, de wees van een gedempte val waarvan de audit de C verwijderde) tegen 2,85 Ohm ' +
+        'op het veiligheidsraster, door de poort binnen de tolerantie toegelaten (2,5499 >= 2,548).',
       punten: gridded.safety.freqs.length,
       van_hz: Number(gridded.safety.freqs[0].toFixed(1)),
       tot_hz: Number(gridded.safety.freqs[gridded.safety.freqs.length - 1].toFixed(0)),
+      minimum_buiten: outsideDated.map((r) => ({ netlist: r.netlist, poortraster_min_bij_hz: r.poortraster_min_bij_hz })),
     },
     poortraster: {
       punten: ref.grid.length,
@@ -726,23 +754,18 @@ const barrierGrids = (() => {
       tot_hz: Number(ref.grid[ref.grid.length - 1].toFixed(0)),
     },
     vloerspeling_ohm: r4(ampFloorSlackOhm(statedFloorOhm)),
-    barrierebodem_hz: Number(barrierFloorHz.toFixed(2)),
+    barrierebodem_hz: Number(extended.grid[0].toFixed(2)),
     grootste_verschil_levend: worstLive ?? null,
     grootste_verschil_hele_casusboek: worstAll ?? null,
     grootste_verschil_regel:
-      'gemeten over de netlists waarvan het sweep-minimum BINNEN de uitgestrektheid van het barrièreraster ligt; ' +
-      'een minimum eronder is geen resolutieverschil maar een blinde vlek, en staat apart in ' +
-      'minimum_buiten_barriere_uitgestrektheid (A5e.3-veld).',
+      'gemeten over de netlists waarvan het sweep-minimum binnen de uitgestrektheid van het barrièreraster ' +
+      'ligt — sinds A5e.3b zijn dat ze allemaal (de uitgestrektheden zijn gelijk).',
     minimum_buiten_barriere_uitgestrektheid: outside,
     minimum_buiten_barriere_regel:
-      'A5e.3-veld: op de gemergede set begint het veiligheidsraster van de barrière op de geldigheidsvloer ' +
-      'van de responsen (20,5 Hz) en de sweep waarop M-B/|Z| oordeelt op 10 Hz. Een netlist waarvan het ' +
-      'systeemminimum daartussen ligt wordt door de poort geoordeeld waar de barrière niet kijkt. Gemeten ' +
-      'aanleiding: KAND_V2_2 (229,1 · 1994,6 -> 229,1 · 1727), minimum 2,55 Ohm op 10,07 Hz in de woofertak - een ' +
-      'shunt L+R naar massa (L5+R7), het overblijfsel van een gedempte val waarvan de audit de C verwijderde - ' +
-      'terwijl het veiligheidsraster 2,85 Ohm op 25,8 Hz leest. De poort liet hem door binnen de tolerantie ' +
-      '(2,5499 >= 2,548). frozenNetlistGates.test.ts eist dat elke rij hier ook in de guard geregistreerd ' +
-      'staat en dat beide rasters hetzelfde OORDEEL vellen; de uitgestrektheid van de barrière is een open punt.',
+      'SINDS A5e.3b per constructie leeg: de barrière leest de volle sweep-uitgestrektheid ' +
+      '(safety-extended), dus geen enkel sweep-minimum kan buiten haar bereik liggen. De A5e.3-veld-lezing ' +
+      'met de blinde vlek staat als gedateerde brug in _veiligheidsraster_tot_A5e3b; de uitgestrektheid van ' +
+      'de barrière is daarmee geen open punt meer.',
     oordeel_wijkt_af_op: rows.filter((r) => !r.zelfde_oordeel).map((r) => r.netlist),
     regel:
       'Elke LEVENDE netlist leest op beide rasters binnen de vloerspeling, en op ELKE bevroren ' +
@@ -1433,6 +1456,12 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
       /* V51b — the split the rule is stated on: discrete + DCR = total. */
       spoel_DCR_ohm: r2(inv?.dcrOhm ?? null),
       serie_R_totaal_ohm: r2(inv?.totalSeriesOhm ?? null),
+      /* A5e.3b (c3) — the resonanceless shunt chains of the lowest way (an L
+       * without a C from the bus to ground: the orphan of a gutted trap), by
+       * label. Empty on a healthy netlist; every pad-forbidding rule refuses
+       * one since level-work/1.2, so this list is bookkeeping meant to empty
+       * at the next regeneration. */
+      resonantieloze_shunts: (inv?.resonancelessShunts ?? []).map((c) => c.label),
       binnen_eis: verdict?.ok ?? null,
       serie_L_mH_per_weg: Object.fromEntries(Object.entries(lByWay).map(([k, h]) => [k, r2(h * 1e3)])),
       opslingering_dB: r2(rep.metrics.lfBump[0]?.result.resonantDb ?? null),

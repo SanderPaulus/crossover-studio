@@ -557,6 +557,24 @@ export interface NetOptimizeOptions {
    *                resolution, and correspondingly expensive: that grid is the
    *                analysis resolution and this runs inside the objective.
    *
+   * A FOURTH VALUE SINCE A5e.3b (c2), because `'safety'` turned out to have a
+   * blind spot that is an EXTENT and not a resolution:
+   *
+   *   `'safety-extended'` — the safety grid PLUS every point of
+   *                `zFloorBarrierImpedance` that lies OUTSIDE the safety
+   *                extent (`extendGridToSweepExtent`). The safety grid spans
+   *                the drivers' RESPONSE extent; the sweeps the gate judges on
+   *                reach lower (10 Hz against 20.5 on the merged casus-1 set),
+   *                and a minimum between the two floors — KAND_V2_2's 2.55 Ω
+   *                at 10.07 Hz, passed within the floor tolerance — is one the
+   *                barrier could not see at all. Needs BOTH `opts.safety` and
+   *                `opts.zFloorBarrierImpedance`; missing either, the term is
+   *                inert and says so (no quiet fall-back to the narrower
+   *                grid this value exists to widen). This is what the v2
+   *                declaration derives since A5e.3b; `'safety'` remains
+   *                statable, which is what keeps the A5e.3-veld corpus a run
+   *                somebody can still ask for.
+   *
    * All three go through the same reader (`systemMinImpedanceOhm` →
    * `minImpedanceAt`), so the GRID is a parameter and not a second
    * implementation. That is what makes `'safety'` defensible rather than
@@ -585,7 +603,7 @@ export interface NetOptimizeOptions {
    * decides which band "good" is measured over, which is a different search
    * and not a different amount of polish.
    */
-  zFloorBarrierSource?: 'grid' | 'safety' | 'sweep';
+  zFloorBarrierSource?: 'grid' | 'safety' | 'sweep' | 'safety-extended';
   /**
    * V47 — WHICH RULE JUDGES THE UPPER DRIVER'S PROTECTION IN THE FULL-BAND
    * SAFETY GATE.
@@ -1221,6 +1239,58 @@ export function systemMinImpedanceOhm(
   }
 }
 
+/**
+ * A5e.3b (c2) — THE SAFETY GRID, EXTENDED TO THE SWEEPS' MEASURED EXTENT.
+ *
+ * The `'safety-extended'` barrier source reads through this. The safety grid
+ * spans the drivers' RESPONSE extent (the merged casus-1 set: 20.5 Hz up);
+ * the impedance sweeps the `M-B/|Z|` gate judges on start where the impedance
+ * was measured (10 Hz). A system minimum between those two floors is not a
+ * coarser reading of the same minimum — it is a minimum the barrier cannot
+ * see at all, and the A5e.3-veld corpus delivered one: KAND_V2_2's minimum at
+ * 10.07 Hz, 2.55 Ω on the sweep against 2.85 Ω on the safety grid, passed
+ * within the floor tolerance. So the barrier's grid becomes the safety grid
+ * PLUS every point of the gate's own reference that lies outside the safety
+ * extent: safety resolution where the responses live, the gate's own points
+ * where only the sweeps do. One construction, exported, so the guard that
+ * measures the gap and the term that steers by it read the same grid
+ * (`frozenNetlistGates.test.ts`).
+ *
+ * Null when a driver model on the safety grid is missing from the reference:
+ * the merged grid could not honestly be built, and the caller treats that as
+ * "data never arrived" (no pull, said out loud) rather than quietly reading
+ * the narrower grid this source exists to widen.
+ */
+export function extendGridToSweepExtent(
+  safety: { freqs: readonly number[]; z: Record<string, readonly Complex[]> },
+  ref: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> },
+): { grid: number[]; driverZ: Record<string, Complex[]>; addedBelow: number; addedAbove: number } | null {
+  const lo = safety.freqs[0];
+  const hi = safety.freqs[safety.freqs.length - 1];
+  const below: number[] = [];
+  const above: number[] = [];
+  for (let i = 0; i < ref.grid.length; i++) {
+    if (ref.grid[i] < lo) below.push(i);
+    else if (ref.grid[i] > hi) above.push(i);
+  }
+  const driverZ: Record<string, Complex[]> = {};
+  for (const model of Object.keys(safety.z)) {
+    const r = ref.driverZ[model];
+    if (!r) return null;
+    driverZ[model] = [
+      ...below.map((i) => r[i]),
+      ...safety.z[model],
+      ...above.map((i) => r[i]),
+    ];
+  }
+  return {
+    grid: [...below.map((i) => ref.grid[i]), ...safety.freqs, ...above.map((i) => ref.grid[i])],
+    driverZ,
+    addedBelow: below.length,
+    addedAbove: above.length,
+  };
+}
+
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
   C: [0.33e-6, 100e-6],
@@ -1642,7 +1712,7 @@ export function optimizeNetworkValues(
    * gate — is deliberately untouched: they are the veto half, they were not
    * what disagreed with the gate, and V33's remit was the objective.
    */
-  const barrierSource: 'grid' | 'safety' | 'sweep' = opts.zFloorBarrierSource ?? 'grid';
+  const barrierSource: 'grid' | 'safety' | 'sweep' | 'safety-extended' = opts.zFloorBarrierSource ?? 'grid';
   /**
    * The grid the barrier reads on, when it is not the evaluation grid.
    *
@@ -1674,7 +1744,29 @@ export function optimizeNetworkValues(
               what: opts.zFloorBarrierImpedance.span,
             }
           : null
-        : null;
+        : barrierSource === 'safety-extended'
+          ? (() => {
+              /* A5e.3b (c2) — the safety grid, widened to the sweeps' extent
+               * with the gate reference's own points. Both inputs or nothing:
+               * a missing reference must not quietly narrow this back to the
+               * grid this value exists to widen. */
+              if (!opts.safety || !opts.zFloorBarrierImpedance) return null;
+              const ext = extendGridToSweepExtent(
+                { freqs: opts.safety.freqs, z: opts.safety.z },
+                opts.zFloorBarrierImpedance,
+              );
+              if (!ext) return null;
+              return {
+                grid: ext.grid,
+                driverZ: ext.driverZ,
+                what:
+                  `${ext.grid[0].toFixed(0)}-${ext.grid[ext.grid.length - 1].toFixed(0)} Hz, ` +
+                  `${ext.grid.length} points — the full-band safety grid extended to the measured ` +
+                  `sweeps' extent with ${ext.addedBelow + ext.addedAbove} of the gate reference's own ` +
+                  'points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b)',
+              };
+            })()
+          : null;
   /**
    * The shortfall the barrier term is pulling against, from the stated source.
    *
@@ -3319,7 +3411,22 @@ export function optimizeNetworkValues(
      * license a component the app already considers unbuildable) and it turns
      * the slot HARD, because a budget bound is a box constraint and not a
      * preference: clamped, never penalised out. Absent = the loop below does
-     * nothing and every number above stands as it did. */
+     * nothing and every number above stands as it did.
+     *
+     * A5e.3b — A CEILING ABOVE THE SOFT WINDOW STILL CLAMPS. Until A5e.3b a
+     * ceiling was only applied when it lay INSIDE the soft window (`lg <
+     * winHi`), on the reasoning that the app's own bound was narrower anyway —
+     * which silently assumed the app's bound is enforced. It is not: for an
+     * unbound slot the window is a PENALTY, and a seed that already lives
+     * beyond it (the damped trap on a reflex woofer: 22–36 mH against a soft
+     * coil edge of 15 mH) pays the penalty and keeps going. Measured on
+     * KAND_V2_5's trap under the A5e.3b span cap of 22.0 mH: the value tune
+     * delivered 31.59 mH THROUGH a stated hard ceiling, because the ceiling
+     * lay above the soft edge and was dropped. So a ceiling above the soft
+     * window becomes a separate hard clamp (`capLg`): the soft penalty below
+     * it stands untouched — the box is not widened — and no evaluated or
+     * delivered value can exceed the stated cap. */
+    const capLg: (number | null)[] = free.map(() => null);
     if (opts.valueCeilings) {
       for (let i = 0; i < free.length; i++) {
         const ceil = opts.valueCeilings[free[i].id];
@@ -3328,6 +3435,8 @@ export function optimizeNetworkValues(
         if (lg < winHi[i]) {
           winHi[i] = Math.max(lg, winLo[i]);
           hard[i] = true;
+        } else {
+          capLg[i] = Math.max(lg, winLo[i]);
         }
       }
     }
@@ -3416,7 +3525,10 @@ export function optimizeNetworkValues(
           // Value window = a true box constraint: clamp, never penalise out.
           free[i].value = 10 ** Math.min(Math.max(logVals[i], winLo[i]), winHi[i]);
         } else {
-          free[i].value = 10 ** logVals[i];
+          /* A5e.3b — a stated ceiling above the soft window clamps here too:
+           * the penalties below keep the app's own soft opinion, the clamp
+           * keeps the stated cap (see `capLg` above). */
+          free[i].value = 10 ** (capLg[i] !== null ? Math.min(logVals[i], capLg[i]!) : logVals[i]);
           if (logVals[i] < winLo[i]) penalty += (winLo[i] - logVals[i]) ** 2;
           else if (logVals[i] > winHi[i]) penalty += (logVals[i] - winHi[i]) ** 2;
         }
@@ -3544,7 +3656,13 @@ export function optimizeNetworkValues(
     if (objective(x0) <= objective(fit.x)) fit = { ...fit, x: [...x0] };
 
     free.forEach((e, i) => {
-      e.value = 10 ** (hard[i] ? Math.min(Math.max(fit.x[i], winLo[i]), winHi[i]) : fit.x[i]);
+      e.value =
+        10 **
+        (hard[i]
+          ? Math.min(Math.max(fit.x[i], winLo[i]), winHi[i])
+          : capLg[i] !== null
+            ? Math.min(fit.x[i], capLg[i]!)
+            : fit.x[i]);
     });
     // The same projection the objective used, so what is WRITTEN OUT is the
     // point that was scored. Skipping it here is how a box constraint comes to

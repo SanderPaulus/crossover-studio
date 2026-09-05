@@ -953,7 +953,27 @@ function tuneOptionsFor(
    * process. Handing them in ARMS the group without deciding anything: whether
    * a run reads them is `seriesInductanceCeilingSource`, one layer along, and
    * with that key absent the box behaves exactly as it did (P2/V30). */
-  const box = searchBoxFor(seedParts, inverted.bounds, inverted.ceilingTrackers);
+  /* ---- A5e.3b: the CATALOGUE SPAN of the lowest way's coil family --------
+   *
+   * The box half of the fourth chain key (`lowestWayCoilMaxHenry`): the same
+   * stated value the synthesis capped its slots at, filed here as a per-coil
+   * ceiling so the tune cannot grow a coil back over the span the seed was
+   * held under. One stated number, two readers (chain and box), which is what
+   * keeps A5d.6's "catalogus-spanwijdte ∩ meetafgeleide budgetgrenzen" one
+   * intersection instead of two opinions. Absent key = no cap (P4/P2). */
+  const coilSpanH = network.chainDeclaration?.stated.lowestWayCoilMaxHenry;
+  const coilSpanCatalog =
+    coilSpanH !== undefined && collect.lowestModel !== null
+      ? {
+          coilSpanHByWay: { [collect.lowestModel]: coilSpanH },
+          source:
+            coilModel && coilModel.familyByWay[collect.lowestModel] !== undefined
+              ? `single-part span of the stated family ${coilModel.familyByWay[collect.lowestModel]}` +
+                (coilModel.catalogLabel ? ` (${coilModel.catalogLabel})` : '')
+              : 'the stated lowestWayCoilMaxHenry chain key (A5e.3b)',
+        }
+      : undefined;
+  const box = searchBoxFor(seedParts, inverted.bounds, inverted.ceilingTrackers, coilSpanCatalog);
   collect.notes.push(...box.notes);
 
   /* ---- F4c: the choices and the weights, STATED ------------------------- *
@@ -1257,19 +1277,28 @@ function tuneOptionsFor(
    * No reference, no reading — and the tuner does NOT fall back to the
    * evaluation grid. Said here as well as there, because this is the side that
    * knows why it is missing. */
-  const barrierOnSweep = stated.zFloorBarrierSource === 'sweep';
+  /* A5e.3b (c2) — the gate reference crosses for BOTH sources that read it:
+   * `'sweep'` reads it whole, `'safety-extended'` reads the points of it that
+   * lie outside the safety extent. */
+  const barrierOnSweep =
+    stated.zFloorBarrierSource === 'sweep' || stated.zFloorBarrierSource === 'safety-extended';
   if (barrierOnSweep && !reference.impedance) {
     collect.notes.push(
-      'The candidate asked the amp-load barrier to aim at the measured impedance sweep, and no ' +
-        'sweep reached this run. The barrier therefore does not steer this search at all — it ' +
+      'The candidate asked the amp-load barrier to aim at the measured impedance sweep' +
+        (stated.zFloorBarrierSource === 'safety-extended' ? "' extent (safety-extended)" : '') +
+        ', and no sweep reached this run. The barrier therefore does not steer this search at all — it ' +
         'is NOT falling back to the chain grid, which would restore the reading V32 withdrew. ' +
         'No electrical gate judges this candidate either, for the same missing input.',
     );
   }
   /* `'safety'` needs nothing from here: the safety set is a CHOICE the
    * candidate already states, so the tuner has the grid in hand. It is the
-   * default a generated candidate takes, and the one every casus-1 run uses. */
-  if (stated.zFloorBarrierSource === 'safety' && stated.safety === undefined) {
+   * A5e.3-veld default; since A5e.3b a generated candidate derives
+   * `'safety-extended'`, which needs the safety set AND the reference above. */
+  if (
+    (stated.zFloorBarrierSource === 'safety' || stated.zFloorBarrierSource === 'safety-extended') &&
+    stated.safety === undefined
+  ) {
     collect.notes.push(
       'The candidate asked the amp-load barrier to aim at the full-band safety grid and states ' +
         'no safety set, so the barrier does not steer this search at all. It is NOT falling ' +
@@ -2236,9 +2265,11 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
               : '.')
           : 'The tune COMPLETED and what it delivered carries level work on the lowest way although the ' +
             'project forbids any (V51). The design and synthesis steps place none there, and the tuner ' +
-            'never creates a resistor; what remains is a resistor the parts audit left standing alone ' +
-            'when it removed the rest of its correction group (measured on the A5e.3-veld field: R10 of ' +
-            '229.1 · 1994.6, 3.51 Ω from the woofer bus to ground). A finding about the audit rather ' +
+            'never creates a resistor; what remains is an ORPHAN the parts audit left standing when it ' +
+            'removed the rest of a correction group — a lone pad R (A5e.3-veld: R10 of 229.1 · 1994.6, ' +
+            '3.51 Ω from the woofer bus to ground) or, since A5e.3b (c3), a resonanceless L(+R) shunt ' +
+            'chain (A5e.3-veld: L5+R7 of KAND_V2_2, a trap whose C the audit shorted — a load that drags ' +
+            'the system minimum to 10 Hz, not a filter element). A finding about the audit rather ' +
             'than about the candidate — and a refusal, because a prohibition that only flags is none.',
       fields: {
         ...(delivered.net as WholesaleRejectionFields),

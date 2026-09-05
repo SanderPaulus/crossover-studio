@@ -31,6 +31,7 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1Manifest,
+  casus1MaxDriveOnFsDbByDriver,
   casus1TargetCurve,
   casus1TargetCurveAt,
   loadGolden,
@@ -62,6 +63,12 @@ const bank = (set: Casus1MeasurementSet) => {
     diMatchToleranceDb: 2,
     reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM },
     ...casus1ExcursionSettings(golden),
+    /* A5e.3b — the stated M-C figure per way reaches the WINDOWS now (the
+     * M-T floor is the strictest of stated and derived). Read, never written
+     * here (P6). */
+    ...(Object.keys(casus1MaxDriveOnFsDbByDriver(golden)).length > 0
+      ? { maxDriveOnFsDbByDriver: casus1MaxDriveOnFsDbByDriver(golden) }
+      : {}),
   };
   const report = (key: string, settings: Partial<ReportSettings> = {}): EngineV2Report =>
     buildReport({ manifest, files, filter: casus1Filter(key, manifest, files, golden), geometry, settings: { ...base, ...settings } });
@@ -133,8 +140,11 @@ m._breakups_gepoort_tot_M1 = {
 };
 m.breakups = peaks(M);
 m.persistentie_30gr = pers(M);
+/* A5e.3b — IDEMPOTENT: de zin wordt eerst gestript en dan één keer geschreven.
+ * Tot A5e.3b plakte elke run hem erbij (gemeten: hij stond er al twee keer),
+ * en een recorder die niet twee keer mag draaien is geen recorder. */
 m.breakups_opmerking =
-  String(m.breakups_opmerking) +
+  String(m.breakups_opmerking).replace(/ SINDS M-1 gemeten op de gemergede set[^.]*\./g, '') +
   ` SINDS M-1 gemeten op de gemergede set (scanband ${r1(midM.onAxis!.bandHz[0])}-20000 Hz): ` +
   `${(m.breakups as unknown[]).length} significante pieken; de gepoorte lezing staat in _breakups_gepoort_tot_M1.`;
 void midG;
@@ -147,16 +157,31 @@ const kv = raw.kruisvensters as Record<string, Record<string, unknown>>;
  * every window read from F4a to A5e.3 (k·f_s of the upper driver as the only
  * resonance floor). It is the BRIDGE of V15's form, so a reader can tell the
  * redefinition of the floor from a regression of the numbers. */
-const windowAt = (r: EngineV2Report, lower: string, order: number, kFsOnly = false) =>
+/* A5e.3b — `mode` reproduces the dated states of the floor (V15's bridges):
+ *   'full'     — every floor the engine reads today (excursion + stated).
+ *   'noStated' — WITHOUT the stated M-C figure: the A5e.3-veld state, and the
+ *                state every gated bridge documents (the stated floor did not
+ *                exist on any of them).
+ *   'kFsOnly'  — without EITHER drive floor: the M-1 state (k·f_s alone). */
+const windowAt = (r: EngineV2Report, lower: string, order: number, mode: 'full' | 'noStated' | 'kFsOnly' = 'full') =>
   crossoverWindow({
     ...r.predesign.windowInputs.find((wi) => wi.lower === lower)!,
     order,
-    ...(kFsOnly ? { upperDriveCeilingDb: null } : {}),
+    ...(mode === 'kFsOnly' ? { upperDriveCeilingDb: null } : {}),
+    ...(mode !== 'full' ? { upperStatedDriveLimitDb: null } : {}),
   });
 const floorName = (rule: string | undefined | null): string | null =>
-  rule === 'validity' ? 'meetgeldigheid' : rule === 'fs' ? 'fs' : rule === 'drive' ? 'aandrijving_excursie' : (rule ?? null);
-const winBlock = (r: EngineV2Report, lower: string, order: number, kFsOnly = false) => {
-  const x = windowAt(r, lower, order, kFsOnly);
+  rule === 'validity'
+    ? 'meetgeldigheid'
+    : rule === 'fs'
+      ? 'fs'
+      : rule === 'drive'
+        ? 'aandrijving_excursie'
+        : rule === 'drive-stated'
+          ? 'aandrijving_gesteld'
+          : (rule ?? null);
+const winBlock = (r: EngineV2Report, lower: string, order: number, mode: 'full' | 'noStated' | 'kFsOnly' = 'full') => {
+  const x = windowAt(r, lower, order, mode);
   return {
     venster: [r0(x.floorHz), r0(x.ceilingHz)] as [number | null, number | null],
     vloer_bindend: floorName(x.floorBy?.rule),
@@ -166,11 +191,12 @@ const winBlock = (r: EngineV2Report, lower: string, order: number, kFsOnly = fal
 const wm4 = winBlock(M, 'woofer', 4);
 const wm2 = winBlock(M, 'woofer', 2);
 const mt4 = winBlock(M, 'mid', 4);
-const wm4g = winBlock(G, 'woofer', 4);
-const mt4g = winBlock(G, 'mid', 4);
-const wm4k = winBlock(M, 'woofer', 4, true);
-const wm2k = winBlock(M, 'woofer', 2, true);
-const mt4k = winBlock(M, 'mid', 4, true);
+const mt4z = winBlock(M, 'mid', 4, 'noStated'); // de A5e.3-veld-stand: alleen de excursievloer
+const wm4g = winBlock(G, 'woofer', 4, 'noStated');
+const mt4g = winBlock(G, 'mid', 4, 'noStated');
+const wm4k = winBlock(M, 'woofer', 4, 'kFsOnly');
+const wm2k = winBlock(M, 'woofer', 2, 'kFsOnly');
+const mt4k = winBlock(M, 'mid', 4, 'kFsOnly');
 /* The drive floor's own numbers, for the parameters block: the mid's ceiling and the octaves it costs at order 4. */
 const wmInput = M.predesign.windowInputs.find((wi) => wi.lower === 'woofer')!;
 const mtInput = M.predesign.windowInputs.find((wi) => wi.lower === 'mid')!;
@@ -215,19 +241,31 @@ kv.woofer_mid_orde2 = {
   ...wm2,
   _k_fs_tot_A5e3veld: { _: 'Zonder de aandrijfvloer (de stand van M-1). Brug.', ...wm2k },
 };
+const statedFloorMt = windowAt(M, 'mid', 4).limits.find((l) => l.rule === 'drive-stated');
 kv.mid_tweeter_orde4 = {
   klasse: 'A',
   afhankelijkheid: 'meting',
   ...mt4,
   spanning: 'lobing-goed boven breakup-plafond',
   vloer_toelichting:
-    'De aandrijfvloer van de tweeter (excursieplafond ' +
-    `${r1(mtInput.upperDriveCeilingDb ?? NaN)} dB re ingang, ${r0(driveFloorMt?.hz ?? NaN)} Hz bij orde 4) ligt ONDER ` +
-    'k maal f_s, dus hier bindt de conventie nog (A5e.3-veld: de M-T-as beweegt niet). Het GESTELDE tweetergetal ' +
-    '(-20 dB, passband-relatief) wordt met opzet niet als vensterinvoer gelezen; zie kruisvensters.parameters.aandrijfvloer.',
-  _k_fs_tot_A5e3veld: { _: 'Zonder de aandrijfvloer: identiek, want k maal f_s bindt. Brug.', ...mt4k },
+    'SINDS A5e.3b (05-09-2026) is de vloer de STRENGSTE van gesteld en afgeleid, en hier bindt het GESTELDE ' +
+    `tweetergetal (-20 dB, passband-relatief, bij de gestelde orde 4): ${r0(statedFloorMt?.hz ?? NaN)} Hz, boven ` +
+    `k maal f_s (${r0(mt4k.venster[0] ?? NaN)} Hz) en boven de excursievloer (${r0(driveFloorMt?.hz ?? NaN)} Hz, ` +
+    `plafond ${r1(mtInput.upperDriveCeilingDb ?? NaN)} dB re ingang). De vloer is BEWUST STRENG: hij leest de kale ` +
+    'ladder (asymptotische helling, doorlaatband op de ingang, geen pad aangenomen) — een pad over de tweeter belast ' +
+    'diens resonantiepiek en kan de eis halen op een kruispunt dat deze vloer verbiedt, en een vloer die een pad ' +
+    'aanneemt neemt een ontwerp aan. De aanleiding: het A5e.3-veld leverde twee 1495-kandidaten op -20,4/-21,2 dB — ' +
+    '0,4 dB marge op een gestelde eis is geen ontwerp, en een positie die de eis bij de gestelde orde vooraf niet ' +
+    'kan halen is geen positie (Sander, 05-09-2026).',
+  _excursievloer_tot_A5e3b: {
+    _:
+      'Zonder het gestelde getal (de stand van A5e.3-veld): k maal f_s bindt, want de excursievloer van de tweeter ' +
+      'ligt eronder. Brug, reproduceerbaar met upperStatedDriveLimitDb: null.',
+    ...mt4z,
+  },
+  _k_fs_tot_A5e3veld: { _: 'Zonder beide aandrijfvloeren (de stand van M-1): k maal f_s. Brug.', ...mt4k },
   _gepoort_tot_M1: {
-    _: 'Hetzelfde venster op de GEPOORTE set: de vloer is dezelfde (k x f_s van de tweeter), het plafond bewoog met de breakup-scan van de mid mee (de scanband begint op 60 in plaats van 397 Hz, de trend verschuift). Brug.',
+    _: 'Hetzelfde venster op de GEPOORTE set, zonder het gestelde getal (dat er toen niet als vensterinvoer was): de vloer is k x f_s van de tweeter, het plafond bewoog met de breakup-scan van de mid mee (de scanband begint op 60 in plaats van 397 Hz, de trend verschuift). Brug.',
     venster: mt4g.venster,
   },
 };
@@ -241,10 +279,20 @@ kv.mid_tweeter_orde4 = {
     'niet-verzwakte weg - de strengste eerlijke lezing: een pad maakt de eis makkelijker en een vloer die een pad ' +
     'aanneemt neemt een ontwerp aan). k maal f_s blijft ernaast staan als conventie; de HOOGSTE vloer bindt.',
   invoer: 'het excursieplafond van M-C v2.0 per driver (V49): driverkaart + versterkerpiek + gemeten sweep, klasse A',
-  invoer_niet: 'het GESTELDE M-C-getal (tweeter -20 dB): passband-relatief, een projectconventie en geen drivereigenschap; de orde-afleiding leest het al als eis op het referentiekruispunt',
+  /* A5e.3b — de A5e.3-veld-regel "het gestelde getal wordt niet gelezen" is
+   * TERUGGEDRAAID door Sander (05-09-2026): de vloer neemt de strengste
+   * bekende grens, en het gestelde getal is een bekende grens. Wat blijft is
+   * de strengste eerlijke lezing (geen pad aangenomen) — zie de
+   * vloer_toelichting op mid_tweeter_orde4. */
+  invoer_gesteld:
+    'SINDS A5e.3b ook het GESTELDE M-C-getal per weg (tweeter -20 dB, passband-relatief), dezelfde inversie met ' +
+    'de doorlaatband op de ingang: |gesteld| / (6 dB/oct x orde) octaven boven f_s. De STRENGSTE van gesteld en ' +
+    'afgeleid bindt; tot A5e.3b werd het gestelde getal met opzet niet gelezen (de brug _excursievloer_tot_A5e3b).',
   plafond_re_ingang_dB: { mid: r2(wmInput.upperDriveCeilingDb ?? NaN), tweeter: r2(mtInput.upperDriveCeilingDb ?? NaN) },
+  gesteld_dB: { tweeter: r1(mtInput.upperStatedDriveLimitDb ?? NaN) },
   octaven_bij_orde_4: { woofer_mid: r2(driveFloor ? Math.log2(driveFloor.hz / (wmInput.upperFsHz ?? NaN)) : NaN), mid_tweeter: r2(driveFloorMt ? Math.log2(driveFloorMt.hz / (mtInput.upperFsHz ?? NaN)) : NaN) },
   vloer_hz_bij_orde_4: { woofer_mid: r0(driveFloor?.hz ?? NaN), mid_tweeter: r0(driveFloorMt?.hz ?? NaN) },
+  gestelde_vloer_hz_bij_orde_4: { mid_tweeter: r0(statedFloorMt?.hz ?? NaN) },
   bindt: { woofer_mid: wm4.vloer_bindend, mid_tweeter: mt4.vloer_bindend },
   dB_per_octaaf_per_orde: 6,
   klasse: 'A',
@@ -264,9 +312,17 @@ const gapsOf = (r: EngineV2Report) => {
   };
 };
 const gM = gapsOf(M);
-const gMvoiced = gapsOf(merged.report('HUIDIG', { targetCurve: CURVE_TOT_M1 }));
-const gGvoiced = gapsOf(G);
-const gGflat = gapsOf(gated.report('HUIDIG', { targetCurve: FLAT_TARGET }));
+/* A5e.3b — DE GEDATEERDE BRUGGEN LOPEN ZONDER HET GESTELDE GETAL. De wegbanden
+ * van A5d.4 zijn venstercentra, en sinds A5e.3b beweegt het M-T-venster met de
+ * gestelde M-C-vloer mee (1294 → 1647 Hz), dus de LIVE gaps bewegen — dat is
+ * de definitie en geen regressie. Maar een gedateerde brug documenteert de
+ * lezing van TOEN, en toen las het venster het gestelde getal niet: hem
+ * herrekenen mét dat getal zou een gedateerd blok stil herschrijven. */
+const noStated: Partial<ReportSettings> = { maxDriveOnFsDbByDriver: undefined };
+const gMveld = gapsOf(merged.report('HUIDIG', { targetCurve: CURVE, ...noStated }));
+const gMvoiced = gapsOf(merged.report('HUIDIG', { targetCurve: CURVE_TOT_M1, ...noStated }));
+const gGvoiced = gapsOf(gated.report('HUIDIG', { targetCurve: CURVE_TOT_M1, ...noStated }));
+const gGflat = gapsOf(gated.report('HUIDIG', { targetCurve: FLAT_TARGET, ...noStated }));
 const wooferLevel = M.predesign.gaps!.ways.find((x) => x.driver === 'woofer')!;
 vg.anker = gM.anker;
 vg.woofer_tov_mid = gM.woofer_tov_mid;
@@ -291,6 +347,14 @@ params.band_per_weg_M1 =
   `${r1(wooferLevel.gapToAnchorDb) !== null ? '' : ''}${r1(driver(M, 'woofer').onAxis!.bandHz[0])}-${r0(Math.sqrt(wm4.venster[0]! * wm4.venster[1]!))} Hz ` +
   `(20,5 Hz tot het meetkundig midden van het geopende W-M-venster) in plaats van over 397-466 Hz. Dit is de eerste keer dat X ` +
   `over de hele wooferband gemeten wordt.`;
+vg._waarden_veld_tot_A5e3b = {
+  _:
+    'DE VORIGE WAARDEN VAN DIT BLOK (M-1 t/m A5e.3-veld), bewaard als BRUG (V15-vorm): dezelfde grootheid vóórdat ' +
+    'het gestelde M-C-getal de vensters bereikte (A5e.3b) — de wegbanden van A5d.4 zijn venstercentra, en het ' +
+    'M-T-venster stond toen op k maal f_s (1294 Hz) in plaats van op de gestelde aandrijfvloer (1647 Hz). ' +
+    'Reproduceerbaar met maxDriveOnFsDbByDriver weggelaten uit de rapportinstellingen.',
+  ...gMveld,
+};
 vg._waarden_gepoort_tot_M1 = {
   _:
     'DE VORIGE WAARDEN VAN DIT BLOK (V45 t/m V51b), bewaard als BRUG (V15-vorm): dezelfde grootheid op de GEPOORTE ' +

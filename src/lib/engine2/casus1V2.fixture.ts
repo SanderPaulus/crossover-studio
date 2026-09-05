@@ -371,6 +371,24 @@ export const CASUS1_COIL_DCR_SETTINGS: { coilDcrFamilyByDriver?: Record<string, 
     ? { coilDcrFamilyByDriver: { ...CASUS1_COIL_FAMILY_BY_DRIVER }, coilDcrFits: casus1CoilDcrFits().fits }
     : {};
 
+/**
+ * A5e.3b — THE SINGLE-PART SPAN of the lowest way's stated coil family, henry:
+ * `rangeH[1]` of its fit (Jantzen 1.4 mm air: 22.0 mH), resolved here and
+ * never typed (P6). It derives the FOURTH chain key (`lowestWayCoilMaxHenry`)
+ * whenever the coil-DCR model is armed on a run — a ceiling on every coil the
+ * design and synthesis steps propose on the woofer way and, through the same
+ * stated value, on every coil the box lets the tune grow there. Null while no
+ * family names the lowest way. The stack exception is a stated act casus 1
+ * does not state.
+ */
+export const CASUS1_LOWEST_WAY_COIL_SPAN_H: number | null = (() => {
+  const m = CASUS1_COIL_DCR.model;
+  if (!m) return null;
+  const fam = m.familyByWay[BAND_SOURCE.lowest];
+  const fit = fam !== undefined ? m.fits[fam] : undefined;
+  return fit ? fit.rangeH[1] : null;
+})();
+
 /** V50 — the peak input voltage the coil gate reads currents at (V49's amplifier peak). */
 export const CASUS1_PEAK_INPUT_VOLTS: number | null =
   CASUS1_EXCURSION.amplifierPeakPowerW !== undefined && CASUS1_EXCURSION.amplifierNominalLoadOhm !== undefined
@@ -676,6 +694,12 @@ export function casus1V2Declaration(
       stated: {},
       ...(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? { lowestWayLevelWorkForbidden: true } : {}),
       ...(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM !== null ? { lowestWaySeriesRMaxOhm: CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM } : {}),
+      /* A5e.3b — the coil-span ceiling, derived from the same stated family
+       * that arms the DCR model, and only when that model is armed on this
+       * run: a proposal caps nothing, exactly as it models nothing (P4). */
+      ...(armCoilDcr && CASUS1_LOWEST_WAY_COIL_SPAN_H !== null
+        ? { lowestWayCoilSpanH: CASUS1_LOWEST_WAY_COIL_SPAN_H }
+        : {}),
     }),
     provenance: c.provenance,
     orderByModel: { mid: c.crossings[0].order, tweeter: c.crossings[1].order },

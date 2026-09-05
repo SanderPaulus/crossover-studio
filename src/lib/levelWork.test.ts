@@ -177,7 +177,92 @@ describe('V51 — level work on one way', () => {
     expect(forbidsPads('allowed')).toBe(false);
     expect(forbidsPads(undefined)).toBe(false);
     expect(describeSeriesResistance(w)).toBe('R2 0.50 + DCR 0.60 = 1.10 Ω');
-    expect(LEVEL_WORK_VERSION).toBe('level-work/1.1');
+    expect(LEVEL_WORK_VERSION).toBe('level-work/1.2');
+  });
+
+  it('A5e.3b (c3) — a shunt chain without a resonance is a load, and every pad-forbidding rule refuses it', () => {
+    /* The orphan the A5e.3-veld corpus delivered: the parts audit removed the C
+     * of a damped trap and left L+R standing from the woofer bus to ground
+     * (KAND_V2_2: L5 5.39 mH + R7 1.10 Ω, dragging the system minimum to
+     * 2.55 Ω at 10.07 Hz). No capacitor means no resonance: it traps nothing,
+     * it loads — and until A5e.3b NO rule counted it, because the R sits in a
+     * shunt chain, which the pad definition deliberately exempts. Paper
+     * network, because a claim pinned on the live corpus goes red on the next
+     * regeneration (the UI-2 lesson) — and the next regeneration refusing this
+     * shape is exactly the repair. */
+    n = 0;
+    const parts: VxpPart[] = [
+      source([0, 0], [0, 10]),
+      ground([0, 10]),
+      part('Inductor', 1e-3, [0, 0], [10, 0]),
+      // the orphan: L + R from the bus node to ground, no C (L param in mH)
+      part('Inductor', 5, [10, 0], [10, 5]),
+      part('Resistor', 1.1, [10, 5], [10, 10]),
+      driver('woofer', [10, 0], [10, 10]),
+      ({ type: 'Wire', partId: 'W1', params: [], wires: [{ x: 0, y: 10 }, { x: 10, y: 10 }] }) as unknown as VxpPart,
+    ];
+    const w = levelWorkOnWay(parts, 'woofer');
+    expect(w.resonancelessShunts).toHaveLength(1);
+    expect(w.resonancelessShunts[0].ids.sort()).toEqual(['L2', 'R3']);
+    expect(w.resonancelessShunts[0].label).toMatch(/L2 5\.00 mH \+ R3 1\.10 Ω/);
+    // `none` keeps its 1.1 meaning (no series R, no pad leg); the VERDICT is
+    // what refuses, under both pad-forbidding rules — and names the chain.
+    expect(w.none).toBe(true);
+    for (const rule of ['none', { kind: 'series-r-max', maxOhm: 1.0 }] as const) {
+      const v = levelWorkVerdict(w, rule);
+      expect(v.ok).toBe(false);
+      expect(v.why).toMatch(/without a resonance/);
+      expect(v.why).toMatch(/L2/);
+    }
+    expect(levelWorkVerdict(w, 'allowed').ok).toBe(true);
+    expect(levelWorkVerdict(w, null).ok).toBeNull();
+    expect(describeLevelWork(w)).toMatch(/resonanceless shunt chain/);
+    // The COUNTER-PROOF: give the chain its C back (a damped trap) and the
+    // same rules accept — a trap is an impedance correction, not a pad.
+    n = 0;
+    const trapped: VxpPart[] = [
+      source([0, 0], [0, 10]),
+      ground([0, 10]),
+      part('Inductor', 1e-3, [0, 0], [10, 0]),
+      part('Inductor', 5, [10, 0], [10, 3]),
+      part('Capacitor', 300, [10, 3], [10, 6]),
+      part('Resistor', 1.1, [10, 6], [10, 10]),
+      driver('woofer', [10, 0], [10, 10]),
+      ({ type: 'Wire', partId: 'W1', params: [], wires: [{ x: 0, y: 10 }, { x: 10, y: 10 }] }) as unknown as VxpPart,
+    ];
+    const t = levelWorkOnWay(trapped, 'woofer');
+    expect(t.resonancelessShunts).toEqual([]);
+    expect(levelWorkVerdict(t, 'none').ok).toBe(true);
+    // A BARE shunt L to ground is the same shape without even the R — on a
+    // low-passed way that too is a load, and it is caught.
+    n = 0;
+    const bareL: VxpPart[] = [
+      source([0, 0], [0, 10]),
+      ground([0, 10]),
+      part('Inductor', 1e-3, [0, 0], [10, 0]),
+      part('Inductor', 15, [10, 0], [10, 10]),
+      driver('woofer', [10, 0], [10, 10]),
+      ({ type: 'Wire', partId: 'W1', params: [], wires: [{ x: 0, y: 10 }, { x: 10, y: 10 }] }) as unknown as VxpPart,
+    ];
+    const b = levelWorkOnWay(bareL, 'woofer');
+    expect(b.resonancelessShunts).toHaveLength(1);
+    expect(levelWorkVerdict(b, 'none').ok).toBe(false);
+    /* SCOPE: on a HIGH-passed way the ladder's own shunt L is this shape and
+     * legitimate — the inventory lists it as what it is, and nothing judges it
+     * because no rule is stated for that way (the verdict is scoped by the
+     * stated rule, which is about the LOWEST way). */
+    n = 0;
+    const hp: VxpPart[] = [
+      source([0, 0], [0, 10]),
+      ground([0, 10]),
+      part('Capacitor', 4e-6, [0, 0], [10, 0]),
+      part('Inductor', 0.4e-3, [10, 0], [10, 10]),
+      driver('tweeter', [10, 0], [10, 10]),
+      ({ type: 'Wire', partId: 'W1', params: [], wires: [{ x: 0, y: 10 }, { x: 10, y: 10 }] }) as unknown as VxpPart,
+    ];
+    const h = levelWorkOnWay(hp, 'tweeter');
+    expect(h.resonancelessShunts).toHaveLength(1);
+    expect(levelWorkVerdict(h, null).ok).toBeNull();
   });
 
   it('an unreachable driver is not "none" — nothing could be walked', () => {

@@ -82,9 +82,9 @@ export const CHAIN_CHOICE_KEYS = [
    * V51b — THE SAME KEY CARRIES A SECOND STATED STATE, `{ kind: 'series-r-max',
    * maxOhm }`: series resistance on the lowest way up to a stated TOTAL
    * (discrete R plus coil DCR) and no pad. The number travels inside the value
-   * and not as a fourth key, on purpose: a mode without its maximum and a
+   * and not as a separate key, on purpose: a mode without its maximum and a
    * maximum without its mode each mean nothing, and two keys that must agree
-   * are a pair that can disagree. The list therefore stays at three. What the
+   * are a pair that can disagree. The list did not grow for V51b. What the
    * state does: the design step trims as before, the synthesis proposes one
    * PLAIN series R capped at the maximum (`synthesis.ts`), the tuner's box
    * holds the way's total — DCR first — under the same number (`bounds.ts`,
@@ -93,6 +93,37 @@ export const CHAIN_CHOICE_KEYS = [
    * the resistor the impedance floor refused thirteen of fifteen candidates —
    * the pad was doing the floor's work as well as the level's. */
   'lowestWayLevelWork',
+  /* --- A5e.3b: the CATALOGUE SPAN of the lowest way's coil family, as a
+   *     ceiling on every coil the synthesis may propose there ---
+   *
+   * The fourth key, and the first half of A5d.6's closing line ("catalogus-
+   * spanwijdte ∩ meetafgeleide budgetgrenzen") to be filled in — the search-box
+   * half lives in `searchBoxFor`, reading the SAME stated value, so the seed
+   * and the box cannot disagree about what the family builds. A choice by the
+   * same test as the three above: it decides what the TOPOLOGY may be. The
+   * synthesis seeds a damped trap on the woofer's reflex peak at whatever
+   * inductance the textbook maths asks (X/ω₀ at ~48 Hz), and on the A5e.3-veld
+   * corpus that was 22–36 mH against a stated family whose largest single part
+   * is 22.0 mH: every delivered trap was "flagged and carried on" — a coil no
+   * single part of the stated family builds. A slot capped at derivation is a
+   * design the family can build; a value only the box caps is a seed the tune
+   * spends its budget defending.
+   *
+   * THE VALUE IS DERIVED FROM THE STATED COIL FAMILY (A5e.3), never typed: the
+   * span is `rangeH[1]` of the lowest way's family fit, and a project that
+   * states no family states no span (absent, P4). The STACK EXCEPTION is a
+   * stated act (`coilStackAllowed` on the derivation input): two coils in
+   * series are buildable and the out-of-range flag already says when a value
+   * needs one — with the exception stated the key is absent WITH THAT REASON
+   * and nothing is capped. Default is capped, because a stack is a build
+   * decision the designer takes, not one the search may assume (A5e.3b,
+   * Sander 05-09-2026).
+   *
+   * NO WINDOW FLOOR IS DERIVED FROM THIS, deliberately: the trap is tuned to
+   * the driver's reflex peak, not to the handover, so its inductance does not
+   * scale with the crossing — a W-M floor derived from the span would forbid
+   * positions for a component every position needs equally. */
+  'lowestWayCoilMaxHenry',
 ] as const;
 
 export type ChainChoiceKey = (typeof CHAIN_CHOICE_KEYS)[number];
