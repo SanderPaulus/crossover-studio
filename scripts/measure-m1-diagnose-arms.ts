@@ -610,6 +610,13 @@ const t0 = Date.now();
 let next = 0;
 let finished = 0;
 await new Promise<void>((resolve, reject) => {
+  /* A5e.3b (c)1 — een lege werklijst spawnt geen enkel kind, dus zonder deze
+   * regel wacht de promise eeuwig op een `close` die nooit komt: bij bestaande
+   * armbestanden meteen doorvallen naar het lezen en rapporteren hieronder. */
+  if (todo.length === 0) {
+    resolve();
+    return;
+  }
   const start = () => {
     if (next >= todo.length) {
       if (finished === todo.length) resolve();
