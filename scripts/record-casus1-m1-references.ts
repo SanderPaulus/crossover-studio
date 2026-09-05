@@ -126,11 +126,18 @@ const pers = (r: EngineV2Report) =>
   driver(r, 'mid').persistence
     .filter((p) => significant(r, 'mid').some((q) => Math.abs(q.fHz - p.fHz) < 1e-6))
     .map((p) => [r0(p.fHz), r2(p.offAxisDb)] as [number, number]);
-m._breakups_gepoort_tot_M1 = {
-  _: 'De breakups en hun 30-graden-persistentie op de GEPOORTE set (scanband 397-20000 Hz): de trend verschuift met de band (V8c). Brug, reproduceerbaar met set "gated".',
-  breakups: m.breakups,
-  persistentie_30gr: m.persistentie_30gr,
-};
+/* IDEMPOTENT SINDS 05-09-2026: deze brug KOPIEERT het blok en wordt daarom
+ * alleen geschreven als hij nog niet bestaat — een tweede run zette hier de
+ * gemergede scan (7 pieken) in een blok dat de gepoorte scan (5 pieken) moet
+ * dragen; hersteld uit de M-1-commit. NIET vers herrekenen: zie het
+ * gelijknamige commentaar bij de kandidaten-brug in sectie 4. */
+if (!('_breakups_gepoort_tot_M1' in m)) {
+  m._breakups_gepoort_tot_M1 = {
+    _: 'De breakups en hun 30-graden-persistentie op de GEPOORTE set (scanband 397-20000 Hz): de trend verschuift met de band (V8c). Brug, reproduceerbaar met set "gated".',
+    breakups: m.breakups,
+    persistentie_30gr: m.persistentie_30gr,
+  };
+}
 m.breakups = peaks(M);
 m.persistentie_30gr = pers(M);
 m.breakups_opmerking =
@@ -327,14 +334,29 @@ for (const [key, refKey] of [['HUIDIG', 'HUIDIG_2e'], ['KAND_A', 'KAND_A_2e'], [
   const mt = pt.find((p) => p.lower === 'mid')!;
   const lam = (lower: string, frac: string) =>
     r.metrics.lobingLambdas.find((x) => x.lower === lower)!.fractions.find((f) => f.key === frac)!.lambda;
-  const before: Record<string, unknown> = {};
-  for (const k of RESPONSE_KEYS) if (k in block) before[k] = block[k];
-  const f3ref = others[refKey] ?? (refKey === 'KAND_B_3e' ? { rms_vlakheid_dB: block.rms_vlakheid_dB, spl_venster_pm_dB: block.spl_venster_pm_dB } : undefined);
-  if (f3ref) before.rms_vlakheid_dB = f3ref.rms_vlakheid_dB, (before.spl_venster_pm_dB = f3ref.spl_venster_pm_dB);
-  block._gepoort_tot_M1 = {
-    _: 'De responsafhankelijke velden van dit blok op de GEPOORTE set (F1 t/m V51b). Brug, reproduceerbaar met set "gated". De elektrische velden (minZ, EPDR, dissipatie, Qes_mult, lf_bult) lezen de sweep en het nabije veld en bewegen niet.',
-    ...before,
-  };
+  /* IDEMPOTENT SINDS 05-09-2026: de brug wordt ALLEEN geschreven als hij nog
+   * niet bestaat. Tot dan las dit blok `before` uit het blok zelf, dus een
+   * TWEEDE run kopieerde de gemergede waarden de brug in (gemeten: alle
+   * vijftien velden brug == blok; de gepoorte lezing stond alleen nog in de
+   * M-1-commit en is daaruit hersteld). NIET vers herrekenen op de gated set:
+   * gemeten 05-09-2026 dat een verse gated meting op enkele velden buiten de
+   * afronding van de brug beweegt (HUIDIG: mt_fase_oct_octaafgeknipt_V43 7,04
+   * tegen 7,1, rms 0,674 tegen 0,599; de mid-breakupscan vindt 7 pieken waar
+   * het blok er 5 droeg) — die velden zijn onder oudere engine-standen
+   * opgenomen en binnen hun tolerantieklassen meegelopen. De brug documenteert
+   * wat het blok F1 t/m V51b WERKELIJK droeg; een gedateerd blok wordt niet
+   * stil herschreven (V15). */
+  if (!('_gepoort_tot_M1' in block)) {
+    const before: Record<string, unknown> = {};
+    for (const k of RESPONSE_KEYS) if (k in block) before[k] = block[k];
+    const f3ref = others[refKey] ?? (refKey === 'KAND_B_3e' ? { rms_vlakheid_dB: block.rms_vlakheid_dB, spl_venster_pm_dB: block.spl_venster_pm_dB } : undefined);
+    if (f3ref) before.rms_vlakheid_dB = f3ref.rms_vlakheid_dB, (before.spl_venster_pm_dB = f3ref.spl_venster_pm_dB);
+    block._gepoort_tot_M1 = {
+      _: 'De responsafhankelijke velden van dit blok op de GEPOORTE set (F1 t/m V51b). Brug, reproduceerbaar met set "gated". De elektrische velden (minZ, EPDR, dissipatie, Qes_mult, lf_bult) lezen de sweep en het nabije veld en bewegen niet.',
+      ...before,
+    };
+  }
+  const bridge = block._gepoort_tot_M1 as Record<string, unknown>;
   block.wm_fase_oct = r2(wm.meanAbsDeg);
   block.mt_fase_oct = r2(mt.meanAbsDeg);
   block.wm_fase_oct_octaafgeknipt_V43 = r2(wm.control.octaveClipped.meanAbsDeg);
@@ -360,7 +382,7 @@ for (const [key, refKey] of [['HUIDIG', 'HUIDIG_2e'], ['KAND_A', 'KAND_A_2e'], [
       String(block.klasse_toelichting) +
       ' SINDS M-1 gemeten op de GEMERGEDE set (woofers en mid NF/FF-gemerged, plateau vlak): de responsafhankelijke velden bewogen en staan met hun gepoorte lezing in _gepoort_tot_M1; PLACEHOLDER tot groundplane.';
   }
-  console.log(`${refKey}: wm_fase ${block.wm_fase_oct} (was ${before.wm_fase_oct}), mt_fase ${block.mt_fase_oct} (was ${before.mt_fase_oct}), lobing wm nearest ${block.lobing_wm_dichtstbij_lambda} (was ${before.lobing_wm_dichtstbij_lambda}), V_tw ${block.V_tweeter_op_fs_dB} (was ${before.V_tweeter_op_fs_dB}), rms ${resp.rmsDeviationDb.toFixed(3)} window ${resp.windowPlusMinusDb.toFixed(3)} over ${r.system.splBandHz?.map((x) => x.toFixed(0)).join('-')}`);
+  console.log(`${refKey}: wm_fase ${block.wm_fase_oct} (gepoort ${bridge.wm_fase_oct}), mt_fase ${block.mt_fase_oct} (gepoort ${bridge.mt_fase_oct}), lobing wm nearest ${block.lobing_wm_dichtstbij_lambda} (gepoort ${bridge.lobing_wm_dichtstbij_lambda}), V_tw ${block.V_tweeter_op_fs_dB} (gepoort ${bridge.V_tweeter_op_fs_dB}), rms ${resp.rmsDeviationDb.toFixed(3)} window ${resp.windowPlusMinusDb.toFixed(3)} over ${r.system.splBandHz?.map((x) => x.toFixed(0)).join('-')}`);
 }
 f3.doelcurve = `${describeTargetCurve(CURVE)} (A5e.2) - de neutrale referentie; het basplateau is sinds M-1 op 0 dB gesteld`;
 f3.band_hz = M.system.splBandHz!.map((x) => Number(x.toFixed(2)));

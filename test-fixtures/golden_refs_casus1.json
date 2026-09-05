@@ -253,62 +253,46 @@
     "_": "De breakups en hun 30-graden-persistentie op de GEPOORTE set (scanband 397-20000 Hz): de trend verschuift met de band (V8c). Brug, reproduceerbaar met set \"gated\".",
     "breakups": [
      [
-      5688,
-      2.81
+      5690,
+      2.95
      ],
      [
-      9062,
-      3.81
+      9045,
+      3.92
      ],
      [
-      12265,
-      3.13
+      12288,
+      3.19
      ],
      [
-      14436,
-      2.97
+      14379,
+      2.83
      ],
      [
-      14949,
+      14955,
       3.17
-     ],
-     [
-      17596,
-      3.73
-     ],
-     [
-      19768,
-      3.89
      ]
     ],
     "persistentie_30gr": [
      [
-      5688,
-      3.4
+      5690,
+      3.41
      ],
      [
-      9062,
-      5.46
+      9045,
+      5.51
      ],
      [
-      12265,
-      7.79
+      12288,
+      7.93
      ],
      [
-      14436,
-      4.85
+      14379,
+      5.11
      ],
      [
-      14949,
-      4.85
-     ],
-     [
-      17596,
-      8.21
-     ],
-     [
-      19768,
-      7.95
+      14955,
+      5.11
      ]
     ]
    }
@@ -499,21 +483,21 @@
    "V_tweeter_op_fs_dB": -25.08,
    "_gepoort_tot_M1": {
     "_": "De responsafhankelijke velden van dit blok op de GEPOORTE set (F1 t/m V51b). Brug, reproduceerbaar met set \"gated\". De elektrische velden (minZ, EPDR, dissipatie, Qes_mult, lf_bult) lezen de sweep en het nabije veld en bewegen niet.",
-    "wm_fase_oct": 21.03,
+    "wm_fase_oct": 24.07,
     "mt_fase_oct": 7.04,
-    "wm_fase_oct_octaafgeknipt_V43": 20.68,
-    "mt_fase_oct_octaafgeknipt_V43": 7.04,
+    "wm_fase_oct_octaafgeknipt_V43": 23.83,
+    "mt_fase_oct_octaafgeknipt_V43": 7.1,
     "lobing_wm_dichtstbij_lambda": 0.274,
     "lobing_wm_zwaartepunt_lambda": 0.419,
     "lobing_wm_verste_lambda": 0.563,
     "lobing_wm_binnen_weg_lambda": 0.29,
-    "lobing_mt_lambda": 0.85,
+    "lobing_mt_lambda": 0.84,
     "lobing_mt_dichtstbij_lambda": 0.848,
     "lobing_mt_zwaartepunt_lambda": 0.848,
     "lobing_mt_verste_lambda": 0.848,
     "V_tweeter_op_fs_dB": -25.08,
-    "rms_vlakheid_dB": 0.583,
-    "spl_venster_pm_dB": 1.173
+    "rms_vlakheid_dB": 0.599,
+    "spl_venster_pm_dB": 1.335
    }
   },
   "KAND_A_2e": {
@@ -541,21 +525,21 @@
    "V_tweeter_op_fs_dB": -34.54,
    "_gepoort_tot_M1": {
     "_": "De responsafhankelijke velden van dit blok op de GEPOORTE set (F1 t/m V51b). Brug, reproduceerbaar met set \"gated\". De elektrische velden (minZ, EPDR, dissipatie, Qes_mult, lf_bult) lezen de sweep en het nabije veld en bewegen niet.",
-    "wm_fase_oct": 4.57,
+    "wm_fase_oct": 3.05,
     "mt_fase_oct": 3.92,
-    "wm_fase_oct_octaafgeknipt_V43": 4,
-    "mt_fase_oct_octaafgeknipt_V43": 3.69,
-    "lobing_wm_dichtstbij_lambda": 0.356,
-    "lobing_wm_zwaartepunt_lambda": 0.545,
-    "lobing_wm_verste_lambda": 0.733,
-    "lobing_wm_binnen_weg_lambda": 0.38,
-    "lobing_mt_lambda": 0.94,
+    "wm_fase_oct_octaafgeknipt_V43": 2.79,
+    "mt_fase_oct_octaafgeknipt_V43": 3.6,
+    "lobing_wm_dichtstbij_lambda": 0.351,
+    "lobing_wm_zwaartepunt_lambda": 0.537,
+    "lobing_wm_verste_lambda": 0.722,
+    "lobing_wm_binnen_weg_lambda": 0.36,
+    "lobing_mt_lambda": 0.92,
     "lobing_mt_dichtstbij_lambda": 0.943,
     "lobing_mt_zwaartepunt_lambda": 0.943,
     "lobing_mt_verste_lambda": 0.943,
     "V_tweeter_op_fs_dB": -34.54,
-    "rms_vlakheid_dB": 0.771,
-    "spl_venster_pm_dB": 1.237
+    "rms_vlakheid_dB": 0.872,
+    "spl_venster_pm_dB": 1.474
    }
   },
   "KAND_B_3e": {
@@ -589,21 +573,21 @@
    "spl_venster_pm_dB": 1.126,
    "_gepoort_tot_M1": {
     "_": "De responsafhankelijke velden van dit blok op de GEPOORTE set (F1 t/m V51b). Brug, reproduceerbaar met set \"gated\". De elektrische velden (minZ, EPDR, dissipatie, Qes_mult, lf_bult) lezen de sweep en het nabije veld en bewegen niet.",
-    "wm_fase_oct": 2.92,
+    "wm_fase_oct": 1.22,
     "mt_fase_oct": 3.39,
-    "wm_fase_oct_octaafgeknipt_V43": 2.64,
-    "mt_fase_oct_octaafgeknipt_V43": 3.41,
-    "lobing_wm_dichtstbij_lambda": 0.338,
-    "lobing_wm_zwaartepunt_lambda": 0.516,
-    "lobing_wm_verste_lambda": 0.694,
+    "wm_fase_oct_octaafgeknipt_V43": 1.24,
+    "mt_fase_oct_octaafgeknipt_V43": 3.5,
+    "lobing_wm_dichtstbij_lambda": 0.34,
+    "lobing_wm_zwaartepunt_lambda": 0.52,
+    "lobing_wm_verste_lambda": 0.699,
     "lobing_wm_binnen_weg_lambda": 0.36,
     "lobing_mt_lambda": 0.94,
     "lobing_mt_dichtstbij_lambda": 0.942,
     "lobing_mt_zwaartepunt_lambda": 0.942,
     "lobing_mt_verste_lambda": 0.942,
     "V_tweeter_op_fs_dB": -35.18,
-    "rms_vlakheid_dB": 0.699,
-    "spl_venster_pm_dB": 1.126
+    "rms_vlakheid_dB": 0.705,
+    "spl_venster_pm_dB": 1.299
    }
   },
   "_wm_fase_oct_opmerking": "V44 — DE GROOTHEID IS HERDEFINIEERD EN DE NAAM NIET. `wm_fase_oct` en `mt_fase_oct` zijn sinds V44 M-K: het gemiddelde |relatieve fase| over de punten die een fase-oordeel MOGEN dragen — binnen de meetgeldigheid van beide takken, beide takken boven de stille-geestvloer, en binnen het overlapvenster (|niveauverschil na filter| <= 20 dB). De +-1-octaafband rond het kruispunt is als toelating VERVALLEN: het niveaucriterium leest het overnamegebied van het geleverde netwerk af in plaats van het met een octaafregel te benaderen. DE BRUG: `wm_fase_oct_octaafgeknipt_V43` en `mt_fase_oct_octaafgeknipt_V43` dragen de waarden die deze sleutels tot V43 hadden, en de metriek reproduceert ze nog steeds als controlekolom (`control.octaveClipped`) — dat is wat de herdefinitie leesbaar maakt in plaats van stil (V15's vorm). WAT ER TOT V43 STOND, en dat blijft waar over die oude grootheid: het gemiddelde |fasefout| over +-1 octaaf rond het kruispunt, GECLIPT op de meetgeldigheidsband (A5.5). De referentie van 25-08 gebruikte een band onder de geldigheidsvloer: bij HUIDIG ligt het kruispunt op 360 Hz en dus de onderste helft van het venster onder de 397 Hz-vloer. KAND-A en KAND-B reproduceerden de oorspronkelijke referentiewaarden (2,8 / 1,3) omdat hun kruispunten boven de vloer liggen. WAAROM DIE OUDE GROOTHEID NIET GENOEG WAS: zij middelt fase mee waar EEN van de twee takken al dertig dB weg is en zijn fase de som niet kan bewegen. Op V28_KAND_1 mid|tweeter zijn dat dertien punten van gemiddeld 146 graden, en het rapport las daar 90,7 waar de som 29,7 zag (casusboek V40).",
