@@ -605,6 +605,16 @@ export const NARROW_PEAK_MIN_DB = 0.7;
 export const DEFAULT_SHORTLIST_SIZE = 10;
 
 /**
+ * E-2 — the chain budget of an EXPLORATION field (`predesign/fieldMode.ts`):
+ * the number of chains a first look at a loudspeaker pays for before the full
+ * field is worth its hours. A RUN-SIZE choice stated by the designer (Sander,
+ * 06-09-2026), like `DEFAULT_RUN_STARTS` a search-depth number and never a
+ * limit: it changes how much of the field is visited, not what counts as
+ * acceptable, and the shortlist says which mode made it. @p6 rule
+ */
+export const EXPLORATION_CHAIN_BUDGET = 8;
+
+/**
  * A5e.1 — the relaxation ladder's step, as a FRACTION of the stated
  * requirement per rung.
  *

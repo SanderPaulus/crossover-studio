@@ -48,6 +48,15 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná E-2 (06-09-2026) gemeten op 564 s — 156 bestanden (155 geslaagd, 1 overgeslagen), 1769 tests (1767 geslaagd,
+    2 overgeslagen), in één keer groen, gedraaid ná de browserrun van 34 minuten en de replay, met de dev-server en de
+    headless Chrome gestopt.** +4 bestanden (`predesign/fieldMode.test.ts` 10, `v2Settings.test.ts` 13,
+    `optimizer/runExport.test.ts` 9, `components/engineV2Panel.test.tsx` 2) en +53 tests: die 34, +13 in
+    `candidates.test.ts` (drie E-2-blokken), +5 in `schematicEdit.test.ts`, +1 in `networkReadiness.test.ts`. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan — `f4cRegression` en `candidateRoute` melden elk 240 s en de vier
+    nieuwe bestanden kosten samen onder de seconde, dus wat er beweegt is de machine. De volle run is bij E-2 NIET
+    gedraaid: geen engine-, poort- of corpuswijziging, de volle veldmodus keyt byte-identiek aan het F4d-verzoek en de
+    corpusgenerator leest `casus1Field` ongewijzigd, dus de twee live ketenruns toetsen niets dat hier bewoog.
     **Ná E-1 (06-09-2026) gemeten op 411 s — 152 bestanden (150 geslaagd, 1 rood, 1 overgeslagen), 1716 tests
     (1713 geslaagd, 1 rood, 2 overgeslagen), gedraaid direct ná de recorder-herhaling en NOOIT ernaast.** Geen nieuw
     bestand; +6 tests: 1 in `casus1V2Candidates` (de looptijd-/goedkoopste-onderwerp-claim), 1 in `barrierSource`
@@ -999,6 +1008,33 @@
   beweegt niet: de aandrijfvloer van de tweeter (1184 Hz) ligt onder k·f_s (1294). **`measure-m1-diagnose-arms.ts`
   herbouwt sinds A5e.3-veld het M-1-VELD expliciet** (vensterinvoer zonder aandrijfvloer, W-M onthoudt zich,
   geen budget), zodat zijn armbestanden reproduceerbaar blijven en `M1_DRY=1` nog zegt wat er gedraaid is.
+- **Een app-run naspelen in de repo (E-2, 06-09-2026)**: `npx vite-node scripts/replay-app-run.ts <export.json>
+  [--set merged|gated] [--run]` — seconden zonder `--run`. De invoer is wat de knop **"Export run (JSON)"** onder de
+  run-stempel van de app schrijft (`runExport.ts`, formaat `crossover-studio-run/1`): de gestelde eisen, de
+  run-instellingen, de VELD-instellingen (modus, budget, uitlijningen, de per-paar-afleidingsinvoer), de vensterinvoer en
+  de orde-afleidingen waarop het veld stond, élke kandidaat (label, positie, kooi, orde, uitlijning, venster), de
+  stempel en de shortlist. Twee lagen: **laag 1** herbouwt het veld uit het blok alleen (de generator op de
+  geëxporteerde vensterinvoer — een zuivere functie, dus exact, en het bewijs dat het blok volstaat; de
+  `choices`-component van de stempel wordt herberekend en vergeleken); **laag 2** herbouwt het rapport op de
+  casus-1-set van de REPO (`merged`, de standaard sinds M-1, of `gated`, de sessie van 22-08-2026 waarvan de
+  demobundel een herbemonstering is) met de geëxporteerde rapportinstellingen — hersleuteld van de driver-id's van de
+  app naar die van de repo — leidt het veld dáárvan af (met de eigen gemeten krommen van de repo voor de
+  natural-slope-fit) en vergelijkt kandidaat voor kandidaat; waar zij verschillen worden de vensterinvoer-velden
+  benoemd die het verschil maakten. `--run` tunet élke nagespeelde kandidaat door `handleV2Request` zoals de generator
+  (minuten voor een verkenning, uren voor een vol veld) en zet de shortlist naast de geëxporteerde. **Kandidaten, geen
+  bytes (V46):** een veld is een veld op elke machine; een getuned netwerk reproduceert byte-voor-byte alleen per
+  (machine, runtime). Exitcode 0 alleen als beide lagen SAME zeggen. **`--set demo`** neemt de demobundel van de app
+  (`src/demo3way.ts`) door de adapter van de app (`buildEngineV2Input`), precies zoals de browser hem neemt — op
+  dezelfde bestanden moet de repo tot op het laatste cijfer hetzelfde veld afleiden. **Gemeten 06-09-2026 op de
+  bewaarde browserrun `test-fixtures/casus1_e2_verkenning_run.json` (een verkenning op casus 1 met de gestelde eisen,
+  2032 s in een headless Chrome, 6 kandidaten, 1 gekwalificeerd): laag 1 SAME (digest 299ef5e7 = de stempel), laag 2
+  `--set demo` SAME (6 van 6, de vensterinvoer verschilt alleen in float-ruis op 1e-10..1e-14), laag 2 `--set gated`
+  DIFFERENT — de demobundel is een herbemonstering op 500 punten en de posities schuiven 0,2 Hz (W-M) en 1,3–1,8 Hz
+  (M-T); het script benoemt de breakup-hoogten, de geometrie (382,4 tegen 261 mm) en de directiviteit (0–60° tegen één
+  hoek) als de verschillen.** Het bewaarde blok draagt nog geen `geometry` (het is geschreven vóór het blok het
+  droeg); het script zegt dat en neemt dan de demokast. **`tsconfig.scripts.json` kent sinds E-2 ook `vite/client`
+  als type** (`types: ["node", "vite/client"]`), omdat het replay-script `demo3way.ts` importeert en die module
+  Vite's `?raw`-imports draagt — zonder die declaratie 21 TS2307-fouten in `tsc -b`.
 - **De barrière-resolutie op smalle dips, gemeten vóór er gekozen is (E-1, 06-09-2026)**:
   `npx vite-node scripts/measure-e1-barrier-resolution.ts` — seconden, geen ketenrun en geen tune. Over ÉLKE bevroren
   netlist (161): min |Z| op de poortsweep (1600 punten) tegen het verlengde barrièreraster (394, wat `'safety-extended'`
@@ -2398,6 +2434,71 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de zeven andere geleverde droegen `binnen_eis: true`, de twaalf geweigerde waren al geweigerd vóór (a) leest)
   draait alleen díé opnieuw (`V2_ONLY=9`, 2566 s) en zijn de negentien andere shards wat een herhaling zou
   opleveren. Elke shard moet er zijn; wie élke kandidaat opnieuw wil zien draait zonder de vlag.
+
+### E-2-guards (snel veld, P4 op het v2-formulier, twee UI-2-restjes, een app-run reproduceerbaar; alleen UI/run-instellingen)
+- `src/lib/engine2/predesign/candidates.ts` — **twee optionele beleidssleutels op de generator, en absent is het veld
+  dat het altijd was (P2).** `positionPolicy: 'spread' | 'centre-first'` en `alignmentPolicy: 'every-order' | 'one'`;
+  `CandidatePairInput.statedOrder` voor de tweede. `'centre-first'` legt het geometrische midden van het venster EERST
+  (het referentiekruispunt waarop de orde-afleiding haar eisen leest, `candidateField.ts`), dan ±1, ±2 … spacing naar
+  buiten (de LAGERE buur eerst — een lagere overname belast de bovenste driver harder), telling
+  `centreFirstPositionCount` = 1 + 2·floor(halve spanwijdte / spacing), kooi één spacing breed en NIET verbredend onder
+  een budget: een uitgedund verkenningsveld dekt minder band, niet dezelfde band grover. `'one'` bouwt één uitlijning per
+  overname — de gestelde orde als de afleiding haar toelaat, anders de STEILSTE toegelaten (die haalt elke eis die de
+  afleiding stelde) — en noemt de niet-gebouwde orden in de asnoten. **De `parameters` van het veld dragen de sleutels
+  ALLEEN als zij gesteld zijn**, dus `candidateFieldKey` — en daarmee élke vóór E-2 opgenomen run-vingerafdruk — is
+  byte-identiek voor een veld zonder beleid; `candidates.test.ts` (drie E-2-blokken) en `fieldMode.test.ts` (claim 4:
+  de volle modus keyt byte-identiek aan het F4d-verzoek `chainBudget: steps^pairs`) pinnen dat.
+- `src/lib/engine2/predesign/fieldMode.ts` + `constants.ts` (`EXPLORATION_CHAIN_BUDGET = 8`, @p6 rule — een
+  run-grootte, gesteld door Sander, geen grens) — **de veldmodus:** `fieldModeOf('' | 'exploration' | 'full')` (leeg =
+  verkenning), `fieldModeSettings(mode, {stepsPerAxis, pairs})` (verkenning: budget 8 + beide beleidssleutels; vol:
+  steps^pairs en GEEN beleidssleutel), `fieldModeOfParameters(field.parameters)` (de modus wordt van het veld zelf
+  gelezen, nooit van een select ernaast) en `describeFieldMode`. `fieldMode.test.ts` op casus 1: de verkenning past in
+  het budget en is kleiner dan het volle veld, bouwt op elke as alleen orde 4 (de gestelde), draagt op elke as het
+  geometrische venstercentrum en NIET de vensterranden, en heeft dezelfde vensters, vloeren en plafonds als het volle
+  veld — dezelfde eisen, een kleiner veld. **Gemeten op de repo-set (merged): verkenning 2 × 3 = 6 kandidaten uit 33
+  afgeleid — W-M 254 en 285,1 Hz (het venstercentrum 285,1 = √(147,9 · 549,7) en zijn lagere buur; 11 afgeleid), M-T
+  1735,4 / 1947,9 / 2186,5 Hz (het centrum 1947,9 en beide buren; 3 afgeleid) — tegen 4 hoekposities (147,9/549,7 ×
+  1646,9/2304) voor het volle veld bij 2 stappen per as. Op de gepoorte set (de demobundel): W-M 415,6/466,5, M-T
+  1727,7/1939,3/2176,7.**
+- `src/App.tsx` — de modus is `engineV2Settings.fieldMode` (select "Candidate field" in de sectie "Engine v2 — run",
+  bewaard in het project als `engineV2.fieldMode`); `runVfOptimize({ fieldMode })` neemt een expliciete modus (de knop
+  "Run the full field →" onder de shortlist stelt 'full' en geeft hem mee, want de state landt niet in dezelfde tick;
+  de vóórstart-melding geeft `runOpts` door). Het veldverzoek (`v2FieldRequest`: vensterinvoer, `perPair`,
+  `fieldSettings`) staat los van het veld zodat de export precies draagt wat de generator kreeg. `v2Run` draagt sinds
+  E-2 `field: { mode, description }` (de shortlist drukt de regel af, `.v2-field-mode`) en `export: RunExport`.
+- `src/lib/v2Settings.ts` + `v2Settings.test.ts` — **P4 op het formulier.** De zes getallen die Sander als waarden las
+  (35 %, 1,6 Ω, −18 dB, 2,5, 1,5, 0,5) waren HTML-placeholders op lege velden. Sindsdien: `EMPTY_V2_SETTINGS` is de ene
+  definitie van de verse toestand (initial state, autosave-herstel en een project zonder blok komen er alle drie op
+  uit); `V2_GHOSTS` geeft élk oordeelsveld (`V2_JUDGEMENT_KEYS`: poorten, budgetten, eisen, V49-, V50-, V51-invoer én de
+  twee rapportageschalen `amplifierPowerW`/`verticalWindowDeg`) de markering `—` en geen getal — de enige numerieke
+  ghosts zijn `shortlistSize` (DEFAULT_SHORTLIST_SIZE) en `runSeed` (DEFAULT_RUN_SEED), de twee waar leeg werkelijk de
+  gepubliceerde default betekent, met naam in `V2_DEFAULT_GHOST_KEYS`; `restoreV2Settings(stored, storedAt)` is de ene
+  herstelregel; `stampStated` zet bij elke bewerking de datum, `statedMark` drukt **"stated by you on <datum>"** naast
+  een veld met waarde (of "date not recorded" voor een waarde uit een project van vóór E-2 — nog steeds van de
+  ontwerper, nooit van de app). In App: `setV2Field(key, value)` is de ENE setter (de bronscan eist dat geen
+  `setEngineV2Settings((v) => …e.target.value…)` meer bestaat), `engineV2StatedAt` reist in het project
+  (`engineV2StatedAt`), `v2Stated(key)` rendert de markering (`.v2-stated`). `designLevelNote(engineV2Enabled)`: het
+  v1-veld "Design for … dB" (echte default '96', sinds V49 niet gelezen op de v2-route) draagt op de v2-route de noot
+  "v1 — not read by Engine v2 since V49" en op v1 niets (toggle-invariant). De test scant App.tsx: geen
+  `placeholder="<cijfer>"` onder een `value={engineV2Settings.…}`, élk oordeelsveld leest `V2_GHOSTS.<key>` en draagt
+  `{v2Stated('<key>')}`. **Handmatig nagemeten in een verse headless Chrome (localStorage gewist, demo geladen, v2 aan):
+  24 v2-velden, 0 met een waarde, de enige numerieke placeholders Shortlist size = 10 en Run seed = 20260826.**
+- `src/lib/schematicEdit.ts` (`backgroundClick`, `EditorTool`) + `schematicEdit.test.ts` — **het draadgereedschap
+  keert na een draad terug naar selecteren**, zoals het plaatsen van een onderdeel dat al deed. Eén zuivere stap voor
+  élk gereedschap: de eerste klik wapent het startpunt, de tweede LEGT de draad, selecteert hem en zet het gereedschap
+  op select (ook bij een nul-lange draad); plaatsen idem; een klik in select-modus wist de selectie.
+  `SchematicEditor.tsx` roept hem aan en houdt geen eigen overgangen meer.
+- `src/lib/networkReadiness.ts` (`notSimulatedTag`) + `EngineV2Panel.tsx` (`notSimulated`-prop, `V2_STALE_TAG_CLASS`,
+  wrapper `sim-stale`) + `engineV2Panel.test.tsx` — **de "not simulated"-tag heeft één tekst met vier lezers:** de
+  grafiekkoppen (`staleTag` in App leest hem sinds E-2 ook), het scan-resultaat en de shortlist-kop, de v1-reading-kop en
+  het v2-paneel. De paneeltest rendert met `renderToStaticMarkup` (de xoWindowAnnotation-vorm) en claimt beide kanten:
+  de tag mét prop, geen tag en geen dimming zonder.
+- `src/lib/engine2/optimizer/runExport.ts` + `runExport.test.ts` — **het exportblok (`RunExport`, formaat
+  `crossover-studio-run/1`)** en de twee vergelijkers (`compareCandidates`: missing/extra/changed met het veld benoemd;
+  `compareWindowInputs`: per paar en per veld), `replayField` (laag 1) en `fieldChoicesDigest` (de `choices`-component
+  van de stempel). Negen claims op casus 1: rondgang door JSON reproduceert élke kandidaat en de digest (verkenning én
+  vol), de vergelijker ziet een ontbrekende, een extra en een verplaatste kandidaat, en de TEGENPROEF: een ander budget
+  of een ander uitlijningsbeleid in het blok geeft een ander veld c.q. een andere digest — het blok is geen opvulling.
 
 ### E-1-guards (vier engine-posten, geen regeneratie: goedkoopste live-onderwerp, M-T-bovengrens, barrière-verdichting, de zestien paren)
 - `src/lib/engine2/casus1Corpora.fixture.ts` — **`liveSubjects()`: één regel voor beide live ketenruns.** De geleverde

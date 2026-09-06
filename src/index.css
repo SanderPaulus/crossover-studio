@@ -4293,3 +4293,16 @@ details.cabinet-driver > .derived strong,
 .sim-status .sim-status-head {
   font-weight: 600;
 }
+
+/* E-2 — a stated v2 field says who stated it and when; the field mode line
+   above the shortlist says which field made it. */
+.v2-stated {
+  font-size: 0.68rem;
+  color: var(--good, #6cbf7a);
+  margin-left: 0.35rem;
+  white-space: nowrap;
+}
+.v2-field-mode button {
+  font-size: 0.8rem;
+  padding: 0.1rem 0.5rem;
+}

@@ -111,6 +111,29 @@ export type NetworkReadiness =
       defects: NetworkDefect[];
     };
 
+/**
+ * E-2 — THE "NOT SIMULATED" TAG, one text with four readers: the chart
+ * headings, the scan summary and shortlist, the v1-reading heading, and the
+ * v2 panel. UI-2 gave the charts the tag and left the scan table and the v2
+ * panel without it, so a refused drawing could sit under a scan table that
+ * looked current and beside a v2 report that judged a network nobody could
+ * simulate. `showing` says what the screen holds instead: the previous
+ * simulated state, or the raw drivers.
+ */
+export function notSimulatedTag(
+  showing: 'previous' | 'raw',
+  describe: string,
+): { label: string; title: string } {
+  return {
+    label: showing === 'previous' ? 'previous state — network not simulated' : 'raw drivers — network not simulated',
+    title:
+      `${describe}\n\n` +
+      (showing === 'previous'
+        ? 'These curves are the LAST network that could be simulated, not the one in the editor. Fix the network and they update.'
+        : 'Nothing has been simulated yet for this network; these are the raw drivers. Fix the network and the curves appear.'),
+  };
+}
+
 const ptKey = (w: { x: number; y: number }): string => `${w.x},${w.y}`;
 
 /**

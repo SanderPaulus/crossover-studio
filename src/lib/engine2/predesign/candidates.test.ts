@@ -26,7 +26,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { generateCandidates, derivedPositionCount, type Alignment } from './candidates.ts';
+import { generateCandidates, derivedPositionCount, centreFirstPositionCount, type Alignment } from './candidates.ts';
 import type { XoWindowInput } from './xoWindow.ts';
 import type { PairOrderResult } from './flankOrder.ts';
 import { WINDOW_SMOOTHING_OCTAVES } from '../constants.ts';
@@ -455,5 +455,140 @@ describe('provenance travels with every candidate', () => {
     const g = one(win);
     expect(g.candidates.length).toBeGreaterThan(0);
     expect(g.candidates[0].crossings[0].uncalibrated.join(' ')).toMatch(/uncalibrated/i);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * E-2 — the exploration policies: centre-first positions, one alignment
+ * ------------------------------------------------------------------ */
+
+describe('E-2 — absent policies are the field it always was (P2)', () => {
+  const win = flatWindow(400, 1600);
+  const plain = one(win, [2, 4]);
+  const stated = generateCandidates([{ windowInput: win, orders: orderSet([2, 4]) }], {
+    alignments: LIBRARY,
+    positionPolicy: 'spread',
+    alignmentPolicy: 'every-order',
+  });
+
+  it('a field without a stated policy records NO policy key, so every recorded fingerprint reproduces', () => {
+    expect('positionPolicy' in plain.parameters).toBe(false);
+    expect('alignmentPolicy' in plain.parameters).toBe(false);
+  });
+
+  it('the historical policies stated explicitly lay the same positions and the same orders', () => {
+    expect(stated.candidates.map((c) => c.label)).toEqual(plain.candidates.map((c) => c.label));
+    expect(stated.candidates.map((c) => c.crossings[0].cageHz)).toEqual(plain.candidates.map((c) => c.crossings[0].cageHz));
+    // …and only the parameters block knows they were stated.
+    expect(stated.parameters.positionPolicy).toBe('spread');
+    expect(stated.parameters.alignmentPolicy).toBe('every-order');
+  });
+});
+
+describe('E-2 — centre-first positions: the window centre first, then outward', () => {
+  // Two octaves, so the geometric centre is exactly one octave up: 800 Hz.
+  const win = flatWindow(400, 1600);
+  const centred = (budget?: number) =>
+    generateCandidates([{ windowInput: win, orders: orderSet([4]) }], {
+      alignments: LIBRARY,
+      positionPolicy: 'centre-first',
+      ...(budget !== undefined ? { chainBudget: budget } : {}),
+    });
+  const hzOf = (f: ReturnType<typeof centred>) => f.candidates.map((c) => c.crossings[0].hz);
+
+  it('the count is the centre plus as many spacings as fit on EACH side — odd, and within one of the spread count', () => {
+    expect(centreFirstPositionCount(2, WINDOW_SMOOTHING_OCTAVES)).toBe(13);
+    expect(centreFirstPositionCount(2, WINDOW_SMOOTHING_OCTAVES) % 2).toBe(1);
+    expect(Math.abs(centreFirstPositionCount(1.9, WINDOW_SMOOTHING_OCTAVES) - derivedPositionCount(1.9, WINDOW_SMOOTHING_OCTAVES))).toBeLessThanOrEqual(1);
+    expect(centred().candidates).toHaveLength(13);
+  });
+
+  it('the geometric centre of the window IS a position, and the layout is symmetric about it', () => {
+    const hz = hzOf(centred());
+    expect(hz).toContain(800);
+    // Positions print at the edge precision (0.1 Hz), so the mirror image
+    // is exact to that rounding and not to the last bit.
+    const oct = hz.map((h) => Math.log2(h / 800));
+    for (const o of oct) expect(oct.some((p) => Math.abs(p + o) < 1e-3)).toBe(true);
+  });
+
+  it('neighbours are exactly one spacing apart, in octaves', () => {
+    const hz = hzOf(centred());
+    for (let i = 1; i < hz.length; i++) {
+      expect(Math.log2(hz[i] / hz[i - 1])).toBeCloseTo(WINDOW_SMOOTHING_OCTAVES, 3);
+    }
+  });
+
+  it('under a budget the OUTERMOST positions go: three survivors are the centre and its two neighbours', () => {
+    const hz = hzOf(centred(3));
+    expect(hz).toHaveLength(3);
+    expect(hz[1]).toBe(800);
+    expect(Math.log2(hz[2] / hz[0])).toBeCloseTo(2 * WINDOW_SMOOTHING_OCTAVES, 3);
+    // The window EDGES are not positions here — the spread layout puts them first.
+    expect(hz).not.toContain(400);
+    expect(hz).not.toContain(1600);
+  });
+
+  it('with two survivors the centre and its LOWER neighbour are kept', () => {
+    const hz = hzOf(centred(2));
+    expect(hz).toHaveLength(2);
+    expect(hz[1]).toBe(800);
+    expect(hz[0]).toBeLessThan(800);
+  });
+
+  it('the cages stay one spacing wide when the field is thinned — a smaller field, not a looser one', () => {
+    for (const c of centred(3).candidates) {
+      const x = c.crossings[0];
+      expect(Math.log2(x.cageHz[1] / x.cageHz[0])).toBeCloseTo(WINDOW_SMOOTHING_OCTAVES, 2);
+      expect(x.hz).toBeGreaterThanOrEqual(x.cageHz[0]);
+      expect(x.hz).toBeLessThanOrEqual(x.cageHz[1]);
+    }
+  });
+
+  it('nothing leaves the window, and the thinning note says the field was thinned from the outside in', () => {
+    const f = centred(5);
+    for (const c of f.candidates) {
+      const x = c.crossings[0];
+      expect(x.hz).toBeGreaterThanOrEqual(x.windowHz[0] - 1e-9);
+      expect(x.hz).toBeLessThanOrEqual(x.windowHz[1] + 1e-9);
+    }
+    expect(f.notes.join(' ')).toMatch(/from the OUTSIDE in/);
+    expect(f.parameters.positionPolicy).toBe('centre-first');
+    expect(f.candidates[0].provenance).toMatch(/centre-first from the window centre 800 Hz/);
+  });
+});
+
+describe('E-2 — one alignment per handover', () => {
+  const win = flatWindow(400, 1600);
+  const oneOf = (orders: number[], statedOrder: number | null) =>
+    generateCandidates([{ windowInput: win, orders: orderSet(orders), statedOrder }], {
+      alignments: LIBRARY,
+      alignmentPolicy: 'one',
+    });
+  const ordersIn = (f: ReturnType<typeof oneOf>) => [...new Set(f.candidates.map((c) => c.crossings[0].order))];
+
+  it('the STATED order is built when the derivation admits it, and the others are named', () => {
+    const f = oneOf([2, 3, 4], 2);
+    expect(ordersIn(f)).toEqual([2]);
+    expect(f.axes[0].orders).toEqual([2]);
+    expect(f.axes[0].notes.join(' ')).toMatch(/ONE alignment per handover — order 2 \(the order you stated\)/);
+    expect(f.axes[0].notes.join(' ')).toMatch(/the full field would also build orders 3, 4/);
+  });
+
+  it('without a stated order the STEEPEST admitted order is built — it meets every demand the derivation raised', () => {
+    const f = oneOf([2, 3, 4], null);
+    expect(ordersIn(f)).toEqual([4]);
+    expect(f.axes[0].notes.join(' ')).toMatch(/the steepest the derivation admits/);
+  });
+
+  it('a stated order the derivation does NOT admit falls back to the steepest admitted one', () => {
+    expect(ordersIn(oneOf([3, 4], 2))).toEqual([4]);
+  });
+
+  it('a single admitted order is built as it is, without a note about a choice', () => {
+    const f = oneOf([4], null);
+    expect(ordersIn(f)).toEqual([4]);
+    expect(f.axes[0].notes.join(' ')).not.toMatch(/ONE alignment/);
+    expect(f.parameters.alignmentPolicy).toBe('one');
   });
 });

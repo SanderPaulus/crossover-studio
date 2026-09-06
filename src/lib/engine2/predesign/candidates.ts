@@ -128,7 +128,47 @@ export interface CandidatePairInput {
   windowInput: XoWindowInput;
   /** What `flankOrder.pairOrders` derived for this handover. */
   orders: PairOrderResult;
+  /**
+   * E-2 — the order the designer STATED for this handover, when they stated
+   * one. Read by the `'one'` alignment policy only: an exploration that must
+   * build a single alignment per handover builds the stated one when the
+   * derivation admits it. Absent or null = nothing stated.
+   */
+  statedOrder?: number | null;
 }
+
+/**
+ * E-2 — HOW POSITIONS ARE LAID ACROSS A WINDOW.
+ *
+ *  · `'spread'` — the field it has always been (rule 1): evenly from edge to
+ *    edge in octave distance, the count derived from the span (rule 2), and
+ *    under a budget the survivors RE-SPREAD over the whole window with wider
+ *    cages. Absent means this, byte for byte.
+ *  · `'centre-first'` — the EXPLORATION layout: the geometric centre of the
+ *    window first (the same reference crossing the order derivation reads its
+ *    demands at, `candidateField.ts`), then one spacing below it, one above,
+ *    two below, two above … as far as the window allows. Under a budget the
+ *    OUTERMOST positions go and the cages stay one spacing wide: a smaller
+ *    field covers a smaller part of the band, which is what "a smaller field,
+ *    not a looser search" means. When two positions must be chosen the lower
+ *    neighbour comes first — a lower handover loads the upper driver harder,
+ *    so it is the more informative of the two to look at first.
+ */
+export type PositionPolicy = 'spread' | 'centre-first';
+
+/**
+ * E-2 — HOW MANY ALIGNMENTS ONE HANDOVER IS BUILT AT.
+ *
+ *  · `'every-order'` — rule 3, the field it has always been: every order the
+ *    derivation admits is its own candidate. Absent means this.
+ *  · `'one'` — the EXPLORATION rule: ONE alignment per handover. The stated
+ *    order when the designer stated one and the derivation admits it;
+ *    otherwise the STEEPEST admitted order, because that is the one that
+ *    satisfies every demand the derivation raised (a steeper flank meets any
+ *    protection or suppression demand a shallower one met). Said out loud in
+ *    the axis notes: a full field builds the others, this one does not.
+ */
+export type AlignmentPolicy = 'every-order' | 'one';
 
 export interface CandidateFieldSettings {
   /**
@@ -148,6 +188,10 @@ export interface CandidateFieldSettings {
   chainBudget?: number;
   /** The alignments the design step can build. */
   alignments: readonly Alignment[];
+  /** E-2 — see `PositionPolicy`. Absent = `'spread'`, the field it always was. */
+  positionPolicy?: PositionPolicy;
+  /** E-2 — see `AlignmentPolicy`. Absent = `'every-order'`, the field it always was. */
+  alignmentPolicy?: AlignmentPolicy;
 }
 
 /**
@@ -241,6 +285,15 @@ export interface CandidateField {
     /** The derived size before any thinning, and the delivered size. */
     derivedSize: number;
     deliveredSize: number;
+    /**
+     * E-2 — the two policies, PRESENT ONLY WHEN STATED. A field generated
+     * without them serialises exactly as it did before E-2, so every recorded
+     * run fingerprint (`candidateFieldKey`) still reproduces; an exploration
+     * carries both and stamps differently from a full field over the same
+     * windows, which is the point of recording them here.
+     */
+    positionPolicy?: PositionPolicy;
+    alignmentPolicy?: AlignmentPolicy;
   };
 }
 
@@ -348,6 +401,61 @@ export function derivedPositionCount(spanOct: number, spacingOct: number): numbe
   return Math.max(1, 1 + Math.floor(spanOct / spacingOct + Number.EPSILON));
 }
 
+/**
+ * E-2 — how many positions the centre-first layout admits over this span:
+ * the centre, plus as many spacings as fit on EACH side of it. Odd by
+ * construction, and never more than one apart from the spread count.
+ */
+export function centreFirstPositionCount(spanOct: number, spacingOct: number): number {
+  if (!(spanOct > 0) || !(spacingOct > 0)) return 1;
+  return 1 + 2 * Math.floor(spanOct / 2 / spacingOct + Number.EPSILON);
+}
+
+/**
+ * E-2 — the centre-first layout (`PositionPolicy`): the window centre, then
+ * ±1, ±2 … spacings out, the LOWER of each pair first; `count` of them,
+ * returned in ascending frequency. The cage is one spacing wide around the
+ * position and clipped to the segment — it does not widen when the field is
+ * thinned, because a thinned exploration covers less band rather than the
+ * same band more coarsely.
+ */
+function positionsCentreFirst(
+  segs: readonly (readonly [number, number])[],
+  count: number,
+  spacing: number,
+): { hz: number; cage: [number, number]; segment: readonly [number, number] }[] {
+  const span = spanOctaves(segs);
+  const mid = span / 2;
+  const order: number[] = [mid];
+  for (let j = 1; ; j++) {
+    const lo = mid - j * spacing;
+    if (lo < -1e-9) break;
+    order.push(Math.max(0, lo), Math.min(span, mid + j * spacing));
+  }
+  const kept = order.slice(0, Math.max(1, count)).sort((a, b) => a - b);
+  const half = spacing / 2;
+  return kept.map((t) => {
+    const at = atArc(segs, t);
+    const lo = Math.max(at.segment[0], at.hz / 2 ** half);
+    const hi = Math.min(at.segment[1], at.hz * 2 ** half);
+    return {
+      hz: roundEdge(at.hz),
+      cage: [roundEdge(Math.min(lo, at.hz)), roundEdge(Math.max(hi, at.hz))],
+      segment: at.segment,
+    };
+  });
+}
+
+/** The layout a policy names — one dispatch, two readers (the rows and the axis summary). */
+function positionsFor(
+  policy: PositionPolicy,
+  segs: readonly (readonly [number, number])[],
+  count: number,
+  spacing: number,
+): { hz: number; cage: [number, number]; segment: readonly [number, number] }[] {
+  return policy === 'centre-first' ? positionsCentreFirst(segs, count, spacing) : positionsAlong(segs, count);
+}
+
 /* ------------------------------------------------------------------ *
  * The alignment for an order
  * ------------------------------------------------------------------ */
@@ -399,6 +507,14 @@ export function generateCandidates(
 ): CandidateField {
   const spacing = settings.minSpacingOctaves ?? WINDOW_SMOOTHING_OCTAVES;
   const budget = settings.chainBudget ?? null;
+  /* E-2 — the two policies; absent is the field it always was (P2), and the
+   * parameters block below records them only when they were stated. */
+  const positionPolicy: PositionPolicy = settings.positionPolicy ?? 'spread';
+  const alignmentPolicy: AlignmentPolicy = settings.alignmentPolicy ?? 'every-order';
+  const policyParameters = {
+    ...(settings.positionPolicy !== undefined ? { positionPolicy: settings.positionPolicy } : {}),
+    ...(settings.alignmentPolicy !== undefined ? { alignmentPolicy: settings.alignmentPolicy } : {}),
+  };
   const notes: string[] = [];
   const refusals: string[] = [];
   const slots: AxisSlot[] = [];
@@ -406,7 +522,28 @@ export function generateCandidates(
   for (const pair of pairs) {
     const label = pair.orders.pairLabel;
     const slot: AxisSlot = { pair, orders: [], byOrder: [], notes: [...pair.orders.notes] };
-    for (const order of pair.orders.orders) {
+    /* E-2 — ONE ALIGNMENT PER HANDOVER under the exploration policy: the
+     * stated order when the derivation admits it, else the steepest admitted
+     * order (it satisfies every demand the derivation raised). The orders
+     * that are NOT built are named, so the reader of a shortlist knows the
+     * full field would have built them. */
+    const admitted = pair.orders.orders;
+    const oneOrder = (): number[] => {
+      if (alignmentPolicy !== 'one' || admitted.length <= 1) return admitted;
+      const stated = pair.statedOrder ?? null;
+      const chosen =
+        stated !== null && admitted.includes(stated) ? stated : Math.max(...admitted);
+      slot.notes.push(
+        `${label}: the exploration builds ONE alignment per handover — order ${chosen}` +
+          (stated !== null && chosen === stated
+            ? ' (the order you stated)'
+            : ' (the steepest the derivation admits, which meets every demand it raised)') +
+          `; the full field would also build order${admitted.length > 2 ? 's' : ''} ` +
+          `${admitted.filter((o) => o !== chosen).join(', ')}.`,
+      );
+      return [chosen];
+    };
+    for (const order of oneOrder()) {
       const { chosen, alternatives } = alignmentFor(settings.alignments, order);
       if (!chosen) {
         slot.notes.push(
@@ -460,7 +597,10 @@ export function generateCandidates(
         );
         continue;
       }
-      const derivedCount = derivedPositionCount(spanOctaves(segments), spacing);
+      const derivedCount =
+        positionPolicy === 'centre-first'
+          ? centreFirstPositionCount(spanOctaves(segments), spacing)
+          : derivedPositionCount(spanOctaves(segments), spacing);
       slot.orders.push(order);
       slot.byOrder.push({
         order,
@@ -488,7 +628,13 @@ export function generateCandidates(
         'No axis produced a candidate, so there is no field. Every reason is in the refusals above; ' +
           'none of them is something a search could have fixed.',
       ],
-      parameters: { minSpacingOctaves: spacing, chainBudget: budget, derivedSize: 0, deliveredSize: 0 },
+      parameters: {
+        minSpacingOctaves: spacing,
+        chainBudget: budget,
+        derivedSize: 0,
+        deliveredSize: 0,
+        ...policyParameters,
+      },
     };
   }
 
@@ -513,9 +659,14 @@ export function generateCandidates(
     const delivered = sizeOf();
     notes.push(
       `The derivation offered ${derivedSize} candidates and the stated budget is ${budget}; ` +
-        `${delivered} are delivered. POSITIONS were thinned, per axis and per order, and the ` +
-        'spacing between the ones that remain is therefore wider than the acceptance smoothing ' +
-        'the count was derived from. ORDERS were not thinned and will not be: a position is a ' +
+        `${delivered} are delivered. POSITIONS were thinned, per axis and per order, ` +
+        (positionPolicy === 'centre-first'
+          ? 'from the OUTSIDE in: the window centre and its nearest neighbours survive, the cages ' +
+            'stay one spacing wide, and the band beyond the survivors is simply not explored ' +
+            '(E-2 exploration). '
+          : 'and the spacing between the ones that remain is therefore wider than the acceptance ' +
+            'smoothing the count was derived from. ') +
+        'ORDERS were not thinned and will not be: a position is a ' +
         'sample of a continuum, an order is a choice, and dropping a choice to fit a budget ' +
         'answers a question that was asked to stay open.' +
         (delivered > budget
@@ -533,7 +684,7 @@ export function generateCandidates(
     const rows: CandidateCrossing[] = [];
     const wi = slot.pair.windowInput;
     for (const o of slot.byOrder) {
-      const pts = positionsAlong(o.segments, o.count);
+      const pts = positionsFor(positionPolicy, o.segments, o.count, spacing);
       const floorHz = o.window.floorHz!;
       const orderWhy =
         slot.pair.orders.why.find((w) => w.startsWith(`order ${o.order}:`)) ??
@@ -592,7 +743,11 @@ export function generateCandidates(
           uncalibrated: o.uncalibrated,
           provenance:
             `${wi.lower}→${wi.upper} at ${formatEdge(p.hz)} Hz, ${o.alignment.kind}${o.alignment.order}: ` +
-            `position ${i + 1} of ${o.count} across the candidate band ` +
+            `position ${i + 1} of ${o.count} ` +
+            (positionPolicy === 'centre-first'
+              ? `laid centre-first from the window centre ${formatEdge(Math.sqrt(seg[0] * seg[1]))} Hz ` +
+                'across the candidate band '
+              : 'across the candidate band ') +
             `${formatEdge(seg[0])}–${formatEdge(seg[1])} Hz, ${oct.toFixed(2)} oct above the ` +
             `window floor ${formatEdge(win[0])} Hz (${o.window.floorBy?.rule ?? 'none'}); ` +
             `ceiling ${formatEdge(win[1])} Hz (${o.window.ceilingBy?.rule ?? 'none'} — ${ceilingInventory}); ` +
@@ -649,7 +804,7 @@ export function generateCandidates(
         order: o.order,
         count: o.count,
         derivedCount: o.derivedCount,
-        hz: positionsAlong(o.segments, o.count).map((p) => p.hz),
+        hz: positionsFor(positionPolicy, o.segments, o.count, spacing).map((p) => p.hz),
       })),
       window: Object.fromEntries(slot.byOrder.map((o) => [String(o.order), o.window])),
       recommended: Object.fromEntries(slot.byOrder.map((o) => [String(o.order), o.recommended])),
@@ -663,6 +818,7 @@ export function generateCandidates(
       chainBudget: budget,
       derivedSize,
       deliveredSize: candidates.length,
+      ...policyParameters,
     },
   };
 }

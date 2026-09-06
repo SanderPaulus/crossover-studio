@@ -32,7 +32,7 @@ import { validateNetlist } from './netlistEdit.ts';
 import { addPart, addWire, deletePart, rotatePart, setPartParam, setPartProps } from './schematicEdit.ts';
 import { logspace, resampleImpedance } from './dsp.ts';
 import type { VxpPart } from './parsers/vxp.ts';
-import { assessNetwork, NETWORK_READINESS_VERSION, type NetworkReadiness } from './networkReadiness.ts';
+import { assessNetwork, notSimulatedTag, NETWORK_READINESS_VERSION, type NetworkReadiness } from './networkReadiness.ts';
 import {
   CASUS1_DIR,
   casus1Files,
@@ -218,5 +218,17 @@ describe('UI-2 — the case, measured on casus 1', () => {
     const r = assessNetwork(shorted, MODELS);
     expect(r.kind === 'refused' && r.cause).toBe('shorted-generator');
     expect(r.describe).toMatch(/shorted/);
+  });
+});
+
+describe('E-2 — the "not simulated" tag has one text for every surface that carries it', () => {
+  it('names what the screen holds instead, and the title starts with the refusal', () => {
+    const prev = notSimulatedTag('previous', 'Not simulable: no generator.');
+    expect(prev.label).toBe('previous state — network not simulated');
+    expect(prev.title.startsWith('Not simulable: no generator.')).toBe(true);
+    expect(prev.title).toMatch(/LAST network that could be simulated/);
+    const raw = notSimulatedTag('raw', 'Not simulable: no driver.');
+    expect(raw.label).toBe('raw drivers — network not simulated');
+    expect(raw.title).toMatch(/raw drivers/);
   });
 });

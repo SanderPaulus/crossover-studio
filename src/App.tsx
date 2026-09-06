@@ -27,7 +27,7 @@ import { solveDesign } from './lib/designSolve.ts';
 import { beginScanRun, endScanRun, putScanRow, listScanRuns, listScanRows, dropScanRun, pickResumable } from './lib/scanStore.ts';
 import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
-import { assessNetwork, type NetworkReadiness } from './lib/networkReadiness.ts';
+import { assessNetwork, notSimulatedTag, type NetworkReadiness } from './lib/networkReadiness.ts';
 import { solveNetwork, type Netlist } from './lib/network.ts';
 import { peakInputVolts } from './lib/engine2/metrics/driveExcursion.ts';
 import type { WayWiring } from './lib/engine2/ingest/wiring.ts';
@@ -113,11 +113,12 @@ import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
 import { EngineV2Panel } from './components/EngineV2Panel.tsx';
 import { selectEngine } from './lib/engine2/facade.ts';
-import { buildReport } from './lib/engine2/report.ts';
+import { buildReport, type EngineV2ReportInput } from './lib/engine2/report.ts';
 import {
   buildEngineV2Input,
   resolveDriverIds,
   type AdapterBranch,
+  type AdapterGeometry,
   type AdapterImpedance,
   type AdapterResponse,
 } from './lib/engine2/appAdapter.ts';
@@ -141,7 +142,21 @@ import type { XoWindowResult } from './lib/engine2/predesign/xoWindow.ts';
 import {
   buildCandidateField,
   candidateFieldKey,
+  type PairDerivationInput,
 } from './lib/engine2/predesign/candidateField.ts';
+import { describeFieldMode, fieldModeOf, fieldModeSettings, type FieldMode } from './lib/engine2/predesign/fieldMode.ts';
+import { RUN_EXPORT_FORMAT, buildFieldExport, runExportEngine, type RunExport } from './lib/engine2/optimizer/runExport.ts';
+import {
+  EMPTY_V2_SETTINGS,
+  V2_GHOSTS,
+  designLevelNote,
+  restoreV2Settings,
+  stampStated,
+  statedMark,
+  type V2SettingKey,
+  type V2Settings,
+  type V2StatedAt,
+} from './lib/v2Settings.ts';
 import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import {
@@ -151,8 +166,8 @@ import {
 import { seriesRMaxOhmOf, type LowestWayLevelWork } from './lib/levelWork.ts';
 import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
-import { DEFAULT_RUN_SEED, SEARCH_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
-import { stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
+import { DEFAULT_RUN_SEED, DEFAULT_SHORTLIST_SIZE, EXPLORATION_CHAIN_BUDGET, SEARCH_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
+import { digest, stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
 import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
 import { gateCellState } from './lib/engine2/optimizer/gateCell.ts';
 import {
@@ -1748,65 +1763,33 @@ export default function App() {
    * the fields below are GHOSTS — suggestions a reader can see and the engine
    * never receives.
    */
-  const [engineV2Settings, setEngineV2Settings] = useState<{
-    verticalWindowDeg: string;
-    amplifierPowerW: string;
-    maxDissipationPct: string;
-    minEpdrOhm: string;
-    maxDriveOnFsDb: string;
-    lfBumpBudgetDb: string;
-    qesMultiplierMax: string;
-    dampingMarginDb: string;
-    runSeed: string;
-    runBudgetEvals: string;
-    splWindowPlusMinusDb: string;
-    maxPhaseTrackingDeg: string;
-    shortlistSize: string;
-    /** V49 — the amplifier's brief peak, the load it is specified into, and
-     *  the X_max fraction: what turns M-C's limit into a derived one. */
-    amplifierPeakPowerW: string;
-    amplifierNominalLoadOhm: string;
-    xmaxMarginFraction: string;
-    /** V50 — buildability: the resistor class (W), the fraction of it a
-     *  resistor may run at, and the cored-coil current class (A). */
-    resistorClassW: string;
-    resistorPowerMargin: string;
-    coilClassA: string;
-    /** V51 — the THERMAL DESIGN POWER (average listening power, W) M-A/part
-     *  judges at; blank = at the continuous amplifier power (V50). */
-    resistorThermalPowerW: string;
-    /** V51 — '' (not stated), 'none': the lowest way may carry no level
-     *  work (no series resistor, no shunt pad), or 'series-r-max' (V51b):
-     *  series resistance up to the maximum below, no pad. A topology
-     *  requirement on the search, and a chain-level choice key. */
-    lowestWayLevelWork: string;
-    /** V51b — the maximum total series resistance (Ω, discrete R plus coil
-     *  DCR) on the lowest way; read only with 'series-r-max'. */
-    lowestWaySeriesRMaxOhm: string;
-  }>({
-    verticalWindowDeg: '',
-    amplifierPowerW: '',
-    maxDissipationPct: '',
-    minEpdrOhm: '',
-    maxDriveOnFsDb: '',
-    lfBumpBudgetDb: '',
-    qesMultiplierMax: '',
-    dampingMarginDb: '',
-    runSeed: '',
-    runBudgetEvals: '',
-    splWindowPlusMinusDb: '',
-    maxPhaseTrackingDeg: '',
-    shortlistSize: '',
-    amplifierPeakPowerW: '',
-    amplifierNominalLoadOhm: '',
-    xmaxMarginFraction: '',
-    resistorClassW: '',
-    resistorPowerMargin: '',
-    coilClassA: '',
-    resistorThermalPowerW: '',
-    lowestWayLevelWork: '',
-    lowestWaySeriesRMaxOhm: '',
-  });
+  const [engineV2Settings, setEngineV2Settings] = useState<V2Settings>({ ...EMPTY_V2_SETTINGS });
+  /**
+   * E-2 — WHEN each v2 field was stated, by the designer. Sander read the six
+   * placeholder ghosts (35 %, 1.6 Ω, −18 dB, …) as values the app had filled
+   * in; the ghosts are gone (`v2Settings.ts`, P4 on the form) and a field that
+   * DOES hold a value now says "stated by you on <date>" beside it — the date
+   * stamped at the edit, carried with the project, and "not recorded" for a
+   * value restored from a project written before E-2.
+   */
+  const [engineV2StatedAt, setEngineV2StatedAt] = useState<V2StatedAt>({});
+  /** E-2 — the one way a v2 field is edited: the value, and the date it was stated. */
+  const setV2Field = (key: V2SettingKey, value: string) => {
+    setEngineV2Settings((v) => ({ ...v, [key]: value }));
+    setEngineV2StatedAt((prev) => stampStated(prev, key, value));
+  };
+  /** E-2 — the mark beside a stated field; null while the field is empty. */
+  const v2Stated = (key: V2SettingKey) => {
+    const m = statedMark(engineV2Settings, engineV2StatedAt, key);
+    return m ? (
+      <span
+        className="v2-stated"
+        title={t('This value is yours — the app never fills a requirement. Clear the field to withdraw it.')}
+      >
+        {m}
+      </span>
+    ) : null;
+  };
   /**
    * A5a — PER-MEASUREMENT-SESSION METADATA THE ENGINE NEEDS AND NOBODY COULD
    * TYPE (F3b).
@@ -3705,6 +3688,11 @@ export default function App() {
         report: buildReport(built.input),
         ambiguous: built.ambiguous,
         error: null as string | null,
+        /* E-2 — what the report was built FROM (manifest, settings, the
+         * cabinet geometry by role), for the run export; the files themselves
+         * stay where they are. */
+        input: built.input as EngineV2ReportInput | null,
+        geometry: geometry as AdapterGeometry | null,
         /* F4b — the driver ids the report labels its rows with, per ROLE.
          * Three vocabularies meet here: storage speaks roles, the report speaks
          * the netlist's model names, and the worker speaks the canonical model
@@ -3718,6 +3706,8 @@ export default function App() {
         report: null,
         ambiguous: null,
         error: (e as Error).message,
+        input: null as EngineV2ReportInput | null,
+        geometry: null as AdapterGeometry | null,
         driverIds: {} as Partial<Record<BranchRole, string>>,
       };
     }
@@ -4719,18 +4709,19 @@ export default function App() {
       return { refusal: simRaw.refused, showing: reusable ? 'previous' : 'raw' };
     }, [simRaw, woofer, midDrv, tweeter, impedances, activeDesignId]);
   const sim = simStale?.showing === 'previous' ? lastGoodSimRef.current!.sim : simRaw;
-  const staleTag = simStale ? (
-    <span
-      className="stale-tag"
-      title={`${simStale.refusal.describe}\n\n${
-        simStale.showing === 'previous'
-          ? t('These curves are the LAST network that could be simulated, not the one in the editor. Fix the network and they update.')
-          : t('Nothing has been simulated yet for this network; these are the raw drivers. Fix the network and the curves appear.')
-      }`}
-    >
-      ⚠ {simStale.showing === 'previous' ? t('previous state — network not simulated') : t('raw drivers — network not simulated')}
-    </span>
-  ) : null;
+  /* E-2 — one text for every surface that carries the tag (`notSimulatedTag`):
+   * the chart headings, the scan summary and shortlist, the v1-reading heading
+   * and the v2 panel. UI-2 tagged the charts and left the rest. */
+  const staleTag = simStale
+    ? (() => {
+        const tag = notSimulatedTag(simStale.showing, simStale.refusal.describe);
+        return (
+          <span className="stale-tag" title={tag.title}>
+            ⚠ {t(tag.label)}
+          </span>
+        );
+      })()
+    : null;
   const panelClass = simStale ? 'panel sim-stale' : 'panel';
 
   const result = sim?.combined ?? null;
@@ -6303,6 +6294,7 @@ export default function App() {
         stagedOn,
         engineV2Enabled,
         engineV2: { ...engineV2Settings },
+        engineV2StatedAt: { ...engineV2StatedAt },
         v2Measurement: {
           low: { ...v2Meas.low },
           mid: { ...v2Meas.mid },
@@ -6459,30 +6451,15 @@ export default function App() {
     // opt-in, so a project that never mentions it must open exactly as it did
     // before the flag existed.
     setEngineV2Enabled(d.engineV2Enabled === true);
-    setEngineV2Settings({
-      verticalWindowDeg: d.engineV2?.verticalWindowDeg ?? '',
-      amplifierPowerW: d.engineV2?.amplifierPowerW ?? '',
-      maxDissipationPct: d.engineV2?.maxDissipationPct ?? '',
-      minEpdrOhm: d.engineV2?.minEpdrOhm ?? '',
-      maxDriveOnFsDb: d.engineV2?.maxDriveOnFsDb ?? '',
-      lfBumpBudgetDb: d.engineV2?.lfBumpBudgetDb ?? '',
-      qesMultiplierMax: d.engineV2?.qesMultiplierMax ?? '',
-      dampingMarginDb: d.engineV2?.dampingMarginDb ?? '',
-      runSeed: d.engineV2?.runSeed ?? '',
-      runBudgetEvals: d.engineV2?.runBudgetEvals ?? '',
-      splWindowPlusMinusDb: d.engineV2?.splWindowPlusMinusDb ?? '',
-      maxPhaseTrackingDeg: d.engineV2?.maxPhaseTrackingDeg ?? '',
-      shortlistSize: d.engineV2?.shortlistSize ?? '',
-      amplifierPeakPowerW: d.engineV2?.amplifierPeakPowerW ?? '',
-      amplifierNominalLoadOhm: d.engineV2?.amplifierNominalLoadOhm ?? '',
-      xmaxMarginFraction: d.engineV2?.xmaxMarginFraction ?? '',
-      resistorClassW: d.engineV2?.resistorClassW ?? '',
-      resistorPowerMargin: d.engineV2?.resistorPowerMargin ?? '',
-      coilClassA: d.engineV2?.coilClassA ?? '',
-      resistorThermalPowerW: d.engineV2?.resistorThermalPowerW ?? '',
-      lowestWayLevelWork: d.engineV2?.lowestWayLevelWork ?? '',
-      lowestWaySeriesRMaxOhm: d.engineV2?.lowestWaySeriesRMaxOhm ?? '',
-    });
+    /* E-2 — one restore for the whole block (`v2Settings.ts`): every key
+     * present, unknown keys dropped, an absent block = every field EMPTY —
+     * which is what "not stated" means (P4) — and the dates the file carried
+     * beside the values it carried. */
+    {
+      const restored = restoreV2Settings(d.engineV2, d.engineV2StatedAt);
+      setEngineV2Settings(restored.settings);
+      setEngineV2StatedAt(restored.statedAt);
+    }
     // A5a metadata (F3b). Additive: a project from before F3b has no block and
     // every field falls back to '', which is what "not stated" means (P4).
     const meas = d.v2Measurement;
@@ -6632,7 +6609,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, engineV2StatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -6672,7 +6649,7 @@ export default function App() {
    * `runOpts.acknowledgedWindowNotice` — the designer has already seen the
    * pre-start estimate for this run and said start anyway (F3b, deliverable 3).
    */
-  async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean } = {}) {
+  async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean; fieldMode?: FieldMode } = {}) {
     const refusal = refuseIfUnverified();
     if (refusal) {
       setVfError(`Cannot optimise yet — ${refusal}`);
@@ -6888,7 +6865,13 @@ export default function App() {
        * ORDERS, with the thinning reported. A position is a sample; an order is
        * a choice.
        * ================================================================ */
-      const v2Generated = (() => {
+      /* E-2 — THE FIELD MODE this run uses: the "Run the full field" button
+       * passes it explicitly (state has not landed yet in that tick), every
+       * other start reads the setting. */
+      const fieldMode: FieldMode = runOpts.fieldMode ?? fieldModeOf(engineV2Settings.fieldMode);
+      /* E-2 — the field REQUEST, kept apart from the field so the run export
+       * can carry exactly what the generator was handed (`runExport.ts`). */
+      const v2FieldRequest = (() => {
         if (!useV2) return null;
         const wis = engineV2Report?.report?.predesign.windowInputs ?? [];
         if (wis.length === 0) {
@@ -6915,11 +6898,11 @@ export default function App() {
             role === 'low' ? sim.base.w : role === 'mid' ? sim.base.m : role === 'high' ? sim.base.t : null;
           return g ? { freq: g.freq, db: g.spl } : null;
         };
-        return buildCandidateField({
-          windowInputs: wis,
-          alignments: AUTO_STRUCTS,
-          chainBudget: Math.max(1, Math.round(scanSteps3)) ** wis.length,
-          perPair: wis.map((wi, i) => ({
+        /* The mode's slice of the request: the budget, and for an exploration
+         * the two policies. The full mode passes NO policy — absent is the
+         * field it has been since F4d, byte for byte (`fieldMode.ts`). */
+        const fieldSettings = fieldModeSettings(fieldMode, { stepsPerAxis: scanSteps3, pairs: wis.length });
+        const perPair: PairDerivationInput[] = wis.map((wi, i) => ({
             /* The order the designer stated for this handover — read from the
              * SAME place the window already reads it (`orderByPair`, derived
              * from the acoustic slope settings), not from a second parse of
@@ -6944,9 +6927,17 @@ export default function App() {
               (i === 0 && wis.length > 1 ? slopes?.low?.upper : slopes?.tweeter) ?? null,
             lowerCurve: curveOfDriver(wi.lower),
             upperCurve: curveOfDriver(wi.upper),
-          })),
-        });
+          }));
+        return { windowInputs: wis, perPair, fieldSettings };
       })();
+      const v2Generated = v2FieldRequest
+        ? buildCandidateField({
+            windowInputs: v2FieldRequest.windowInputs,
+            alignments: AUTO_STRUCTS,
+            ...v2FieldRequest.fieldSettings,
+            perPair: v2FieldRequest.perPair,
+          })
+        : null;
       if (useV2) {
         /* V26 ROW 38 — the chain grid's lower edge, stated instead of silent.
          *
@@ -7055,7 +7046,7 @@ export default function App() {
             message: estimate.message,
             proceed: () => {
               setV2PreStart(null);
-              void runVfOptimize({ acknowledgedWindowNotice: true }).catch((e) => {
+              void runVfOptimize({ ...runOpts, acknowledgedWindowNotice: true }).catch((e) => {
                 setVfBusy(false);
                 setVfError(String((e as Error).message ?? e));
               });
@@ -7478,6 +7469,73 @@ export default function App() {
               : {}),
           }
         : null;
+      /* E-2 — THE RUN, EXPORTABLE (the V48 gap). Everything the generator was
+       * handed and everything the worker was told, as plain data, so
+       * `scripts/replay-app-run.ts` can rebuild this field in the repository
+       * and say candidate by candidate whether it derives the same one. The
+       * stamp and the shortlist are filled in when the run ends and the
+       * designer clicks "Export run". */
+      const v2RunExport: RunExport | null =
+        useV2 && v2Generated && v2FieldRequest && v2ScanSettings && engineV2Report?.input
+          ? (() => {
+              const input = engineV2Report.input;
+              const { programmeWeight: _pw, ...reportSettings } = input.settings;
+              void _pw;
+              return {
+                format: RUN_EXPORT_FORMAT,
+                exportedAt: '',
+                engine: runExportEngine(),
+                session: input.manifest.sessionId,
+                drivers: {
+                  idsByRole: { ...engineV2Report.driverIds },
+                  files: input.manifest.entries.map((e) => ({
+                    driver: e.driver,
+                    kind: e.kind,
+                    file: e.file,
+                    ...(e.angleDeg !== undefined ? { angleDeg: e.angleDeg } : {}),
+                  })),
+                },
+                reportSettings,
+                ...(engineV2Report.geometry ? { geometry: engineV2Report.geometry } : {}),
+                field: buildFieldExport(v2Generated, v2FieldRequest.windowInputs, v2FieldRequest.perPair, {
+                  chainBudget: v2FieldRequest.fieldSettings.chainBudget,
+                  minSpacingOctaves: v2Generated.field.parameters.minSpacingOctaves,
+                  ...(v2FieldRequest.fieldSettings.positionPolicy !== undefined
+                    ? { positionPolicy: v2FieldRequest.fieldSettings.positionPolicy }
+                    : {}),
+                  ...(v2FieldRequest.fieldSettings.alignmentPolicy !== undefined
+                    ? { alignmentPolicy: v2FieldRequest.fieldSettings.alignmentPolicy }
+                    : {}),
+                  alignments: AUTO_STRUCTS,
+                  stepsPerAxis: scanSteps3,
+                }),
+                run: {
+                  gates: v2ScanSettings.gates,
+                  budgets: v2ScanSettings.budgets,
+                  determinism: v2ScanSettings.determinism,
+                  targetCurve: v2ScanSettings.targetCurve,
+                  judgeBandHz: v2ScanSettings.judgeBandHz,
+                  ...(v2ScanSettings.amplifierPowerW !== undefined ? { amplifierPowerW: v2ScanSettings.amplifierPowerW } : {}),
+                  chainDeclaration: chainDecl,
+                  tuning: {
+                    phasePriority: settings.phasePriority,
+                    targets: settings.targets,
+                    band: settings.band,
+                    catalogSnap: settings.catalogSnap,
+                    acousticSlopes: settings.acousticSlopes,
+                  },
+                  keys: {
+                    design: digest(v2ScanSettings.designKey),
+                    measurement: digest(v2ScanSettings.measurementKey),
+                    tuning: digest(v2ScanSettings.tuningKey),
+                    candidateField: digest(v2ScanSettings.candidateFieldKey ?? ''),
+                  },
+                },
+                stamp: null,
+                shortlist: null,
+              };
+            })()
+          : null;
 
       const scan3 = (
         ins: V2Chain3Item[],
@@ -7654,7 +7712,13 @@ export default function App() {
               })
             : null;
           if (v2Stamp) {
-            setV2Run({ stamp: v2Stamp, gatesByLabel: { ...v2GatesByLabel } });
+            setV2Run({
+              stamp: v2Stamp,
+              gatesByLabel: { ...v2GatesByLabel },
+              /* E-2 — which mode made this field, said by the field itself. */
+              field: v2Generated ? { mode: fieldMode, description: describeFieldMode(v2Generated.field) } : null,
+              export: v2RunExport,
+            });
             setV2Shortlist(shortlist);
             setShortlistPick(null);
           }
@@ -8669,6 +8733,10 @@ export default function App() {
     stamp: V2RunStamp;
     /** Keyed by candidate label — the same labels the scan table rows carry. */
     gatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }>;
+    /** E-2 — the field mode that made this run, read off the field; null when the v1 generator was the fallback. */
+    field: { mode: FieldMode; description: string } | null;
+    /** E-2 — the run as an exportable block (`runExport.ts`); null when there was no v2 field. */
+    export: RunExport | null;
   } | null>(null);
   /**
    * F3 — the SHORTLIST the last v2 scan produced: the feasible region, spread
@@ -9529,6 +9597,35 @@ export default function App() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${fileSafeName(activeDesign.name, 'filter')}.adsfilter.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /**
+   * E-2 — the last v2 run as a JSON file (`runExport.ts`): the block the run
+   * was made from plus its stamp and its shortlist, so the repository can
+   * replay the field (`scripts/replay-app-run.ts`).
+   */
+  function exportV2Run() {
+    if (!v2Run?.export) return;
+    const block: RunExport = {
+      ...v2Run.export,
+      exportedAt: new Date().toISOString(),
+      stamp: v2Run.stamp,
+      shortlist: v2Shortlist
+        ? {
+            fingerprint: v2Shortlist.stamp.shortlistFingerprint,
+            feasibleCount: v2Shortlist.feasibleCount,
+            consideredCount: v2Shortlist.consideredCount,
+            rows: v2Shortlist.rows.map((r) => r.label),
+            rejected: v2Shortlist.rejected.map((r) => ({ label: r.label, kinds: [...r.kinds] })),
+          }
+        : null,
+    };
+    const blob = new Blob([JSON.stringify(block, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${new Date().toISOString().slice(0, 10)}-v2-run-${digest(v2Run.stamp.fingerprint)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -15979,12 +16076,13 @@ export default function App() {
                       <input
                         type="text"
                         value={engineV2Settings.verticalWindowDeg}
-                        placeholder="-15, 15"
+                        placeholder={V2_GHOSTS.verticalWindowDeg}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, verticalWindowDeg: e.target.value }))
+                          setV2Field('verticalWindowDeg', e.target.value)
                         }
                         style={{ width: '6rem' }}
                       />
+                      {v2Stated('verticalWindowDeg')}
                     </label>
                     <label title={t('Amplifier power the dissipation metric (M-A) converts its fraction into watts with. Empty = only the fraction is reported, which is scale-free anyway.')}>
                       {t('Amplifier power W')}
@@ -15992,12 +16090,13 @@ export default function App() {
                         type="number"
                         min={0}
                         value={engineV2Settings.amplifierPowerW}
-                        placeholder="100"
+                        placeholder={V2_GHOSTS.amplifierPowerW}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, amplifierPowerW: e.target.value }))
+                          setV2Field('amplifierPowerW', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('amplifierPowerW')}
                     </label>
 
                     {/* ---- F2: the GATES (A4 M-A/M-B/M-C, spec A2 P2/P4) ----
@@ -16016,12 +16115,13 @@ export default function App() {
                         min={0}
                         max={100}
                         value={engineV2Settings.maxDissipationPct}
-                        placeholder="35"
+                        placeholder={V2_GHOSTS.maxDissipationPct}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, maxDissipationPct: e.target.value }))
+                          setV2Field('maxDissipationPct', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('maxDissipationPct')}
                     </label>
                     <label title={t('M-B — the EPDR floor in ohms: |Z|/(2·cos²φ), the resistance that would cost the output devices the same peak dissipation as this reactive load does. Independent of the amplifier rating above, which stays the plain |Z| floor; both are judged by one rule. Empty = no limit.')}>
                       {t('Min EPDR Ω')}
@@ -16030,12 +16130,13 @@ export default function App() {
                         min={0}
                         step={0.1}
                         value={engineV2Settings.minEpdrOhm}
-                        placeholder="1.6"
+                        placeholder={V2_GHOSTS.minEpdrOhm}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, minEpdrOhm: e.target.value }))
+                          setV2Field('minEpdrOhm', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('minEpdrOhm')}
                     </label>
                     <label title={t('M-C — the largest drive voltage on a driver’s own resonance, in dB relative to that way’s passband (so −18 means "at least 18 dB down"). Applies to every way the CIRCUIT high-passes, derived from the branch transfers rather than from a list of names. Empty = no limit.')}>
                       {t('Max drive on f_s dB')}
@@ -16043,12 +16144,13 @@ export default function App() {
                         type="number"
                         max={0}
                         value={engineV2Settings.maxDriveOnFsDb}
-                        placeholder="-18"
+                        placeholder={V2_GHOSTS.maxDriveOnFsDb}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, maxDriveOnFsDb: e.target.value }))
+                          setV2Field('maxDriveOnFsDb', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('maxDriveOnFsDb')}
                     </label>
                     {/* ---- V49: M-C v2.0 — the limit DERIVED from excursion ----
                       * Three stated numbers, none defaulted. With all three
@@ -16064,12 +16166,13 @@ export default function App() {
                         type="number"
                         min={0}
                         value={engineV2Settings.amplifierPeakPowerW}
-                        placeholder="160"
+                        placeholder={V2_GHOSTS.amplifierPeakPowerW}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, amplifierPeakPowerW: e.target.value }))
+                          setV2Field('amplifierPeakPowerW', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('amplifierPeakPowerW')}
                     </label>
                     <label title={t('M-C v2.0 — the load the peak power is specified into, Ω. Together with the peak power it gives the peak input voltage. Empty = no derived limit.')}>
                       {t('Nominal load Ω')}
@@ -16078,12 +16181,13 @@ export default function App() {
                         min={0}
                         step={1}
                         value={engineV2Settings.amplifierNominalLoadOhm}
-                        placeholder="8"
+                        placeholder={V2_GHOSTS.amplifierNominalLoadOhm}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, amplifierNominalLoadOhm: e.target.value }))
+                          setV2Field('amplifierNominalLoadOhm', e.target.value)
                         }
                         style={{ width: '4rem' }}
                       />
+                      {v2Stated('amplifierNominalLoadOhm')}
                     </label>
                     <label title={t('M-C v2.0 — the fraction of X_max a design may use on the resonance. X_max is a geometric figure (coil overhang); distortion rises quickly above it, and manufacturers define it differently, so a fraction below 1 is customary. Empty = no derived limit.')}>
                       {t('X_max margin')}
@@ -16093,12 +16197,13 @@ export default function App() {
                         max={1}
                         step={0.05}
                         value={engineV2Settings.xmaxMarginFraction}
-                        placeholder="0.8"
+                        placeholder={V2_GHOSTS.xmaxMarginFraction}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, xmaxMarginFraction: e.target.value }))
+                          setV2Field('xmaxMarginFraction', e.target.value)
                         }
                         style={{ width: '4rem' }}
                       />
+                      {v2Stated('xmaxMarginFraction')}
                     </label>
 
                     {/* ---- V50: BUILDABILITY — the parts on the schematic have
@@ -16114,12 +16219,13 @@ export default function App() {
                         type="number"
                         min={0}
                         value={engineV2Settings.resistorClassW}
-                        placeholder="10"
+                        placeholder={V2_GHOSTS.resistorClassW}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, resistorClassW: e.target.value }))
+                          setV2Field('resistorClassW', e.target.value)
                         }
                         style={{ width: '4rem' }}
                       />
+                      {v2Stated('resistorClassW')}
                     </label>
                     <label title={t('M-A/part (V50) — the fraction of its rating a filter resistor may run at. A resistor inside a closed cabinet without airflow runs hot at half its rating; how much of that you accept is your decision, so there is no default. Blank = no allowance, nothing judged.')}>
                       {t('Resistor margin')}
@@ -16129,12 +16235,13 @@ export default function App() {
                         max={1}
                         step={0.05}
                         value={engineV2Settings.resistorPowerMargin}
-                        placeholder="0.5"
+                        placeholder={V2_GHOSTS.resistorPowerMargin}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, resistorPowerMargin: e.target.value }))
+                          setV2Field('resistorPowerMargin', e.target.value)
                         }
                         style={{ width: '4rem' }}
                       />
+                      {v2Stated('resistorPowerMargin')}
                     </label>
                     <label title={t('M-L (V50) — the saturation / maximum current of the CORED coils you build with, A. The peak current through every coil at the amplifier\'s peak input (peak power × nominal load, above) is judged against it; a coil snapped to a rated catalogue part is judged on that rating instead. Air-cored coils have no saturation current and are never judged. Blank = nothing judged, the currents are still shown.')}>
                       {t('Coil current class A')}
@@ -16143,12 +16250,13 @@ export default function App() {
                         min={0}
                         step={0.1}
                         value={engineV2Settings.coilClassA}
-                        placeholder="—"
+                        placeholder={V2_GHOSTS.coilClassA}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, coilClassA: e.target.value }))
+                          setV2Field('coilClassA', e.target.value)
                         }
                         style={{ width: '4rem' }}
                       />
+                      {v2Stated('coilClassA')}
                     </label>
                     {/* V51 — the THERMAL DESIGN POWER: thermal load is a mean
                       * over the listening time, and the amplifier's continuous
@@ -16161,12 +16269,13 @@ export default function App() {
                         type="number"
                         min={0}
                         value={engineV2Settings.resistorThermalPowerW}
-                        placeholder="10"
+                        placeholder={V2_GHOSTS.resistorThermalPowerW}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, resistorThermalPowerW: e.target.value }))
+                          setV2Field('resistorThermalPowerW', e.target.value)
                         }
                         style={{ width: '4rem' }}
                       />
+                      {v2Stated('resistorThermalPowerW')}
                     </label>
                     {/* V51 — the TOPOLOGY requirement on the lowest way. A
                       * choice, not a limit: it reaches the design and synthesis
@@ -16179,13 +16288,14 @@ export default function App() {
                       <select
                         value={engineV2Settings.lowestWayLevelWork}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, lowestWayLevelWork: e.target.value }))
+                          setV2Field('lowestWayLevelWork', e.target.value)
                         }
                       >
                         <option value="">{t('not stated')}</option>
                         <option value="none">{t('none (no series R, no shunt pad)')}</option>
                         <option value="series-r-max">{t('series R up to a maximum, no pad')}</option>
                       </select>
+                      {v2Stated('lowestWayLevelWork')}
                     </label>
                     {/* V51b — the maximum that makes 'series-r-max' a statement:
                       * the TOTAL series resistance the lowest way's driver may
@@ -16199,12 +16309,13 @@ export default function App() {
                           step="0.1"
                           min={0}
                           value={engineV2Settings.lowestWaySeriesRMaxOhm}
-                          placeholder="—"
+                          placeholder={V2_GHOSTS.lowestWaySeriesRMaxOhm}
                           onChange={(e) =>
-                            setEngineV2Settings((v) => ({ ...v, lowestWaySeriesRMaxOhm: e.target.value }))
+                            setV2Field('lowestWaySeriesRMaxOhm', e.target.value)
                           }
                           style={{ width: '4rem' }}
                         />
+                        {v2Stated('lowestWaySeriesRMaxOhm')}
                         {engineV2Gates.lowestWayLevelWork === undefined && (
                           <span className="v2-warn"> {t('no maximum — reads as not stated')}</span>
                         )}
@@ -16225,12 +16336,13 @@ export default function App() {
                         min={0}
                         step={0.1}
                         value={engineV2Settings.lfBumpBudgetDb}
-                        placeholder="2.5"
+                        placeholder={V2_GHOSTS.lfBumpBudgetDb}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, lfBumpBudgetDb: e.target.value }))
+                          setV2Field('lfBumpBudgetDb', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('lfBumpBudgetDb')}
                     </label>
                     <label title={t('The largest factor the filter’s source resistance may multiply Q_es by (M-E). Inverted exactly into a maximum TOTAL series resistance in the lowest path: R_s ≤ R_e·(q−1). Needs the driver’s measured DC resistance. Empty = no bound.')}>
                       {t('Max Q_es ×')}
@@ -16239,12 +16351,13 @@ export default function App() {
                         min={1}
                         step={0.1}
                         value={engineV2Settings.qesMultiplierMax}
-                        placeholder="1.5"
+                        placeholder={V2_GHOSTS.qesMultiplierMax}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, qesMultiplierMax: e.target.value }))
+                          setV2Field('qesMultiplierMax', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('qesMultiplierMax')}
                     </label>
                     <label title={t('How much attenuation a way may spend ON TOP OF its measured sensitivity gap to the anchor (A5d.4). Inverted into a maximum pad resistance against that way’s own passband impedance. Empty = no bound.')}>
                       {t('Damping margin dB')}
@@ -16253,12 +16366,13 @@ export default function App() {
                         min={0}
                         step={0.1}
                         value={engineV2Settings.dampingMarginDb}
-                        placeholder="0.5"
+                        placeholder={V2_GHOSTS.dampingMarginDb}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, dampingMarginDb: e.target.value }))
+                          setV2Field('dampingMarginDb', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('dampingMarginDb')}
                     </label>
 
                     {/* ---- F3: the REQUIREMENTS (spec A5e.1) ----
@@ -16277,12 +16391,13 @@ export default function App() {
                         min={0}
                         step={0.1}
                         value={engineV2Settings.splWindowPlusMinusDb}
-                        placeholder="1.5"
+                        placeholder={V2_GHOSTS.splWindowPlusMinusDb}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, splWindowPlusMinusDb: e.target.value }))
+                          setV2Field('splWindowPlusMinusDb', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('splWindowPlusMinusDb')}
                     </label>
                     <label title={t('The largest phase-tracking error you will accept in a crossover region, in degrees — mean |Δφ| over ±1 octave, clipped to measurement validity. Judged PER handover: a three-way that tracks well at one and badly at the other has not met it. Empty = not asked.')}>
                       {t('Max phase error °')}
@@ -16291,12 +16406,13 @@ export default function App() {
                         min={0}
                         step={0.5}
                         value={engineV2Settings.maxPhaseTrackingDeg}
-                        placeholder="5"
+                        placeholder={V2_GHOSTS.maxPhaseTrackingDeg}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, maxPhaseTrackingDeg: e.target.value }))
+                          setV2Field('maxPhaseTrackingDeg', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
+                      {v2Stated('maxPhaseTrackingDeg')}
                     </label>
                     <label title={t('How many designs the shortlist holds. They are spread over topology classes first (order per flank, polarity included) and then over normalised component space — different designs, not variations of one. Empty = 10.')}>
                       {t('Shortlist size')}
@@ -16304,9 +16420,9 @@ export default function App() {
                         type="number"
                         min={1}
                         value={engineV2Settings.shortlistSize}
-                        placeholder="10"
+                        placeholder={String(DEFAULT_SHORTLIST_SIZE)}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, shortlistSize: e.target.value }))
+                          setV2Field('shortlistSize', e.target.value)
                         }
                         style={{ width: '5rem' }}
                       />
@@ -16413,7 +16529,7 @@ export default function App() {
                         value={engineV2Settings.runSeed}
                         placeholder={String(DEFAULT_RUN_SEED)}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, runSeed: e.target.value }))
+                          setV2Field('runSeed', e.target.value)
                         }
                         style={{ width: '7rem' }}
                       />
@@ -16426,10 +16542,28 @@ export default function App() {
                         value={engineV2Settings.runBudgetEvals}
                         placeholder={t('tuner')}
                         onChange={(e) =>
-                          setEngineV2Settings((v) => ({ ...v, runBudgetEvals: e.target.value }))
+                          setV2Field('runBudgetEvals', e.target.value)
                         }
                         style={{ width: '6rem' }}
                       />
+                    </label>
+                    {/* E-2 — THE FIELD MODE. A v2 run takes ten to thirty
+                      * minutes per candidate and the full field has twenty and
+                      * more of them; the exploration is a SMALLER field — the
+                      * window centres first, one alignment per handover, the
+                      * same requirements — and the shortlist says which mode
+                      * made it and offers the full field as the next step. */}
+                    <label title={t('Exploration: a chain budget of {n}, the geometric centre of each window first (where the order derivation reads its demands) and then its nearest neighbours, one alignment per handover — minutes to half an hour on casus 1. Full: the "steps per axis" above raised to the number of handovers, every window spread edge to edge, every admitted order — hours. Same requirements, same gates, same seed in both; the shortlist says which mode made it.', { n: String(EXPLORATION_CHAIN_BUDGET) })}>
+                      {t('Candidate field')}
+                      <select
+                        value={fieldModeOf(engineV2Settings.fieldMode)}
+                        onChange={(e) => setV2Field('fieldMode', e.target.value)}
+                      >
+                        <option value="exploration">
+                          {t('exploration — {n} chains, window centres first, one alignment per handover', { n: String(EXPLORATION_CHAIN_BUDGET) })}
+                        </option>
+                        <option value="full">{t('full — every window edge to edge, every admitted order')}</option>
+                      </select>
                     </label>
                   </>
                 )}
@@ -16798,6 +16932,15 @@ export default function App() {
                       onChange={(e) => setExcursionSpl(e.target.value)}
                     />
                     {' dB'}
+                    {/* E-2 — a v1 default ('96') that the v2 route stopped
+                      * reading at V49: marked, so it cannot pass for a v2
+                      * input with a default. Unmarked on v1 (toggle invariant). */}
+                    {designLevelNote(engineV2Enabled) && (
+                      <span className="v2-warn" title={designLevelNote(engineV2Enabled) ?? ''}>
+                        {' '}
+                        ({t('v1 — not read by Engine v2 since V49')})
+                      </span>
+                    )}
                   </span>
                 )}
                 {threeWay && (
@@ -17521,6 +17664,7 @@ export default function App() {
               <p className="result-good">
                 ✓ {t('Design ready — the winner is loaded in the')} <strong>Working</strong>{' '}
                 {t('tab and every chart shows it. The rows below are the full candidates: click one to try it, 💾 Save keeps the one you trust.')}
+                {staleTag}
               </p>
             )}
             {/* UI-1 — ON THE v2 ROUTE THE SENTENCE IS ABOUT THE SHORTLIST.
@@ -17672,7 +17816,10 @@ export default function App() {
                * the v2 route withdrew at V34, marking as failures exactly the
                * designs the shortlist above had passed. */
               <div className="v1-reading">
-                <h4>{t('v1 reading — not the route that made this run')}</h4>
+                <h4>
+                  {t('v1 reading — not the route that made this run')}
+                  {staleTag}
+                </h4>
                 <p className="sub">
                   {t('The same candidates, ordered by the v1 ranking: one weighted score over flatness, phase, price and load. It knows nothing about your gates, your requirements or a candidate whose tune was refused, so it crowns nothing here and its disqualification marks are shown as v1 notes rather than as verdicts. The shortlist above is what this run decided.')}
                 </p>
@@ -17915,7 +18062,36 @@ export default function App() {
                       m: String(v2Shortlist.consideredCount),
                     })}
                   </span>
+                  {staleTag}
                 </h4>
+                {/* E-2 — WHICH FIELD MADE THIS, said by the field itself, and
+                    the full field offered as the next step after an
+                    exploration. The mode is read off the field's parameters
+                    (`fieldModeOfParameters`), never off the select. */}
+                {v2Run?.field && (
+                  <p className="sub v2-field-mode">
+                    {v2Run.field.description}
+                    {v2Run.field.mode === 'exploration' && (
+                      <>
+                        {' '}
+                        <button
+                          type="button"
+                          disabled={vfBusy}
+                          title={t('Run the same requirements over the full field: every window edge to edge, every admitted order — hours rather than minutes.')}
+                          onClick={() => {
+                            setV2Field('fieldMode', 'full');
+                            void runVfOptimize({ fieldMode: 'full' }).catch((e) => {
+                              setVfBusy(false);
+                              setVfError(String((e as Error).message ?? e));
+                            });
+                          }}
+                        >
+                          {t('Run the full field →')}
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
                 {v2Shortlist.label && (
                   <p className="sub nl-warning">⚠ {v2Shortlist.label}</p>
                 )}
@@ -18118,6 +18294,21 @@ export default function App() {
                 <code title={v2Run.stamp.components.map((c) => `${c.name}=${c.value} — ${c.describe}`).join('\n')}>
                   {v2Run.stamp.fingerprint}
                 </code>
+                {/* E-2 — the run as a file: the fingerprint's ingredients,
+                    spelled out, so `scripts/replay-app-run.ts` can rebuild
+                    the field in the repository (the V48 gap). */}
+                {v2Run.export && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={exportV2Run}
+                      title={t('Download this run as JSON: the stated requirements, the run settings, the field settings, the window inputs the field stood on and every candidate — enough for scripts/replay-app-run.ts to rebuild the same field in the repository.')}
+                    >
+                      {t('Export run (JSON)')}
+                    </button>
+                  </>
+                )}
               </p>
             )}
             {tabCompare && tabCompare.length > 1 && (
@@ -19350,6 +19541,7 @@ export default function App() {
             report={engineV2Report.report}
             ambiguous={engineV2Report.ambiguous}
             floors={v2Floors}
+            notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
           />
         ) : (
           <div className="panel v2-panel">

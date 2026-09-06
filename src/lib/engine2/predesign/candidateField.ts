@@ -37,8 +37,10 @@ import {
 import {
   generateCandidates,
   type Alignment,
+  type AlignmentPolicy,
   type CandidateField,
   type CandidatePairInput,
+  type PositionPolicy,
 } from './candidates.ts';
 
 /** A measured branch response, as the slope fit wants it. */
@@ -74,6 +76,10 @@ export interface CandidateFieldRequest {
   chainBudget?: number;
   /** Finest spacing on one axis, octaves. Absent = the acceptance smoothing. */
   minSpacingOctaves?: number;
+  /** E-2 — how positions are laid (`candidates.ts`). Absent = spread, the field it always was. */
+  positionPolicy?: PositionPolicy;
+  /** E-2 — how many alignments per handover. Absent = every admitted order. */
+  alignmentPolicy?: AlignmentPolicy;
 }
 
 export interface CandidateFieldResult {
@@ -167,13 +173,15 @@ export function buildCandidateField(req: CandidateFieldRequest): CandidateFieldR
         'rather than hidden.',
     );
     orders.push(po);
-    pairs.push({ windowInput: wi, orders: po });
+    pairs.push({ windowInput: wi, orders: po, statedOrder: p.statedOrder ?? null });
   }
 
   const field = generateCandidates(pairs, {
     alignments: req.alignments,
     ...(req.chainBudget !== undefined ? { chainBudget: req.chainBudget } : {}),
     ...(req.minSpacingOctaves !== undefined ? { minSpacingOctaves: req.minSpacingOctaves } : {}),
+    ...(req.positionPolicy !== undefined ? { positionPolicy: req.positionPolicy } : {}),
+    ...(req.alignmentPolicy !== undefined ? { alignmentPolicy: req.alignmentPolicy } : {}),
   });
 
   return { field, orders, referenceCrossingHz, notes: [...notes, ...field.notes] };

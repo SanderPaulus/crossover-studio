@@ -223,6 +223,60 @@ export function addWire(parts: readonly VxpPart[], a: Pt, b: Pt): VxpPart[] {
   return [...clone(parts), { type: 'Wire', params: [], wires: pts }];
 }
 
+/* ------------------------------------------------------------------ *
+ * E-2 — the editor's tool state on a background click, as one pure step
+ * ------------------------------------------------------------------ */
+
+/** The editor's tool: select/drag, draw a wire, or place a component. */
+export type EditorTool = { kind: 'select' } | { kind: 'wire' } | { kind: 'place'; type: PlaceableType };
+
+/** What a background click does to the drawing and to the tool. */
+export interface BackgroundClick {
+  /** The new part list, or null when the drawing is unchanged. */
+  parts: VxpPart[] | null;
+  tool: EditorTool;
+  wireStart: Pt | null;
+  /** The selection afterwards: a part index, null for none, undefined for unchanged. */
+  select: number | null | undefined;
+}
+
+/**
+ * A click on empty canvas, decided in one place (UI-2 leftover, E-2).
+ *
+ * Until E-2 the wire tool stayed armed after a wire was committed — the hint
+ * read "click the start point" again and every further click began another
+ * wire — while placing a component returned to select after one placement,
+ * as every schematic editor does. The two paths were two blocks of component
+ * code and nothing could test either. Now both are this function: a committed
+ * wire and a placed component BOTH hand the tool back to select and select
+ * what they made; the first click of a wire only arms its start; a click in
+ * select mode clears the selection.
+ */
+export function backgroundClick(
+  tool: EditorTool,
+  wireStart: Pt | null,
+  parts: readonly VxpPart[],
+  at: Pt,
+  models: readonly string[],
+): BackgroundClick {
+  if (tool.kind === 'wire') {
+    if (!wireStart) return { parts: null, tool, wireStart: at, select: undefined };
+    const next = addWire(parts, wireStart, at);
+    const drew = next.length > parts.length;
+    return {
+      parts: drew ? next : null,
+      tool: { kind: 'select' },
+      wireStart: null,
+      select: drew ? next.length - 1 : null,
+    };
+  }
+  if (tool.kind === 'place') {
+    const next = addPart(parts, tool.type, at, models[0]);
+    return { parts: next, tool: { kind: 'select' }, wireStart: null, select: next.length - 1 };
+  }
+  return { parts: null, tool, wireStart: null, select: null };
+}
+
 /** Shift everything so the top-left of the drawing sits at (margin, margin). */
 export function normalizeOrigin(parts: readonly VxpPart[], margin = 2): VxpPart[] {
   const pts = parts.flatMap((p) => p.wires);

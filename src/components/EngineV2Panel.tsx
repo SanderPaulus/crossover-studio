@@ -129,16 +129,32 @@ export interface EngineV2PanelProps {
    * from "they agree".
    */
   floors?: readonly FloorComparison[];
+  /**
+   * E-2 — set when the network on screen could NOT be simulated (UI-2's
+   * refusal): the same tag the chart headings carry, so a report judging a
+   * design nobody can simulate says so where the eye lands. The report is
+   * built from the drawing regardless — this is an advisory mark, not a data
+   * swap. Absent = the drawing simulates.
+   */
+  notSimulated?: { label: string; title: string } | null;
 }
 
-export function EngineV2Panel({ report, ambiguous, floors = [] }: EngineV2PanelProps) {
+/** The class of the tag, shared with the chart headings' `.stale-tag`. */
+export const V2_STALE_TAG_CLASS = 'stale-tag';
+
+export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = null }: EngineV2PanelProps) {
   const { ingest, capability, metrics, predesign, system, gates } = report;
 
   return (
-    <div className="panel v2-panel">
+    <div className={`panel v2-panel${notSimulated ? ' sim-stale' : ''}`}>
       <div className="v2-head">
         <h3>
           {report.engine.label} <span className="v2-badge">experimental</span>
+          {notSimulated && (
+            <span className={V2_STALE_TAG_CLASS} title={notSimulated.title}>
+              ⚠ {notSimulated.label}
+            </span>
+          )}
         </h3>
         <div className="v2-stamp">
           {report.engine.mark} · session <code>{ingest.sessionId}</code> · estimators{' '}

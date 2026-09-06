@@ -1,8 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import type { VxpPart } from '../lib/parsers/vxp.ts';
 import {
-  addPart,
-  addWire,
+  backgroundClick,
   deletePart,
   movePart,
   partParam,
@@ -10,6 +9,7 @@ import {
   setAllLocks,
   setPartParam,
   setPartProps,
+  type EditorTool,
   type PlaceableType,
   type Pt,
 } from '../lib/schematicEdit.ts';
@@ -39,7 +39,7 @@ import { junctionsOf, PartGlyph, PADDING, px, S } from './Schematic.tsx';
  * previews locally and commits on drop, so the solver runs once per edit.
  */
 
-type Tool = { kind: 'select' } | { kind: 'wire' } | { kind: 'place'; type: PlaceableType };
+type Tool = EditorTool;
 
 interface Props {
   parts: readonly VxpPart[];
@@ -97,24 +97,13 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
   };
 
   function onBackgroundDown(e: React.PointerEvent) {
-    const g = gridPt(e);
-    if (tool.kind === 'wire') {
-      if (!wireStart) {
-        setWireStart(g);
-      } else {
-        onChange(addWire(parts, wireStart, g));
-        setWireStart(null);
-      }
-      return;
-    }
-    if (tool.kind === 'place') {
-      const next = addPart(parts, tool.type, g, models[0]);
-      onChange(next);
-      setSel(next.length - 1);
-      setTool({ kind: 'select' });
-      return;
-    }
-    setSel(null);
+    /* E-2 — one pure step for every tool (`backgroundClick`): a committed
+     * wire returns to select exactly as a placed component does. */
+    const r = backgroundClick(tool, wireStart, parts, gridPt(e), models);
+    if (r.parts) onChange(r.parts);
+    setTool(r.tool);
+    setWireStart(r.wireStart);
+    if (r.select !== undefined) setSel(r.select);
   }
 
   function onPartDown(e: React.PointerEvent, index: number) {

@@ -6573,6 +6573,104 @@ houdt (of een gesteld plafond op de gemeten landing) beweegt élke positie — S
 paren zijn benoemd en niet gerepareerd: of de poortroute op het ketenraster van vandaag de gedateerde netlists "verkeerd"
 leest is geen vraag die een reparatie beantwoordt — het zijn twee grids en de leesregel zegt welke het casusboek draagt.
 
+### E-2 — product: het snelle veld, P4 op het v2-formulier, twee UI-2-restjes, en een app-run reproduceerbaar in de repo (06-09-2026, alleen UI- en run-instellingen; **geen engine-, poort-, budget-, corpus- of vensterwijziging — E-1's twee keuzes (verdichte barrièrebron, tweezijdige M-T-kooi) gaan pas mee bij de volgende regeneratie**)
+
+**AANLEIDING EN OMVANG.** Vier productposten uit de opdracht van 06-09-2026, één commit. (1) Een v2-run duurt in de
+browser uren (tien tot dertig minuten per kandidaat, twintig en meer kandidaten in een veld) en voor iedereen behalve
+Sander leest dat als "de app doet niets": een run-instelling **verkenning / volledig**. (2) Sander las in het
+v2-formulier zes vooringevulde getallen (Max dissipation 35 %, Min EPDR 1,6 Ω, Max drive −18 dB, LF-budget 2,5, Q_es 1,5,
+damping 0,5) en de vraag was per veld: app-default (P4-schending) of bewaarde invoer. (3) Twee UI-2-restjes: het
+draadgereedschap bleef na een draad actief, en de scan-tabel en het v2-paneel droegen de "not simulated"-tag niet
+zelf. (4) Het V48-gat: een browserrun was in de repo niet na te spelen. Alleen UI- en run-instellingen; de
+generator kreeg twee OPTIONELE beleidssleutels waarvan absent het veld is dat het altijd was.
+
+**POST 1 — HET SNELLE VELD.** Een verkenning is een KLEINER veld, geen lossere zoektocht, en drie dingen en niets
+anders onderscheiden haar van het volle veld (`predesign/fieldMode.ts`, `candidates.ts`):
+een ketenbudget van **8** (`EXPLORATION_CHAIN_BUDGET`, een run-grootte gesteld door Sander — geen grens, zoals
+`DEFAULT_RUN_STARTS` een zoekdiepte is); posities **centre-first** — het geometrische midden van elk venster eerst
+(exact het referentiekruispunt waarop `candidateField.ts` de orde-afleiding haar eisen laat lezen), dan één spacing
+eronder, één erboven, twee eronder … zover het venster reikt, de lagere buur eerst omdat een lagere overname de
+bovenste driver zwaarder belast; en **één uitlijning per overname** — de gestelde orde als de afleiding haar toelaat,
+anders de steilste toegelaten (die haalt elke eis die de afleiding stelde), met de niet-gebouwde orden bij naam in de
+asnoten. Onder een budget verdwijnen de BUITENSTE posities en blijft de kooi één spacing breed: een uitgedund
+verkenningsveld dekt minder band, niet dezelfde band grover. De eisen, poorten, budgetten, seed, tuner en elk oordeel
+zijn in beide modi hetzelfde. **Beide beleidssleutels reizen in de veldparameters en dus in de vingerafdruk, maar
+ALLEEN als zij gesteld zijn:** de volle modus geeft géén sleutel door en keyt byte-identiek aan het F4d-verzoek
+(`chainBudget: steps^pairs`), dus élke vóór E-2 opgenomen run-vingerafdruk en het hele corpus staan (fieldMode.test.ts,
+claim 4). De modus wordt van het veld zelf gelezen (`fieldModeOfParameters`), de shortlist drukt de regel af
+("Exploration field — 6 of 33 derived candidates: chain budget 8, positions centre-first …") en biedt **"Run the full
+field →"** aan; de select "Candidate field" staat in de sectie "Engine v2 — run" en reist in het project
+(`engineV2.fieldMode`, leeg = verkenning: wie niet koos heeft niet om uren gevraagd).
+
+*Gemeten op de repo-set (merged, orde 4 gesteld):* de verkenning levert **2 × 3 = 6 uit 33 afgeleid** — W-M 254 en
+285,1 Hz (het centrum 285,1 = √(147,9 · 549,7) en zijn lagere buur; 11 afgeleid), M-T 1735,4 / 1947,9 / 2186,5 Hz (het
+centrum en beide buren; 3 afgeleid) — waar het volle veld bij 2 stappen per as 4 HOEKposities legt (147,9/549,7 ×
+1646,9/2304). Dezelfde vensters, vloeren en plafonds. De uitdunning "breedste as eerst, één positie per keer" van F4d
+is ongewijzigd en landt hier op 6 en niet op 8: een budget is een bovengrens.
+
+*In de browser, casus 1 (demobundel = de gepoorte sessie van 22-08-2026, herbemonsterd; v8-catalogus geïmporteerd; de
+gestelde eisen van `gestelde_eisen` ingevuld: vloer 2,6 Ω, 100 W continu, piek 160 W in 8 Ω, X_max-marge 0,8,
+weerstandsklasse 10 W × 0,5 bij 10 W thermisch, geen niveauwerk op de laagste weg, LF-budget 1,4 dB, Q_es × 2,4,
+tweeter −20 dB per weg, driverkaart Bl/M_ms/Sd/X_max, woofer R_e 3,05 Ω en parallel × 2, spoelfamilies 1,4/1,0/1,0 mm,
+seed 20260827):* **2032 s (33 min 52) wandklok voor de verkenning — 6 kandidaten (2 × 3 = 6 uit 9 afgeleid op de gepoorte demobundel: W-M 415,8/466,7 Hz rond het centrum 466,7 = √(396,7 · 549,1), M-T 1729/1940,8/2178,5 Hz rond 1940,8), ÉÉN gekwalificeerd (466,7 · 1729: RMS 0,91 dB, venster ±2,04, M-K 11,1°, min |Z| 2,6 Ω op de vloer, EPDR 1,34, dissipatie 17 %, tweeter −20,5 dB, € 309) en VIJF geweigerd — alle vijf op het LF-budget: 1,79–3,95 dB resonante opslingering tegen 1,4 gesteld (A4 M-D, de resonante helft), precies de weigering die V48 op Sanders browserrun mat en die de repo toen niet kon naspelen. De shortlist drukt de modusregel af en biedt "Run the full field →"; de stempel `… choices=299ef5e7` en de knop "Export run (JSON)" schreven `2026-09-06-v2-run-e48f6ff6.json`, bewaard als `test-fixtures/casus1_e2_verkenning_run.json`. Het is de EERSTE volledige v2-run van casus 1 die in de browser is afgerond en in de repo staat — de verwachting "minuten tot een half uur" is drie minuten overschreden, met zes ketenruns achter elkaar op één worker-pool; de duurste post per kandidaat is de tuner zelf.**
+
+**POST 2 — P4 OP HET v2-FORMULIER.** De zes getallen waren geen defaults en geen bewaarde invoer maar HTML-placeholders
+op lege velden (`engineV2Settings` startte op '' voor élk veld; de engine kreeg niets). Dat is waar en het helpt niet:
+een getal dat in een veld staat leest als een getal in het veld, en een grens waarvan de ontwerper gelooft dat zij
+gesteld is terwijl zij het niet is, is P4 gebroken aan het scherm. Besluit per veld: **app-default in verschijning →
+verwijderd.** `src/lib/v2Settings.ts` is sindsdien het ene huis: `EMPTY_V2_SETTINGS` (initial state, autosave-herstel
+en een project zonder blok resolven er alle drie op), `V2_GHOSTS` met de markering `—` op élk oordeelsveld —
+poorten, budgetten, eisen, de V49-, V50- en V51-invoer én de twee rapportageschalen amplifier power en vertical
+window, want een versterkervermogen dat niemand typte maakt elke watt in het paneel tot een getal van niemand — en
+precies twee numerieke ghosts met naam en reden (`V2_DEFAULT_GHOST_KEYS`): de seed (A5e.4: leeg is de gepubliceerde
+default en wordt GERAPPORTEERD) en de shortlist-grootte (een presentatietelling). **Een waarde zegt sindsdien wie hem
+stelde en wanneer:** "stated by you on 2026-09-06" naast elk veld met inhoud, gestempeld bij de bewerking
+(`stampStated`), meereizend in het project (`engineV2StatedAt`), en "date not recorded" voor een waarde uit een project
+van vóór E-2 — nog steeds van de ontwerper, nooit van de app. `setV2Field` is de ene setter (de bronscan eist dat de
+oude 22 `setEngineV2Settings((v) => …)`-vormen weg zijn). Het v1-veld "Design for 96 dB" is een echte default die de
+v2-route sinds V49 niet leest; het draagt op de v2-route de noot "v1 — not read by Engine v2 since V49" en op v1 niets
+(toggle-invariant). **Handmatig nagemeten in een verse headless Chrome (localStorage gewist, demo geladen, v2 aan): 24
+v2-velden, 0 met een waarde; de enige numerieke placeholders Shortlist size = 10 en Run seed = 20260826.** Test:
+`v2Settings.test.ts` (dertien claims, waaronder de bronscan van App.tsx op numerieke placeholders onder een
+`engineV2Settings`-waarde).
+
+**POST 3 — TWEE UI-2-RESTJES.** (a) Het draadgereedschap: `backgroundClick` in `schematicEdit.ts` is sindsdien één
+zuivere stap voor elk gereedschap — de eerste klik wapent het startpunt, de tweede legt de draad, selecteert hem en
+geeft het gereedschap terug aan select, precies zoals het plaatsen van een onderdeel dat al deed; de component houdt
+geen eigen overgangen meer (vijf claims in `schematicEdit.test.ts`). (b) De tag: `notSimulatedTag` in
+`networkReadiness.ts` is één tekst met vier lezers — de grafiekkoppen (die UI-2 al had), het scan-resultaat en de
+shortlist-kop, de v1-reading-kop, en het v2-paneel via de prop `notSimulated` (klasse `sim-stale`, `V2_STALE_TAG_CLASS`);
+`engineV2Panel.test.tsx` rendert met `renderToStaticMarkup` en claimt beide kanten.
+
+**POST 4 — EEN APP-RUN REPRODUCEERBAAR IN DE REPO (het V48-gat).** V48 mat twee van negen kandidaten van Sanders
+browserrun boven het gestelde budget en niets in de repo kon dat veld herbouwen: de vingerafdruk zei WELKE invoer, niet
+wat die was. Sindsdien schrijft de knop **"Export run (JSON)"** onder de run-stempel het blok `RunExport`
+(`optimizer/runExport.ts`, formaat `crossover-studio-run/1`): de gestelde eisen (gates, budgets, determinism,
+doelcurve, oordeelband), de run-instellingen (chain-declaratie, de tuning-ingrediënten, de digests van de drie
+sleutelstrings), de VELD-instellingen (modus, budget, beleid, uitlijningen, stappen per as, de per-paar-afleidingsinvoer
+zonder de krommen — die zijn van de meetset en worden bij naam gerefereerd), de vensterinvoer en de orde-afleidingen
+waarop het veld stond, élke kandidaat (label, positie, kooi, orde, uitlijning, venster), de rapportinstellingen, de
+driver-id's per rol met de bestandsnamen, de stempel en de shortlist. `scripts/replay-app-run.ts` herbouwt het veld
+twee keer: **laag 1** uit het blok alleen (de generator op de geëxporteerde vensterinvoer — zuiver, dus exact; het
+bewijs dat het blok volstaat, en de `choices`-component van de stempel wordt herberekend), **laag 2** op de casus-1-set
+van de repo (`--set merged|gated`) met de geëxporteerde rapportinstellingen hersleuteld naar de repo-id's en de eigen
+krommen van de repo voor de natural-slope-fit, kandidaat voor kandidaat vergeleken en bij verschil de
+vensterinvoer-velden benoemd die het maakten. `--run` tunet de nagespeelde kandidaten zoals de generator.
+**Kandidaten, geen bytes (V46).** `runExport.test.ts`: rondgang door JSON reproduceert élke kandidaat en de digest,
+de vergelijker ziet missing/extra/changed, en de tegenproef — een ander budget of beleid in het blok geeft een ander
+veld c.q. een andere digest.
+
+*De verificatie op de verkenning uit post 1:* het bestand door `scripts/replay-app-run.ts`. **Laag 1: SAME** — 6 van 6 kandidaten reproduceren uit het blok alleen, en de herberekende `choices`-digest (299ef5e7) is die van de stempel. **Laag 2 op `--set demo` (de demobundel door de adapter van de app, zoals de browser hem neemt): SAME** — 6 matched, 0 missing, 0 extra, 0 changed, dezelfde labels, posities, kooien, orden en uitlijningen; de enige verschillen in de vensterinvoer zijn float-ruis in de laatste cijfers (breakup-hoogten op 1e-14 dB, het excursieplafond op 1e-10 dB). **Laag 2 op `--set gated` (de rauwe sessie van 22-08-2026 in de repo): DIFFERENT, en het script zegt waarom** — de demobundel is een herbemonstering op 500 punten (het bestandshoofd zegt het), de breakup-hoogten verschuiven honderdsten van een dB en enkele breakup-frequenties een rasterstap, de W-M-posities 0,2 Hz (415,6/466,5 tegen 415,8/466,7) en de M-T-posities 1,3–1,8 Hz (1727,7/1939,3/2176,7 tegen 1729/1940,8/2178,5); daarnaast de geometrie (spacing 382,4 tegen 261 mm — de kastposities van de demo tegen de casusboekgeometrie) en de directiviteit (de demo draagt 0–60°, de repo-manifest één hoek), die geen van beide binden. Kandidaten, geen bytes: op dezelfde bestanden leiden repo en browser hetzelfde veld af; op een ander bestand van dezelfde sessie zegt de replay welk veld het verschil maakte. Op `--set merged` (de standaard sinds M-1) ligt het W-M-venster op 147,9–549,7 in plaats van 396,7–549,1 en is het veld een ander veld — dat is geen afwijking maar de meetset.
+
+**TESTS EN TELLING.** Snelle laag (`npm run test:fast`) gemeten 06-09-2026 ná de browserrun en de replay, met de dev-server en de headless Chrome gestopt: **564 s — 156 bestanden (155 geslaagd, 1 overgeslagen), 1769 tests (1767 geslaagd, 2 overgeslagen), in één keer groen.** +4 bestanden sinds E-1 (`predesign/fieldMode.test.ts` 10 claims, `v2Settings.test.ts` 13, `optimizer/runExport.test.ts` 9, `components/engineV2Panel.test.tsx` 2) en +53 tests: die 34, +13 in `candidates.test.ts` (drie E-2-blokken), +5 in `schematicEdit.test.ts`, +1 in `networkReadiness.test.ts`. `tsc -b` groen over alle vier de projecten; `toggleRegression` byte-identiek (de nieuwe modules importeren geen engine2 buiten de UI-instappunten, `v2Settings.ts` importeert niets uit engine2); `p6Lint` beide scopes groen (`EXPLORATION_CHAIN_BUDGET` in constants.ts met @p6 rule); `ciLayer` groen (geen nieuwe `[live]`- of `[bytes]`-tag). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan; 564 s tegen 411 s bij E-1 is dezelfde laag op dezelfde machine kort na een browserrun van 34 minuten (`f4cRegression` en `candidateRoute` melden elk 240 s), en de vier nieuwe bestanden kosten samen onder de seconde. De volle run is NIET gedraaid: E-2 raakt de zoektocht, de poorten en het corpus niet (de volle modus keyt byte-identiek en de generator van het corpus leest `casus1Field`, ongewijzigd), dus de twee live ketenruns toetsen niets dat hier bewoog.
+
+**OPENSTAAND.** (1) De uitdunning landt op 6 van de 8: "breedste as eerst" is de F4d-regel en een verkenning die het
+budget precies vult (4 × 2) zou een tweede uitdunningsregel zijn — niet gebouwd. (2) De replay vergelijkt VELDEN; een
+`--run` vergelijkt shortlists binnen de tolerantieklassen en niet byte-voor-byte, en de catalogus reist niet mee in het
+blok (zij zit op de wire en niet in de vingerafdruk — een replay op een andere catalogus wijkt stil af op de snap).
+(3) De demobundel is de gepoorte set herbemonsterd; wie de app op de gemergede set wil laten lopen laadt de repo-bestanden
+zelf (de woofer als één gesommeerd bestand). (4) E-1's twee keuzes blijven geparkeerd tot de volgende regeneratie.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

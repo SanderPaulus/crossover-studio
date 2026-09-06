@@ -255,6 +255,12 @@ export interface ProjectDesign {
    */
   engineV2Enabled?: boolean;
   /**
+   * E-2 — WHEN each `engineV2` field was stated (ISO date per key). A value
+   * without a date came from a project written before E-2 and the form says
+   * "date not recorded" beside it; the value is the designer's either way.
+   */
+  engineV2StatedAt?: Partial<Record<string, string>>;
+  /**
    * The project settings the v2 layer reads. Strings like every other numeric
    * field here; EMPTY MEANS THE SETTING IS ABSENT (P4), which is why none of
    * them has a default anywhere in the code.
@@ -297,6 +303,12 @@ export interface ProjectDesign {
   engineV2?: {
     verticalWindowDeg?: string;
     amplifierPowerW?: string;
+    /**
+     * E-2 — the FIELD MODE of a v2 run: '' or 'exploration' (a chain budget of
+     * eight, the window centres first, one alignment per handover) or 'full'
+     * (every window edge to edge, every admitted order). Empty = exploration.
+     */
+    fieldMode?: string;
     /**
      * A5e.1 (F3) — the TASTE REQUIREMENTS. Acceptance limits on the outcome,
      * not weights and not gates: they filter the delivered field, they never

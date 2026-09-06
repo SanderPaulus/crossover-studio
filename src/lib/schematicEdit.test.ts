@@ -7,6 +7,7 @@ import type { SynthesizedComponent } from './synthesis.ts';
 import {
   addPart,
   addWire,
+  backgroundClick,
   deletePart,
   mergeSynthesizedSchematics,
   movePart,
@@ -230,5 +231,54 @@ describe('normalizeOrigin', () => {
       2,
     );
     expect(parts[0].wires[0]).toEqual({ x: 2, y: 2 });
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * E-2 — a background click, one pure step for every tool (UI-2 leftover)
+ * ------------------------------------------------------------------ */
+
+describe('E-2 — the wire tool returns to select after a wire, like every other tool', () => {
+  const base: VxpPart[] = [];
+  const models = ['woofer'];
+
+  it('the first click only arms the start point and keeps the wire tool', () => {
+    const r = backgroundClick({ kind: 'wire' }, null, base, { x: 2, y: 3 }, models);
+    expect(r.parts).toBeNull();
+    expect(r.tool).toEqual({ kind: 'wire' });
+    expect(r.wireStart).toEqual({ x: 2, y: 3 });
+    expect(r.select).toBeUndefined();
+  });
+
+  it('the second click COMMITS the wire, selects it, and hands the tool back to select', () => {
+    const r = backgroundClick({ kind: 'wire' }, { x: 2, y: 3 }, base, { x: 8, y: 3 }, models);
+    expect(r.parts).toHaveLength(1);
+    expect(r.parts![0].type).toBe('Wire');
+    expect(r.tool).toEqual({ kind: 'select' });
+    expect(r.wireStart).toBeNull();
+    expect(r.select).toBe(0);
+  });
+
+  it('a zero-length second click draws nothing and still returns to select', () => {
+    const r = backgroundClick({ kind: 'wire' }, { x: 2, y: 3 }, base, { x: 2, y: 3 }, models);
+    expect(r.parts).toBeNull();
+    expect(r.tool).toEqual({ kind: 'select' });
+    expect(r.wireStart).toBeNull();
+    expect(r.select).toBeNull();
+  });
+
+  it('placing a component behaves the same way — one placement, then select, the new part selected', () => {
+    const r = backgroundClick({ kind: 'place', type: 'Inductor' }, null, base, { x: 4, y: 4 }, models);
+    expect(r.parts).toHaveLength(1);
+    expect(r.parts![0].type).toBe('Inductor');
+    expect(r.tool).toEqual({ kind: 'select' });
+    expect(r.select).toBe(0);
+  });
+
+  it('a click in select mode clears the selection and changes nothing else', () => {
+    const r = backgroundClick({ kind: 'select' }, null, base, { x: 4, y: 4 }, models);
+    expect(r.parts).toBeNull();
+    expect(r.tool).toEqual({ kind: 'select' });
+    expect(r.select).toBeNull();
   });
 });
