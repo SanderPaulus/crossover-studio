@@ -171,6 +171,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 3.19,
+   "tunerPhaseDeg": 22.4,
+   "seconds": 2487.93,
    "refused": {
     "minZOhm": 2.4794763548039236,
     "rmsDeviationDb": 2.068406561328157,
@@ -481,6 +484,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 3.19,
+   "tunerPhaseDeg": 18.3,
+   "seconds": 3348.029,
    "refused": {
     "minZOhm": 2.2370685653753744,
     "rmsDeviationDb": 3.197695486108754,
@@ -800,6 +806,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 3.29,
+   "tunerPhaseDeg": 19.6,
+   "seconds": 3262.343,
    "refused": {
     "minZOhm": 2.532520363102262,
     "rmsDeviationDb": 2.765974888057054,
@@ -1571,6 +1580,9 @@
      "value": "116.7 uF"
     }
    ],
+   "tunerRippleDb": 2.33,
+   "tunerPhaseDeg": 6.4,
+   "seconds": 2171.303,
    "refused": null,
    "evaluations": 163117,
    "gepaard": {
@@ -1738,6 +1750,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 2.58,
+   "tunerPhaseDeg": 15.1,
+   "seconds": 1797.408,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 1.6083743135923065,
@@ -2040,6 +2055,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 3.1,
+   "tunerPhaseDeg": 16.5,
+   "seconds": 2701.752,
    "refused": {
     "minZOhm": 2.5122198783217753,
     "rmsDeviationDb": 2.8039237996334654,
@@ -2334,6 +2352,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 3.75,
+   "tunerPhaseDeg": 15,
+   "seconds": 1725.275,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 1.968748613562766,
@@ -2635,6 +2656,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 2.34,
+   "tunerPhaseDeg": 3.2,
+   "seconds": 10192.176,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 1.0868142413515736,
@@ -3443,6 +3467,9 @@
      "value": "99.18 uF"
     }
    ],
+   "tunerRippleDb": 2.35,
+   "tunerPhaseDeg": 2.8,
+   "seconds": 14689.869,
    "refused": null,
    "evaluations": 903158,
    "gepaard": {
@@ -3908,6 +3935,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": 2.3,
+   "tunerPhaseDeg": 6.7,
+   "seconds": 5525.557,
    "refused": null,
    "evaluations": 441943,
    "gepaard": {
@@ -4571,6 +4601,9 @@
      "value": "7.749 uF"
     }
    ],
+   "tunerRippleDb": 2.31,
+   "tunerPhaseDeg": 9.7,
+   "seconds": 3059.43,
    "refused": null,
    "evaluations": 182419,
    "gepaard": {
@@ -5214,6 +5247,9 @@
      "value": "99.99 uF"
     }
    ],
+   "tunerRippleDb": 2.26,
+   "tunerPhaseDeg": 3.3,
+   "seconds": 10961.231,
    "refused": null,
    "evaluations": 760428,
    "gepaard": {
@@ -5824,6 +5860,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": 2.43,
+   "tunerPhaseDeg": 14,
+   "seconds": 1787.342,
    "refused": null,
    "evaluations": 134762,
    "gepaard": {
@@ -5991,6 +6030,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 2.32,
+   "tunerPhaseDeg": 3.4,
+   "seconds": 9796.513,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 0.9960116776510948,
@@ -6285,6 +6327,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 4.6,
+   "tunerPhaseDeg": 8.9,
+   "seconds": 2045.726,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 1.7465528837475115,
@@ -6825,6 +6870,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": 2.3,
+   "tunerPhaseDeg": 8.9,
+   "seconds": 2279.559,
    "refused": null,
    "evaluations": 340938,
    "gepaard": {
@@ -7455,6 +7503,9 @@
      "value": "7.798 uF"
     }
    ],
+   "tunerRippleDb": 2.28,
+   "tunerPhaseDeg": 4.2,
+   "seconds": 8670.694,
    "refused": null,
    "evaluations": 647971,
    "gepaard": {
@@ -8106,6 +8157,9 @@
      "value": "68.08 uF"
     }
    ],
+   "tunerRippleDb": 2.3,
+   "tunerPhaseDeg": 4.1,
+   "seconds": 9157.798,
    "refused": null,
    "evaluations": 644065,
    "gepaard": {
@@ -8265,6 +8319,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 2.3,
+   "tunerPhaseDeg": 8.3,
+   "seconds": 6039.027,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 1.145047943647767,
@@ -8534,6 +8591,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 2.31,
+   "tunerPhaseDeg": 12.6,
+   "seconds": 2636.51,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 1.1305496242661734,
@@ -8785,6 +8845,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 4.15,
+   "tunerPhaseDeg": 9.9,
+   "seconds": 1409.62,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 1.694092181381628,
@@ -9457,6 +9520,9 @@
      "value": "93.04 uF"
     }
    ],
+   "tunerRippleDb": 2.31,
+   "tunerPhaseDeg": 4.5,
+   "seconds": 6316.223,
    "refused": null,
    "evaluations": 589889,
    "gepaard": {
@@ -9600,6 +9666,9 @@
    "partCount": 0,
    "bom": null,
    "parts": [],
+   "tunerRippleDb": 2.3,
+   "tunerPhaseDeg": 4.7,
+   "seconds": 3101.247,
    "refused": {
     "minZOhm": null,
     "rmsDeviationDb": 0.7937611690258798,
@@ -10125,6 +10194,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": 2.31,
+   "tunerPhaseDeg": 11.5,
+   "seconds": 2041.736,
    "refused": null,
    "evaluations": 317372,
    "gepaard": null
@@ -10626,6 +10698,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -11173,6 +11248,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -11769,6 +11847,9 @@
      "value": "91.18 uF"
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -12319,6 +12400,9 @@
      "value": "38.68 uF"
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -12713,6 +12797,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -13223,6 +13310,9 @@
      "value": "10.81 uF"
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -13734,6 +13824,9 @@
      "value": "75.01 uF"
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -14123,6 +14216,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null
@@ -14555,6 +14651,9 @@
      "value": ""
     }
    ],
+   "tunerRippleDb": null,
+   "tunerPhaseDeg": null,
+   "seconds": null,
    "refused": null,
    "evaluations": null,
    "gepaard": null

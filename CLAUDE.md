@@ -974,7 +974,8 @@
   MAAR NIET BEVROREN (de shortlist houdt `DEFAULT_SHORTLIST_SIZE` = 10 en kiest op spreiding; zulke netwerken bestaan
   alleen in de shards `test-fixtures/.casus1-v2-shards/`, gitignored, en staan als volle rij in de tabel als zij er
   zijn) — plus het gedateerde A5e.3-veld, de A5e.3b-ablatie-arm "bouwbare val" (`casus1_a5e3b_ablatie/bouwbaar.json`)
-  en HUIDIG. Kolommen: uitkomst met grond, kruispunt gesteld → geleverd, min |Z| met tak, twee RMS-kolommen, M-K, M-C
+  en HUIDIG. Kolommen: uitkomst met grond, de TUNER-RIMPEL en -fase (`net.after.rippleDb`/`.phaseDeg` — het getal dat de
+  generator-monitor afdrukt, géén RMS), de looptijd per kandidaat (uit de shards, in het JSON bewaard), kruispunt gesteld → geleverd, min |Z| met tak, twee RMS-kolommen, M-K, M-C
   per weg, opslingering/lift, Q_es×, dissipatie, heetste R bij 10 W, KOPER PER WEG, grootste spoel op de laagste weg
   tegen de spanwijdte, de VAL (L/C/f₀/demping), lobing, onderdelen, BOM uit de catalogus (goedkoopste realisatie ±5 %
   per onderdeel; spoelen uit de gestelde familie van hun weg, stapel van twee als één onderdeel niet dekt — en dan zegt

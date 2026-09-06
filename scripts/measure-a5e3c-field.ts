@@ -113,6 +113,9 @@ const partsOf = (key: string): VxpPart[] => deserializeFilter(readFileSync(join(
 /* ---- de boekhouding van de generator, mét de velden die de fixture niet typt -- */
 interface HerkomstOutcome {
   label: string;
+  /** `net.after.rippleDb` / `.phaseDeg` — the TUNER'S OWN figures, what the generator's summary line prints; not an RMS. */
+  rimpel_dB: number;
+  fase_graden: number;
   geweigerd_door: string[];
   verwerping: { regels: string[]; reden: string; geweigerde_tune: Record<string, number | null> | null } | null;
   niveauwerk: { vloer_ohm: number | null; vloer_vraagt_serie_R_ohm: number | null; vloer_vraagt_toelichting: string | null; geleverd_serie_R_totaal_ohm: number | null };
@@ -321,6 +324,21 @@ function trapsOf(parts: readonly VxpPart[], lowestWay: string): Trap[] {
     });
 }
 
+/* De shards van de generator, als zij er nog staan: de enige plek waar een
+ * geleverd-maar-niet-bevroren netwerk bestaat (gitignored). */
+const SHARD_DIR = join(HERE, '..', 'test-fixtures', '.casus1-v2-shards');
+const shards: { label: string; seconds: number; parts: VxpPart[] }[] = existsSync(SHARD_DIR)
+  ? readdirSync(SHARD_DIR)
+      .filter((x) => x.endsWith('.json'))
+      .map((f) => {
+        const s = JSON.parse(readFileSync(join(SHARD_DIR, f), 'utf-8')) as { label: string; seconds: number; row: { parts: VxpPart[] } };
+        return { label: s.label, seconds: s.seconds, parts: s.row.parts };
+      })
+  : [];
+const shardParts = (label: string): VxpPart[] | null => shards.find((s) => s.label === label)?.parts ?? null;
+function shardSecondsOf(label: string): number | null {
+  return shards.find((s) => s.label === label)?.seconds ?? null;
+}
 /* ---- één rij --------------------------------------------------------------- */
 interface Row {
   key: string | null;
@@ -361,6 +379,11 @@ interface Row {
   partCount: number;
   bom: Bom | null;
   parts: { id: string; type: string; value: string }[];
+  /** De tuner-rimpel (net.after.rippleDb, piek-tot-piek tegen het trapdoel van 2,5) en -fase — het getal dat de monitor afdrukt; GEEN RMS. */
+  tunerRippleDb: number | null;
+  tunerPhaseDeg: number | null;
+  /** Looptijd van de kandidaat in de generator, seconden — uit de shard (gitignored); null zonder shard. */
+  seconds: number | null;
   /** Op een verwerping: wat de geweigerde tune nog mat, uit de boekhouding van de generator. */
   refused: { minZOhm: number | null; rmsDeviationDb: number | null; windowPlusMinusDb: number | null; driveOnFsDb: number | null; yOhm: number | null; yNote: string | null; coils: { id: string; weg: string; mH: number; dcr_ohm: number; binnen_bereik: boolean | null }[] } | null;
   evaluations: number | null;
@@ -436,6 +459,9 @@ function measureParts(corpus: string, label: string, key: string | null, parts: 
     partCount: parts.filter((p) => p.partId !== undefined && !p.open && !p.shorted && (p.type === 'Inductor' || p.type === 'Capacitor' || p.type === 'Resistor')).length,
     bom: catalog.length ? bomOf(parts, familyOfCoil) : null,
     parts: parts.filter((p) => p.partId !== undefined && p.type !== 'Wire').map((p) => ({ id: p.partId!, type: p.type, value: value(p) })),
+    tunerRippleDb: outcome?.rimpel_dB ?? null,
+    tunerPhaseDeg: outcome?.fase_graden ?? null,
+    seconds: outcome ? shardSecondsOf(outcome.label) : null,
     refused: null,
     evaluations: outcome?.pas.evaluaties ?? null,
   };
@@ -491,6 +517,9 @@ function refusedRow(corpus: string, o: HerkomstOutcome, ground?: string): Row {
     partCount: 0,
     bom: null,
     parts: [],
+    tunerRippleDb: o.rimpel_dB ?? null,
+    tunerPhaseDeg: o.fase_graden ?? null,
+    seconds: shardSecondsOf(o.label),
     refused: {
       minZOhm: t?.minZOhm ?? null,
       rmsDeviationDb: t?.rmsDeviationDb ?? null,
@@ -510,17 +539,6 @@ const dated = corpusOf('a5e3veld');
 const LIVE_NAME = 'A5e.3c';
 const DATED_NAME = 'A5e.3-veld';
 const rows: Row[] = [];
-/* De shards van de generator, als zij er nog staan: de enige plek waar een
- * geleverd-maar-niet-bevroren netwerk bestaat (gitignored). */
-const SHARD_DIR = join(HERE, '..', 'test-fixtures', '.casus1-v2-shards');
-const shardParts = (label: string): VxpPart[] | null => {
-  if (!existsSync(SHARD_DIR)) return null;
-  for (const f of readdirSync(SHARD_DIR).filter((x) => x.endsWith('.json'))) {
-    const s = JSON.parse(readFileSync(join(SHARD_DIR, f), 'utf-8')) as { label: string; row: { parts: VxpPart[] } };
-    if (s.label === label) return s.row.parts;
-  }
-  return null;
-};
 const NOT_FROZEN = `${LIVE_NAME} (geleverd, niet bevroren)`;
 const notFrozenGround = `GELEVERD, NIET BEVROREN — de shortlist houdt ${DEFAULT_SHORTLIST_SIZE} ontwerpen en koos op spreiding (selectDiverse); geen poort en geen eis`;
 for (const o of HERKOMST.kandidaat_uitkomst) {
@@ -592,12 +610,12 @@ console.log(
 );
 console.log('');
 console.log(
-  '| corpus | kandidaat | uitkomst (grond) | kruispunt gesteld → geleverd Hz | min \\|Z\\| Ω @ Hz, tak | RMS volle band / ±venster | RMS vanaf 397 / ±venster | M-K W-M / M-T ° | M-C per weg dB (grens) | opslingering / lift dB | Q_es× | dissipatie % | heetste R W bij 10 W (toegestaan) | koper W / M / T Ω | grootste spoel laagste weg mH | val L / C @ f₀ (demping) | lobing dip dB | onderdelen | BOM € (catalogus) |',
+  '| corpus | kandidaat | uitkomst (grond) | tuner-rimpel dB / fase ° (net.after — het monitorgetal, GEEN RMS) | looptijd s | kruispunt gesteld → geleverd Hz | min \\|Z\\| Ω @ Hz, tak | RMS volle band / ±venster | RMS vanaf 397 / ±venster | M-K W-M / M-T ° | M-C per weg dB (grens) | opslingering / lift dB | Q_es× | dissipatie % | heetste R W bij 10 W (toegestaan) | koper W / M / T Ω | grootste spoel laagste weg mH | val L / C @ f₀ (demping) | lobing dip dB | onderdelen | BOM € (catalogus) |',
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 for (const r of rows) {
   console.log(
-    `| ${r.corpus} | ${short(r.label)} | ${groundCell(r)} | ${xoCell(r)} | ${zCell(r)} | ${rmsCell(r)} | ${r.delivered ? `${f2(r.rms397)} / ±${f2(r.window397)}` : '—'} | ${mkCell(r)} | ${mcCell(r)} | ` +
+    `| ${r.corpus} | ${short(r.label)} | ${groundCell(r)} | ${r.tunerRippleDb === null ? '—' : `${f2(r.tunerRippleDb)} / ${f1(r.tunerPhaseDeg)}`} | ${f0(r.seconds)} | ${xoCell(r)} | ${zCell(r)} | ${rmsCell(r)} | ${r.delivered ? `${f2(r.rms397)} / ±${f2(r.window397)}` : '—'} | ${mkCell(r)} | ${mcCell(r)} | ` +
       `${r.delivered ? `${f2(r.resonantDb)} / ${f2(r.liftDb)}` : '—'} | ${f2(r.qesMult)} | ${f0(r.dissPct)} | ${r.delivered ? `${f2(r.hottestThermalW)} (${f1(r.hottestAllowedW)})${r.hottestId ? ` ${r.hottestId}` : ''}` : '—'} | ${copperCell(r)} | ${f2(r.maxLowestWayCoilMh)}${spanMh !== null && r.maxLowestWayCoilMh !== null && r.maxLowestWayCoilMh > spanMh + 0.005 ? ' > span' : ''} | ${trapCell(r)} | ${f1(r.lobingDipDb)} | ${r.delivered ? r.partCount : '—'} | ${bomCell(r)} |`,
   );
 }
