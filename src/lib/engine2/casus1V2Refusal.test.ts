@@ -149,32 +149,11 @@ describe('[live] a wholesale refusal comes back as a refusal', () => {
     const field = casus1Field(rep);
     const gridded = casus1ChainInput(manifest, files, golden);
     const c = field.field.candidates.find((x) => x.label === recorded.label);
-    /* A5e.3b — THE CORPUS PREDATES THE CURRENT ENGINE: the M-T floor moved to
-     * the stated figure's inversion (~1647 Hz), so the live field no longer
-     * holds the A5e.3-veld positions this record was made on (the recorded
-     * first refusal sits at 1294 Hz, under the new floor by design — that is
-     * the (b)2 pre-measurement). The reproduction is RETIRED until the next
-     * regeneration re-records it, and the retirement is PINNED: the recorded
-     * candidate must exist in the DATED field, reproduced by withholding the
-     * one window input A5e.3b added. Any other field drift still fails. */
-    if (!c) {
-      const { maxDriveOnFsDbByDriver: _fig, ...zonderGesteld } = REPORT_SETTINGS;
-      void _fig;
-      const datedField = casus1Field(
-        buildReport({
-          manifest,
-          files,
-          filter: casus1Filter('HUIDIG', manifest, files, golden),
-          geometry,
-          settings: zonderGesteld,
-        }),
-      );
-      expect(
-        datedField.field.candidates.find((x) => x.label === recorded.label),
-        `${recorded.label} is in neither the live field nor the A5e.3-veld field — that is not the A5e.3b retirement, it is a field drift`,
-      ).toBeTruthy();
-      return;
-    }
+    /* A5e.3c — BACK TO LIFE. Between A5e.3b and A5e.3c this run was RETIRED
+     * with a pin (the recorded refusal sat at 1294 Hz, under the M-T floor
+     * A5e.3b moved to ~1647 Hz, so it had to exist in the DATED field). The
+     * A5e.3c regeneration re-recorded the refusals on the current field, so
+     * the pin is gone and a field drift fails here again in its strict form. */
     expect(c, `the field no longer holds ${recorded.label}`).toBeTruthy();
 
     const input: Chain3Input = {

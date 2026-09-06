@@ -52,6 +52,7 @@ import {
   anyGateActive,
   evaluateGates,
   freezeGateReference,
+  type GateEvaluation,
   type GateReference,
   type GateSettings,
   type GateVerdict,
@@ -1774,6 +1775,24 @@ interface WholesaleRejectionFields {
 }
 
 /**
+ * A5e.3c — THE VIOLATION THAT ONLY THE NETWORK'S OWN CROSSINGS SEE.
+ *
+ * Both conventions of `evaluateGates` are asked through the one callback (so a
+ * caller cannot hand in two evaluations of two different networks), and the
+ * derived violation is returned ONLY when the frozen evaluation carries none:
+ * a frozen failure is the tuner's active-gate refusal and already has its own
+ * ground, and this function must not restate it under a second name. Null
+ * means the delivered network passes on both conventions, or fails on the
+ * frozen one (which is refused elsewhere).
+ */
+export function derivedGateViolation(evaluate: (passbands: 'frozen' | 'derived') => GateEvaluation): string | null {
+  const frozen = evaluate('frozen');
+  if (frozen.violation) return null;
+  const derived = evaluate('derived');
+  return derived.violation ?? null;
+}
+
+/**
  * V31 — was this tune thrown away wholesale, and by which rule?
  *
  * Detected STRUCTURALLY: `safetyNote` exists on exactly the two returns that
@@ -2312,6 +2331,54 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
           'the configuration\'s, not the filter\'s: it is the same whichever candidate is tried, and ' +
           'it is what a series wiring, a different driver pair or an active low branch would have ' +
           'to deliver instead (casebook V51, V51b).',
+        fields: {
+          ...(delivered.net as WholesaleRejectionFields),
+          rejectedParts: [...delivered.parts],
+        },
+      };
+    }
+  }
+  /* ---- A5e.3c: THE DELIVERED NETWORK FAILS A GATE ON ITS OWN CROSSINGS ----
+   *
+   * The search is held to the passbands FROZEN from the seed (`gates.ts`, rule
+   * 4: re-derive them every step and the optimiser satisfies M-C by moving the
+   * crossing), and the delivered network is judged AGAIN on the passbands its
+   * own crossings imply. Until A5e.3c the second verdict was computed
+   * (`gatesDerived`, the combined `violation`) and read by nobody on this
+   * route: the shortlist judges `gates` — the frozen half — and delivers.
+   *
+   * MEASURED ON THE A5e.3c FIELD (05-09-2026): the tuner moves the mid→tweeter
+   * crossing DOWN from its stated position (1948 → 1720 Hz, 1948 → 1776,
+   * 1948 → 1772), the tweeter's passband widens downward onto its falling
+   * flank, its passband mean drops, and M-C on the tweeter reads 0.2–0.6 dB
+   * LESS protective on the network's own crossings than on the seed's. Three
+   * of fourteen delivered networks passed the stated −20 dB on the seed's
+   * passbands by 0.10–0.19 dB and miss it on their own by 0.10–0.39 dB — the
+   * file measurement (`report.ts`, `frozenNetlistGates`) reads the own
+   * crossings, so the case book would carry three netlists it condemns. Two
+   * verdicts about one requirement, and the printed one was the kinder (the
+   * V32 shape). A verdict that is only computed is no verdict (V31): a
+   * delivered network that fails an active gate on its own crossings is
+   * REFUSED here, in the stated-budget/stated-topology form, with the tuner's
+   * own sentence as the reason. The frozen half stays what the SEARCH is held
+   * to; `runV2Optimization` (`run.ts`) already refused on both conventions.
+   * Only when nothing else refused, and only with a reference to judge on. */
+  if (!refused && collect.reference && delivered.parts.length > 0) {
+    const derivedOnly = derivedGateViolation(
+      (mode) => evaluateGates(netlistOf(delivered.parts), v2.gates, collect.reference!, mode, ratingsFor(delivered.parts, network)),
+    );
+    if (derivedOnly !== null) {
+      refused = {
+        by: 'derived-gate',
+        kinds: ['gate'],
+        reason: `on the passbands its own crossings imply — ${derivedOnly}`,
+        note:
+          'The tune COMPLETED and passed every active gate on the passbands frozen from the seed — the ' +
+          'reference the search was held to — but the network it delivered fails one on the passbands its ' +
+          'OWN crossings imply. The frozen reference exists so the optimiser cannot satisfy M-C by moving ' +
+          'the crossing (gates.ts, rule 4); when the crossing moves anyway, the built design is judged on ' +
+          'where it crosses and not on where its seed did. Refused in the V31 form since A5e.3c: until ' +
+          'then this second verdict was computed and read by nobody on this route.',
         fields: {
           ...(delivered.net as WholesaleRejectionFields),
           rejectedParts: [...delivered.parts],

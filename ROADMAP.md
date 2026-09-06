@@ -4,9 +4,9 @@ Voertaal: Nederlands (zoals alle projectdocumentatie voor Sander & Stefan).
 Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 **S** = uurtje(s), **M** = dagdeel–dag, **L** = meerdere dagen/gefaseerd.
 
-## Stand ná A5e.3-veld (4 sep 2026) — engine v2
+## Stand ná A5e.3c (6 sep 2026) — engine v2
 
-De regels hieronder vatten samen wat F4 tot en met A5e.3-veld hebben opgeleverd; het
+De regels hieronder vatten samen wat F4 tot en met A5e.3c hebben opgeleverd; het
 bewijs per stap staat in het casusboek (`docs/CrossoverStudio_OptimizerV2_strategie_v2.md`,
 Deel B) en de suite-meting in `CLAUDE.md`. Alles wat hier staat is gemeten op
 casus 1 (Koan 2951) en geldt alleen met de v2-toggle aan; met de toggle uit is
@@ -123,6 +123,30 @@ de app byte-identiek aan vóór F1.
   netlist ligt op 10 Hz waar de barrière niet kijkt (geboekt, open), en een
   rangclaim was een corpusgrootte (geankerd). De NAD-arm (vloer 4,0 Ω op de
   beste drie) staat in casusboek A5e.3-veld.
+- **De grenzen gesloten, en het veld erop opnieuw opgewekt** (A5e.3b, 05-09-2026;
+  A5e.3c, 06-09-2026): A5e.3b woog de val (de bouwbare val met L op de spanwijdte
+  22,0 mH is op elke kolom minstens zo goed als de vrije en € 38 goedkoper), maakte
+  de catalogus-spanwijdte van de gestelde familie een plafond op élke spoel van de
+  laagste weg (de slotregel van A5d.6 compleet; stapel = gestelde uitzondering),
+  legde de M-T-vloer op de strengste van gesteld en afgeleid (het gestelde −20 dB
+  bij orde 4 → 1647 Hz, `'drive-stated'`), liet de barrière de volle sweep-
+  uitgestrektheid lezen (`'safety-extended'`) en weigert een L+R-shunt zonder C als
+  pad (level-work/1.2). A5e.3c wekte het veld erop op: 8 × 3 = 24 kandidaten
+  (W-M 148–550 in acht posities, M-T 1647/1948/2304), 17 884 s, VEERTIEN geleverd —
+  en drie daarvan haalden de tweeter-eis alleen op de passbands van het ZAAD (de
+  referentie waar de zoektocht aan gehouden wordt) en misten haar op hun eigen
+  kruispunten met 0,10–0,39 dB, wat de worker berekende en niemand las (de
+  V32-vorm op M-C). Sinds A5e.3c is dat een weigering (V31): elf halen alles, de
+  shortlist bevriest er tien (`DEFAULT_SHORTLIST_SIZE`, voor het eerst kleiner dan
+  het veld). Wat het veld zegt: lage W-M-kruisingen (178–260 Hz) leveren mét
+  spoelen binnen de spanwijdte — de vloer (147,9: Y onoplosbaar) en het rimpeldoel
+  zonder niveauwerk zetten de ondergrens, niet de bouwbaarheid, dus GEEN
+  W-M-ondergrens uit bouwbaarheid; de cap bindt op acht van elf (22,00 mH exact)
+  en kost op de RMS niets; de kruispunten drijven (W-M 0–130 Hz omhoog, M-T
+  0–230 Hz omlaag) en de stated-figure-vloer is daarmee een rand en geen marge.
+  De drie om als eerste te bekijken: 377,8 · 1948 (RMS 0,85, M-K 4,9/3,8°),
+  377,8 · 1647 (20 onderdelen, € 237, tweeter −28,6) en 259,6 · 2304 (de lage
+  kruising, M-K 2,7/3,6°). Casusboek A5e.3b en A5e.3c.
 - **Verwerpingen zijn zichtbaar** (V31/V33, UI-1): een kandidaat waarvan de
   tune in zijn geheel geweigerd is levert geen netwerk maar een verwerping met
   de regel; de shortlist is de bron van de Working-tab en de v1-ranglijst staat
@@ -160,10 +184,7 @@ de app byte-identiek aan vóór F1.
    seriecomponenten hoge kwaliteit, parallelle eenvoudig, en in de HP-ladders
    zijn de spoelen de shunts waarvan het koper de demping is; geen
    gedempte-shunt-element (op de arm overbodig gebleken). Het veld is ermee
-   opnieuw opgewekt; wat het leverde staat in casusboek A5e.3-veld. Buiten het
-   enkel-onderdeel-bereik wordt de machtswet voortgezet en gevlagd (stapels),
-   niet begrensd — de spanwijdte als zoekgrens blijft dus open, met reden
-   (casusboek A5e.3).**
+   opnieuw opgewekt; wat het leverde staat in casusboek A5e.3-veld. Buiten het enkel-onderdeel-bereik werd de machtswet voortgezet en gevlagd (stapels), niet begrensd — **SINDS A5e.3b (05-09-2026) IS DE SPANWIJDTE EEN ZOEKGRENS:** de vierde ketensleutel `lowestWayCoilMaxHenry` (het grootste enkele onderdeel van de gestelde familie, 22,0 mH) als plafond in synthese en zoekdoos, de stapel als gestelde uitzondering; A5e.3c mat dat de cap op acht van elf geleverde netwerken bindt en op de RMS niets kost. Wat open blijft is de STAPEL als gestelde keuze, en de BOM-realisatie: de 1,4 mm-familie dekt 12,9–18,8 mH niet met één onderdeel binnen ±5 % (casusboek A5e.3c).**
 2. **De vloer als de as van het veld, en de configuraties die het openen** —
    SINDS M-1 scherper: op de gemergede set haalt niets de vloer én de tweeter
    tegelijk; het minimum zit bij M-T ≥ 1727 Hz in de mid- en tweetertak (84 van
@@ -212,7 +233,16 @@ de app byte-identiek aan vóór F1.
 6. **Tweede casus** — alles hierboven is op één luidspreker gemeten; een
    tweede volledige meetset (liefst een tweeweg) is wat de doctrine van "één
    ontwerp" naar "een regel" brengt. Zie ook `.claude/skills/casus-toevoegen`.
-7. Kleiner en genoteerd in Deel A/B: V28 (mag een uitsnijding het veld
+7. **De zoektocht op de eigen kruispunten** (A5e.3c): de tuner-hook oordeelt M-C
+   op de passbands van het zaad en het geleverde netwerk wordt daarna op zijn eigen
+   kruispunten geweigerd — drie van veertien in A5e.3c. Beide conventies in de
+   hook, of het M-T-kruispunt aan de gestelde positie houden, of een marge in de
+   stated-figure-vloer (de drift die de tuner maakt): elk is een besluit over de
+   zoektocht en één regeneratie per arm. Ernaast, geboekt: de resolutie van het
+   veiligheidsraster op een smalle dip (KAND-V2-1: 0,08 Ω tegen 0,05 speling), de
+   zestien gedateerde netlists waarop poortroute en rapport andere kruispunten
+   afleiden, en de shortlist-grootte als gesteld getal.
+8. Kleiner en genoteerd in Deel A/B: V28 (mag een uitsnijding het veld
    vormen), V29 (bijna-kortsluiting zonder gestelde vloer), V35 (`audit.fbHz`
    en het reflexdal), V39 (`Chain3Settings` is voor dertig sleutels niet
    geclassificeerd), `tilt`/`hold-current` als doelcurve, en de

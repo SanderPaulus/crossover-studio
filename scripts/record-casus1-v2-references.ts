@@ -280,6 +280,19 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  A5E3VELD:
+    'HET GEDATEERDE A5E3VELD-CORPUS. Bevroren voor A5e.3c, toen de M-T-as nog op k maal f_s (1294 Hz) stond en ' +
+    'het gestelde tweetergetal (-20 dB) niet als vensterinvoer werd gelezen: veld 4 x 5 = 20 (W-M 148/229/355/550 ' +
+    'op de aandrijfvloer van de mid, M-T 1294-2304), zeven geleverd, alle zeven op de vloer en de tweeter met ' +
+    '0,88-1,18 ohm puur koper op de woofer. Vier dingen die A5e.3b sindsdien sluit: (1) de M-T-vloer is de ' +
+    'strengste van gesteld en afgeleid (drive-stated, 1647 Hz - de twee 1495-kandidaten vallen eruit); (2) ' +
+    'spoelen op de laagste weg boven de spanwijdte van de gestelde 1,4 mm-familie (22,0 mH) werden gevlagd en ' +
+    'doorgezet - 22-36 mH in de val van vijf van de zeven, sindsdien een plafond in synthese en zoekdoos; (3) ' +
+    'de barriere las het veiligheidsraster vanaf 20,5 Hz en niet de sweepbodem (KAND_V2_2: 2,55 ohm op 10,07 Hz ' +
+    'waar de barriere 2,85 las), sindsdien safety-extended; (4) een L+R-shunt zonder C (de wees van een val ' +
+    'waarvan de audit de C verwijderde) gold niet als pad - drie van de zeven dragen er een, sindsdien geweigerd ' +
+    '(level-work/1.2). A5e.3c wekt het veld opnieuw op onder die vier grenzen (8 x 3 = 24). Bewaard als de ' +
+    '"voor"-helft van de A5e.3c-vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   A5E3ARM:
     'HET GEDATEERDE A5E3ARM-CORPUS: het GELEVERDE netwerk van de A5e.3-arm m1+dcr (kandidaat 429,1 LR4 · ' +
     '1994,6 LR4 uit het M-1-veld, M-1\'s instellingen plus het DCR-model op het toen VOORGESTELDE familieblok, ' +
@@ -760,6 +773,22 @@ const barrierGrids = (() => {
     grootste_verschil_regel:
       'gemeten over de netlists waarvan het sweep-minimum binnen de uitgestrektheid van het barrièreraster ' +
       'ligt — sinds A5e.3b zijn dat ze allemaal (de uitgestrektheden zijn gelijk).',
+    /* A5e.3c — de netlists waarvan de barrière een SPELING OF MEER van de poort af
+     * leest, bij naam (de V30-vorm: boekhouding die leeg hoort te raken).
+     * Gemeten aanleiding: KAND_V2_1 (377,8 · 1948), minimum in een smalle dip op
+     * 415 Hz in de W-M-overlap — 2,5536 Ohm op de sweep tegen 2,6349 op het
+     * barrièreraster, 0,081 tegen een speling van 0,052; beide rasters laten
+     * hem door (de sweep binnen de 2 %-tolerantie). De resolutie van het
+     * veiligheidsraster (240 punten, de eigen keuze van de app) is het open punt. */
+    resolutie_boven_speling: live
+      .filter(inside)
+      .filter((r) => r.verschil_ohm !== null && r.verschil_ohm >= ampFloorSlackOhm(statedFloorOhm))
+      .map((r) => ({ netlist: r.netlist, poortraster_ohm: r.poortraster_ohm, barriereraster_ohm: r.barriereraster_ohm, verschil_ohm: r.verschil_ohm, poortraster_min_bij_hz: r.poortraster_min_bij_hz })),
+    resolutie_regel:
+      'De levende netlists (en de drie referentiefilters) waarvan de barrière een vloerspeling of meer van de poort ' +
+      'af leest — een RESOLUTIEverschil op een smalle dip, geen uitgestrektheidsverschil. Boekhouding en geen ' +
+      'vrijstelling: op elk ervan vellen beide rasters hetzelfde oordeel (frozenNetlistGates assert dat), en de ' +
+      'lijst hoort leeg te raken zodra het veiligheidsraster fijner gesteld wordt (een runparameter, dus een regeneratie).',
     minimum_buiten_barriere_uitgestrektheid: outside,
     minimum_buiten_barriere_regel:
       'SINDS A5e.3b per constructie leeg: de barrière leest de volle sweep-uitgestrektheid ' +

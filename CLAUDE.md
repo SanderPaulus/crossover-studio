@@ -48,6 +48,18 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná A5e.3c (06-09-2026) gemeten op 386 s — 152 bestanden (149 geslaagd, 2 rood, 1 overgeslagen), 1710 tests
+    (1705 geslaagd, 3 rood, 2 overgeslagen), gedraaid vlak ná de samenvoeging van de shards en de recorder.** +1 bestand
+    (`optimizer/derivedGateRefusal.test.ts`, 9 claims) en +15 tests: die negen, +1 in `corpusPairing` (de A5e.3c-claim),
+    en **+3 uit de `it.each` over het levende corpus, dat van ZEVEN naar TIEN ging** — de corpusgrootte in de testtelling,
+    opnieuw; plus twee herankerde claims in `frozenNetlistGates` die niet als nieuw tellen. De drie rode claims waren de
+    meetopstelling (`vloer_zoekdoel_bron` leest sinds A5e.3b `'safety-extended'` en dit was de eerste regeneratie erop),
+    de V33-resolutieclaim (KAND_V2_1 leest 2,63 Ω op het barrièreraster tegen 2,55 op de poortsweep — een resolutieverschil
+    op een smalle dip bij 415 Hz, sindsdien geboekt in `v33_barriere_raster.resolutie_boven_speling`, de V30-vorm) en de
+    V38-fix-rangclaim, die A5e.3-veld met een COMPLEMENT had geankerd en die de zeven bevroren `A5E3VELD_KAND_*` het anker
+    binnen liet stappen (rang 75 van 150 — de V47/V48-les voor de tweede keer op dezelfde claim; sindsdien een benoemde
+    verzameling). Alle drie gerepareerd en de bestanden apart groen. GEEN nieuwe referentie: de V43-waarde van 289 s
+    blijft staan.
     **Ná A5e.3b (05-09-2026) gemeten op 359 s — 150 geslaagd + 1 overgeslagen bestand, 1695 geslaagd +
     2 overgeslagen tests, in één keer groen, gedraaid nadat de ablatie-armen klaar waren.** Geen nieuw
     bestand; +5 tests, precies de vijf nieuwe claims (1 in `levelWork` (c)3, 1 in `chainChoices` voor de
@@ -199,7 +211,20 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 05-09-2026 (A5e.3b): 151 bestanden, 1697 tests, 359 s
+- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (A5e.3c): 152 bestanden, 1710 tests, 7194 s
+  (1 u 59 min 54), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de recorder en de drie
+  guard-reparaties en NOOIT ernaast.** +1 bestand (`optimizer/derivedGateRefusal.test.ts`, 9 claims) en +13 tests sinds
+  A5e.3b: die negen, +1 in `corpusPairing`, en **+3 uit de `it.each` over het levende corpus, dat van ZEVEN naar TIEN
+  ging** — de corpusgrootte in de testtelling, opnieuw. **De wandkloktijd IS weer de byte-reproductie: KAND-V2-1
+  (377,8 · 1948) kostte 7182 s live door de route** (in de generator 8671 s onder belasting van acht processen, 647 971
+  evaluaties — de duurste kandidaat van het veld, en de shortlist zet hem vooraan), de verwerpingsrun van 147,9 · 1647
+  ernaast 2136 s; de rest draait in de schaduw (`lowestWayLevelWork` 379 s, `frozenNetlistGates` 358 s, `threeWayChain`
+  317 s). Dat de suite van 359 s (A5e.3b) naar 7194 s ging is niet de suite maar de PIN: bij A5e.3b waren beide live
+  ketenruns gedateerd geparkeerd, sinds A5e.3c draaien zij weer — en welke kandidaat de byte-reproductie treft zet de
+  wandklok (de V42/V43/V44-les, nu op het duurste ontwerp van het veld). **De volle run bewijst weer wat hij hoort te
+  bewijzen: dat de route de bevroren netlist byte-voor-byte levert, onder de worker die sinds A5e.3c op de eigen
+  kruispunten weigert.**
+  (De stand ervoor: **GEMETEN 05-09-2026 (A5e.3b): 151 bestanden, 1697 tests, 359 s
   (5 min 59), niets overgeslagen, in één keer groen — en die tijd is TIJDELIJK die van de snelle laag, want de
   twee live ketenruns zijn gedateerd geparkeerd** (hun kandidaat bestaat niet meer in het A5e.3b-veld en de
   route zou drie van de zeven nu zelf weigeren; zie de A5e.3b-guards). +5 tests, dezelfde vijf als in de snelle
@@ -410,6 +435,16 @@
   `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns.
   **SINDS V47 DRAAIT HIJ PARALLEL EN KOST HIJ MINUTEN IN PLAATS VAN UREN: gemeten 1624 s
   (27 min) op achttien kernen, tegen 21 357 s (5 u 56) sequentieel bij V45.**
+  **BIJ A5e.3c GEMETEN OP 17 884 s (4 u 58) MET `V2_JOBS=8` VOOR 24 KANDIDATEN (1410–14 690 s per kandidaat; de drie
+  duurste 10 961, 11 634 en 14 690 s zijn geleverde kandidaten met een lage W-M-kruising en 700 000–900 000 evaluaties),
+  op het A5e.3b-veld (8 × 3), de barrière op `'safety-extended'`, de spanwijdte-cap 22,0 mH. Veertien geleverd, tien
+  geweigerd — en DRIE van de veertien zijn daarna opnieuw gedraaid (`V2_ONLY=8`, `14`, `20`; 2637 / 9797 / 10 192 s, drie
+  tegelijk) onder de worker die sinds A5e.3c een geleverd netwerk weigert dat op de eigen kruispunten een poort mist,
+  en met `V2_MERGE=1` samengevoegd: dezelfde tune (evaluatietelling en spoelen exact gelijk), daarna de weigering. De
+  reparatie raakt aantoonbaar alleen die drie (de elf andere geleverde halen M-C ook op de eigen kruispunten, de tien
+  geweigerde waren al geweigerd vóór zij leest). De shortlist bevroor TIEN van de ELF — de eerste keer dat de
+  shortlist-grootte (`DEFAULT_SHORTLIST_SIZE`) kleiner is dan het geleverde veld; het gedropte netwerk (549,7 · 2304)
+  bestaat alleen in de shards.**
   **BIJ M-1 GEMETEN OP 22 713 s (6 u 19) MET `V2_JOBS=8` VOOR 115 KANDIDATEN (mediaan 1455 s per
   kandidaat, 48,8 CPU-uur), en dat was de DERDE run.** Het veld is sinds M-1 115 in plaats van vijftien:
   de W-M-as onthoudt zich van een orde (LR2 én LR4, 10 + 13 posities) en de M-T-as houdt orde 4 (5
@@ -510,8 +545,8 @@
     (`_gepoort_tot_M1`, reproduceerbaar met set `'gated'`). De corpora schrijft de gewone recorder.
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `v50`, `v51`, `v51b`, `live`; default `v51b live`, wat
-  de M-1-tabel is (`v51 v51b` is de V51b-tabel; `v50 v51` de V51-tabel; `v49 v50` was de V50-tabel — de
+  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `v50`, `v51`, `v51b`, `a5e3arm`, `a5e3veld`, `live`; default `v51b live`, wat
+  de M-1-tabel is (`a5e3veld live` is de A5e.3c-tabel — nul paren op label, de leesregel in haar uiterste vorm; `v51 v51b` is de V51b-tabel; `v50 v51` de V51-tabel; `v49 v50` was de V50-tabel — de
   identiteit; `v48 v49` is de V47b-tabel, `v47 v48` de V48-tabel). **SINDS M-1 meet de bank op de
   GEMERGEDE set** — beide helften door hetzelfde pad, óók een gedateerd corpus dat op de gepoorte set is
   opgewekt; de gedateerde claims van `corpusPairing.test.ts` lezen daarom expliciet `'gated'`. **Sinds V51b twee kolommen erbij:** `serie-R laagste weg Ω
@@ -901,8 +936,10 @@
     omdat het M-1-corpus leeg was en `freeze-live-corpus.ts` dus niets te bevriezen had. Kopieert, verplaatst
     niet, overschrijft nooit; de klasse-B-referenties schrijft de recorder (die schrijft sinds A5e.3-veld ook
     het blok van een gedateerde netlist die nooit geleefd heeft, met de reden uit `DATED_REASON`).
-  - `npx vite-node scripts/measure-a5e3-field.ts [SLEUTEL ...]` — seconden, geen tune. Zonder argumenten élke
-    levende netlist, de zes V51b-netlists, de arm en HUIDIG door ÉÉN meetbank (`corpusBank`, gemergede set,
+  - `npx vite-node scripts/measure-a5e3-field.ts [SLEUTEL ...]` — seconden, geen tune. Zonder argumenten de zeven
+    A5e.3-veld-netlists (**sinds A5e.3c uit het GEDATEERDE corpus `a5e3veld`** en niet meer uit het levende — de
+    `compare-corpora`-les van V33: een script met zijn ná-helft hard op het levende corpus maakt na de eerste regeneratie
+    stilletjes een ándere tabel), de zes V51b-netlists, de arm en HUIDIG door ÉÉN meetbank (`corpusBank`, gemergede set,
     gesteld DCR-model): de volle vector (de netlist, DCR per spoel tegen de fit), min |Z| met de TAK die het
     draagt en de frequentie, TWEE RMS-kolommen (de volle oordeelband vanaf f_p, en vanaf de tweeter-gate op
     397 Hz — anders is V51b, gezocht op de gepoorte set, niet vergelijkbaar), M-K per paar, M-C per weg met
@@ -930,6 +967,21 @@
   beweegt niet: de aandrijfvloer van de tweeter (1184 Hz) ligt onder k·f_s (1294). **`measure-m1-diagnose-arms.ts`
   herbouwt sinds A5e.3-veld het M-1-VELD expliciet** (vensterinvoer zonder aandrijfvloer, W-M onthoudt zich,
   geen budget), zodat zijn armbestanden reproduceerbaar blijven en `M1_DRY=1` nog zegt wat er gedraaid is.
+- **De A5e.3c-tabel: het veld onder de A5e.3b-grenzen, per kandidaat, met de verwerpingen en de shortlist-grootte als
+  derde toestand (A5e.3c, 06-09-2026)**: `npx vite-node scripts/measure-a5e3c-field.ts` — seconden, geen ketenrun en
+  geen tune. Élke kandidaat van het levende veld in generatorvolgorde — GELEVERD met de volle vector, GEWEIGERD met de
+  grond en wat de geweigerde tune nog mat (min |Z|, RMS, M-C, Y, de spoelen van het geweigerde netwerk), of GELEVERD
+  MAAR NIET BEVROREN (de shortlist houdt `DEFAULT_SHORTLIST_SIZE` = 10 en kiest op spreiding; zulke netwerken bestaan
+  alleen in de shards `test-fixtures/.casus1-v2-shards/`, gitignored, en staan als volle rij in de tabel als zij er
+  zijn) — plus het gedateerde A5e.3-veld, de A5e.3b-ablatie-arm "bouwbare val" (`casus1_a5e3b_ablatie/bouwbaar.json`)
+  en HUIDIG. Kolommen: uitkomst met grond, kruispunt gesteld → geleverd, min |Z| met tak, twee RMS-kolommen, M-K, M-C
+  per weg, opslingering/lift, Q_es×, dissipatie, heetste R bij 10 W, KOPER PER WEG, grootste spoel op de laagste weg
+  tegen de spanwijdte, de VAL (L/C/f₀/demping), lobing, onderdelen, BOM uit de catalogus (goedkoopste realisatie ±5 %
+  per onderdeel; spoelen uit de gestelde familie van hun weg, stapel van twee als één onderdeel niet dekt — en dan zegt
+  de kolom dat; ONDERGRENS als een onderdeel geen realisatie heeft). Gepaard tegen A5e.3-veld op label waar het kan
+  (nul van elf) en anders op het dichtstbijzijnde kruispunt met de octaafafstand; de twee vragen van de sessie als
+  samenvatting (per W-M-positie de uitkomst en de grootste wooferspoel; wie alles haalt, gesorteerd op RMS). Schrijft
+  `test-fixtures/casus1_a5e3c_veld_tabel.json`.
 - **De A5e.3b-vóórmeting: het veld onder de nieuwe grenzen, de barrière-uitgestrektheid, de wezen
   (A5e.3b, 05-09-2026)**: `npx vite-node scripts/measure-a5e3b-voormeting.ts` — seconden, geen ketenrun en
   geen tune. Drie tabellen: (b)3 het veld met de gestelde M-T-vloer (1647 Hz) en budget 24 (8 × 3 = 24 uit 36;
@@ -2286,6 +2338,53 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   draait alleen díé opnieuw (`V2_ONLY=9`, 2566 s) en zijn de negentien andere shards wat een herhaling zou
   opleveren. Elke shard moet er zijn; wie élke kandidaat opnieuw wil zien draait zonder de vlag.
 
+### A5e.3c-guards (het veld op de A5e.3b-grenzen; de weigering op de eigen kruispunten; alleen v2-runs)
+- `src/lib/engine2/optimizer/worker.ts` — **een geleverd netwerk dat op de passbands van zijn EIGEN kruispunten een
+  actieve poort mist wordt geweigerd** (`by: 'derived-gate'`, `kinds: ['gate']`, de zin van de poort als reden;
+  `derivedGateViolation` als exporteerbare beslissing: één callback voor beide conventies, de bevroren eerst, en een
+  bevroren fout blijft de weigering van de tuner zelf). De aanleiding is de V32-vorm op M-C: de zoektocht is aan de
+  passbands van het ZAAD gehouden (`gates.ts` regel 4), het geleverde netwerk werd óók op zijn eigen kruispunten
+  beoordeeld (`gatesDerived`, `violation`) en dat oordeel las op de v2-route niemand — de shortlist oordeelt op de
+  bevroren helft. Gemeten op het A5e.3c-veld: de tuner schuift het M-T-kruispunt 10–230 Hz onder de gestelde positie,
+  de tweeter-passband verbreedt naar beneden en M-C leest tot 0,58 dB minder beschermend op de eigen kruispunten; drie
+  van veertien geleverde haalden −20 op het zaad met 0,10–0,19 dB en misten het op zichzelf met 0,10–0,39. Een oordeel
+  dat alleen berekend wordt is geen oordeel (V31). De byte-baselines (`f4cRegression`, `workerRouteRegression`)
+  reproduceren: zonder gewapende poort vuurt de weigering nooit (P2).
+- `src/lib/engine2/optimizer/derivedGateRefusal.test.ts` — negen claims. De beslissing als functie (derived alleen
+  als frozen schoon is; frozen eerst; een frozen fout is niet van deze regel); op de ECHTE bestanden een referentie
+  bevroren van HUIDIG (zaad-stand-in) tegen het gedateerde A5e.3-veld-corpus: de twee conventies lezen de tweeter
+  meetbaar anders en een grens ertussen wordt op de ene gehaald en op de andere gemist, met de tegenproef dat een
+  grens onder beide niets weigert; **de V32-vorm voor M-C**: de poortroute op de eigen kruispunten en het rapport
+  zijn het binnen de dB-klasse eens op élke netlist van de corpora die de weigering beheerst (levend, A5E3VELD, de
+  arm, de referentiefilters) — en over het HELE casusboek leiden de twee routes op ZESTIEN gedateerde netlists
+  (V28–V50) ANDERE kruispunten af (ketenraster 143 tegen rapportraster 1600 punten; tot 5 dB op M-C), geboekt als
+  benoemde lijst in de V30-vorm; en de acceptatie: élke levende netlist haalt M-C op zijn eigen kruispunten.
+- `src/lib/engine2/frozenNetlistGates.test.ts` — **de V33-guard boekt sinds A5e.3c een RESOLUTIEverschil boven de
+  speling bij naam** (`v33_barriere_raster.resolutie_boven_speling`, door de recorder geschreven; de guard eist dat
+  de lijst precies de gemeten namen draagt en dat beide rasters op die namen hetzelfde oordeel vellen): KAND_V2_1
+  (377,8 · 1948) heeft zijn minimum in een smalle W-M-overlapdip op 416 Hz, 2,5536 Ω op de sweep tegen 2,6349 op het
+  verlengde veiligheidsraster — 0,081 tegen 0,052; de 2 %-tolerantie droeg het door de poort. A5e.3b sloot de
+  UITGESTREKTHEID van de barrière, dit is haar RESOLUTIE (240 punten, de keuze van de app): een runparameter, dus
+  een regeneratie per arm en geen guard om te versoepelen. **De V38-fix-rangclaim is voor de TWEEDE keer op dezelfde
+  claim door de V47/V48-val gelopen:** A5e.3-veld ankerde haar met een COMPLEMENT ("alles wat niet levend is en niet
+  de arm"), A5e.3c bevroor het A5e.3-veld-corpus, de zeven stapten het complement binnen en de rang werd 75 van 150
+  — rood zonder dat de zoekmaat bewoog. Sindsdien een BENOEMDE verzameling (de families van HUIDIG tot en met V51B),
+  met de tegenproef dat élke genoemde familie bestaat. **De twee A5e.3b-veldclaims zijn herankerd:** "geen levende
+  positie onder de vloer" leest weer het levende veld (W-M `'drive'`, M-T `'drive-stated'`), en de (b)3-vóórmeting
+  ("het gestelde getal verbiedt twee van de zeven A5e.3-veld-posities") leest de labels van het gedateerde blok
+  `a5e3veld_corpus` (`A5E3VELD_KAND_1` en `_7`).
+- `src/lib/engine2/casus1V2Candidates.test.ts` / `casus1V2Refusal.test.ts` — **de A5e.3b-parkeerpin is eruit**; de
+  strikte vorm is terug en beide live ketenruns draaien weer (byte-reproductie op KAND-V2-1 = 377,8 · 1948, de
+  verwerping op 147,9 · 1647). De meetopstelling leest `vloer_zoekdoel_bron` als `'safety-extended'` — de eerste
+  regeneratie op het verlengde raster.
+- `src/lib/engine2/corpusPairing.test.ts` — de A5e.3-veld-claim herankerd op `v51b → a5e3veld` (V48-vorm), en de
+  A5e.3c-claim: `a5e3veld → live` heeft nul paren op label (de M-T-as verhuisde, de W-M-as verdubbelde), het levende
+  corpus is tien uit ELF geleverde — de eerste regeneratie waarin de shortlist-grootte kleiner is dan het veld.
+- `scripts/generate-casus1-v2-candidates.ts` — schrijft het TWAALFDE besluit (`spoel_spanwijdte_plafond_mH`, uit de
+  ketenverklaring; absent mét reden) en noemt in de veldnoot de `drive-stated`-vloer; `V2_MERGE=1` is opnieuw de weg
+  waarlangs een reparatie die aantoonbaar n kandidaten raakt met n herhalingen landt (A5e.4 per engine-stand: de
+  herhaalde tunes reproduceerden exact tot in de evaluatietelling).
+
 ### A5e.3b-guards (de val gewogen, de vensters gesteld, drie reparaties; alleen v2-runs, corpus NIET geregenereerd)
 - `src/lib/engine2/predesign/xoWindow.ts` — **de gestelde-M-C-vloer** (`'drive-stated'`): dezelfde
   A5d.3(ii)-inversie als de aandrijfvloer, op het GESTELDE getal per weg
@@ -2787,11 +2886,13 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   Zie casusboek V19 en `.claude/skills/casus-toevoegen/SKILL.md`.
 
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
-`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden — **ZEVEN sinds
-A5e.3-veld, en SINDS A5e.3b (05-09-2026) staan zij ACHTER op de engine: de M-T-vloer verhuisde naar 1647 Hz
-(twee van de zeven posities liggen eronder), de route weigert drie van de zeven op de L+R-wees
-(level-work/1.2), en de twee live ketenruns zijn gedateerd geparkeerd tot de regeneratie — de EERSTE stap van
-de volgende sessie, mét Sanders keuze uit de ablatietabel (`test-fixtures/casus1_a5e3b_ablatie/`)** —
+`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden — **TIEN sinds A5e.3c
+(06-09-2026): het veld van 24 op de A5e.3b-grenzen (M-T-vloer 1647 Hz `drive-stated`, spanwijdte-cap 22,0 mH,
+barrière `safety-extended`, level-work/1.2) leverde er veertien, waarvan drie na de A5e.3c-weigering op de eigen
+kruispunten (M-C tweeter −19,6..−19,9 tegen −20 op de passbands van het geleverde netwerk, waar het zaad −20,10..−20,19
+las) opnieuw gedraaid en geweigerd zijn; van de elf bevroor de shortlist er tien (`DEFAULT_SHORTLIST_SIZE`) — 549,7 · 2304
+is geleverd en niet bevroren. De twee live ketenruns draaien weer (byte-reproductie op KAND-V2-1 = 377,8 · 1948, de
+verwerping op 147,9 · 1647)** — daarvoor **ZEVEN sinds A5e.3-veld, en SINDS A5e.3b (05-09-2026) stonden zij ACHTER op de engine: de M-T-vloer verhuisde naar 1647 Hz (twee van de zeven posities liggen eronder), de route weigert drie van de zeven op de L+R-wees (level-work/1.2), en de twee live ketenruns waren gedateerd geparkeerd tot de regeneratie** —
 **ZEVEN sinds A5e.3-veld (04-09-2026): het veld van twintig (orde 4 gesteld, de aandrijfvloer op 148 Hz, budget 24) leverde er acht, waarvan één (229,1 · 1994,6, R10) na de worker-reparatie opnieuw gedraaid en geweigerd is; de laagste W-M-positie en elke 1294-positie zijn weg** — daarvoor **NUL sinds M-1
 (04-09-2026): het veld van 115 leverde niets, het levende corpus is LEEG, de recorder snoeide de blokken en
 de zes V51b-bestanden zijn met de hand verwijderd (byte-identiek aan `V51B-KAND-*`, nagemeten met `cmp`); de
@@ -2866,7 +2967,7 @@ te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij 
 `casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
 Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
-**Sinds A5e.3-veld zijn het er TWINTIG corpora plus één gedateerde HERKOMST, en dat is opzet.** `KAND_V2_*` is het levende corpus (het A5e.3-veld). `A5E3ARM_KAND_1` is het geleverde netwerk van de arm `m1+dcr` — één netlist, geregistreerd met `scripts/register-a5e3-arm.ts` omdat het M-1-corpus LEEG was en er niets te bevriezen viel; de M-1-boekhouding zelf (115 uitkomsten, geen bestanden) staat als `casus1_m1_herkomst.json` (corpus-id `m1`, `DATED_HERKOMST`). 
+**Sinds A5e.3c zijn het er EENENTWINTIG corpora plus één gedateerde HERKOMST, en dat is opzet.** `KAND_V2_*` is het levende corpus (het A5e.3c-veld: tien netlists). `A5E3VELD_KAND_*` is het A5e.3-veld-corpus van zeven, bevroren vóór A5e.3c — toen de M-T-as nog op k·f_s (1294 Hz) stond en het gestelde tweetergetal niet als vensterinvoer werd gelezen, spoelen op de laagste weg boven de spanwijdte van de gestelde familie 'gevlagd en doorgezet' werden (22–36 mH in de val van vijf van de zeven), de barrière het veiligheidsraster vanaf 20,5 Hz las en niet de sweepbodem (KAND_V2_2: 2,55 Ω op 10,07 Hz waar de barrière 2,85 las), en een L+R-shunt zonder C niet als pad gold (drie van de zeven dragen er een): de vier grenzen die A5e.3b sloot en waarop A5e.3c het veld opnieuw opwekte. `A5E3ARM_KAND_1` is het geleverde netwerk van de arm `m1+dcr` — één netlist, geregistreerd met `scripts/register-a5e3-arm.ts` omdat het M-1-corpus LEEG was en er niets te bevriezen viel; de M-1-boekhouding zelf (115 uitkomsten, geen bestanden) staat als `casus1_m1_herkomst.json` (corpus-id `m1`, `DATED_HERKOMST`). 
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière
@@ -2945,8 +3046,7 @@ genoemde netlist die geen v1-baseline is een geclassificeerd blok moet hebben, o
 familielijst die er stond bij V32 vergeten is. De koppeling bestandsnaam ↔ kandidaat staat in
 `manifest_en_geometrie.v30_corpus`, `.v32_corpus`, `.v33_sweep_corpus`, `.v33_corpus`,
 `.v34_corpus`, `.v37_corpus`, `.v38fix_corpus`, `.v41_corpus`, `.v42_corpus`, `.v43_corpus`,
-`.v44_corpus`, `.v45_corpus`, `.v47_corpus`, `.v48_corpus`, `.v49_corpus`, `.v50_corpus`, `.v51_corpus`
-en `.v51b_corpus`, want zij
+`.v44_corpus`, `.v45_corpus`, `.v47_corpus`, `.v48_corpus`, `.v49_corpus`, `.v50_corpus`, `.v51_corpus`, `.v51b_corpus`, `.a5e3_arm_corpus` en `.a5e3veld_corpus`, want zij
 stond alleen in `casus1_v2_herkomst.json` en dat bestand wordt door de volgende regeneratie
 overschreven. **Bevriezen doe je sinds V34 met `scripts/freeze-live-corpus.ts`** en niet met de
 hand: het zijn vijf bewerkingen die allemaal moeten landen.

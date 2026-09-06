@@ -378,7 +378,12 @@ describe('the frozen v2 candidates are files, and the file says where they came 
      * that recorded only the first would look identical before and after V33,
      * which is exactly the confusion the second line exists to end. */
     expect(m.vloer_is_zoekdoel).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null);
-    expect(m.vloer_zoekdoel_bron).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null ? 'safety' : null);
+    /* A5e.3c — the FIRST regeneration on the extended barrier: A5e.3b (c2) made
+     * `'safety-extended'` what the v2 declaration derives (the safety grid plus
+     * the gate reference's own points outside its extent, 10.1–20 317 Hz), and
+     * this record is the first one written under it. `'safety'` is what the
+     * dated A5e.3-veld corpus was generated on, and it stays statable. */
+    expect(m.vloer_zoekdoel_bron).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null ? 'safety-extended' : null);
     expect(m.vloer_zoekdoel_bron_waarom).toMatch(/V33/);
     /* V37 — WHAT that probe's reading is a ratio of, which is a third decision
      * beside the two above and is recorded as one. The term is named
@@ -714,35 +719,12 @@ describe('[live] the run still delivers the frozen netlist', () => {
      * shortlist cannot silently make this compare two different designs. */
     const target = HERKOMST.bestanden[0];
     const c = field.field.candidates.find((x) => x.label === target.label);
-    /* A5e.3b — THE CORPUS PREDATES THE CURRENT ENGINE, and the reproduction is
-     * RETIRED until the next regeneration re-records it. Not a skip on a
-     * hunch: A5e.3b moved the M-T floor to the stated figure's inversion
-     * (~1647 Hz), so the live field no longer holds the A5e.3-veld positions
-     * the corpus was generated on — and the route itself now refuses what
-     * three of the seven carry (the resonanceless shunt orphans, level-work/
-     * 1.2). The retirement is PINNED to exactly that change: the target
-     * candidate must exist in the DATED field, reproduced by withholding the
-     * one input A5e.3b added to the windows. A field drift with any other
-     * cause still fails here. The regeneration is the next session's, with
-     * Sander's choice from the A5e.3b trap ablation. */
-    if (!c) {
-      const { maxDriveOnFsDbByDriver: _fig, ...zonderGesteld } = REPORT_SETTINGS;
-      void _fig;
-      const datedField = casus1Field(
-        buildReport({
-          manifest,
-          files,
-          filter: casus1Filter('HUIDIG', manifest, files, golden),
-          geometry,
-          settings: zonderGesteld,
-        }),
-      );
-      expect(
-        datedField.field.candidates.find((x) => x.label === target.label),
-        `${target.label} is in neither the live field nor the A5e.3-veld field — that is not the A5e.3b retirement, it is a field drift`,
-      ).toBeTruthy();
-      return;
-    }
+    /* A5e.3c — BACK TO LIFE. Between A5e.3b and A5e.3c this reproduction was
+     * RETIRED with a pin (the recorded candidate had to exist in the DATED
+     * field, reproduced by withholding the one window input A5e.3b added),
+     * because the corpus predated the engine. The A5e.3c regeneration
+     * re-recorded the corpus on the current field, so the pin is gone and a
+     * field drift fails here again in its strict form. */
     expect(c, `the field no longer holds ${target.label}`).toBeTruthy();
 
     const input: Chain3Input = {

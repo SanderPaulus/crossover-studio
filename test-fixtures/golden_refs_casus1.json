@@ -27,12 +27,12 @@
    "klasse_B": 71,
    "klasse_C": 0,
    "sinds_F4a": "V20 (27-08-2026) heeft 21 klasse-B-bladeren toegevoegd: de vier lambda-fracties per kruispunt per netlist, waarvan er een de HERNOEMDE lobing_wm_lambda is. De telling hierboven blijft de F4a-momentopname en wordt niet bijgewerkt - een momentopname die met elke oplevering meebeweegt is geen momentopname. Wat blijft gelden is de bevinding eronder: nog steeds nul klasse C, want ook deze vier zijn functies van meting plus netlist-BESTAND.",
-   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: 119 klasse-B-bladeren, elf metrieken op elk van de 7 bevroren KAND-V2-netlists — tien tot V36 `grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
+   "sinds_F4d": "F4d (27-08-2026), herzien bij de F4d-nazorg (V28) en bij V36: 170 klasse-B-bladeren, elf metrieken op elk van de 10 bevroren KAND-V2-netlists — tien tot V36 `grootste_R_W_bij_100W` toevoegde, het veld dat de drie v1-kandidaten sinds F1 dragen en het v2-corpus niet. Het waren er negen tot de nazorg de F3c-uitsnijding opschortte; de mid→tweeter-as ging van drie posities naar vijf en het veld van negen naar vijftien. De F4a-momentopname hierboven wordt niet bijgewerkt, om dezelfde reden als bij V20 — een momentopname die met elke oplevering meebeweegt is er geen. De bevinding blijft: nog steeds NUL klasse C. Deze netwerken komen uit een v2-run, maar de referenties hangen aan de BESTANDEN, en een volgende run die andere netwerken oplevert verschuift deze getallen dus niet — hij levert andere bestanden op. Dat is bij de nazorg ook precies wat gebeurde, en het is de reden dat de verandering geen enkele referentie ONGELDIG maakte.",
    "sinds_V30": "V30 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt met de gestelde vloer als ZOEKDOEL, en het corpus dat het vervangt is niet weggegooid maar hernoemd: 10 blokken `V28_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Dat is geen referentie aanpassen — het zijn dezelfde netlists, en de nieuwe staan ernaast in plaats van eroverheen, zodat de vóór/ná-vergelijking van deze entry reproduceerbaar blijft uit de repository zelf. De bevinding van F4a staat nog steeds: NUL klasse C. Wat wél veranderde is de uitzonderingslijst: zij noemde tien KAND-V2-netlists en noemt nu tien V28-KAND-netlists, want het nieuwe corpus haalt de vloer op eigen kracht.",
    "sinds_V32": "V31/V32 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de elektrische poorten op de gemeten impedantiesweep gingen oordelen in plaats van op het ketenraster (V32), en nadat een kandidaat wiens tune in zijn geheel geweigerd werd zijn zaad niet meer als ontwerp aflevert (V31). Het corpus dat het verving is opnieuw NIET weggegooid maar hernoemd: 10 blokken `V30_KAND_*`, byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Er staan nu dus twee gedateerde corpora naast het levende: V28 (vóór de vloer een zoekdoel was) en V30 (vóór de poort de volle sweep las). Nog steeds NUL klasse C: het zijn metrieken op bestanden.",
-   "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 1x `A5E3ARM_KAND_*`, 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*`, 4x `V47_KAND_*`, 5x `V48_KAND_*`, 7x `V49_KAND_*`, 7x `V50_KAND_*`, 1x `V51_KAND_*`, 6x `V51B_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C.",
-   "sinds_V37": "V37 (28-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de DISSIPATIETERM door de opgeloste R_e ging delen in plaats van door de piekhoogte. De term heet (R_source/R_e)^2 en deelde door Re(Z) BIJ de bronweerstandsprobe, die sinds V34 op de impedantiepiek van het wooferpaar zit: 19,31 Ohm tegen een gemeten R_e van 3,05 Ohm, een factor die tot 40,1 kwadrateert. De controle is de referentie zelf — 1 + R_source/R_e reproduceert kandidaten.*.Qes_mult op elke bevroren netlist binnen exponent_pct, en de piekhoogte niet. Het vervangen corpus is hernoemd tot V34_KAND_*; gedateerde corpora nu: 1x `A5E3ARM_KAND_*`, 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*`, 4x `V47_KAND_*`, 5x `V48_KAND_*`, 7x `V49_KAND_*`, 7x `V50_KAND_*`, 1x `V51_KAND_*`, 6x `V51B_KAND_*`. Nog steeds NUL klasse C.",
-   "sinds_A5e3veld": "A5e.3-veld (04-09-2026): het KAND-V2-corpus is opnieuw opgewekt met de GESTELDE spoelfamilies (woofer 1,4 mm, mid en tweeter 1,0 mm lucht; coilDcrModel op elke run), orde 4 gesteld op beide overnames, de W-M-vloer op de aandrijfvloer van de mid (A5d.3(ii) omgekeerd met het excursieplafond van V49) en een positiebudget van 24 (20 geleverd). M-1 leverde nul netlists en liet dus niets te bevriezen; het geleverde netwerk van de arm m1+dcr staat als gedateerd blok `A5E3ARM_KAND_1` (klasse B, hier geschreven). Gedateerde corpora nu: 1x `A5E3ARM_KAND_*`, 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*`, 4x `V47_KAND_*`, 5x `V48_KAND_*`, 7x `V49_KAND_*`, 7x `V50_KAND_*`, 1x `V51_KAND_*`, 6x `V51B_KAND_*`. Nog steeds NUL klasse C."
+   "sinds_V33": "V33 (27-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de amp-vloerbarrière — de term die de zoektocht naar de vloer duwt — zijn tekort op de GEMETEN IMPEDANTIESWEEP ging lezen in plaats van op het evaluatieraster, via dezelfde functie waarmee M-B/|Z| oordeelt. Doel en poort zien daarmee per constructie één getal — het levende corpus over het veiligheidsraster van de tuner, met een tweede, duurdere arm ernaast die over de volle sweep draaide. Corpora die vervangen zijn worden NIET weggegooid maar hernoemd: 1x `A5E3ARM_KAND_*`, 7x `A5E3VELD_KAND_*`, 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*`, 4x `V47_KAND_*`, 5x `V48_KAND_*`, 7x `V49_KAND_*`, 7x `V50_KAND_*`, 1x `V51_KAND_*`, 6x `V51B_KAND_*` — byte-identieke bestanden onder een gedateerde naam, met dezelfde tien metrieken en dezelfde klasse B. Nog steeds NUL klasse C.",
+   "sinds_V37": "V37 (28-08-2026): het KAND-V2-corpus is opnieuw opgewekt nadat de DISSIPATIETERM door de opgeloste R_e ging delen in plaats van door de piekhoogte. De term heet (R_source/R_e)^2 en deelde door Re(Z) BIJ de bronweerstandsprobe, die sinds V34 op de impedantiepiek van het wooferpaar zit: 19,31 Ohm tegen een gemeten R_e van 3,05 Ohm, een factor die tot 40,1 kwadrateert. De controle is de referentie zelf — 1 + R_source/R_e reproduceert kandidaten.*.Qes_mult op elke bevroren netlist binnen exponent_pct, en de piekhoogte niet. Het vervangen corpus is hernoemd tot V34_KAND_*; gedateerde corpora nu: 1x `A5E3ARM_KAND_*`, 7x `A5E3VELD_KAND_*`, 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*`, 4x `V47_KAND_*`, 5x `V48_KAND_*`, 7x `V49_KAND_*`, 7x `V50_KAND_*`, 1x `V51_KAND_*`, 6x `V51B_KAND_*`. Nog steeds NUL klasse C.",
+   "sinds_A5e3veld": "A5e.3-veld (04-09-2026): het KAND-V2-corpus is opnieuw opgewekt met de GESTELDE spoelfamilies (woofer 1,4 mm, mid en tweeter 1,0 mm lucht; coilDcrModel op elke run), orde 4 gesteld op beide overnames, de W-M-vloer op de aandrijfvloer van de mid (A5d.3(ii) omgekeerd met het excursieplafond van V49) en een positiebudget van 24 (20 geleverd). M-1 leverde nul netlists en liet dus niets te bevriezen; het geleverde netwerk van de arm m1+dcr staat als gedateerd blok `A5E3ARM_KAND_1` (klasse B, hier geschreven). Gedateerde corpora nu: 1x `A5E3ARM_KAND_*`, 7x `A5E3VELD_KAND_*`, 10x `V28_KAND_*`, 10x `V30_KAND_*`, 7x `V32_KAND_*`, 10x `V33_KAND_*`, 10x `V34_KAND_*`, 10x `V37_KAND_*`, 10x `V38FIX_KAND_*`, 8x `V41_KAND_*`, 4x `V42_KAND_*`, 7x `V43_KAND_*`, 7x `V44_KAND_*`, 7x `V45_KAND_*`, 4x `V47_KAND_*`, 5x `V48_KAND_*`, 7x `V49_KAND_*`, 7x `V50_KAND_*`, 1x `V51_KAND_*`, 6x `V51B_KAND_*`. Nog steeds NUL klasse C."
   },
   "besluiten": {
    "_": "Drie mogelijke besluiten per referentie, conform de F4a-opdracht. De volledige inventarisatietabel - referentie, klasse, consumerende test met bestand en regel, besluit, reden - staat in het casusboek onder V19.",
@@ -3163,10 +3163,10 @@
    "wm_fase_overlapvenster_V43": 12.17,
    "mt_fase_overlapvenster_V43": 12.37
   },
-  "KAND_V2_1": {
+  "A5E3VELD_KAND_1": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE A5E3VELD-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.A5E3VELD_KAND_1, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_1 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.a5e3veld_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.81,
    "minEPDR": 1.45,
    "dissipatie_pct": 9,
@@ -3185,10 +3185,10 @@
    "wm_fase_overlapvenster_V43": 44.14,
    "mt_fase_overlapvenster_V43": 34.2
   },
-  "KAND_V2_2": {
+  "A5E3VELD_KAND_2": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE A5E3VELD-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.A5E3VELD_KAND_2, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_2 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.a5e3veld_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.55,
    "minEPDR": 1.38,
    "dissipatie_pct": 24,
@@ -3207,10 +3207,10 @@
    "wm_fase_overlapvenster_V43": 25.07,
    "mt_fase_overlapvenster_V43": 28.6
   },
-  "KAND_V2_3": {
+  "A5E3VELD_KAND_3": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE A5E3VELD-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.A5E3VELD_KAND_3, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_3 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.a5e3veld_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.59,
    "minEPDR": 1.29,
    "dissipatie_pct": 22,
@@ -3229,10 +3229,10 @@
    "wm_fase_overlapvenster_V43": 14.13,
    "mt_fase_overlapvenster_V43": 3.52
   },
-  "KAND_V2_4": {
+  "A5E3VELD_KAND_4": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE A5E3VELD-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.A5E3VELD_KAND_4, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_4 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.a5e3veld_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.6,
    "minEPDR": 1.31,
    "dissipatie_pct": 24,
@@ -3251,10 +3251,10 @@
    "wm_fase_overlapvenster_V43": 11.38,
    "mt_fase_overlapvenster_V43": 3.97
   },
-  "KAND_V2_5": {
+  "A5E3VELD_KAND_5": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE A5E3VELD-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.A5E3VELD_KAND_5, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_5 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.a5e3veld_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.69,
    "minEPDR": 1.35,
    "dissipatie_pct": 14,
@@ -3273,10 +3273,10 @@
    "wm_fase_overlapvenster_V43": 7.25,
    "mt_fase_overlapvenster_V43": 5.83
   },
-  "KAND_V2_6": {
+  "A5E3VELD_KAND_6": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE A5E3VELD-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.A5E3VELD_KAND_6, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_6 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.a5e3veld_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.66,
    "minEPDR": 1.33,
    "dissipatie_pct": 12,
@@ -3295,10 +3295,10 @@
    "wm_fase_overlapvenster_V43": 55.73,
    "mt_fase_overlapvenster_V43": 11.34
   },
-  "KAND_V2_7": {
+  "A5E3VELD_KAND_7": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "HET GEDATEERDE A5E3VELD-CORPUS. Metrieken op de VASTE netlist manifest_en_geometrie.netlists.A5E3VELD_KAND_7, een BESTAND in test-fixtures/casus1/ en een byte-identieke kopie van wat bij het bevriezen als KAND_V2_7 leefde. De referentie hangt aan het bestand en niet aan de run die het opleverde — daarom klasse B en geen klasse C. Waaróm dit corpus bewaard is staat in manifest_en_geometrie.a5e3veld_corpus.reden. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
    "minZ": 2.6,
    "minEPDR": 1.32,
    "dissipatie_pct": 10,
@@ -3316,6 +3316,226 @@
    "mt_fase_oct_octaafgeknipt_V43": 24.17,
    "wm_fase_overlapvenster_V43": 10.18,
    "mt_fase_overlapvenster_V43": 43.23
+  },
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.55,
+   "minEPDR": 1.28,
+   "dissipatie_pct": 21,
+   "grootste_R_W_bij_100W": 11.61,
+   "Qes_mult": 1.49,
+   "lf_bult_extra_dB": 0.9,
+   "lf_lift_dB": 1.89,
+   "lf_opslingering_dB": -0.99,
+   "V_tweeter_op_fs_dB": -23.67,
+   "rms_vlakheid_dB": 0.78,
+   "spl_venster_pm_dB": 1.98,
+   "wm_fase_oct": 4.89,
+   "mt_fase_oct": 3.78,
+   "wm_fase_oct_octaafgeknipt_V43": 5.81,
+   "mt_fase_oct_octaafgeknipt_V43": 10.41,
+   "wm_fase_overlapvenster_V43": 18.41,
+   "mt_fase_overlapvenster_V43": 3.78
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.61,
+   "minEPDR": 1.32,
+   "dissipatie_pct": 19,
+   "grootste_R_W_bij_100W": 11.36,
+   "Qes_mult": 1.47,
+   "lf_bult_extra_dB": 0.74,
+   "lf_lift_dB": 1.84,
+   "lf_opslingering_dB": -1.1,
+   "V_tweeter_op_fs_dB": -24.85,
+   "rms_vlakheid_dB": 0.8,
+   "spl_venster_pm_dB": 2.07,
+   "wm_fase_oct": 3.17,
+   "mt_fase_oct": 4.49,
+   "wm_fase_oct_octaafgeknipt_V43": 4.56,
+   "mt_fase_oct_octaafgeknipt_V43": 10.75,
+   "wm_fase_overlapvenster_V43": 15.38,
+   "mt_fase_overlapvenster_V43": 4.49
+  },
+  "KAND_V2_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 17,
+   "grootste_R_W_bij_100W": 16.97,
+   "Qes_mult": 1.53,
+   "lf_bult_extra_dB": 0.7,
+   "lf_lift_dB": 1.86,
+   "lf_opslingering_dB": -1.16,
+   "V_tweeter_op_fs_dB": -28.62,
+   "rms_vlakheid_dB": 0.78,
+   "spl_venster_pm_dB": 2.09,
+   "wm_fase_oct": 6.98,
+   "mt_fase_oct": 16.07,
+   "wm_fase_oct_octaafgeknipt_V43": 8.28,
+   "mt_fase_oct_octaafgeknipt_V43": 24.46,
+   "wm_fase_overlapvenster_V43": 43.41,
+   "mt_fase_overlapvenster_V43": 16.07
+  },
+  "KAND_V2_4": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_4, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.33,
+   "dissipatie_pct": 18,
+   "grootste_R_W_bij_100W": 9.02,
+   "Qes_mult": 1.58,
+   "lf_bult_extra_dB": 0.8,
+   "lf_lift_dB": 1.95,
+   "lf_opslingering_dB": -1.15,
+   "V_tweeter_op_fs_dB": -20.35,
+   "rms_vlakheid_dB": 0.77,
+   "spl_venster_pm_dB": 1.66,
+   "wm_fase_oct": 14.92,
+   "mt_fase_oct": 3.91,
+   "wm_fase_oct_octaafgeknipt_V43": 18.94,
+   "mt_fase_oct_octaafgeknipt_V43": 4.56,
+   "wm_fase_overlapvenster_V43": 23.41,
+   "mt_fase_overlapvenster_V43": 3.91
+  },
+  "KAND_V2_5": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_5, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.31,
+   "dissipatie_pct": 25,
+   "grootste_R_W_bij_100W": 18.01,
+   "Qes_mult": 1.4,
+   "lf_bult_extra_dB": 0.32,
+   "lf_lift_dB": 1.61,
+   "lf_opslingering_dB": -1.29,
+   "V_tweeter_op_fs_dB": -26.03,
+   "rms_vlakheid_dB": 0.77,
+   "spl_venster_pm_dB": 1.8,
+   "wm_fase_oct": 5.66,
+   "mt_fase_oct": 3.82,
+   "wm_fase_oct_octaafgeknipt_V43": 7.14,
+   "mt_fase_oct_octaafgeknipt_V43": 10.95,
+   "wm_fase_overlapvenster_V43": 7.7,
+   "mt_fase_overlapvenster_V43": 3.82
+  },
+  "KAND_V2_6": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_6, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 16,
+   "grootste_R_W_bij_100W": 7.19,
+   "Qes_mult": 1.26,
+   "lf_bult_extra_dB": 1.64,
+   "lf_lift_dB": 2.06,
+   "lf_opslingering_dB": -0.42,
+   "V_tweeter_op_fs_dB": -23.37,
+   "rms_vlakheid_dB": 0.74,
+   "spl_venster_pm_dB": 1.49,
+   "wm_fase_oct": 2.72,
+   "mt_fase_oct": 3.63,
+   "wm_fase_oct_octaafgeknipt_V43": 7.02,
+   "mt_fase_oct_octaafgeknipt_V43": 10.66,
+   "wm_fase_overlapvenster_V43": 20.31,
+   "mt_fase_overlapvenster_V43": 3.63
+  },
+  "KAND_V2_7": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_7, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.59,
+   "minEPDR": 1.32,
+   "dissipatie_pct": 17,
+   "grootste_R_W_bij_100W": 7.02,
+   "Qes_mult": 1.25,
+   "lf_bult_extra_dB": 0.27,
+   "lf_lift_dB": 2.01,
+   "lf_opslingering_dB": -1.74,
+   "V_tweeter_op_fs_dB": -25.91,
+   "rms_vlakheid_dB": 0.7,
+   "spl_venster_pm_dB": 1.45,
+   "wm_fase_oct": 2.28,
+   "mt_fase_oct": 3.14,
+   "wm_fase_oct_octaafgeknipt_V43": 1.9,
+   "mt_fase_oct_octaafgeknipt_V43": 5.66,
+   "wm_fase_overlapvenster_V43": 9.61,
+   "mt_fase_overlapvenster_V43": 3.14
+  },
+  "KAND_V2_8": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_8, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.57,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 23,
+   "grootste_R_W_bij_100W": 16.13,
+   "Qes_mult": 1.42,
+   "lf_bult_extra_dB": -0.61,
+   "lf_lift_dB": 2.03,
+   "lf_opslingering_dB": -2.63,
+   "V_tweeter_op_fs_dB": -20.81,
+   "rms_vlakheid_dB": 0.73,
+   "spl_venster_pm_dB": 1.37,
+   "wm_fase_oct": 5.02,
+   "mt_fase_oct": 18.09,
+   "wm_fase_oct_octaafgeknipt_V43": 4.36,
+   "mt_fase_oct_octaafgeknipt_V43": 21.98,
+   "wm_fase_overlapvenster_V43": 15.48,
+   "mt_fase_overlapvenster_V43": 18.09
+  },
+  "KAND_V2_9": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_9, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 26,
+   "grootste_R_W_bij_100W": 6.21,
+   "Qes_mult": 1.43,
+   "lf_bult_extra_dB": -0.38,
+   "lf_lift_dB": 2.04,
+   "lf_opslingering_dB": -2.41,
+   "V_tweeter_op_fs_dB": -23.63,
+   "rms_vlakheid_dB": 0.8,
+   "spl_venster_pm_dB": 1.41,
+   "wm_fase_oct": 36.84,
+   "mt_fase_oct": 3.15,
+   "wm_fase_oct_octaafgeknipt_V43": 37.89,
+   "mt_fase_oct_octaafgeknipt_V43": 4.32,
+   "wm_fase_overlapvenster_V43": 47.22,
+   "mt_fase_overlapvenster_V43": 3.15
+  },
+  "KAND_V2_10": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_10, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 24,
+   "grootste_R_W_bij_100W": 11.76,
+   "Qes_mult": 1.43,
+   "lf_bult_extra_dB": -0.82,
+   "lf_lift_dB": 2.08,
+   "lf_opslingering_dB": -2.9,
+   "V_tweeter_op_fs_dB": -20.15,
+   "rms_vlakheid_dB": 0.77,
+   "spl_venster_pm_dB": 1.26,
+   "wm_fase_oct": null,
+   "mt_fase_oct": 6.76,
+   "wm_fase_oct_octaafgeknipt_V43": null,
+   "mt_fase_oct_octaafgeknipt_V43": 15.58,
+   "wm_fase_overlapvenster_V43": null,
+   "mt_fase_overlapvenster_V43": 6.76
   }
  },
  "kruisvensters": {
@@ -3803,20 +4023,30 @@
    "V51B_KAND_5": "V51B-KAND-5.adsfilter.json",
    "V51B_KAND_6": "V51B-KAND-6.adsfilter.json",
    "A5E3ARM_KAND_1": "A5E3ARM-KAND-1.adsfilter.json",
+   "A5E3VELD_KAND_1": "A5E3VELD-KAND-1.adsfilter.json",
+   "A5E3VELD_KAND_2": "A5E3VELD-KAND-2.adsfilter.json",
+   "A5E3VELD_KAND_3": "A5E3VELD-KAND-3.adsfilter.json",
+   "A5E3VELD_KAND_4": "A5E3VELD-KAND-4.adsfilter.json",
+   "A5E3VELD_KAND_5": "A5E3VELD-KAND-5.adsfilter.json",
+   "A5E3VELD_KAND_6": "A5E3VELD-KAND-6.adsfilter.json",
+   "A5E3VELD_KAND_7": "A5E3VELD-KAND-7.adsfilter.json",
    "KAND_V2_1": "KAND-V2-1.adsfilter.json",
    "KAND_V2_2": "KAND-V2-2.adsfilter.json",
    "KAND_V2_3": "KAND-V2-3.adsfilter.json",
    "KAND_V2_4": "KAND-V2-4.adsfilter.json",
    "KAND_V2_5": "KAND-V2-5.adsfilter.json",
    "KAND_V2_6": "KAND-V2-6.adsfilter.json",
-   "KAND_V2_7": "KAND-V2-7.adsfilter.json"
+   "KAND_V2_7": "KAND-V2-7.adsfilter.json",
+   "KAND_V2_8": "KAND-V2-8.adsfilter.json",
+   "KAND_V2_9": "KAND-V2-9.adsfilter.json",
+   "KAND_V2_10": "KAND-V2-10.adsfilter.json"
   },
   "v2_herkomst": {
    "_": "DOCUMENTATIE, geen acceptatiewaarde. Waar de KAND-V2-netlists vandaan komen, zodat een lezer ze kan herleiden en desgewenst opnieuw kan opwekken. Niets in dit blok wordt geassert als getal; wat WEL acceptatie is, zijn de metrieken op de bestanden zelf (kandidaten.KAND_V2_*, klasse B) en de reproductie door de echte route (casus1V2Candidates.test.ts).",
    "bestand": "casus1_v2_herkomst.json",
-   "gegenereerd_op_commit": "2cc252f5b68c609d366fb8304c1cff6db13aa231",
+   "gegenereerd_op_commit": "d156acfec1989fbbd0ebba6229e8e7484784f972",
    "seed": 20260827,
-   "run_vingerafdruk": "engine=2.0.0-F1 estimators=186e7cb2 seed=20260827 budget=tuner starts=1 status=completed design=a7fcd44b measurements=b4c00a7f gates=b6002604 bounds=5465b825 tuning=293dc157 facts=5ac02d0a choices=0a515f6b",
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=186e7cb2 seed=20260827 budget=tuner starts=1 status=completed design=4c93e153 measurements=b4c00a7f gates=b6002604 bounds=5465b825 tuning=293dc157 facts=3cf42dd8 choices=a7a088e8",
    "generator": "scripts/generate-casus1-v2-candidates.ts",
    "meetopstelling": {
     "_": "De opstelling waarmee deze netlists zijn opgewekt, afgelezen van de laatste payload en niet overgeschreven uit het geheugen. V27 noteert twee foute opstellingen vóór de definitieve; geen van beide was terug te lezen uit wat het manifest opschreef.",
@@ -3895,6 +4125,8 @@
     },
     "spoel_dcr_beschrijving": "mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); woofer → Jantzen Air Core Wire Coil 1.40 mm (k 0.58, 0.307 Ω @ 1 mH, 0.010–22.0 mH, 170 SKUs, rms 7.2 %)",
     "spoel_dcr_herkomst": "manifest_en_geometrie.driverkaart.spoelfamilie (gesteld_door, per_weg, catalogus) — het ENIGE huis van de families (P6); de fits komen uit de catalogus die dat blok noemt, opnieuw gefit bij elke lezing (coil-dcr-fit).",
+    "spoel_spanwijdte_plafond_mH": 22,
+    "spoel_spanwijdte_plafond_waarom": "GEEN SPOEL OP DE LAAGSTE WEG BOVEN DE SPANWIJDTE VAN HAAR GESTELDE FAMILIE (A5e.3b (b)1, de slotregel van A5d.6 compleet: optimalisatiegrenzen = catalogus-spanwijdte ∩ meetafgeleide budgetgrenzen). Per spoel en nooit een som — twee spoelen in serie zijn precies de stapel waar de gestelde uitzondering over gaat, en die is NIET gesteld. Geen W-M-vloer hiervan: de val staat op de reflexpiek van de driver en schaalt niet met het kruispunt. Tot A5e.3b werd een spoel boven de spanwijdte \"gevlagd en doorgezet\" (22–36 mH in de val van vijf van de zeven A5e.3-veld-netlists); sinds A5e.3c wordt zij niet gebouwd.",
     "niveauwerk_laagste_weg": "none",
     "niveauwerk_laagste_weg_waarom": "DE LAAGSTE WEG DRAAGT GEEN NIVEAUWERK: geen weerstand in haar serie-pad en geen weerstand die alleen van dat pad naar massa hangt (levelWork.ts). De ontwerpstap trimt haar met 0 dB en stelt er geen shelf-pad op voor; haar synthese legt geen L-pad, geen top-octaaf-hold en geen shelf-pad; de tuner maakt nooit een weerstand aan. Wat het niveau dan nog regelt is de baffle step en de tilt van de laagdoorlaatspoel. Kan een kandidaat zijn rimpeldoel daardoor niet halen, dan komt hij terug als V31-verwerping met X: hoeveel dB niveauwerk deze configuratie op de laagste weg VRAAGT (de A5d.4-gap tot het anker, plateau meegerekend). De vuistregel erachter: nooit een pad op de woofer (warmte, impedantie, demping); pad de mid of de tweeter. GESTELD in manifest_en_geometrie.gestelde_eisen.geen_niveauwerk_op_laagste_weg (V51).",
     "niveauwerk_laagste_weg_herkomst": "GESTELD door de ontwerper, gelezen uit `manifest_en_geometrie.gestelde_eisen` — niet afgeleid en nergens als default in `src/lib/engine2/` (P6). Motivering en meetgeometrie staan bij `geen_niveauwerk_motivering` en `driverkaart.woofer.schakeling`.",
@@ -3980,8 +4212,8 @@
     "dissipatiegewicht_waarom": "GRIJS (A3j): overgenomen uit v1, expliciet gesteld door de kandidaat, nooit stil op nul. De waarde is de app-standaard en V37 heeft haar NIET aangeraakt — eerst de noemer, dan pas de vraag of het gewicht klopt; een gewicht ophogen om een verkeerd gemeten grootheid te compenseren is de fout twee keer maken.",
     "audittier_ohm": null,
     "audittier_waarom": "NULL, en null is hier een waarde: de onderdelenaudit DRAAIT (zij is een bescherming), maar haar bronweerstandstier is niet gesteld. Die tier draagt een oordeel en geen rapportage — een onderdeel dat de tier overschrijdt heet `earned` en wordt dus NIET verwijderd, en de catalogus-snap begrenst er het DCR-budget per tak mee. Casus 1 stelt hem niet, dus hij oordeelt niets (V34, P4).",
-    "vloer_zoekdoel_bron": "safety",
-    "vloer_zoekdoel_bron_waarom": "De barrièreterm leest zijn tekort op het VEILIGHEIDSRASTER van de tuner — dezelfde uitgestrektheid als de gemeten sweep waarop M-B/|Z| oordeelt, dezelfde lezer (`minImpedanceAt`), grover raster. Tot V33 las hij het EVALUATIERASTER, waarvan de bodem de verre-veldspan is: de zoektocht mikte dan op een minimum boven 200 Hz terwijl de poort er sinds V32 een op de volle sweep handhaafde, en op deze casus kostte dat vijf van de vijftien kandidaten hun hele waardetune (V33). Hoever deze lezing van de poortlezing af ligt is gemeten en staat in `manifest_en_geometrie.v33_barriere_raster`.",
+    "vloer_zoekdoel_bron": "safety-extended",
+    "vloer_zoekdoel_bron_waarom": "De barrièreterm leest zijn tekort op het veiligheidsraster VERLENGD tot de gemeten sweep-uitgestrektheid (de vierde waarde van de V33-sleutel, A5e.3b (c)2; de eerste regeneratie erop is A5e.3c): de veiligheidsresolutie waar de responsen geldig zijn, plus de eigen punten van het poortraster daarbuiten (10–20,5 Hz op de gemergede set). Dezelfde lezer (`minImpedanceAt`, via `extendGridToSweepExtent`); de aanleiding is KAND_V2_2 van het A5e.3-veld, wiens minimum op 10,07 Hz buiten de barrière-uitgestrektheid lag terwijl de poort er wél op oordeelde.",
     "vloer_is_zoekdoel": true,
     "vloer_is_zoekdoel_waarom": "GEWAPEND. Sinds V30 is `zFloorBarrier` een keuze-sleutel en wapent de kandidaat hem zodra er een vloer gesteld is: de barrièreterm zit in élke volle tune, dus de zoektocht voelt de vloer terwijl zij kiest in plaats van erna. De reparatiepas erachter is onveranderd.",
     "grijze_waarden": {
@@ -4092,7 +4324,7 @@
     }
    ],
    "vloeruitzonderingen_regel": "Elke bevroren netlist haalt de gestelde vloer, OF staat in deze lijst met zijn reden. frozenNetlistGates.test.ts dwingt precies dat af: een netlist die hem niet haalt en hier niet staat, breekt de suite. De lijst is dus geen vrijstelling maar een boekhouding, en zij hoort leeg te raken.",
-   "kosten": "7 ketenruns. TOT V33 gemeten op 44-73 s per kandidaat; SINDS V33 op het VEILIGHEIDSRASTER, en dat is de prijs van die reparatie: de barrièreterm lost het netwerk bij ELKE objectief-evaluatie op op het raster van zijn bron in plaats van op het gedecimeerde evaluatieraster. Nagemeten op één kandidaat, de twee uitersten: 44,0 s tegen 669,8 s op de volle sweep, bij vrijwel hetzelfde aantal evaluaties (88 008 tegen 86 399). Daarom een script en geen test — en daarom is de bron een KEUZE-sleutel. GEMETEN BIJ V37 over het hele veld: 115-223 s per kandidaat, 40 minuten wandkloktijd, dezelfde orde als de 41 minuten van V34 — V37 verandert een deling en geen raster, dus de prijs van de barrière is onveranderd.",
+   "kosten": "10 ketenruns. TOT V33 gemeten op 44-73 s per kandidaat; SINDS V33 op het VEILIGHEIDSRASTER, en dat is de prijs van die reparatie: de barrièreterm lost het netwerk bij ELKE objectief-evaluatie op op het raster van zijn bron in plaats van op het gedecimeerde evaluatieraster. Nagemeten op één kandidaat, de twee uitersten: 44,0 s tegen 669,8 s op de volle sweep, bij vrijwel hetzelfde aantal evaluaties (88 008 tegen 86 399). Daarom een script en geen test — en daarom is de bron een KEUZE-sleutel. GEMETEN BIJ V37 over het hele veld: 115-223 s per kandidaat, 40 minuten wandkloktijd, dezelfde orde als de 41 minuten van V34 — V37 verandert een deling en geen raster, dus de prijs van de barrière is onveranderd.",
    "reproduceerbaarheid": "Nagemeten bij de F4d-nazorg: het script opnieuw draaien op dezelfde commit levert de netlists BYTE-IDENTIEK terug, op het `savedAt`-stempel van de serialisatie na. Dat stempel is het enige niet-deterministische veld in deze bestanden, en het staat in de kop en niet in de onderdelen."
   },
   "gestelde_eisen": {
@@ -4408,7 +4640,7 @@
       "poortraster_min_bij_hz": 10.07
      },
      {
-      "netlist": "KAND_V2_2",
+      "netlist": "A5E3VELD_KAND_2",
       "poortraster_min_bij_hz": 10.07
      }
     ]
@@ -4422,27 +4654,37 @@
    "barrierebodem_hz": 10.07,
    "grootste_verschil_levend": {
     "netlist": "KAND_V2_1",
-    "poortraster_ohm": 2.8063,
-    "poortraster_min_bij_hz": 321.88,
-    "barriereraster_ohm": 2.8099,
-    "_veiligheidsraster_ohm_tot_A5e3b": 2.8099,
+    "poortraster_ohm": 2.5536,
+    "poortraster_min_bij_hz": 416.19,
+    "barriereraster_ohm": 2.6349,
+    "_veiligheidsraster_ohm_tot_A5e3b": 2.6349,
     "binnen_barriere_uitgestrektheid": true,
     "binnen_veiligheidsraster_tot_A5e3b": true,
-    "verschil_ohm": 0.0036,
+    "verschil_ohm": 0.0813,
     "zelfde_oordeel": true
    },
    "grootste_verschil_hele_casusboek": {
-    "netlist": "V28_KAND_2",
-    "poortraster_ohm": 0.0062,
-    "poortraster_min_bij_hz": 3915.2,
-    "barriereraster_ohm": 0.079,
-    "_veiligheidsraster_ohm_tot_A5e3b": 0.079,
+    "netlist": "KAND_V2_1",
+    "poortraster_ohm": 2.5536,
+    "poortraster_min_bij_hz": 416.19,
+    "barriereraster_ohm": 2.6349,
+    "_veiligheidsraster_ohm_tot_A5e3b": 2.6349,
     "binnen_barriere_uitgestrektheid": true,
     "binnen_veiligheidsraster_tot_A5e3b": true,
-    "verschil_ohm": 0.0728,
+    "verschil_ohm": 0.0813,
     "zelfde_oordeel": true
    },
    "grootste_verschil_regel": "gemeten over de netlists waarvan het sweep-minimum binnen de uitgestrektheid van het barrièreraster ligt — sinds A5e.3b zijn dat ze allemaal (de uitgestrektheden zijn gelijk).",
+   "resolutie_boven_speling": [
+    {
+     "netlist": "KAND_V2_1",
+     "poortraster_ohm": 2.5536,
+     "barriereraster_ohm": 2.6349,
+     "verschil_ohm": 0.0813,
+     "poortraster_min_bij_hz": 416.19
+    }
+   ],
+   "resolutie_regel": "De levende netlists (en de drie referentiefilters) waarvan de barrière een vloerspeling of meer van de poort af leest — een RESOLUTIEverschil op een smalle dip, geen uitgestrektheidsverschil. Boekhouding en geen vrijstelling: op elk ervan vellen beide rasters hetzelfde oordeel (frozenNetlistGates assert dat), en de lijst hoort leeg te raken zodra het veiligheidsraster fijner gesteld wordt (een runparameter, dus een regeneratie).",
    "minimum_buiten_barriere_uitgestrektheid": [],
    "minimum_buiten_barriere_regel": "SINDS A5e.3b per constructie leeg: de barrière leest de volle sweep-uitgestrektheid (safety-extended), dus geen enkel sweep-minimum kan buiten haar bereik liggen. De A5e.3-veld-lezing met de blinde vlek staat als gedateerde brug in _veiligheidsraster_tot_A5e3b; de uitgestrektheid van de barrière is daarmee geen open punt meer.",
    "oordeel_wijkt_af_op": [],
@@ -6033,7 +6275,7 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "poortraster_ohm": 2.8063,
      "poortraster_min_bij_hz": 321.88,
      "barriereraster_ohm": 2.8099,
@@ -6044,7 +6286,7 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "poortraster_ohm": 2.5499,
      "poortraster_min_bij_hz": 10.07,
      "barriereraster_ohm": 2.5499,
@@ -6055,7 +6297,7 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "poortraster_ohm": 2.5883,
      "poortraster_min_bij_hz": 312.81,
      "barriereraster_ohm": 2.5905,
@@ -6066,7 +6308,7 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "poortraster_ohm": 2.6005,
      "poortraster_min_bij_hz": 975.55,
      "barriereraster_ohm": 2.6006,
@@ -6077,7 +6319,7 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "poortraster_ohm": 2.6941,
      "poortraster_min_bij_hz": 53.01,
      "barriereraster_ohm": 2.694,
@@ -6088,7 +6330,7 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "poortraster_ohm": 2.664,
      "poortraster_min_bij_hz": 52.76,
      "barriereraster_ohm": 2.6644,
@@ -6099,7 +6341,7 @@
      "zelfde_oordeel": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "poortraster_ohm": 2.6,
      "poortraster_min_bij_hz": 13950.42,
      "barriereraster_ohm": 2.6012,
@@ -6107,6 +6349,116 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "poortraster_ohm": 2.5536,
+     "poortraster_min_bij_hz": 416.19,
+     "barriereraster_ohm": 2.6349,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6349,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0813,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "poortraster_ohm": 2.6104,
+     "poortraster_min_bij_hz": 422.18,
+     "barriereraster_ohm": 2.612,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.612,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0016,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "poortraster_ohm": 2.5855,
+     "poortraster_min_bij_hz": 52.01,
+     "barriereraster_ohm": 2.5933,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5933,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0078,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "poortraster_ohm": 2.589,
+     "poortraster_min_bij_hz": 335.96,
+     "barriereraster_ohm": 2.6007,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.6007,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0117,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "poortraster_ohm": 2.5907,
+     "poortraster_min_bij_hz": 606.14,
+     "barriereraster_ohm": 2.5998,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5998,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0091,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "poortraster_ohm": 2.5772,
+     "poortraster_min_bij_hz": 292.65,
+     "barriereraster_ohm": 2.5782,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5782,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0009,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "poortraster_ohm": 2.5895,
+     "poortraster_min_bij_hz": 262.31,
+     "barriereraster_ohm": 2.5973,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5973,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0078,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "poortraster_ohm": 2.5672,
+     "poortraster_min_bij_hz": 48.66,
+     "barriereraster_ohm": 2.5673,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5673,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "poortraster_ohm": 2.5839,
+     "poortraster_min_bij_hz": 228.5,
+     "barriereraster_ohm": 2.5852,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5852,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0014,
+     "zelfde_oordeel": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "poortraster_ohm": 2.5828,
+     "poortraster_min_bij_hz": 943.59,
+     "barriereraster_ohm": 2.5828,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5828,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0,
      "zelfde_oordeel": true
     }
    ]
@@ -6245,8 +6597,8 @@
    "noemer_default_waarom": "Wat de term altijd al deelde, en sinds V37 de DEFAULT van `dissipationReferenceSource`. Een v1-run leest hem nog byte-identiek. Het is de impedantie van de laagste weg BIJ de probe, en sinds V34 zit die probe op de impedantiepiek — dus de piekhoogte en niet de DC-weerstand waarnaar de verhouding genoemd is.",
    "noemer_v2_route": "de opgeloste R_e",
    "noemer_v2_route_waarom": "V37. De term bestaat om de serie-R-route naar niveauregeling af te remmen, en de schade die zij aanricht is Q_es-vermenigvuldiging: 1 + R_source/R_e, met R_e de DC-weerstand (A3j rij 23, A4 M-E). De kandidaat stelt daarom `dissipationReferenceSource: re` en de worker draagt de opgeloste R_e over. Geen terugval: zonder opgeloste R_e is er geen verhouding en meldt de run welke invoer ontbrak.",
-   "grootste_termaandeel_levend": 0.0003088,
-   "grootste_termaandeel_levend_op_R_e": 0.01238,
+   "grootste_termaandeel_levend": 0.0004655,
+   "grootste_termaandeel_levend_op_R_e": 0.01866,
    "per_netlist": [
     {
      "netlist": "HUIDIG",
@@ -10425,7 +10777,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "dissipatie_pct": 9.06,
      "grootste_R": "C·R9",
      "grootste_R_ohm": 4.76,
@@ -10454,7 +10806,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "dissipatie_pct": 23.81,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 1.92,
@@ -10483,7 +10835,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "dissipatie_pct": 21.56,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 2.09,
@@ -10512,7 +10864,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "dissipatie_pct": 23.63,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 5.59,
@@ -10541,7 +10893,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "dissipatie_pct": 13.8,
      "grootste_R": "B·R9",
      "grootste_R_ohm": 2.39,
@@ -10570,7 +10922,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "dissipatie_pct": 11.87,
      "grootste_R": "R7",
      "grootste_R_ohm": 0.94,
@@ -10599,7 +10951,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "dissipatie_pct": 9.51,
      "grootste_R": "C·R9",
      "grootste_R_ohm": 4.26,
@@ -10625,6 +10977,296 @@
       "noemer_ohm": 3.05,
       "ratio": 0.4784,
       "term": 0.01144
+     }
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "dissipatie_pct": 20.71,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 2.3,
+     "grootste_R_W_bij_100W": 11.61,
+     "Qes_mult": 1.49,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5811,
+      "noemer_ohm": 19.28,
+      "ratio": 0.082,
+      "term": 0.0003361
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5774,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0817,
+      "term": 0.0003336
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5774,
+      "noemer_ohm": 3.05,
+      "ratio": 0.5172,
+      "term": 0.01337
+     }
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "dissipatie_pct": 18.56,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 2.04,
+     "grootste_R_W_bij_100W": 11.36,
+     "Qes_mult": 1.47,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5271,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0792,
+      "term": 0.0003136
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5238,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0789,
+      "term": 0.0003113
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.5238,
+      "noemer_ohm": 3.05,
+      "ratio": 0.4996,
+      "term": 0.01248
+     }
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "dissipatie_pct": 17.28,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 3.74,
+     "grootste_R_W_bij_100W": 16.97,
+     "Qes_mult": 1.53,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.6896,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0876,
+      "term": 0.0003838
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.6864,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0873,
+      "term": 0.0003813
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.6864,
+      "noemer_ohm": 3.05,
+      "ratio": 0.5529,
+      "term": 0.01529
+     }
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "dissipatie_pct": 18.4,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 1.78,
+     "grootste_R_W_bij_100W": 9.02,
+     "Qes_mult": 1.58,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.8667,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0968,
+      "term": 0.0004685
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.8631,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0965,
+      "term": 0.0004655
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.8631,
+      "noemer_ohm": 3.05,
+      "ratio": 0.6109,
+      "term": 0.01866
+     }
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "dissipatie_pct": 24.61,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 6.23,
+     "grootste_R_W_bij_100W": 18.01,
+     "Qes_mult": 1.4,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2479,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0647,
+      "term": 0.0002094
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2463,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0645,
+      "term": 0.0002083
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.2463,
+      "noemer_ohm": 3.05,
+      "ratio": 0.4086,
+      "term": 0.008348
+     }
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "dissipatie_pct": 15.82,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 1,
+     "grootste_R_W_bij_100W": 7.19,
+     "Qes_mult": 1.26,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.7969,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0413,
+      "term": 0.0000854
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.7965,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0412,
+      "term": 0.00008507
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 0.7965,
+      "noemer_ohm": 3.05,
+      "ratio": 0.2612,
+      "term": 0.00341
+     }
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "dissipatie_pct": 17.06,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 1.01,
+     "grootste_R_W_bij_100W": 7.02,
+     "Qes_mult": 1.25,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.7572,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0393,
+      "term": 0.00007708
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 0.757,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0392,
+      "term": 0.00007683
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 0.757,
+      "noemer_ohm": 3.05,
+      "ratio": 0.2482,
+      "term": 0.00308
+     }
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "dissipatie_pct": 22.78,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 2.73,
+     "grootste_R_W_bij_100W": 16.13,
+     "Qes_mult": 1.42,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3595,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0705,
+      "term": 0.0002485
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3562,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0702,
+      "term": 0.0002466
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3562,
+      "noemer_ohm": 3.05,
+      "ratio": 0.4447,
+      "term": 0.009886
+     }
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "dissipatie_pct": 26.21,
+     "grootste_R": "C·R5",
+     "grootste_R_ohm": 0.98,
+     "grootste_R_W_bij_100W": 6.21,
+     "Qes_mult": 1.43,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3267,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0688,
+      "term": 0.0002367
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3255,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0686,
+      "term": 0.0002356
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3255,
+      "noemer_ohm": 3.05,
+      "ratio": 0.4346,
+      "term": 0.009443
+     }
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "dissipatie_pct": 23.65,
+     "grootste_R": "B·R9",
+     "grootste_R_ohm": 1.7,
+     "grootste_R_W_bij_100W": 11.76,
+     "Qes_mult": 1.43,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3154,
+      "noemer_ohm": 19.28,
+      "ratio": 0.0682,
+      "term": 0.0002326
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3154,
+      "noemer_ohm": 19.31,
+      "ratio": 0.0681,
+      "term": 0.000232
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.3154,
+      "noemer_ohm": 3.05,
+      "ratio": 0.4313,
+      "term": 0.0093
      }
     }
    ]
@@ -11900,53 +12542,123 @@
      "opslingering_dB": -1.73
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "weg": "woofer",
      "extra_dB": 0.53,
      "lift_dB": 1.86,
      "opslingering_dB": -1.32
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "weg": "woofer",
      "extra_dB": 0.81,
      "lift_dB": 1.29,
      "opslingering_dB": -0.49
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "weg": "woofer",
      "extra_dB": 1.42,
      "lift_dB": 2.06,
      "opslingering_dB": -0.64
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "weg": "woofer",
      "extra_dB": 0.5,
      "lift_dB": 1.61,
      "opslingering_dB": -1.11
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "weg": "woofer",
      "extra_dB": 0.77,
      "lift_dB": 1.7,
      "opslingering_dB": -0.93
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "weg": "woofer",
      "extra_dB": -0.25,
      "lift_dB": 1.65,
      "opslingering_dB": -1.9
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "weg": "woofer",
      "extra_dB": 1.06,
      "lift_dB": 1.67,
      "opslingering_dB": -0.61
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "woofer",
+     "extra_dB": 0.9,
+     "lift_dB": 1.89,
+     "opslingering_dB": -0.99
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "woofer",
+     "extra_dB": 0.74,
+     "lift_dB": 1.84,
+     "opslingering_dB": -1.1
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "woofer",
+     "extra_dB": 0.7,
+     "lift_dB": 1.86,
+     "opslingering_dB": -1.16
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "woofer",
+     "extra_dB": 0.8,
+     "lift_dB": 1.95,
+     "opslingering_dB": -1.15
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "woofer",
+     "extra_dB": 0.32,
+     "lift_dB": 1.61,
+     "opslingering_dB": -1.29
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "woofer",
+     "extra_dB": 1.64,
+     "lift_dB": 2.06,
+     "opslingering_dB": -0.42
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "woofer",
+     "extra_dB": 0.27,
+     "lift_dB": 2.01,
+     "opslingering_dB": -1.74
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "weg": "woofer",
+     "extra_dB": -0.61,
+     "lift_dB": 2.03,
+     "opslingering_dB": -2.63
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "weg": "woofer",
+     "extra_dB": -0.38,
+     "lift_dB": 2.04,
+     "opslingering_dB": -2.41
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "weg": "woofer",
+     "extra_dB": -0.82,
+     "lift_dB": 2.08,
+     "opslingering_dB": -2.9
     }
    ]
   },
@@ -12069,36 +12781,48 @@
    "_": "V43 — WAT HET GEHERIJKTE BUDGET OP HET LEVENDE CORPUS DOET. De eis is sinds V43 1,4 dB op lfBump().resonantDb (gestelde_eisen.lf_opslingering_budget_dB), niet meer 2,5 dB op extraDb. Twee dingen horen hier te staan en zij zijn allebei afgeleid: hoeveel van het levende veld de eis haalt, en wat de drie REFERENTIEFILTERS van de ontwerper op dezelfde grootheid meten. Dat tweede is het bewijs dat de eis geen bouwbaar ontwerp uitsluit - de spiegel van de versterkervloer, die onder V42 juist ONTBRAK omdat alle drie de baselines de toenmalige eis overschreden.",
    "gesteld_budget_dB": 1.4,
    "grootheid": "lfBump().resonantDb",
-   "levend_corpus": 7,
+   "levend_corpus": 10,
    "eroverheen": 0,
    "per_netlist": [
     {
      "netlist": "KAND_V2_1",
-     "opslingering_dB": -1.32
+     "opslingering_dB": -0.99
     },
     {
      "netlist": "KAND_V2_2",
-     "opslingering_dB": -0.49
+     "opslingering_dB": -1.1
     },
     {
      "netlist": "KAND_V2_3",
-     "opslingering_dB": -0.64
+     "opslingering_dB": -1.16
     },
     {
      "netlist": "KAND_V2_4",
-     "opslingering_dB": -1.11
+     "opslingering_dB": -1.15
     },
     {
      "netlist": "KAND_V2_5",
-     "opslingering_dB": -0.93
+     "opslingering_dB": -1.29
     },
     {
      "netlist": "KAND_V2_6",
-     "opslingering_dB": -1.9
+     "opslingering_dB": -0.42
     },
     {
      "netlist": "KAND_V2_7",
-     "opslingering_dB": -0.61
+     "opslingering_dB": -1.74
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "opslingering_dB": -2.63
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "opslingering_dB": -2.41
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "opslingering_dB": -2.9
     }
    ],
    "referentiefilters": [
@@ -17063,7 +17787,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "paar": "woofer|mid",
      "mk_graden": 13.44,
      "punten": 101,
@@ -17080,7 +17804,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "paar": "mid|tweeter",
      "mk_graden": 5.8,
      "punten": 193,
@@ -17097,7 +17821,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "paar": "woofer|mid",
      "mk_graden": 3,
      "punten": 81,
@@ -17114,7 +17838,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "paar": "mid|tweeter",
      "mk_graden": 6.8,
      "punten": 202,
@@ -17131,7 +17855,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "paar": "woofer|mid",
      "mk_graden": 7.59,
      "punten": 69,
@@ -17148,7 +17872,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "paar": "mid|tweeter",
      "mk_graden": 3.52,
      "punten": 260,
@@ -17165,7 +17889,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "paar": "woofer|mid",
      "mk_graden": 5.23,
      "punten": 186,
@@ -17182,7 +17906,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "paar": "mid|tweeter",
      "mk_graden": 3.97,
      "punten": 223,
@@ -17199,7 +17923,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "paar": "woofer|mid",
      "mk_graden": 3.84,
      "punten": 152,
@@ -17216,7 +17940,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "paar": "mid|tweeter",
      "mk_graden": 5.83,
      "punten": 239,
@@ -17233,7 +17957,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "paar": "woofer|mid",
      "mk_graden": 21.96,
      "punten": 162,
@@ -17250,7 +17974,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "paar": "mid|tweeter",
      "mk_graden": 11.34,
      "punten": 213,
@@ -17267,7 +17991,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "paar": "woofer|mid",
      "mk_graden": 5.19,
      "punten": 143,
@@ -17284,7 +18008,7 @@
      }
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "paar": "mid|tweeter",
      "mk_graden": 12.71,
      "punten": 170,
@@ -17298,6 +18022,329 @@
       "validity": 776,
       "silence": 0,
       "level": 654
+     }
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "paar": "woofer|mid",
+     "mk_graden": 4.89,
+     "punten": 142,
+     "band_Hz": [
+      396.85,
+      776.33
+     ],
+     "octaafgeknipt_graden": 5.81,
+     "overlapvenster_graden": 18.41,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 682
+     }
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.78,
+     "punten": 223,
+     "band_Hz": [
+      1098.8,
+      3160.45
+     ],
+     "octaafgeknipt_graden": 10.41,
+     "overlapvenster_graden": 3.78,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 601
+     }
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "paar": "woofer|mid",
+     "mk_graden": 3.17,
+     "punten": 145,
+     "band_Hz": [
+      396.85,
+      787.49
+     ],
+     "octaafgeknipt_graden": 4.56,
+     "overlapvenster_graden": 15.38,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 679
+     }
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "paar": "mid|tweeter",
+     "mk_graden": 4.49,
+     "punten": 233,
+     "band_Hz": [
+      1310.36,
+      3952.64
+     ],
+     "octaafgeknipt_graden": 10.75,
+     "overlapvenster_graden": 4.49,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 591
+     }
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "paar": "woofer|mid",
+     "mk_graden": 6.98,
+     "punten": 133,
+     "band_Hz": [
+      396.85,
+      743.78
+     ],
+     "octaafgeknipt_graden": 8.28,
+     "overlapvenster_graden": 43.41,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 691
+     }
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "paar": "mid|tweeter",
+     "mk_graden": 16.07,
+     "punten": 213,
+     "band_Hz": [
+      650.99,
+      2928.73
+     ],
+     "octaafgeknipt_graden": 24.46,
+     "overlapvenster_graden": 16.07,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 611
+     }
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "paar": "woofer|mid",
+     "mk_graden": 14.92,
+     "punten": 81,
+     "band_Hz": [
+      396.85,
+      580.72
+     ],
+     "octaafgeknipt_graden": 18.94,
+     "overlapvenster_graden": 23.41,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 743
+     }
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.91,
+     "punten": 234,
+     "band_Hz": [
+      1042.76,
+      3160.45
+     ],
+     "octaafgeknipt_graden": 4.56,
+     "overlapvenster_graden": 3.91,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 590
+     }
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "paar": "woofer|mid",
+     "mk_graden": 5.66,
+     "punten": 187,
+     "band_Hz": [
+      396.85,
+      961.72
+     ],
+     "octaafgeknipt_graden": 7.14,
+     "overlapvenster_graden": 7.7,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 637
+     }
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.82,
+     "punten": 219,
+     "band_Hz": [
+      1088.4,
+      3071.48
+     ],
+     "octaafgeknipt_graden": 10.95,
+     "overlapvenster_graden": 3.82,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 605
+     }
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "paar": "woofer|mid",
+     "mk_graden": 2.72,
+     "punten": 70,
+     "band_Hz": [
+      396.85,
+      551.11
+     ],
+     "octaafgeknipt_graden": 7.02,
+     "overlapvenster_graden": 20.31,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 754
+     }
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.63,
+     "punten": 222,
+     "band_Hz": [
+      1341.92,
+      3841.38
+     ],
+     "octaafgeknipt_graden": 10.66,
+     "overlapvenster_graden": 3.63,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 602
+     }
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "paar": "woofer|mid",
+     "mk_graden": 2.28,
+     "punten": 52,
+     "band_Hz": [
+      396.85,
+      505.86
+     ],
+     "octaafgeknipt_graden": 1.9,
+     "overlapvenster_graden": 9.61,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 772
+     }
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.14,
+     "punten": 235,
+     "band_Hz": [
+      1348.32,
+      4224.96
+     ],
+     "octaafgeknipt_graden": 5.66,
+     "overlapvenster_graden": 3.14,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 589
+     }
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "paar": "woofer|mid",
+     "mk_graden": 5.02,
+     "punten": 93,
+     "band_Hz": [
+      396.85,
+      614.85
+     ],
+     "octaafgeknipt_graden": 4.36,
+     "overlapvenster_graden": 15.48,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 731
+     }
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "paar": "mid|tweeter",
+     "mk_graden": 18.09,
+     "punten": 208,
+     "band_Hz": [
+      1023.1,
+      2739.96
+     ],
+     "octaafgeknipt_graden": 21.98,
+     "overlapvenster_graden": 18.09,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 616
+     }
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "paar": "woofer|mid",
+     "mk_graden": 36.84,
+     "punten": 64,
+     "band_Hz": [
+      396.85,
+      535.59
+     ],
+     "octaafgeknipt_graden": 37.89,
+     "overlapvenster_graden": 47.22,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 760
+     }
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "paar": "mid|tweeter",
+     "mk_graden": 3.15,
+     "punten": 247,
+     "band_Hz": [
+      1208.53,
+      3896.61
+     ],
+     "octaafgeknipt_graden": 4.32,
+     "overlapvenster_graden": 3.15,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 577
+     }
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "paar": "mid|tweeter",
+     "mk_graden": 6.76,
+     "punten": 206,
+     "band_Hz": [
+      1042.76,
+      2766.17
+     ],
+     "octaafgeknipt_graden": 15.58,
+     "overlapvenster_graden": 6.76,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 618
      }
     }
    ]
@@ -18891,7 +19938,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 1.48,
@@ -18902,7 +19949,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 0.78,
@@ -18913,7 +19960,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 1.04,
@@ -18924,7 +19971,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 1.22,
@@ -18935,7 +19982,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 1.41,
@@ -18946,7 +19993,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 1.14,
@@ -18957,13 +20004,123 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "weg": "woofer",
      "R_e_ohm": 3.05,
      "R_s_ohm": 1.42,
      "padweerstand_ohm": 0.95,
      "q_M_E": 1.47,
      "q_padweerstand": 1.31,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.49,
+     "padweerstand_ohm": 1.07,
+     "q_M_E": 1.49,
+     "q_padweerstand": 1.35,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.44,
+     "padweerstand_ohm": 1.03,
+     "q_M_E": 1.47,
+     "q_padweerstand": 1.34,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.61,
+     "padweerstand_ohm": 1.04,
+     "q_M_E": 1.53,
+     "q_padweerstand": 1.34,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.78,
+     "padweerstand_ohm": 1.1,
+     "q_M_E": 1.58,
+     "q_padweerstand": 1.36,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.21,
+     "padweerstand_ohm": 0.88,
+     "q_M_E": 1.4,
+     "q_padweerstand": 1.29,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 0.79,
+     "padweerstand_ohm": 1.18,
+     "q_M_E": 1.26,
+     "q_padweerstand": 1.39,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 0.75,
+     "padweerstand_ohm": 1.15,
+     "q_M_E": 1.25,
+     "q_padweerstand": 1.38,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.28,
+     "padweerstand_ohm": 1.16,
+     "q_M_E": 1.42,
+     "q_padweerstand": 1.38,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.3,
+     "padweerstand_ohm": 1.17,
+     "q_M_E": 1.43,
+     "q_padweerstand": 1.38,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.32,
+     "padweerstand_ohm": 1.2,
+     "q_M_E": 1.43,
+     "q_padweerstand": 1.39,
      "plafond_ohm": 4.27,
      "haalt_de_eis": true
     }
@@ -19084,7 +20241,7 @@
     "mid": null
    },
    "grootheid": "driveVoltageOnResonance().db, poort-id M-C",
-   "levend_corpus_wegen": 13,
+   "levend_corpus_wegen": 20,
    "levend_corpus_eroverheen": 0,
    "referentiefilters": [
     {
@@ -21426,7 +22583,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "weg": "tweeter",
      "f_s_hz": 926,
      "doorlaatband_hz": "2303-20000 Hz (derived from this filter's own crossings)",
@@ -21434,7 +22591,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "weg": "mid",
      "f_s_hz": 89,
      "doorlaatband_hz": "358-1558 Hz (derived from this filter's own crossings)",
@@ -21442,7 +22599,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "weg": "tweeter",
      "f_s_hz": 926,
      "doorlaatband_hz": "1558-20000 Hz (derived from this filter's own crossings)",
@@ -21450,7 +22607,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "weg": "mid",
      "f_s_hz": 89,
      "doorlaatband_hz": "339-2049 Hz (derived from this filter's own crossings)",
@@ -21458,7 +22615,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "weg": "tweeter",
      "f_s_hz": 926,
      "doorlaatband_hz": "2049-20000 Hz (derived from this filter's own crossings)",
@@ -21466,7 +22623,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "weg": "mid",
      "f_s_hz": 89,
      "doorlaatband_hz": "553-1785 Hz (derived from this filter's own crossings)",
@@ -21474,7 +22631,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "weg": "tweeter",
      "f_s_hz": 926,
      "doorlaatband_hz": "1785-20000 Hz (derived from this filter's own crossings)",
@@ -21482,7 +22639,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "weg": "mid",
      "f_s_hz": 89,
      "doorlaatband_hz": "479-1974 Hz (derived from this filter's own crossings)",
@@ -21490,7 +22647,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "weg": "tweeter",
      "f_s_hz": 926,
      "doorlaatband_hz": "1974-20000 Hz (derived from this filter's own crossings)",
@@ -21498,7 +22655,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "weg": "mid",
      "f_s_hz": 89,
      "doorlaatband_hz": "526-1942 Hz (derived from this filter's own crossings)",
@@ -21506,7 +22663,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "weg": "tweeter",
      "f_s_hz": 926,
      "doorlaatband_hz": "1942-20000 Hz (derived from this filter's own crossings)",
@@ -21514,7 +22671,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "weg": "mid",
      "f_s_hz": 89,
      "doorlaatband_hz": "429-1594 Hz (derived from this filter's own crossings)",
@@ -21522,11 +22679,171 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "weg": "tweeter",
      "f_s_hz": 926,
      "doorlaatband_hz": "1594-20000 Hz (derived from this filter's own crossings)",
      "M_C_dB": -20.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "432-1717 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.6,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1717-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.67,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "437-2049 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -30.44,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2049-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -24.85,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "457-1699 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.22,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1699-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -28.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "341-1772 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.99,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1772-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.35,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "553-1704 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -49.65,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1704-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -26.03,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "341-2052 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -21.51,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2052-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "281-2243 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -19.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2243-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -25.91,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "341-1728 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.98,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1728-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "295-2043 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -31.26,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2043-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -23.63,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "254-1637 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.52,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "1637-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -20.15,
      "haalt_de_eis": true
     }
    ]
@@ -21608,10 +22925,10 @@
     "V47": -25,
     "regel_18dB": -18
    },
-   "levend_corpus_wegen": 13,
+   "levend_corpus_wegen": 20,
    "levend_corpus_eroverheen_op_de_effectieve_grens": 0,
    "levend_corpus_wegen_waar_de_afgeleide_grens_strenger_is": 0,
-   "levend_corpus_wegen_zonder_gesteld_getal": 6,
+   "levend_corpus_wegen_zonder_gesteld_getal": 10,
    "casusboek_wegen_waar_de_afgeleide_grens_strenger_is": [
     {
      "netlist": "V28_KAND_4",
@@ -24797,7 +26114,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "weg": "tweeter",
      "doorlaatband_gem_dB": -3.75,
      "afgeleide_grens_dB": -4.83,
@@ -24808,7 +26125,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "weg": "mid",
      "doorlaatband_gem_dB": -4.05,
      "afgeleide_grens_dB": -13.63,
@@ -24819,7 +26136,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "weg": "tweeter",
      "doorlaatband_gem_dB": -5.31,
      "afgeleide_grens_dB": -3.27,
@@ -24830,7 +26147,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "weg": "mid",
      "doorlaatband_gem_dB": -3.39,
      "afgeleide_grens_dB": -14.28,
@@ -24841,7 +26158,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "weg": "tweeter",
      "doorlaatband_gem_dB": -4.83,
      "afgeleide_grens_dB": -3.75,
@@ -24852,7 +26169,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "weg": "mid",
      "doorlaatband_gem_dB": -4.26,
      "afgeleide_grens_dB": -13.41,
@@ -24863,7 +26180,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "weg": "tweeter",
      "doorlaatband_gem_dB": -4.78,
      "afgeleide_grens_dB": -3.79,
@@ -24874,7 +26191,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "weg": "mid",
      "doorlaatband_gem_dB": -3.81,
      "afgeleide_grens_dB": -13.86,
@@ -24885,7 +26202,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "weg": "tweeter",
      "doorlaatband_gem_dB": -4.75,
      "afgeleide_grens_dB": -3.82,
@@ -24896,7 +26213,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "weg": "mid",
      "doorlaatband_gem_dB": -3.36,
      "afgeleide_grens_dB": -14.31,
@@ -24907,7 +26224,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "weg": "tweeter",
      "doorlaatband_gem_dB": -5.05,
      "afgeleide_grens_dB": -3.53,
@@ -24918,7 +26235,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "weg": "mid",
      "doorlaatband_gem_dB": -3.23,
      "afgeleide_grens_dB": -14.44,
@@ -24929,7 +26246,7 @@
      "haalt_de_eis": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "weg": "tweeter",
      "doorlaatband_gem_dB": -4.27,
      "afgeleide_grens_dB": -4.31,
@@ -24937,6 +26254,226 @@
      "effectieve_grens_dB": -20,
      "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
      "M_C_dB": -20.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.74,
+     "afgeleide_grens_dB": -13.93,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -13.929769394127712,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -29.6,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.94,
+     "afgeleide_grens_dB": -3.64,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.67,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.42,
+     "afgeleide_grens_dB": -14.25,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -14.252052469292973,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -30.44,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.94,
+     "afgeleide_grens_dB": -3.64,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -24.85,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.63,
+     "afgeleide_grens_dB": -14.04,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -14.04291180372506,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -25.22,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.95,
+     "afgeleide_grens_dB": -3.63,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -28.62,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.18,
+     "afgeleide_grens_dB": -13.49,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -13.487937030934255,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -23.99,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.04,
+     "afgeleide_grens_dB": -3.54,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -20.35,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -4.78,
+     "afgeleide_grens_dB": -12.89,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -12.893155443413644,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -49.65,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.87,
+     "afgeleide_grens_dB": -3.71,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -26.03,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.12,
+     "afgeleide_grens_dB": -14.55,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -14.548708266143091,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -21.51,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.72,
+     "afgeleide_grens_dB": -3.86,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.37,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.01,
+     "afgeleide_grens_dB": -14.66,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -14.663325734018471,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -19.56,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -4.74,
+     "afgeleide_grens_dB": -3.84,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -25.91,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -5.53,
+     "afgeleide_grens_dB": -12.14,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -12.144065938485085,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -20.98,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -6.02,
+     "afgeleide_grens_dB": -2.56,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -20.81,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.71,
+     "afgeleide_grens_dB": -13.96,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -13.958988163778368,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -31.26,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.03,
+     "afgeleide_grens_dB": -3.55,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -23.63,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -3.74,
+     "afgeleide_grens_dB": -13.93,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -13.932573211892347,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -20.52,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -5.03,
+     "afgeleide_grens_dB": -3.54,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -20.15,
      "haalt_de_eis": true
     }
    ],
@@ -26256,7 +27793,7 @@
      "ergste_bij_hz": 41.59
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "weg": "woofer",
      "x_op_f0_mm": 16.77,
      "fractie_van_limiet": 2.45,
@@ -26265,7 +27802,7 @@
      "ergste_bij_hz": 44.24
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "weg": "mid",
      "x_op_f0_mm": 2.38,
      "fractie_van_limiet": 0.99,
@@ -26274,7 +27811,7 @@
      "ergste_bij_hz": 194.36
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "weg": "woofer",
      "x_op_f0_mm": 12.6,
      "fractie_van_limiet": 1.84,
@@ -26283,7 +27820,7 @@
      "ergste_bij_hz": 44.24
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "weg": "woofer",
      "x_op_f0_mm": 12.78,
      "fractie_van_limiet": 1.87,
@@ -26292,7 +27829,7 @@
      "ergste_bij_hz": 37.1
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "weg": "woofer",
      "x_op_f0_mm": 17.48,
      "fractie_van_limiet": 2.56,
@@ -26301,7 +27838,7 @@
      "ergste_bij_hz": 44.24
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "weg": "woofer",
      "x_op_f0_mm": 18.25,
      "fractie_van_limiet": 2.67,
@@ -26310,7 +27847,7 @@
      "ergste_bij_hz": 45.31
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "weg": "woofer",
      "x_op_f0_mm": 16.02,
      "fractie_van_limiet": 2.34,
@@ -26319,13 +27856,103 @@
      "ergste_bij_hz": 41.59
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "weg": "woofer",
      "x_op_f0_mm": 18.43,
      "fractie_van_limiet": 2.69,
      "grens_gehaald_vanaf_hz": 10.07,
      "ergste_mm": 22.18,
      "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "weg": "woofer",
+     "x_op_f0_mm": 15.34,
+     "fractie_van_limiet": 2.24,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.6,
+     "ergste_bij_hz": 44.24
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "weg": "woofer",
+     "x_op_f0_mm": 15.76,
+     "fractie_van_limiet": 2.3,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.69,
+     "ergste_bij_hz": 44.24
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.04,
+     "fractie_van_limiet": 2.49,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 23.07,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.24,
+     "fractie_van_limiet": 2.52,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 23.05,
+     "ergste_bij_hz": 45.31
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "weg": "woofer",
+     "x_op_f0_mm": 17.31,
+     "fractie_van_limiet": 2.53,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 22.66,
+     "ergste_bij_hz": 44.24
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "weg": "woofer",
+     "x_op_f0_mm": 11.4,
+     "fractie_van_limiet": 1.67,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 17.56,
+     "ergste_bij_hz": 35.04
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "weg": "woofer",
+     "x_op_f0_mm": 11.45,
+     "fractie_van_limiet": 1.67,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 16.8,
+     "ergste_bij_hz": 34.05
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "weg": "woofer",
+     "x_op_f0_mm": 11.62,
+     "fractie_van_limiet": 1.7,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 21.35,
+     "ergste_bij_hz": 41.59
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "weg": "woofer",
+     "x_op_f0_mm": 13.93,
+     "fractie_van_limiet": 2.04,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 18.82,
+     "ergste_bij_hz": 39.47
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "weg": "woofer",
+     "x_op_f0_mm": 13.67,
+     "fractie_van_limiet": 2,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 14.78,
+     "ergste_bij_hz": 44.03
     }
    ]
   },
@@ -26341,10 +27968,10 @@
    "spoelklasse_A": null,
    "V_piek_V": 50.6,
    "gewapend_op_de_zoektocht": true,
-   "levend_corpus_netlists": 7,
+   "levend_corpus_netlists": 10,
    "levend_corpus_eroverheen": 0,
    "referentiefilters_eroverheen": 0,
-   "levend_corpus_eroverheen_bij_continu": 5,
+   "levend_corpus_eroverheen_bij_continu": 10,
    "referentiefilters_eroverheen_bij_continu": 3,
    "casusboek_netlists_die_de_eis_halen": [
     "HUIDIG",
@@ -26490,13 +28117,23 @@
     "V51B_KAND_5",
     "V51B_KAND_6",
     "A5E3ARM_KAND_1",
+    "A5E3VELD_KAND_1",
+    "A5E3VELD_KAND_2",
+    "A5E3VELD_KAND_3",
+    "A5E3VELD_KAND_4",
+    "A5E3VELD_KAND_5",
+    "A5E3VELD_KAND_6",
+    "A5E3VELD_KAND_7",
     "KAND_V2_1",
     "KAND_V2_2",
     "KAND_V2_3",
     "KAND_V2_4",
     "KAND_V2_5",
     "KAND_V2_6",
-    "KAND_V2_7"
+    "KAND_V2_7",
+    "KAND_V2_8",
+    "KAND_V2_9",
+    "KAND_V2_10"
    ],
    "per_netlist": [
     {
@@ -28516,7 +30153,7 @@
      "spoel_grens_A": null
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "heetste_R": "C·R9",
      "heetste_R_ohm": 4.76,
      "heetste_R_W": 0.31,
@@ -28530,7 +30167,7 @@
      "spoel_grens_A": null
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "heetste_R": "B·R9",
      "heetste_R_ohm": 1.919,
      "heetste_R_W": 1.06,
@@ -28544,7 +30181,7 @@
      "spoel_grens_A": null
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "heetste_R": "B·R9",
      "heetste_R_ohm": 2.092,
      "heetste_R_W": 1.18,
@@ -28558,7 +30195,7 @@
      "spoel_grens_A": null
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "heetste_R": "B·R9",
      "heetste_R_ohm": 5.586,
      "heetste_R_W": 1.93,
@@ -28572,7 +30209,7 @@
      "spoel_grens_A": null
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "heetste_R": "B·R9",
      "heetste_R_ohm": 2.391,
      "heetste_R_W": 1.16,
@@ -28586,7 +30223,7 @@
      "spoel_grens_A": null
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "heetste_R": "R7",
      "heetste_R_ohm": 0.939,
      "heetste_R_W": 0.57,
@@ -28600,7 +30237,7 @@
      "spoel_grens_A": null
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "heetste_R": "C·R9",
      "heetste_R_ohm": 4.257,
      "heetste_R_W": 0.43,
@@ -28611,6 +30248,146 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 20.37,
      "drukste_spoel_bij_hz": 375,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 2.301,
+     "heetste_R_W": 1.16,
+     "heetste_R_W_bij_continu": 11.61,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 18.74,
+     "drukste_spoel_bij_hz": 52,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 2.036,
+     "heetste_R_W": 1.14,
+     "heetste_R_W_bij_continu": 11.36,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 19.09,
+     "drukste_spoel_bij_hz": 52,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 3.739,
+     "heetste_R_W": 1.7,
+     "heetste_R_W_bij_continu": 16.97,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 19.57,
+     "drukste_spoel_bij_hz": 52,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 1.782,
+     "heetste_R_W": 0.9,
+     "heetste_R_W_bij_continu": 9.02,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 19.95,
+     "drukste_spoel_bij_hz": 339,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 6.228,
+     "heetste_R_W": 1.8,
+     "heetste_R_W_bij_continu": 18.01,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 18.98,
+     "drukste_spoel_bij_hz": 53,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 0.999,
+     "heetste_R_W": 0.72,
+     "heetste_R_W_bij_continu": 7.19,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 18.9,
+     "drukste_spoel_bij_hz": 328,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 1.012,
+     "heetste_R_W": 0.7,
+     "heetste_R_W_bij_continu": 7.02,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 18.94,
+     "drukste_spoel_bij_hz": 272,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 2.731,
+     "heetste_R_W": 1.61,
+     "heetste_R_W_bij_continu": 16.13,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 20.51,
+     "drukste_spoel_bij_hz": 331,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "heetste_R": "C·R5",
+     "heetste_R_ohm": 0.98,
+     "heetste_R_W": 0.62,
+     "heetste_R_W_bij_continu": 6.21,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 19.71,
+     "drukste_spoel_bij_hz": 243,
+     "spoel_grens_A": null
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "heetste_R": "B·R9",
+     "heetste_R_ohm": 1.699,
+     "heetste_R_W": 1.18,
+     "heetste_R_W_bij_continu": 11.76,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 19.33,
+     "drukste_spoel_bij_hz": 207,
      "spoel_grens_A": null
     }
    ]
@@ -28725,7 +30502,7 @@
     "doel_op_bandvloer_dB": null,
     "toelichting": "the design states the flat target: there is no plateau to judge"
    },
-   "levend_corpus_netlists": 7,
+   "levend_corpus_netlists": 10,
    "levend_corpus_met_niveauwerk_op_laagste_weg": 0,
    "referentiefilters_met_niveauwerk_op_laagste_weg": 3,
    "casusboek_netlists_zonder_niveauwerk_op_laagste_weg": [
@@ -28750,16 +30527,26 @@
     "V38FIX_KAND_9",
     "V51_KAND_1",
     "A5E3ARM_KAND_1",
+    "A5E3VELD_KAND_1",
+    "A5E3VELD_KAND_2",
+    "A5E3VELD_KAND_3",
+    "A5E3VELD_KAND_4",
+    "A5E3VELD_KAND_5",
+    "A5E3VELD_KAND_6",
+    "A5E3VELD_KAND_7",
     "KAND_V2_1",
     "KAND_V2_2",
     "KAND_V2_3",
     "KAND_V2_4",
     "KAND_V2_5",
     "KAND_V2_6",
-    "KAND_V2_7"
+    "KAND_V2_7",
+    "KAND_V2_8",
+    "KAND_V2_9",
+    "KAND_V2_10"
    ],
-   "levend_corpus_binnen_eis": 4,
-   "levend_corpus_buiten_eis": 3,
+   "levend_corpus_binnen_eis": 10,
+   "levend_corpus_buiten_eis": 0,
    "referentiefilters_buiten_eis": [
     "HUIDIG",
     "KAND_A",
@@ -32526,7 +34313,7 @@
      "haalt_M_A_part": true
     },
     {
-     "netlist": "KAND_V2_1",
+     "netlist": "A5E3VELD_KAND_1",
      "serie_R": [],
      "shunt_pad": [],
      "geen_niveauwerk": true,
@@ -32547,7 +34334,7 @@
      "haalt_M_A_part": true
     },
     {
-     "netlist": "KAND_V2_2",
+     "netlist": "A5E3VELD_KAND_2",
      "serie_R": [],
      "shunt_pad": [],
      "geen_niveauwerk": true,
@@ -32568,7 +34355,7 @@
      "haalt_M_A_part": true
     },
     {
-     "netlist": "KAND_V2_3",
+     "netlist": "A5E3VELD_KAND_3",
      "serie_R": [],
      "shunt_pad": [],
      "geen_niveauwerk": true,
@@ -32587,7 +34374,7 @@
      "haalt_M_A_part": true
     },
     {
-     "netlist": "KAND_V2_4",
+     "netlist": "A5E3VELD_KAND_4",
      "serie_R": [],
      "shunt_pad": [],
      "geen_niveauwerk": true,
@@ -32606,7 +34393,7 @@
      "haalt_M_A_part": true
     },
     {
-     "netlist": "KAND_V2_5",
+     "netlist": "A5E3VELD_KAND_5",
      "serie_R": [],
      "shunt_pad": [],
      "geen_niveauwerk": true,
@@ -32625,7 +34412,7 @@
      "haalt_M_A_part": true
     },
     {
-     "netlist": "KAND_V2_6",
+     "netlist": "A5E3VELD_KAND_6",
      "serie_R": [],
      "shunt_pad": [],
      "geen_niveauwerk": true,
@@ -32644,7 +34431,7 @@
      "haalt_M_A_part": true
     },
     {
-     "netlist": "KAND_V2_7",
+     "netlist": "A5E3VELD_KAND_7",
      "serie_R": [],
      "shunt_pad": [],
      "geen_niveauwerk": true,
@@ -32662,6 +34449,196 @@
      "opslingering_dB": -0.61,
      "Qes_mult": 1.47,
      "heetste_R_W_bij_oordeelvermogen": 0.43,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_1",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.07,
+     "serie_R_totaal_ohm": 1.07,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 5.2,
+      "mid": 1.76
+     },
+     "opslingering_dB": -0.99,
+     "Qes_mult": 1.49,
+     "heetste_R_W_bij_oordeelvermogen": 1.16,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.03,
+     "serie_R_totaal_ohm": 1.03,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 4.91,
+      "mid": 1.33
+     },
+     "opslingering_dB": -1.1,
+     "Qes_mult": 1.47,
+     "heetste_R_W_bij_oordeelvermogen": 1.14,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.04,
+     "serie_R_totaal_ohm": 1.04,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 5.01,
+      "mid": 1.68
+     },
+     "opslingering_dB": -1.16,
+     "Qes_mult": 1.53,
+     "heetste_R_W_bij_oordeelvermogen": 1.7,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.1,
+     "serie_R_totaal_ohm": 1.1,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 5.5,
+      "mid": 1.76
+     },
+     "opslingering_dB": -1.15,
+     "Qes_mult": 1.58,
+     "heetste_R_W_bij_oordeelvermogen": 0.9,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 0.88,
+     "serie_R_totaal_ohm": 0.88,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 3.85,
+      "mid": 2.25
+     },
+     "opslingering_dB": -1.29,
+     "Qes_mult": 1.4,
+     "heetste_R_W_bij_oordeelvermogen": 1.8,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_6",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.18,
+     "serie_R_totaal_ohm": 1.18,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 6.19,
+      "mid": 1.23
+     },
+     "opslingering_dB": -0.42,
+     "Qes_mult": 1.26,
+     "heetste_R_W_bij_oordeelvermogen": 0.72,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.15,
+     "serie_R_totaal_ohm": 1.15,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 5.87,
+      "mid": 1.12
+     },
+     "opslingering_dB": -1.74,
+     "Qes_mult": 1.25,
+     "heetste_R_W_bij_oordeelvermogen": 0.7,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.16,
+     "serie_R_totaal_ohm": 1.16,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 5.99,
+      "mid": 1.59
+     },
+     "opslingering_dB": -2.63,
+     "Qes_mult": 1.42,
+     "heetste_R_W_bij_oordeelvermogen": 1.61,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.17,
+     "serie_R_totaal_ohm": 1.17,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 6.04,
+      "mid": 1.39
+     },
+     "opslingering_dB": -2.41,
+     "Qes_mult": 1.43,
+     "heetste_R_W_bij_oordeelvermogen": 0.62,
+     "haalt_M_A_part": true
+    },
+    {
+     "netlist": "KAND_V2_10",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.2,
+     "serie_R_totaal_ohm": 1.2,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 6.33,
+      "mid": 1.33
+     },
+     "opslingering_dB": -2.9,
+     "Qes_mult": 1.43,
+     "heetste_R_W_bij_oordeelvermogen": 1.18,
      "haalt_M_A_part": true
     }
    ]
@@ -32899,27 +34876,491 @@
      "max_pct": 34.85
     }
    },
-   "levend_corpus_netlists": 7,
-   "levend_corpus_als_gemodelleerd": 7,
+   "levend_corpus_netlists": 10,
+   "levend_corpus_als_gemodelleerd": 10,
    "levend_corpus_totaal_DCR_ohm": [
-    10.0536,
-    11.7069,
-    13.0103,
-    10.1037,
-    5.7124,
-    9.8139,
-    10.6947
+    15.879,
+    13.6499,
+    6.4316,
+    6.6937,
+    10.9194,
+    14.7099,
+    14.55,
+    13.3434,
+    14.1986,
+    13.7456
    ],
    "per_netlist": [
     {
      "netlist": "KAND_V2_1",
-     "totaal_DCR_ohm": 10.0536,
+     "totaal_DCR_ohm": 15.879,
      "als_gemodelleerd": true,
      "draagt_DCR": true,
      "wegen_zonder_familie": [],
-     "buiten_bereik": [
-      "L5"
-     ],
+     "buiten_bereik": [],
+     "spoelen": [
+      {
+       "id": "L1",
+       "weg": "woofer",
+       "mH": 2.901,
+       "DCR_ohm": 0.5696,
+       "fit_ohm": 0.5696,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L3",
+       "weg": "woofer",
+       "mH": 2.294,
+       "DCR_ohm": 0.4971,
+       "fit_ohm": 0.4971,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L5",
+       "weg": "woofer",
+       "mH": 22,
+       "DCR_ohm": 1.847,
+       "fit_ohm": 1.8471,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L8",
+       "weg": "woofer",
+       "mH": 14.35,
+       "DCR_ohm": 1.441,
+       "fit_ohm": 1.4412,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L2",
+       "weg": "mid",
+       "mH": 1.767,
+       "DCR_ohm": 0.731,
+       "fit_ohm": 0.731,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L4",
+       "weg": "mid",
+       "mH": 15.29,
+       "DCR_ohm": 2.605,
+       "fit_ohm": 2.6048,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L5",
+       "weg": "mid",
+       "mH": 1.345,
+       "DCR_ohm": 0.6225,
+       "fit_ohm": 0.6225,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L7",
+       "weg": "mid",
+       "mH": 0.4131,
+       "DCR_ohm": 0.3106,
+       "fit_ohm": 0.3106,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L11",
+       "weg": "mid",
+       "mH": 15.1,
+       "DCR_ohm": 2.586,
+       "fit_ohm": 2.5857,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L14",
+       "weg": "mid",
+       "mH": 17.75,
+       "DCR_ohm": 2.844,
+       "fit_ohm": 2.844,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L2",
+       "weg": "tweeter",
+       "mH": 2.007,
+       "DCR_ohm": 0.7879,
+       "fit_ohm": 0.7879,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L4",
+       "weg": "tweeter",
+       "mH": 0.9984,
+       "DCR_ohm": 0.5223,
+       "fit_ohm": 0.5223,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L7",
+       "weg": "tweeter",
+       "mH": 0.165,
+       "DCR_ohm": 0.1809,
+       "fit_ohm": 0.1809,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L10",
+       "weg": "tweeter",
+       "mH": 0.4676,
+       "DCR_ohm": 0.3341,
+       "fit_ohm": 0.3341,
+       "binnen_bereik": true,
+       "gesnapt": false
+      }
+     ]
+    },
+    {
+     "netlist": "KAND_V2_2",
+     "totaal_DCR_ohm": 13.6499,
+     "als_gemodelleerd": true,
+     "draagt_DCR": true,
+     "wegen_zonder_familie": [],
+     "buiten_bereik": [],
+     "spoelen": [
+      {
+       "id": "L1",
+       "weg": "woofer",
+       "mH": 2.901,
+       "DCR_ohm": 0.5696,
+       "fit_ohm": 0.5696,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L3",
+       "weg": "woofer",
+       "mH": 2.007,
+       "DCR_ohm": 0.4599,
+       "fit_ohm": 0.4599,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L5",
+       "weg": "woofer",
+       "mH": 22,
+       "DCR_ohm": 1.847,
+       "fit_ohm": 1.8471,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L8",
+       "weg": "woofer",
+       "mH": 15.11,
+       "DCR_ohm": 1.485,
+       "fit_ohm": 1.4851,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L2",
+       "weg": "mid",
+       "mH": 1.666,
+       "DCR_ohm": 0.7061,
+       "fit_ohm": 0.7061,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L4",
+       "weg": "mid",
+       "mH": 14.52,
+       "DCR_ohm": 2.527,
+       "fit_ohm": 2.5267,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L5",
+       "weg": "mid",
+       "mH": 1.004,
+       "DCR_ohm": 0.524,
+       "fit_ohm": 0.524,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L7",
+       "weg": "mid",
+       "mH": 0.327,
+       "DCR_ohm": 0.2707,
+       "fit_ohm": 0.2707,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L11",
+       "weg": "mid",
+       "mH": 7.148,
+       "DCR_ohm": 1.665,
+       "fit_ohm": 1.6646,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L14",
+       "weg": "mid",
+       "mH": 2.938,
+       "DCR_ohm": 0.9861,
+       "fit_ohm": 0.9861,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L2",
+       "weg": "tweeter",
+       "mH": 0.3142,
+       "DCR_ohm": 0.2644,
+       "fit_ohm": 0.2644,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L4",
+       "weg": "tweeter",
+       "mH": 3.996,
+       "DCR_ohm": 1.182,
+       "fit_ohm": 1.1819,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L9",
+       "weg": "tweeter",
+       "mH": 0.152,
+       "DCR_ohm": 0.1724,
+       "fit_ohm": 0.1724,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L12",
+       "weg": "tweeter",
+       "mH": 2.961,
+       "DCR_ohm": 0.9907,
+       "fit_ohm": 0.9907,
+       "binnen_bereik": true,
+       "gesnapt": false
+      }
+     ]
+    },
+    {
+     "netlist": "KAND_V2_3",
+     "totaal_DCR_ohm": 6.4316,
+     "als_gemodelleerd": true,
+     "draagt_DCR": true,
+     "wegen_zonder_familie": [],
+     "buiten_bereik": [],
+     "spoelen": [
+      {
+       "id": "L1",
+       "weg": "woofer",
+       "mH": 2.854,
+       "DCR_ohm": 0.5643,
+       "fit_ohm": 0.5643,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L3",
+       "weg": "woofer",
+       "mH": 2.159,
+       "DCR_ohm": 0.4799,
+       "fit_ohm": 0.4799,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L5",
+       "weg": "woofer",
+       "mH": 22,
+       "DCR_ohm": 1.847,
+       "fit_ohm": 1.8471,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L2",
+       "weg": "mid",
+       "mH": 1.443,
+       "DCR_ohm": 0.6488,
+       "fit_ohm": 0.6488,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L5",
+       "weg": "mid",
+       "mH": 1.109,
+       "DCR_ohm": 0.5556,
+       "fit_ohm": 0.5556,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L7",
+       "weg": "mid",
+       "mH": 0.5728,
+       "DCR_ohm": 0.3765,
+       "fit_ohm": 0.3765,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L4",
+       "weg": "tweeter",
+       "mH": 1.488,
+       "DCR_ohm": 0.6606,
+       "fit_ohm": 0.6606,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L7",
+       "weg": "tweeter",
+       "mH": 1.526,
+       "DCR_ohm": 0.6705,
+       "fit_ohm": 0.6705,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L10",
+       "weg": "tweeter",
+       "mH": 1.367,
+       "DCR_ohm": 0.6284,
+       "fit_ohm": 0.6284,
+       "binnen_bereik": true,
+       "gesnapt": false
+      }
+     ]
+    },
+    {
+     "netlist": "KAND_V2_4",
+     "totaal_DCR_ohm": 6.6937,
+     "als_gemodelleerd": true,
+     "draagt_DCR": true,
+     "wegen_zonder_familie": [],
+     "buiten_bereik": [],
+     "spoelen": [
+      {
+       "id": "L1",
+       "weg": "woofer",
+       "mH": 3.003,
+       "DCR_ohm": 0.5812,
+       "fit_ohm": 0.5812,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L3",
+       "weg": "woofer",
+       "mH": 2.495,
+       "DCR_ohm": 0.5219,
+       "fit_ohm": 0.5219,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L5",
+       "weg": "woofer",
+       "mH": 22,
+       "DCR_ohm": 1.847,
+       "fit_ohm": 1.8471,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L8",
+       "weg": "woofer",
+       "mH": 11.76,
+       "DCR_ohm": 1.284,
+       "fit_ohm": 1.2839,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L2",
+       "weg": "mid",
+       "mH": 2.01,
+       "DCR_ohm": 0.7886,
+       "fit_ohm": 0.7886,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L5",
+       "weg": "mid",
+       "mH": 1.359,
+       "DCR_ohm": 0.6263,
+       "fit_ohm": 0.6263,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L7",
+       "weg": "mid",
+       "mH": 0.3963,
+       "DCR_ohm": 0.3031,
+       "fit_ohm": 0.3031,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L4",
+       "weg": "tweeter",
+       "mH": 0.6673,
+       "DCR_ohm": 0.412,
+       "fit_ohm": 0.412,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L9",
+       "weg": "tweeter",
+       "mH": 0.2445,
+       "DCR_ohm": 0.2281,
+       "fit_ohm": 0.2281,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L12",
+       "weg": "tweeter",
+       "mH": 0.0618,
+       "DCR_ohm": 0.1015,
+       "fit_ohm": 0.1015,
+       "binnen_bereik": true,
+       "gesnapt": false
+      }
+     ]
+    },
+    {
+     "netlist": "KAND_V2_5",
+     "totaal_DCR_ohm": 10.9194,
+     "als_gemodelleerd": true,
+     "draagt_DCR": true,
+     "wegen_zonder_familie": [],
+     "buiten_bereik": [],
      "spoelen": [
       {
        "id": "L1",
@@ -32933,98 +35374,515 @@
       {
        "id": "L3",
        "weg": "woofer",
-       "mH": 2.449,
-       "DCR_ohm": 0.5163,
-       "fit_ohm": 0.5163,
+       "mH": 1.128,
+       "DCR_ohm": 0.3292,
+       "fit_ohm": 0.3292,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "L5",
        "weg": "woofer",
-       "mH": 22.63,
-       "DCR_ohm": 1.878,
-       "fit_ohm": 1.8776,
-       "binnen_bereik": false,
-       "gesnapt": false
-      },
-      {
-       "id": "L8",
-       "weg": "woofer",
-       "mH": 15.12,
-       "DCR_ohm": 1.486,
-       "fit_ohm": 1.4856,
+       "mH": 22,
+       "DCR_ohm": 1.847,
+       "fit_ohm": 1.8471,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L2",
        "weg": "mid",
-       "mH": 3.585,
-       "DCR_ohm": 1.109,
-       "fit_ohm": 1.1088,
+       "mH": 1.156,
+       "DCR_ohm": 0.5694,
+       "fit_ohm": 0.5694,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L4",
        "weg": "mid",
-       "mH": 15.19,
-       "DCR_ohm": 2.595,
-       "fit_ohm": 2.5948,
+       "mH": 11,
+       "DCR_ohm": 2.146,
+       "fit_ohm": 2.1456,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L5",
        "weg": "mid",
-       "mH": 0.7135,
-       "DCR_ohm": 0.4285,
-       "fit_ohm": 0.4285,
+       "mH": 1.661,
+       "DCR_ohm": 0.7048,
+       "fit_ohm": 0.7048,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L7",
        "weg": "mid",
-       "mH": 0.2289,
-       "DCR_ohm": 0.2194,
-       "fit_ohm": 0.2194,
+       "mH": 0.5899,
+       "DCR_ohm": 0.3831,
+       "fit_ohm": 0.3831,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L11",
+       "weg": "mid",
+       "mH": 15.13,
+       "DCR_ohm": 2.589,
+       "fit_ohm": 2.5887,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L2",
+       "weg": "tweeter",
+       "mH": 2.232,
+       "DCR_ohm": 0.8388,
+       "fit_ohm": 0.8388,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "C·L4",
        "weg": "tweeter",
-       "mH": 2.553,
-       "DCR_ohm": 0.9078,
-       "fit_ohm": 0.9078,
+       "mH": 0.5782,
+       "DCR_ohm": 0.3786,
+       "fit_ohm": 0.3786,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
-       "id": "C·L7",
+       "id": "C·L9",
        "weg": "tweeter",
-       "mH": 0.1151,
-       "DCR_ohm": 0.1464,
-       "fit_ohm": 0.1464,
+       "mH": 0.0659,
+       "DCR_ohm": 0.1054,
+       "fit_ohm": 0.1054,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
-       "id": "C·L10",
+       "id": "C·L12",
        "weg": "tweeter",
-       "mH": 0.2279,
-       "DCR_ohm": 0.2188,
-       "fit_ohm": 0.2188,
+       "mH": 0.864,
+       "DCR_ohm": 0.4797,
+       "fit_ohm": 0.4797,
        "binnen_bereik": true,
        "gesnapt": false
       }
      ]
     },
     {
-     "netlist": "KAND_V2_2",
-     "totaal_DCR_ohm": 11.7069,
+     "netlist": "KAND_V2_6",
+     "totaal_DCR_ohm": 14.7099,
+     "als_gemodelleerd": true,
+     "draagt_DCR": true,
+     "wegen_zonder_familie": [],
+     "buiten_bereik": [],
+     "spoelen": [
+      {
+       "id": "L1",
+       "weg": "woofer",
+       "mH": 3.096,
+       "DCR_ohm": 0.5916,
+       "fit_ohm": 0.5916,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L3",
+       "weg": "woofer",
+       "mH": 3.096,
+       "DCR_ohm": 0.5916,
+       "fit_ohm": 0.5916,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L5",
+       "weg": "woofer",
+       "mH": 22,
+       "DCR_ohm": 1.847,
+       "fit_ohm": 1.8471,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L8",
+       "weg": "woofer",
+       "mH": 16.06,
+       "DCR_ohm": 1.539,
+       "fit_ohm": 1.5386,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L2",
+       "weg": "mid",
+       "mH": 2.238,
+       "DCR_ohm": 0.8401,
+       "fit_ohm": 0.8401,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L4",
+       "weg": "mid",
+       "mH": 13.57,
+       "DCR_ohm": 2.428,
+       "fit_ohm": 2.428,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L5",
+       "weg": "mid",
+       "mH": 0.9364,
+       "DCR_ohm": 0.5029,
+       "fit_ohm": 0.5029,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L7",
+       "weg": "mid",
+       "mH": 0.2915,
+       "DCR_ohm": 0.253,
+       "fit_ohm": 0.253,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L11",
+       "weg": "mid",
+       "mH": 12.65,
+       "DCR_ohm": 2.33,
+       "fit_ohm": 2.3297,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L14",
+       "weg": "mid",
+       "mH": 10.14,
+       "DCR_ohm": 2.045,
+       "fit_ohm": 2.0452,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L2",
+       "weg": "tweeter",
+       "mH": 0.4891,
+       "DCR_ohm": 0.3431,
+       "fit_ohm": 0.3431,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L4",
+       "weg": "tweeter",
+       "mH": 2.836,
+       "DCR_ohm": 0.9658,
+       "fit_ohm": 0.9658,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L9",
+       "weg": "tweeter",
+       "mH": 0.0584,
+       "DCR_ohm": 0.0981,
+       "fit_ohm": 0.0981,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L12",
+       "weg": "tweeter",
+       "mH": 0.4689,
+       "DCR_ohm": 0.3347,
+       "fit_ohm": 0.3347,
+       "binnen_bereik": true,
+       "gesnapt": false
+      }
+     ]
+    },
+    {
+     "netlist": "KAND_V2_7",
+     "totaal_DCR_ohm": 14.55,
+     "als_gemodelleerd": true,
+     "draagt_DCR": true,
+     "wegen_zonder_familie": [],
+     "buiten_bereik": [],
+     "spoelen": [
+      {
+       "id": "L1",
+       "weg": "woofer",
+       "mH": 3.095,
+       "DCR_ohm": 0.5915,
+       "fit_ohm": 0.5915,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L3",
+       "weg": "woofer",
+       "mH": 2.772,
+       "DCR_ohm": 0.5548,
+       "fit_ohm": 0.5548,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L5",
+       "weg": "woofer",
+       "mH": 17.57,
+       "DCR_ohm": 1.621,
+       "fit_ohm": 1.621,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L8",
+       "weg": "woofer",
+       "mH": 14.54,
+       "DCR_ohm": 1.452,
+       "fit_ohm": 1.4523,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L2",
+       "weg": "mid",
+       "mH": 2.051,
+       "DCR_ohm": 0.798,
+       "fit_ohm": 0.798,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L4",
+       "weg": "mid",
+       "mH": 12.62,
+       "DCR_ohm": 2.326,
+       "fit_ohm": 2.3264,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L5",
+       "weg": "mid",
+       "mH": 0.8434,
+       "DCR_ohm": 0.4729,
+       "fit_ohm": 0.4729,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L7",
+       "weg": "mid",
+       "mH": 0.2786,
+       "DCR_ohm": 0.2463,
+       "fit_ohm": 0.2463,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L11",
+       "weg": "mid",
+       "mH": 14.05,
+       "DCR_ohm": 2.478,
+       "fit_ohm": 2.4782,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L14",
+       "weg": "mid",
+       "mH": 15.34,
+       "DCR_ohm": 2.61,
+       "fit_ohm": 2.6098,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L2",
+       "weg": "tweeter",
+       "mH": 0.2519,
+       "DCR_ohm": 0.2321,
+       "fit_ohm": 0.2321,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L4",
+       "weg": "tweeter",
+       "mH": 1.463,
+       "DCR_ohm": 0.6541,
+       "fit_ohm": 0.6541,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L9",
+       "weg": "tweeter",
+       "mH": 0.0602,
+       "DCR_ohm": 0.0999,
+       "fit_ohm": 0.0999,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L15",
+       "weg": "tweeter",
+       "mH": 0.6712,
+       "DCR_ohm": 0.4134,
+       "fit_ohm": 0.4134,
+       "binnen_bereik": true,
+       "gesnapt": false
+      }
+     ]
+    },
+    {
+     "netlist": "KAND_V2_8",
+     "totaal_DCR_ohm": 13.3434,
+     "als_gemodelleerd": true,
+     "draagt_DCR": true,
+     "wegen_zonder_familie": [],
+     "buiten_bereik": [],
+     "spoelen": [
+      {
+       "id": "L1",
+       "weg": "woofer",
+       "mH": 2.993,
+       "DCR_ohm": 0.5801,
+       "fit_ohm": 0.5801,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L3",
+       "weg": "woofer",
+       "mH": 2.993,
+       "DCR_ohm": 0.5801,
+       "fit_ohm": 0.5801,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L5",
+       "weg": "woofer",
+       "mH": 13.59,
+       "DCR_ohm": 1.396,
+       "fit_ohm": 1.3964,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L8",
+       "weg": "woofer",
+       "mH": 12.24,
+       "DCR_ohm": 1.314,
+       "fit_ohm": 1.3141,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L2",
+       "weg": "mid",
+       "mH": 1.752,
+       "DCR_ohm": 0.7273,
+       "fit_ohm": 0.7273,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L4",
+       "weg": "mid",
+       "mH": 13.9,
+       "DCR_ohm": 2.463,
+       "fit_ohm": 2.4626,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L5",
+       "weg": "mid",
+       "mH": 1.117,
+       "DCR_ohm": 0.558,
+       "fit_ohm": 0.558,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L7",
+       "weg": "mid",
+       "mH": 0.4755,
+       "DCR_ohm": 0.3374,
+       "fit_ohm": 0.3374,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L11",
+       "weg": "mid",
+       "mH": 2.051,
+       "DCR_ohm": 0.798,
+       "fit_ohm": 0.798,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L14",
+       "weg": "mid",
+       "mH": 12.23,
+       "DCR_ohm": 2.284,
+       "fit_ohm": 2.2838,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L2",
+       "weg": "tweeter",
+       "mH": 2.109,
+       "DCR_ohm": 0.8112,
+       "fit_ohm": 0.8112,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L4",
+       "weg": "tweeter",
+       "mH": 2.834,
+       "DCR_ohm": 0.9654,
+       "fit_ohm": 0.9654,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L7",
+       "weg": "tweeter",
+       "mH": 0.1608,
+       "DCR_ohm": 0.1782,
+       "fit_ohm": 0.1782,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L10",
+       "weg": "tweeter",
+       "mH": 0.5077,
+       "DCR_ohm": 0.3507,
+       "fit_ohm": 0.3507,
+       "binnen_bereik": true,
+       "gesnapt": false
+      }
+     ]
+    },
+    {
+     "netlist": "KAND_V2_9",
+     "totaal_DCR_ohm": 14.1986,
      "als_gemodelleerd": true,
      "draagt_DCR": true,
      "wegen_zonder_familie": [],
@@ -33042,447 +35900,125 @@
       {
        "id": "L3",
        "weg": "woofer",
-       "mH": 2.173,
-       "DCR_ohm": 0.4817,
-       "fit_ohm": 0.4817,
+       "mH": 3.018,
+       "DCR_ohm": 0.5829,
+       "fit_ohm": 0.5829,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "L5",
        "weg": "woofer",
-       "mH": 5.387,
-       "DCR_ohm": 0.816,
-       "fit_ohm": 0.816,
+       "mH": 18.76,
+       "DCR_ohm": 1.684,
+       "fit_ohm": 1.6839,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L2",
        "weg": "mid",
-       "mH": 2.378,
-       "DCR_ohm": 0.8707,
-       "fit_ohm": 0.8707,
+       "mH": 1.961,
+       "DCR_ohm": 0.7772,
+       "fit_ohm": 0.7772,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L4",
        "weg": "mid",
-       "mH": 15.41,
-       "DCR_ohm": 2.617,
-       "fit_ohm": 2.6168,
+       "mH": 16.91,
+       "DCR_ohm": 2.764,
+       "fit_ohm": 2.7639,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L5",
        "weg": "mid",
-       "mH": 1.426,
-       "DCR_ohm": 0.6443,
-       "fit_ohm": 0.6443,
+       "mH": 1.11,
+       "DCR_ohm": 0.5559,
+       "fit_ohm": 0.5559,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L7",
        "weg": "mid",
-       "mH": 0.5002,
-       "DCR_ohm": 0.3477,
-       "fit_ohm": 0.3477,
+       "mH": 0.2782,
+       "DCR_ohm": 0.2461,
+       "fit_ohm": 0.2461,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L11",
        "weg": "mid",
-       "mH": 7.94,
-       "DCR_ohm": 1.771,
-       "fit_ohm": 1.7709,
+       "mH": 15.04,
+       "DCR_ohm": 2.58,
+       "fit_ohm": 2.5796,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L14",
        "weg": "mid",
-       "mH": 13.05,
-       "DCR_ohm": 2.373,
-       "fit_ohm": 2.3728,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L4",
-       "weg": "tweeter",
-       "mH": 0.5674,
-       "DCR_ohm": 0.3744,
-       "fit_ohm": 0.3744,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L7",
-       "weg": "tweeter",
-       "mH": 1.679,
-       "DCR_ohm": 0.7093,
-       "fit_ohm": 0.7093,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L10",
-       "weg": "tweeter",
-       "mH": 0.0809,
-       "DCR_ohm": 0.1189,
-       "fit_ohm": 0.1189,
-       "binnen_bereik": true,
-       "gesnapt": false
-      }
-     ]
-    },
-    {
-     "netlist": "KAND_V2_3",
-     "totaal_DCR_ohm": 13.0103,
-     "als_gemodelleerd": true,
-     "draagt_DCR": true,
-     "wegen_zonder_familie": [],
-     "buiten_bereik": [],
-     "spoelen": [
-      {
-       "id": "L1",
-       "weg": "woofer",
-       "mH": 3.096,
-       "DCR_ohm": 0.5916,
-       "fit_ohm": 0.5916,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L3",
-       "weg": "woofer",
-       "mH": 3.096,
-       "DCR_ohm": 0.5916,
-       "fit_ohm": 0.5916,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L5",
-       "weg": "woofer",
-       "mH": 21.95,
-       "DCR_ohm": 1.845,
-       "fit_ohm": 1.8446,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L8",
-       "weg": "woofer",
-       "mH": 17.39,
-       "DCR_ohm": 1.611,
-       "fit_ohm": 1.6113,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L2",
-       "weg": "mid",
-       "mH": 1.577,
-       "DCR_ohm": 0.6836,
-       "fit_ohm": 0.6836,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L4",
-       "weg": "mid",
-       "mH": 15.07,
-       "DCR_ohm": 2.583,
-       "fit_ohm": 2.5827,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L5",
-       "weg": "mid",
-       "mH": 0.9839,
-       "DCR_ohm": 0.5178,
-       "fit_ohm": 0.5178,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L7",
-       "weg": "mid",
-       "mH": 0.3125,
-       "DCR_ohm": 0.2635,
-       "fit_ohm": 0.2635,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L11",
-       "weg": "mid",
-       "mH": 1.996,
-       "DCR_ohm": 0.7854,
-       "fit_ohm": 0.7854,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L14",
-       "weg": "mid",
-       "mH": 15.33,
-       "DCR_ohm": 2.609,
-       "fit_ohm": 2.6088,
+       "mH": 16.65,
+       "DCR_ohm": 2.739,
+       "fit_ohm": 2.7388,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "C·L2",
        "weg": "tweeter",
-       "mH": 0.3272,
-       "DCR_ohm": 0.2708,
-       "fit_ohm": 0.2708,
+       "mH": 0.3655,
+       "DCR_ohm": 0.289,
+       "fit_ohm": 0.289,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "C·L4",
        "weg": "tweeter",
-       "mH": 0.9662,
-       "DCR_ohm": 0.5123,
-       "fit_ohm": 0.5123,
+       "mH": 0.6423,
+       "DCR_ohm": 0.4028,
+       "fit_ohm": 0.4028,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "C·L9",
        "weg": "tweeter",
-       "mH": 0.1142,
-       "DCR_ohm": 0.1457,
-       "fit_ohm": 0.1457,
+       "mH": 1.738,
+       "DCR_ohm": 0.7239,
+       "fit_ohm": 0.7239,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L12",
+       "weg": "tweeter",
+       "mH": 0.0675,
+       "DCR_ohm": 0.1069,
+       "fit_ohm": 0.1069,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L15",
+       "weg": "tweeter",
+       "mH": 0.1397,
+       "DCR_ohm": 0.164,
+       "fit_ohm": 0.164,
        "binnen_bereik": true,
        "gesnapt": false
       }
      ]
     },
     {
-     "netlist": "KAND_V2_4",
-     "totaal_DCR_ohm": 10.1037,
-     "als_gemodelleerd": true,
-     "draagt_DCR": true,
-     "wegen_zonder_familie": [],
-     "buiten_bereik": [
-      "L5"
-     ],
-     "spoelen": [
-      {
-       "id": "L1",
-       "weg": "woofer",
-       "mH": 2.716,
-       "DCR_ohm": 0.5483,
-       "fit_ohm": 0.5483,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L3",
-       "weg": "woofer",
-       "mH": 1.137,
-       "DCR_ohm": 0.3307,
-       "fit_ohm": 0.3307,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L5",
-       "weg": "woofer",
-       "mH": 24.01,
-       "DCR_ohm": 1.943,
-       "fit_ohm": 1.9432,
-       "binnen_bereik": false,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L2",
-       "weg": "mid",
-       "mH": 1.153,
-       "DCR_ohm": 0.5685,
-       "fit_ohm": 0.5685,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L4",
-       "weg": "mid",
-       "mH": 6.156,
-       "DCR_ohm": 1.524,
-       "fit_ohm": 1.5244,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L5",
-       "weg": "mid",
-       "mH": 1.434,
-       "DCR_ohm": 0.6464,
-       "fit_ohm": 0.6464,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L7",
-       "weg": "mid",
-       "mH": 0.5163,
-       "DCR_ohm": 0.3542,
-       "fit_ohm": 0.3542,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L11",
-       "weg": "mid",
-       "mH": 12.75,
-       "DCR_ohm": 2.341,
-       "fit_ohm": 2.3405,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L2",
-       "weg": "tweeter",
-       "mH": 0.453,
-       "DCR_ohm": 0.3279,
-       "fit_ohm": 0.3279,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L4",
-       "weg": "tweeter",
-       "mH": 1.894,
-       "DCR_ohm": 0.7615,
-       "fit_ohm": 0.7615,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L7",
-       "weg": "tweeter",
-       "mH": 0.0805,
-       "DCR_ohm": 0.1185,
-       "fit_ohm": 0.1185,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L10",
-       "weg": "tweeter",
-       "mH": 1.409,
-       "DCR_ohm": 0.6397,
-       "fit_ohm": 0.6397,
-       "binnen_bereik": true,
-       "gesnapt": false
-      }
-     ]
-    },
-    {
-     "netlist": "KAND_V2_5",
-     "totaal_DCR_ohm": 5.7124,
-     "als_gemodelleerd": true,
-     "draagt_DCR": true,
-     "wegen_zonder_familie": [],
-     "buiten_bereik": [
-      "L5"
-     ],
-     "spoelen": [
-      {
-       "id": "L1",
-       "weg": "woofer",
-       "mH": 2.82,
-       "DCR_ohm": 0.5604,
-       "fit_ohm": 0.5604,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L3",
-       "weg": "woofer",
-       "mH": 1.427,
-       "DCR_ohm": 0.3773,
-       "fit_ohm": 0.3773,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L5",
-       "weg": "woofer",
-       "mH": 27.85,
-       "DCR_ohm": 2.118,
-       "fit_ohm": 2.1181,
-       "binnen_bereik": false,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L2",
-       "weg": "mid",
-       "mH": 1.413,
-       "DCR_ohm": 0.6408,
-       "fit_ohm": 0.6408,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L5",
-       "weg": "mid",
-       "mH": 1.321,
-       "DCR_ohm": 0.6159,
-       "fit_ohm": 0.6159,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L7",
-       "weg": "mid",
-       "mH": 0.3274,
-       "DCR_ohm": 0.2709,
-       "fit_ohm": 0.2709,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L2",
-       "weg": "tweeter",
-       "mH": 0.3622,
-       "DCR_ohm": 0.2875,
-       "fit_ohm": 0.2875,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L7",
-       "weg": "tweeter",
-       "mH": 1.596,
-       "DCR_ohm": 0.6885,
-       "fit_ohm": 0.6885,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L10",
-       "weg": "tweeter",
-       "mH": 0.1242,
-       "DCR_ohm": 0.1531,
-       "fit_ohm": 0.1531,
-       "binnen_bereik": true,
-       "gesnapt": false
-      }
-     ]
-    },
-    {
-     "netlist": "KAND_V2_6",
-     "totaal_DCR_ohm": 9.8139,
+     "netlist": "KAND_V2_10",
+     "totaal_DCR_ohm": 13.7456,
      "als_gemodelleerd": true,
      "draagt_DCR": true,
      "wegen_zonder_familie": [],
@@ -33491,210 +36027,126 @@
       {
        "id": "L1",
        "weg": "woofer",
-       "mH": 2.313,
-       "DCR_ohm": 0.4994,
-       "fit_ohm": 0.4994,
+       "mH": 3.163,
+       "DCR_ohm": 0.599,
+       "fit_ohm": 0.599,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "L3",
        "weg": "woofer",
-       "mH": 1.599,
-       "DCR_ohm": 0.4031,
-       "fit_ohm": 0.4031,
+       "mH": 3.163,
+       "DCR_ohm": 0.599,
+       "fit_ohm": 0.599,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "L5",
        "weg": "woofer",
-       "mH": 9.649,
-       "DCR_ohm": 1.145,
-       "fit_ohm": 1.1446,
+       "mH": 7.773,
+       "DCR_ohm": 1.01,
+       "fit_ohm": 1.0096,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "L8",
+       "weg": "woofer",
+       "mH": 1.257,
+       "DCR_ohm": 0.3505,
+       "fit_ohm": 0.3505,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L2",
        "weg": "mid",
-       "mH": 7.582,
-       "DCR_ohm": 1.723,
-       "fit_ohm": 1.7234,
+       "mH": 2.079,
+       "DCR_ohm": 0.8044,
+       "fit_ohm": 0.8044,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L4",
        "weg": "mid",
-       "mH": 9.283,
-       "DCR_ohm": 1.942,
-       "fit_ohm": 1.9416,
+       "mH": 16.32,
+       "DCR_ohm": 2.707,
+       "fit_ohm": 2.7067,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L5",
        "weg": "mid",
-       "mH": 1.128,
-       "DCR_ohm": 0.5612,
-       "fit_ohm": 0.5612,
+       "mH": 0.8872,
+       "DCR_ohm": 0.4872,
+       "fit_ohm": 0.4872,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "B·L7",
        "weg": "mid",
-       "mH": 0.2849,
-       "DCR_ohm": 0.2496,
-       "fit_ohm": 0.2496,
+       "mH": 0.4453,
+       "DCR_ohm": 0.3247,
+       "fit_ohm": 0.3247,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L11",
+       "weg": "mid",
+       "mH": 0.9713,
+       "DCR_ohm": 0.5139,
+       "fit_ohm": 0.5139,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "B·L14",
+       "weg": "mid",
+       "mH": 12.51,
+       "DCR_ohm": 2.314,
+       "fit_ohm": 2.3145,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "C·L2",
        "weg": "tweeter",
-       "mH": 3.769,
-       "DCR_ohm": 1.142,
-       "fit_ohm": 1.1419,
+       "mH": 2.93,
+       "DCR_ohm": 0.9845,
+       "fit_ohm": 0.9845,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "C·L4",
        "weg": "tweeter",
-       "mH": 7.949,
-       "DCR_ohm": 1.772,
-       "fit_ohm": 1.7721,
+       "mH": 14.5,
+       "DCR_ohm": 2.525,
+       "fit_ohm": 2.5247,
        "binnen_bereik": true,
        "gesnapt": false
       },
       {
        "id": "C·L7",
+       "weg": "tweeter",
+       "mH": 0.5902,
+       "DCR_ohm": 0.3832,
+       "fit_ohm": 0.3832,
+       "binnen_bereik": true,
+       "gesnapt": false
+      },
+      {
+       "id": "C·L10",
        "weg": "tweeter",
        "mH": 0.1109,
        "DCR_ohm": 0.1432,
        "fit_ohm": 0.1432,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L10",
-       "weg": "tweeter",
-       "mH": 0.2543,
-       "DCR_ohm": 0.2334,
-       "fit_ohm": 0.2334,
-       "binnen_bereik": true,
-       "gesnapt": false
-      }
-     ]
-    },
-    {
-     "netlist": "KAND_V2_7",
-     "totaal_DCR_ohm": 10.6947,
-     "als_gemodelleerd": true,
-     "draagt_DCR": true,
-     "wegen_zonder_familie": [],
-     "buiten_bereik": [
-      "L5"
-     ],
-     "spoelen": [
-      {
-       "id": "L1",
-       "weg": "woofer",
-       "mH": 2.885,
-       "DCR_ohm": 0.5678,
-       "fit_ohm": 0.5678,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L3",
-       "weg": "woofer",
-       "mH": 1.432,
-       "DCR_ohm": 0.3781,
-       "fit_ohm": 0.3781,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "L5",
-       "weg": "woofer",
-       "mH": 35.61,
-       "DCR_ohm": 2.443,
-       "fit_ohm": 2.443,
-       "binnen_bereik": false,
-       "gesnapt": false
-      },
-      {
-       "id": "L8",
-       "weg": "woofer",
-       "mH": 16.74,
-       "DCR_ohm": 1.576,
-       "fit_ohm": 1.5761,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L2",
-       "weg": "mid",
-       "mH": 1.949,
-       "DCR_ohm": 0.7744,
-       "fit_ohm": 0.7744,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L4",
-       "weg": "mid",
-       "mH": 17.57,
-       "DCR_ohm": 2.827,
-       "fit_ohm": 2.827,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L5",
-       "weg": "mid",
-       "mH": 2.108,
-       "DCR_ohm": 0.811,
-       "fit_ohm": 0.811,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "B·L7",
-       "weg": "mid",
-       "mH": 0.5051,
-       "DCR_ohm": 0.3497,
-       "fit_ohm": 0.3497,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L4",
-       "weg": "tweeter",
-       "mH": 0.7875,
-       "DCR_ohm": 0.4542,
-       "fit_ohm": 0.4542,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L7",
-       "weg": "tweeter",
-       "mH": 0.0612,
-       "DCR_ohm": 0.1009,
-       "fit_ohm": 0.1009,
-       "binnen_bereik": true,
-       "gesnapt": false
-      },
-      {
-       "id": "C·L10",
-       "weg": "tweeter",
-       "mH": 0.669,
-       "DCR_ohm": 0.4126,
-       "fit_ohm": 0.4126,
        "binnen_bereik": true,
        "gesnapt": false
       }
@@ -34119,6 +36571,51 @@
        "gesnapt": true
       }
      ]
+    }
+   ]
+  },
+  "a5e3veld_corpus": {
+   "_": "HET GEDATEERDE A5E3VELD-CORPUS, met de kandidaat waar elke netlist vandaan kwam. Zelfde reden als de andere gedateerde corpora: de koppeling bestandsnaam ↔ kandidaat stond alleen in casus1_v2_herkomst.json, en dat bestand wordt door de volgende regeneratie overschreven. DOCUMENTATIE, geen acceptatiewaarde.",
+   "reden": "HET GEDATEERDE A5E3VELD-CORPUS. Bevroren vóór A5e.3c, toen de M-T-as nog op k·f_s (1294 Hz) stond en het gestelde tweetergetal (−20 dB) niet als vensterinvoer werd gelezen: veld 4 × 5 = 20 (W-M 148/229/355/550 op de aandrijfvloer van de mid, M-T 1294–2304), zeven geleverd, alle zeven op de vloer én de tweeter met 0,88–1,18 Ω puur koper op de woofer. Vier dingen die A5e.3b sindsdien sluit: (1) de M-T-vloer is de strengste van gesteld en afgeleid ('drive-stated', 1647 Hz — de twee 1495-kandidaten KAND_V2_1/_7 vallen eruit, 0,4 dB marge op een gestelde eis is geen ontwerp); (2) spoelen op de laagste weg boven de spanwijdte van de gestelde 1,4 mm-familie (22,0 mH) werden 'gevlagd en doorgezet' — 22–36 mH in de val van vijf van de zeven, sindsdien een plafond in synthese en zoekdoos (stapel = gestelde uitzondering, niet gesteld); (3) de barrière las het veiligheidsraster vanaf 20,5 Hz en niet de sweepbodem (KAND_V2_2: minimum 2,55 Ω op 10,07 Hz waar de barrière 2,85 las), sindsdien 'safety-extended'; (4) een L+R-shunt zonder C (de wees van een val waarvan de audit de C verwijderde) gold niet als pad — drie van de zeven dragen er een (KAND_V2_1/_2/_7), sindsdien geweigerd (level-work/1.2). A5e.3c wekt het veld opnieuw op onder die vier grenzen: 8 × 3 = 24. Bewaard als de 'vóór'-helft van de A5e.3c-vergelijking. Meetobject, GEEN ontwerp: mag niet gebouwd worden.",
+   "seed": 20260827,
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=186e7cb2 seed=20260827 budget=tuner starts=1 status=completed design=a7fcd44b measurements=b4c00a7f gates=b6002604 bounds=5465b825 tuning=293dc157 facts=5ac02d0a choices=0a515f6b",
+   "gegenereerd_op_commit": "2cc252f5b68c609d366fb8304c1cff6db13aa231",
+   "bevroren_op_commit": "d156acfec1989fbbd0ebba6229e8e7484784f972",
+   "bestanden": [
+    {
+     "naam": "A5E3VELD_KAND_1",
+     "was": "KAND_V2_1",
+     "kandidaat": "woofer→mid 549.7 LR4 · mid→tweeter 1494.8 LR4"
+    },
+    {
+     "naam": "A5E3VELD_KAND_2",
+     "was": "KAND_V2_2",
+     "kandidaat": "woofer→mid 229.1 LR4 · mid→tweeter 1726.7 LR4"
+    },
+    {
+     "naam": "A5E3VELD_KAND_3",
+     "was": "KAND_V2_3",
+     "kandidaat": "woofer→mid 229.1 LR4 · mid→tweeter 2304 LR4"
+    },
+    {
+     "naam": "A5E3VELD_KAND_4",
+     "was": "KAND_V2_4",
+     "kandidaat": "woofer→mid 549.7 LR4 · mid→tweeter 1994.6 LR4"
+    },
+    {
+     "naam": "A5E3VELD_KAND_5",
+     "was": "KAND_V2_5",
+     "kandidaat": "woofer→mid 354.9 LR4 · mid→tweeter 1994.6 LR4"
+    },
+    {
+     "naam": "A5E3VELD_KAND_6",
+     "was": "KAND_V2_6",
+     "kandidaat": "woofer→mid 549.7 LR4 · mid→tweeter 1726.7 LR4"
+    },
+    {
+     "naam": "A5E3VELD_KAND_7",
+     "was": "KAND_V2_7",
+     "kandidaat": "woofer→mid 354.9 LR4 · mid→tweeter 1494.8 LR4"
     }
    ]
   }

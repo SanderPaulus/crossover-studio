@@ -849,6 +849,30 @@ const meetopstelling = {
   spoel_dcr_herkomst:
     'manifest_en_geometrie.driverkaart.spoelfamilie (gesteld_door, per_weg, catalogus) — het ENIGE huis van de ' +
     'families (P6); de fits komen uit de catalogus die dat blok noemt, opnieuw gefit bij elke lezing (coil-dcr-fit).',
+  /* ---- A5e.3b/A5e.3c: DE SPANWIJDTE VAN DE GESTELDE FAMILIE ALS PLAFOND --
+   *
+   * Het TWAALFDE besluit, en het vierde op ketenniveau (`lowestWayCoilMaxHenry`,
+   * chainChoices.ts): het grootste enkele catalogusonderdeel van de gestelde
+   * spoelfamilie van de laagste weg (`rangeH[1]` van de fit, nooit getypt) is
+   * een plafond op élke vrije spoel van die weg — in de synthese (de val-slot)
+   * én in de zoekdoos. Afgeleid zodra het DCR-model gewapend is; de STAPEL is
+   * een gestelde uitzondering en staat hier als absent-reden wanneer zij niet
+   * gesteld is. Afgelezen van de ketenverklaring, want het is een keuze-sleutel. */
+  spoel_spanwijdte_plafond_mH: (() => {
+    const h = lastPayload.candidate?.chainDeclaration.stated.lowestWayCoilMaxHenry;
+    return typeof h === 'number' ? Number((h * 1e3).toFixed(3)) : null;
+  })(),
+  spoel_spanwijdte_plafond_waarom:
+    typeof lastPayload.candidate?.chainDeclaration.stated.lowestWayCoilMaxHenry === 'number'
+      ? 'GEEN SPOEL OP DE LAAGSTE WEG BOVEN DE SPANWIJDTE VAN HAAR GESTELDE FAMILIE (A5e.3b (b)1, de slotregel ' +
+        'van A5d.6 compleet: optimalisatiegrenzen = catalogus-spanwijdte ∩ meetafgeleide budgetgrenzen). Per ' +
+        'spoel en nooit een som — twee spoelen in serie zijn precies de stapel waar de gestelde uitzondering over ' +
+        'gaat, en die is NIET gesteld. Geen W-M-vloer hiervan: de val staat op de reflexpiek van de driver en ' +
+        'schaalt niet met het kruispunt. Tot A5e.3b werd een spoel boven de spanwijdte "gevlagd en doorgezet" ' +
+        '(22–36 mH in de val van vijf van de zeven A5e.3-veld-netlists); sinds A5e.3c wordt zij niet gebouwd.'
+      : 'GEEN PLAFOND: ' +
+        (lastPayload.candidate?.chainDeclaration.absent.find((a) => a.key === 'lowestWayCoilMaxHenry')?.why ??
+          'de ketenverklaring noemt de sleutel niet'),
   /* ---- V51: MAG DE LAAGSTE WEG NIVEAUWERK DRAGEN ------------------------
    *
    * Het TIENDE besluit in dit blok, en het derde op ketenniveau naast het
@@ -1184,7 +1208,8 @@ const meetopstelling = {
       grid: 'De barrière leest het EVALUATIERASTER, zoals altijd — de vóór-arm van V33.',
       'safety-extended':
         'De barrièreterm leest zijn tekort op het veiligheidsraster VERLENGD tot de gemeten ' +
-        'sweep-uitgestrektheid (A5e.3b (c)2): de veiligheidsresolutie waar de responsen geldig ' +
+        'sweep-uitgestrektheid (de vierde waarde van de V33-sleutel, A5e.3b (c)2; de eerste regeneratie ' +
+        'erop is A5e.3c): de veiligheidsresolutie waar de responsen geldig ' +
         'zijn, plus de eigen punten van het poortraster daarbuiten (10–20,5 Hz op de gemergede ' +
         'set). Dezelfde lezer (`minImpedanceAt`, via `extendGridToSweepExtent`); de aanleiding ' +
         'is KAND_V2_2 van het A5e.3-veld, wiens minimum op 10,07 Hz buiten de barrière-' +
@@ -1278,7 +1303,11 @@ writeFileSync(
           'LR4; LR2 gaf dezelfde weigeringen met 1-2 dB slechtere RMS en is ingetrokken), de bibliotheek blijft tot ' +
           'de LR-uitlijningen beperkt, de W-M-vloer is de AANDRIJFVLOER van de mid (A5d.3(ii) omgekeerd met het ' +
           'excursieplafond van V49, kruisvensters.parameters.aandrijfvloer) en het veld is tot het gestelde ' +
-          'positiebudget gedund (generator_parameters: aangeboden tegen geleverd; posities gedund, nooit orden).',
+          'positiebudget gedund (generator_parameters: aangeboden tegen geleverd; posities gedund, nooit orden). ' +
+          'A5e.3b/A5e.3c: de M-T-vloer is de STRENGSTE van gesteld en afgeleid — het gestelde tweetergetal bij de ' +
+          'gestelde orde door dezelfde A5d.3(ii)-inversie (drive-stated, kruisvensters.mid_tweeter_orde4) — zodat ' +
+          'de assen van rol wisselden: de M-T-as krimpt tot drie posities en de W-M-as krijgt de ruimte van het ' +
+          'budget terug.',
       },
       settings: CASUS1_V2_SETTINGS,
       meetopstelling,

@@ -295,23 +295,57 @@ describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
     expect(mean([])).toBeNull();
   });
 
-  it('A5e.3-veld: V51b → levend heeft GEEN enkel paar op LABEL — de posities zijn verschoven — en de tabel paart daarom op het dichtstbijzijnde kruispunt, met naam', () => {
+  it('A5e.3-veld: V51b → A5e.3-veld heeft GEEN enkel paar op LABEL — de posities zijn verschoven — en de tabel paart daarom op het dichtstbijzijnde kruispunt, met naam (herankerd bij A5e.3c)', () => {
     /* De A5e.3-veld-regeneratie loopt op een ander veld (orde 4 gesteld, de
      * W-M-vloer op de aandrijfvloer van de mid, positiebudget 24), dus geen
      * enkele V51b-kandidaat bestaat er letterlijk in; de gepaarde lezing op
      * label is n = 0 en drukt niets af. Wat `scripts/measure-a5e3-field.ts` als
      * "gepaard tegen V51b" afdrukt is daarom een paar op het DICHTSTBIJZIJNDE
      * kruispunt, met beide labels erbij — een anekdote per rij, en zo
-     * gelabeld; de corpusregel blijft de leesregel van dit bestand. */
+     * gelabeld; de corpusregel blijft de leesregel van dit bestand.
+     *
+     * HERANKERD BIJ A5e.3c (05-09-2026): tot dan las deze claim het LEVENDE
+     * corpus, en de A5e.3c-regeneratie overschrijft dat. De zeven A5e.3-veld-
+     * netlists staan sindsdien bevroren als `A5E3VELD_KAND_*` (corpus-id
+     * `a5e3veld`) — dezelfde herankering die V48 op `v45 → v47` deed, en om
+     * dezelfde reden: een bevinding die naar "het levende corpus" wijst wordt
+     * stil onwaar. */
     const before = corpusOf('v51b');
-    const after = corpusOf('live');
+    const after = corpusOf('a5e3veld');
     expect(before.byCandidate.size).toBe(6);
+    expect(after.byCandidate.size).toBe(7);
     expect(pairedCandidates(before, after)).toHaveLength(0);
     for (const label of before.order) expect(after.order).not.toContain(label);
     for (const pick of [PHASE, DISS]) {
       const d = pairedDelta([], pick);
       expect(d.n).toBe(0);
       expect(d.before).toBeNull();
+    }
+  });
+
+  it('A5e.3c: A5e.3-veld → levend heeft GEEN enkel paar op LABEL — de M-T-as verhuisde en de W-M-as verdubbelde — en de live shortlist is voor het eerst KLEINER dan wat het veld leverde', () => {
+    /* De A5e.3c-regeneratie loopt op het A5e.3b-veld (M-T 1647/1948/2304 in
+     * plaats van 1294–2304, W-M in acht posities in plaats van vier), dus
+     * geen enkele van de zeven A5e.3-veld-labels bestaat erin; de gepaarde
+     * lezing op label is n = 0 en `measure-a5e3c-field.ts` paart op het
+     * dichtstbijzijnde kruispunt, met de octaafafstand erbij — een anekdote
+     * per rij. En het levende corpus is TIEN netlists uit ELF geleverde: de
+     * shortlist houdt `DEFAULT_SHORTLIST_SIZE` ontwerpen en kiest op
+     * spreiding, wat A5e.3c voor het eerst zichtbaar maakt (elk vorig veld
+     * leverde er ten hoogste tien). Gelezen uit de boekhouding van de
+     * generator, niet gemeten. */
+    const before = corpusOf('a5e3veld');
+    const after = corpusOf('live');
+    expect(before.byCandidate.size).toBe(7);
+    expect(after.byCandidate.size).toBe(10);
+    expect(pairedCandidates(before, after)).toHaveLength(0);
+    for (const label of before.order) expect(after.order).not.toContain(label);
+    const delivered = after.outcomes!.filter((o) => o.verwerping === null);
+    expect(delivered.length).toBe(11);
+    expect(after.byCandidate.size).toBeLessThan(delivered.length);
+    for (const pick of [PHASE, DISS]) {
+      const d = pairedDelta([], pick);
+      expect(d.n).toBe(0);
     }
   });
 

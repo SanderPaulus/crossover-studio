@@ -197,7 +197,13 @@ function measure(key: string, corpus: string, label: string): Row {
 }
 
 /* ---- de rijen --------------------------------------------------------------- */
-const live = corpusOf('live');
+/* A5e.3c — HERANKERD op het GEDATEERDE A5e.3-veld (`a5e3veld`). Tot A5e.3c las
+ * dit script zijn "A5e.3-veld"-rijen uit het LEVENDE corpus, en de A5e.3c-
+ * regeneratie overschrijft dat: de eerste run erna zou stilletjes een ándere
+ * tabel hebben gemaakt dan de tabel waarvoor het geschreven is — de
+ * `compare-corpora`-les van V33. De A5e.3c-tabel staat in
+ * `measure-a5e3c-field.ts`. */
+const live = corpusOf('a5e3veld');
 const v51b = corpusOf('v51b');
 const arm = corpusOf('a5e3arm');
 const args = process.argv.slice(2);

@@ -142,6 +142,10 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
    * dated corpus of ONE netlist because M-1's live corpus was empty and there
    * was nothing to freeze (`scripts/register-a5e3-arm.ts`). */
   a5e3arm: { block: 'a5e3_arm_corpus', name: 'A5e.3-arm' },
+  /* A5e.3c — the seven A5e.3-veld netlists, frozen before the regeneration on
+   * the A5e.3b boundaries (M-T floor 'drive-stated', coil-span cap, extended
+   * barrier, level-work/1.2). The "before" half of the A5e.3c comparison. */
+  a5e3veld: { block: 'a5e3veld_corpus', name: 'A5e.3-veld' },
 };
 
 /**
