@@ -25,9 +25,10 @@ import {
   type VfSpecs,
 } from './vfOptimizer.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
+import { forbidsPads, seriesRMaxOhmOf, type LowestWayLevelWork } from './levelWork.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
 import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
-import type { ChainEngineHooks } from './threeWayChain.ts';
+import { ALIVE_DB, type ChainEngineHooks } from './threeWayChain.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
 import {
   DEFAULT_R_SOURCE_DISQUALIFY_OHM,
@@ -83,6 +84,57 @@ export interface ChainSettings {
   };
   /** Max vf rounds (re-seeded from best while a round pays ≥1%). */
   maxRounds?: number;
+  /* ------------------------------------------------------------------ *
+   * E-3 — THE FOUR CHAIN-LEVEL CHOICE KEYS, in this chain's own vocabulary.
+   *
+   * `chainChoices.ts` classifies four `Chain3Settings` keys as CHOICES that a
+   * v2 candidate states because the design and synthesis steps read them
+   * before the tuner exists (V41: `eqBands`, `leanTargetDb`; V51: the level
+   * work the lowest way may carry; A5e.3b: the catalogue span of its coil
+   * family). Until E-3 this chain carried the first as `eqBandsPerDriver`,
+   * DERIVED the second from `targets.rippleDb` and knew nothing of the other
+   * two, so on the two-way route a declared candidate travelled with four
+   * decisions nobody read (casebook E-3, the two-way map). Every key below is
+   * OPTIONAL and absent is the identity: an unstated key leaves this chain
+   * reading exactly what it read before, byte for byte, for every v1 caller.
+   * ------------------------------------------------------------------ */
+  /**
+   * The lean-mode threshold handed to per-branch SYNTHESIS (dB). ABSENT = the
+   * historical derivation, `targets.rippleDb` — the staged pass's STOP GOAL,
+   * five times `SYNTHESIS_LEAN_DEFAULT_DB` (V38 beslispunt B, V41). A stated
+   * value wins; the other readers of `targets.rippleDb` (`staged`, the
+   * ranking) are untouched, exactly as on the three-way chain.
+   */
+  leanTargetDb?: number;
+  /**
+   * V51/V51b — whether the LOWEST way (the woofer slot of this chain, the
+   * `low` branch) may carry level work. `'none'`: its synthesis places no
+   * L-pad, no top-octave hold and no shelf pad, the design step's gain shift
+   * never attenuates it (the surplus stays in the sum) and the greedy EQ
+   * proposes no shelf cut on it (a shelf cut is a pad with a bypass).
+   * `{ kind: 'series-r-max', maxOhm }`: one plain series R, capped. ABSENT =
+   * the historical behaviour, byte-identical (`levelWork.ts`).
+   */
+  lowestWayLevelWork?: LowestWayLevelWork;
+  /**
+   * A5e.3b — the single-part CATALOGUE SPAN of the lowest way's stated coil
+   * family, henry: a hard ceiling on every coil its synthesis proposes.
+   * Derived from the stated family's fit (`rangeH[1]`), never typed. ABSENT =
+   * no cap (P4), byte-identical.
+   */
+  lowestWayCoilMaxHenry?: number;
+  /**
+   * E-3 — which grid points the per-branch SYNTHESIS fits on. `'alive'`: the
+   * points where the branch's own response is above the silent ghost
+   * (`ALIVE_DB`), the three-way chain's construction since it was written.
+   * ABSENT = `'full'`, THIS chain's history: every grid point, and on every
+   * casus in this book the grid's top point (20 000 Hz) is a -400 dB ghost the
+   * far field does not reach. Measured at E-3 on casus 1b: on the full grid
+   * the fit chases that point and the tweeter branch degenerates (2.5 pF series
+   * C, "0.001 Ω at 20 000 Hz"); on the alive points it builds. The fifth
+   * chain-level choice key (`chainChoices.ts`); byte-identical when absent.
+   */
+  synthesisGrid?: 'alive' | 'full';
 }
 
 export interface ChainInput {
@@ -179,6 +231,11 @@ export function runDesignChain(
     acousticSlopes: s.acousticSlopes,
     xoRange: input.xoRange,
     band: s.band,
+    /* E-3 (V51 on this chain) — a rule that forbids pads on the lowest way
+     * forbids a shelf cut on it in the DESIGN step too: the synthesis builds a
+     * shelf EQ band as a pad with a bypass. Spread, so an unstated rule leaves
+     * the key absent and the design step reads exactly what it always read. */
+    ...(forbidsPads(s.lowestWayLevelWork) ? { noShelfOnWoofer: true } : {}),
   };
   // Round loop (was App-side): re-seed from the best while a round pays ≥1%.
   // Round 1 is a PRIORITY CLUSTER (setpoint ±5%) — a 5% priority nudge kicks
@@ -237,6 +294,16 @@ export function runDesignChain(
     ...spec,
     gainDb: Math.round((spec.gainDb - gShift) * 10) / 10,
   });
+  /* E-3 (V51 on this chain) — under `'none'` the LOWEST way is not trimmed:
+   * a design-step gain shift that attenuates the woofer slot is level work on
+   * it, and the requirement says the surplus stays in the sum for the rest of
+   * the chain to deal with or to refuse — the same rule `designThreeWay` applies
+   * to its `trims[0]`. With `cutOnly` (the app's own setting) the tweeter gain
+   * is already ≤ 0 and the shift is 0, so on the app route this changes
+   * nothing; it exists for a caller that boosts. Absent rule = identity. */
+  const noLowestLevelWork = s.lowestWayLevelWork === 'none';
+  const shiftedLow = (spec: DriverFilterSpec): DriverFilterSpec =>
+    noLowestLevelWork ? { ...shifted(spec), gainDb: 0 } : shifted(spec);
   // Position doctrine, measured on Sanders' three runs: tiering the FIT
   // itself drags the whole search into a worse basin — the budget shunt
   // parasitics (0.7 mm coil ≈ 0.7 Ω DCR in a trap) seed every downstream
@@ -248,17 +315,45 @@ export function runDesignChain(
   // recipe: design premium, then swap the LCR parts to budget.)
   const fitPrefs =
     s.snapPrefs?.profile === 'position' ? { ...s.snapPrefs, profile: 'premium' as const } : s.snapPrefs;
-  const synthOpts = (raw: GriddedResponse) => ({
+  /* E-3 — `synthesisGrid: 'alive'`: fit each branch on the points where ITS
+   * response is alive (the three-way chain's `synthOne`, verbatim in
+   * construction); absent or `'full'` is this chain's history — the whole
+   * grid, byte for byte. The impedance and the driver SPL are sliced to the
+   * same points, so the degenerate-load check and the acoustic target read
+   * the grid the fit ran on. */
+  const synthGridFor = (raw: GriddedResponse, z: ChainInput['driverZ'][string]) => {
+    if (s.synthesisGrid !== 'alive') return { sub: grid, zSub: z, spl: [...raw.spl] };
+    const idxs: number[] = [];
+    for (let i = 0; i < grid.length; i++) if (raw.spl[i] > ALIVE_DB) idxs.push(i);
+    return { sub: idxs.map((i) => grid[i]), zSub: idxs.map((i) => z[i]), spl: idxs.map((i) => raw.spl[i]) };
+  };
+  const synthOpts = (spl: readonly number[]) => ({
     mode: s.synthMode,
     phasePriority: s.phasePriority,
     catalogSnap: s.catalogSnap,
     corrections: (s.targets ? 'lean' : 'auto') as 'lean' | 'auto',
-    leanTargetDb: s.targets?.rippleDb,
+    /* E-3 (V41 on this chain) — a stated threshold wins over the derivation
+     * from `targets`; unstated is the identity, exactly as `threeWayChain.ts`
+     * reads it since V41. */
+    leanTargetDb: s.leanTargetDb ?? s.targets?.rippleDb,
     snapPrefs: fitPrefs,
-    ...(s.synthMode === 'acoustic' ? { driverSplDb: [...raw.spl] } : {}),
+    ...(s.synthMode === 'acoustic' ? { driverSplDb: [...spl] } : {}),
   });
-  const synthWoofer = synthesize(shifted(b.specs.woofer), grid, driverZ.mid, { ...synthOpts(w), label: 'low' });
-  const synthTweeter = synthesize(shifted(b.specs.tweeter), grid, driverZ.tweeter, { ...synthOpts(t), label: 'high' });
+  /* E-3 — the LOWEST way of this chain is the woofer slot (`low`), by the
+   * chain's own construction; the three chain keys that name "the lowest way"
+   * are spread onto its synthesis and onto nothing else, in the same form the
+   * three-way chain gives `synthOne` for its woofer (V51, V51b, A5e.3b). An
+   * unstated key leaves the synthesis reading exactly what it always read. */
+  const lowestSeriesRMaxOhm = seriesRMaxOhmOf(s.lowestWayLevelWork);
+  const lowestSynthOpts = {
+    ...(noLowestLevelWork ? { noLevelWork: true } : {}),
+    ...(lowestSeriesRMaxOhm !== null ? { seriesRMaxOhm: lowestSeriesRMaxOhm } : {}),
+    ...(s.lowestWayCoilMaxHenry !== undefined ? { coilMaxHenry: s.lowestWayCoilMaxHenry } : {}),
+  };
+  const lowGrid = synthGridFor(w, driverZ.mid);
+  const highGrid = synthGridFor(t, driverZ.tweeter);
+  const synthWoofer = synthesize(shiftedLow(b.specs.woofer), lowGrid.sub, lowGrid.zSub, { ...synthOpts(lowGrid.spl), ...lowestSynthOpts, label: 'low' });
+  const synthTweeter = synthesize(shifted(b.specs.tweeter), highGrid.sub, highGrid.zSub, { ...synthOpts(highGrid.spl), label: 'high' });
   /* Degenerate-load refusal (see synthesis.ts) — the two-way path needs it as
    * much as the three-way one: 2 of the 6 two-way seeds in the census went
    * under 1 Ω, so this is not a three-way phenomenon. */
@@ -288,7 +383,7 @@ export function runDesignChain(
   };
   const branchTargets = {
     freq: [...grid],
-    low: targetFor(shifted(b.specs.woofer), w),
+    low: targetFor(shiftedLow(b.specs.woofer), w),
     high: targetFor(shifted(b.specs.tweeter), t),
   };
 

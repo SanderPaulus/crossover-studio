@@ -255,6 +255,14 @@ export interface VfOptimizeOptions {
    * Default false.
    */
   cutOnly?: boolean;
+  /**
+   * E-3 (V51 on the two-way chain) — the greedy EQ proposes NO shelf band on
+   * the woofer (the lowest way): a shelf cut is synthesised as a pad with a
+   * bypass, which a project that forbids level work on its lowest way may not
+   * carry. Peak cuts stay (an LCR notch is an impedance correction, not level
+   * work). Default false = the seeds this stage always made, byte for byte.
+   */
+  noShelfOnWoofer?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1022,6 +1030,9 @@ export function optimizeVirtualFilters(
     const clampG = (v: number) => Math.min(Math.max(v, -12), cutOnly ? 0 : 4);
     for (const side of ownerAt(state.specs, magPeak.freq)) {
       seeds.push({ side, freq: magPeak.freq, gainDb: clampG(-magPeak.devDb), type: 'peak' });
+      /* E-3 — no shelf on the lowest way when the caller forbids pads there
+       * (`noShelfOnWoofer`); the peak seed above stays. Absent = every seed. */
+      if (opts.noShelfOnWoofer && side === 'woofer') continue;
       // Shelves only compete when the residual is a broad tilt, seeded with
       // exactly the tilt they should undo — targeted, so the greedy path
       // stays stable when the residual is local.

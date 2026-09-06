@@ -970,7 +970,7 @@ describe('F4d — a generated candidate declares every choice key', () => {
     expect(holed.complete).toBe(false);
     /* V51 — the third key is missing here as well; a key with an ABSENT state
      * still has to be declared in one. A5e.3b — and the fourth. */
-    expect(holed.missing).toEqual(['leanTargetDb', 'lowestWayLevelWork', 'lowestWayCoilMaxHenry']);
+    expect(holed.missing).toEqual(['leanTargetDb', 'lowestWayLevelWork', 'lowestWayCoilMaxHenry', 'synthesisGrid']);
   });
 
   it('V41 — neither chain key may migrate into the tuner\'s own classification', () => {
@@ -993,7 +993,10 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // the stated coil family as a ceiling on every coil the design and
     // synthesis steps may propose on that way — the seed is placed before the
     // tuner exists, and a value only the box caps is a seed the tune spends
-    // its budget defending.
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork']);
+    // its budget defending. E-3 wrote the fifth down (`synthesisGrid`): which
+    // grid points the synthesis fits on — the silent ghost at the grid top is
+    // a dead point the two-way chain's fit chased into a degenerate branch, and
+    // whether the fit sees it is decided before the tuner exists.
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork', 'synthesisGrid']);
   });
 });

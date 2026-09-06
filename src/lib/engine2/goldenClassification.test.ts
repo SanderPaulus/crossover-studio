@@ -472,3 +472,75 @@ describe('F4a — the recorded parameters are the ones the engine used (V15)', (
     expect(a).toContain('woofer');
   });
 });
+
+/* ================================================================== *
+ * E-3 — the same rule on the SECOND casus file: casus 1b
+ * ================================================================== */
+
+import { loadGolden1b } from './casus1b.fixture.ts';
+
+describe('E-3 — casus 1b: every golden reference says what it is a function of', () => {
+  const golden1b = loadGolden1b() as unknown as Record<string, unknown>;
+  const at1b = (path: string): Record<string, unknown> => {
+    let node: unknown = golden1b;
+    for (const key of path.split('.')) {
+      expect(node, `casus 1b ${path}: missing at "${key}"`).toBeTruthy();
+      node = (node as Record<string, unknown>)[key];
+    }
+    expect(node, `casus 1b ${path}: not an object`).toBeTypeOf('object');
+    return node as Record<string, unknown>;
+  };
+  /* Written out, as casus 1's are, so the completeness half below has a list
+   * to be complete against. The frozen netlists are DERIVED from the manifest
+   * for the reason casus 1 gives (V33): a family list is forgotten by hand. */
+  const CLASSED_1B: readonly string[] = [
+    'afgeleide_parameters._re_parameters',
+    'afgeleide_parameters._spl_scan_parameters',
+    'afgeleide_parameters._excursie_parameters',
+    'afgeleide_parameters.mid',
+    'afgeleide_parameters.tweeter',
+    'verankerde_gaps_dB',
+    'kruisvensters.parameters',
+    'kruisvensters.mid_tweeter_orde4',
+    'kandidaten._parameters',
+    'manifest_en_geometrie',
+    'v1_baseline',
+  ];
+  const UNCLASSED_1B: readonly string[] = ['casus', 'meetdata', 'vastgesteld', 'waarom', 'classificatie', 'toleranties', 'toleranties_toelichting'];
+  const NETLIST_KEYS_1B = Object.keys((golden1b.manifest_en_geometrie as { netlists: Record<string, string> }).netlists);
+  const ALL_1B = [...CLASSED_1B, ...NETLIST_KEYS_1B.map((k) => `kandidaten.${k}`)];
+
+  it('each classed block carries a klasse and the afhankelijkheid that class implies', () => {
+    for (const path of ALL_1B) {
+      const block = at1b(path);
+      const klasse = block.klasse as string;
+      expect(Object.keys(DEPENDENCY_OF_CLASS), `casus 1b ${path}: klasse`).toContain(klasse);
+      expect(block.afhankelijkheid, `casus 1b ${path}: afhankelijkheid does not match klasse ${klasse}`).toBe(DEPENDENCY_OF_CLASS[klasse]);
+    }
+    // The reference filter and at least one live netlist are classed; the
+    // manifest names them, so an empty `kandidaten` cannot pass.
+    expect(NETLIST_KEYS_1B).toContain('HUIDIG_MT');
+    expect(NETLIST_KEYS_1B.some((k) => /^KAND_V2_\d+$/.test(k))).toBe(true);
+  });
+
+  it('a NEW top-level block without a class fails here', () => {
+    const parents = new Set(ALL_1B.map((p) => p.split('.')[0]));
+    const stray = Object.keys(golden1b).filter((k) => !parents.has(k) && !UNCLASSED_1B.includes(k));
+    expect(stray, `casus 1b: top-level blocks with no klasse and no exemption: ${stray.join(', ')}`).toEqual([]);
+    expect(parents.size).toBeGreaterThanOrEqual(UNCLASSED_1B.length - 1);
+  });
+
+  it('class C lives ONLY under the baseline block, and the baseline is empty', () => {
+    for (const path of ALL_1B) {
+      if (path === 'v1_baseline') continue;
+      expect(at1b(path).klasse, `casus 1b ${path} is class C outside a baseline block`).not.toBe('C');
+    }
+    const baseline = at1b('v1_baseline');
+    expect(baseline.klasse).toBe('C');
+    // Empty, as casus 1's is and for the same reason: the reference filter and
+    // the frozen candidates are FILES, so no reference here is a function of a
+    // search. The commit the baseline would rest on is recorded, not implied.
+    expect(baseline.referenties).toEqual({});
+    expect(String(baseline.v1_commit)).toMatch(/^[0-9a-f]{7,40}$/);
+  });
+});

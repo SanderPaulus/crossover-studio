@@ -42,6 +42,7 @@
  */
 
 import type { Chain3Settings } from '../../threeWayChain.ts';
+import type { ChainSettings } from '../../designChain.ts';
 
 /* ------------------------------------------------------------------ *
  * CHOICE — what is searched, at the chain layer
@@ -124,6 +125,38 @@ export const CHAIN_CHOICE_KEYS = [
    * scale with the crossing — a W-M floor derived from the span would forbid
    * positions for a component every position needs equally. */
   'lowestWayCoilMaxHenry',
+  /* --- E-3: WHICH GRID POINTS THE SYNTHESIS STEP MAY FIT ON ---
+   *
+   * The fifth key, and the V38-fix reading one stage EARLIER than V38-fix
+   * repaired it. A branch response is a SILENT GHOST (-400 dB) wherever the
+   * measurement is not valid, and on every casus in this book the chain grid's
+   * top point (20 000 Hz) is one: the far field ends there. `'alive'`: the
+   * synthesis fits each branch on the points where ITS response is alive
+   * (`ALIVE_DB`, `threeWayChain.ts`) — what the three-way chain has done since
+   * it was written. `'full'`: the whole grid, ghost included — what the
+   * two-way chain (`designChain.ts`) did until E-3.
+   *
+   * A choice by the same test as the four above: it decides what the TOPOLOGY
+   * is. MEASURED AT E-3 ON CASUS 1b (casus 1's mid and tweeter as a two-way):
+   * on the full grid the synthesis chases the dead point — an acoustic target
+   * of -400 dB at 20 kHz, weighted small but with a 300 dB error — and the
+   * tweeter branch came out with a 2.5 pF series capacitor and a 196 mH shunt,
+   * "0.001 Ω to the amplifier at 20 000 Hz" (the degenerate-load refusal, on
+   * all three exploration candidates); the tuner then refused the whole value
+   * tune and returned that seed (`tuned: 0`, 37.5 dB ripple). On the alive
+   * points the same specs synthesise a buildable ladder. The vf DESIGN step's
+   * half of the same ghost — the 1/12-octave smoothing kernel dragging -400 dB
+   * over the band edge, 41–48 dB "ripple" at the plain HP/LP stage against
+   * 4.6–4.9 dB unsmoothed — is `errorSmoothOct`, a TUNER key with a second
+   * reader on this chain, carried by `withDeclaredSearchSmoothing` (worker).
+   *
+   * ABSENT = each chain's own history (P2): the three-way reads alive, the
+   * two-way reads full, byte for byte for every v1 caller. The declaration
+   * states `'alive'` unconditionally — like V37's `'re'` and V38-fix's
+   * smoothing width, there is no design on which "fit on dead points" is the
+   * honest answer — and an explicit `'full'` still wins, so the E-3 before/after
+   * is a run somebody can ask for on either chain. */
+  'synthesisGrid',
 ] as const;
 
 export type ChainChoiceKey = (typeof CHAIN_CHOICE_KEYS)[number];
@@ -222,6 +255,63 @@ export function withDeclaredChainChoices<I extends { settings: Partial<ChainCand
     const v = declaration.stated[k];
     if (v !== undefined) (stated as Record<string, unknown>)[k] = v;
   }
+  if (Object.keys(stated).length === 0) return input;
+  return { ...input, settings: { ...input.settings, ...stated } };
+}
+
+/* ------------------------------------------------------------------ *
+ * E-3 — the same keys (four at the map, five with `synthesisGrid`), in the
+ * TWO-WAY chain's vocabulary
+ * ------------------------------------------------------------------ */
+
+/**
+ * E-3 — WHAT A CHAIN DECLARATION SAYS TO `designChain.ts`.
+ *
+ * `withDeclaredChainChoices` above rewrites `Chain3Settings`, and the two-way
+ * chain speaks a slightly different dialect: it has always called the EQ
+ * budget `eqBandsPerDriver`, and it learned the other three keys at E-3
+ * (`leanTargetDb`, `lowestWayLevelWork`, `lowestWayCoilMaxHenry`, each optional
+ * and absent = the identity). V41 declined to write this mapping — "a second
+ * mapping of two keys into a second vocabulary" — while the two-way route was
+ * v1 in full; the E-3 map of that route measured what the decline cost: a
+ * declared candidate travelled with four decisions the design and synthesis
+ * steps never read, so a two-way candidate's topology was bounded by whatever
+ * the chain settings happened to carry (a silent nought of EQ bands on a
+ * fixture that stated none — V38 beslispunt C, one chain over).
+ *
+ * ONE translation, here, beside the declaration it translates, and the tests
+ * pin that both chains receive the same values from one declaration. A
+ * key the candidate declares ABSENT is left exactly as the settings carried it,
+ * for the reason `withDeclaredChainChoices` gives.
+ */
+export function chainSettingsForTwoWay(
+  declaration: ChainChoiceDeclaration | undefined,
+): Partial<Pick<ChainSettings, 'eqBandsPerDriver' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid'>> {
+  if (!declaration) return {};
+  const s = declaration.stated;
+  return {
+    ...(s.eqBands !== undefined ? { eqBandsPerDriver: s.eqBands } : {}),
+    ...(s.leanTargetDb !== undefined ? { leanTargetDb: s.leanTargetDb } : {}),
+    ...(s.lowestWayLevelWork !== undefined ? { lowestWayLevelWork: s.lowestWayLevelWork } : {}),
+    ...(s.lowestWayCoilMaxHenry !== undefined ? { lowestWayCoilMaxHenry: s.lowestWayCoilMaxHenry } : {}),
+    /* E-3 — the fifth key, same name on both chains; absent = this chain's own
+     * history (the full grid). */
+    ...(s.synthesisGrid !== undefined ? { synthesisGrid: s.synthesisGrid } : {}),
+  };
+}
+
+/**
+ * Apply a chain declaration to a TWO-WAY chain input (`designChain.ts`).
+ *
+ * The V34/V41 shape: a run WITHOUT a declaration is returned unchanged, and
+ * that identity is what keeps every non-v2 caller byte-identical; a stated key
+ * overwrites what the settings carried; an absent key is left alone.
+ */
+export function withDeclaredChainChoicesTwoWay<I extends { settings: ChainSettings }>(
+  input: I,
+  declaration: ChainChoiceDeclaration | undefined,
+): I {
+  const stated = chainSettingsForTwoWay(declaration);
   if (Object.keys(stated).length === 0) return input;
   return { ...input, settings: { ...input.settings, ...stated } };
 }

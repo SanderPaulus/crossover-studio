@@ -91,6 +91,8 @@ function testFiles(): { path: string; source: string }[] {
  */
 const CI_LOAD_BEARING = [
   'src/lib/engine2/goldenCasus1.test.ts',
+  /* E-3 — casus 1b's class-A/B references: fixed netlists, no search, portable. */
+  'src/lib/engine2/goldenCasus1b.test.ts',
   'src/lib/engine2/goldenClassification.test.ts',
   'src/lib/engine2/frozenNetlistGates.test.ts',
   'src/lib/engine2/metrics/lfBumpDecomposition.test.ts',
@@ -136,7 +138,7 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     }
   });
 
-  it('de byte-inventaris is precies deze ZES bronnamen — tien gedraaide tests', () => {
+  it('de byte-inventaris is precies deze ZEVEN bronnamen — elf gedraaide tests', () => {
     /* De namen staan hier voluit zodat een toevoeging een BEWUSTE daad is: wie
      * er een tagt, komt hier langs en moet opschrijven wat hij uit CI haalt.
      *
@@ -158,8 +160,14 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
      * vergeleken MINUS de ene rij die de reparatie van de beschermingsregel
      * wegnam (M-C op de laagste weg van het tweewegfixture), en het derde
      * gedateerde blok `verdicts_sinds_M1` pint de gecorrigeerde verzameling
-     * in dezelfde test. Nog steeds zes namen en tien gedraaide tests. */
+     * in dezelfde test. Nog steeds zes namen en tien gedraaide tests.
+     *
+     * E-3 voegde de ZEVENDE toe: de byte-reproductie van casus 1b door de
+     * tweewegroute van de worker (`casus1bV2Candidates.test.ts`, kind
+     * `v2ChainOne`). Uit CI om dezelfde reden als de zes andere; zeven namen,
+     * elf gedraaide tests. */
     expect(taggedNames(BYTES_TAG)).toEqual([
+      `${BYTES_TAG} casus 1b: the cheapest delivered netlist, by recorded runtime, live through v2ChainOne, byte for byte`,
       `${BYTES_TAG} seed %i: ALL SIX verdicts reproduce the V50 block minus that row, and the M-1 block in full`,
       `${BYTES_TAG} seed %i: so does the F4b2 shape — the fixture pins both`,
       `${BYTES_TAG} seed %i: the F4c shape reproduces the STORED F4b2 network`,
@@ -169,16 +177,22 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     ]);
   });
 
-  it('de live-inventaris is precies deze TWEE blokken', () => {
+  it('de live-inventaris is precies deze DRIE blokken', () => {
     /* Sinds 01-09-2026 zijn de twee live ketenruns twee BESTANDEN: `[live]` is
      * planning, en een synchrone `handleV2Request` laat twee van hen binnen één
      * bestand niet naast elkaar draaien. De splitsing verandert dus WAAR zij
      * draaien en niet OF — maar zij verhoogt het tagtal van één naar twee, en
      * precies zo'n verhoging is wat deze inventaris zichtbaar moet houden. Wie
      * er een derde bij tagt komt hier langs en schrijft op wat hij uit de
-     * snelle laag én uit CI haalt. */
+     * snelle laag én uit CI haalt.
+     *
+     * E-3 tagde de DERDE: casus 1b's live ketenrun door de tweewegroute
+     * (`casus1bV2Candidates.test.ts`, één bestand, één run van ~100 s). Uit
+     * de snelle laag omdat het een live ketenrun is; uit CI omdat hij bytes
+     * vergelijkt. */
     expect(taggedNames(LIVE_TAG)).toEqual([
       `${LIVE_TAG} a wholesale refusal comes back as a refusal`,
+      `${LIVE_TAG} casus 1b: the two-way route still delivers the frozen netlist`,
       `${LIVE_TAG} the run still delivers the frozen netlist`,
     ]);
   });

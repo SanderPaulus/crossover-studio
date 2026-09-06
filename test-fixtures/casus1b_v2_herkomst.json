@@ -1,0 +1,1009 @@
+{
+ "_": "E-3 — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1b-v2-candidates.ts. Casus 1b: casus 1's mid en tweeter als tweeweg, door de v2-worker (v2ChainOne → runDesignChain onder de hook).",
+ "route": "handleV2Request kind v2ChainOne → runDesignChain (vfOptimizer-ontwerpstap, synthese, tuner onder de hook) — de tweewegroute door de v2-worker; de app stuurt een tweewegverzoek nog naar de v1-worker (E-3, open punt).",
+ "gegenereerd_op_commit": "267c599fce141369a12446f9f021c0b873af1816",
+ "seed": 20260906,
+ "opgenomen_op": {
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v26.8.1",
+  "v8": "14.6.202.34-node.28",
+  "_": "A5e.4 is byte-identiek PER (machine, runtime); elders regenereren levert een eigen, even geldig corpus (V46)."
+ },
+ "run_vingerafdruk": "engine=2.0.0-F1 estimators=186e7cb2 seed=20260906 budget=tuner starts=1 status=completed design=f5c74445 measurements=40b2f541 gates=b6002604 bounds=5465b825 tuning=8a12c432 facts=e9528612 choices=66d49d53",
+ "grid": {
+  "van_hz": 60,
+  "tot_hz": 20000,
+  "punten": 121
+ },
+ "oordeelband_hz": [
+  88.80615234375,
+  19500
+ ],
+ "oordeelband_bron": {
+  "lowest": "mid",
+  "validityFloorHz": 60,
+  "fpHz": 88.80615234375,
+  "floorHz": 88.80615234375,
+  "provenance": "merge-block",
+  "_": "de vloer is de hoogste van de geldigheidsvloer van de laagste weg (de mid, 60 Hz uit het mergeblok) en haar f_c (gesloten pod); het raster begint op de geldigheidsvloer met de resolutie van het precedent."
+ },
+ "meetset": {
+  "set": "merged",
+  "bestanden": {
+   "mid.lim": {
+    "driver": "mid",
+    "kind": "Z",
+    "hoek": null
+   },
+   "tweeter.lim": {
+    "driver": "tweeter",
+    "kind": "Z",
+    "hoek": null
+   },
+   "mid_near.txt": {
+    "driver": "mid",
+    "kind": "NF",
+    "hoek": null
+   },
+   "Koan_M_merged.frd": {
+    "driver": "mid",
+    "kind": "FF",
+    "hoek": 0
+   },
+   "mid_hor_30.txt": {
+    "driver": "mid",
+    "kind": "FF",
+    "hoek": 30
+   },
+   "tweeter_hor_0.txt": {
+    "driver": "tweeter",
+    "kind": "FF",
+    "hoek": 0
+   }
+  }
+ },
+ "veld": {
+  "modus": "exploration",
+  "bibliotheek": [
+   "LR2",
+   "LR4"
+  ],
+  "gestelde_orde": 4,
+  "per_as": [
+   {
+    "paar": "mid→tweeter",
+    "orden": [
+     4
+    ],
+    "posities_per_orde": [
+     {
+      "orde": 4,
+      "aantal": 3,
+      "hz": [
+       1735.4,
+       1947.9,
+       2186.5
+      ]
+     }
+    ],
+    "venster": {
+     "4": {
+      "vloer_hz": 1646.9446029684202,
+      "plafond_hz": 2304.026472037768,
+      "vloer_door": "drive-stated",
+      "plafond_door": "breakup"
+     }
+    }
+   }
+  ],
+  "_": "E-2: verkenning — budget EXPLORATION_CHAIN_BUDGET, posities centre-first (het venstercentrum en zijn buren), één uitlijning per overname (de gestelde orde 4, LR)."
+ },
+ "settings": {
+  "phasePriority": 0.5,
+  "eqBandsPerDriver": 2,
+  "synthMode": "acoustic",
+  "band": [
+   88.80615234375,
+   19500
+  ],
+  "targets": {
+   "rippleDb": 2.5,
+   "phaseDeg": 15
+  },
+  "breakupGuard": true,
+  "ampTarget": "onAxis",
+  "phaseMetric": "band",
+  "powerMetric": "smooth",
+  "catalogSnap": false,
+  "cutOnly": true,
+  "dissipationWeight": 0.05,
+  "powerFoldWeight": 0.5,
+  "costWeight": 0.0015,
+  "directivityWeight": 0,
+  "audit": {
+   "thresholds": {
+    "rSourceOhm": null
+   }
+  },
+  "ampMinLoadOhm": 2.6
+ },
+ "meetopstelling": {
+  "_": "Afgelezen van de laatste payload en niet overgeschreven (V27).",
+  "synthMode": "acoustic",
+  "v2_poorten_gewapend": [
+   "ampMinLoadOhm",
+   "maxDriveOnFsDbByDriver",
+   "peakInputVolts",
+   "resistorClassW",
+   "resistorPowerMargin",
+   "resistorThermalPowerW"
+  ],
+  "v2_budgetten_gewapend": [],
+  "v2_budgetten_waarom": "LEEG: de twee casus-1-budgetten (LF-opslingering, Q_es-vermenigvuldiging) zijn op de woofer afgeleid en niet overgenomen (golden_refs_casus1b.json, gestelde_eisen.niet_overgenomen).",
+  "beschermingen_via_kandidaat": [
+   "ampMinLoadOhm",
+   "ampTarget",
+   "audit",
+   "band",
+   "breakupGuard",
+   "catalogSnap",
+   "coilDcrModel",
+   "dissipationReferenceSource",
+   "errorSmoothOct",
+   "phaseAdmission",
+   "phaseMetric",
+   "powerMetric",
+   "protectionRule",
+   "rSourceProbeSource",
+   "safety",
+   "staged",
+   "xoFloorPairs",
+   "xoRangePairs",
+   "zFloorBarrier",
+   "zFloorBarrierSource",
+   "zFloorStrict"
+  ],
+  "afwezig_verklaard": [
+   "acousticSlopes",
+   "amplitudeReference",
+   "loadFloor",
+   "rSourceDisqualifyOhm",
+   "seriesInductanceCeilingSource",
+   "snapPrefs",
+   "solo",
+   "soloSensitivityDb",
+   "soloTargetLevelDb",
+   "xoPinHard",
+   "xoRange"
+  ],
+  "gedelegeerd": [
+   "angleData",
+   "branchTargets",
+   "midBranch"
+  ],
+  "ketenverklaring": {
+   "stated": {
+    "eqBands": 2,
+    "leanTargetDb": 0.5,
+    "lowestWayCoilMaxHenry": 0.034,
+    "synthesisGrid": "alive"
+   },
+   "absent": [
+    {
+     "key": "lowestWayLevelWork",
+     "why": "this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything"
+    }
+   ]
+  },
+  "ketenverklaring_gelezen_door": "withDeclaredChainChoicesTwoWay (E-3): eqBands → eqBandsPerDriver, leanTargetDb, lowestWayLevelWork, lowestWayCoilMaxHenry op ChainSettings; en withDeclaredSearchSmoothing: de gestelde errorSmoothOct bereikt de vf-ontwerpstap.",
+  "zoekmaat_gladding_oct": 0,
+  "vloer_zoekdoel_bron": "safety-extended",
+  "probe_raster": "safety",
+  "dissipatie_noemer": "re",
+  "fase_toelating": "measured",
+  "beschermingsregel": "stated",
+  "plafond_bron": null,
+  "spoel_dcr_model": "mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %)",
+  "doelcurve": "flat — the neutral reference; no voicing applied",
+  "oordeelband_hz": [
+   88.80615234375,
+   19500
+  ],
+  "seed": 20260906
+ },
+ "generator_parameters": {
+  "minSpacingOctaves": 0.16666666666666666,
+  "chainBudget": 8,
+  "derivedSize": 3,
+  "deliveredSize": 3,
+  "positionPolicy": "centre-first",
+  "alignmentPolicy": "one"
+ },
+ "shortlist": {
+  "overwogen": 3,
+  "geweigerd_door_een_poort": 0,
+  "leverde_geen_netwerk": 1,
+  "bevroren": 2
+ },
+ "verwerpingen": [
+  {
+   "label": "mid→tweeter 1735.4 LR4",
+   "kinds": [
+    "gate"
+   ],
+   "reason": "M-C (tweeter): -16.1 dB exceeds the stated ceiling of -20.0 dB",
+   "rejectedTune": {
+    "minZOhm": 3.276551831947399,
+    "windowPlusMinusDb": 70.22127943267155,
+    "rmsDeviationDb": 0.4947990608966931,
+    "rippleDb": 1.2241410693795558,
+    "phaseDeg": 4.275858160957017,
+    "driveOnFsDb": -16.06522591131718
+   }
+  }
+ ],
+ "kandidaat_uitkomst": [
+  {
+   "label": "mid→tweeter 1735.4 LR4",
+   "geleverd": false,
+   "rimpel_dB": 3.02,
+   "fase_graden": 43.8,
+   "kruispunt_gesteld_hz": 1735.4,
+   "kruispunt_geleverd_hz": null,
+   "poorten": [],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "kruisvenster_oordeel": null,
+   "vf": {
+    "structuur": {
+     "wooferLpOrder": 4,
+     "tweeterHpOrder": 4,
+     "wooferLpKind": "LR",
+     "tweeterHpKind": "LR"
+    },
+    "banden": {
+     "woofer": 2,
+     "tweeter": 2
+    },
+    "rondes": 6,
+    "omgekeerd": false,
+    "stages": [
+     "HP/LP LR4/LR4",
+     "EQ adopted from seed (3)",
+     "EQ tweeter @5072 Hz",
+     "polish"
+    ]
+   },
+   "pas": {
+    "tuned": 0,
+    "evaluaties": 36587,
+    "ampFloorRepair": null,
+    "safetyNote": null,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "verwerping": {
+    "regels": [
+     "gate"
+    ],
+    "reden": "M-C (tweeter): -16.1 dB exceeds the stated ceiling of -20.0 dB",
+    "geweigerde_tune": {
+     "minZOhm": 3.276551831947399,
+     "windowPlusMinusDb": 70.22127943267155,
+     "rmsDeviationDb": 0.4947990608966931,
+     "rippleDb": 1.2241410693795558,
+     "phaseDeg": 4.275858160957017,
+     "driveOnFsDb": -16.06522591131718
+    }
+   },
+   "niveauwerk": {
+    "eis": null,
+    "laagste_weg": "mid",
+    "anker": "mid",
+    "gevraagd_X_dB": 0,
+    "geleverd_serie_R_totaal_ohm": 0.75,
+    "geleverd_shunt_pad": []
+   },
+   "spoel_dcr": {
+    "model": "mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %)",
+    "totaal_ohm": 5.931,
+    "per_spoel": [
+     {
+      "id": "L1",
+      "weg": "mid",
+      "mH": 0.868,
+      "dcr_ohm": 0.4809,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L3",
+      "weg": "mid",
+      "mH": 0.146,
+      "dcr_ohm": 0.1686,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L6",
+      "weg": "mid",
+      "mH": 0.324,
+      "dcr_ohm": 0.2694,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L8",
+      "weg": "mid",
+      "mH": 9.955,
+      "dcr_ohm": 2.023,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L2",
+      "weg": "tweeter",
+      "mH": 0.569,
+      "dcr_ohm": 0.3751,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L4",
+      "weg": "tweeter",
+      "mH": 10.28,
+      "dcr_ohm": 2.062,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L5",
+      "weg": "tweeter",
+      "mH": 0.695,
+      "dcr_ohm": 0.4218,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L8",
+      "weg": "tweeter",
+      "mH": 0.094,
+      "dcr_ohm": 0.13,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     }
+    ],
+    "buiten_bereik": []
+   },
+   "topologie": {
+    "flanks": [
+     {
+      "way": "mid",
+      "side": "lp",
+      "kind": "LR",
+      "order": 4
+     },
+     {
+      "way": "tweeter",
+      "side": "hp",
+      "kind": "LR",
+      "order": 4
+     }
+    ],
+    "inverted": []
+   },
+   "notities": [
+    "Candidate provenance (A5d): mid→tweeter at 1735.4 Hz, LR4: position 1 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.08 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 1646.9–1838.6 Hz (clipped at the floor: one-sided, the tune can only leave it upward — E-1); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+    "Coil DCR (A5e.3): every un-snapped coil is judged with the DCR its stated family has at its inductance — mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); fit coil-dcr-fit/1.0 on gemini-catalog-v8.json (2116 coils, 25 families). On the seed: 8 coil(s) stamped (L1 0.23 mH → 0.219 Ω, L3 0.32 mH → 0.269 Ω, L6 0.77 mH → 0.448 Ω, L8 10.10 mH → 2.040 Ω, B·L2 0.47 mH → 0.334 Ω, B·L4 4.76 mH → 1.310 Ω, B·L5 0.45 mH → 0.326 Ω, B·L8 0.06 mH → 0.096 Ω). The DCR follows the inductance inside the search and is written into the delivered `DCR` params.",
+    "M-A, M-B and M-C were judged on 20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate), not on the chain's analysis grid (60-20000 Hz).",
+    "mid: its impedance sweep is narrower than the analysis grid, so the edges are held flat. Every electrical number outside its own sweep is an extrapolation.",
+    "tweeter: its impedance sweep is narrower than the analysis grid, so the edges are held flat. Every electrical number outside its own sweep is an extrapolation.",
+    "tweeter: the series-capacitance pre-bound (23.8 µF) would have excluded this design's own 32.1 µF. It carries SLACK, so it was widened to the design rather than applied — a pre-bound shapes the box and never condemns (A5d.6, casebook V12).",
+    "tweeter: the series-capacitance pre-bound carries SLACK (A5d.6) — it shapes the search box and decides nothing; M-C is the authority on the f_s drive.",
+    "mid: 4 coil(s) capped at the family's single-part span of 34.0 mH (L1, L3, L6, L8) — A5d.6's catalogue ∩ measurement intersection, the catalogue half (A5e.3b).",
+    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
+    "Delegated by the candidate to a named stage: branchTargets → the chain's design step (the per-branch corridor is derived from the alignment and the knees that step has just settled, so it does not exist until it has run. Re-deriving it here would be a second implementation of chain logic, which is exactly how two descriptions of one thing start to disagree (V21, one layer up)) · angleData → the chain input (the measured angle sets already travel in the payload as `input.angleData`. Restating them would put a second copy of the same measurement on the wire, and the copy is a second thing that can be wrong. Whether they travel at all is the app's decision and is visible there) · midBranch → the chain input (the mid branch's response and adjustment are the payload's own `input.m` and `midAdjust`. Same argument as angleData: one copy of a measurement, not two)",
+    "Chain-level choices stated by the candidate: eqBands = 2, leanTargetDb = 0.5, lowestWayCoilMaxHenry = 0.034, synthesisGrid = alive. They are read by the design and synthesis steps, which run before the tuner exists, so they decide what the topology CAN be rather than what its values are (V41).",
+    "Declared ABSENT at the chain layer: lowestWayLevelWork — this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything",
+    "M-C v2.0 (V49): an excursion-derived ceiling reached this run for mid (-17.67 dB re peak input), tweeter (-8.58 dB re peak input); no dB figure is stated, so the ceiling alone judges each of these ways.",
+    "M-A/part (V50) judges every discrete resistor against 5.0 W (class 10 W × margin 0.5) at 100 W continuous.",
+    "M-L (V50) judges nothing: no coil class is stated, and the snap is off so no catalogue rating exists either. The peak current per coil is still reported at 50.6 V.",
+    "M-C (V50): a stated dB figure exists PER WAY for tweeter (-20 dB); every other protected way carries NO stated figure and is judged on the excursion-derived ceiling alone (or on nothing).",
+    "Upper-driver protection is judged by the STATED requirement — M-C at most the excursion-derived ceiling (V49), enforced by the gate at every point a pass accepts a network — and the full-band safety gate no longer compares against the seed. The two rules do not order the same designs: the seed comparison is stricter than the requirement on a well-protected seed and looser on a poor one (V47).",
+    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
+    "The source-resistance probe read over 21-20000 Hz, 240 points — the tuner's own full-band safety grid and probed mid at 89.1 Hz (its impedance peak — no box tuning was stated, so the probe took the peak; on a ported box that is a peak beside the tuning and not the tuning itself).",
+    "The dissipation term divided by the resolved R_e of mid, 3.358 Ohm — the DC resistance the Q_es multiplication is defined on (A4 M-E), resolved once by the ingest pass and carried across the border rather than re-derived here.",
+    "Plateau: the design states the flat target: there is no plateau to judge.",
+    "The whole tune was refused, so this candidate delivers no network. What the tuner returned is its SEED — a design nobody judged against anything this candidate asked for — and it is withdrawn here rather than offered (F0: an empty field is not a judgement, and a seed is not empty either; casebook V31). The figures under `rejectedTune` describe the network that was REFUSED and will not be built. Refused by: gate (active-gate). An active gate refused the whole value tune, and what the run then fell back on is refused as well — M-B/|Z|: 2.28 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -13.9 dB exceeds the stated ceiling of -20.0 dB. So this run delivers no network rather than a seed nobody tuned against the goal it was given (casebook V31, V33).",
+    "Refusing rule: M-C (tweeter): -16.1 dB exceeds the stated ceiling of -20.0 dB"
+   ],
+   "looptijd_s": 104.786
+  },
+  {
+   "label": "mid→tweeter 1947.9 LR4",
+   "geleverd": true,
+   "rimpel_dB": 1.42,
+   "fase_graden": 2.6,
+   "kruispunt_gesteld_hz": 1947.9,
+   "kruispunt_geleverd_hz": 2055.4,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.094,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.37,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.597,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -40.848,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 0.877,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 19.432,
+     "grens": null
+    }
+   ],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "kruisvenster_oordeel": true,
+   "vf": {
+    "structuur": {
+     "wooferLpOrder": 4,
+     "tweeterHpOrder": 4,
+     "wooferLpKind": "LR",
+     "tweeterHpKind": "LR"
+    },
+    "banden": {
+     "woofer": 2,
+     "tweeter": 1
+    },
+    "rondes": 6,
+    "omgekeerd": true,
+    "stages": [
+     "HP/LP LR4/LR4",
+     "EQ adopted from seed (3)",
+     "polish"
+    ]
+   },
+   "pas": {
+    "tuned": 15,
+    "evaluaties": 119860,
+    "ampFloorRepair": "none",
+    "safetyNote": null,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "verwerping": null,
+   "niveauwerk": {
+    "eis": null,
+    "laagste_weg": "mid",
+    "anker": "mid",
+    "gevraagd_X_dB": 0,
+    "geleverd_serie_R_totaal_ohm": 0.757,
+    "geleverd_shunt_pad": []
+   },
+   "spoel_dcr": {
+    "model": "mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %)",
+    "totaal_ohm": 4.386,
+    "per_spoel": [
+     {
+      "id": "L1",
+      "weg": "mid",
+      "mH": 0.687,
+      "dcr_ohm": 0.4189,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L3",
+      "weg": "mid",
+      "mH": 9.391,
+      "dcr_ohm": 1.955,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L9",
+      "weg": "mid",
+      "mH": 0.476,
+      "dcr_ohm": 0.3378,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L2",
+      "weg": "tweeter",
+      "mH": 0.314,
+      "dcr_ohm": 0.2645,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L4",
+      "weg": "tweeter",
+      "mH": 1.153,
+      "dcr_ohm": 0.5685,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L7",
+      "weg": "tweeter",
+      "mH": 0.607,
+      "dcr_ohm": 0.3896,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L10",
+      "weg": "tweeter",
+      "mH": 0.78,
+      "dcr_ohm": 0.4518,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     }
+    ],
+    "buiten_bereik": []
+   },
+   "topologie": {
+    "flanks": [
+     {
+      "way": "mid",
+      "side": "lp",
+      "kind": "LR",
+      "order": 4
+     },
+     {
+      "way": "tweeter",
+      "side": "hp",
+      "kind": "LR",
+      "order": 4
+     }
+    ],
+    "inverted": [
+     "tweeter"
+    ]
+   },
+   "notities": [
+    "Candidate provenance (A5d): mid→tweeter at 1947.9 Hz, LR4: position 2 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.24 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 1838.6–2063.8 Hz; order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+    "Coil DCR (A5e.3): every un-snapped coil is judged with the DCR its stated family has at its inductance — mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); fit coil-dcr-fit/1.0 on gemini-catalog-v8.json (2116 coils, 25 families). On the seed: 8 coil(s) stamped (L1 0.98 mH → 0.516 Ω, L3 6.63 mH → 1.592 Ω, L6 0.26 mH → 0.235 Ω, L9 0.25 mH → 0.231 Ω, B·L2 0.53 mH → 0.358 Ω, B·L4 1.30 mH → 0.610 Ω, B·L7 0.15 mH → 0.170 Ω, B·L10 0.11 mH → 0.143 Ω). The DCR follows the inductance inside the search and is written into the delivered `DCR` params.",
+    "M-A, M-B and M-C were judged on 20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate), not on the chain's analysis grid (60-20000 Hz).",
+    "mid: its impedance sweep is narrower than the analysis grid, so the edges are held flat. Every electrical number outside its own sweep is an extrapolation.",
+    "tweeter: its impedance sweep is narrower than the analysis grid, so the edges are held flat. Every electrical number outside its own sweep is an extrapolation.",
+    "tweeter: the series-capacitance pre-bound (23.9 µF) would have excluded this design's own 27.9 µF. It carries SLACK, so it was widened to the design rather than applied — a pre-bound shapes the box and never condemns (A5d.6, casebook V12).",
+    "tweeter: the series-capacitance pre-bound carries SLACK (A5d.6) — it shapes the search box and decides nothing; M-C is the authority on the f_s drive.",
+    "mid: 4 coil(s) capped at the family's single-part span of 34.0 mH (L1, L3, L6, L9) — A5d.6's catalogue ∩ measurement intersection, the catalogue half (A5e.3b).",
+    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
+    "Delegated by the candidate to a named stage: branchTargets → the chain's design step (the per-branch corridor is derived from the alignment and the knees that step has just settled, so it does not exist until it has run. Re-deriving it here would be a second implementation of chain logic, which is exactly how two descriptions of one thing start to disagree (V21, one layer up)) · angleData → the chain input (the measured angle sets already travel in the payload as `input.angleData`. Restating them would put a second copy of the same measurement on the wire, and the copy is a second thing that can be wrong. Whether they travel at all is the app's decision and is visible there) · midBranch → the chain input (the mid branch's response and adjustment are the payload's own `input.m` and `midAdjust`. Same argument as angleData: one copy of a measurement, not two)",
+    "Chain-level choices stated by the candidate: eqBands = 2, leanTargetDb = 0.5, lowestWayCoilMaxHenry = 0.034, synthesisGrid = alive. They are read by the design and synthesis steps, which run before the tuner exists, so they decide what the topology CAN be rather than what its values are (V41).",
+    "Declared ABSENT at the chain layer: lowestWayLevelWork — this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything",
+    "M-C v2.0 (V49): an excursion-derived ceiling reached this run for mid (-17.67 dB re peak input), tweeter (-8.58 dB re peak input); no dB figure is stated, so the ceiling alone judges each of these ways.",
+    "M-A/part (V50) judges every discrete resistor against 5.0 W (class 10 W × margin 0.5) at 100 W continuous.",
+    "M-L (V50) judges nothing: no coil class is stated, and the snap is off so no catalogue rating exists either. The peak current per coil is still reported at 50.6 V.",
+    "M-C (V50): a stated dB figure exists PER WAY for tweeter (-20 dB); every other protected way carries NO stated figure and is judged on the excursion-derived ceiling alone (or on nothing).",
+    "Upper-driver protection is judged by the STATED requirement — M-C at most the excursion-derived ceiling (V49), enforced by the gate at every point a pass accepts a network — and the full-band safety gate no longer compares against the seed. The two rules do not order the same designs: the seed comparison is stricter than the requirement on a well-protected seed and looser on a poor one (V47).",
+    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
+    "The source-resistance probe read over 21-20000 Hz, 240 points — the tuner's own full-band safety grid and probed mid at 89.1 Hz (its impedance peak — no box tuning was stated, so the probe took the peak; on a ported box that is a peak beside the tuning and not the tuning itself).",
+    "The dissipation term divided by the resolved R_e of mid, 3.358 Ohm — the DC resistance the Q_es multiplication is defined on (A4 M-E), resolved once by the ingest pass and carried across the border rather than re-derived here.",
+    "Plateau: the design states the flat target: there is no plateau to judge."
+   ],
+   "looptijd_s": 209.297
+  },
+  {
+   "label": "mid→tweeter 2186.5 LR4",
+   "geleverd": true,
+   "rimpel_dB": 3.76,
+   "fase_graden": 13.8,
+   "kruispunt_gesteld_hz": 2186.5,
+   "kruispunt_geleverd_hz": 2157.4,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.08,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.31,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.598,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -27.059,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 0.483,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 19.366,
+     "grens": null
+    }
+   ],
+   "geweigerd_door": [],
+   "door_de_ketenzelf_gediskwalificeerd": [],
+   "kruisvenster_oordeel": true,
+   "vf": {
+    "structuur": {
+     "wooferLpOrder": 4,
+     "tweeterHpOrder": 4,
+     "wooferLpKind": "LR",
+     "tweeterHpKind": "LR"
+    },
+    "banden": {
+     "woofer": 2,
+     "tweeter": 2
+    },
+    "rondes": 7,
+    "omgekeerd": true,
+    "stages": [
+     "HP/LP LR4/LR4",
+     "EQ adopted from seed (4)",
+     "polish"
+    ]
+   },
+   "pas": {
+    "tuned": 20,
+    "evaluaties": 35994,
+    "ampFloorRepair": "none",
+    "safetyNote": null,
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+   },
+   "verwerping": null,
+   "niveauwerk": {
+    "eis": null,
+    "laagste_weg": "mid",
+    "anker": "mid",
+    "gevraagd_X_dB": 0,
+    "geleverd_serie_R_totaal_ohm": 0.75,
+    "geleverd_shunt_pad": []
+   },
+   "spoel_dcr": {
+    "model": "mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %)",
+    "totaal_ohm": 4.626,
+    "per_spoel": [
+     {
+      "id": "L1",
+      "weg": "mid",
+      "mH": 0.569,
+      "dcr_ohm": 0.375,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L6",
+      "weg": "mid",
+      "mH": 0.569,
+      "dcr_ohm": 0.3751,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L8",
+      "weg": "mid",
+      "mH": 12.92,
+      "dcr_ohm": 2.359,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L2",
+      "weg": "tweeter",
+      "mH": 2.64,
+      "dcr_ohm": 0.9259,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L4",
+      "weg": "tweeter",
+      "mH": 0.271,
+      "dcr_ohm": 0.2421,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L5",
+      "weg": "tweeter",
+      "mH": 0.285,
+      "dcr_ohm": 0.2496,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "B·L8",
+      "weg": "tweeter",
+      "mH": 0.059,
+      "dcr_ohm": 0.0988,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     }
+    ],
+    "buiten_bereik": []
+   },
+   "topologie": {
+    "flanks": [
+     {
+      "way": "mid",
+      "side": "lp",
+      "kind": "LR",
+      "order": 4
+     },
+     {
+      "way": "tweeter",
+      "side": "hp",
+      "kind": "LR",
+      "order": 4
+     }
+    ],
+    "inverted": [
+     "tweeter"
+    ]
+   },
+   "notities": [
+    "Candidate provenance (A5d): mid→tweeter at 2186.5 Hz, LR4: position 3 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.41 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 2063.8–2304 Hz (clipped at the ceiling: one-sided, the tune can only leave it downward — E-1); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+    "Coil DCR (A5e.3): every un-snapped coil is judged with the DCR its stated family has at its inductance — mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); fit coil-dcr-fit/1.0 on gemini-catalog-v8.json (2116 coils, 25 families). On the seed: 8 coil(s) stamped (L1 0.32 mH → 0.269 Ω, L3 0.21 mH → 0.210 Ω, L6 1.25 mH → 0.596 Ω, L8 8.31 mH → 1.819 Ω, B·L2 0.88 mH → 0.484 Ω, B·L4 0.89 mH → 0.488 Ω, B·L5 0.15 mH → 0.172 Ω, B·L8 0.32 mH → 0.267 Ω). The DCR follows the inductance inside the search and is written into the delivered `DCR` params.",
+    "M-A, M-B and M-C were judged on 20-20317 Hz, the drivers' own measured impedance sweeps (an impedance measurement has no gate), not on the chain's analysis grid (60-20000 Hz).",
+    "mid: its impedance sweep is narrower than the analysis grid, so the edges are held flat. Every electrical number outside its own sweep is an extrapolation.",
+    "tweeter: its impedance sweep is narrower than the analysis grid, so the edges are held flat. Every electrical number outside its own sweep is an extrapolation.",
+    "tweeter: the series-capacitance pre-bound (23.9 µF) would have excluded this design's own 24.3 µF. It carries SLACK, so it was widened to the design rather than applied — a pre-bound shapes the box and never condemns (A5d.6, casebook V12).",
+    "tweeter: the series-capacitance pre-bound carries SLACK (A5d.6) — it shapes the search box and decides nothing; M-C is the authority on the f_s drive.",
+    "mid: 4 coil(s) capped at the family's single-part span of 34.0 mH (L1, L3, L6, L8) — A5d.6's catalogue ∩ measurement intersection, the catalogue half (A5e.3b).",
+    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
+    "Delegated by the candidate to a named stage: branchTargets → the chain's design step (the per-branch corridor is derived from the alignment and the knees that step has just settled, so it does not exist until it has run. Re-deriving it here would be a second implementation of chain logic, which is exactly how two descriptions of one thing start to disagree (V21, one layer up)) · angleData → the chain input (the measured angle sets already travel in the payload as `input.angleData`. Restating them would put a second copy of the same measurement on the wire, and the copy is a second thing that can be wrong. Whether they travel at all is the app's decision and is visible there) · midBranch → the chain input (the mid branch's response and adjustment are the payload's own `input.m` and `midAdjust`. Same argument as angleData: one copy of a measurement, not two)",
+    "Chain-level choices stated by the candidate: eqBands = 2, leanTargetDb = 0.5, lowestWayCoilMaxHenry = 0.034, synthesisGrid = alive. They are read by the design and synthesis steps, which run before the tuner exists, so they decide what the topology CAN be rather than what its values are (V41).",
+    "Declared ABSENT at the chain layer: lowestWayLevelWork — this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything",
+    "M-C v2.0 (V49): an excursion-derived ceiling reached this run for mid (-17.67 dB re peak input), tweeter (-8.58 dB re peak input); no dB figure is stated, so the ceiling alone judges each of these ways.",
+    "M-A/part (V50) judges every discrete resistor against 5.0 W (class 10 W × margin 0.5) at 100 W continuous.",
+    "M-L (V50) judges nothing: no coil class is stated, and the snap is off so no catalogue rating exists either. The peak current per coil is still reported at 50.6 V.",
+    "M-C (V50): a stated dB figure exists PER WAY for tweeter (-20 dB); every other protected way carries NO stated figure and is judged on the excursion-derived ceiling alone (or on nothing).",
+    "Upper-driver protection is judged by the STATED requirement — M-C at most the excursion-derived ceiling (V49), enforced by the gate at every point a pass accepts a network — and the full-band safety gate no longer compares against the seed. The two rules do not order the same designs: the seed comparison is stricter than the requirement on a well-protected seed and looser on a poor one (V47).",
+    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
+    "The source-resistance probe read over 21-20000 Hz, 240 points — the tuner's own full-band safety grid and probed mid at 89.1 Hz (its impedance peak — no box tuning was stated, so the probe took the peak; on a ported box that is a peak beside the tuning and not the tuning itself).",
+    "The dissipation term divided by the resolved R_e of mid, 3.358 Ohm — the DC resistance the Q_es multiplication is defined on (A4 M-E), resolved once by the ingest pass and carried across the border rather than re-derived here.",
+    "Plateau: the design states the flat target: there is no plateau to judge."
+   ],
+   "looptijd_s": 102.773
+  }
+ ],
+ "referentie_kruispunt_hz": [
+  1947.9743230389286
+ ],
+ "orde_afleiding": [
+  {
+   "paar": "mid→tweeter",
+   "orden": [
+    4
+   ],
+   "waarom": [
+    "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+   ]
+  }
+ ],
+ "bestanden": [
+  {
+   "name": "KAND-V2-1",
+   "label": "mid→tweeter 1947.9 LR4"
+  },
+  {
+   "name": "KAND-V2-2",
+   "label": "mid→tweeter 2186.5 LR4"
+  }
+ ],
+ "kandidaat_herkomst": {
+  "mid→tweeter 1735.4 LR4": {
+   "provenance": "mid→tweeter at 1735.4 Hz, LR4: position 1 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.08 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 1646.9–1838.6 Hz (clipped at the floor: one-sided, the tune can only leave it upward — E-1); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1735.4,
+     "cageHz": [
+      1646.9,
+      1838.6
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1646.9,
+      2304
+     ],
+     "floorBy": "drive-stated — 20.0 dB of attenuation at tweeter's resonance (924 Hz) takes 0.83 octaves at order 4 (6 dB/oct per order) - the STATED M-C figure (the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads), read as A5d.3(ii) inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated figure below this floor, and the floor assumes no pad (A5e.3b)",
+     "ceilingBy": "breakup — first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47",
+     "segmentHz": [
+      1646.9,
+      2304
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 0,
+      "count": 3,
+      "octavesAboveFloor": 0.07547620523889935
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1735.4 Hz, LR4: position 1 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.08 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 1646.9–1838.6 Hz (clipped at the floor: one-sided, the tune can only leave it upward — E-1); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "mid→tweeter 1947.9 LR4": {
+   "provenance": "mid→tweeter at 1947.9 Hz, LR4: position 2 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.24 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 1838.6–2063.8 Hz; order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 1947.9,
+     "cageHz": [
+      1838.6,
+      2063.8
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1646.9,
+      2304
+     ],
+     "floorBy": "drive-stated — 20.0 dB of attenuation at tweeter's resonance (924 Hz) takes 0.83 octaves at order 4 (6 dB/oct per order) - the STATED M-C figure (the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads), read as A5d.3(ii) inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated figure below this floor, and the floor assumes no pad (A5e.3b)",
+     "ceilingBy": "breakup — first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47",
+     "segmentHz": [
+      1646.9,
+      2304
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 1,
+      "count": 3,
+      "octavesAboveFloor": 0.24212758616184532
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 1947.9 Hz, LR4: position 2 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.24 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 1838.6–2063.8 Hz; order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  },
+  "mid→tweeter 2186.5 LR4": {
+   "provenance": "mid→tweeter at 2186.5 Hz, LR4: position 3 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.41 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 2063.8–2304 Hz (clipped at the ceiling: one-sided, the tune can only leave it downward — E-1); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied.",
+   "crossings": [
+    {
+     "pairLabel": "mid→tweeter",
+     "lower": "mid",
+     "upper": "tweeter",
+     "hz": 2186.5,
+     "cageHz": [
+      2063.8,
+      2304
+     ],
+     "order": 4,
+     "alignment": {
+      "kind": "LR",
+      "order": 4
+     },
+     "windowHz": [
+      1646.9,
+      2304
+     ],
+     "floorBy": "drive-stated — 20.0 dB of attenuation at tweeter's resonance (924 Hz) takes 0.83 octaves at order 4 (6 dB/oct per order) - the STATED M-C figure (the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads), read as A5d.3(ii) inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated figure below this floor, and the floor assumes no pad (A5e.3b)",
+     "ceilingBy": "breakup — first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47",
+     "segmentHz": [
+      1646.9,
+      2304
+     ],
+     "excisions": [
+      {
+       "hz": [
+        1327.4,
+        1858.4
+       ],
+       "label": "the WORST lobing zone",
+       "source": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).",
+       "applied": false,
+       "suspendedBecause": "SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+      }
+     ],
+     "position": {
+      "index": 2,
+      "count": 3,
+      "octavesAboveFloor": 0.40883131938208217
+     },
+     "orderWhy": "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.",
+     "uncalibrated": [
+      "The divisor interpolates between the published endpoints (3 severe, 2 mild); the ramp between them is uncalibrated and needs HD data (spec V6/V9). This ceiling moves if that curve does."
+     ],
+     "provenance": "mid→tweeter at 2186.5 Hz, LR4: position 3 of 3 laid centre-first from the window centre 1947.9 Hz across the candidate band 1646.9–2304 Hz, 0.41 oct above the window floor 1646.9 Hz (drive-stated); ceiling 2304 Hz (breakup — the strictest of breakup 2304.0 Hz, directivity 5387.6 Hz; no stated ceiling); cage 2063.8–2304 Hz (clipped at the ceiling: one-sided, the tune can only leave it downward — E-1); order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them.; not excised 1327.4–1858.4 Hz (the WORST lobing zone, a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a).) — SUSPENDED pending casebook entry V28. The zone is a λ fraction on one centre-to-centre distance, and V20a reserves every lobing judgement for the vertical synthesis; until V28 decides whether an excision may none the less shape the field, the candidates cover the whole A5d.3 window and this zone is reported rather than applied."
+    }
+   ]
+  }
+ }
+}

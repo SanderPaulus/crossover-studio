@@ -713,7 +713,7 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
  * thing for both.
  */
 export type StatedByDesignerChain = Partial<
-  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry'>
+  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid'>
 >;
 
 export interface ChainDeclarationInput {
@@ -889,5 +889,17 @@ export function declareCandidateChainChoices(
         'behaviour and every coil value is free (P4)',
     });
   }
+
+  /* ---- E-3: WHICH GRID POINTS THE SYNTHESIS FITS ON ----------------------
+   *
+   * UNCONDITIONAL, like V37's `'re'` and V38-fix's smoothing width, and for
+   * the same reason: there is no design on which "fit the branch on points
+   * where its measurement is a -400 dB ghost" is the honest answer, so there
+   * is no honest ABSENT. The three-way chain has always fitted on the alive
+   * points; the two-way chain read the full grid until E-3 and, measured on
+   * casus 1b, chased the dead top point into a degenerate tweeter branch on
+   * every exploration candidate (`chainChoices.ts`, the key's own note). An
+   * explicit `'full'` wins, so the before/after is a run somebody can ask for. */
+  stated.synthesisGrid = s.synthesisGrid ?? 'alive';
   return { stated, absent };
 }

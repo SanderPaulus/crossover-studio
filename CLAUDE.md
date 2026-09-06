@@ -48,6 +48,12 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná E-3 (06-09-2026) gemeten op 409 s — 158 bestanden (157 geslaagd, 1 overgeslagen), 1795 tests (1792 geslaagd,
+    3 overgeslagen), in één keer groen, gedraaid ná de casus-1b-regeneratie en de recorder, alleen.** +2 bestanden
+    (`goldenCasus1b.test.ts` 14, `casus1bV2Candidates.test.ts` 5 waarvan één `[live]`) en +26 tests: die 19, +4 E-3-claims in
+    `chainChoices.test.ts`, +3 in de casus-1b-describe van `goldenClassification.test.ts`. **De derde overgeslagen test is
+    de derde `[live]`-run** (casus 1b door `v2ChainOne`, ~95 s in de volle run). GEEN nieuwe referentie: de V43-waarde
+    van 289 s blijft staan.
     **Ná E-2 (06-09-2026) gemeten op 564 s — 156 bestanden (155 geslaagd, 1 overgeslagen), 1769 tests (1767 geslaagd,
     2 overgeslagen), in één keer groen, gedraaid ná de browserrun van 34 minuten en de replay, met de dev-server en de
     headless Chrome gestopt.** +4 bestanden (`predesign/fieldMode.test.ts` 10, `v2Settings.test.ts` 13,
@@ -192,8 +198,9 @@
   (1) het filter matcht de VOLLEDIGE testnaam, dus een blok dat het woord in zijn eigen titel noemt
   filtert zichzelf weg — de bewaker heet daarom `the live-run tag is …` en niet `[live] …`;
   (2) een tag die stilletjes groeit maakt de snelle laag waardeloos, dus
-  `casus1V2Candidates.test.ts` bewaakt met een bronscan dat er precies TWEE getagde blokken
-  bestaan, met naam — één sinds de splitsing van 01-09-2026 twee werd, en `ciLayer.test.ts`
+  `casus1V2Candidates.test.ts` bewaakt met een bronscan dat er precies DRIE getagde blokken
+  bestaan, met naam — één sinds de splitsing van 01-09-2026 twee werd, drie sinds E-3 (06-09-2026:
+  casus 1b's live run door de tweewegroute, `casus1bV2Candidates.test.ts`) — en `ciLayer.test.ts`
   bewaakt dezelfde inventaris van de andere kant. **Sinds die splitsing is het ENE bestand dat
   volledig uit `[live]` bestaat (`casus1V2Refusal.test.ts`) in de snelle laag een OVERGESLAGEN
   bestand; dat is geen verdwenen test maar hetzelfde beleid, één bestand verderop.**
@@ -220,7 +227,7 @@
   kernen net zo goed als op één. Vitest parallelliseert over BESTANDEN. De verwerpingsrun is
   daarom, ongewijzigd, verhuisd naar `src/lib/engine2/casus1V2Refusal.test.ts`; beide describes
   dragen `[live]`, en `ciLayer.test.ts` plus de tagbewaker in `casus1V2Candidates.test.ts` leggen
-  vast dat het er precies TWEE zijn, met naam. **Vóór/ná op één leeg systeem, 01-09-2026:
+  vast dat het er precies TWEE zijn, met naam (DRIE sinds E-3, zie de tagregel hierboven). **Vóór/ná op één leeg systeem, 01-09-2026:
   1761,09 s (29 min 23) → 1254,43 s (20 min 55), dus 506 s eraf (−29 %).**
   **De winst is kleiner dan het verschil tussen de twee runs, en dat is de eerlijke helft van de
   meting:** naast elkaar draaien kost élke run tijd. De byte-run ging van 1119,6 naar 1244,3 s
@@ -238,7 +245,15 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (E-1): 152 bestanden, 1716 tests, 1609 s (26 min 49),
+- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (E-3): 158 bestanden, 1795 tests, 1573 s (26 min 13),
+  niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en NOOIT ernaast.** +6 bestanden en
+  +79 tests sinds E-1 (E-2's vier bestanden en 53 tests, E-3's twee bestanden en 26 tests — zie de `test:fast`-regels).
+  **De wandkloktijd is nog steeds de byte-reproductie van KAND-V2-8 (1565 s), de verwerping 455,7 · 2304 ernaast
+  1240 s; de DERDE live ketenrun — casus 1b door `v2ChainOne` (`casus1bV2Candidates.test.ts`) — kost 137 s en verdwijnt
+  in de schaduw** (`frozenNetlistGates` 373 s, `lowestWayLevelWork` 373 s). Het casus-1-corpus reproduceert byte-voor-byte
+  onder de E-3-worker (de polariteitsvouw en de vijfde ketensleutel zijn op het LR4-veld de identiteit — gemeten, niet
+  aangenomen).
+  (De stand ervoor: **GEMETEN 06-09-2026 (E-1): 152 bestanden, 1716 tests, 1609 s (26 min 49),
   niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de reparatie van de V33-bronscan en NOOIT
   ernaast.** Geen nieuw bestand; +6 tests (zie de `test:fast`-regel). **Van 7194 s naar 1609 s zonder één test minder, en
   dat is POST 1 van E-1 en niet de suite:** de byte-reproductie kiest sinds E-1 de GOEDKOOPSTE geleverde netlist
@@ -247,7 +262,7 @@
   kandidaat van het veld (7182 s live). De wandkloktijd IS weer de byte-reproductie (1601 s voor het bestand); de rest
   draait in de schaduw (`lowestWayLevelWork` 377 s, `frozenNetlistGates` 375 s, `threeWayChain` 320 s,
   `derivedGateRefusal` 102 s). Het cijfer beweegt met WELKE kandidaat de live reproductie treft — de V42/V43/V44-les,
-  nu als regel: de goedkoopste, deterministisch, uit de herkomst.
+  nu als regel: de goedkoopste, deterministisch, uit de herkomst.)
   (De stand ervoor: **GEMETEN 06-09-2026 (A5e.3c): 152 bestanden, 1710 tests, 7194 s
   (1 u 59 min 54), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de recorder en de drie
   guard-reparaties en NOOIT ernaast.** +1 bestand (`optimizer/derivedGateRefusal.test.ts`, 9 claims) en +13 tests sinds
@@ -1008,6 +1023,26 @@
   beweegt niet: de aandrijfvloer van de tweeter (1184 Hz) ligt onder k·f_s (1294). **`measure-m1-diagnose-arms.ts`
   herbouwt sinds A5e.3-veld het M-1-VELD expliciet** (vensterinvoer zonder aandrijfvloer, W-M onthoudt zich,
   geen budget), zodat zijn armbestanden reproduceerbaar blijven en `M1_DRY=1` nog zegt wat er gedraaid is.
+- **Casus 1b — casus 1's mid en tweeter als TWEEWEG door de v2-worker (E-3, 06-09-2026)** — drie scripts en één
+  fixture (`src/lib/engine2/casus1b.fixture.ts`; het referentiebestand `test-fixtures/casus1b/golden_refs_casus1b.json`,
+  de bestanden uit `test-fixtures/casus1/` via `bestanden_map`):
+  - `npx vite-node scripts/derive-casus1b-huidig-mt.ts` — seconden. Leidt `test-fixtures/casus1b/HUIDIG-MT.adsfilter.json`
+    af uit casus 1's HUIDIG (het wooferpad eruit: dertien onderdelen; elk overblijvend onderdeel byte-gelijk); weigert een
+    afwijkend bestaand bestand te overschrijven.
+  - `npx vite-node scripts/record-casus1b-references.ts` — seconden, geen tune. Klasse A (mid/tweeter mét de V15-blokken
+    `_re_parameters`, `_spl_scan_parameters`, `_excursie_parameters`; het venster `kruisvensters.mid_tweeter_orde4` mét het
+    verkenningsveld; `verankerde_gaps_dB`), klasse B op `HUIDIG_MT` en élke `KAND_V2_n` die op schijf staat (het manifest
+    wordt uit de bestanden gesynchroniseerd, wezen-blokken worden gesnoeid), en de pointer `v2_herkomst`. Draai hem ná de
+    generator.
+  - `npx vite-node scripts/generate-casus1b-v2-candidates.ts` — **de verkenning (E-2-modus: budget 8, centre-first, één
+    uitlijning) door `handleV2Request` kind `v2ChainOne` → `runDesignChain` onder de hook**; shards
+    (`test-fixtures/.casus1b-v2-shards/`, gitignored), `V2_ONLY=<n>` / `V2_JOBS=<n>` / `V2_MERGE=1` zoals de
+    casus-1-generator; schrijft `KAND-V2-n.adsfilter.json` en `test-fixtures/casus1b_v2_herkomst.json` (mét
+    `looptijd_s` per kandidaat). **Gemeten 06-09-2026: 3 kandidaten (1735,4 / 1947,9 / 2186,5 Hz LR4), 415 s met drie
+    tegelijk; twee geleverd (1,42 dB / 2,6° en 3,76 dB / 13,8°, beide op de vloer 2,60 Ω), één geweigerd op M-C (tweeter
+    −16,1 dB).** De live reproductie (`casus1bV2Candidates.test.ts`) kiest de goedkoopste geleverde op `looptijd_s`.
+  **De app stuurt een tweewegverzoek nog naar de v1-worker** (`runChainScan`); deze route is de tweewegroute door de
+  v2-worker en niet de knop — casusboek E-3, "wat niet gedaan is".
 - **Een app-run naspelen in de repo (E-2, 06-09-2026)**: `npx vite-node scripts/replay-app-run.ts <export.json>
   [--set merged|gated] [--run]` — seconden zonder `--run`. De invoer is wat de knop **"Export run (JSON)"** onder de
   run-stempel van de app schrijft (`runExport.ts`, formaat `crossover-studio-run/1`): de gestelde eisen, de
@@ -1154,8 +1189,9 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   oordelenblok van `f4cRegression` (`verdicts_sinds_V50`, `it.each` over twee zaden) draagt de
   tag om dezelfde reden als de andere vijf, en de eerste volle run van V50 viel precies op deze
   inventaris om — de bewaker deed wat hij moet doen. Het aantal overgeslagen tests in `test:ci`
-  is daarmee 2 `[live]` + 10 `[bytes]` − 1 die beide draagt = ELF. (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
-  vorm en om dezelfde reden: precies TWEE blokken, met naam.** De splitsing van de twee live
+  is daarmee 2 `[live]` + 10 `[bytes]` − 1 die beide draagt = ELF — **sinds E-3 (06-09-2026): 3 `[live]` + 11 `[bytes]` − 2
+  die beide dragen = TWAALF** (de zevende bytes-naam en de derde live-naam zijn dezelfde test: casus 1b door `v2ChainOne`). (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
+  vorm en om dezelfde reden: precies TWEE blokken, met naam (DRIE sinds E-3).** De splitsing van de twee live
   ketenruns bracht het tagtal van één naar twee, en precies zo'n verhoging is wat stil kan
   doorgroeien. (5) De scan loopt echt — zonder die tegenproef is "niets
   gevonden" niet te onderscheiden van "niet gekeken". De tagnamen worden op runtime samengesteld,
@@ -2434,6 +2470,52 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de zeven andere geleverde droegen `binnen_eis: true`, de twaalf geweigerde waren al geweigerd vóór (a) leest)
   draait alleen díé opnieuw (`V2_ONLY=9`, 2566 s) en zijn de negentien andere shards wat een herhaling zou
   opleveren. Elke shard moet er zijn; wie élke kandidaat opnieuw wil zien draait zonder de vlag.
+
+### E-3-guards (de tweewegroute door de worker; vijfde ketensleutel; polariteit in het netwerk; casus 1b)
+- `src/lib/engine2/optimizer/worker.ts` — **de `v2ChainOne`-tak leest sinds E-3 de ketenverklaring in het vocabulaire van
+  `designChain.ts`** (`withDeclaredChainChoicesTwoWay`: `eqBands` → `eqBandsPerDriver`, `leanTargetDb`, `lowestWayLevelWork`,
+  `lowestWayCoilMaxHenry`, `synthesisGrid`), zet de verklaarde zoekgladding op `ChainSettings.errorSmoothOct`
+  (`withDeclaredSearchSmoothing` — `vfOptimizer.ts` is de TWEEDE lezer van `errorSmoothOct`, de lezer die V38-fix niet
+  bereikte), bouwt de topologiebeschrijving uit de vf-specs (tot E-3 leeg), en **vouwt op BEIDE routes de polariteit die
+  de ontwerpstap koos in het `Driver`-onderdeel** (`foldDriverPolarity`: XOR met wat het onderdeel droeg; `parts` én
+  `net.parts`). Tot E-3 reisde de omkering als `adjust` en las élke lezer buiten de keten — shortlist, rapport, bevroren
+  bestand — de niet-omgekeerde som (casus 1b: ±70 dB in de shortlist, 177° in het rapport, tegen 1,42 dB / 2,6° in de
+  tuner). Op het casus-1-veld is de vouw de identiteit (LR4-alleen, nooit omgekeerd): de byte-baselines en de live
+  reproductie staan. Elke ingreep is de identiteit zonder kandidaat (P2).
+- `src/lib/engine2/optimizer/chainChoices.ts` — **de VIJFDE ketensleutel `synthesisGrid: 'alive' | 'full'`**: op welke
+  rasterpunten de per-tak-SYNTHESE fit. Onvoorwaardelijk `'alive'` verklaard (`candidateDeclaration.ts`, de V37/V38-fix-
+  vorm), expliciet `'full'` wint. **Absent = de eigen geschiedenis van elke keten (P2):** `threeWayChain.ts` fitte altijd
+  al op de levende punten (`ALIVE_DB`, sinds E-3 geëxporteerd) en implementeert nu ook `'full'`; `designChain.ts` fitte
+  op het volle raster mét het dode toppunt (20 000 Hz is op élke casus een −400 dB-geest) en leest `'alive'` sinds E-3.
+  Gemeten op casus 1b: op het volle raster jaagt de synthese een doel van −400 dB na en degenereert de tweetertak
+  (C 2,5 pF, "0,001 Ω bij 20 000 Hz"; de tuner weigert de hele tune en geeft het zaad terug); op de levende punten
+  bouwt zij. `chainChoices.test.ts` pint vijf sleutels, de tweewegvertaling sleutel voor sleutel, en de byte-identiteit
+  van een verklaard `'alive'` tegen de weggelaten sleutel op de driewegketen (één ketenrun per arm);
+  `choiceKeyGuard.test.ts` pint de lijst en het gat. `casus1bV2Candidates.test.ts` pint de meting zonder ketenrun
+  (dezelfde HP-spec: het volle raster degenereert bij het toppunt, de levende punten niet).
+- `src/lib/designChain.ts` + `src/lib/vfOptimizer.ts` — `ChainSettings` kent sinds E-3 `leanTargetDb`,
+  `lowestWayLevelWork`, `lowestWayCoilMaxHenry` en `synthesisGrid` (alle optioneel, absent = byte-identiek voor élke
+  v1-aanroeper); `'none'` zet de gain-verschuiving van de laagste weg op 0 en de vf-ontwerpstap legt er geen shelf-EQ
+  (`noShelfOnWoofer`); de drie sleutels van "de laagste weg" gaan alleen naar de synthese van de `low`-tak.
+- `src/lib/engine2/goldenCasus1b.test.ts` — **de acceptatie-autoriteit van casus 1b** (14 claims): klasse A reproduceert
+  op het rapport zónder netlist én op elk bevroren bestand (de definitie van klasse A als assert); het venster is tot op
+  de hertz casus 1's `mid_tweeter_orde4` (beide rapporten naast elkaar — de eerste meting van E-3); anker = laagste weg =
+  mid; het verkenningsveld (één as, orde 4, centrum en beide buren, budget 8); raster en band afgeleid; klasse B op élke
+  netlist die het manifest noemt, mét de gewapende poortoordelen; manifest ↔ schijf ↔ herkomst; HUIDIG_MT ⊂ HUIDIG
+  byte-voor-byte. Draagt geen tag en staat in `CI_LOAD_BEARING`.
+- `src/lib/engine2/casus1bV2Candidates.test.ts` — de goedkope helft (herkomst ↔ fixture: poorten, budgetten, seed, band,
+  de verklaring sleutel voor sleutel, een looptijd op élke kandidaat, de synthese-meting) en **de DERDE live ketenrun**
+  (`[live] casus 1b: …` / `[bytes] casus 1b: …`, ~95 s: de goedkoopste geleverde netlist door `v2ChainOne`, byte voor
+  byte). `ciLayer.test.ts` staat op DRIE live- en ZEVEN bytes-namen; de tagbewaker in `casus1V2Candidates.test.ts` op
+  drie.
+- `src/lib/engine2/goldenClassification.test.ts` — een casus-1b-describe met eigen padlijst; de bevroren netlists uit
+  het manifest; klasse C alleen onder de lege baseline. **De bronscan op `v1_baseline` ving het typeveld in
+  `casus1b.fixture.ts`** — het is er uit gehaald: geen bronbestand typeert of leest dat blok.
+- **Twee bevindingen zonder reparatie, benoemd in casusboek E-3:** M-K bereikt de vf-ONTWERPSTAP niet (`phaseMetric:
+  'band'` zonder toelating; tuner en rapport oordelen wél op M-K), en of de KOOI op de tweewegtuner bindt is niet als
+  mechanisme gemeten (`xoRange` is een zachte straf; op dit veld bleef élke levering erbinnen). **De app stuurt een
+  tweewegverzoek nog naar de v1-worker** — de vier app-rijen van de kaart (A5d-veld, feiten/poorten/shortlist, UI-1,
+  E-2) blijven open.
 
 ### E-2-guards (snel veld, P4 op het v2-formulier, twee UI-2-restjes, een app-run reproduceerbaar; alleen UI/run-instellingen)
 - `src/lib/engine2/predesign/candidates.ts` — **twee optionele beleidssleutels op de generator, en absent is het veld

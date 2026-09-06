@@ -128,6 +128,16 @@ export interface Chain3Settings {
    * exception (P4).
    */
   lowestWayCoilMaxHenry?: number;
+  /**
+   * E-3 — which grid points the per-branch SYNTHESIS fits on: `'alive'` (the
+   * points where the branch's own response is above the silent ghost,
+   * `ALIVE_DB`) or `'full'` (every grid point, the dead top point included).
+   * The fifth chain-level choice key (`chainChoices.ts`). ABSENT = `'alive'`
+   * on THIS chain — what it has done since it was written, byte-identical for
+   * every v1 caller; `'full'` exists so the E-3 before/after can be run on
+   * either chain, and it is what the two-way chain read until E-3.
+   */
+  synthesisGrid?: 'alive' | 'full';
   breakupGuard?: boolean;
   /** In-room weight for the assembled tune (0..1): blends energy-average
    *  flatness into the amplitude term — the 2-way recipe, now three-branch.
@@ -268,8 +278,10 @@ export interface Chain3Result {
   xoPinNote?: string;
 }
 
-/** A branch is alive where its banded response is above the silent ghost. */
-const ALIVE_DB = -300;
+/** A branch is alive where its banded response is above the silent ghost.
+ *  Exported since E-3: `designChain.ts` reads the same line for the same reason
+ *  (`synthesisGrid: 'alive'`), and one constant with one home is the point. */
+export const ALIVE_DB = -300;
 
 /** One full chain for one (xoLow, xoHigh) candidate. */
 /** Raise a knee window's lower edge to a physics floor (never below it). */
@@ -376,7 +388,11 @@ export function runThreeWayChain(
     const noLevelWork = lowestRule === 'none';
     const seriesRMaxOhm = seriesRMaxOhmOf(lowestRule);
     const idxs: number[] = [];
-    for (let i = 0; i < grid.length; i++) if (resp.spl[i] > ALIVE_DB) idxs.push(i);
+    /* E-3 — `synthesisGrid`: absent and `'alive'` are this chain's history (the
+     * alive points only); `'full'` is the two-way chain's history, offered here
+     * so the before/after is one key on either chain. */
+    const onFullGrid = s.synthesisGrid === 'full';
+    for (let i = 0; i < grid.length; i++) if (onFullGrid || resp.spl[i] > ALIVE_DB) idxs.push(i);
     const sub = idxs.map((i) => grid[i]);
     const z = driverZ[zKey];
     const zSub = idxs.map((i) => z[i]);

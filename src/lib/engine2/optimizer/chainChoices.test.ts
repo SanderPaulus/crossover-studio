@@ -53,6 +53,8 @@ import {
   chainDeclarationCoverage,
   chainDeclarationKey,
   withDeclaredChainChoices,
+  withDeclaredChainChoicesTwoWay,
+  chainSettingsForTwoWay,
   type ChainChoiceDeclaration,
 } from './chainChoices.ts';
 import { buildCandidateField } from '../predesign/candidateField.ts';
@@ -230,8 +232,10 @@ describe('V41 — the chain-level choice keys', () => {
     // with the ABSENT state this file's derivation always kept room for;
     // A5e.3b added the fourth (`lowestWayCoilMaxHenry`, the catalogue span of
     // the stated coil family — absent without a family, absent with the stated
-    // stack exception).
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork']);
+    // stack exception). E-3 added the fifth (`synthesisGrid`: which grid
+    // points the synthesis fits on — the V38-fix reading one stage earlier,
+    // stated 'alive' unconditionally).
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork', 'synthesisGrid']);
   });
 
   it('A5e.3b — the coil-span key derives from the stated family\'s span, the stack exception suppresses it, an explicit value wins', () => {
@@ -290,9 +294,13 @@ describe('V41 — the chain-level choice keys', () => {
      * written, so the chain reads its own default. A5e.3b — the fourth key
      * (`lowestWayCoilMaxHenry`) behaves the same way: no family, no span, no
      * cap written. */
+    /* E-3 — the fifth key is STATED on a declaration that states nothing
+     * ('alive', unconditionally), so it lands in the settings; on the
+     * three-way chain that value is the chain's own history and the network is
+     * byte-identical (the claim below). */
     expect(
       withDeclaredChainChoices(input, declareCandidateChainChoices({ stated: {} })).settings,
-    ).toEqual({ eqBands: DEFAULT_EQ_BANDS_PER_DRIVER, leanTargetDb: SYNTHESIS_LEAN_DEFAULT_DB });
+    ).toEqual({ eqBands: DEFAULT_EQ_BANDS_PER_DRIVER, leanTargetDb: SYNTHESIS_LEAN_DEFAULT_DB, synthesisGrid: 'alive' });
   });
 
   it('moves the fingerprint ingredient', () => {
@@ -323,5 +331,67 @@ describe('V41 — the chain-level choice keys', () => {
     // Claim 3: and the v2 arm is a demonstrably different network. Without
     // this, claim 4 is equally true of two keys wired to nothing.
     expect(netOf(v2)).not.toBe(netOf(oldStated));
+  });
+});
+
+/* ================================================================== *
+ * E-3 — the same declaration, read by the TWO-WAY chain
+ * ================================================================== */
+
+describe('E-3 — the chain declaration in the two-way vocabulary, and the fifth key', () => {
+  it('is the identity on a two-way input without a declaration, and with an empty one (P2)', () => {
+    const input = { settings: { eqBandsPerDriver: 3, leanTargetDb: 9, phasePriority: 0.5 } as import('../../designChain.ts').ChainSettings };
+    expect(withDeclaredChainChoicesTwoWay(input, undefined)).toBe(input);
+    expect(withDeclaredChainChoicesTwoWay(input, { stated: {}, absent: [] })).toBe(input);
+    expect(chainSettingsForTwoWay(undefined)).toEqual({});
+  });
+
+  it('carries every stated key into designChain.ts under its own name, and leaves an absent key alone', () => {
+    /* The translation V41 declined to write, pinned key for key: `eqBands`
+     * becomes `eqBandsPerDriver` (the two-way chain's own name), the other
+     * four keep theirs. An ABSENT key (`lowestWayLevelWork` here) is not
+     * written, so the two-way chain reads its own default. */
+    const decl = declareCandidateChainChoices({ stated: { eqBands: 3, leanTargetDb: 1.25 }, lowestWayCoilSpanH: 0.034 });
+    expect(chainSettingsForTwoWay(decl)).toEqual({
+      eqBandsPerDriver: 3,
+      leanTargetDb: 1.25,
+      lowestWayCoilMaxHenry: 0.034,
+      synthesisGrid: 'alive',
+    });
+    const capped = declareCandidateChainChoices({ stated: {}, lowestWaySeriesRMaxOhm: 1.0 });
+    expect(chainSettingsForTwoWay(capped).lowestWayLevelWork).toEqual({ kind: 'series-r-max', maxOhm: 1.0 });
+    const forbidden = declareCandidateChainChoices({ stated: {}, lowestWayLevelWorkForbidden: true });
+    expect(chainSettingsForTwoWay(forbidden).lowestWayLevelWork).toBe('none');
+    /* ...and both chains receive the same VALUES from one declaration: the
+     * three-way mapping and the two-way mapping differ in one name only. */
+    const three = withDeclaredChainChoices({ settings: {} as Partial<import('./chainChoices.ts').ChainCandidateChoices> }, decl).settings;
+    const two = chainSettingsForTwoWay(decl);
+    expect(two.eqBandsPerDriver).toBe(three.eqBands);
+    expect(two.leanTargetDb).toBe(three.leanTargetDb);
+    expect(two.lowestWayCoilMaxHenry).toBe(three.lowestWayCoilMaxHenry);
+    expect(two.synthesisGrid).toBe(three.synthesisGrid);
+  });
+
+  it('the fifth key is stated \'alive\' unconditionally, an explicit \'full\' wins, and it moves the fingerprint', () => {
+    expect(declareCandidateChainChoices({ stated: {} }).stated.synthesisGrid).toBe('alive');
+    expect(declareCandidateChainChoices({ stated: { synthesisGrid: 'full' } }).stated.synthesisGrid).toBe('full');
+    const a = JSON.stringify(chainDeclarationKey(declareCandidateChainChoices({ stated: {} })));
+    const b = JSON.stringify(chainDeclarationKey(declareCandidateChainChoices({ stated: { synthesisGrid: 'full' } })));
+    expect(a).not.toBe(b);
+  });
+
+  it('on the THREE-WAY chain a stated \'alive\' is byte-identical to the key left unstated (P2: its own history)', () => {
+    /* The three-way chain has fitted on the alive points since it was written;
+     * declaring it changes the record and not the network. One chain run per
+     * arm on the small fixture, tight budget. Without this claim, "absent is
+     * the chain's history" is a sentence and not a measurement. */
+    const c = oneCandidate();
+    const stated = declareCandidateChainChoices({ stated: {} });
+    expect(stated.stated.synthesisGrid).toBe('alive');
+    const unstated: ChainChoiceDeclaration = {
+      stated: Object.fromEntries(Object.entries(stated.stated).filter(([k]) => k !== 'synthesisGrid')) as ChainChoiceDeclaration['stated'],
+      absent: [...stated.absent],
+    };
+    expect(netOf(through(c, stated))).toBe(netOf(through(c, unstated)));
   });
 });

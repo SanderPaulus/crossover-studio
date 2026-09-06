@@ -1,0 +1,760 @@
+{
+ "casus": "Koan 2951 mid + tweeter als TWEEWEG — casusboek casus 1b (E-3)",
+ "meetdata": "DEZELFDE meetsessie als casus 1 (22-08-2026; M-1-merge van de mid, 04-09-2026), bestanden in test-fixtures/casus1/: mid.lim, tweeter.lim, mid_near.txt, Koan_M_merged.frd (gemergede set; mid_hor_0.txt is de gepoorte lezing), mid_hor_30.txt, tweeter_hor_0.txt. Geen nieuwe meting.",
+ "vastgesteld": "06-09-2026 (E-3)",
+ "waarom": "E-3, stap 3: de tweewegroute had geen fixture. Casus 1b is casus 1 zonder de woofers — de mid (gesloten pod, f_c 88,8 Hz) als LAAGSTE weg, de tweeter met waveguide erboven — met alle gestelde eisen van casus 1 die op deze twee wegen en op het systeem van toepassing zijn, en het plateau op 0 dB (vlak). Het is GEEN nieuwe grondwaarheid: dezelfde metingen op een tweede route, zodat een verschil tussen de drie- en de tweewegroute een ROUTEverschil is en geen dataverschil. De eisen die aan de WOOFER hangen zijn niet overgenomen; welke en waarom staat in manifest_en_geometrie.gestelde_eisen.niet_overgenomen.",
+ "classificatie": {
+  "_": "F4a-classificatie, overgenomen van casus 1: elke referentie draagt \"klasse\" en \"afhankelijkheid\" (A = (metingen) -> waarde; B = (metingen, gegeven netlist) -> metriek op een BESTAND in test-fixtures/casus1b/; C = wat een zoektocht vond, alleen onder v1_baseline en nooit een acceptatiewaarde). goldenClassification.test.ts scant dit bestand met dezelfde regels als het casus-1-bestand.",
+  "regel": "Klasse C hoort uitsluitend onder \"v1_baseline\" (of een toekomstig \"v2_baseline\") en mag door geen enkele test als acceptatiewaarde gelezen worden. Een nieuwe referentie zonder klasse en afhankelijkheid is geen referentie; zie .claude/skills/casus-toevoegen/SKILL.md.",
+  "bevinding_E3": "Geen enkele referentie in dit bestand is klasse C. De referentienetlist HUIDIG_MT is een BESTAND (afgeleid uit casus 1's HUIDIG door scripts/derive-casus1b-huidig-mt.ts, de woofertak weggelaten) en de v2-kandidaten van de verkenning worden als bestanden bevroren — precies zoals bij casus 1 (V19). De referentie hangt aan het bestand en niet aan de run die het opleverde."
+ },
+ "toleranties": {
+  "frequenties_pct": 2,
+  "dB": 0.15,
+  "graden": 0.3,
+  "ohm": 0.03,
+  "Q_pct": 7,
+  "exponent_pct": 5,
+  "watt_pct": 2,
+  "lambda_pct": 4,
+  "procentpunten": 1,
+  "fit_kwaliteit_pct": 5
+ },
+ "toleranties_toelichting": {
+  "_": "OVERGENOMEN van casus 1 (golden_refs_casus1.json, toleranties_toelichting), ongewijzigd: een tolerantie is een besluit met een motivering en geen functie van een casus, en casus 1b is dezelfde meetset op een andere route. Wie een klasse verandert, verandert haar op beide bestanden."
+ },
+ "afgeleide_parameters": {
+  "mid": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "Functies van de METINGEN alleen (impedantiesweep, on-axis, 30°, nabije veld, driverkaart): dezelfde waarde op HUIDIG_MT en op elke KAND_V2 — gerecordeerd op een rapport zónder netlist.",
+   "Re": 3.36,
+   "Re_herkomst": "motional fit over 20.0–266 Hz (1 resonance, relative RMS residual 0.0128, band sensitivity ±0.082 Ω), extrapolated to DC. The direct low-frequency reading is 3.381 Ω and carries 0.040 Ω (1.2 % of the reading) of motional impedance at 20.0 Hz, computed from the fitted resonance itself",
+   "Re_direct": 3.38,
+   "Re_motionele_rok_ohm": 0.04,
+   "Re_fit_residu": 0.0128,
+   "Re_fit_bandgevoeligheid_ohm": 0.0824,
+   "Re_fit_band_hz": [
+    20,
+    266.4
+   ],
+   "Re_toelichting": "A5c.1-hiërarchie: ingevoerde DC-lezing > motionele fit > directe aflezing. Casus 1b voert niets in (casus 1 voert alleen het wooferpaar in, dat hier niet bestaat), dus mid en tweeter lezen de FIT — dezelfde R_e als casus 1 afgeleide_parameters.mid/tweeter, want dezelfde bestanden. fit_kwaliteit_pct is de tolerantieklasse van residu en bandgevoeligheid.",
+   "fc": 88.8,
+   "Zmax": 44.22,
+   "r0": 13.17,
+   "Qmc": 7.34,
+   "Qec": 0.6,
+   "Qtc": 0.56,
+   "kast": "sealed",
+   "semi_inductantie_n": 0.6,
+   "breakups": [
+    [
+     5688,
+     2.81
+    ],
+    [
+     9062,
+     3.81
+    ],
+    [
+     12265,
+     3.13
+    ],
+    [
+     14436,
+     2.97
+    ],
+    [
+     14949,
+     3.17
+    ],
+    [
+     17596,
+     3.73
+    ],
+    [
+     19768,
+     3.89
+    ]
+   ],
+   "breakup_scanband_hz": [
+    60,
+    19999.5
+   ],
+   "breakup_rms_dB": 1.37,
+   "dir_m3_30": 4472,
+   "dir_m6_30": 5388,
+   "NF_fmax": 1078,
+   "FF_vloer": 60,
+   "FF_vloer_bron": "merge-block",
+   "FF_vloer_toelichting": "De gemergede mid (Koan_M_merged.frd, mergeblok Valid from = 60 Hz) — dezelfde vloer als casus 1 afgeleide_parameters.mid.FF_vloer_merge. Op de gepoorte set (casus1bManifest(golden, \"gated\")) is de vloer de header-gate van mid_hor_0.txt (396,7 Hz).",
+   "excursie_x_per_V_op_f0_mm_per_V": 0.3628,
+   "excursie_Q_ms": 7.34,
+   "excursie_Z_max_op_f0_ohm": 44.22,
+   "excursie_toegestane_spanning_V": 6.61,
+   "excursie_plafond_re_ingang_dB": -17.67,
+   "excursie_route_verhouding": null,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 88.8 Hz, klasse A. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) leest de poort als de strengste van gesteld en afgeleid. Dezelfde getallen als casus 1 (dezelfde driverkaart, dezelfde sweep). Route 2: acoustic route off for mid: the drive voltage and mic distance of the on-axis response are not documented."
+  },
+  "tweeter": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "Functies van de METINGEN alleen (impedantiesweep, on-axis, 30°, nabije veld, driverkaart): dezelfde waarde op HUIDIG_MT en op elke KAND_V2 — gerecordeerd op een rapport zónder netlist.",
+   "Re": 5.23,
+   "Re_herkomst": "motional fit over 200.0–2773 Hz (1 resonance, relative RMS residual 0.0180, band sensitivity ±0.010 Ω), extrapolated to DC. The direct low-frequency reading is 5.587 Ω and carries 0.260 Ω (4.7 % of the reading) of motional impedance at 200.0 Hz, computed from the fitted resonance itself",
+   "Re_direct": 5.59,
+   "Re_motionele_rok_ohm": 0.26,
+   "Re_fit_residu": 0.018,
+   "Re_fit_bandgevoeligheid_ohm": 0.0102,
+   "Re_fit_band_hz": [
+    200,
+    2772.9
+   ],
+   "Re_toelichting": "A5c.1-hiërarchie: ingevoerde DC-lezing > motionele fit > directe aflezing. Casus 1b voert niets in (casus 1 voert alleen het wooferpaar in, dat hier niet bestaat), dus mid en tweeter lezen de FIT — dezelfde R_e als casus 1 afgeleide_parameters.mid/tweeter, want dezelfde bestanden. fit_kwaliteit_pct is de tolerantieklasse van residu en bandgevoeligheid.",
+   "fs": 924.3,
+   "Zmax": 16.63,
+   "r0": 3.18,
+   "Qmc": 1.37,
+   "Qec": 0.63,
+   "Qtc": 0.43,
+   "kast": "sealed",
+   "semi_inductantie_n": null,
+   "breakups": [],
+   "breakup_scanband_hz": [
+    396.7,
+    19999.5
+   ],
+   "breakup_rms_dB": 0.47,
+   "dir_m3_30": null,
+   "dir_m6_30": null,
+   "NF_fmax": null,
+   "FF_vloer": 396.7,
+   "FF_vloer_bron": "header",
+   "FF_vloer_toelichting": "De header-gate van tweeter_hor_0.txt (1/T uit Reference time en Right window) — dezelfde vloer als casus 1 afgeleide_parameters.tweeter (FF_vloer via ff_headers).",
+   "excursie_x_per_V_op_f0_mm_per_V": 0.0424,
+   "excursie_Q_ms": 1.37,
+   "excursie_Z_max_op_f0_ohm": 16.63,
+   "excursie_toegestane_spanning_V": 18.85,
+   "excursie_plafond_re_ingang_dB": -8.58,
+   "excursie_route_verhouding": null,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 924.3 Hz, klasse A. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) leest de poort als de strengste van gesteld en afgeleid. Dezelfde getallen als casus 1 (dezelfde driverkaart, dezelfde sweep). Route 2: acoustic route off for tweeter: the drive voltage and mic distance of the on-axis response are not documented."
+  },
+  "_re_parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "V15 — de parameters van de R_e-resolutie, afgelezen van het rapport. De fitband hangt aan f_p van de driver (ReEstimateOptions.fundamentalHz) en niet aan een getal.",
+   "hiërarchie": "ingevoerde DC-lezing > motionele fit > directe aflezing (A5c.1)",
+   "ingevoerd_ohm": {},
+   "fit_band_hz": {
+    "mid": [
+     20,
+     266.4
+    ],
+    "tweeter": [
+     200,
+     2772.9
+    ]
+   },
+   "direct_punten": {
+    "mid": 6,
+    "tweeter": 4
+   },
+   "bron_per_driver": {
+    "mid": "motional-fit",
+    "tweeter": "motional-fit"
+   }
+  },
+  "_spl_scan_parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "V15 — de breakup-scan: trendbreedte in octaven en de scanband per driver (geknipt op meetgeldigheid, V8c), plus de significantiedrempel van het casusboek.",
+   "trendbreedte_oct": {
+    "mid": 2,
+    "tweeter": 2
+   },
+   "scanband_hz": {
+    "mid": [
+     60,
+     19999.5
+    ],
+    "tweeter": [
+     396.7,
+     19999.5
+    ]
+   },
+   "significant_vanaf_dB": 2.5,
+   "schatter": {
+    "id": "spl-breakup",
+    "version": "1.0"
+   },
+   "directiviteit_hoek_graden": 30
+  },
+  "_excursie_parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "V15 — de invoer waarop M-C v2.0's klasse-A-waarden staan (V49): driverkaart (Bl, M_ms, X_max, parallel), de versterkerpiek en de marge, zoals casus 1 ze stelt (gestelde_eisen, driverkaart) en casus 1b overneemt.",
+   "formule": "x/V = Bl·Q_ms/(Z_max·N·M_ms·ω0²) [route 1]; V_toegestaan = X_max·marge/(x/V); plafond = 20·log10(V_toegestaan/V_piek) met V_piek = √(2·P·R_nom); afgeleide M-C-grens per netlist = plafond − doorlaatband-gemiddelde |H| (F1-conventie)",
+   "versterker_piekvermogen_W": 160,
+   "versterker_nominale_last_ohm": 8,
+   "V_piek_V": 50.6,
+   "xmax_marge": 0.8,
+   "Q_ms_bron": {
+    "mid": "Small's Q_mc of the sealed fundamental (half-power at √r0·R_e), measured in situ",
+    "tweeter": "Small's Q_mc of the sealed fundamental (half-power at √r0·R_e), measured in situ"
+   },
+   "R_e_lezing": "de motionele FIT op beide wegen (casus 1b voert geen DC-lezing in; casus 1 doet dat alleen voor het wooferpaar).",
+   "route_2": "acoustic route off for mid: the drive voltage and mic distance of the on-axis response are not documented"
+  }
+ },
+ "verankerde_gaps_dB": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "anker": "mid",
+  "anker_reden": "mid is the lowest way and the quietest, so it is the anchor: attenuating it costs source resistance, low-frequency lift and dissipation",
+  "tweeter_tov_mid": 4.381,
+  "budgetten": {
+   "tweeter": 4.381
+  },
+  "anker_wissel_waarschuwing": null,
+  "notities": [
+   "Levels are compared AS MEASURED, against the flat reference. A5d.4(a) takes the anchor after baffle step in the intended setup, which is a property of the target-curve object (A5e.2); this design either states no curve or states the flat one, and flat is the neutral reference rather than a missing answer. A design with a voicing supplies a per-way shift and these levels move with it."
+  ],
+  "doelcurve": "flat — the neutral reference; no voicing applied",
+  "klasse_toelichting": "Anker en gap zijn functies van de gemeten niveaus en het A5d.3-venster, niet van een filter (casus 1's V45/M-1-regel). Op casus 1b zijn er twee wegen: de mid is de LAAGSTE weg en het anker tegelijk (X = 0, dus geen niveauwerk op de laagste weg te verbieden — de reden dat casus 1's woofer-eisen hier niet overgenomen zijn), en de tweeter draagt het ene gap. Plateau 0: de vlakke referentie.",
+  "parameters": {
+   "_": "V15 — energie-gemiddelde per wegband; de band van de mid loopt van haar geldigheidsvloer tot het venstercentrum, die van de tweeter van het venstercentrum tot haar plafond.",
+   "overname_hz": 1948
+  }
+ },
+ "kruisvensters": {
+  "parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "V15-PROCESREGEL, overgenomen van casus 1: een kruisvenster is een functie van de ORDE, van de ernst-weging van de breakup en van de c-t-c-afstand. Op casus 1b is er EEN paar (mid -> tweeter) en het venster is per constructie hetzelfde venster als casus 1's mid_tweeter_orde4: dezelfde bestanden, dezelfde gestelde orde, dezelfde tweetereis, dezelfde afstand. Dat het hetzelfde getal oplevert is de EERSTE meting van E-3 (de route deelt het venster) en geen aanname.",
+   "orde": 4,
+   "orde_gesteld_door": "Sander Somers, 04-09-2026 (A5e.3-veld: orde 4 op elke overname van casus 1) — overgenomen bij E-3",
+   "fs_factor_bij_orde_4": 1.4,
+   "breakup_significant_dB": 2.5,
+   "breakup_divisor_ernstig": 3,
+   "breakup_divisor_mild": 2,
+   "breakup_volle_ernst_dB": 6,
+   "c_t_c_mm": {
+    "mid_tweeter": 129.2
+   },
+   "c_t_c_herkomst": "de CASUSBOEK-geometrie van casus 1 (manifest_en_geometrie.geometrie.ctc_mm.mid_tweeter)."
+  },
+  "mid_tweeter_orde4": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "venster": [
+    1646.9,
+    2304
+   ],
+   "vloer_bindend": "drive-stated",
+   "plafond_bindend": "breakup",
+   "grenzen": [
+    {
+     "kant": "floor",
+     "hz": 396.7,
+     "regel": "validity",
+     "bron": "measurement validity (tweeter far field)"
+    },
+    {
+     "kant": "floor",
+     "hz": 1294,
+     "regel": "fs",
+     "bron": "1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance"
+    },
+    {
+     "kant": "floor",
+     "hz": 1184.2,
+     "regel": "drive",
+     "bron": "8.6 dB of attenuation at tweeter's resonance (924 Hz) takes 0.36 octaves at order 4 (6 dB/oct per order) - the excursion ceiling of M-C v2.0 (driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; the ceiling the M-C gate judges the way against), read as A5d.3(ii) inverted, with the passband at the input"
+    },
+    {
+     "kant": "floor",
+     "hz": 1646.9,
+     "regel": "drive-stated",
+     "bron": "20.0 dB of attenuation at tweeter's resonance (924 Hz) takes 0.83 octaves at order 4 (6 dB/oct per order) - the STATED M-C figure (the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads), read as A5d.3(ii) inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated figure below this floor, and the floor assumes no pad (A5e.3b)"
+    },
+    {
+     "kant": "ceiling",
+     "hz": 2304,
+     "regel": "breakup",
+     "bron": "first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47"
+    },
+    {
+     "kant": "ceiling",
+     "hz": 5387.6,
+     "regel": "directivity",
+     "bron": "-6 dB at 30 deg of mid (5388 Hz)"
+    }
+   ],
+   "zones": [
+    {
+     "label": "wide frontal radiation (spacing well under half a wavelength)",
+     "hz": [
+      0,
+      1194.7
+     ],
+     "kind": "good",
+     "outsideWindow": true,
+     "derivedFrom": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a)."
+    },
+    {
+     "label": "the WORST lobing zone",
+     "hz": [
+      1327.4,
+      1858.4
+     ],
+     "kind": "bad",
+     "outsideWindow": false,
+     "derivedFrom": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a)."
+    },
+    {
+     "label": "second favourable zone (about one wavelength)",
+     "hz": [
+      2654.8,
+      3716.7
+     ],
+     "kind": "good",
+     "outsideWindow": true,
+     "derivedFrom": "a fraction of the wavelength at the handover, taken on the ONE centre-to-centre distance this pair was given (129.2 mm — casebook geometry (golden_refs_casus1b.json, from casus 1)). This is the M-F-INTERIM screening quantity (A4, role: reporting), not the vertical synthesis, which is the only lobing quantity a judgement may hang on (V20a)."
+    }
+   ],
+   "spanningen": [
+    "The favourable lobing zone (2655-3717 Hz) lies entirely ABOVE the ceiling (2304 Hz, breakup). Lobing and the ceiling want opposite things here - that is a real tension of this driver combination, not something the filter can resolve.",
+    "The worst lobing zone (1327-1858 Hz) overlaps the feasible window: part of the window is worse than the rest of it."
+   ],
+   "leeg": false,
+   "f_s_tweeter_hz": 924.3,
+   "k_fs_hz": 1294,
+   "excursievloer_hz": 1184.2,
+   "ctc_mm": 129.2,
+   "ctc_bron": "casebook geometry (golden_refs_casus1b.json, from casus 1)",
+   "veld_verkenning": {
+    "_": "E-2/E-3 — het A5d-veld in de VERKENNINGSMODUS (budget 8, centre-first, één uitlijning per overname), op dit venster.",
+    "posities_hz": [
+     1735.4,
+     1947.9,
+     2186.5
+    ],
+    "orden": [
+     4
+    ],
+    "bibliotheek": [
+     "LR2",
+     "LR4"
+    ],
+    "afgeleid": 3,
+    "budget": 8,
+    "kandidaten": 3,
+    "referentie_kruispunt_hz": 1948,
+    "orde_afleiding": [
+     "order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+    ]
+   },
+   "klasse_toelichting": "Hetzelfde venster als casus 1 kruisvensters.mid_tweeter_orde4 en dat is de eerste MEETING van E-3: het venster is een functie van de metingen, de gestelde orde, het gestelde tweetergetal en de c-t-c, en casus 1b deelt alle vier met casus 1. De vloer bindt op het gestelde tweetergetal (drive-stated, A5e.3b), het plafond op de breakup-ernst van de mid. Dat de woofer er niet is verandert niets aan dit paar."
+  }
+ },
+ "kandidaten": {
+  "HUIDIG_MT": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.HUIDIG_MT — casus 1's HUIDIG met het wooferpad weggelaten (scripts/derive-casus1b-huidig-mt.ts): de mid- en tweetertak van het referentiefilter van 22-08-2026, ongewijzigd, als tweeweg. Referentiefilter en geen kandidaat: het is nooit getuned op deze configuratie.",
+   "minZ": 3.72,
+   "minZ_bij_hz": 879.3,
+   "minEPDR": 1.86,
+   "dissipatie_pct": 44,
+   "grootste_R_W_bij_100W": 42.84,
+   "Qes_mult": 2.86,
+   "lf_bult_extra_dB": -9.3,
+   "lf_lift_dB": null,
+   "lf_opslingering_dB": null,
+   "V_tweeter_op_fs_dB": -25.06,
+   "V_mid_op_fs_dB": -27.86,
+   "rms_vlakheid_dB": 0.96,
+   "spl_venster_pm_dB": 2.56,
+   "mt_fase_oct": 7.03,
+   "mt_fase_kruispunt_hz": 2250.2,
+   "mt_fase_oct_octaafgeknipt_V43": 7.03,
+   "mt_fase_overlapvenster_V43": 7.03,
+   "poorten": [
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "waarde": -27.863,
+     "grens": 2.6426868218552038,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "waarde": -25.063,
+     "grens": -20,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "waarde": 4.284,
+     "grens": 5,
+     "geslaagd": true
+    }
+   ]
+  },
+  "_parameters": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "_": "V15 — waarop de klasse-B-blokken gemeten zijn: casus1bReport (CASUS1B_REPORT_SETTINGS: gestelde orde, doelcurve, excursie, bouwbaarheid, DCR-families, tweetergetal), het rapportraster (de poortsweep) en het versterkervermogen van casus 1.",
+   "doelcurve": "flat — the neutral reference; no voicing applied",
+   "fasemaat": "M-K (V44): gemiddelde |Δφ| over de TOEGELATEN punten (geldigheid, stilte, niveau); de twee V43-controlekolommen ernaast",
+   "dissipatie_bij_W": null
+  },
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1b/. Het netwerk komt uit een v2-tweewegrun (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — daarom klasse B en geen klasse C.",
+   "minZ": 2.6,
+   "minZ_bij_hz": 151.5,
+   "minEPDR": 1.37,
+   "dissipatie_pct": 9,
+   "grootste_R_W_bij_100W": 8.77,
+   "Qes_mult": 1.24,
+   "lf_bult_extra_dB": 1.28,
+   "lf_lift_dB": 0.88,
+   "lf_opslingering_dB": 0.4,
+   "V_tweeter_op_fs_dB": -40.55,
+   "V_mid_op_fs_dB": 1.63,
+   "rms_vlakheid_dB": 0.6,
+   "spl_venster_pm_dB": 1.2,
+   "mt_fase_oct": 2.9,
+   "mt_fase_kruispunt_hz": 1999.7,
+   "mt_fase_oct_octaafgeknipt_V43": 9.85,
+   "mt_fase_overlapvenster_V43": 2.9,
+   "poorten": [
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "waarde": -40.554,
+     "grens": -20,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "waarde": 0.877,
+     "grens": 5,
+     "geslaagd": true
+    }
+   ]
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1b/. Het netwerk komt uit een v2-tweewegrun (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — daarom klasse B en geen klasse C.",
+   "minZ": 2.6,
+   "minZ_bij_hz": 17535.1,
+   "minEPDR": 1.31,
+   "dissipatie_pct": 8,
+   "grootste_R_W_bij_100W": 4.83,
+   "Qes_mult": 1.24,
+   "lf_bult_extra_dB": 1.46,
+   "lf_lift_dB": 0.87,
+   "lf_opslingering_dB": 0.58,
+   "V_tweeter_op_fs_dB": -26.54,
+   "V_mid_op_fs_dB": 1.5,
+   "rms_vlakheid_dB": 1.66,
+   "spl_venster_pm_dB": 3.24,
+   "mt_fase_oct": 17.17,
+   "mt_fase_kruispunt_hz": 2142.7,
+   "mt_fase_oct_octaafgeknipt_V43": 63.06,
+   "mt_fase_overlapvenster_V43": 17.17,
+   "poorten": [
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "waarde": -26.543,
+     "grens": -20,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "waarde": 0.483,
+     "grens": 5,
+     "geslaagd": true
+    }
+   ]
+  }
+ },
+ "v1_baseline": {
+  "_": "DE LANDINGSPLAATS VOOR KLASSE C, EN HIJ IS LEEG — om dezelfde reden als bij casus 1: de referentienetlist en de bevroren kandidaten zijn BESTANDEN, geen runuitkomsten.",
+  "klasse": "C",
+  "afhankelijkheid": "meting+zoektocht",
+  "acceptatie": "GEEN ENKELE waarde onder dit blok is een acceptatiecriterium. Een test die er een uit leest is per definitie fout, en goldenClassification.test.ts faalt erop.",
+  "v1_commit": "267c599",
+  "v1_commit_herleiding": "267c599 (E-2) is HEAD op het moment dat casus 1b is aangemaakt (E-3, 06-09-2026). De v1-tweewegketen (designChain.ts, vfOptimizer.ts) bewoog het laatst bij UI-2; casus 1b legt er geen enkele uitkomst van vast.",
+  "referenties": {}
+ },
+ "manifest_en_geometrie": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "klasse_toelichting": "Projectinvoer: welk bestand welke meting is, de geometrie van mid en tweeter, de netlist(s) en de gestelde eisen die van casus 1 zijn overgenomen. Nergens een functie van behalve van de meetsessie van 22-08-2026 en van de M-1-merge van de mid.",
+  "opmerking": "De bestanden staan in test-fixtures/casus1/ (bestanden_map) en NIET in test-fixtures/casus1b/: casus 1b voegt geen meting toe en een kopie van een meetbestand is een tweede bestand dat stil kan afwijken. test-fixtures/casus1b/ draagt alleen wat casus 1b ZELF heeft: dit referentiebestand, de afgeleide referentienetlist HUIDIG-MT en de bevroren v2-kandidaten van de verkenning.",
+  "bestanden_map": "casus1",
+  "bestanden": {
+   "mid.lim": {
+    "drv": "mid",
+    "typ": "Z"
+   },
+   "tweeter.lim": {
+    "drv": "tweeter",
+    "typ": "Z"
+   },
+   "mid_near.txt": {
+    "drv": "mid",
+    "typ": "NF"
+   },
+   "mid_hor_0.txt": {
+    "drv": "mid",
+    "typ": "FF",
+    "hoek": 0
+   },
+   "mid_hor_30.txt": {
+    "drv": "mid",
+    "typ": "FF",
+    "hoek": 30
+   },
+   "tweeter_hor_0.txt": {
+    "drv": "tweeter",
+    "typ": "FF",
+    "hoek": 0
+   }
+  },
+  "gemergde_set": {
+   "_": "Dezelfde M-1-merge als casus 1, voor de ene weg die er een heeft: het on-axis ver veld van de mid is Koan_M_merged.frd (NF/FF-merge, geldig vanaf 60 Hz uit de pod, PLACEHOLDER tot groundplane/hermeting). De tweeter is de gepoorte sessie zoals gemeten (vloer 396,7 Hz). De fixture leest deze set standaard (casus1bManifest, set \"merged\"); set \"gated\" is de sessie van 22-08-2026 zoals gemeten.",
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "bestanden": {
+    "Koan_M_merged.frd": {
+     "drv": "mid",
+     "typ": "FF",
+     "hoek": 0,
+     "vervangt": "mid_hor_0.txt",
+     "gemaakt_door": "scripts/merge-casus1-mid.ts (M-1) — hetzelfde bestand als casus 1 leest"
+    }
+   }
+  },
+  "ff_headers": {
+   "referentietijd_ms": 2.5,
+   "rechter_venster_ms": 5.021,
+   "effectieve_venstertijd_ms": 2.521
+  },
+  "geometrie": {
+   "D_inch": {
+    "mid": 4
+   },
+   "z_offset_mm": {
+    "tweeter": 64.6,
+    "mid": -64.6
+   },
+   "ctc_mm": {
+    "mid_tweeter": 129.2
+   },
+   "baffle_mm": {
+    "breedte": 260,
+    "hoogte": 1124,
+    "herkomst": "casus 1 (dezelfde KOAN-prototypekast)"
+   },
+   "rotatiesymmetrisch": {
+    "mid": true,
+    "tweeter": true
+   }
+  },
+  "netlists": {
+   "HUIDIG_MT": "HUIDIG-MT.adsfilter.json",
+   "KAND_V2_1": "KAND-V2-1.adsfilter.json",
+   "KAND_V2_2": "KAND-V2-2.adsfilter.json"
+  },
+  "netlists_toelichting": {
+   "HUIDIG_MT": "HUIDIG's mid- en tweetertak als tweewegnetlist, afgeleid door scripts/derive-casus1b-huidig-mt.ts uit casus 1's 20260822_3-Zopt_adsfilter.json: de generator, de twee voedingsdraden en elk onderdeel van de B·- en C·-tak; de woofertak (13 onderdelen) weggelaten. De midtak houdt haar hoogdoorlaatflank (de W-M-overname van de drieweg, ~360 Hz), die op een tweeweg een shelf onder de midband is. MEETOBJECT, geen ontwerp: de referentienetlist waarop de klasse-B-metrieken van casus 1b staan vóór er een kandidaat bevroren is."
+  },
+  "gestelde_eisen": {
+   "_": "OVERGENOMEN VAN CASUS 1 (manifest_en_geometrie.gestelde_eisen), alleen wat op het SYSTEEM of op de mid en de tweeter gesteld is; elk getal met de oorspronkelijke steller. De woofer-gebonden eisen staan onder niet_overgenomen met de reden. Motiveringen: zie casus 1.",
+   "versterkervloer_ohm": 2.6,
+   "versterkervloer_gesteld_door": "Sander Somers, 27-08-2026 (casus 1) — overgenomen bij E-3: de versterker is dezelfde",
+   "versterker_nad_min_last_ohm": 4,
+   "versterker_piekvermogen_W": 160,
+   "versterker_nominale_last_ohm": 8,
+   "versterker_piek_gesteld_door": "Sander Somers, 02-09-2026 (V49) — overgenomen bij E-3",
+   "versterker_continu_vermogen_W": 100,
+   "versterker_continu_gesteld_door": "Sander Somers, 03-09-2026 (V50) — overgenomen bij E-3",
+   "xmax_marge": 0.8,
+   "xmax_marge_gesteld_door": "Sander Somers, 02-09-2026 (V49) — overgenomen bij E-3",
+   "tweeter_drive_op_fs_max_dB": -20,
+   "drive_op_fs_max_dB_per_weg": {
+    "tweeter": -20,
+    "mid": null
+   },
+   "drive_op_fs_max_per_weg_gesteld_door": "Sander Somers, 03-09-2026 (V50) — overgenomen bij E-3: de tweeter draagt de -20-conventie, de mid geen gesteld getal (alleen de afgeleide excursiegrens, V49)",
+   "weerstandsklasse_W": 10,
+   "weerstandsmarge": 0.5,
+   "weerstandsklasse_gesteld_door": "Sander Somers, 03-09-2026 (V50) — overgenomen bij E-3",
+   "spoelklasse_A": null,
+   "spoelklasse_gesteld_door": "Sander Somers, 03-09-2026 (V50) — LEEG, met casus 1's bevinding: de C-Coil-documentatie noemt geen verzadigingsstroom",
+   "thermisch_ontwerpvermogen_W": 10,
+   "thermisch_ontwerpvermogen_gesteld_door": "Sander Somers, 03-09-2026 (V51) — overgenomen bij E-3",
+   "bouwbaarheid_op_de_zoektocht": {
+    "gewapend": true,
+    "besluit_gesteld_door": "Sander Somers, 03-09-2026 (V51) — overgenomen bij E-3",
+    "waarom": "Dezelfde weerstandseis (klasse 10 W, marge 0,5, geoordeeld bij 10 W thermisch) als casus 1 sinds V51 op de zoektocht draagt; een casus met dezelfde versterker en dezelfde onderdelenklasse wapent haar op dezelfde manier."
+   },
+   "basplateau_offset_dB": 0,
+   "basplateau_offset_gesteld_door": "Sander Somers, 04-09-2026 (M-1) — overgenomen bij E-3: het filter wordt ontworpen op een vlak plateau; een gesteld 0 IS de vlakke referentie",
+   "niet_overgenomen": {
+    "_": "Eisen van casus 1 die aan de WOOFER hangen en op een tweeweg zonder woofer niets te oordelen hebben. Niet overgenomen is een besluit en geen weglating: elk staat hier met zijn reden, en P4 zegt wat een niet-gestelde eis doet (niets).",
+    "lf_opslingering_budget_dB": "1,4 dB op casus 1 — afgeleid uit Sanders spoelvuistregel op de REFLEXpiek van het wooferpaar (V42/V43) en een plafond op de seriespoel van de laagste weg. Casus 1b's laagste weg is de mid in een gesloten pod; het getal is op de woofer afgeleid en wordt hier niet gesteld (P4: geen inversie, geen plafond, M-D wordt alleen gerapporteerd).",
+    "qes_vermenigvuldiging_max": "2,4 op casus 1 — een plafond op de totale serieweerstand van de wooferweg, afgeleid op de R_e van het wooferpaar (V45). Niet op de mid gesteld; M-E wordt gerapporteerd en begrenst niets.",
+    "geen_niveauwerk_op_laagste_weg": "casus 1's motivering is de vuistregel 'nooit een pad op de WOOFER (warmte, impedantie, demping); pad de mid of de tweeter' (V51). Op casus 1b is de mid de laagste weg en juist de weg die volgens die regel gepad mag worden, dus de eis is hier niet van toepassing: lowestWayLevelWork blijft ABSENT (P4) en de ontwerp- en synthesestap lezen wat zij altijd lazen.",
+    "max_serie_R_laagste_weg_ohm": "de V51b-variant van dezelfde wooferregel (bij M-1 ingetrokken); niet van toepassing, zie hierboven."
+   }
+  },
+  "driverkaart": {
+   "_": "OVERGENOMEN van casus 1 (manifest_en_geometrie.driverkaart) voor de twee wegen die casus 1b heeft. Datasheetgetallen als projectinvoer; de engine leest R_e uit de sweep.",
+   "gesteld_door": "Sander Somers, 02-09-2026 (V49) — overgenomen bij E-3",
+   "tweeter": {
+    "model": "Bliesma T25T-6",
+    "X_max_mm": 1,
+    "S_d_cm2": 5.7,
+    "Bl_Tm": 2.6,
+    "M_ms_g": 0.15,
+    "Re_datasheet_ohm": 5.2,
+    "schakeling": {
+     "aantal": 1,
+     "gemeten": "parallel",
+     "gewenst": "parallel"
+    }
+   },
+   "mid": {
+    "model": "SB Acoustics MR13TX-4",
+    "X_max_mm": 3,
+    "S_d_cm2": 69,
+    "Bl_Tm": 4.9,
+    "M_ms_g": 7.2,
+    "Re_datasheet_ohm": 3.4,
+    "schakeling": {
+     "aantal": 1,
+     "gemeten": "parallel",
+     "gewenst": "parallel"
+    }
+   },
+   "ff_meetspanning_V": null,
+   "ff_mic_afstand_mm": 1000,
+   "ff_meetspanning_toelichting": "Niet gedocumenteerd (casus 1, V49): route 2 van M-C v2.0 staat uit, bewust geen 2,83 V aangenomen.",
+   "spoelfamilie": {
+    "_": "A5e.3 — de spoelfamilie per weg, overgenomen van casus 1 voor de mid en de tweeter (beide 1,0 mm lucht, Jantzen). De familie van de LAAGSTE weg (hier de mid) levert de spanwijdte die A5e.3b als plafond op haar spoelen legt.",
+    "status": "GESTELD (04-09-2026, A5e.3-veld, casus 1) — overgenomen bij E-3",
+    "gesteld_door": "Sander Somers, 04-09-2026",
+    "catalogus": "src/lib/parsers/fixtures/gemini-catalog-v8.json",
+    "per_weg": {
+     "mid": "jantzen|air core wire coil|1",
+     "tweeter": "jantzen|air core wire coil|1"
+    }
+   }
+  },
+  "v2_herkomst": {
+   "_": "De v2-tweewegrun waaruit de KAND-V2-bestanden komen: test-fixtures/casus1b_v2_herkomst.json (scripts/generate-casus1b-v2-candidates.ts). DOCUMENTATIE — de acceptatie zit in kandidaten.KAND_V2_*.",
+   "bestand": "test-fixtures/casus1b_v2_herkomst.json",
+   "gegenereerd_op_commit": "267c599fce141369a12446f9f021c0b873af1816",
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=186e7cb2 seed=20260906 budget=tuner starts=1 status=completed design=f5c74445 measurements=40b2f541 gates=b6002604 bounds=5465b825 tuning=8a12c432 facts=e9528612 choices=66d49d53",
+   "opgenomen_op": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.8.1",
+    "v8": "14.6.202.34-node.28",
+    "_": "A5e.4 is byte-identiek PER (machine, runtime); elders regenereren levert een eigen, even geldig corpus (V46)."
+   },
+   "shortlist": {
+    "overwogen": 3,
+    "geweigerd_door_een_poort": 0,
+    "leverde_geen_netwerk": 1,
+    "bevroren": 2
+   },
+   "uitkomsten": [
+    {
+     "label": "mid→tweeter 1735.4 LR4",
+     "geleverd": false,
+     "looptijd_s": 104.786
+    },
+    {
+     "label": "mid→tweeter 1947.9 LR4",
+     "geleverd": true,
+     "looptijd_s": 209.297
+    },
+    {
+     "label": "mid→tweeter 2186.5 LR4",
+     "geleverd": true,
+     "looptijd_s": 102.773
+    }
+   ],
+   "veld": {
+    "modus": "exploration",
+    "bibliotheek": [
+     "LR2",
+     "LR4"
+    ],
+    "gestelde_orde": 4,
+    "per_as": [
+     {
+      "paar": "mid→tweeter",
+      "orden": [
+       4
+      ],
+      "posities_per_orde": [
+       {
+        "orde": 4,
+        "aantal": 3,
+        "hz": [
+         1735.4,
+         1947.9,
+         2186.5
+        ]
+       }
+      ],
+      "venster": {
+       "4": {
+        "vloer_hz": 1646.9446029684202,
+        "plafond_hz": 2304.026472037768,
+        "vloer_door": "drive-stated",
+        "plafond_door": "breakup"
+       }
+      }
+     }
+    ],
+    "_": "E-2: verkenning — budget EXPLORATION_CHAIN_BUDGET, posities centre-first (het venstercentrum en zijn buren), één uitlijning per overname (de gestelde orde 4, LR)."
+   }
+  },
+  "v2_route": {
+   "_": "E-3 — de tweewegroute door de v2-worker: handleV2Request kind v2ChainOne → runDesignChain onder de hook. Raster en oordeelband afgeleid zoals casus 1 (M-1-regel).",
+   "raster": {
+    "van_hz": 60,
+    "tot_hz": 20000,
+    "punten": 121
+   },
+   "oordeelband_hz": [
+    88.8,
+    19500
+   ],
+   "oordeelband_bron": {
+    "lowest": "mid",
+    "validityFloorHz": 60,
+    "fpHz": 88.80615234375,
+    "floorHz": 88.80615234375,
+    "provenance": "merge-block"
+   },
+   "gestelde_orde": 4,
+   "gerecordeerd_op_commit": "267c599fce141369a12446f9f021c0b873af1816"
+  }
+ }
+}

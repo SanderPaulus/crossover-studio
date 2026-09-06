@@ -942,12 +942,16 @@ describe('the live-run tag is a schedule, not a hiding place', () => {
     return out.sort();
   };
 
-  it('exactly two blocks carry it, and both are live chain runs', () => {
+  it('exactly three blocks carry it, and all three are live chain runs', () => {
     /* Two since 01-09-2026, and they are two FILES on purpose: a synchronous
      * `handleV2Request` cannot run two live chains at once inside one file.
-     * The names are written out so that a third one is a deliberate act. */
+     * The names are written out so that a third one is a deliberate act — and
+     * E-3 was that act: casus 1b's reproduction through the TWO-WAY route of
+     * the worker (`casus1bV2Candidates.test.ts`), a third file for the same
+     * reason the second was one. */
     expect(tagged()).toEqual([
       '[live] a wholesale refusal comes back as a refusal',
+      '[live] casus 1b: the two-way route still delivers the frozen netlist',
       '[live] the run still delivers the frozen netlist',
     ]);
   });

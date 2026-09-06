@@ -6671,6 +6671,166 @@ blok (zij zit op de wire en niet in de vingerafdruk — een replay op een andere
 (3) De demobundel is de gepoorte set herbemonsterd; wie de app op de gemergede set wil laten lopen laadt de repo-bestanden
 zelf (de woofer als één gesommeerd bestand). (4) E-1's twee keuzes blijven geparkeerd tot de volgende regeneratie.
 
+### E-3 — de tweewegroute: de kaart sinds F4, twee ketens en geen twee implementaties, casus 1b als tweeweg door de v2-worker (06-09-2026, alleen v2-runs; **het casus-1-corpus beweegt NIET, casus 1b is nieuw**)
+
+**AANLEIDING EN OMVANG.** De opdracht van 06-09-2026: elke bevinding sinds F4 op de TWEEWEGROUTE nalopen — zelfde code,
+ander gat of niet van toepassing, met bestand:regel — en dan de structurele vraag: zijn `designChain.ts` en
+`threeWayChain.ts` twee implementaties van één keten of twee ketens? Als de tweeweg over de driewegketen kan met N = 2,
+dat doen; anders alleen repareren wat de kaart als "ander gat" markeert, in volgorde van gewicht. En casus 1b: casus 1's
+mid en tweeter als tweeweg, geregistreerd per `casus-toevoegen`, één regeneratie in de verkenningsmodus (budget 8) op de
+route zoals zij dan is. Eén commit. **Uitkomst in één zin: het zijn twee KETENS (verschillende ontwerpstappen, eigen
+vocabulaire, eigen zaad); de tweeweg over de driewegketen met N = 2 vraagt een N-weg-refactor van `threeWayDesign.ts`
+en `threeWayChain.ts` — v1-code onder de toggle-invariant — en is niet gedaan; wat WEL gemeten is: van de zesentwintig
+rijen van de kaart worden er twintig "zelfde code" zodra een tweewegverzoek de v2-WORKER bereikt, want `runCandidate`,
+`tuneOptionsFor` en de poorten zijn ketenneutraal; de zes ketenzijdige gaten zijn er vijf gerepareerd (en één benoemd),
+en casus 1b liep zijn verkenning door die route: drie kandidaten, twee geleverd, één geweigerd op M-C.**
+
+**STAP 1 — DE KAART.** Leesregel: "zelfde code" betekent dat de worker-tak `v2ChainOne` (`worker.ts:2878`) dezelfde
+functie aanroept als de driewegtak `v2Chain3One` (`worker.ts:2716`) — `runCandidate` (`worker.ts:2088`), `tuneOptionsFor`
+(`worker.ts:719`), de poortreferentie, de weigeringen. "Ander gat" betekent dat de bevinding op de tweewegroute een
+tweede lezer had die zij niet bereikte. **De app zelf stuurt een tweewegverzoek nog altijd naar de v1-worker**
+(`App.tsx:8262` → `optimClient.ts:308`, `runChainScan`; er is bewust geen `runChainScanV2`, `optimClient.ts:691–700`;
+`facade.ts:89` draagt de TODO(F2c)) — dat is de ene rij die élke andere rij in de app-kolom op "open" zet.
+
+| bevinding | op de tweewegroute door de worker | in de app (v1-worker) | bestand:regel |
+|---|---|---|---|
+| F4b — R_e-herkomst (V21), mediaan-\|Z\| van de sweep (V22), verankerd budget (V23) | **zelfde code**: `measurementFacts(grid, driverZ, {mid, tweeter}, v2)` in de tak, `factsForWorker` | ander gat: geen feiten over de grens | `worker.ts:2878`, `measurementFacts.ts:325` |
+| F4b2 — de LF-bult-inversie krijgt nabij veld én sweep | **zelfde code** (n.v.t. op casus 1b: het budget is woofer-gebonden) | ander gat | `worker.ts:889` (`invertBudgets`) |
+| F4c — keuze vs. polish, hook als LAATSTE gemerged | **zelfde code**: `hooks.tuneOptionsFor(merged)` sluit de tuner-opties | n.v.t.: geen hook | `designChain.ts:425` |
+| F4d — A5d-kandidaatgeneratie | **zelfde code**: `buildCandidateField` is N-weg, één paar werkt (casus 1b: 1 as, 3 posities) | ander gat: `crossoverVariants` (drie vaste stappen rond een centrum) | `candidateField.ts`, `designChain.ts:441–486` |
+| V30 — de vloer als zoekdoel | **zelfde code**: `zFloorBarrier` verklaard, `netOptimizer.ts` leest hem | ander gat | `netOptimizer.ts:201/291/619` |
+| V31 — een geweigerde tune is een verwerping | **zelfde code**: `runCandidate` wist `parts` én `net.parts` | ander gat: v1 levert het zaad als ontwerp | `worker.ts:2088` |
+| V32 — de poort meet op de sweep | **zelfde code**: `freezeGateReference` in `runCandidate` | ander gat | `worker.ts:2088`, `impedanceReference.ts` |
+| V33 — de barrièrebron (`'safety-extended'`) | **zelfde code**: verklaard, `settings.safety` reist mee (`casus1bChainInput`) | ander gat | `netOptimizer.ts:619`, `candidateDeclaration.ts` |
+| V34 — het probe-raster | **zelfde code**: `rSourceProbeSource: 'safety'` verklaard | ander gat | `candidateDeclaration.ts` |
+| V36/V37 — de dissipatienoemer op R_e | **zelfde code**: `'re'` verklaard, R_e uit de feiten | ander gat | `candidateDeclaration.ts`, `worker.ts:742` |
+| V38-fix — de zoekmaat, TUNER | **zelfde code**: `errorSmoothOct` verklaard | ander gat | `netOptimizer.ts:268/2335` |
+| **V38-fix — de zoekmaat, vf-ONTWERPSTAP** | **ANDER GAT → gerepareerd**: `withDeclaredSearchSmoothing` zet de verklaarde breedte op `ChainSettings.errorSmoothOct`, de tweede lezer | ander gat (blijft) | `vfOptimizer.ts:384/446`, `worker.ts:1953/2948` |
+| **V38-fix — de stille geest in de SYNTHESE** (nieuw gemeten) | **ANDER GAT → gerepareerd**: vijfde ketensleutel `synthesisGrid: 'alive'` — de driewegketen fitte altijd al op de levende punten, de tweewegketen op het volle raster mét het dode toppunt | ander gat (blijft) | `threeWayChain.ts:284/378`, `designChain.ts:324`, `chainChoices.ts:159` |
+| V40/V44 — M-K, fase-toelating, TUNER en RAPPORT | **zelfde code**: `phaseAdmission: 'measured'` verklaard; het rapport op het bevroren bestand leest M-K | ander gat | `worker.ts:1352/1380`, `report.ts` |
+| **V44 — de fasemaat van de vf-ONTWERPSTAP** | **ander gat, OPEN**: `phaseMetric: 'band'` kent geen toelating (geldigheid, stilte, niveau) | ander gat | `vfOptimizer.ts` (`phaseMetric`) |
+| V41 — `eqBands`, `leanTargetDb` naar de ontwerp- en synthesestap | **ANDER GAT → gerepareerd**: `chainSettingsForTwoWay` (`eqBands` → `eqBandsPerDriver`); `leanTargetDb` op `ChainSettings` | ander gat | `chainChoices.ts:287`, `designChain.ts:108` |
+| V43/V48 — het budget op de opslingering, het plafond gevolgd | **zelfde code** (n.v.t. op casus 1b: geen LF-budget) | ander gat | `worker.ts:958/1021`, `bounds.ts:504` |
+| V45 — doelcurve als zoekreferentie, Q_es-grens, verankerd gap | **zelfde code**: `amplitudeReference` verklaard uit `targetCurve`; `facts.gapBudgetDb` | ander gat | `candidateDeclaration.ts`, `worker.ts:2878` |
+| V47/V47b — `protectionRule: 'stated'`, M-C per weg −20 | **zelfde code**: casus 1b weigert er zijn laagste positie op (gemeten) | ander gat | `worker.ts:1232/1426`, `gates.ts:223` |
+| A5e.3c — de weigering op de eigen kruispunten | **zelfde code**: `derivedGateViolation` in `runCandidate` | ander gat | `worker.ts:1799` |
+| V49 — het excursieplafond | **zelfde code**: `withDerivedDriveCeiling(v2Wire)` in de tak | ander gat | `worker.ts:2878` |
+| V50 — M-A/part, M-L | **zelfde code**: gewapend op casus 1b (10 W × 0,5), oordelen in de klasse-B-blokken | ander gat | `gates.ts` |
+| V51/V51b/A5e.3b — level-work/1.2, de WORKER-weigering | **zelfde code**: `levelWorkVerdict` | ander gat | `worker.ts:2284`, `levelWork.ts:302` |
+| **V51/V51b/A5e.3b — de drie ketensleutels naar de ontwerp- en synthesestap** | **ANDER GAT → gerepareerd**: `lowestWayLevelWork`, `lowestWayCoilMaxHenry` op `ChainSettings`; `'none'` zet de gain van de laagste weg op 0, geen shelf-EQ op de woofer (`noShelfOnWoofer`), synthese zonder pad; n.v.t. op casus 1b (de mid is anker én laagste weg, X = 0) | ander gat | `designChain.ts:118–130`, `vfOptimizer.ts:1035` |
+| A5e.3 — de DCR uit de catalogusfit | **zelfde code**: `coilDcrModel` verklaard, het zaad gestempeld; casus 1b's spoelen dragen hun DCR (`kandidaat_uitkomst[].spoel_dcr`) | ander gat | `worker.ts:2364`, `netOptimizer.ts` |
+| E-1 — goedkoopste live-onderwerp, gestelde M-T-bovengrens, verdichte barrière, zestien paren | zelfde regel (de casus-1b-reproductie kiest op `looptijd_s`), zelfde venstercode (niets gesteld), zelfde route-afleiding (`'safety-extended'`); de zestien paren zijn casus 1 | n.v.t. | `casus1bV2Candidates.test.ts`, `xoWindow.ts` |
+| **de topologiebeschrijving** | **ANDER GAT → gerepareerd**: de tak gaf een LEGE descriptor; sindsdien `topologyOf` uit de vf-specs, mét de gekozen polariteit | n.v.t. | `worker.ts` (`v2ChainOne`) |
+| **de polariteit van de ontwerpstap** (nieuw gemeten) | **ANDER GAT → gerepareerd op BEIDE routes**: `foldDriverPolarity` vouwt de gekozen omkering in het `Driver`-onderdeel; tot E-3 reisde zij als `adjust` en las élke lezer buiten de keten de niet-omgekeerde som | ander gat: de app zet het vinkje | `worker.ts:1932` |
+| UI-1 — `selectFromShortlist` | n.v.t. door de worker; **open in de app**: de tweewegtak van de app kent geen shortlist | ander gat | `App.tsx:8262–8400` |
+| E-2 — veldmodus, export, replay | **zelfde code** in de generator (`fieldModeSettings('exploration')`); **open in de app** | ander gat | `fieldMode.ts`, `runExport.ts` |
+| de KOOI van F4d op de tweewegtuner | niet als mechanisme gemeten: de tuner leest `xoRange` als zachte straf (`xoPenalty`); op dít veld bleef élke levering in haar kooi (2055 in 1838,6–2063,8; 2157 in 2063,8–2304) | ander gat | `netOptimizer.ts:398`, `vfOptimizer.ts:687` |
+
+**STAP 2 — TWEE KETENS.** `runDesignChain` (vf-rondes → synthese → tune, `ChainSettings`, zaad `VfSpecs`) en
+`runThreeWayChain` (`designThreeWay` → synthese → tune, `Chain3Settings`, zaad uit de ontwerpstap) delen `synthesize`,
+`optimizeNetworkValues` en `ChainEngineHooks.tuneOptionsFor`, en niets van hun ONTWERPSTAP: de een enumereert
+virtuele filters en adopteert EQ uit het zaad, de ander leidt een topologie af uit de gemeten hellingen. Geen van beide
+is N-weg. De tweeweg over de driewegketen met N = 2 vraagt `Chain3Input`/`designThreeWay`/`threeWayChain` N-weg te
+maken — v1-code die de toggle-invariant byte-identiek moet houden — en is niet deze sessie. **De meting die de vraag
+beantwoordt:** van de zesentwintig rijen hierboven zijn er TWINTIG "zelfde code" zodra het verzoek de worker bereikt
+(alles wat in `runCandidate`, `tuneOptionsFor`, de feiten, de poorten en de weigeringen woont), ZES ketenzijdig
+(V41-sleutels, V38-fix in de ontwerpstap, de stille geest in de synthese, de V51-sleutels, de topologiebeschrijving,
+de polariteit — vijf gerepareerd, plus M-K in de ontwerpstap: open), en vier rijen zijn de APP (het verzoek bereikt de
+worker niet; A5d-veld, feiten/poorten/shortlist, UI-1, E-2). De meerderheid verdwijnt dus door de worker — niet door
+een N-weg-refactor — en dát is wat E-3 gebouwd heeft: de tweewegtak van de worker leest sindsdien de ketenverklaring
+in haar eigen vocabulaire, de verklaarde zoekgladding bereikt de vf-ontwerpstap, de synthese fit op de levende punten,
+en de polariteit staat in het netwerk.
+
+**DE METINGEN ACHTER DE REPARATIES (casus 1b, kandidaat 1947,9 LR4, vijf armen op één invoer).** (a) De v1-tweewegketen
+zoals de app hem draait (`runDesignChain(input)`, geen hook): de vf-ontwerpstap leest **41,37 dB** rimpel na
+"HP/LP LR4/LR4 → polish", de synthese levert BEIDE takken gedegenereerd ("0,002 Ω / 0,000 Ω aan de versterker bij
+20 000 Hz"), de tuner weigert de hele waardetune en geeft het zaad terug (`tuned: 0`, 26,5 dB rimpel, 180°, min |Z|
+0,16 Ω). (b) Door de worker MET verklaring maar de verklaarde gladding weggelaten: identiek 41,37 dB in de
+ontwerpstap. (c) Door de worker met de verklaarde gladding (0) en de synthese op het volle raster: ontwerpstap **2,34 dB**
+/ 7,8°, maar de tweetertak gedegenereerd — C1 320 pF, L2 196 mH, C3 **2,5 pF** — "0,001 Ω bij 20 000 Hz", tuner
+`tuned: 0`, 37,5 dB. (d) Met `synthesisGrid: 'alive'`: **1,42 dB / 2,6°, kruispunt 2055 Hz** (kooi 1838,6–2063,8),
+min |Z| 2,60 Ω, 206 s. **Het mechanisme is één rasterpunt:** het toppunt van het ketenraster (20 000 Hz) is op beide
+wegen een stille geest (−400 dB; het verre veld eindigt daar — casus 1's raster heeft hetzelfde dode toppunt, index
+142), en (i) de 1/12-octaaf-gladdingskern van de vf-stap trekt −400 dB over de bandrand — de vf-stap alléén gemeten:
+HP/LP-stadium **47,8 / 48,1 dB** gegladd tegen **4,93 / 4,64 dB** ongegladd op twee kandidaten — precies V38-fix's
+mechanisme, één stap eerder; (ii) de synthese in `'acoustic'`-modus jaagt een doel van −400 dB bij 20 kHz na (klein
+gewogen, 300 dB fout) en levert een tak die niets meer aan de versterker biedt. De driewegketen sluit (ii) sinds haar
+geboorte uit (`ALIVE_DB`, `threeWayChain.ts:378`); de tweewegketen niet. **De polariteit:** de vf-stap koos op twee
+van drie kandidaten de omgekeerde tweeter (LR4 met 129,2 mm c-t-c); de tune las 1,42 dB / 2,6° mét die omkering als
+`adjust`, de shortlist mat DEZELFDE onderdelen zonder haar op **±70,5 dB / RMS 3,70**, en het bevroren bestand
+reproduceerde **177° M-K en RMS 4,53**. Na `foldDriverPolarity` (het `Driver`-onderdeel draagt `inverted: true`):
+KAND_V2_1 RMS 0,60, venster ±1,20, M-K 2,9°. Op de driewegroute is dezelfde vouw de identiteit op het hele casus-1-veld
+(LR4-alleen sinds A5e.3-veld, nooit omgekeerd) — de byte-baselines en de live reproductie staan — maar het M-1-veld
+droeg LR2 op de W-M-as en zou het gedaan hebben: een latent gat, nu op beide routes dicht.
+
+**DE VIJFDE KETENSLEUTEL.** `synthesisGrid: 'alive' | 'full'` (`chainChoices.ts:159`), onvoorwaardelijk `'alive'`
+verklaard (`candidateDeclaration.ts:903`, de vorm van V37's `'re'` en V38-fix's breedte: er is geen ontwerp waarop
+"fit op dode punten" het eerlijke antwoord is), expliciet `'full'` wint. **Absent = de eigen geschiedenis van elke
+keten (P2):** de driewegketen leest levend, de tweewegketen vol — byte-identiek voor elke v1-aanroeper, en de
+driewegketen implementeert `'full'` óók, zodat de vóór/ná op beide ketens één sleutel is en geen build.
+`chainChoices.test.ts` pint vijf sleutels, de tweewegvertaling sleutel voor sleutel, en meet dat een verklaard
+`'alive'` op de driewegketen byte-identiek is aan de sleutel weggelaten (één ketenrun per arm, 45 s);
+`casus1bV2Candidates.test.ts` pint de meting zelf zonder ketenrun: dezelfde HP-spec, het volle raster degenereert bij
+het toppunt, de levende punten bouwen.
+
+**STAP 3 — CASUS 1b.** `test-fixtures/casus1b/golden_refs_casus1b.json`, `casus1b.fixture.ts`. Casus 1's mid (gesloten
+pod, de gemergede `Koan_M_merged.frd`, geldig vanaf 60 Hz) en tweeter (waveguide, gate-vloer 396,7 Hz), bestanden uit
+`test-fixtures/casus1/` (`bestanden_map`), geometrie uit casus 1 (c-t-c 129,2 mm, z-offsets ±64,6 mm, kast 260 × 1124),
+plateau 0. Overgenomen eisen: vloer 2,6 Ω, NAD 4,0 als opgave, piek 160 W / 8 Ω, 100 W continu, X_max-marge 0,8,
+tweeter −20 dB (mid: niets gesteld), weerstandsklasse 10 W × 0,5 bij 10 W thermisch, bouwbaarheid GEWAPEND op de
+zoektocht, spoelfamilies mid/tweeter Jantzen 1,0 mm lucht. **Bewust NIET overgenomen** (`gestelde_eisen.niet_overgenomen`):
+het LF-opslingeringsbudget, de Q_es-grens, het niveauwerkverbod en het serie-R-maximum — alle vier zijn op de WOOFER
+gesteld (reflexpiek, laagste weg met pad); op casus 1b is de mid de laagste weg én het anker (X = 0). Het
+referentiefilter `HUIDIG_MT` is casus 1's HUIDIG met het wooferpad weggelaten (`scripts/derive-casus1b-huidig-mt.ts`:
+elk onderdeel byte-gelijk aan een onderdeel van HUIDIG, dertien wooferonderdelen eruit). Klasse A (`record-casus1b-
+references.ts`, mét V15-blokken `_re_parameters`, `_spl_scan_parameters`, `_excursie_parameters`): mid R_e 3,36 Ω
+(fit), f_c 88,8 Hz, Z_max 44,22 Ω, Q_tc 0,56, zeven breakups ≥ 2,5 dB, −6 dB@30° 5388 Hz, vloer 60 Hz (mergeblok),
+excursieplafond −17,67 dB re ingang; tweeter R_e 5,23 Ω, f_s 924,3 Hz, Z_max 16,63 Ω, geen breakup ≥ 2,5, vloer 396,7
+Hz, plafond −8,58 dB. **Het venster mid→tweeter: 1646,9–2304 Hz, vloer `drive-stated`, plafond `breakup` — tot op de
+hertz casus 1's `mid_tweeter_orde4`** (`goldenCasus1b.test.ts` legt beide rapporten naast elkaar): het venster is een
+functie van dezelfde vier invoeren en de woofer draagt er niets aan bij. Verankerde gaps: anker mid, tweeter +4,381 dB.
+Oordeelband afgeleid zoals M-1: vloer max(geldigheidsvloer 60, f_c 88,8) = 88,8 Hz tot 19 500; raster 60–20 000 Hz,
+121 punten op de precedent-resolutie. Klasse B op HUIDIG_MT: min |Z| 3,72 Ω, EPDR 1,86, dissipatie 44 %, RMS 0,96 dB,
+venster ±2,56, M-K 7,03°, tweeter −25,06 dB. `goldenClassification.test.ts` draagt een casus-1b-describe (eigen
+padlijst, bevroren netlists uit het manifest, klasse C alleen onder de lege baseline `267c599`).
+
+**STAP 4 — DE VERKENNING (budget 8, centre-first, één uitlijning).** `scripts/generate-casus1b-v2-candidates.ts`
+(shards, `V2_ONLY`/`V2_JOBS`/`V2_MERGE`, kind `v2ChainOne`, seed 20260906, de app's eigen tweeweginstellingen met
+`synthMode 'acoustic'`, `cutOnly`, `targets {2,5 dB, 15°}`, `structurePreference` = de uitlijning van de kandidaat,
+`xoRange` = de kooi, `judgeWindow` = het venster; zaad = de tweeweghelft van de app's `defaultVFilters`). Veld: 3 uit 3
+afgeleid — **1735,4 / 1947,9 / 2186,5 Hz LR4** (het venstercentrum √(1646,9 · 2304) en beide buren). Uitkomst
+(415 s wandklok, drie tegelijk):
+
+| kandidaat | uitkomst | rimpel / fase (tuner) | kruispunt gesteld → geleverd (kooi) | min \|Z\| | RMS / venster / M-K (rapport) | tweeter M-C | looptijd |
+|---|---|---|---|---|---|---|---|
+| 1735,4 LR4 | **GEWEIGERD** — M-C (tweeter) −16,1 dB tegen −20 | — | 1735,4 (1646,9–1838,6) | — | — | −16,1 | 105 s |
+| 1947,9 LR4 | geleverd → **KAND-V2-1** | 1,42 dB / 2,6° | 1947,9 → 2055 (1838,6–2063,8) | 2,60 Ω (op de vloer) | 0,60 / ±1,20 / 2,9° | −40,6 | 209 s |
+| 2186,5 LR4 | geleverd → **KAND-V2-2** | 3,76 dB / 13,8° | 2186,5 → 2157 (2063,8–2304) | 2,60 Ω | 1,66 / ±3,24 / 17,2° | −26,5 | 103 s |
+
+Beide geleverde landen exact op de vloer (2,597–2,60 Ω binnen de 2 %-tolerantie van `meetsAmpFloor`): de tweeweg
+zonder woofer heeft geen serieweerstand die de bodem optilt en de barrière houdt hem op de rand — dezelfde beweging die
+V51 op de driewegroute mat. Dissipatie 8–9 %, M-A/part 1,57 W tegen 5 toegestaan, elke spoel met DCR uit de 1,0 mm-familie
+(`kandidaat_uitkomst[].spoel_dcr`). De laagste positie is geweigerd zoals de A5e.3b-vloer voorspelt (de vloer neemt de
+kale ladder; de tune landde 0,08 octaaf erboven met een pad-loze LR4 en haalde −16,1). **De live reproductie**
+(`casus1bV2Candidates.test.ts`, `[live]` `[bytes]`, de goedkoopste geleverde: KAND-V2-2, 95 s) reproduceert byte-voor-byte;
+de tag-inventarissen staan op DRIE live en ZEVEN bytes-namen (`ciLayer.test.ts`, de tagbewaker in
+`casus1V2Candidates.test.ts`).
+
+**WAT NIET GEDAAN IS EN WAAROM.** (1) De tweeweg over de driewegketen met N = 2: een v1-refactor, niet deze sessie; de
+worker levert de meerderheid van de kaart zonder hem. (2) De app: `runChainScanV2`, de tweewegtak van `runVfOptimize`
+op het A5d-veld, feiten/poorten/shortlist/export — de vier app-rijen blijven open; de route bestaat en is getest, de
+knop niet. (3) M-K in de vf-ontwerpstap (`phaseMetric: 'band'` zonder toelating) — benoemd, niet gerepareerd: de tuner
+en het rapport oordelen wél op M-K, dus wat de ontwerpstap ernaast meet stuurt alleen het zaad. (4) Of de KOOI op de
+tweewegtuner bindt is niet als mechanisme gemeten (zachte straf); op dit veld bleef elke levering erbinnen. (5) De
+casus-1-herkomst draagt nog geen `synthesisGrid` in haar `ketenverklaring` (documentatie, geschreven bij A5e.3c); de
+eerstvolgende regeneratie schrijft hem — het corpus zelf is byte-identiek, gemeten door de byte-baselines en de live
+reproductie in de volle run.
+
+**TESTS EN TELLING.** Zie CLAUDE.md (de meting van de snelle en de volle laag bij E-3). Nieuw: `goldenCasus1b.test.ts`
+(14 claims), `casus1bV2Candidates.test.ts` (5, waarvan één `[live]`/`[bytes]`), een casus-1b-describe in
+`goldenClassification.test.ts` (3), vier E-3-claims in `chainChoices.test.ts`; `ciLayer` en de tagbewaker herzien;
+`tsc -b` groen (scripts inbegrepen).
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

@@ -85,6 +85,7 @@ import {
   CHAIN_CHOICE_KEYS,
   chainDeclarationCoverage,
   withDeclaredChainChoices,
+  withDeclaredChainChoicesTwoWay,
   type ChainChoiceDeclaration,
 } from './chainChoices.ts';
 import type {
@@ -188,9 +189,11 @@ export interface V2RunSettings extends MeasurementFactsPayload {
  * ABSENT = THE F4c ROUTE, UNCHANGED. A payload with no candidate reads its
  * choices back out of the chain settings exactly as it did before F4d, and says
  * in `notes` that fifteen of them are still inherited. That is not a fallback
- * to be tidied away later: the two-way route is still v1 (TODO(F2c)) and a
- * caller that has no pre-design layer to generate from must not be handed an
- * invented candidate.
+ * to be tidied away later: a caller that has no pre-design layer to generate
+ * from must not be handed an invented candidate. (Until E-3 the two-way route
+ * was that caller in full; since E-3 the `v2ChainOne` branch reads a candidate
+ * exactly as the three-way branch does, and the APP's two-way scan is what
+ * still sends none — casebook E-3, the open list.)
  */
 export interface V2CandidatePayload {
   /** The A5d layer's declaration over every choice key. */
@@ -1883,6 +1886,80 @@ export function withDeclaredSourceLimit<
 }
 
 /**
+ * E-3 — THE DECLARED SEARCH SMOOTHING REACHES THE TWO-WAY DESIGN STEP.
+ *
+ * `errorSmoothOct` is a CHOICE key since V38-fix: it decides WHICH CURVE the
+ * amplitude term is a statistic of, and the candidate states it (0 — the sum
+ * that is judged). On the three-way route that is the whole story, because the
+ * hook merges it into the tuner LAST and `designThreeWay` smooths nothing. The
+ * two-way chain has a SECOND reader the hook cannot reach: `vfOptimizer.ts`
+ * smooths every driver magnitude before it sums (the same construction the
+ * tuner had until V38-fix, `smoothMag` before decimation, phase untouched), and
+ * it reads `settings.errorSmoothOct` from the chain input — which the chain
+ * builds before the hook exists. V38-fix recorded that as the boundary it did
+ * not cross ("de tweeweg-ontwerpstap valt buiten deze reparatie"); the E-3 map
+ * of the two-way route is where it is crossed: one key, two readers, one value.
+ *
+ * The V34 shape: no declaration, or a declaration that does not state the key,
+ * is the IDENTITY — every v1 caller and every candidate that leaves the width
+ * to the chain reads exactly what it read. A stated width is written into the
+ * settings so the design step and the tune measure the same curve.
+ */
+/**
+ * E-3 — THE POLARITY THE DESIGN CHOSE, FOLDED INTO THE NETLIST.
+ *
+ * Both v1 chains decide a way's polarity in their DESIGN step and hand it to
+ * the tune as an ADJUST (`TweeterAdjust.inverted`, `BranchAdjust.inverted`) —
+ * the app's polarity checkbox — while the parts they return carry
+ * `Driver.inverted: false`. Inside the chain that is one network; outside it,
+ * it is two: a frozen `.adsfilter.json` cannot carry an adjust, so the report
+ * on the frozen file, the shortlist's own summed response and every guard read
+ * the un-inverted sum. MEASURED AT E-3 ON CASUS 1b: the tune read 1.42 dB
+ * ripple and 2.6° on an inverted LR4 pair; the shortlist measured the same
+ * parts at ±70 dB and the frozen file reproduced 177° of phase tracking. On
+ * casus 1 it never showed: the delivered field has been LR4-only since
+ * A5e.3-veld and its design step never inverted — but the M-1 field carried
+ * LR2 on the W-M axis, and it would have.
+ *
+ * So the worker folds the chosen polarity into the driver part on BOTH routes
+ * — an XOR with what the part already carries — and everything downstream
+ * reads the netlist. The solver reads `Driver.inverted` (`vxpNetwork.ts`),
+ * so the folded netlist IS the network the tune judged. The tuner's own copy
+ * (`net.parts`, the second list V31 found) is folded the same way. A design
+ * that inverted nothing is the identity, byte for byte — which is what keeps
+ * the casus-1 corpus reproducing.
+ */
+export function foldDriverPolarity<R extends { parts: VxpPart[]; net: { parts?: VxpPart[] } }>(
+  result: R,
+  invertedByModel: Record<string, boolean | undefined>,
+): R {
+  const models = Object.entries(invertedByModel)
+    .filter(([, inv]) => inv === true)
+    .map(([model]) => model);
+  if (models.length === 0) return result;
+  const fold = (parts: readonly VxpPart[]): VxpPart[] =>
+    parts.map((p) =>
+      p.type === 'Driver' && p.model !== undefined && models.includes(p.model)
+        ? { ...p, inverted: !(p.inverted ?? false) }
+        : p,
+    );
+  return {
+    ...result,
+    parts: fold(result.parts),
+    net: { ...result.net, ...(result.net.parts ? { parts: fold(result.net.parts) } : {}) },
+  };
+}
+
+export function withDeclaredSearchSmoothing<I extends { settings: { errorSmoothOct?: number } }>(
+  input: I,
+  declaration: ChoiceDeclaration | undefined,
+): I {
+  const stated = declaration?.stated.errorSmoothOct;
+  if (stated === undefined) return input;
+  return { ...input, settings: { ...input.settings, errorSmoothOct: stated } };
+}
+
+/**
  * V36 — M-A's result, shaped into the shortlist's column.
  *
  * Deliberately trivial, and deliberately in one place: the fraction is copied,
@@ -2715,12 +2792,16 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           v2,
           facts,
           network,
-          (hooks) =>
-            runThreeWayChain(
+          (hooks) => {
+            const r = runThreeWayChain(
               chainInput,
               (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: input.label } }),
               hooks,
-            ),
+            );
+            /* E-3 — the polarities the design step chose, into the parts (see
+             * `foldDriverPolarity`). The identity on every LR4-only field. */
+            return foldDriverPolarity(r, { mid: r.midInverted, tweeter: r.tweeterInverted });
+          },
           (r) => {
             const sum = summedResponse(
               r.parts,
@@ -2840,31 +2921,54 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             dissipationWeight: input.settings.dissipationWeight,
             costWeight: input.settings.costWeight,
           }),
-          ...(candidate ? { declaration: candidate.declaration } : {}),
+          ...(candidate
+            ? {
+                declaration: candidate.declaration,
+                /* E-3 — the chain-level half of the declaration is READ on this
+                 * route now (below), so it is reported and judged here too: the
+                 * V51 refusal, the stated series-R maximum and the coil-span
+                 * box all key off `network.chainDeclaration`. */
+                chainDeclaration: candidate.chainDeclaration,
+              }
+            : {}),
         };
         /* V34 — see the three-way branch above; same rule, same reason.
          *
-         * V41 IS DELIBERATELY NOT APPLIED HERE, and it is the same boundary
-         * V38-fix drew for the two-way design step. `ChainSettings` names the
-         * EQ budget `eqBandsPerDriver` and derives its lean threshold inside
-         * `designChain.ts`, so honouring the chain declaration on this route
-         * would mean a second mapping of two keys into a second vocabulary —
-         * and the two-way route is still v1 (TODO(F2c)). The candidate's chain
-         * declaration therefore travels and is not read here; the note below
-         * says so rather than letting a reader assume it was. */
-        const chainInput = withDeclaredSourceLimit(input, candidate?.declaration);
+         * E-3 — V41 IS APPLIED HERE SINCE E-3, in the two-way chain's own
+         * vocabulary (`withDeclaredChainChoicesTwoWay`: `eqBands` →
+         * `eqBandsPerDriver`, and the three keys `designChain.ts` learned at
+         * E-3). V41 declined to write that mapping while the two-way route was
+         * v1 in full; the E-3 map measured the cost — four declared decisions
+         * that the design and synthesis steps never read. And the declared
+         * SEARCH SMOOTHING reaches the design step (`withDeclaredSearchSmoothing`):
+         * `vfOptimizer.ts` is the second reader of `errorSmoothOct` on this
+         * chain, the one V38-fix left outside its repair. Both are the identity
+         * without a candidate, so a payload without one runs exactly the route
+         * it ran before. */
+        const chainInput = withDeclaredSearchSmoothing(
+          withDeclaredChainChoicesTwoWay(
+            withDeclaredSourceLimit(input, candidate?.declaration),
+            candidate?.chainDeclaration,
+          ),
+          candidate?.declaration,
+        );
         data = runCandidate<ChainInput, ChainResult>(
           chainInput,
           v2,
           facts,
           network,
-          (hooks) =>
-            runDesignChain(
+          (hooks) => {
+            const r = runDesignChain(
               chainInput,
               label,
               (pr) => post({ id: req.id, kind: 'progress', data: { ...pr, variant: label } }),
               hooks,
-            ),
+            );
+            /* E-3 — the tweeter polarity the vf design step chose, into the
+             * parts (see `foldDriverPolarity`); the chain's own adjust never
+             * leaves the chain. */
+            return foldDriverPolarity(r, { tweeter: r.vf.inverted });
+          },
           (r) => {
             const sum = summedResponse(
               r.parts,
@@ -2893,12 +2997,17 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
                     ]
                   : [],
               },
-              // TODO(F2c/F3): the two-way chain settles its structure inside
-              // `vf`, which does not expose flanks the way the three-way
-              // `specs` do. Until that route is wired to v2 (TODO(F2c)) this
-              // is an empty descriptor rather than a guess — an invented
-              // topology class would silently group unrelated designs.
-              topology: { flanks: [], inverted: [] },
+              /* E-3 — the topology class from the specs the vf DESIGN STEP
+               * settled, exactly as the three-way branch reads its `specs`:
+               * the woofer slot is the low way (`mid` in this chain's
+               * impedance map, `canonicalModelForRole`) and the tweeter is the
+               * high way; a disabled flank is its absence. Until E-3 this was
+               * an empty descriptor, so every two-way candidate fell into ONE
+               * topology class and the shortlist could not spread (A5e.1). */
+              topology: topologyOf(
+                { mid: r.vf.specs.woofer, tweeter: r.vf.specs.tweeter },
+                r.vf.inverted ? ['tweeter'] : [],
+              ),
             };
           },
           /* V31 — see the three-way branch: measured here, not handed out. */
