@@ -68,7 +68,9 @@ import { DRIVE_EXCURSION_VERSION, derivedDriveLimitDb } from '../src/lib/engine2
 import { compareDesigns } from '../src/lib/engine2/predesign/comparison.ts';
 import { ampFloorSlackOhm, meetsAmpFloor, minImpedanceAt } from '../src/lib/impedanceFloor.ts';
 import { solveNetwork } from '../src/lib/network.ts';
-import { busTopology, extendGridToSweepExtent, systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
+import { BARRIER_DIP_REFINEMENT, busTopology, extendGridToSweepExtent, refinedSystemMinImpedanceOhm, systemMinImpedanceOhm } from '../src/lib/netOptimizer.ts';
+import { evaluateGates, freezeGateReference, type GateSettings } from '../src/lib/engine2/optimizer/gates.ts';
+import { CASUS1_V2_GATES, CASUS1_WINDOW_SETTINGS } from '../src/lib/engine2/casus1V2.fixture.ts';
 import { impedanceReferenceFrom } from '../src/lib/engine2/optimizer/impedanceReference.ts';
 import { sourceProbeIndex, sourceResistanceOhm } from '../src/lib/partAudit.ts';
 import { deserializeFilter } from '../src/lib/filterFile.ts';
@@ -107,6 +109,8 @@ const POWER = CONTINUOUS_POWER_W !== null ? { amplifierPowerW: CONTINUOUS_POWER_
 /* V50 — the stated M-C figure per way (tweeter only on casus 1). */
 const DRIVE_BY_WAY = casus1MaxDriveOnFsDbByDriver(golden);
 const DRIVE_PER_WAY = Object.keys(DRIVE_BY_WAY).length > 0 ? { maxDriveOnFsDbByDriver: { ...DRIVE_BY_WAY } } : {};
+/* E-1 — a stated ceiling per pair, when the project states one (unstated today): the mirror of the stated-figure floor. */
+const WINDOW = { ...CASUS1_WINDOW_SETTINGS };
 /* V50 — the buildability inputs, spread into every report so M-A/part judges. */
 const BUILDABILITY = casus1BuildabilitySettings(golden);
 
@@ -119,6 +123,7 @@ const report = (key: string) =>
     settings: {
       ...POWER,
       ...DRIVE_PER_WAY,
+      ...WINDOW,
       ...BUILDABILITY,
       /* V51 — the wiring per way and the level-work requirement, so the report's
        * level-work block is recorded with the same inputs the guards read. */
@@ -704,6 +709,12 @@ const barrierGrids = (() => {
     const onSweep = systemMinImpedanceOhm(netlist, ref.grid, ref.driverZ);
     const onSafety = systemMinImpedanceOhm(netlist, gridded.safety.freqs, gridded.safety.z);
     const onBarrier = systemMinImpedanceOhm(netlist, extended.grid, extended.driverZ);
+    /* E-1 — de VERDICHTE lezing: hetzelfde verlengde raster, in de twee cellen
+     * rond zijn grove minimum opnieuw opgelost op de eigen punten van de sweep
+     * (`refinedSystemMinImpedanceOhm`, `BARRIER_DIP_REFINEMENT`) — wat de vijfde
+     * bronwaarde `'safety-extended-refined'` leest. De route leidt hem nog niet
+     * af (één regeneratie); de kolom meet wat hij zou lezen. */
+    const refined = refinedSystemMinImpedanceOhm(netlist, extended, ref, BARRIER_DIP_REFINEMENT);
     const sweepAt = (() => {
       try {
         const m = minImpedanceAt(solveNetwork(netlist, ref.grid, ref.driverZ).inputZ);
@@ -723,6 +734,11 @@ const barrierGrids = (() => {
       verschil_ohm: onSweep === null || onBarrier === null ? null : r4(Math.abs(onSweep - onBarrier)),
       zelfde_oordeel:
         meetsAmpFloor(onSweep, statedFloorOhm) === meetsAmpFloor(onBarrier, statedFloorOhm),
+      verdicht_ohm_E1: r4(refined?.ohm),
+      verschil_verdicht_ohm_E1: onSweep === null || !refined ? null : r4(Math.abs(onSweep - refined.ohm)),
+      verdicht_extra_punten_E1: refined?.refinedPoints ?? null,
+      zelfde_oordeel_verdicht_E1:
+        refined ? meetsAmpFloor(onSweep, statedFloorOhm) === meetsAmpFloor(refined.ohm, statedFloorOhm) : null,
     };
   });
   const live = rows.filter((r) => LIVE_V2.test(r.netlist) || ['HUIDIG', 'KAND_A', 'KAND_B'].includes(r.netlist));
@@ -788,7 +804,38 @@ const barrierGrids = (() => {
       'De levende netlists (en de drie referentiefilters) waarvan de barrière een vloerspeling of meer van de poort ' +
       'af leest — een RESOLUTIEverschil op een smalle dip, geen uitgestrektheidsverschil. Boekhouding en geen ' +
       'vrijstelling: op elk ervan vellen beide rasters hetzelfde oordeel (frozenNetlistGates assert dat), en de ' +
-      'lijst hoort leeg te raken zodra het veiligheidsraster fijner gesteld wordt (een runparameter, dus een regeneratie).',
+      'lijst hoort leeg te raken zodra de v2-route de VERDICHTE bron afleidt (E-1: `safety-extended-refined`, gebouwd ' +
+      'en gemeten in `verdichting` hieronder — het verschil zit dan onder de speling op ÉLKE bevroren netlist; de ' +
+      'omschakeling is één woord in candidateDeclaration.ts en één regeneratie).',
+    /* E-1 — wat de verdichte bron op dezelfde netlists leest, als het bewijs
+     * onder de keuze: het grootste resterende verschil, wie er nog boven de
+     * speling zou staan (niemand), en de prijs in punten. */
+    verdichting: (() => {
+      const measured = rows.filter((r) => r.verschil_verdicht_ohm_E1 !== null);
+      const worst = (xs: typeof rows) => xs.reduce((a, b) => ((b.verschil_verdicht_ohm_E1 ?? 0) > (a.verschil_verdicht_ohm_E1 ?? 0) ? b : a), xs[0]);
+      const pts = measured.map((r) => r.verdicht_extra_punten_E1!).sort((a, b) => a - b);
+      const w = worst(measured);
+      const wl = worst(live.filter((r) => r.verschil_verdicht_ohm_E1 !== null));
+      return {
+        _:
+          'E-1 (06-09-2026): de vijfde waarde van de V33-sleutel, `safety-extended-refined` — het verlengde raster, ' +
+          'in de twee cellen rond zijn grove minimum opnieuw opgelost op de eigen punten van de poortsweep ' +
+          '(`refinedSystemMinImpedanceOhm`). De kleinste ingreep die het verschil op élke bevroren netlist onder de ' +
+          'speling brengt; de twee andere vormen (rond élk lokaal minimum; overal onder 2× de vloer) staan in ' +
+          'test-fixtures/casus1_e1_barriere_verdichting.json. De route leidt nog `safety-extended` af — omschakelen ' +
+          'is een regeneratie.',
+        bron: 'safety-extended-refined',
+        verdichting: BARRIER_DIP_REFINEMENT.kind,
+        grootste_verschil_levend: wl ? { netlist: wl.netlist, verschil_ohm: wl.verschil_verdicht_ohm_E1, poortraster_ohm: wl.poortraster_ohm, verdicht_ohm: wl.verdicht_ohm_E1 } : null,
+        grootste_verschil_hele_casusboek: w ? { netlist: w.netlist, verschil_ohm: w.verschil_verdicht_ohm_E1, poortraster_ohm: w.poortraster_ohm, verdicht_ohm: w.verdicht_ohm_E1 } : null,
+        boven_speling: measured.filter((r) => (r.verschil_verdicht_ohm_E1 ?? 0) >= ampFloorSlackOhm(statedFloorOhm)).map((r) => r.netlist),
+        lezing_gelijk_aan_poortraster: measured.filter((r) => r.verdicht_ohm_E1 === r.poortraster_ohm).length,
+        gemeten: measured.length,
+        extra_punten_mediaan: pts.length ? pts[Math.floor(pts.length / 2)] : null,
+        extra_punten_max: pts.length ? pts[pts.length - 1] : null,
+        oordeel_wijkt_af_op: measured.filter((r) => r.zelfde_oordeel_verdicht_E1 === false).map((r) => r.netlist),
+      };
+    })(),
     minimum_buiten_barriere_uitgestrektheid: outside,
     minimum_buiten_barriere_regel:
       'SINDS A5e.3b per constructie leeg: de barrière leest de volle sweep-uitgestrektheid ' +
@@ -806,6 +853,120 @@ const barrierGrids = (() => {
 })();
 
 raw.manifest_en_geometrie.v33_barriere_raster = barrierGrids;
+
+/* ---- E-1: WHERE THE GATE ROUTE AND THE REPORT DERIVE DIFFERENT CROSSINGS ----
+ *
+ * DOCUMENTATION in the V30 form — a NAMED set, meant to shrink, and pinned
+ * exactly by `derivedGateRefusal.test.ts` (no complement: the V37/V38-fix
+ * lesson, twice). A5e.3c measured that on sixteen (netlist, way) pairs of
+ * dated corpora the two routes that judge M-C — `crossingsOf` on the CHAIN
+ * grid inside the worker (the reference the search is held to, and since
+ * A5e.3c the second verdict on the network's own crossings) and
+ * `deriveCrossings` on the REPORT grid (the class-B figure the case book
+ * carries) — land on different acoustic crossings, and M-C differs with them
+ * by up to 5 dB. Both are "the loudest equal-level intersection" of the same
+ * filtered branches; what differs is the grid the branches are sampled on
+ * (today 143 points from 20.5 Hz against 1600 from 10 Hz), and a netlist
+ * whose branches ripple against each other near a crossing offers several
+ * intersections for the two grids to pick between.
+ *
+ * WHICH ENGINE STATE USED WHICH DERIVATION, per netlist: the dated corpora up
+ * to V51B were SEARCHED on the gated set's chain grid (200–20 000 Hz, 96
+ * points) and their M-C figures in this file are the report's on the grid of
+ * their day; what stands here is TODAY's reading on both routes (the merged
+ * set, M-1's chain grid, the 1600-point report grid) — the guard reproduces
+ * this block, it does not re-derive the history. No repair: the corpora the
+ * refusal governs (live, A5E3VELD, A5E3ARM, the reference filters) agree on
+ * both routes within the dB class, and that agreement is the other half of
+ * the same guard. */
+const crossingDerivation = (() => {
+  const gridded = casus1ChainInput(manifest, files, golden);
+  const facts = casus1V2Facts(report('HUIDIG'), manifest, files);
+  const gates: GateSettings = {
+    ...CASUS1_V2_GATES,
+    ...(facts.driveCeilingDbByModel ? { driveCeilingDbByDriver: { ...facts.driveCeilingDbByModel } } : {}),
+  };
+  const dbClass = (golden.toleranties as { dB: number }).dB;
+  const governed = (k: string) => /^(KAND_V2|A5E3VELD_KAND|A5E3ARM_KAND)_\d+$/.test(k) || ['HUIDIG', 'KAND_A', 'KAND_B'].includes(k);
+  const eraOf = (k: string): string =>
+    governed(k)
+      ? 'gemergede set (M-1 en later): gezocht op het ketenraster van vandaag (20,5–20 000 Hz, 143 punten)'
+      : /^(V28|V30|V32|V33_SWEEP|V33|V34|V37|V38FIX|V41|V42|V43|V44|V45|V47|V48|V49|V50|V51|V51B)_KAND_\d+$/.test(k)
+        ? 'gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen'
+        : 'referentiefilter (geen zoektocht)';
+  const pairs: {
+    netlist: string;
+    weg: string;
+    familie: string;
+    engine_stand: string;
+    kruispunten_ketenraster_hz: number[];
+    kruispunten_rapport_hz: number[];
+    M_C_ketenraster_dB: number | null;
+    M_C_rapport_dB: number | null;
+    verschil_dB: number | null;
+    oordeel_ketenraster: boolean | null;
+    oordeel_rapport: boolean;
+  }[] = [];
+  let compared = 0;
+  for (const key of Object.keys(netlists)) {
+    const rep = report(key);
+    const filter = casus1Filter(key, manifest, files, golden);
+    const refv = freezeGateReference({
+      netlist: filter.netlist,
+      grid: [...gridded.grid],
+      driverZ: gridded.driverZ,
+      branchDb: { woofer: gridded.w.spl, mid: gridded.m.spl, tweeter: gridded.t.spl },
+      fsHz: facts.fundamentalHzByModel ?? {},
+      validHz: facts.validHzByModel ?? {},
+      sweeps: Object.fromEntries(
+        Object.entries(facts.impedanceByModel ?? {}).map(([m, z]) => [m, { grid: z.grid, magnitude: z.magnitude, phaseDeg: z.phaseDeg, validHz: z.validHz }]),
+      ),
+    });
+    const own = evaluateGates(filter.netlist, gates, refv, 'derived');
+    for (const v of rep.gates.verdicts.filter((x) => x.gate === 'M-C' && x.value !== null)) {
+      compared++;
+      const g = own.verdicts.find((x) => x.gate === 'M-C' && x.subject === v.subject);
+      const gate = g?.value ?? null;
+      const differs = gate === null || Math.abs(gate - v.value!) > dbClass || (g?.pass ?? null) !== v.pass;
+      if (!differs) continue;
+      pairs.push({
+        netlist: key,
+        weg: v.subject,
+        familie: key.replace(/_\d+$/, ''),
+        engine_stand: eraOf(key),
+        kruispunten_ketenraster_hz: own.crossings.map((c) => Number(c.fHz.toFixed(1))),
+        kruispunten_rapport_hz: rep.crossings.map((c) => Number(c.fHz.toFixed(1))),
+        M_C_ketenraster_dB: r2(gate),
+        M_C_rapport_dB: r2(v.value),
+        verschil_dB: gate === null ? null : r2(gate - v.value!),
+        oordeel_ketenraster: g?.pass ?? null,
+        oordeel_rapport: v.pass,
+      });
+    }
+  }
+  return {
+    _:
+      'E-1 (06-09-2026) — DOCUMENTATIE in de V30-vorm: de (netlist, weg)-paren waarop de POORTROUTE ' +
+      '(`crossingsOf` op het ketenraster, de kruispunten van het netwerk zelf — wat de worker sinds A5e.3c als ' +
+      'tweede oordeel leest) en het RAPPORT (`deriveCrossings` op het rapportraster, de klasse-B-referentie) ' +
+      'op M-C meer dan de dB-klasse uiteenlopen of anders oordelen. Exact gepind door derivedGateRefusal.test.ts ' +
+      '(geen complement — de V37/V38-fix-les); de lijst hoort te krimpen en een nieuw paar valt om door er niet op ' +
+      'te staan. Geboekt bij A5e.3c, hier benoemd; niet gerepareerd.',
+    leesregel:
+      'De M-C-getallen die het casusboek voor deze paren draagt zijn die van het RAPPORT (klasse B, de eigen ' +
+      'kruispunten op het rapportraster). Wat de worker deze netlists op zijn ketenraster zou toeschrijven is een ' +
+      'ander getal — tot 5 dB — en géén van beide is fout: het zijn twee bemonsteringen van dezelfde takken die bij ' +
+      'een rimpelende overname een andere snijding als de luidste aanwijzen. Wie een gedateerd M-C-getal leest, ' +
+      'leest eerst of het paar hier staat.',
+    ketenraster: { punten: gridded.grid.length, van_hz: Number(gridded.grid[0].toFixed(1)), tot_hz: Number(gridded.grid[gridded.grid.length - 1].toFixed(0)) },
+    rapportraster: 'het analyseraster van het rapport (de uitgestrektheid van de responsen, 1600 punten)',
+    dB_klasse: dbClass,
+    vergeleken_paren: compared,
+    paren: pairs,
+    bestuurd_door_de_weigering_en_eens: Object.keys(netlists).filter(governed).every((k) => !pairs.some((p) => p.netlist === k)),
+  };
+})();
+raw.manifest_en_geometrie.e1_kruispuntafleiding = crossingDerivation;
 
 /* ---- V36: WHAT THE CORPUS BURNS, AND WHAT THE OBJECTIVE MAKES OF IT ------
  *

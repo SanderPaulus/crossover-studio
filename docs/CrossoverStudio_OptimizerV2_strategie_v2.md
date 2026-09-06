@@ -6407,6 +6407,172 @@ weigert nu (V31).
 
 **OPENSTAAND.** (1) **De tuner-hook oordeelt alleen op de bevroren passbands**, dus een zoektocht kan op de rand van de eis landen en pas achteraf geweigerd worden — drie van veertien hier. Beide conventies in de hook (of het M-T-kruispunt aan de gestelde positie houden) is een besluit over de ZOEKTOCHT en verandert elk pad: één regeneratie per arm, niet hier. (2) **De stated-figure-vloer is een rand:** 1647 Hz is waar −20 dB bij orde 4 op het GESTELDE kruispunt precies gehaald wordt, de tuner schuift het kruispunt 10–230 Hz naar beneden, en de drie weigeringen zaten alle drie op de 1948-positie met een geleverd kruispunt van 1717–1776 Hz. Een marge in de vloer (het gestelde getal plus de dB die de drift kost) is een gesteld getal en geen afleiding — voorstel, niet gebouwd. (3) **Zestien gedateerde netlists (V28–V50) waarop de poortroute en het rapport andere kruispunten afleiden** (ketenraster 143 tegen rapportraster 1600 punten; tot 5 dB op M-C) — geboekt in `derivedGateRefusal.test.ts`, niet gerepareerd; op de corpora die de weigering beheerst zijn de twee routes het eens. (4) **De shortlist-grootte (10) is voor het eerst kleiner dan het geleverde veld (11)** — een presentatiekeuze (A5e.1) die Sander kan stellen; de gedropte is de goedkoopste van het veld. (5) **178,4 · 1647 draagt geen W-M-fase-oordeel** (geen enkel toegelaten punt): de eerste netlist waar M-K's toelating een heel paar leegmaakt — een lezing, geen defect, en een reden om naar het overlapvenster op zo'n lage overname te kijken. (6) De 1,4 mm-familie dekt 12,9–18,8 mH niet met één onderdeel binnen ±5 % (BOM-stapels), terwijl de cap per onderdeel op 22,0 staat: de cap is een spanwijdte en geen waardenraster; `catalogSnap` blijft uit op de v2-route. (7) **De resolutie van de barrière op een smalle dip:** KAND-V2-1 (377,8 · 1948) heeft zijn minimum in de W-M-overlap op 416 Hz — 2,5536 Ω op de poortsweep tegen 2,6349 op het verlengde veiligheidsraster (240 punten over de responsuitgestrektheid, de eigen keuze van de app), 0,081 Ω tegen een speling van 0,052. De barrière mikte 0,08 te hoog en wat het ontwerp door de poort droeg was de 2 %-tolerantie (2,5536 ≥ 2,548); beide rasters vellen hetzelfde oordeel, dus het is boekhouding en geen tegenspraak (`v33_barriere_raster.resolutie_boven_speling`, de V30-vorm; de V33-guard eist dat de lijst precies de gemeten namen draagt en dat de oordelen op die namen gelijk zijn). Een fijner veiligheidsraster is een runparameter — één regeneratie per arm. De sessie A5e.3b sloot de UITGESTREKTHEID van de barrière; dit is haar RESOLUTIE, en het is de eerste netlist waarop die de speling overschrijdt.
 
+### E-1 — vier engine-posten zonder regeneratie: het goedkoopste live-onderwerp, de M-T-bovengrens als strengste van gesteld en afgeleid, de barrière verdicht rond haar dips, en de zestien paren benoemd (06-09-2026, alleen v2-runs; **het corpus beweegt NIET**)
+
+**AANLEIDING EN OMVANG.** Vier posten uit A5e.3c, één commit, geen regeneratie en geen wijziging aan eisen, budgetten of
+corpus. (1) De volle suite kostte twee uur omdat de byte-reproductie KAND-V2-1 nabouwde — de duurste kandidaat van het
+veld; sinds E-1 kiezen beide live ketenruns het GOEDKOOPSTE onderwerp op de geregistreerde looptijd. (2) Het voorstel van
+A5e.3c (de M-T-bovengrens als strengste van gesteld en afgeleid, het spiegelbeeld van A5e.3b (b)2): geïnventariseerd,
+gebouwd als mechanisme, en vóórgemeten — met een bevinding die het voorstel anders inkleurt dan gedacht. (3) Open punt 7
+van A5e.3c: de resolutie van de barrière op een smalle dip, gemeten over het hele casusboek en gesloten met de kleinste
+ingreep. (4) Open punt 3: de zestien (netlist, weg)-paren waarop poortroute en rapport andere kruispunten afleiden,
+benoemd in het manifest en exact gepind.
+
+**POST 1 — DE LIVE-REPRODUCTIE KIEST DE GOEDKOOPSTE GELEVERDE NETLIST.** De looptijd per kandidaat stond tot E-1 alleen
+in de shard (gitignored) en in de A5e.3c-tabel; de herkomst — het bestand dat de suite leest — droeg hem niet. De
+generator schrijft hem sinds E-1 in `kandidaat_uitkomst[].looptijd_s` (`withRuntime`, uit de shard; voor het
+A5e.3c-corpus eenmalig uit de 24 shards ingevuld — 24 regels erbij, de herkomst verder byte-identiek). Eén regel met twee
+lezers, `liveSubjects()` in `casus1Corpora.fixture.ts`: de geleverde netlist met de laagste looptijd voor de
+byte-reproductie, de verwerping met de laagste looptijd voor de verwerpingsrun; ties op label; een herkomst zonder
+looptijd laat de functie gooien in plaats van raden. Tot E-1 namen beide runs de EERSTE van hun lijst: KAND-V2-1
+(377,8 · 1948, 8671 s in de generator, 7182 s live) en 147,9 · 1647 (2488 s, 2136 s live). Sinds E-1: **KAND-V2-8
+(313,2 · 1647, 1787 s in de generator)** en de verwerping **455,7 · 2304 (topologie, 1410 s)** — de looptijden zijn die
+onder `V2_JOBS=8`, een orde en geen meting op een lege machine. De keuze staat in de testnaam (`[bytes] the cheapest
+delivered netlist, by recorded runtime, …`; de verwerpingsrun `the cheapest recorded refusal, …`), `ciLayer` draagt de
+nieuwe naam, en de snelle laag draagt de regel als claim (élke kandidaat heeft een looptijd; het onderwerp is nergens
+duurder dan een ander geleverd bestand; twee keer vragen is één antwoord). De verwerpingsrun vergelijkt sindsdien élk veld
+van de opgenomen `rejectedTune` in de vorm waarin het opgenomen is — een getal op zes decimalen, `null` blijft `null`
+(F0: een topologie-weigering ná een voltooide tune draagt geen `zMinOhm` van de tuner en dat mag niet als nul lezen) —
+en accepteert beide weigeringszinnen (de tuner zegt "delivers no network", een gestelde regel "delivers nothing").
+**De meting van de volle suite staat onder TESTS.**
+
+**POST 2 — DE M-T-BOVENGRENS: INVENTARIS, BEVINDING, MECHANISME, VÓÓRMETING (`scripts/measure-e1-mt-ceiling.ts`).**
+*De inventaris.* Wat de bovenkant van het M-T-venster kent, gelezen uit het venster zelf:
+
+| kant | regel | Hz | bindt | bron |
+| --- | --- | --- | --- | --- |
+| plafond | breakup | 2304 | **ja** | eerste significante breakup van de mid (5688 Hz, +2,8 dB) / 2,47 |
+| plafond | directiviteit | 5388 | nee | −6 dB @ 30° van de mid (`mid_hor_30.txt` zit in het manifest — het venster las hem al) |
+| plafond | gesteld | — | — | niets gesteld (`gestelde_eisen.max_kruispunt_hz_per_paar` bestaat niet) |
+| vloer | drive-stated | 1647 | **ja** | het gestelde −20 dB bij orde 4 (A5e.3b) |
+| vloer | fs / drive / validity | 1294 / 1184 / 397 | nee | k·f_s, de excursievloer, de meetgeldigheid |
+| voorkeur | lobing | 1327–1858 slechtst; 2655–3717 goed | geen grens | λ-fracties op één c-t-c (V20a: alleen de verticale synthese mag oordelen) |
+
+Van de vier grenzen uit de opdracht is de aandrijving van de tweeter een VLOER (zij duwt omhoog), de lobing-zone een
+voorkeur die V20a geen grens laat zijn (en de slechtste zone ligt onderin het venster, de goede erboven — de spanning die
+het venster al meldt), de gestelde eisen kennen geen plafond, en de directiviteit bindt niet. **Geen enkele bekende grens
+drukt het geleverde kruispunt onder de vensterrand; de strengste bekende bovengrens is en blijft het breakup-plafond op
+2304 Hz.** *De bevinding — wat het dan wél doet.* Twee dingen, allebei gemeten en geen van beide een grens. Ten eerste de
+KOOI: `positionsAlong` knipt de kooi op de segmentrand, dus een positie óp het plafond heeft een eenzijdige kooi
+(2119–2304 Hz) en kan alleen omlaag; een positie op de vloer (1647–1791) alleen omhoog. Het veld gedraagt zich ernaar: de
+vier geleverde plafondposities kruisen op 2049 / 2050 / 2052 / 2243 Hz (drie verlaten de kooi omlaag), de vijf
+vloerposities op −10 / +52 / +57 / +81 / +126 Hz. Ten tweede het RESPONSKENMERK: vijf van de achttien geleverde
+M-T-kruispunten (A5e.3c én A5e.3-veld) liggen binnen 0,02 octaaf van het lokale minimum van het ruwe niveauverschil
+mid − tweeter BINNEN het venster — −4,98 dB bij 2056 Hz: de eigen +0,4 dB-piek van de tweeter tegen de −1,1 dB-stap van
+de mid — het akoestische kruispunt klapt naar de plek waar de tweeter relatief het luidst is. En de V32-vorm is het NIET:
+op het levende corpus leest de poortroute (ketenraster, 143 punten) het kruispunt binnen enkele Hz van het rapport (1600),
+dus de drift is echt en geen rasterartefact. *Het mechanisme, gebouwd als spiegel van (b)2.* `xoWindow.ts` leest sinds E-1
+een GESTELD plafond (`statedCeilingHz`, rule `'stated'`) naast breakup en directiviteit; de reductie die er altijd stond
+neemt het LAAGSTE plafond, dus de strengste van gesteld en afgeleid bindt en `ceilingBy` zegt welke, met een spanningsregel
+die zegt aan welke kant van het afgeleide een gesteld plafond landde. `report.ts` leest `ReportSettings.maxCrossingHzByPair`
+(huis op casus 1: `gestelde_eisen.max_kruispunt_hz_per_paar`, niet gesteld), `casus1MaxCrossingHzByPair` /
+`CASUS1_WINDOW_SETTINGS` is gespreid op élke plek die het veld afleidt (de V42-regel). En de KANDIDAATHERKOMST draagt de
+afleiding: élk bekend plafond ("ceiling 2304 Hz (breakup — the strictest of breakup 2304 Hz, directivity 5388 Hz; no
+stated ceiling)") én de kooi met haar eenzijdigheid ("cage 2119–2304 Hz (clipped at the ceiling: one-sided, the tune can
+only leave it downward — E-1)"). De proza-zin zit niet in de vingerafdruk (`candidateFieldKey`), dus het corpus
+reproduceert. Absent = het venster van altijd, gepind in `candidates.test.ts` (byte-identiek; een gesteld plafond onder
+het afgeleide bindt en levert zeven posities in plaats van dertien; een erboven bindt niet en wordt genoemd; de kooi
+van de rand- en binnenposities). *De vóórmeting, zonder regeneratie.* Onder de strengste BEKENDE grens beweegt het veld
+niet: 8 × 3 = 24, alle tien bevroren netlists erbinnen. Onder een GESTELD plafond op de gemeten landing (2052 Hz — de
+mediaan van de plafondpositie-kruispunten; niet gesteld, een arm): de M-T-as krimpt tot 1647 / 2052 en de W-M-as krijgt
+al haar twaalf afgeleide posities terug (148–550 Hz), **12 × 2 = 24 uit 24** — zeven bevroren netlists binnen, drie
+buiten (KAND_V2_2, _6, _7: de 2304-posities). **Voorstel, niet gebouwd: het veld op het 2304-plafond met een tweezijdige
+kooi** — de bevinding zegt dat een positie óp een vensterrand een halve vraag stelt; een positieregel die de kooi binnen
+het venster houdt beweegt élke positie en is één regeneratie. Of Sander een plafond stélt (2052 is de gemeten landing, en
+dan is de W-M-as twaalf posities breed) is zijn keuze; het mechanisme staat.
+
+**POST 3 — DE BARRIÈRE-RESOLUTIE OP SMALLE DIPS, GEMETEN EN GESLOTEN MET DE KLEINSTE INGREEP
+(`scripts/measure-e1-barrier-resolution.ts`, `test-fixtures/casus1_e1_barriere_verdichting.json`).** Over álle 161
+bevroren netlists, min |Z| op de poortsweep (1600 punten) tegen het verlengde barrièreraster (394 punten, wat
+`'safety-extended'` leest), naast de DIP-BREEDTE — de octaafspanne rond het sweep-minimum waarover |Z| binnen één
+vloerspeling (0,052 Ω, de bestaande 2 %-conventie) van de bodem blijft — en de celbreedte van het raster ter plekke
+(0,042 oct):
+
+| netlist | sweep Ω @ Hz | dip-breedte oct | celbreedte oct | barrière Ω | verschil Ω | boven speling |
+| --- | --- | --- | --- | --- | --- | --- |
+| KAND_V2_1 | 2,5536 @ 416 | 0,021 | 0,042 | 2,6349 | 0,0813 | **ja** |
+| V28_KAND_2 | 0,0062 @ 3915 | 0,014 | 0,042 | 0,0790 | 0,0728 | **ja** |
+| V38FIX_KAND_6 | 2,5944 @ 405 | 0,041 | 0,042 | 2,6217 | 0,0273 | nee |
+| V45_KAND_7 | 2,8127 @ 439 | 0,041 | 0,042 | 2,8343 | 0,0216 | nee |
+| (159 andere) | | ≥ 0,048 of ≤ 0,021 | | | ≤ 0,0169 | nee |
+
+Twee van 161 lezen boven de speling, beide met een dip SMALLER dan één cel; acht netlists hebben zo'n smalle dip en geen
+enkele netlist met een bredere dip leest erboven — het verschil is de resolutie en niets anders. Drie verdichtingen met de
+EIGEN punten van de sweep (`refinedSystemMinImpedanceOhm`, `dipCellsOf`: het grove raster oplossen, de gekozen cellen
+vullen met élk sweep-punt dat er strikt binnen ligt, die in één pas oplossen, het laagste van beide lezen — waar het
+sweep-minimum in een verdichte cel ligt is de lezing die van de sweep, bit voor bit):
+
+| verdichting | grootste verschil Ω (netlist) | boven speling | lezing = sweep (bit) | extra punten mediaan / max | ms per evaluatie HUIDIG (verlengd 2,98; sweep 13,05) |
+| --- | --- | --- | --- | --- | --- |
+| rond het grove GLOBALE minimum | 0,0089 (KAND_V2_5) | 0 | 128 / 161 | 12 / 13 | 3,07 (+3 %) |
+| rond élk grof LOKAAL minimum | 0,0017 (V28_KAND_1) | 0 | 146 / 161 (13 / 13 levend) | 73 / 158 | 3,38 (+14 %; KAND_V2_1 +29 %) |
+| overal onder 2× de vloer | 0,0017 | 0 | 147 / 161 | 696 / 1264 | 8,45 (bijna de sweep) |
+
+**De kleinste ingreep die het onder de speling brengt is de eerste**, en dat is wat de engine leest:
+`BARRIER_DIP_REFINEMENT = { kind: 'minimum' }`, als VIJFDE waarde van de V33-sleutel `'safety-extended-refined'` (dezelfde
+twee invoeren als `'safety-extended'`; ontbreekt er één, dan stuurt de term niet — de V32-regel). De lokale-minima-vorm is
+het volgende woord als een bevroren netlist ooit boven de speling leest op deze; de guard in `frozenNetlistGates` eist de
+speling per netlist. Geen nieuwe tolerantie: de dip-breedte leest de bestaande speling, de 2×-vloer-factor staat alleen in
+het meetscript als arm. **De route leidt nog `'safety-extended'` af** — omschakelen is één woord in
+`candidateDeclaration.ts` en één regeneratie; `resolutie_boven_speling` blijft daarom wat de route leest (KAND_V2_1), met
+`v33_barriere_raster.verdichting` ernaast als het bewijs dat de lijst leeg wordt zodra de route omschakelt (grootste rest
+0,0089 Ω op KAND_V2_5, nul boven de speling, oordeel nergens anders). Tests: `barrierSource.test.ts` (P4 in de lus; de
+lezing op het zaad bit-gelijk aan de sweep bij 13 van 1600 punten; een ontbrekend model weigert; en de term leest de
+functie — bronscan, want op het tweewegfixture leveren de verdichte en de verlengde bron bij dit budget hetzelfde netwerk,
+gemeten en niet aangenomen, dus de "ander netwerk"-claim wordt door casus 1 gedragen), `frozenNetlistGates` (op ÉLKE
+bevroren netlist binnen de speling, nooit boven de grove lezing, zelfde oordeel, de twee geboekte namen gesloten, niet
+vacuüm). `worker.ts` geeft de referentie ook aan de vijfde bron door; de generator kent haar zin.
+
+**POST 4 — DE ZESTIEN PAREN BENOEMD EN EXACT GEPIND (`manifest_en_geometrie.e1_kruispuntafleiding`).** De recorder
+schrijft per (netlist, weg)-paar waarop de poortroute (`crossingsOf` op het ketenraster, de kruispunten van het netwerk
+zelf — het tweede oordeel van de worker sinds A5e.3c) en het rapport (`deriveCrossings` op het rapportraster) op M-C meer
+dan de dB-klasse (0,15) uiteenlopen of anders oordelen: de kruispunten op beide rasters, M-C op beide, beide oordelen, de
+familie en de ENGINE-STAND — de gedateerde corpora tot en met V51B zijn gezocht op de gepoorte set met het ketenraster van
+toen (200–20 000 Hz, 96 punten); wat het blok draagt is de lezing van VANDAAG op beide routes op de gemergede set (M-1's
+ketenraster, 143 punten vanaf 20,5 Hz, tegen 1600). Gemeten: 319 paren vergeleken, ZESTIEN uiteen op veertien netlists —
+V28_KAND_1 en _2 op mid én tweeter (W-M 491/518 tegen 487/513, maar M-T 1521/1613 tegen 3818/3949: een andere snijding als
+de luidste; M-C tot −6,4 dB op de mid en +3,3 op de tweeter, en op V28_KAND_2's tweeter kantelt het OORDEEL: keten
+−19,55 faalt, rapport −22,87 slaagt) en twaalf mids (V30, V33-sweep, V33, V34, V37 ×2, V41, V43 ×2, V44, V49, V50) waar het
+ketenraster de W-M-overname op 469–520 Hz legt en het rapport op 381–429 — M-C 0,19–0,55 dB uiteen, oordeel gelijk. De
+leesregel staat in het blok: de M-C-getallen die het casusboek voor deze paren draagt zijn die van het RAPPORT; wat de
+worker ze op zijn ketenraster zou toeschrijven is een ander getal, en géén van beide is fout — twee bemonsteringen van
+dezelfde takken die bij een rimpelende overname een andere snijding als de luidste aanwijzen. De guard
+(`derivedGateRefusal.test.ts`) pint de verzameling EXACT: de verse verzameling moet gelijk zijn aan de opgenomen — een
+nieuw paar valt om door er niet op te staan, een verdwenen paar door er nog op te staan (de A5e.3c-vorm was een
+deelverzamelingstoets en liet een verdwenen paar stil passeren — de neef van het complement, de V37/V38-fix-les), de
+opgenomen getallen reproduceren binnen de dB-klasse, en geen paar hoort bij een corpus dat de weigering bestuurt
+(`bestuurd_door_de_weigering_en_eens: true`). Geen herberekening, geen reparatie.
+
+**TESTS.** Nieuw of veranderd: `casus1V2Candidates` (de looptijd-claim; de `[bytes]`-reproductie kiest en heet naar de
+goedkoopste), `casus1V2Refusal` (de goedkoopste verwerping; élk veld van de opgenomen tune in zijn eigen vorm), `ciLayer`
+(de nieuwe `[bytes]`-naam), `barrierSource` (de vijfde bron: P4 in de lus, de lezing bit-gelijk aan de sweep, een
+ontbrekend model weigert, de term leest de functie), `frozenNetlistGates` (de verdichte lezing binnen de speling op élke
+bevroren netlist; de V33-bronscan pint sindsdien beide lezers in de `barrierShortOhm`-closure), `candidates.test.ts`
+(vier claims voor het gestelde plafond en de kooi), `derivedGateRefusal` (de exacte pin tegen het manifest);
+`casus1Field`, `goldenClassification`, `corpusPairing`, `choiceKeyGuard`, `p6Lint`, `noWeights`, `toggleRegression`,
+`f4cRegression` en `workerRouteRegression` ongewijzigd groen. De recorder schrijft `v33_barriere_raster.verdichting`
+(plus vier `*_E1`-kolommen per netlist) en `e1_kruispuntafleiding`; een tweede recorder-run met de gespreide
+vensterinstelling gaf het golden-bestand byte-identiek terug. `tsc -b` (ook `scripts/`) groen. **Snelle laag
+06-09-2026: 411 s — 152 bestanden (150 groen, 1 rood, 1 overgeslagen), 1716 tests (1713 groen, 1 rood,
+2 overgeslagen)**; de rode claim was de V33-bronscan (zij zocht de regel `const ohm = systemMinImpedanceOhm(` die E-1 in
+een verdichte en een grove lezer splitste), gerepareerd vóór de volle run. **Volle run 06-09-2026, alleen gedraaid ná die
+reparatie, niets ernaast: 152 bestanden, 1716 tests, 1609 s (26 min 49), niets overgeslagen, in één keer groen.** Dat
+is POST 1: van 7194 s (A5e.3c, KAND-V2-1 7182 s live) naar 1609 s zonder één test minder — de byte-reproductie van
+KAND-V2-8 kostte 1596 s live (1787 s in de generator onder acht processen), de verwerpingsrun van 455,7 · 2304 ernaast
+1256 s (1410 s in de generator); de rest van de suite draait in de schaduw (`lowestWayLevelWork` 377 s,
+`frozenNetlistGates` 375 s, `threeWayChain` 320 s). Eén commit, push, CI.
+
+**WAT ER NIET VERANDERD IS.** Geen regeneratie; geen eis, budget, vloer, plateau of corpus bewogen; geen tweewegroute
+(E-3). De v2-route leidt nog `'safety-extended'` af en het venster leest geen gesteld plafond — beide mechanismen staan
+klaar voor de volgende regeneratie. De byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren: zonder de
+vijfde bron en zonder gesteld plafond is élke run wat hij was (P2).
+
+**OPENSTAAND.** (1) De omschakeling van de route op `'safety-extended-refined'` — één woord, één regeneratie; dan hoort
+`resolutie_boven_speling` leeg te raken. (2) De kooi op een vensterrand: een positieregel die de kooi binnen het venster
+houdt (of een gesteld plafond op de gemeten landing) beweegt élke positie — Sanders keuze, één regeneratie. (3) De zestien
+paren zijn benoemd en niet gerepareerd: of de poortroute op het ketenraster van vandaag de gedateerde netlists "verkeerd"
+leest is geen vraag die een reparatie beantwoordt — het zijn twee grids en de leesregel zegt welke het casusboek draagt.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

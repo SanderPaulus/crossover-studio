@@ -1282,11 +1282,17 @@ function tuneOptionsFor(
    * `'sweep'` reads it whole, `'safety-extended'` reads the points of it that
    * lie outside the safety extent. */
   const barrierOnSweep =
-    stated.zFloorBarrierSource === 'sweep' || stated.zFloorBarrierSource === 'safety-extended';
+    stated.zFloorBarrierSource === 'sweep' ||
+    stated.zFloorBarrierSource === 'safety-extended' ||
+    stated.zFloorBarrierSource === 'safety-extended-refined';
   if (barrierOnSweep && !reference.impedance) {
     collect.notes.push(
       'The candidate asked the amp-load barrier to aim at the measured impedance sweep' +
-        (stated.zFloorBarrierSource === 'safety-extended' ? "' extent (safety-extended)" : '') +
+        (stated.zFloorBarrierSource === 'safety-extended'
+          ? "' extent (safety-extended)"
+          : stated.zFloorBarrierSource === 'safety-extended-refined'
+            ? "' extent, refined around its dips (safety-extended-refined, E-1)"
+            : '') +
         ', and no sweep reached this run. The barrier therefore does not steer this search at all — it ' +
         'is NOT falling back to the chain grid, which would restore the reading V32 withdrew. ' +
         'No electrical gate judges this candidate either, for the same missing input.',
@@ -1297,7 +1303,9 @@ function tuneOptionsFor(
    * A5e.3-veld default; since A5e.3b a generated candidate derives
    * `'safety-extended'`, which needs the safety set AND the reference above. */
   if (
-    (stated.zFloorBarrierSource === 'safety' || stated.zFloorBarrierSource === 'safety-extended') &&
+    (stated.zFloorBarrierSource === 'safety' ||
+      stated.zFloorBarrierSource === 'safety-extended' ||
+      stated.zFloorBarrierSource === 'safety-extended-refined') &&
     stated.safety === undefined
   ) {
     collect.notes.push(

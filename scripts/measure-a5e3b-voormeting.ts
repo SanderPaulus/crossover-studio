@@ -57,6 +57,7 @@ import {
   CASUS1_LF_RESONANT_BUDGET_DB,
   CASUS1_LOWEST_WAY_COIL_SPAN_H,
   CASUS1_LOWEST_WAY_LEVEL_WORK,
+  CASUS1_WINDOW_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_TARGET_CURVE,
   casus1ChainInput,
@@ -92,6 +93,7 @@ const reportWith = (statedFigure: boolean): EngineV2Report =>
       ...(statedFigure && Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
         ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
         : {}),
+      ...CASUS1_WINDOW_SETTINGS,
     },
   });
 
@@ -189,6 +191,7 @@ for (const label of delivered) {
     settings: {
       ...baseSettings,
       maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER },
+      ...CASUS1_WINDOW_SETTINGS,
       ...(CASUS1_LF_RESONANT_BUDGET_DB !== null ? { lfBumpBudgetDb: CASUS1_LF_RESONANT_BUDGET_DB } : {}),
     },
   });

@@ -538,10 +538,38 @@ export function generateCandidates(
       const orderWhy =
         slot.pair.orders.why.find((w) => w.startsWith(`order ${o.order}:`)) ??
         `order ${o.order}`;
+      /* E-1 — EVERY ceiling the window knows, in the provenance, so a reader
+       * of a candidate sees what the binding one was the strictest OF: on
+       * casus 1's mid→tweeter axis the breakup ceiling (2304 Hz) binds while
+       * the directivity ceiling (5433 Hz) does not and nothing is stated. A
+       * provenance that named only the binding rule read as if it were the
+       * only rule. */
+      const ceilings = o.window.limits.filter((l) => l.side === 'ceiling');
+      const ceilingInventory = ceilings.length
+        ? `the strictest of ${ceilings.map((l) => `${l.rule} ${formatEdge(l.hz)} Hz`).join(', ')}` +
+          (ceilings.some((l) => l.rule === 'stated') ? '' : '; no stated ceiling')
+        : 'no ceiling limit';
       pts.forEach((p, i) => {
         const seg: [number, number] = [roundEdge(p.segment[0]), roundEdge(p.segment[1])];
         const win: [number, number] = [roundEdge(floorHz), roundEdge(o.window.ceilingHz!)];
         const oct = Math.log2(p.hz / floorHz);
+        /* E-1 — a cage clipped at a band edge is ONE-SIDED, and that is worth
+         * saying where the candidate is read: a position laid ON the ceiling
+         * can only leave its cage downward, one on the floor only upward.
+         * Measured on the A5e.3c field: every delivered network on the
+         * mid→tweeter ceiling position (2304 Hz, cage 2118–2304) crossed
+         * 61–255 Hz lower, every one on the floor position (1647, cage
+         * 1647–1789) crossed at or above it. */
+        const clippedTop = p.cage[1] >= seg[1] - 1e-9;
+        const clippedBottom = p.cage[0] <= seg[0] + 1e-9;
+        const cageNote =
+          clippedTop && clippedBottom
+            ? ' (the whole band: one-sided at both edges)'
+            : clippedTop
+              ? ' (clipped at the ceiling: one-sided, the tune can only leave it downward — E-1)'
+              : clippedBottom
+                ? ' (clipped at the floor: one-sided, the tune can only leave it upward — E-1)'
+                : '';
         rows.push({
           pairLabel: slot.pair.orders.pairLabel,
           lower: wi.lower,
@@ -567,7 +595,8 @@ export function generateCandidates(
             `position ${i + 1} of ${o.count} across the candidate band ` +
             `${formatEdge(seg[0])}–${formatEdge(seg[1])} Hz, ${oct.toFixed(2)} oct above the ` +
             `window floor ${formatEdge(win[0])} Hz (${o.window.floorBy?.rule ?? 'none'}); ` +
-            `ceiling ${formatEdge(win[1])} Hz (${o.window.ceilingBy?.rule ?? 'none'}); ${orderWhy}` +
+            `ceiling ${formatEdge(win[1])} Hz (${o.window.ceilingBy?.rule ?? 'none'} — ${ceilingInventory}); ` +
+            `cage ${formatEdge(p.cage[0])}–${formatEdge(p.cage[1])} Hz${cageNote}; ${orderWhy}` +
             excisionSentence(o.excisions),
         });
       });

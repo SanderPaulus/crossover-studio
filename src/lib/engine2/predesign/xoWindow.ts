@@ -49,7 +49,7 @@ export interface XoLimit {
   side: 'floor' | 'ceiling';
   hz: number;
   /** Short machine-readable tag, for tests and for the UI to group on. */
-  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive' | 'drive-stated';
+  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive' | 'drive-stated' | 'stated';
   /** Human sentence — always shown next to the number. */
   source: string;
   /** Set when this limit carries an uncalibrated component. */
@@ -168,6 +168,26 @@ export interface XoWindowInput {
   upperStatedDriveLimitDb?: number | null;
   /** Where that figure came from — attribution, exactly as every limit has. */
   upperStatedDriveLimitSource?: string;
+  /**
+   * E-1 — A STATED CEILING on this handover, Hz: the highest crossing the
+   * designer allows for this pair (`ReportSettings.maxCrossingHzByPair`,
+   * `gestelde_eisen.max_kruispunt_hz_per_paar`). The mirror of A5e.3b's
+   * `upperStatedDriveLimitDb` on the floor side: the ceiling takes the
+   * STRICTEST known bound — the lowest of the breakup ceiling, the
+   * directivity ceiling and this one — and `ceilingBy` says which. Measured
+   * on casus 1 (A5e.3c): every delivered network on the mid→tweeter ceiling
+   * position (2304 Hz, the mid's breakup / 2.47) crossed 61–255 Hz lower, three
+   * of four at ~2050 Hz — not because any limit pushed it there (the derived
+   * ceilings are breakup 2304 and directivity 5433, nothing stated) but because
+   * a position ON the ceiling has a one-sided cage and the raw mid/tweeter
+   * level difference has a knee at ~2050 Hz that the acoustic crossing snaps
+   * to. Stating a ceiling is the designer's call; the window then reads it as
+   * one limit among the others. Absent or null = no such ceiling (P4): a
+   * project that states none gets exactly the window it always got.
+   */
+  statedCeilingHz?: number | null;
+  /** Where that ceiling came from — attribution, exactly as every limit has. */
+  statedCeilingSource?: string;
   /** Breakups of the LOWER driver, ascending, with their height over trend. */
   lowerBreakups: readonly { fHz: number; dB: number }[];
   /** -6 dB@theta point of the LOWER driver, when it was measured off axis. */
@@ -313,6 +333,23 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
     });
   }
 
+  /* E-1 — the stated ceiling, one limit among the ceilings: the reduction
+   * below takes the LOWEST, so the strictest of stated and derived binds and
+   * `ceilingBy` names it — the mirror of the floor side, where the HIGHEST of
+   * the stated-figure floor and the derived ones binds (A5e.3b). */
+  const statedCeiling = input.statedCeilingHz ?? null;
+  if (statedCeiling !== null && Number.isFinite(statedCeiling) && statedCeiling > 0) {
+    limits.push({
+      side: 'ceiling',
+      hz: statedCeiling,
+      rule: 'stated',
+      source:
+        `a stated maximum handover of ${statedCeiling.toFixed(0)} Hz for ${input.lower}→${input.upper} ` +
+        `(${input.statedCeilingSource ?? 'source not stated'}) — the designer's bound, read beside the ` +
+        'derived ceilings; the strictest binds (E-1)',
+    });
+  }
+
   const floors = limits.filter((l) => l.side === 'floor');
   const ceilings = limits.filter((l) => l.side === 'ceiling');
   const floorBy = floors.length ? floors.reduce((a, b) => (b.hz > a.hz ? b : a)) : null;
@@ -366,6 +403,21 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
           'feasible window: part of the window is worse than the rest of it.',
       );
     }
+  }
+
+  /* E-1 — say which side of the derived ceilings a stated one landed on, so a
+   * reader of the window sees whether the designer's bound or the measurement's
+   * is what shaped the field. */
+  const statedC = ceilings.find((l) => l.rule === 'stated') ?? null;
+  const derivedC = ceilings.filter((l) => l.rule !== 'stated');
+  if (statedC && derivedC.length > 0) {
+    const tightest = derivedC.reduce((a, b) => (b.hz < a.hz ? b : a));
+    tensions.push(
+      `A stated ceiling of ${statedC.hz.toFixed(0)} Hz ` +
+        (statedC.hz < tightest.hz ? 'is stricter than' : statedC.hz > tightest.hz ? 'lies above' : 'coincides with') +
+        ` the derived one (${tightest.hz.toFixed(0)} Hz, ${tightest.rule}); the strictest binds, and here that is ` +
+        `${ceilingBy?.rule ?? 'none'} (E-1).`,
+    );
   }
 
   const empty = floorHz !== null && ceilingHz !== null && ceilingHz <= floorHz;

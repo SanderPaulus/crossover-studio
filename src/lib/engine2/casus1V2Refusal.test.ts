@@ -61,12 +61,14 @@ import {
   CASUS1_EXCURSION,
   CASUS1_BUILDABILITY,
   CASUS1_CONTINUOUS_POWER_W,
+  CASUS1_WINDOW_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_LEVEL_WORK_SETTINGS,
   CASUS1_COIL_DCR_SETTINGS,
 } from './casus1V2.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
+import { liveSubjects } from './casus1Corpora.fixture.ts';
 import { handleV2Request, type V2Chain3Payload, type V2Response } from './optimizer/worker.ts';
 import type { Chain3Input, Chain3Result } from '../threeWayChain.ts';
 
@@ -98,6 +100,8 @@ const REPORT_SETTINGS = {
   ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
     ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
     : {}),
+  /* E-1 — a stated ceiling per pair, when the project states one (unstated today). */
+  ...CASUS1_WINDOW_SETTINGS,
   ...CASUS1_BUILDABILITY,
   /* V51 — the wiring and the level-work requirement, for the same reason. */
   ...CASUS1_LEVEL_WORK_SETTINGS,
@@ -126,7 +130,7 @@ describe('[live] a wholesale refusal comes back as a refusal', () => {
    * V31/V33 — the candidate a wholesale rule actually refuses
    * ---------------------------------------------------------------- */
 
-  it('a candidate a WHOLESALE rule refuses comes back as a REFUSAL, with no network', () => {
+  it('the cheapest recorded refusal, by recorded runtime, comes back as a REFUSAL, with no network', () => {
     /* THE EXPENSIVE HALF OF V31, and it has to be this route.
      * `wholesaleRejection.test.ts` proves what the shortlist does with a
      * refusal; only a live run proves that a refusal is what the worker
@@ -144,7 +148,18 @@ describe('[live] a wholesale refusal comes back as a refusal', () => {
     ).toBeGreaterThan(0);
     expect(HERKOMST.shortlist.leverde_geen_netwerk).toBe(HERKOMST.verwerpingen.length);
 
-    const recorded = HERKOMST.verwerpingen[0];
+    /* E-1 — WHICH refusal: the one with the LOWEST recorded runtime
+     * (`liveSubjects`, the same rule the byte reproduction picks by). It used
+     * to be the first of the list — 147.9 · 1647 on the A5e.3c corpus, 2136 s
+     * live — and a refusal is a refusal whichever rule threw it: the claims
+     * below assert the CATEGORY vocabulary and the recorded figures, not one
+     * member of the vocabulary. The asserted values still come from
+     * `verwerpingen` (the shortlist's own record); the runtime only picks. */
+    const subject = liveSubjects().refused;
+    expect(subject, 'no refusal carries a recorded runtime').toBeTruthy();
+    const recorded = HERKOMST.verwerpingen.find((v) => v.label === subject!.label)!;
+    expect(recorded, `the shortlist record lists no refusal for ${subject!.label}`).toBeTruthy();
+    expect(recorded.kinds).toEqual(subject!.kinds);
     const rep = report('HUIDIG');
     const field = casus1Field(rep);
     const gridded = casus1ChainInput(manifest, files, golden);
@@ -258,13 +273,19 @@ describe('[live] a wholesale refusal comes back as a refusal', () => {
     // 3. What WAS refused is reported, so the cost of the veto is visible.
     const t = done.rejection!.rejectedTune;
     expect(t, 'the refused tune was not measured').toBeTruthy();
-    expect(t!.minZOhm).toBeCloseTo(recorded.rejectedTune!.minZOhm as number, 6);
-    expect(t!.windowPlusMinusDb).toBeCloseTo(
-      recorded.rejectedTune!.windowPlusMinusDb as number,
-      6,
-    );
-    // The note says why nothing is delivered, in the F0 terms this rests on.
-    expect(done.rejection!.note).toContain('delivers no network');
+    /* Every figure the record carries, in the shape it carries it: a number
+     * reproduces to six decimals, a null stays a null (F0 — a refusal thrown
+     * before the tune completed has no ripple to report, and a stated-rule
+     * refusal after it has no `zMinOhm` from the tuner; neither may read as
+     * a measured zero). */
+    for (const [k, want] of Object.entries(recorded.rejectedTune!)) {
+      const got = (t as Record<string, number | null>)[k];
+      if (want === null) expect(got, `${k}: recorded null`).toBeNull();
+      else expect(got, k).toBeCloseTo(want, 6);
+    }
+    // The note says why nothing is delivered, in the F0 terms this rests on —
+    // the tuner's own refusal says "no network", a stated rule's "nothing".
+    expect(done.rejection!.note).toMatch(/delivers no network|delivers nothing/);
     expect(done.notes.join(' ')).toContain('Refusing rule:');
   }, 900_000);
 });

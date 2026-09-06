@@ -38,7 +38,7 @@ import {
 import { buildReport, type EngineV2Report } from '../report.ts';
 import { ctcKey } from '../metrics/types.ts';
 import { FLAT_TARGET } from '../requirements/targetCurve.ts';
-import { CASUS1_FIELD_CHAIN_BUDGET, CASUS1_FIELD_STATED_ORDER, casus1Field } from '../casus1V2.fixture.ts';
+import { CASUS1_FIELD_CHAIN_BUDGET, CASUS1_FIELD_STATED_ORDER, CASUS1_WINDOW_SETTINGS, casus1Field } from '../casus1V2.fixture.ts';
 import { candidateFieldKey } from './candidateField.ts';
 import { candidatesOutsideWindows } from './xoRangeAdvice.ts';
 import { recommendedBand } from './recommendedBand.ts';
@@ -75,6 +75,9 @@ const report = (candidate: 'HUIDIG' | 'KAND_A' | 'KAND_B'): EngineV2Report =>
       ...(Object.keys(casus1MaxDriveOnFsDbByDriver(golden)).length > 0
         ? { maxDriveOnFsDbByDriver: casus1MaxDriveOnFsDbByDriver(golden) }
         : {}),
+      /* E-1 — a stated ceiling per pair, when the project states one (unstated
+       * today): the mirror of the stated-figure floor, read the same way. */
+      ...CASUS1_WINDOW_SETTINGS,
     },
   });
 

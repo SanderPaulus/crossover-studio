@@ -187,6 +187,14 @@ export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSet
    */
   orderByPair?: Record<string, number>;
   /**
+   * E-1 — a STATED maximum handover per pair (key: `ctcKey`), Hz. The
+   * crossover window reads it as one ceiling among the derived ones and the
+   * strictest binds (`xoWindow.ts`); absent for a pair = no stated ceiling and
+   * the window is what it always was. Its one home on casus 1 is
+   * `gestelde_eisen.max_kruispunt_hz_per_paar` (P6) — unstated today.
+   */
+  maxCrossingHzByPair?: Record<string, number>;
+  /**
    * How close two drivers' directivity has to track, in dB, for the DI-match
    * band of M-G. Absent = the two-sided band is not reported.
    */
@@ -1022,6 +1030,13 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         upperStatedDriveLimitSource:
           'the stated maximum drive on the driver\'s own resonance (gestelde_eisen, V47b/V50), ' +
           'passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads',
+        /* E-1 — a stated ceiling per pair, the mirror of the stated-figure
+         * floor: read beside the derived ceilings, the strictest binds. Absent
+         * = no such limit (P4). */
+        statedCeilingHz: input.settings.maxCrossingHzByPair?.[key] ?? null,
+        statedCeilingSource:
+          'the stated maximum handover for this pair (gestelde_eisen.max_kruispunt_hz_per_paar, E-1), ' +
+          'through ReportSettings.maxCrossingHzByPair',
         lowerBreakups: dLower?.breakups?.peaks.map((p) => ({ fHz: p.fHz, dB: p.dB })) ?? [],
         significantBreakupDb: input.settings.significantBreakupDb,
         lowerMinus6Hz: dir?.minus6Hz ?? null,

@@ -4661,7 +4661,11 @@
     "binnen_barriere_uitgestrektheid": true,
     "binnen_veiligheidsraster_tot_A5e3b": true,
     "verschil_ohm": 0.0813,
-    "zelfde_oordeel": true
+    "zelfde_oordeel": true,
+    "verdicht_ohm_E1": 2.5536,
+    "verschil_verdicht_ohm_E1": 0,
+    "verdicht_extra_punten_E1": 12,
+    "zelfde_oordeel_verdicht_E1": true
    },
    "grootste_verschil_hele_casusboek": {
     "netlist": "KAND_V2_1",
@@ -4672,7 +4676,11 @@
     "binnen_barriere_uitgestrektheid": true,
     "binnen_veiligheidsraster_tot_A5e3b": true,
     "verschil_ohm": 0.0813,
-    "zelfde_oordeel": true
+    "zelfde_oordeel": true,
+    "verdicht_ohm_E1": 2.5536,
+    "verschil_verdicht_ohm_E1": 0,
+    "verdicht_extra_punten_E1": 12,
+    "zelfde_oordeel_verdicht_E1": true
    },
    "grootste_verschil_regel": "gemeten over de netlists waarvan het sweep-minimum binnen de uitgestrektheid van het barrièreraster ligt — sinds A5e.3b zijn dat ze allemaal (de uitgestrektheden zijn gelijk).",
    "resolutie_boven_speling": [
@@ -4684,7 +4692,30 @@
      "poortraster_min_bij_hz": 416.19
     }
    ],
-   "resolutie_regel": "De levende netlists (en de drie referentiefilters) waarvan de barrière een vloerspeling of meer van de poort af leest — een RESOLUTIEverschil op een smalle dip, geen uitgestrektheidsverschil. Boekhouding en geen vrijstelling: op elk ervan vellen beide rasters hetzelfde oordeel (frozenNetlistGates assert dat), en de lijst hoort leeg te raken zodra het veiligheidsraster fijner gesteld wordt (een runparameter, dus een regeneratie).",
+   "resolutie_regel": "De levende netlists (en de drie referentiefilters) waarvan de barrière een vloerspeling of meer van de poort af leest — een RESOLUTIEverschil op een smalle dip, geen uitgestrektheidsverschil. Boekhouding en geen vrijstelling: op elk ervan vellen beide rasters hetzelfde oordeel (frozenNetlistGates assert dat), en de lijst hoort leeg te raken zodra de v2-route de VERDICHTE bron afleidt (E-1: `safety-extended-refined`, gebouwd en gemeten in `verdichting` hieronder — het verschil zit dan onder de speling op ÉLKE bevroren netlist; de omschakeling is één woord in candidateDeclaration.ts en één regeneratie).",
+   "verdichting": {
+    "_": "E-1 (06-09-2026): de vijfde waarde van de V33-sleutel, `safety-extended-refined` — het verlengde raster, in de twee cellen rond zijn grove minimum opnieuw opgelost op de eigen punten van de poortsweep (`refinedSystemMinImpedanceOhm`). De kleinste ingreep die het verschil op élke bevroren netlist onder de speling brengt; de twee andere vormen (rond élk lokaal minimum; overal onder 2× de vloer) staan in test-fixtures/casus1_e1_barriere_verdichting.json. De route leidt nog `safety-extended` af — omschakelen is een regeneratie.",
+    "bron": "safety-extended-refined",
+    "verdichting": "minimum",
+    "grootste_verschil_levend": {
+     "netlist": "KAND_V2_5",
+     "verschil_ohm": 0.0089,
+     "poortraster_ohm": 2.5907,
+     "verdicht_ohm": 2.5996
+    },
+    "grootste_verschil_hele_casusboek": {
+     "netlist": "KAND_V2_5",
+     "verschil_ohm": 0.0089,
+     "poortraster_ohm": 2.5907,
+     "verdicht_ohm": 2.5996
+    },
+    "boven_speling": [],
+    "lezing_gelijk_aan_poortraster": 138,
+    "gemeten": 161,
+    "extra_punten_mediaan": 12,
+    "extra_punten_max": 13,
+    "oordeel_wijkt_af_op": []
+   },
    "minimum_buiten_barriere_uitgestrektheid": [],
    "minimum_buiten_barriere_regel": "SINDS A5e.3b per constructie leeg: de barrière leest de volle sweep-uitgestrektheid (safety-extended), dus geen enkel sweep-minimum kan buiten haar bereik liggen. De A5e.3-veld-lezing met de blinde vlek staat als gedateerde brug in _veiligheidsraster_tot_A5e3b; de uitgestrektheid van de barrière is daarmee geen open punt meer.",
    "oordeel_wijkt_af_op": [],
@@ -4699,7 +4730,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.4639,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_A",
@@ -4710,7 +4745,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.3157,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_B",
@@ -4721,7 +4760,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.4433,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_1",
@@ -4732,7 +4775,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0017,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 0.012,
+     "verschil_verdicht_ohm_E1": 0.0017,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_2",
@@ -4743,7 +4790,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0728,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 0.0062,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_3",
@@ -4754,7 +4805,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 1.3774,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_4",
@@ -4765,7 +4820,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 1.1653,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_5",
@@ -4776,7 +4835,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 1.1566,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_6",
@@ -4787,7 +4850,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 1.1355,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_7",
@@ -4798,7 +4865,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 1.0442,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_8",
@@ -4809,7 +4880,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 0.9458,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_9",
@@ -4820,7 +4895,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 0.8725,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V28_KAND_10",
@@ -4831,7 +4910,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 0.8594,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_1",
@@ -4842,7 +4925,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.4465,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_2",
@@ -4853,7 +4940,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.3578,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_3",
@@ -4864,7 +4955,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5899,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_4",
@@ -4875,7 +4970,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5809,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_5",
@@ -4886,7 +4985,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0022,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5715,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_6",
@@ -4897,7 +5000,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.3879,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_7",
@@ -4908,7 +5015,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6038,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_8",
@@ -4919,7 +5030,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5916,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_9",
@@ -4930,7 +5045,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0033,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5677,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V30_KAND_10",
@@ -4941,7 +5060,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.554,
+     "verschil_verdicht_ohm_E1": 0.0024,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V32_KAND_1",
@@ -4952,7 +5075,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5899,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V32_KAND_2",
@@ -4963,7 +5090,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5809,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V32_KAND_3",
@@ -4974,7 +5105,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0022,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5715,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V32_KAND_4",
@@ -4985,7 +5120,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6038,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V32_KAND_5",
@@ -4996,7 +5135,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5916,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V32_KAND_6",
@@ -5007,7 +5150,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0033,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5677,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V32_KAND_7",
@@ -5018,7 +5165,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.554,
+     "verschil_verdicht_ohm_E1": 0.0024,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_1",
@@ -5029,7 +5180,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5967,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_2",
@@ -5040,7 +5195,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0035,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6035,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_3",
@@ -5051,7 +5210,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5608,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_4",
@@ -5062,7 +5225,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5911,
+     "verschil_verdicht_ohm_E1": 0.0006,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_5",
@@ -5073,7 +5240,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5951,
+     "verschil_verdicht_ohm_E1": 0.0002,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_6",
@@ -5084,7 +5255,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5494,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_7",
@@ -5095,7 +5270,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5927,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_8",
@@ -5106,7 +5285,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6148,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_9",
@@ -5117,7 +5300,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0063,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6124,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_SWEEP_KAND_10",
@@ -5128,7 +5315,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0032,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5995,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_1",
@@ -5139,7 +5330,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5587,
+     "verschil_verdicht_ohm_E1": 0.0001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_2",
@@ -5150,7 +5345,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5585,
+     "verschil_verdicht_ohm_E1": 0.0016,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_3",
@@ -5161,7 +5360,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0021,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6094,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_4",
@@ -5172,7 +5375,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5918,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_5",
@@ -5183,7 +5390,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0075,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5931,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_6",
@@ -5194,7 +5405,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0007,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6259,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_7",
@@ -5205,7 +5420,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5907,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_8",
@@ -5216,7 +5435,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6108,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_9",
@@ -5227,7 +5450,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5877,
+     "verschil_verdicht_ohm_E1": 0.001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V33_KAND_10",
@@ -5238,7 +5465,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0051,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5819,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_1",
@@ -5249,7 +5480,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0056,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5895,
+     "verschil_verdicht_ohm_E1": 0.0056,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_2",
@@ -5260,7 +5495,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5587,
+     "verschil_verdicht_ohm_E1": 0.0001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_3",
@@ -5271,7 +5510,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5585,
+     "verschil_verdicht_ohm_E1": 0.0016,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_4",
@@ -5282,7 +5525,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5696,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_5",
@@ -5293,7 +5540,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0015,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6026,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_6",
@@ -5304,7 +5555,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0027,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5858,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_7",
@@ -5315,7 +5570,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6085,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_8",
@@ -5326,7 +5585,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0061,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5818,
+     "verschil_verdicht_ohm_E1": 0.0061,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_9",
@@ -5337,7 +5600,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0034,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5841,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V34_KAND_10",
@@ -5348,7 +5615,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5931,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_1",
@@ -5359,7 +5630,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5587,
+     "verschil_verdicht_ohm_E1": 0.0001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_2",
@@ -5370,7 +5645,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0045,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5585,
+     "verschil_verdicht_ohm_E1": 0.0016,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_3",
@@ -5381,7 +5660,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0117,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.569,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_4",
@@ -5392,7 +5675,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5954,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_5",
@@ -5403,7 +5690,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0047,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5937,
+     "verschil_verdicht_ohm_E1": 0.0045,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_6",
@@ -5414,7 +5705,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6077,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_7",
@@ -5425,7 +5720,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0041,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5821,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_8",
@@ -5436,7 +5735,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6116,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_9",
@@ -5447,7 +5750,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5907,
+     "verschil_verdicht_ohm_E1": 0.0001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V37_KAND_10",
@@ -5458,7 +5765,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.005,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.5283,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_1",
@@ -5469,7 +5780,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.586,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_2",
@@ -5480,7 +5795,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0085,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5611,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_3",
@@ -5491,7 +5810,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0169,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5821,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_4",
@@ -5502,7 +5825,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5681,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_5",
@@ -5513,7 +5840,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0067,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5905,
+     "verschil_verdicht_ohm_E1": 0.0045,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_6",
@@ -5524,7 +5855,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0273,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5944,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_7",
@@ -5535,7 +5870,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5555,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_8",
@@ -5546,7 +5885,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6104,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_9",
@@ -5557,7 +5900,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0024,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5711,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V38FIX_KAND_10",
@@ -5568,7 +5915,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0027,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.601,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_1",
@@ -5579,7 +5930,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.2885,
+     "verschil_verdicht_ohm_E1": 0.0001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_2",
@@ -5590,7 +5945,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.4002,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_3",
@@ -5601,7 +5960,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.9855,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_4",
@@ -5612,7 +5975,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.7502,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_5",
@@ -5623,7 +5990,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.6419,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_6",
@@ -5634,7 +6005,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.4997,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_7",
@@ -5645,7 +6020,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6409,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V41_KAND_8",
@@ -5656,7 +6035,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6377,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V42_KAND_1",
@@ -5667,7 +6050,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.2885,
+     "verschil_verdicht_ohm_E1": 0.0001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V42_KAND_2",
@@ -5678,7 +6065,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.9855,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V42_KAND_3",
@@ -5689,7 +6080,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.6419,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V42_KAND_4",
@@ -5700,7 +6095,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6377,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V43_KAND_1",
@@ -5711,7 +6110,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0008,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.9425,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V43_KAND_2",
@@ -5722,7 +6125,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.9684,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V43_KAND_3",
@@ -5733,7 +6140,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5867,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V43_KAND_4",
@@ -5744,7 +6155,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5974,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V43_KAND_5",
@@ -5755,7 +6170,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0011,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.558,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V43_KAND_6",
@@ -5766,7 +6185,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6178,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V43_KAND_7",
@@ -5777,7 +6200,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0021,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.61,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V44_KAND_1",
@@ -5788,7 +6215,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0007,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.4567,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V44_KAND_2",
@@ -5799,7 +6230,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.612,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V44_KAND_3",
@@ -5810,7 +6245,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5864,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V44_KAND_4",
@@ -5821,7 +6260,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0004,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5804,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V44_KAND_5",
@@ -5832,7 +6275,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6267,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V44_KAND_6",
@@ -5843,7 +6290,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6058,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V44_KAND_7",
@@ -5854,7 +6305,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5929,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V45_KAND_1",
@@ -5865,7 +6320,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.693,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V45_KAND_2",
@@ -5876,7 +6335,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.0245,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V45_KAND_3",
@@ -5887,7 +6350,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5964,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V45_KAND_4",
@@ -5898,7 +6365,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0003,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6094,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V45_KAND_5",
@@ -5909,7 +6380,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5683,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V45_KAND_6",
@@ -5920,7 +6395,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5511,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V45_KAND_7",
@@ -5931,7 +6410,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0216,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.8127,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V47_KAND_1",
@@ -5942,7 +6425,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0017,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.9267,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V47_KAND_2",
@@ -5953,7 +6440,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.5519,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V47_KAND_3",
@@ -5964,7 +6455,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0018,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5946,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V47_KAND_4",
@@ -5975,7 +6470,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5979,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V48_KAND_1",
@@ -5986,7 +6485,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.717,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V48_KAND_2",
@@ -5997,7 +6500,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.5856,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V48_KAND_3",
@@ -6008,7 +6515,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0013,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.9228,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V48_KAND_4",
@@ -6019,7 +6530,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6454,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V48_KAND_5",
@@ -6030,7 +6545,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0078,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6038,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V49_KAND_1",
@@ -6041,7 +6560,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 4.1686,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V49_KAND_2",
@@ -6052,7 +6575,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0014,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.6256,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V49_KAND_3",
@@ -6063,7 +6590,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.9763,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V49_KAND_4",
@@ -6074,7 +6605,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6959,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V49_KAND_5",
@@ -6085,7 +6620,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0008,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5898,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V49_KAND_6",
@@ -6096,7 +6635,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6556,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V49_KAND_7",
@@ -6107,7 +6650,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0041,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.582,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V50_KAND_1",
@@ -6118,7 +6665,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 4.1686,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V50_KAND_2",
@@ -6129,7 +6680,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0014,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 3.6256,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V50_KAND_3",
@@ -6140,7 +6695,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0002,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.9763,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V50_KAND_4",
@@ -6151,7 +6710,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0006,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6959,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V50_KAND_5",
@@ -6162,7 +6725,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0008,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5898,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V50_KAND_6",
@@ -6173,7 +6740,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6556,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V50_KAND_7",
@@ -6184,7 +6755,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0041,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.582,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V51_KAND_1",
@@ -6195,7 +6770,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": false,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5717,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 0,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V51B_KAND_1",
@@ -6206,7 +6785,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0028,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.7348,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V51B_KAND_2",
@@ -6217,7 +6800,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0025,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.8681,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V51B_KAND_3",
@@ -6228,7 +6815,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0033,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.8872,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V51B_KAND_4",
@@ -6239,7 +6830,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5921,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V51B_KAND_5",
@@ -6250,7 +6845,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0005,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5913,
+     "verschil_verdicht_ohm_E1": 0.0004,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "V51B_KAND_6",
@@ -6261,7 +6860,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5856,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3ARM_KAND_1",
@@ -6272,7 +6875,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0027,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6164,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3VELD_KAND_1",
@@ -6283,7 +6890,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0036,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.8063,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3VELD_KAND_2",
@@ -6294,7 +6905,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": false,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5499,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 0,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3VELD_KAND_3",
@@ -6305,7 +6920,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0022,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5893,
+     "verschil_verdicht_ohm_E1": 0.001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3VELD_KAND_4",
@@ -6316,7 +6935,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6005,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3VELD_KAND_5",
@@ -6327,7 +6950,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0001,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.694,
+     "verschil_verdicht_ohm_E1": 0.0001,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3VELD_KAND_6",
@@ -6338,7 +6965,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0004,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.664,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "A5E3VELD_KAND_7",
@@ -6349,7 +6980,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0012,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6006,
+     "verschil_verdicht_ohm_E1": 0.0006,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_1",
@@ -6360,7 +6995,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0813,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5536,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_2",
@@ -6371,7 +7010,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0016,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.6104,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_3",
@@ -6382,7 +7025,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0078,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5933,
+     "verschil_verdicht_ohm_E1": 0.0078,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_4",
@@ -6393,7 +7040,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0117,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.589,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_5",
@@ -6404,7 +7055,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0091,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5996,
+     "verschil_verdicht_ohm_E1": 0.0089,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_6",
@@ -6415,7 +7070,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0009,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5772,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_7",
@@ -6426,7 +7085,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0078,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5895,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_8",
@@ -6437,7 +7100,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5672,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_9",
@@ -6448,7 +7115,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0.0014,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5839,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     },
     {
      "netlist": "KAND_V2_10",
@@ -6459,7 +7130,11 @@
      "binnen_barriere_uitgestrektheid": true,
      "binnen_veiligheidsraster_tot_A5e3b": true,
      "verschil_ohm": 0,
-     "zelfde_oordeel": true
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5828,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
     }
    ]
   },
@@ -36618,6 +37293,325 @@
      "kandidaat": "woofer→mid 354.9 LR4 · mid→tweeter 1494.8 LR4"
     }
    ]
+  },
+  "e1_kruispuntafleiding": {
+   "_": "E-1 (06-09-2026) — DOCUMENTATIE in de V30-vorm: de (netlist, weg)-paren waarop de POORTROUTE (`crossingsOf` op het ketenraster, de kruispunten van het netwerk zelf — wat de worker sinds A5e.3c als tweede oordeel leest) en het RAPPORT (`deriveCrossings` op het rapportraster, de klasse-B-referentie) op M-C meer dan de dB-klasse uiteenlopen of anders oordelen. Exact gepind door derivedGateRefusal.test.ts (geen complement — de V37/V38-fix-les); de lijst hoort te krimpen en een nieuw paar valt om door er niet op te staan. Geboekt bij A5e.3c, hier benoemd; niet gerepareerd.",
+   "leesregel": "De M-C-getallen die het casusboek voor deze paren draagt zijn die van het RAPPORT (klasse B, de eigen kruispunten op het rapportraster). Wat de worker deze netlists op zijn ketenraster zou toeschrijven is een ander getal — tot 5 dB — en géén van beide is fout: het zijn twee bemonsteringen van dezelfde takken die bij een rimpelende overname een andere snijding als de luidste aanwijzen. Wie een gedateerd M-C-getal leest, leest eerst of het paar hier staat.",
+   "ketenraster": {
+    "punten": 143,
+    "van_hz": 20.5,
+    "tot_hz": 20000
+   },
+   "rapportraster": "het analyseraster van het rapport (de uitgestrektheid van de responsen, 1600 punten)",
+   "dB_klasse": 0.15,
+   "vergeleken_paren": 319,
+   "paren": [
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "mid",
+     "familie": "V28_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      491.4,
+      1521.2
+     ],
+     "kruispunten_rapport_hz": [
+      487.2,
+      3817.6
+     ],
+     "M_C_ketenraster_dB": -34.67,
+     "M_C_rapport_dB": -29.69,
+     "verschil_dB": -4.98,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V28_KAND_1",
+     "weg": "tweeter",
+     "familie": "V28_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      491.4,
+      1521.2
+     ],
+     "kruispunten_rapport_hz": [
+      487.2,
+      3817.6
+     ],
+     "M_C_ketenraster_dB": -16.5,
+     "M_C_rapport_dB": -19.38,
+     "verschil_dB": 2.87,
+     "oordeel_ketenraster": false,
+     "oordeel_rapport": false
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "mid",
+     "familie": "V28_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      517.7,
+      1612.6
+     ],
+     "kruispunten_rapport_hz": [
+      513,
+      3949
+     ],
+     "M_C_ketenraster_dB": -52.02,
+     "M_C_rapport_dB": -45.62,
+     "verschil_dB": -6.41,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V28_KAND_2",
+     "weg": "tweeter",
+     "familie": "V28_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      517.7,
+      1612.6
+     ],
+     "kruispunten_rapport_hz": [
+      513,
+      3949
+     ],
+     "M_C_ketenraster_dB": -19.55,
+     "M_C_rapport_dB": -22.87,
+     "verschil_dB": 3.33,
+     "oordeel_ketenraster": false,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V30_KAND_1",
+     "weg": "mid",
+     "familie": "V30_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      489,
+      1660.7
+     ],
+     "kruispunten_rapport_hz": [
+      385.5,
+      1664.8
+     ],
+     "M_C_ketenraster_dB": -39.45,
+     "M_C_rapport_dB": -39.12,
+     "verschil_dB": -0.33,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V33_SWEEP_KAND_6",
+     "weg": "mid",
+     "familie": "V33_SWEEP_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      469.5,
+      1801.1
+     ],
+     "kruispunten_rapport_hz": [
+      387.7,
+      1800.8
+     ],
+     "M_C_ketenraster_dB": -36.71,
+     "M_C_rapport_dB": -36.49,
+     "verschil_dB": -0.22,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V33_KAND_2",
+     "weg": "mid",
+     "familie": "V33_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      496.9,
+      1913.3
+     ],
+     "kruispunten_rapport_hz": [
+      388.2,
+      1916.1
+     ],
+     "M_C_ketenraster_dB": -37.82,
+     "M_C_rapport_dB": -37.57,
+     "verschil_dB": -0.25,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V34_KAND_3",
+     "weg": "mid",
+     "familie": "V34_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      496.9,
+      1913.3
+     ],
+     "kruispunten_rapport_hz": [
+      388.2,
+      1916.1
+     ],
+     "M_C_ketenraster_dB": -37.82,
+     "M_C_rapport_dB": -37.57,
+     "verschil_dB": -0.25,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V37_KAND_2",
+     "weg": "mid",
+     "familie": "V37_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      496.9,
+      1913.3
+     ],
+     "kruispunten_rapport_hz": [
+      388.2,
+      1916.1
+     ],
+     "M_C_ketenraster_dB": -37.82,
+     "M_C_rapport_dB": -37.57,
+     "verschil_dB": -0.25,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V37_KAND_6",
+     "weg": "mid",
+     "familie": "V37_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      492.2,
+      1842.7
+     ],
+     "kruispunten_rapport_hz": [
+      428.9,
+      1843.4
+     ],
+     "M_C_ketenraster_dB": -41.33,
+     "M_C_rapport_dB": -41.15,
+     "verschil_dB": -0.19,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V41_KAND_7",
+     "weg": "mid",
+     "familie": "V41_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      502.4,
+      1764
+     ],
+     "kruispunten_rapport_hz": [
+      382.1,
+      1763.1
+     ],
+     "M_C_ketenraster_dB": -50.67,
+     "M_C_rapport_dB": -50.21,
+     "verschil_dB": -0.46,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V43_KAND_6",
+     "weg": "mid",
+     "familie": "V43_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      491.7,
+      1832.6
+     ],
+     "kruispunten_rapport_hz": [
+      414.7,
+      1833.7
+     ],
+     "M_C_ketenraster_dB": -43.12,
+     "M_C_rapport_dB": -42.84,
+     "verschil_dB": -0.28,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V43_KAND_7",
+     "weg": "mid",
+     "familie": "V43_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      520,
+      1846.7
+     ],
+     "kruispunten_rapport_hz": [
+      380.8,
+      1848
+     ],
+     "M_C_ketenraster_dB": -53.98,
+     "M_C_rapport_dB": -53.42,
+     "verschil_dB": -0.55,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V44_KAND_7",
+     "weg": "mid",
+     "familie": "V44_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      505.6,
+      1943.8
+     ],
+     "kruispunten_rapport_hz": [
+      384,
+      1944.7
+     ],
+     "M_C_ketenraster_dB": -40.47,
+     "M_C_rapport_dB": -40.01,
+     "verschil_dB": -0.46,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V49_KAND_7",
+     "weg": "mid",
+     "familie": "V49_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      510,
+      1903.4
+     ],
+     "kruispunten_rapport_hz": [
+      381.3,
+      1906.7
+     ],
+     "M_C_ketenraster_dB": -41.03,
+     "M_C_rapport_dB": -40.6,
+     "verschil_dB": -0.44,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    },
+    {
+     "netlist": "V50_KAND_7",
+     "weg": "mid",
+     "familie": "V50_KAND",
+     "engine_stand": "gepoorte set (F4d–V51b): gezocht op het ketenraster van toen (200–20 000 Hz, 96 punten); vandaag op beide routes op de gemergede set gelezen",
+     "kruispunten_ketenraster_hz": [
+      510,
+      1903.4
+     ],
+     "kruispunten_rapport_hz": [
+      381.3,
+      1906.7
+     ],
+     "M_C_ketenraster_dB": -41.03,
+     "M_C_rapport_dB": -40.6,
+     "verschil_dB": -0.44,
+     "oordeel_ketenraster": true,
+     "oordeel_rapport": true
+    }
+   ],
+   "bestuurd_door_de_weigering_en_eens": true
   }
  },
  "herzien_F1": "25-08-2026 vastgesteld; herzien bij oplevering F1 (engine2-fundament)",

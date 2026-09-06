@@ -736,6 +736,28 @@ export function casus1MaxDriveOnFsDbByDriver(golden: GoldenRefs = loadGolden()):
 }
 
 /**
+ * E-1 — the STATED maximum handover per pair (`gestelde_eisen.max_kruispunt_hz_per_paar`,
+ * keys `lower_upper` as `c_t_c_mm` spells them), as `ctcKey` → Hz for
+ * `ReportSettings.maxCrossingHzByPair`. Unstated on casus 1 today: the mirror
+ * of the stated-figure floor exists so a ceiling CAN be stated; the pre-
+ * measurement of what stating one would do is `measure-e1-mt-ceiling.ts`.
+ * Empty = nothing stated, and then the windows are what they always were (P4).
+ */
+export function casus1MaxCrossingHzByPair(golden: GoldenRefs = loadGolden()): Record<string, number> {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { max_kruispunt_hz_per_paar?: Record<string, unknown> };
+  }).gestelde_eisen;
+  const out: Record<string, number> = {};
+  for (const [pair, v] of Object.entries(e?.max_kruispunt_hz_per_paar ?? {})) {
+    if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) continue;
+    const parts = pair.includes('|') ? pair.split('|') : pair.split('_');
+    if (parts.length !== 2) continue;
+    out[ctcKey(parts[0], parts[1])] = v;
+  }
+  return out;
+}
+
+/**
  * V50 — the CONTINUOUS amplifier power (`gestelde_eisen.versterker_continu_vermogen_W`):
  * what M-A prints its watts at and what M-A/part judges them at. Null = not
  * stated, and then there are no watts at all (F0). It stood as a literal 100

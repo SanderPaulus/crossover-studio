@@ -198,34 +198,52 @@ describe('A5e.3c — the V32 shape for M-C: the gate route on the own crossings 
     expect(compared).toBeGreaterThan(governed.length);
   });
 
-  it('over the WHOLE case book the two routes DERIVE DIFFERENT CROSSINGS on a named set of dated netlists — bookkeeping, not a waiver', () => {
-    /* MEASURED 05-09-2026 and not repaired here: on sixteen dated netlists
-     * (V28–V50) `crossingsOf` on the chain grid and `deriveCrossings` on the
-     * report grid land on different crossings — a mid whose lower crossing the
-     * chain grid puts at ~490 Hz where the report grid finds ~385, and on the
-     * two V28 netlists a mid→tweeter crossing at 1521/1613 Hz against
-     * 3818/3949 — so the passbands differ and M-C differs with them, by up to
-     * 5 dB on V28_KAND_1's mid and 3 dB on its tweeter. The M-C figures the
-     * case book carries for those netlists are the REPORT's (class B, the
-     * file's own crossings on the report grid); what the worker would have
-     * judged them on is a different question, and the guard here is the V30
-     * form: a list that names every (netlist, way) the two routes disagree on,
-     * meant to shrink, and a new disagreement fails by not being on it. */
-    const KNOWN: string[] = [
-      'V28_KAND_1/mid', 'V28_KAND_1/tweeter', 'V28_KAND_2/mid', 'V28_KAND_2/tweeter',
-      'V30_KAND_1/mid', 'V33_SWEEP_KAND_6/mid', 'V33_KAND_2/mid', 'V34_KAND_3/mid', 'V37_KAND_2/mid', 'V37_KAND_6/mid',
-      'V41_KAND_7/mid', 'V43_KAND_6/mid', 'V43_KAND_7/mid', 'V44_KAND_7/mid', 'V49_KAND_7/mid', 'V50_KAND_7/mid',
-    ];
-    const disagreeing: string[] = [];
+  it('over the WHOLE case book the two routes DERIVE DIFFERENT CROSSINGS on a NAMED set of dated (netlist, way) pairs — pinned exactly against the manifest, not a complement', () => {
+    /* MEASURED 05-09-2026 and not repaired: on sixteen (netlist, way) pairs of
+     * dated corpora (V28–V50) `crossingsOf` on the chain grid and
+     * `deriveCrossings` on the report grid land on different crossings — a
+     * mid whose lower crossing the chain grid puts at ~490 Hz where the report
+     * grid finds ~385, and on the two V28 netlists a mid→tweeter crossing at
+     * 1521/1613 Hz against 3818/3949 — so the passbands differ and M-C differs
+     * with them, by up to 5 dB on V28_KAND_1's mid and 3 dB on its tweeter.
+     *
+     * SINCE E-1 THE SET LIVES IN THE MANIFEST (`e1_kruispuntafleiding`, written
+     * by the recorder with the era of each netlist and both readings) and this
+     * guard pins it EXACTLY: the fresh set of disagreeing pairs must equal the
+     * recorded set — a new disagreement fails by not being recorded, and a pair
+     * that stops disagreeing fails by still being recorded, so the list can
+     * only shrink by someone re-recording it. The A5e.3c form asserted only
+     * that every fresh pair was on a typed list, which a vanished pair passes
+     * in silence — the complement's cousin (the V37/V38-fix lesson). The
+     * recorded numbers reproduce within the dB class, and none of the pairs
+     * belongs to a corpus the refusal governs. */
+    const block = (golden.manifest_en_geometrie as unknown as {
+      e1_kruispuntafleiding?: {
+        paren: { netlist: string; weg: string; M_C_ketenraster_dB: number | null; M_C_rapport_dB: number | null; oordeel_ketenraster: boolean | null; oordeel_rapport: boolean }[];
+        bestuurd_door_de_weigering_en_eens: boolean;
+      };
+    }).e1_kruispuntafleiding;
+    expect(block, 'the case book carries no e1_kruispuntafleiding block — run record-casus1-v2-references.ts').toBeDefined();
+    const recorded = block!.paren.map((p) => `${p.netlist}/${p.weg}`).sort();
+    const fresh = new Map<string, { gate: number | null; report: number; gatePass: boolean | null; reportPass: boolean }>();
     for (const key of keys) {
       for (const r of compare(key)) {
-        if (r.gate === null || Math.abs(r.gate - r.report) > DB_CLASS || r.gatePass !== r.reportPass) disagreeing.push(`${key}/${r.way}`);
+        if (r.gate === null || Math.abs(r.gate - r.report) > DB_CLASS || r.gatePass !== r.reportPass) fresh.set(`${key}/${r.way}`, r);
       }
     }
-    for (const d of disagreeing) expect(KNOWN, `${d}: the two routes disagree on M-C and this pair is not on the list`).toContain(d);
+    expect([...fresh.keys()].sort(), 'the pairs the two routes disagree on must be EXACTLY the recorded set').toEqual(recorded);
     // ...and the list is not empty bookkeeping: the disagreement is real on at least one named pair today.
-    expect(disagreeing.length).toBeGreaterThan(0);
-    for (const d of disagreeing) expect(governed.some((k) => d.startsWith(`${k}/`))).toBe(false);
+    expect(recorded.length).toBeGreaterThan(0);
+    for (const p of block!.paren) {
+      const f = fresh.get(`${p.netlist}/${p.weg}`)!;
+      if (p.M_C_ketenraster_dB === null) expect(f.gate).toBeNull();
+      else expect(Math.abs(f.gate! - p.M_C_ketenraster_dB), `${p.netlist}/${p.weg}: gate route`).toBeLessThanOrEqual(DB_CLASS);
+      expect(Math.abs(f.report - p.M_C_rapport_dB!), `${p.netlist}/${p.weg}: report`).toBeLessThanOrEqual(DB_CLASS);
+      expect(f.reportPass).toBe(p.oordeel_rapport);
+      expect(f.gatePass).toBe(p.oordeel_ketenraster);
+      expect(governed.some((k) => p.netlist === k), `${p.netlist}: a governed corpus disagrees with itself`).toBe(false);
+    }
+    expect(block!.bestuurd_door_de_weigering_en_eens).toBe(true);
   });
 
   it('the LIVE corpus passes M-C on its OWN crossings, every way — the acceptance the refusal exists for', () => {

@@ -48,6 +48,14 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná E-1 (06-09-2026) gemeten op 411 s — 152 bestanden (150 geslaagd, 1 rood, 1 overgeslagen), 1716 tests
+    (1713 geslaagd, 1 rood, 2 overgeslagen), gedraaid direct ná de recorder-herhaling en NOOIT ernaast.** Geen nieuw
+    bestand; +6 tests: 1 in `casus1V2Candidates` (de looptijd-/goedkoopste-onderwerp-claim), 1 in `barrierSource`
+    (de vijfde bron), 4 in `candidates.test.ts` (het gestelde plafond en de kooi). De ene rode claim was de V33-bronscan
+    in `frozenNetlistGates` ("de barrière leest door de gedeelde functie"): zij zocht de regel `const ohm =
+    systemMinImpedanceOhm(` en E-1 splitste die regel in een verdichte en een grove lezer — de scan pint sindsdien beide
+    lezers binnen de `barrierShortOhm`-closure plus de twee `minImpedanceAt`-aanroepen in de verdichte lezer; gerepareerd
+    vóór de volle run. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná A5e.3c (06-09-2026) gemeten op 386 s — 152 bestanden (149 geslaagd, 2 rood, 1 overgeslagen), 1710 tests
     (1705 geslaagd, 3 rood, 2 overgeslagen), gedraaid vlak ná de samenvoeging van de shards en de recorder.** +1 bestand
     (`optimizer/derivedGateRefusal.test.ts`, 9 claims) en +15 tests: die negen, +1 in `corpusPairing` (de A5e.3c-claim),
@@ -211,7 +219,27 @@
   onveranderd naast staat — van 285,8 naar 517,4 s. De totale CPU-tijd steeg van 3615 naar
   4306 s. Wandkloktijd is dus gekocht met rekentijd; een voorspelling op `max(1120, 638)` ≈ 950 s
   was te optimistisch en de gemeten 1254 s is wat er staat.
-- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (A5e.3c): 152 bestanden, 1710 tests, 7194 s
+- **DE TWEE LIVE KETENRUNS KIEZEN SINDS E-1 (06-09-2026) HET GOEDKOOPSTE ONDERWERP.** De byte-reproductie
+  (`casus1V2Candidates.test.ts`, `[bytes]`) reproduceert de geleverde netlist met de LAAGSTE geregistreerde looptijd, de
+  verwerpingsrun (`casus1V2Refusal.test.ts`) de goedkoopste verwerping — één regel, `liveSubjects()` in
+  `casus1Corpora.fixture.ts`, deterministisch (looptijd, dan label) en in de testnaam. De looptijd per kandidaat schrijft
+  de generator sinds E-1 in `casus1_v2_herkomst.json` (`kandidaat_uitkomst[].looptijd_s`, uit de shard; voor het
+  A5e.3c-corpus eenmalig uit de shards ingevuld); een herkomst zonder looptijd laat `liveSubjects` gooien in plaats van
+  raden. Tot E-1 nam elke run de EERSTE van zijn lijst, en op het A5e.3c-corpus was dat KAND-V2-1 — de duurste
+  kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
+  élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
+  455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
+- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (E-1): 152 bestanden, 1716 tests, 1609 s (26 min 49),
+  niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de reparatie van de V33-bronscan en NOOIT
+  ernaast.** Geen nieuw bestand; +6 tests (zie de `test:fast`-regel). **Van 7194 s naar 1609 s zonder één test minder, en
+  dat is POST 1 van E-1 en niet de suite:** de byte-reproductie kiest sinds E-1 de GOEDKOOPSTE geleverde netlist
+  (KAND-V2-8 = 313,2 · 1647: 1596 s live, 1787 s in de generator onder acht processen) en de verwerpingsrun de goedkoopste
+  verwerping (455,7 · 2304, topologie: 1256 s live, 1410 s in de generator), waar A5e.3c KAND-V2-1 nabouwde — de duurste
+  kandidaat van het veld (7182 s live). De wandkloktijd IS weer de byte-reproductie (1601 s voor het bestand); de rest
+  draait in de schaduw (`lowestWayLevelWork` 377 s, `frozenNetlistGates` 375 s, `threeWayChain` 320 s,
+  `derivedGateRefusal` 102 s). Het cijfer beweegt met WELKE kandidaat de live reproductie treft — de V42/V43/V44-les,
+  nu als regel: de goedkoopste, deterministisch, uit de herkomst.
+  (De stand ervoor: **GEMETEN 06-09-2026 (A5e.3c): 152 bestanden, 1710 tests, 7194 s
   (1 u 59 min 54), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de recorder en de drie
   guard-reparaties en NOOIT ernaast.** +1 bestand (`optimizer/derivedGateRefusal.test.ts`, 9 claims) en +13 tests sinds
   A5e.3b: die negen, +1 in `corpusPairing`, en **+3 uit de `it.each` over het levende corpus, dat van ZEVEN naar TIEN
@@ -223,7 +251,7 @@
   ketenruns gedateerd geparkeerd, sinds A5e.3c draaien zij weer — en welke kandidaat de byte-reproductie treft zet de
   wandklok (de V42/V43/V44-les, nu op het duurste ontwerp van het veld). **De volle run bewijst weer wat hij hoort te
   bewijzen: dat de route de bevroren netlist byte-voor-byte levert, onder de worker die sinds A5e.3c op de eigen
-  kruispunten weigert.**
+  kruispunten weigert.**)
   (De stand ervoor: **GEMETEN 05-09-2026 (A5e.3b): 151 bestanden, 1697 tests, 359 s
   (5 min 59), niets overgeslagen, in één keer groen — en die tijd is TIJDELIJK die van de snelle laag, want de
   twee live ketenruns zijn gedateerd geparkeerd** (hun kandidaat bestaat niet meer in het A5e.3b-veld en de
@@ -435,6 +463,10 @@
   `npx vite-node scripts/generate-casus1-v2-candidates.ts` — vijftien ketenruns.
   **SINDS V47 DRAAIT HIJ PARALLEL EN KOST HIJ MINUTEN IN PLAATS VAN UREN: gemeten 1624 s
   (27 min) op achttien kernen, tegen 21 357 s (5 u 56) sequentieel bij V45.**
+  **SINDS E-1 SCHRIJFT DE GENERATOR DE LOOPTIJD PER KANDIDAAT IN DE HERKOMST** (`kandidaat_uitkomst[].looptijd_s`, uit de
+  shard, `withRuntime`): de twee live ketenruns kiezen er hun onderwerp op (`liveSubjects`). Tot E-1 stond hij alleen in
+  de shard (gitignored) en in de A5e.3c-tabel; voor het A5e.3c-corpus is hij eenmalig uit de shards ingevuld (24 regels,
+  verder byte-identiek).
   **BIJ A5e.3c GEMETEN OP 17 884 s (4 u 58) MET `V2_JOBS=8` VOOR 24 KANDIDATEN (1410–14 690 s per kandidaat; de drie
   duurste 10 961, 11 634 en 14 690 s zijn geleverde kandidaten met een lage W-M-kruising en 700 000–900 000 evaluaties),
   op het A5e.3b-veld (8 × 3), de barrière op `'safety-extended'`, de spanwijdte-cap 22,0 mH. Veertien geleverd, tien
@@ -967,6 +999,34 @@
   beweegt niet: de aandrijfvloer van de tweeter (1184 Hz) ligt onder k·f_s (1294). **`measure-m1-diagnose-arms.ts`
   herbouwt sinds A5e.3-veld het M-1-VELD expliciet** (vensterinvoer zonder aandrijfvloer, W-M onthoudt zich,
   geen budget), zodat zijn armbestanden reproduceerbaar blijven en `M1_DRY=1` nog zegt wat er gedraaid is.
+- **De barrière-resolutie op smalle dips, gemeten vóór er gekozen is (E-1, 06-09-2026)**:
+  `npx vite-node scripts/measure-e1-barrier-resolution.ts` — seconden, geen ketenrun en geen tune. Over ÉLKE bevroren
+  netlist (161): min |Z| op de poortsweep (1600 punten) tegen het verlengde barrièreraster (394, wat `'safety-extended'`
+  leest), naast de DIP-BREEDTE (de octaafspanne rond het sweep-minimum waarover |Z| binnen één vloerspeling van de bodem
+  blijft — de bestaande conventie, geen nieuwe tolerantie) en de celbreedte van het raster ter plekke; dan drie
+  verdichtingen met de eigen punten van de sweep (`refinedSystemMinImpedanceOhm`, `dipCellsOf`): rond het grove globale
+  minimum, rond élk grof lokaal minimum, en overal waar het grove raster onder 2× de vloer leest (die factor staat alleen
+  in het script, als meetarm); en de kosten per evaluatie in de V33-vorm. **Gemeten 06-09-2026: twee van 161 boven de
+  speling op het verlengde raster (KAND_V2_1 0,081 Ω, V28_KAND_2 0,073), beide met een dip smaller dan één cel (0,021 en
+  0,014 oct tegen 0,042), geen enkele bredere dip erboven; de verdichting rond het globale minimum alleen sluit beide
+  (grootste rest 0,0089 Ω op KAND_V2_5, 128 van 161 bit-identiek aan de sweep, 12 extra punten, 2,98 → 3,07 ms per
+  evaluatie op HUIDIG: +3 %); rond élk lokaal minimum 146 van 161 bit-identiek voor 73 punten mediaan (+14–29 %); onder
+  2× de vloer 696 punten, bijna de sweep zelf.** De engine leest de eerste (`BARRIER_DIP_REFINEMENT`, de vijfde waarde van
+  de V33-sleutel: `'safety-extended-refined'`); de route leidt nog `'safety-extended'` af — omschakelen is één woord in
+  `candidateDeclaration.ts` en één regeneratie. Schrijft `test-fixtures/casus1_e1_barriere_verdichting.json`.
+- **De M-T-bovengrens: wat de bovenkant weet, wat de tuner ermee doet, het veld onder een gesteld plafond (E-1)**:
+  `npx vite-node scripts/measure-e1-mt-ceiling.ts` — seconden, geen ketenrun en geen tune. Vier tabellen: (1) élke grens
+  die de bovenkant van het M-T-venster kent (breakup 2304 Hz bindt; directiviteit −6 dB@30° van de mid 5388 Hz bindt
+  niet; niets gesteld) met de lobing-zones als VOORKEUR ernaast (V20a); (2) per geleverde netlist (levend, de niet-bevroren
+  549,7 · 2304 uit de shards, A5e.3-veld) de gestelde positie, de kooi, het kruispunt volgens het rapport én volgens de
+  poortroute (de V32-vorm — op het levende corpus binnen enkele Hz gelijk), en of het de kooi verliet; (3) het ruwe
+  niveauverschil mid − tweeter op het veiligheidsraster met zijn lokale minimum BINNEN het venster; (4) het veld onder
+  de strengste bekende grens (ongewijzigd: 8 × 3 = 24, alle tien bevroren erbinnen) en onder een GESTELD plafond op de
+  gemeten landing (2052 Hz: M-T 1647/2052, W-M twaalf posities, 12 × 2 = 24; zeven bevroren binnen, drie buiten —
+  KAND_V2_2/_6/_7). **Gemeten 06-09-2026: elke geleverde plafondpositie (2304) kruist 61–255 Hz lager (2049, 2050, 2052,
+  2243), drie van vier verlaten de kooi 2119–2304 omlaag; vijf van achttien geleverde M-T-kruispunten liggen binnen 0,02
+  octaaf van het lokale minimum van mid − tweeter in het venster (−4,98 dB bij 2056 Hz: de +0,4 dB-piek van de tweeter
+  tegen de −1,1 dB-stap van de mid) — een responskenmerk, geen grens.** Schrijft `test-fixtures/casus1_e1_mt_bovengrens.json`.
 - **De A5e.3c-tabel: het veld onder de A5e.3b-grenzen, per kandidaat, met de verwerpingen en de shortlist-grootte als
   derde toestand (A5e.3c, 06-09-2026)**: `npx vite-node scripts/measure-a5e3c-field.ts` — seconden, geen ketenrun en
   geen tune. Élke kandidaat van het levende veld in generatorvolgorde — GELEVERD met de volle vector, GEWEIGERD met de
@@ -2338,6 +2398,50 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de zeven andere geleverde droegen `binnen_eis: true`, de twaalf geweigerde waren al geweigerd vóór (a) leest)
   draait alleen díé opnieuw (`V2_ONLY=9`, 2566 s) en zijn de negentien andere shards wat een herhaling zou
   opleveren. Elke shard moet er zijn; wie élke kandidaat opnieuw wil zien draait zonder de vlag.
+
+### E-1-guards (vier engine-posten, geen regeneratie: goedkoopste live-onderwerp, M-T-bovengrens, barrière-verdichting, de zestien paren)
+- `src/lib/engine2/casus1Corpora.fixture.ts` — **`liveSubjects()`: één regel voor beide live ketenruns.** De geleverde
+  netlist en de verwerping met de laagste `kandidaat_uitkomst[].looptijd_s`, ties op label; gooit op een herkomst zonder
+  looptijd. `casus1V2Candidates.test.ts` draagt de snelle claim (élke kandidaat heeft een looptijd; het onderwerp is
+  nergens duurder dan een ander geleverd bestand; deterministisch) en de `[bytes]`-reproductie heet sindsdien
+  `the cheapest delivered netlist, by recorded runtime, …`; `casus1V2Refusal.test.ts` vergelijkt élk veld van de
+  opgenomen `rejectedTune` in de vorm waarin het opgenomen is (getal op zes decimalen, `null` blijft `null` — F0) en
+  accepteert beide weigeringszinnen (de tuner zegt "no network", een gestelde regel "nothing").
+- `src/lib/netOptimizer.ts` — **`refinedSystemMinImpedanceOhm` + `dipCellsOf` + `BARRIER_DIP_REFINEMENT`, en de vijfde
+  waarde van `zFloorBarrierSource`: `'safety-extended-refined'`.** Het verlengde raster, in de twee cellen rond zijn
+  grove minimum opnieuw opgelost op de eigen punten van de poortsweep; waar het sweep-minimum in een verdichte cel ligt
+  IS de lezing die van de sweep, bit voor bit. Zelfde twee invoeren als `'safety-extended'`; ontbreekt er één, dan
+  stuurt de term niet (V32-regel, geen terugval). `barrierSource.test.ts`: P4 in de lus, de lezing op het zaad is
+  bit-gelijk aan de sweep bij 13 van 1600 punten, een ontbrekend model weigert, en de term leest de functie (bronscan —
+  op het tweewegfixture leveren de verdichte en de verlengde bron bij dit budget hetzelfde netwerk, gemeten, dus de
+  "ander netwerk"-claim wordt door casus 1 gedragen). `frozenNetlistGates.test.ts` (in de V33/A5e.3b-claim): op ÉLKE
+  bevroren netlist ligt de verdichte lezing binnen de vloerspeling van de poort, nooit boven de grove lezing, met
+  hetzelfde oordeel; op de namen die het grove raster boven de speling boekt sluit de verdichting het gat; en zij
+  verplaatst ergens een lezing (niet vacuüm). De recorder schrijft de kolommen `*_E1` en het blok
+  `v33_barriere_raster.verdichting`; `resolutie_boven_speling` blijft wat de ROUTE leest (nog `'safety-extended'`).
+- `src/lib/engine2/predesign/xoWindow.ts` — **`statedCeilingHz` (rule `'stated'`): de spiegel van A5e.3b (b)2.** Eén
+  plafond naast breakup en directiviteit; de LAAGSTE bindt (de reductie die er altijd stond) en `ceilingBy` zegt welke;
+  een spanningsregel zegt aan welke kant van de afgeleide een gesteld plafond landde. `report.ts` leest
+  `ReportSettings.maxCrossingHzByPair` (huis op casus 1: `gestelde_eisen.max_kruispunt_hz_per_paar`, NIET gesteld);
+  `casus1MaxCrossingHzByPair` / `CASUS1_WINDOW_SETTINGS` gespreid op élke plek die het veld afleidt (generator, recorder,
+  meetbank, beide live-tests, `frozenNetlistGates`, `casus1Field.test`, `measure-a5e3b-voormeting`). Absent = het
+  venster van altijd: `candidates.test.ts` pint dat absent en `null` byte-identieke velden geven, dat een gesteld
+  plafond ONDER het afgeleide bindt (bovenpositie erop, `ceilingBy: 'stated'`, zeven posities in plaats van dertien)
+  en één erboven niet, en dat de herkomst élk bekend plafond noemt ("the strictest of directivity 1600 Hz, stated
+  2000 Hz" / "; no stated ceiling"). **De kandidaatherkomst draagt sinds E-1 ook de KOOI en zegt wanneer die
+  eenzijdig is** ("clipped at the ceiling: one-sided, the tune can only leave it downward"): de proza-zin staat NIET in
+  de vingerafdruk (`candidateFieldKey`), dus het corpus reproduceert. De bevinding: geen enkele bekende grens drukt het
+  geleverde kruispunt onder de vensterrand — de kooi op de plafondpositie is eenzijdig en het akoestische kruispunt
+  klapt naar het lokale minimum van mid − tweeter (2056 Hz); de strengste BEKENDE bovengrens blijft 2304 Hz en het
+  veld beweegt niet. `casus1Field.test.ts` ongewijzigd groen.
+- `src/lib/engine2/optimizer/derivedGateRefusal.test.ts` — **de zestien (netlist, weg)-paren EXACT gepind tegen het
+  manifest** (`manifest_en_geometrie.e1_kruispuntafleiding`, door de recorder geschreven: per paar de kruispunten op
+  het ketenraster en op het rapportraster, M-C op beide, beide oordelen, de familie en de engine-stand — gezocht op de
+  gepoorte set met het ketenraster van toen (200–20 000/96) tegen vandaag op beide routes op de gemergede set — en de
+  leesregel). De verse verzameling moet GELIJK zijn aan de opgenomen (een nieuw paar valt om door er niet op te staan,
+  een verdwenen paar door er nog op te staan — de A5e.3c-vorm was een deelverzamelingstoets, de neef van het complement),
+  de opgenomen getallen reproduceren binnen de dB-klasse, en geen paar hoort bij een corpus dat de weigering bestuurt
+  (`bestuurd_door_de_weigering_en_eens: true`).
 
 ### A5e.3c-guards (het veld op de A5e.3b-grenzen; de weigering op de eigen kruispunten; alleen v2-runs)
 - `src/lib/engine2/optimizer/worker.ts` — **een geleverd netwerk dat op de passbands van zijn EIGEN kruispunten een

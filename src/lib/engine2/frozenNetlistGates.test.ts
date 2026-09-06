@@ -98,6 +98,7 @@ import {
   CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN,
   CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM,
   CASUS1_COIL_DCR_SETTINGS,
+  CASUS1_WINDOW_SETTINGS,
 } from './casus1V2.fixture.ts';
 import { smoothDbGaussian } from '../bandMetrics.ts';
 import { applyTransfer, combineN, logspace, resampleImpedance, type GriddedResponse } from '../dsp.ts';
@@ -114,7 +115,7 @@ import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
 import { BUILDABILITY_VERSION } from './metrics/buildability.ts';
 import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay, seriesRMaxOhmOf } from '../levelWork.ts';
 import type { LevelWorkAnalysis } from './report.ts';
-import { busTopology, extendGridToSweepExtent, systemMinImpedanceOhm } from '../netOptimizer.ts';
+import { BARRIER_DIP_REFINEMENT, busTopology, extendGridToSweepExtent, refinedSystemMinImpedanceOhm, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
   sourceProbeIndex,
   sourceResistanceOhm,
@@ -217,6 +218,8 @@ const BASE: ReportSettings = {
    * mid carries no stated figure and is judged on the derived ceiling alone.
    * The single `maxDriveOnFsDb` is no longer stated on this casus. */
   ...(Object.keys(STATED_DRIVE_BY_WAY).length > 0 ? { maxDriveOnFsDbByDriver: { ...STATED_DRIVE_BY_WAY } } : {}),
+  /* E-1 — a stated ceiling per pair, when the project states one (unstated today). */
+  ...CASUS1_WINDOW_SETTINGS,
   /* V50 — the resistor class and margin, spread for the same reason: the
    * REPORT judges every frozen netlist with them, whatever the search does. */
   ...BUILDABILITY,
@@ -863,6 +866,50 @@ describe('V32 — the search gate and the file measurement agree on every frozen
         `${disagree.join('\n')}\nA search aiming at one and judged on the other is V33 all over ` +
         'again, one grid further in',
     ).toEqual([]);
+
+    /* ---- E-1: THE REFINED SOURCE CLOSES THE RESOLUTION GAP, ON EVERY FROZEN NETLIST ----
+     *
+     * The bookkeeping list above (`resolutie_boven_speling`) names the live
+     * designs the EXTENDED grid reads a slack or more away from the gate — on
+     * the A5e.3c corpus KAND_V2_1, whose dip at 416 Hz is narrower than one
+     * safety cell (0.021 oct against 0.042). E-1 adds the fifth barrier source,
+     * `'safety-extended-refined'`: the same grid, re-solved on the sweep's own
+     * points inside the two cells beside its coarse minimum
+     * (`refinedSystemMinImpedanceOhm`, `BARRIER_DIP_REFINEMENT`). The claim
+     * here is the STRICT form the coarse grid could never carry: on EVERY
+     * frozen netlist of the case book — dated corpora included, V28_KAND_2's
+     * 0.006 Ω dead short included — the refined reading lies within the floor
+     * slack of the gate's, never reads above the coarse one, and reaches the
+     * same verdict. Measured 06-09-2026 (`measure-e1-barrier-resolution.ts`):
+     * largest remaining gap 0.0089 Ω, 128 of 161 bit-identical to the sweep,
+     * 12 extra points per evaluation. The v2 route still derives
+     * `'safety-extended'` — switching is a regeneration — so the list above
+     * stays what the route reads; this is what the next route will read. */
+    let worstRefined = { key: '', gap: 0 };
+    let moved = 0;
+    for (const key of NETLIST_KEYS) {
+      const { filter, ref } = searchRef(key);
+      const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
+      const refined = refinedSystemMinImpedanceOhm(filter.netlist, { grid: ext!.grid, driverZ: ext!.driverZ }, ref.impedance!, BARRIER_DIP_REFINEMENT);
+      expect(onSweep, `${key}: the gate grid produced no reading`).not.toBeNull();
+      expect(refined, `${key}: the refined barrier grid produced no reading`).not.toBeNull();
+      const gap = Math.abs(refined!.ohm - onSweep!);
+      expect(gap, `${key}: refined ${refined!.ohm.toFixed(4)} Ω against the gate's ${onSweep!.toFixed(4)} Ω`).toBeLessThan(slack);
+      expect(refined!.ohm, `${key}: the refinement read HIGHER than the coarse grid`).toBeLessThanOrEqual(refined!.coarseOhm);
+      expect(meetsAmpFloor(refined!.ohm, STATED_FLOOR_OHM)).toBe(meetsAmpFloor(onSweep!, STATED_FLOOR_OHM));
+      if (refined!.ohm !== refined!.coarseOhm) moved++;
+      if (gap > worstRefined.gap) worstRefined = { key, gap };
+    }
+    // The names the coarse grid books above the slack are exactly what the refinement is for.
+    for (const key of aboveSlack) {
+      const { filter, ref } = searchRef(key);
+      const refined = refinedSystemMinImpedanceOhm(filter.netlist, { grid: ext!.grid, driverZ: ext!.driverZ }, ref.impedance!, BARRIER_DIP_REFINEMENT)!;
+      const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ)!;
+      expect(Math.abs(refined.ohm - onSweep), `${key}: still ${Math.abs(refined.ohm - onSweep).toFixed(4)} Ω away after refinement`).toBeLessThan(slack);
+    }
+    // ...and the refinement is not vacuous: it moves the reading somewhere on the case book.
+    expect(moved, 'the refinement changed no reading on any frozen netlist — nothing to refine, or nothing wired').toBeGreaterThan(0);
+    expect(worstRefined.gap).toBeGreaterThanOrEqual(0);
   });
 
   it('V33 — the objective really goes through that function, and not through a copy', () => {
@@ -876,8 +923,22 @@ describe('V32 — the search gate and the file measurement agree on every frozen
       .find((l) => /barr \+= AMP_FLOOR_BARRIER_WEIGHT/.test(l));
     expect(barrier, 'the amp-load barrier term has moved or been renamed').toBeDefined();
     expect(barrier).toMatch(/barrierShortOhm\(/);
-    const reader = src.split('\n').find((l) => /const ohm = systemMinImpedanceOhm\(/.test(l));
-    expect(reader, 'the barrier no longer reads through the shared function').toBeDefined();
+    /* E-1 — the term reads TWO shared readers now, and both are pinned: the
+     * coarse one on every source (`systemMinImpedanceOhm`) and the refined one
+     * on `'safety-extended-refined'` (`refinedSystemMinImpedanceOhm`, which
+     * itself takes both of its minima through `minImpedanceAt`). The scan is
+     * confined to the `barrierShortOhm` closure so a reader elsewhere in the
+     * file cannot stand in for the one the term uses. */
+    const term = src.slice(src.indexOf('const barrierShortOhm = ('), src.indexOf('/** Prose about the line above'));
+    expect(term.length, 'the barrierShortOhm closure has moved or been renamed').toBeGreaterThan(0);
+    expect(term, 'the barrier no longer reads through the shared function').toContain(
+      'systemMinImpedanceOhm(net, barrierGrid.grid, barrierGrid.driverZ)',
+    );
+    expect(term, 'the refined source no longer reads through the shared refined reader').toContain(
+      'refinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, BARRIER_DIP_REFINEMENT)',
+    );
+    const refinedFn = src.slice(src.indexOf('export function refinedSystemMinImpedanceOhm('), src.indexOf('/** Soft buildability bounds'));
+    expect((refinedFn.match(/minImpedanceAt\(/g) ?? []).length, 'the refined reader takes its minima through minImpedanceAt, twice').toBe(2);
     // ...and `epdr` takes its minimum through the shared reader as well, or the
     // two sides are one edit away from disagreeing again.
     const electrical = readFileSync(ELECTRICAL, 'utf-8');

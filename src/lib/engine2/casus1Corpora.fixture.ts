@@ -49,6 +49,7 @@ import {
   CASUS1_CONTINUOUS_POWER_W,
   CASUS1_EXCURSION,
   CASUS1_LEVEL_WORK_SETTINGS,
+  CASUS1_WINDOW_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_TARGET_CURVE,
   CASUS1_COIL_DCR_SETTINGS,
@@ -96,6 +97,9 @@ export interface CorpusOutcome {
     geweigerde_tune: Record<string, number | null> | null;
   } | null;
   poorten: { poort: string; waarde: number | null; geslaagd: boolean }[];
+  /** E-1 — de looptijd van deze kandidaat in de generator, seconden wandklok
+   *  onder `V2_JOBS` gelijktijdige processen. Absent in een herkomst van vóór E-1. */
+  looptijd_s?: number;
 }
 
 /** Eén adresseerbaar corpus: onder welke netlist-sleutel elke kandidaat is
@@ -172,6 +176,56 @@ export function loadHerkomst(): Herkomst {
   return JSON.parse(
     readFileSync(join(CASUS1_DIR, '..', 'casus1_v2_herkomst.json'), 'utf-8'),
   ) as Herkomst;
+}
+
+/**
+ * E-1 — WHICH CANDIDATE EACH LIVE CHAIN RUN REPRODUCES: THE CHEAPEST ONE.
+ *
+ * The two live runs (`casus1V2Candidates.test.ts`, the byte reproduction of a
+ * delivered netlist; `casus1V2Refusal.test.ts`, the reproduction of a recorded
+ * refusal) used to take the FIRST entry of their list. On the A5e.3c corpus
+ * that was KAND-V2-1 — 377.8 · 1948, the most expensive candidate of the
+ * field (8671 s in the generator, 7182 s live) — and the full suite cost two
+ * hours for a claim any delivered netlist carries equally. Since E-1 the
+ * subject is the delivered netlist with the LOWEST recorded runtime
+ * (`kandidaat_uitkomst[].looptijd_s`, the generator's own wall clock), and the
+ * refusal likewise; ties break on the label, so the choice is deterministic
+ * and a regeneration cannot make two runs pick different subjects.
+ *
+ * ONE RULE, TWO READERS — and it throws rather than guesses: a candidate
+ * without a recorded runtime is a herkomst from before E-1, and "the cheapest"
+ * cannot be read off a list that does not carry the cost.
+ */
+export interface LiveSubjects {
+  /** The delivered netlist with the lowest recorded runtime; null on an empty corpus. */
+  delivered: { name: string; label: string; seconds: number } | null;
+  /** The refusal with the lowest recorded runtime; null when nothing was refused. */
+  refused: { label: string; kinds: string[]; reason: string; seconds: number } | null;
+}
+
+export function liveSubjects(herkomst: Herkomst = loadHerkomst()): LiveSubjects {
+  const secondsOf = new Map<string, number>();
+  for (const o of herkomst.kandidaat_uitkomst) {
+    if (typeof o.looptijd_s !== 'number' || !Number.isFinite(o.looptijd_s) || o.looptijd_s <= 0) {
+      throw new Error(
+        `${o.label} carries no recorded runtime (looptijd_s) — a herkomst from before E-1; ` +
+          'regenerate, or backfill it from the shards, before a live run can pick its subject',
+      );
+    }
+    secondsOf.set(o.label, o.looptijd_s);
+  }
+  /* Lowest runtime first, then the label: a strict order with no ties. */
+  const byCost = (a: string, b: string): number =>
+    (secondsOf.get(a) ?? Infinity) - (secondsOf.get(b) ?? Infinity) || (a < b ? -1 : a > b ? 1 : 0);
+  const delivered = [...herkomst.bestanden].sort((a, b) => byCost(a.label, b.label))[0] ?? null;
+  const refusals = herkomst.kandidaat_uitkomst.filter((o) => o.verwerping !== null);
+  const refused = [...refusals].sort((a, b) => byCost(a.label, b.label))[0] ?? null;
+  return {
+    delivered: delivered ? { name: delivered.name, label: delivered.label, seconds: secondsOf.get(delivered.label)! } : null,
+    refused: refused
+      ? { label: refused.label, kinds: [...refused.verwerping!.regels], reason: refused.verwerping!.reden, seconds: secondsOf.get(refused.label)! }
+      : null,
+  };
 }
 
 function datedCorpus(block: string, name: string, golden: GoldenRefs): Corpus {
@@ -279,6 +333,8 @@ export function corpusBank(golden: GoldenRefs = loadGolden(), set: Casus1Measure
     ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
       ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
       : {}),
+    /* E-1 — a stated ceiling per pair, when the project states one (unstated today). */
+    ...CASUS1_WINDOW_SETTINGS,
     ...CASUS1_BUILDABILITY,
     /* V51 — the wiring per way and the level-work requirement, so the
      * level-work column of a corpus comparison reads the rule the corpus was

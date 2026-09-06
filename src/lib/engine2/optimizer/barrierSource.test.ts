@@ -10,11 +10,14 @@
  * casus 1 five of fifteen candidates had their entire value tune refused for a
  * dip at ~82 Hz the objective could not see.
  *
- * THREE SOURCES, AND ONE READER. `'grid'` (the default, and therefore the v1
- * behaviour), `'safety'` (the tuner's own full-band safety grid, which every
- * other amp-floor reader has always used) and `'sweep'` (the gate's own
- * reference, identical number and identical resolution — and correspondingly
- * expensive). All three go through `systemMinImpedanceOhm` → `minImpedanceAt`,
+ * THREE SOURCES, AND ONE READER — FIVE SINCE E-1. `'grid'` (the default, and
+ * therefore the v1 behaviour), `'safety'` (the tuner's own full-band safety
+ * grid, which every other amp-floor reader has always used) and `'sweep'`
+ * (the gate's own reference, identical number and identical resolution — and
+ * correspondingly expensive); A5e.3b added `'safety-extended'` (the safety
+ * grid widened to the sweeps' extent) and E-1 `'safety-extended-refined'`
+ * (the same grid, refined around its minimum with the sweep's own points —
+ * the last claim of this file). All go through `systemMinImpedanceOhm` → `minImpedanceAt`,
  * so the GRID is a parameter rather than a second implementation. That is the
  * claim this file guards; how far apart `'safety'` and `'sweep'` actually read
  * is a MEASUREMENT, and it lives in `frozenNetlistGates.test.ts` where there is
@@ -40,9 +43,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
+  BARRIER_DIP_REFINEMENT,
   extendGridToSweepExtent,
   optimizeNetworkValues,
+  refinedSystemMinImpedanceOhm,
   systemMinImpedanceOhm,
   type NetOptimizeOptions,
 } from '../../netOptimizer.ts';
@@ -182,11 +190,12 @@ describe('V33 — the barrier source is a choice, and its default is what it alw
      * an unsteered barrier and an unarmed one are not the same run. Measured
      * here: the unarmed arm comes back with `ampFloorRepair: 'lifted'`. One
      * source for one term means a source with no data stops both. */
-    for (const source of ['safety', 'sweep', 'safety-extended'] as const) {
-      /* `'safety-extended'` needs BOTH the safety set and the reference; the
-       * arm below withholds the reference, which is the missing half a caller
-       * is most likely to forget. */
-      const withData = source === 'sweep' || source === 'safety-extended' ? { safety } : {};
+    for (const source of ['safety', 'sweep', 'safety-extended', 'safety-extended-refined'] as const) {
+      /* `'safety-extended'` — and E-1's `'safety-extended-refined'` — need BOTH
+       * the safety set and the reference; the arm below withholds the
+       * reference, which is the missing half a caller is most likely to
+       * forget. */
+      const withData = source !== 'safety' ? { safety } : {};
       const control = run({ ...ARMED, ...withData, zFloorBarrierSource: 'grid' });
       const asked = run({ ...ARMED, ...withData, zFloorBarrierSource: source });
       expect(
@@ -260,5 +269,60 @@ describe('V33 — the barrier source is a choice, and its default is what it alw
     const { [model]: _dropped, ...partial } = deeper.driverZ;
     void _dropped;
     expect(extendGridToSweepExtent({ freqs: safety.freqs, z: safety.z }, { grid: deeper.grid, driverZ: partial })).toBeNull();
+  });
+
+  it('E-1 — `safety-extended-refined` reads the sweep\'s own minimum where the coarse grid lands beside it, at a fraction of the sweep\'s points, and it reaches the search', () => {
+    /* THE FIFTH VALUE. A5e.3b closed the barrier's EXTENT; what stayed open
+     * was its RESOLUTION on a narrow dip: on casus 1 KAND_V2_1 reads 2.5536 Ω
+     * on the sweep and 2.6349 on the extended grid (0.081 Ω, above the
+     * 0.052 Ω slack) because the dip at 416 Hz is narrower than one safety
+     * cell. The refined source re-solves the sweep's OWN points inside the
+     * cells beside the coarse minimum: same solver, same points, same
+     * `minImpedanceAt` rule — so where the sweep minimum lies in a refined
+     * cell the reading IS the sweep's, bit for bit. The measurement that
+     * chose the refinement (global minimum only, 12 points, +3 % per
+     * evaluation) is in `measure-e1-barrier-resolution.ts`; the claim on the
+     * real corpus is in `frozenNetlistGates.test.ts`. */
+    const net = v2Netlist(v2SeedParts());
+    const ext = extendGridToSweepExtent({ freqs: safety.freqs, z: safety.z }, impedance!)!;
+    const coarse = systemMinImpedanceOhm(net, ext.grid, ext.driverZ)!;
+    const sweep = systemMinImpedanceOhm(net, impedance!.grid, impedance!.driverZ)!;
+    // The premise: on this seed the coarse grid lands BESIDE the sweep's minimum.
+    expect(coarse).toBeGreaterThan(sweep);
+    const refined = refinedSystemMinImpedanceOhm(net, ext, impedance!, BARRIER_DIP_REFINEMENT);
+    expect(refined).not.toBeNull();
+    expect(refined!.coarseOhm).toBe(coarse);
+    // Bit for bit the sweep's reading — the same points through the same solver.
+    expect(refined!.ohm).toBe(sweep);
+    // ...at a fraction of the sweep's points: the two cells beside the minimum.
+    expect(refined!.refinedPoints).toBeGreaterThan(0);
+    expect(refined!.cells).toBe(2);
+    expect(refined!.refinedPoints).toBeLessThan(impedance!.grid.length / 10);
+    /* A model the fine reference does not carry refuses the merge rather than
+     * reading the coarse grid alone — the V32 rule, one grid further in. */
+    const model = Object.keys(safety.z)[0];
+    const { [model]: _dropped, ...partial } = impedance!.driverZ;
+    void _dropped;
+    expect(refinedSystemMinImpedanceOhm(net, ext, { grid: impedance!.grid, driverZ: partial }, BARRIER_DIP_REFINEMENT)).toBeNull();
+    /* And it is WIRED (V23), in two halves. The run: the source tunes, and its
+     * note names the refinement. On THIS fixture the refined and the extended
+     * source deliver the same network at this budget — measured, not assumed:
+     * the 0.015 Ω the seed's reading moves is under the floor the run steers
+     * toward and the simplex lands on the same values — so "a different
+     * network comes out" cannot be the claim here; it is carried on casus 1,
+     * where the reading moves a floor slack or more (`frozenNetlistGates`).
+     * What can be claimed here is the term: the barrier's shortfall reads
+     * through `refinedSystemMinImpedanceOhm` on this source and through
+     * `systemMinImpedanceOhm` on every other — a scan, for the reason V33's
+     * own scan exists (a claim about WHICH expression a term contains). */
+    const onRefined = run({ ...ARMED, safety, zFloorBarrierSource: 'safety-extended-refined', ...sweepData });
+    expect(onRefined.tuned).toBeGreaterThan(0);
+    expect(onRefined.zFloorSourceNote).toContain('refined');
+    expect(onRefined.zFloorSourceNote).toContain(BARRIER_DIP_REFINEMENT.kind);
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'netOptimizer.ts'), 'utf-8');
+    const term = src.slice(src.indexOf('const barrierShortOhm = ('), src.indexOf('/** Prose about the line above'));
+    expect(term).toContain('refinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, BARRIER_DIP_REFINEMENT)');
+    expect(term).toContain('systemMinImpedanceOhm(net, barrierGrid.grid, barrierGrid.driverZ)');
+    expect(src).toContain("barrierSource === 'safety-extended-refined' && barrierGrid !== null && opts.zFloorBarrierImpedance");
   });
 });

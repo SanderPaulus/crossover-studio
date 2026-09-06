@@ -49,6 +49,7 @@ import {
   casus1LowestWayLevelWorkRule,
   casus1MaxDriveOnFsDb,
   casus1MaxDriveOnFsDbByDriver,
+  casus1MaxCrossingHzByPair,
   casus1QesMultiplierMax,
   casus1TargetCurve,
   casus1ThermalDesignPowerW,
@@ -285,6 +286,18 @@ export const CASUS1_EXCURSION = casus1ExcursionSettings();
  * which is what V50 ends.
  */
 export const CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER: Record<string, number> = casus1MaxDriveOnFsDbByDriver();
+
+/**
+ * E-1 — the stated maximum handover per pair (`gestelde_eisen.max_kruispunt_hz_per_paar`),
+ * and the report-settings fragment that carries it — SPREAD at every site that
+ * builds a casus-1 report the field is derived from (the V42 rule: one
+ * definition, so an unstated ceiling feeds nothing and every reader agrees).
+ * Empty on casus 1 today: the mechanism is the mirror of A5e.3b's stated-figure
+ * floor, the pre-measurement is `measure-e1-mt-ceiling.ts`.
+ */
+export const CASUS1_MAX_CROSSING_HZ_BY_PAIR: Record<string, number> = casus1MaxCrossingHzByPair();
+export const CASUS1_WINDOW_SETTINGS: { maxCrossingHzByPair?: Record<string, number> } =
+  Object.keys(CASUS1_MAX_CROSSING_HZ_BY_PAIR).length > 0 ? { maxCrossingHzByPair: { ...CASUS1_MAX_CROSSING_HZ_BY_PAIR } } : {};
 
 /**
  * V50 — the CONTINUOUS amplifier power, from its one home in the manifest. It

@@ -38,6 +38,17 @@
  * protects nothing; the discipline is `workerRouteRegression.test.ts`'s and the
  * reasoning is the same.
  *
+ * WHICH candidate runs live is, since E-1 (06-09-2026), the CHEAPEST delivered
+ * one: the netlist with the lowest runtime the generator recorded
+ * (`kandidaat_uitkomst[].looptijd_s`; `liveSubjects` in
+ * `casus1Corpora.fixture.ts`, one rule for both live files). It used to be the
+ * first file of the shortlist, and on the A5e.3c corpus that was KAND-V2-1 —
+ * the most expensive candidate of the whole field (8671 s in the generator,
+ * 7182 s live), so the full suite cost two hours for a claim every delivered
+ * netlist carries equally. The choice is deterministic (ties break on the
+ * label) and it is in the test name, so a reader of a run sees which subject
+ * it was without opening the provenance block.
+ *
  * FIFTEEN CANDIDATES, FEWER FILES — and the gap between those two numbers is
  * where the interesting part of this casus now lives. The F4d follow-up
  * suspended the F3c recommended-band excision (casebook V28): the zone it cut is
@@ -80,6 +91,7 @@ import {
   CASUS1_BUILDABILITY,
   CASUS1_BUILDABILITY_ON_SEARCH,
   CASUS1_CONTINUOUS_POWER_W,
+  CASUS1_WINDOW_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_GRID,
@@ -109,6 +121,7 @@ import { SEARCH_SMOOTHING_OCTAVES } from './constants.ts';
 import { SYNTHESIS_LEAN_DEFAULT_DB } from '../synthesis.ts';
 import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../vfOptimizer.ts';
 import { compareDesigns } from './predesign/comparison.ts';
+import { liveSubjects } from './casus1Corpora.fixture.ts';
 import { stableJson } from './optimizer/determinism.ts';
 import { handleV2Request, type V2Chain3Payload, type V2Response } from './optimizer/worker.ts';
 import type { Chain3Input, Chain3Result } from '../threeWayChain.ts';
@@ -125,6 +138,8 @@ const HERKOMST = JSON.parse(
   run_vingerafdruk: string;
   gegenereerd_op_commit: string;
   bestanden: { name: string; label: string }[];
+  /** E-1 — per candidate, delivered or refused, with the generator's own runtime. */
+  kandidaat_uitkomst: { label: string; verwerping: unknown; looptijd_s?: number }[];
   generator_parameters: { derivedSize: number; deliveredSize: number };
   shortlist: { overwogen: number; bevroren: number; leverde_geen_netwerk: number };
   /** V31 — the candidates that delivered no network, and the rule that refused each. */
@@ -241,6 +256,8 @@ const REPORT_SETTINGS = {
   ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
     ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
     : {}),
+  /* E-1 — a stated ceiling per pair, when the project states one (unstated today). */
+  ...CASUS1_WINDOW_SETTINGS,
   ...CASUS1_BUILDABILITY,
   /* V51 — the wiring and the level-work requirement, for the same reason. */
   ...CASUS1_LEVEL_WORK_SETTINGS,
@@ -330,6 +347,40 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(HERKOMST.generator_parameters.derivedSize).toBeGreaterThanOrEqual(
       HERKOMST.generator_parameters.deliveredSize,
     );
+  });
+
+  it('E-1 — every candidate carries its runtime, and the live subjects are the CHEAPEST delivered netlist and the CHEAPEST refusal, deterministically', () => {
+    /* The rule the two live files pick their subject by, checked where it is
+     * cheap. Three claims: every candidate — delivered or refused — carries a
+     * finite runtime (the generator writes it from the shard); the delivered
+     * subject costs no more than any other delivered netlist and the refused
+     * subject no more than any other refusal; and the choice is a strict
+     * order (runtime, then label), so two readers cannot pick two subjects. */
+    const seconds = new Map(HERKOMST.kandidaat_uitkomst.map((o) => [o.label, o.looptijd_s]));
+    for (const o of HERKOMST.kandidaat_uitkomst) {
+      expect(typeof o.looptijd_s === 'number' && Number.isFinite(o.looptijd_s) && o.looptijd_s > 0, `${o.label}: no recorded runtime`).toBe(true);
+    }
+    const subjects = liveSubjects();
+    if (HERKOMST.bestanden.length === 0) {
+      expect(subjects.delivered).toBeNull();
+    } else {
+      expect(subjects.delivered).not.toBeNull();
+      for (const b of HERKOMST.bestanden) {
+        expect(subjects.delivered!.seconds, `${b.name} is cheaper than the chosen subject ${subjects.delivered!.name}`).toBeLessThanOrEqual(seconds.get(b.label)!);
+      }
+      // ...and the subject IS a delivered file, matched on the label.
+      expect(HERKOMST.bestanden.some((b) => b.name === subjects.delivered!.name && b.label === subjects.delivered!.label)).toBe(true);
+    }
+    const refusals = HERKOMST.kandidaat_uitkomst.filter((o) => o.verwerping !== null);
+    if (refusals.length === 0) {
+      expect(subjects.refused).toBeNull();
+    } else {
+      expect(subjects.refused).not.toBeNull();
+      for (const r of refusals) expect(subjects.refused!.seconds).toBeLessThanOrEqual(seconds.get(r.label)!);
+      expect(HERKOMST.verwerpingen.some((v) => v.label === subjects.refused!.label)).toBe(true);
+    }
+    // Deterministic: asking twice is the same answer.
+    expect(stableJson(liveSubjects())).toBe(stableJson(subjects));
   });
 
   it('the provenance block names the MEASUREMENT SETUP — synthesis, gates, budgets', () => {
@@ -698,7 +749,7 @@ describe('the comparison block on casus 1', () => {
  * van beide tags stil groeit.
  */
 describe('[live] the run still delivers the frozen netlist', () => {
-  it('[bytes] one candidate, live through handleV2Request, byte for byte', () => {
+  it('[bytes] the cheapest delivered netlist, by recorded runtime, live through handleV2Request, byte for byte', () => {
     /* M-1 — NOTHING TO REPRODUCE, and that is the finding and not a gap: the
      * M-1 field delivered none of its 115 candidates. The live reproduction of
      * the route is then the REFUSAL run (`casus1V2Refusal.test.ts`), which
@@ -714,10 +765,15 @@ describe('[live] the run still delivers the frozen netlist', () => {
     const rep = report('HUIDIG');
     const field = casus1Field(rep);
     const gridded = casus1ChainInput(manifest, files, golden);
-    /* The candidate whose FILE this compares against. Picked by the label the
-     * provenance block records rather than by position, so a reordering of the
-     * shortlist cannot silently make this compare two different designs. */
-    const target = HERKOMST.bestanden[0];
+    /* The candidate whose FILE this compares against: since E-1 the delivered
+     * netlist with the LOWEST recorded runtime (`liveSubjects`, one rule for
+     * both live files), matched by the label the provenance block records
+     * rather than by position, so a reordering of the shortlist cannot
+     * silently make this compare two different designs. */
+    const subject = liveSubjects().delivered;
+    expect(subject, 'no delivered netlist carries a recorded runtime').toBeTruthy();
+    const target = HERKOMST.bestanden.find((b) => b.name === subject!.name)!;
+    expect(target, `the provenance block no longer lists ${subject!.name}`).toBeTruthy();
     const c = field.field.candidates.find((x) => x.label === target.label);
     /* A5e.3c — BACK TO LIFE. Between A5e.3b and A5e.3c this reproduction was
      * RETIRED with a pin (the recorded candidate had to exist in the DATED

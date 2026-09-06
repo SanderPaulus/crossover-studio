@@ -361,6 +361,67 @@ describe('N-way — the generator takes a product and counts nothing', () => {
   });
 });
 
+describe('E-1 — a STATED ceiling is one limit among the ceilings, and the strictest binds (the mirror of the A5e.3b floor)', () => {
+  /* The ceiling side of A5d.3 knew the breakup ceiling and the directivity
+   * ceiling and nothing a designer could state. E-1 adds `statedCeilingHz`,
+   * read by `crossoverWindow` beside the derived ceilings, with the same
+   * reduction that always applied — the LOWEST ceiling binds — so a stated
+   * bound below the derived one takes over and one above it changes nothing
+   * but is named. Absent = the window it always was (P2/P4). */
+  const derivedTop = 1600;
+  const base = flatWindow(400, derivedTop);
+
+  it('absent and null are the window it always was — byte-identical fields', () => {
+    const absent = one(base);
+    const nulled = one({ ...base, statedCeilingHz: null });
+    expect(JSON.stringify(nulled)).toBe(JSON.stringify(absent));
+    expect(absent.axes[0].window['4'].ceilingBy!.rule).toBe('directivity');
+    expect(absent.axes[0].window['4'].limits.some((l) => l.rule === 'stated')).toBe(false);
+  });
+
+  it('a stated ceiling BELOW the derived one binds: the top position lands on it and the window names the rule', () => {
+    const f = one({ ...base, statedCeilingHz: 800, statedCeilingSource: 'test' });
+    const w = f.axes[0].window['4'];
+    expect(w.ceilingHz).toBe(800);
+    expect(w.ceilingBy!.rule).toBe('stated');
+    expect(w.limits.filter((l) => l.side === 'ceiling').map((l) => l.rule).sort()).toEqual(['directivity', 'stated']);
+    const hz = f.candidates.map((c) => c.crossings[0].hz);
+    expect(hz[hz.length - 1]).toBeCloseTo(800, 1);
+    expect(f.candidates.length).toBe(7); // one octave at the smoothing, not two
+    expect(w.tensions.join(' ')).toMatch(/stated ceiling of 800 Hz is stricter than the derived one \(1600 Hz, directivity\)/);
+  });
+
+  it('a stated ceiling ABOVE the derived one does not bind, and the provenance still names every ceiling the window knows', () => {
+    const f = one({ ...base, statedCeilingHz: 2000, statedCeilingSource: 'test' });
+    const w = f.axes[0].window['4'];
+    expect(w.ceilingHz).toBe(derivedTop);
+    expect(w.ceilingBy!.rule).toBe('directivity');
+    expect(w.tensions.join(' ')).toMatch(/stated ceiling of 2000 Hz lies above the derived one \(1600 Hz, directivity\)/);
+    const top = f.candidates[f.candidates.length - 1].crossings[0];
+    expect(top.provenance).toContain('ceiling 1600 Hz (directivity — the strictest of directivity 1600 Hz, stated 2000 Hz)');
+    // ...and without a stated one the inventory says so, rather than listing one rule as if it were the only one.
+    const bare = one(base).candidates[0].crossings[0];
+    expect(bare.provenance).toContain('the strictest of directivity 1600 Hz; no stated ceiling');
+  });
+
+  it('a position ON a band edge has a ONE-SIDED cage, and the provenance says which way it can leave', () => {
+    /* Measured on the A5e.3c field: every delivered network on the ceiling
+     * position crossed below it, every one on the floor position at or above
+     * it. The cage is clipped at the segment edge (`positionsAlong`), so the
+     * geometry is one-sided by construction — worth reading off the candidate. */
+    const f = one(base);
+    const first = f.candidates[0].crossings[0];
+    const last = f.candidates[f.candidates.length - 1].crossings[0];
+    const inner = f.candidates[3].crossings[0];
+    expect(first.cageHz[0]).toBeCloseTo(400, 1);
+    expect(first.provenance).toContain('clipped at the floor: one-sided, the tune can only leave it upward');
+    expect(last.cageHz[1]).toBeCloseTo(derivedTop, 1);
+    expect(last.provenance).toContain('clipped at the ceiling: one-sided, the tune can only leave it downward');
+    expect(inner.provenance).toMatch(/cage [\d.]+–[\d.]+ Hz; order/);
+    expect(inner.provenance).not.toContain('clipped');
+  });
+});
+
 describe('provenance travels with every candidate', () => {
   const f = one(flatWindow(400, 1600, 261), [4]);
 

@@ -150,17 +150,21 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
      * een byte-vergelijking van een tuner-run tegen een fixture die op
      * darwin/arm64 is opgenomen.
      *
+     * E-1 hernoemde de eerste: de byte-reproductie kiest sinds E-1 de
+     * GOEDKOOPSTE geleverde netlist (laagste geregistreerde looptijd) en zegt
+     * dat in haar naam. Nog steeds zes namen en tien gedraaide tests.
+     *
      * M-1 hernoemde twee van de zes: de oordelenblokken worden sindsdien
      * vergeleken MINUS de ene rij die de reparatie van de beschermingsregel
      * wegnam (M-C op de laagste weg van het tweewegfixture), en het derde
      * gedateerde blok `verdicts_sinds_M1` pint de gecorrigeerde verzameling
      * in dezelfde test. Nog steeds zes namen en tien gedraaide tests. */
     expect(taggedNames(BYTES_TAG)).toEqual([
-      `${BYTES_TAG} one candidate, live through handleV2Request, byte for byte`,
       `${BYTES_TAG} seed %i: ALL SIX verdicts reproduce the V50 block minus that row, and the M-1 block in full`,
       `${BYTES_TAG} seed %i: so does the F4b2 shape — the fixture pins both`,
       `${BYTES_TAG} seed %i: the F4c shape reproduces the STORED F4b2 network`,
       `${BYTES_TAG} seed %i: the VERDICTS reproduce their own V32 block, minus the ONE row M-1 removed`,
+      `${BYTES_TAG} the cheapest delivered netlist, by recorded runtime, live through handleV2Request, byte for byte`,
       `${BYTES_TAG} today the real route still reproduces the stored network`,
     ]);
   });

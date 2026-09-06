@@ -1,0 +1,854 @@
+{
+ "_": "E-1 — DOCUMENTATIE (scripts/measure-e1-mt-ceiling.ts): de inventaris van de M-T-bovenkant, de drift per geleverde netlist, de knik in het ruwe niveauverschil, en het veld onder de strengste bekende grens en onder een gesteld plafond op de gemeten landing. Geen acceptatiewaarde.",
+ "venster_mt": {
+  "vloer_hz": 1646.9446029684202,
+  "plafond_hz": 2304.026472037768,
+  "vloer_bindt": "drive-stated",
+  "plafond_bindt": "breakup",
+  "grenzen": [
+   {
+    "kant": "floor",
+    "regel": "validity",
+    "hz": 396.7,
+    "bindt": false
+   },
+   {
+    "kant": "floor",
+    "regel": "fs",
+    "hz": 1294,
+    "bindt": false
+   },
+   {
+    "kant": "floor",
+    "regel": "drive",
+    "hz": 1184.2,
+    "bindt": false
+   },
+   {
+    "kant": "floor",
+    "regel": "drive-stated",
+    "hz": 1646.9,
+    "bindt": true
+   },
+   {
+    "kant": "ceiling",
+    "regel": "breakup",
+    "hz": 2304,
+    "bindt": true
+   },
+   {
+    "kant": "ceiling",
+    "regel": "directivity",
+    "hz": 5387.6,
+    "bindt": false
+   }
+  ],
+  "zones": [
+   {
+    "soort": "good",
+    "hz": [
+     0,
+     1194.7
+    ],
+    "buiten_venster": true,
+    "label": "wide frontal radiation (spacing well under half a wavelength)"
+   },
+   {
+    "soort": "bad",
+    "hz": [
+     1327.4,
+     1858.4
+    ],
+    "buiten_venster": false,
+    "label": "the WORST lobing zone"
+   },
+   {
+    "soort": "good",
+    "hz": [
+     2654.8,
+     3716.7
+    ],
+    "buiten_venster": true,
+    "label": "second favourable zone (about one wavelength)"
+   }
+  ],
+  "gesteld_plafond": null,
+  "spanningen": [
+   "The favourable lobing zone (2655-3717 Hz) lies entirely ABOVE the ceiling (2304 Hz, breakup). Lobing and the ceiling want opposite things here - that is a real tension of this driver combination, not something the filter can resolve.",
+   "The worst lobing zone (1327-1858 Hz) overlaps the feasible window: part of the window is worse than the rest of it."
+  ]
+ },
+ "drift": [
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_10",
+   "label": "woofer→mid 178.4 LR4 · mid→tweeter 1646.9 LR4",
+   "gesteld_hz": [
+    178.4,
+    1646.9
+   ],
+   "kooi_hz": [
+    [
+     162.4,
+     195.9
+    ],
+    [
+     1646.9,
+     1791.1
+    ]
+   ],
+   "rapport_hz": [
+    254.5,
+    1636.8
+   ],
+   "ketenraster_hz": [
+    254.4,
+    1628.3
+   ],
+   "mt_drift_rapport_hz": -10.1,
+   "mt_drift_ketenraster_hz": -18.6,
+   "mt_verlaat_kooi": "omlaag",
+   "wm_drift_rapport_hz": 76.1
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_7",
+   "label": "woofer→mid 215.2 LR4 · mid→tweeter 2304 LR4",
+   "gesteld_hz": [
+    215.2,
+    2304
+   ],
+   "kooi_hz": [
+    [
+     195.9,
+     236.4
+    ],
+    [
+     2118.5,
+     2304
+    ]
+   ],
+   "rapport_hz": [
+    280.9,
+    2243.2
+   ],
+   "ketenraster_hz": [
+    281,
+    2236.4
+   ],
+   "mt_drift_rapport_hz": -60.8,
+   "mt_drift_ketenraster_hz": -67.6,
+   "mt_verlaat_kooi": "nee",
+   "wm_drift_rapport_hz": 65.7
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_4",
+   "label": "woofer→mid 259.6 LR4 · mid→tweeter 1646.9 LR4",
+   "gesteld_hz": [
+    259.6,
+    1646.9
+   ],
+   "kooi_hz": [
+    [
+     236.4,
+     285.1
+    ],
+    [
+     1646.9,
+     1791.1
+    ]
+   ],
+   "rapport_hz": [
+    341.1,
+    1772.4
+   ],
+   "ketenraster_hz": [
+    341.2,
+    1772.4
+   ],
+   "mt_drift_rapport_hz": 125.5,
+   "mt_drift_ketenraster_hz": 125.5,
+   "mt_verlaat_kooi": "nee",
+   "wm_drift_rapport_hz": 81.5
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_9",
+   "label": "woofer→mid 259.6 LR4 · mid→tweeter 1947.9 LR4",
+   "gesteld_hz": [
+    259.6,
+    1947.9
+   ],
+   "kooi_hz": [
+    [
+     236.4,
+     285.1
+    ],
+    [
+     1791.1,
+     2118.5
+    ]
+   ],
+   "rapport_hz": [
+    294.9,
+    2043.3
+   ],
+   "ketenraster_hz": [
+    294.9,
+    2045.4
+   ],
+   "mt_drift_rapport_hz": 95.4,
+   "mt_drift_ketenraster_hz": 97.5,
+   "mt_verlaat_kooi": "nee",
+   "wm_drift_rapport_hz": 35.3
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_6",
+   "label": "woofer→mid 259.6 LR4 · mid→tweeter 2304 LR4",
+   "gesteld_hz": [
+    259.6,
+    2304
+   ],
+   "kooi_hz": [
+    [
+     236.4,
+     285.1
+    ],
+    [
+     2118.5,
+     2304
+    ]
+   ],
+   "rapport_hz": [
+    340.8,
+    2052.1
+   ],
+   "ketenraster_hz": [
+    340.8,
+    2053.6
+   ],
+   "mt_drift_rapport_hz": -251.9,
+   "mt_drift_ketenraster_hz": -250.4,
+   "mt_verlaat_kooi": "omlaag",
+   "wm_drift_rapport_hz": 81.2
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_8",
+   "label": "woofer→mid 313.2 LR4 · mid→tweeter 1646.9 LR4",
+   "gesteld_hz": [
+    313.2,
+    1646.9
+   ],
+   "kooi_hz": [
+    [
+     285.1,
+     344
+    ],
+    [
+     1646.9,
+     1791.1
+    ]
+   ],
+   "rapport_hz": [
+    340.7,
+    1727.8
+   ],
+   "ketenraster_hz": [
+    340.8,
+    1730.1
+   ],
+   "mt_drift_rapport_hz": 80.9,
+   "mt_drift_ketenraster_hz": 83.2,
+   "mt_verlaat_kooi": "nee",
+   "wm_drift_rapport_hz": 27.5
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_3",
+   "label": "woofer→mid 377.8 LR4 · mid→tweeter 1646.9 LR4",
+   "gesteld_hz": [
+    377.8,
+    1646.9
+   ],
+   "kooi_hz": [
+    [
+     344,
+     414.9
+    ],
+    [
+     1646.9,
+     1791.1
+    ]
+   ],
+   "rapport_hz": [
+    456.9,
+    1698.8
+   ],
+   "ketenraster_hz": [
+    456.2,
+    1699.8
+   ],
+   "mt_drift_rapport_hz": 51.9,
+   "mt_drift_ketenraster_hz": 52.9,
+   "mt_verlaat_kooi": "nee",
+   "wm_drift_rapport_hz": 79.1
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_1",
+   "label": "woofer→mid 377.8 LR4 · mid→tweeter 1947.9 LR4",
+   "gesteld_hz": [
+    377.8,
+    1947.9
+   ],
+   "kooi_hz": [
+    [
+     344,
+     414.9
+    ],
+    [
+     1791.1,
+     2118.5
+    ]
+   ],
+   "rapport_hz": [
+    431.6,
+    1717.5
+   ],
+   "ketenraster_hz": [
+    434.3,
+    1720.2
+   ],
+   "mt_drift_rapport_hz": -230.4,
+   "mt_drift_ketenraster_hz": -227.7,
+   "mt_verlaat_kooi": "omlaag",
+   "wm_drift_rapport_hz": 53.8
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_2",
+   "label": "woofer→mid 377.8 LR4 · mid→tweeter 2304 LR4",
+   "gesteld_hz": [
+    377.8,
+    2304
+   ],
+   "kooi_hz": [
+    [
+     344,
+     414.9
+    ],
+    [
+     2118.5,
+     2304
+    ]
+   ],
+   "rapport_hz": [
+    437,
+    2049.4
+   ],
+   "ketenraster_hz": [
+    434.7,
+    2049.4
+   ],
+   "mt_drift_rapport_hz": -254.6,
+   "mt_drift_ketenraster_hz": -254.6,
+   "mt_verlaat_kooi": "omlaag",
+   "wm_drift_rapport_hz": 59.2
+  },
+  {
+   "corpus": "A5e.3c",
+   "netlist": "KAND_V2_5",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 1646.9 LR4",
+   "gesteld_hz": [
+    549.7,
+    1646.9
+   ],
+   "kooi_hz": [
+    [
+     500.5,
+     549.7
+    ],
+    [
+     1646.9,
+     1791.1
+    ]
+   ],
+   "rapport_hz": [
+    553.1,
+    1704
+   ],
+   "ketenraster_hz": [
+    552.9,
+    1705.2
+   ],
+   "mt_drift_rapport_hz": 57.1,
+   "mt_drift_ketenraster_hz": 58.3,
+   "mt_verlaat_kooi": "nee",
+   "wm_drift_rapport_hz": 3.4
+  },
+  {
+   "corpus": "A5e.3c (niet bevroren)",
+   "netlist": "woofer→mid 549.7 LR4 · mid→tweeter 2304 LR4",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 2304 LR4",
+   "gesteld_hz": [
+    549.7,
+    2304
+   ],
+   "kooi_hz": [
+    [
+     500.5,
+     549.7
+    ],
+    [
+     2118.5,
+     2304
+    ]
+   ],
+   "rapport_hz": [
+    535.2,
+    2050
+   ],
+   "ketenraster_hz": [
+    531.8,
+    2050.1
+   ],
+   "mt_drift_rapport_hz": -254,
+   "mt_drift_ketenraster_hz": -253.9,
+   "mt_verlaat_kooi": "omlaag",
+   "wm_drift_rapport_hz": -14.5
+  },
+  {
+   "corpus": "A5e.3-veld",
+   "netlist": "A5E3VELD_KAND_1",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 1494.8 LR4",
+   "gesteld_hz": [
+    549.7,
+    1494.8
+   ],
+   "kooi_hz": null,
+   "rapport_hz": [
+    408.7,
+    2302.8
+   ],
+   "ketenraster_hz": [
+    405.3,
+    2305.2
+   ],
+   "mt_drift_rapport_hz": 808,
+   "mt_drift_ketenraster_hz": 810.4,
+   "mt_verlaat_kooi": null,
+   "wm_drift_rapport_hz": -141
+  },
+  {
+   "corpus": "A5e.3-veld",
+   "netlist": "A5E3VELD_KAND_2",
+   "label": "woofer→mid 229.1 LR4 · mid→tweeter 1726.7 LR4",
+   "gesteld_hz": [
+    229.1,
+    1726.7
+   ],
+   "kooi_hz": null,
+   "rapport_hz": [
+    357.8,
+    1558.2
+   ],
+   "ketenraster_hz": [
+    357.8,
+    1540.3
+   ],
+   "mt_drift_rapport_hz": -168.5,
+   "mt_drift_ketenraster_hz": -186.4,
+   "mt_verlaat_kooi": null,
+   "wm_drift_rapport_hz": 128.7
+  },
+  {
+   "corpus": "A5e.3-veld",
+   "netlist": "A5E3VELD_KAND_3",
+   "label": "woofer→mid 229.1 LR4 · mid→tweeter 2304 LR4",
+   "gesteld_hz": [
+    229.1,
+    2304
+   ],
+   "kooi_hz": null,
+   "rapport_hz": [
+    339.2,
+    2049.1
+   ],
+   "ketenraster_hz": [
+    339.6,
+    2049.3
+   ],
+   "mt_drift_rapport_hz": -254.9,
+   "mt_drift_ketenraster_hz": -254.7,
+   "mt_verlaat_kooi": null,
+   "wm_drift_rapport_hz": 110.1
+  },
+  {
+   "corpus": "A5e.3-veld",
+   "netlist": "A5E3VELD_KAND_4",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 1994.6 LR4",
+   "gesteld_hz": [
+    549.7,
+    1994.6
+   ],
+   "kooi_hz": null,
+   "rapport_hz": [
+    553,
+    1785.1
+   ],
+   "ketenraster_hz": [
+    552.8,
+    1785.3
+   ],
+   "mt_drift_rapport_hz": -209.5,
+   "mt_drift_ketenraster_hz": -209.3,
+   "mt_verlaat_kooi": null,
+   "wm_drift_rapport_hz": 3.3
+  },
+  {
+   "corpus": "A5e.3-veld",
+   "netlist": "A5E3VELD_KAND_5",
+   "label": "woofer→mid 354.9 LR4 · mid→tweeter 1994.6 LR4",
+   "gesteld_hz": [
+    354.9,
+    1994.6
+   ],
+   "kooi_hz": null,
+   "rapport_hz": [
+    478.8,
+    1974
+   ],
+   "ketenraster_hz": [
+    478.8,
+    1978.2
+   ],
+   "mt_drift_rapport_hz": -20.6,
+   "mt_drift_ketenraster_hz": -16.4,
+   "mt_verlaat_kooi": null,
+   "wm_drift_rapport_hz": 123.9
+  },
+  {
+   "corpus": "A5e.3-veld",
+   "netlist": "A5E3VELD_KAND_6",
+   "label": "woofer→mid 549.7 LR4 · mid→tweeter 1726.7 LR4",
+   "gesteld_hz": [
+    549.7,
+    1726.7
+   ],
+   "kooi_hz": null,
+   "rapport_hz": [
+    525.8,
+    1942
+   ],
+   "ketenraster_hz": [
+    527.1,
+    1941.2
+   ],
+   "mt_drift_rapport_hz": 215.3,
+   "mt_drift_ketenraster_hz": 214.5,
+   "mt_verlaat_kooi": null,
+   "wm_drift_rapport_hz": -23.9
+  },
+  {
+   "corpus": "A5e.3-veld",
+   "netlist": "A5E3VELD_KAND_7",
+   "label": "woofer→mid 354.9 LR4 · mid→tweeter 1494.8 LR4",
+   "gesteld_hz": [
+    354.9,
+    1494.8
+   ],
+   "kooi_hz": null,
+   "rapport_hz": [
+    429,
+    1594.3
+   ],
+   "ketenraster_hz": [
+    434.3,
+    1586.1
+   ],
+   "mt_drift_rapport_hz": 99.5,
+   "mt_drift_ketenraster_hz": 91.3,
+   "mt_verlaat_kooi": null,
+   "wm_drift_rapport_hz": 74.1
+  }
+ ],
+ "plafondpositie": {
+  "hz": 2304.026472037768,
+  "geleverd": 4,
+  "landingen_rapport_hz": [
+   2049.4,
+   2050,
+   2052.1,
+   2243.2
+  ],
+  "landing_mediaan_hz": 2052.1,
+  "landingen_ketenraster_hz": [
+   2236.4,
+   2053.6,
+   2049.4,
+   2050.1
+  ]
+ },
+ "knik": {
+  "band_hz": [
+   1164.6,
+   3258.4
+  ],
+  "lokaal_minimum_in_venster": {
+   "hz": 2055.8,
+   "dB": -4.98
+  },
+  "kruispunten_binnen_0_02_oct_van_het_minimum": [
+   {
+    "netlist": "KAND_V2_9",
+    "hz": 2043.3
+   },
+   {
+    "netlist": "KAND_V2_6",
+    "hz": 2052.1
+   },
+   {
+    "netlist": "KAND_V2_2",
+    "hz": 2049.4
+   },
+   {
+    "netlist": "woofer→mid 549.7 LR4 · mid→tweeter 2304 LR4",
+    "hz": 2050
+   },
+   {
+    "netlist": "A5E3VELD_KAND_3",
+    "hz": 2049.1
+   }
+  ],
+  "steilste_daling": {
+   "hz": 1393.6,
+   "helling_dB_per_oct": -22.76
+  },
+  "verschil": [
+   {
+    "hz": 1189.5,
+    "dB": -2.11
+   },
+   {
+    "hz": 1224.2,
+    "dB": -1.85
+   },
+   {
+    "hz": 1260,
+    "dB": -1.33
+   },
+   {
+    "hz": 1296.8,
+    "dB": -0.99
+   },
+   {
+    "hz": 1334.7,
+    "dB": -1.19
+   },
+   {
+    "hz": 1373.7,
+    "dB": -1.95
+   },
+   {
+    "hz": 1413.9,
+    "dB": -2.89
+   },
+   {
+    "hz": 1455.2,
+    "dB": -3.47
+   },
+   {
+    "hz": 1497.7,
+    "dB": -3.23
+   },
+   {
+    "hz": 1541.4,
+    "dB": -2.32
+   },
+   {
+    "hz": 1586.5,
+    "dB": -1.37
+   },
+   {
+    "hz": 1632.8,
+    "dB": -1.01
+   },
+   {
+    "hz": 1680.5,
+    "dB": -1.36
+   },
+   {
+    "hz": 1729.6,
+    "dB": -1.97
+   },
+   {
+    "hz": 1780.2,
+    "dB": -2.37
+   },
+   {
+    "hz": 1832.2,
+    "dB": -2.61
+   },
+   {
+    "hz": 1885.7,
+    "dB": -3.04
+   },
+   {
+    "hz": 1940.8,
+    "dB": -3.81
+   },
+   {
+    "hz": 1997.5,
+    "dB": -4.65
+   },
+   {
+    "hz": 2055.8,
+    "dB": -4.98
+   },
+   {
+    "hz": 2115.9,
+    "dB": -4.67
+   },
+   {
+    "hz": 2177.7,
+    "dB": -4.29
+   },
+   {
+    "hz": 2241.4,
+    "dB": -4.45
+   },
+   {
+    "hz": 2306.8,
+    "dB": -5.06
+   },
+   {
+    "hz": 2374.2,
+    "dB": -5.59
+   },
+   {
+    "hz": 2443.6,
+    "dB": -5.87
+   },
+   {
+    "hz": 2515,
+    "dB": -5.97
+   },
+   {
+    "hz": 2588.5,
+    "dB": -5.84
+   },
+   {
+    "hz": 2664.1,
+    "dB": -5.76
+   },
+   {
+    "hz": 2741.9,
+    "dB": -6.31
+   },
+   {
+    "hz": 2822,
+    "dB": -7.08
+   },
+   {
+    "hz": 2904.5,
+    "dB": -6.94
+   },
+   {
+    "hz": 2989.4,
+    "dB": -6.81
+   },
+   {
+    "hz": 3076.7,
+    "dB": -7.2
+   },
+   {
+    "hz": 3166.6,
+    "dB": -7.28
+   }
+  ]
+ },
+ "veld_onder_strengste_bekende": {
+  "plafond_hz": 2304,
+  "plafond_bindt": "breakup",
+  "posities_wm": [
+   147.9,
+   178.4,
+   215.2,
+   259.6,
+   313.2,
+   377.8,
+   455.7,
+   549.7
+  ],
+  "posities_mt": [
+   1646.9,
+   1947.9,
+   2304
+  ],
+  "afgeleid": 36,
+  "geleverd": 24,
+  "bevroren_binnen": [
+   "KAND_V2_10",
+   "KAND_V2_7",
+   "KAND_V2_4",
+   "KAND_V2_9",
+   "KAND_V2_6",
+   "KAND_V2_8",
+   "KAND_V2_3",
+   "KAND_V2_1",
+   "KAND_V2_2",
+   "KAND_V2_5"
+  ],
+  "bevroren_buiten": [],
+  "spanning": [
+   "The favourable lobing zone (2655-3717 Hz) lies entirely ABOVE the ceiling (2304 Hz, breakup). Lobing and the ceiling want opposite things here - that is a real tension of this driver combination, not something the filter can resolve.",
+   "The worst lobing zone (1327-1858 Hz) overlaps the feasible window: part of the window is worse than the rest of it."
+  ]
+ },
+ "veld_onder_gesteld_plafond_op_landing": {
+  "plafond_hz": 2052.1,
+  "plafond_bindt": "stated",
+  "posities_wm": [
+   147.9,
+   166.6,
+   187.8,
+   211.6,
+   238.4,
+   268.6,
+   302.7,
+   341,
+   384.3,
+   433,
+   487.9,
+   549.7
+  ],
+  "posities_mt": [
+   1646.9,
+   2052.1
+  ],
+  "afgeleid": 24,
+  "geleverd": 24,
+  "bevroren_binnen": [
+   "KAND_V2_10",
+   "KAND_V2_4",
+   "KAND_V2_9",
+   "KAND_V2_8",
+   "KAND_V2_3",
+   "KAND_V2_1",
+   "KAND_V2_5"
+  ],
+  "bevroren_buiten": [
+   "KAND_V2_7",
+   "KAND_V2_6",
+   "KAND_V2_2"
+  ],
+  "spanning": [
+   "The favourable lobing zone (2655-3717 Hz) lies entirely ABOVE the ceiling (2052 Hz, stated). Lobing and the ceiling want opposite things here - that is a real tension of this driver combination, not something the filter can resolve.",
+   "The worst lobing zone (1327-1858 Hz) overlaps the feasible window: part of the window is worse than the rest of it.",
+   "A stated ceiling of 2052 Hz is stricter than the derived one (2304 Hz, breakup); the strictest binds, and here that is stated (E-1)."
+  ]
+ }
+}

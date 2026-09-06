@@ -1,0 +1,5910 @@
+{
+ "_": "E-1 — DOCUMENTATIE (scripts/measure-e1-barrier-resolution.ts): het verschil sweep–barrière per bevroren netlist naast de dip-breedte, de drie verdichtingen en de kosten per evaluatie. Geen acceptatiewaarde; de guards staan in frozenNetlistGates.test.ts.",
+ "vloer_ohm": 2.6,
+ "vloerspeling_ohm": 0.052,
+ "rasters": {
+  "keten": {
+   "punten": 143,
+   "van_hz": 20.51,
+   "tot_hz": 20000
+  },
+  "veiligheid": {
+   "punten": 240
+  },
+  "verlengd": {
+   "punten": 394,
+   "van_hz": 10.07,
+   "tot_hz": 20317
+  },
+  "sweep": {
+   "punten": 1600,
+   "van_hz": 10.07,
+   "tot_hz": 20317
+  }
+ },
+ "verdichtingen": [
+  {
+   "id": "globaal_minimum",
+   "kind": "minimum"
+  },
+  {
+   "id": "lokale_minima",
+   "kind": "local-minima"
+  },
+  {
+   "id": "onder_2x_vloer",
+   "kind": "below",
+   "ohm": 5.2
+  }
+ ],
+ "engine_leest": {
+  "kind": "minimum"
+ },
+ "samenvatting_hele_casusboek": {
+  "globaal_minimum": {
+   "grootste_verschil_ohm": 0.0089,
+   "grootste_verschil_netlist": "KAND_V2_5",
+   "boven_speling": [],
+   "lezing_gelijk_aan_sweep": 128,
+   "gemeten": 161,
+   "extra_punten_mediaan": 12,
+   "extra_punten_max": 13,
+   "cellen_mediaan": 2,
+   "cellen_max": 2
+  },
+  "lokale_minima": {
+   "grootste_verschil_ohm": 0.0017,
+   "grootste_verschil_netlist": "V28_KAND_1",
+   "boven_speling": [],
+   "lezing_gelijk_aan_sweep": 146,
+   "gemeten": 161,
+   "extra_punten_mediaan": 73,
+   "extra_punten_max": 158,
+   "cellen_mediaan": 14,
+   "cellen_max": 27
+  },
+  "onder_2x_vloer": {
+   "grootste_verschil_ohm": 0.0017,
+   "grootste_verschil_netlist": "V28_KAND_1",
+   "boven_speling": [],
+   "lezing_gelijk_aan_sweep": 147,
+   "gemeten": 161,
+   "extra_punten_mediaan": 696,
+   "extra_punten_max": 1264,
+   "cellen_mediaan": 119,
+   "cellen_max": 316
+  }
+ },
+ "oordeel_wijkt_af": {
+  "globaal_minimum": [],
+  "lokale_minima": [],
+  "onder_2x_vloer": []
+ },
+ "kosten_ms": {
+  "HUIDIG": {
+   "keten_ms": 1.1179580000007263,
+   "veiligheid_ms": 1.8167920000005324,
+   "verlengd_ms": 3.021875000000364,
+   "sweep_ms": 13.233499999999367,
+   "verdicht_globaal_minimum_ms": 3.134041000000252,
+   "verdicht_lokale_minima_ms": 3.434958999999253,
+   "verdicht_onder_2x_vloer_ms": 8.338416000000507
+  },
+  "KAND_V2_1": {
+   "keten_ms": 2.24474999999984,
+   "veiligheid_ms": 3.782000000000153,
+   "verlengd_ms": 6.222458000000188,
+   "sweep_ms": 27.86383299999943,
+   "verdicht_globaal_minimum_ms": 6.514917000000423,
+   "verdicht_lokale_minima_ms": 8.313749999999345,
+   "verdicht_onder_2x_vloer_ms": 22.20512499999859
+  },
+  "KAND_V2_8": {
+   "keten_ms": 2.4380830000009155,
+   "veiligheid_ms": 4.0995419999999285,
+   "verlengd_ms": 6.776292000000467,
+   "sweep_ms": 30.23570800000016,
+   "verdicht_globaal_minimum_ms": 7.052625000000262,
+   "verdicht_lokale_minima_ms": 8.827624999999898,
+   "verdicht_onder_2x_vloer_ms": 23.479667000001427
+  }
+ },
+ "per_netlist": [
+  {
+   "netlist": "HUIDIG",
+   "sweep_ohm": 3.4639,
+   "sweep_min_bij_hz": 217.88,
+   "dip_breedte_oct": 0.2678,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.4639,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.4639,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.4639,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.4639,
+     "verschil_ohm": 0,
+     "extra_punten": 666,
+     "cellen": 110,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_A",
+   "sweep_ohm": 3.3157,
+   "sweep_min_bij_hz": 264.82,
+   "dip_breedte_oct": 0.2197,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.3162,
+   "verschil_ohm": 0.0005,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.3157,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.3157,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.3157,
+     "verschil_ohm": 0,
+     "extra_punten": 575,
+     "cellen": 99,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_B",
+   "sweep_ohm": 3.4433,
+   "sweep_min_bij_hz": 181.83,
+   "dip_breedte_oct": 0.7003,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.4435,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.4433,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.4433,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.4433,
+     "verschil_ohm": 0,
+     "extra_punten": 587,
+     "cellen": 97,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_1",
+   "sweep_ohm": 0.0137,
+   "sweep_min_bij_hz": 3751.05,
+   "dip_breedte_oct": 0.0206,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 0.012,
+   "verschil_ohm": 0.0017,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 0.012,
+     "verschil_ohm": 0.0017,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 0.012,
+     "verschil_ohm": 0.0017,
+     "extra_punten": 38,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 0.012,
+     "verschil_ohm": 0.0017,
+     "extra_punten": 786,
+     "cellen": 130,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_2",
+   "sweep_ohm": 0.0062,
+   "sweep_min_bij_hz": 3915.2,
+   "dip_breedte_oct": 0.0137,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 0.079,
+   "verschil_ohm": 0.0728,
+   "boven_speling": true,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 0.0062,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 0.0062,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 0.0062,
+     "verschil_ohm": 0,
+     "extra_punten": 424,
+     "cellen": 70,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_3",
+   "sweep_ohm": 1.3774,
+   "sweep_min_bij_hz": 934.65,
+   "dip_breedte_oct": 0.357,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 1.3777,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 1.3774,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 1.3774,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 1.3774,
+     "verschil_ohm": 0,
+     "extra_punten": 962,
+     "cellen": 163,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_4",
+   "sweep_ohm": 1.1653,
+   "sweep_min_bij_hz": 1008.6,
+   "dip_breedte_oct": 0.3502,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 1.1659,
+   "verschil_ohm": 0.0006,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 1.1653,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 1.1653,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 1.1653,
+     "verschil_ohm": 0,
+     "extra_punten": 938,
+     "cellen": 155,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_5",
+   "sweep_ohm": 1.1566,
+   "sweep_min_bij_hz": 849.79,
+   "dip_breedte_oct": 0.2952,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 1.1567,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 1.1566,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 1.1566,
+     "verschil_ohm": 0,
+     "extra_punten": 74,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 1.1566,
+     "verschil_ohm": 0,
+     "extra_punten": 1004,
+     "cellen": 174,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_6",
+   "sweep_ohm": 1.1355,
+   "sweep_min_bij_hz": 948.09,
+   "dip_breedte_oct": 0.3364,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 1.1356,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 1.1355,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 1.1355,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 1.1355,
+     "verschil_ohm": 0,
+     "extra_punten": 920,
+     "cellen": 152,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_7",
+   "sweep_ohm": 1.0442,
+   "sweep_min_bij_hz": 806.45,
+   "dip_breedte_oct": 0.309,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 1.0451,
+   "verschil_ohm": 0.0009,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 1.0442,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 1.0442,
+     "verschil_ohm": 0,
+     "extra_punten": 74,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 1.0442,
+     "verschil_ohm": 0,
+     "extra_punten": 992,
+     "cellen": 171,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_8",
+   "sweep_ohm": 0.9458,
+   "sweep_min_bij_hz": 939.11,
+   "dip_breedte_oct": 0.3021,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 0.946,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 0.9458,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 0.9458,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 0.9458,
+     "verschil_ohm": 0,
+     "extra_punten": 962,
+     "cellen": 163,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_9",
+   "sweep_ohm": 0.8725,
+   "sweep_min_bij_hz": 886.98,
+   "dip_breedte_oct": 0.2678,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 0.8726,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 0.8725,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 0.8725,
+     "verschil_ohm": 0,
+     "extra_punten": 98,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 0.8725,
+     "verschil_ohm": 0,
+     "extra_punten": 968,
+     "cellen": 164,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V28_KAND_10",
+   "sweep_ohm": 0.8594,
+   "sweep_min_bij_hz": 853.85,
+   "dip_breedte_oct": 0.2472,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 0.8607,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 0.8594,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 0.8594,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 0.8594,
+     "verschil_ohm": 0,
+     "extra_punten": 932,
+     "cellen": 158,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_1",
+   "sweep_ohm": 2.4465,
+   "sweep_min_bij_hz": 82.53,
+   "dip_breedte_oct": 0.1579,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.447,
+   "verschil_ohm": 0.0005,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.4465,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.4465,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.4465,
+     "verschil_ohm": 0,
+     "extra_punten": 575,
+     "cellen": 102,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_2",
+   "sweep_ohm": 2.3578,
+   "sweep_min_bij_hz": 83.71,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.3581,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.3578,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.3578,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.3578,
+     "verschil_ohm": 0,
+     "extra_punten": 648,
+     "cellen": 114,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_3",
+   "sweep_ohm": 2.5899,
+   "sweep_min_bij_hz": 1125.26,
+   "dip_breedte_oct": 0.1167,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5902,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5899,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5899,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5899,
+     "verschil_ohm": 0,
+     "extra_punten": 503,
+     "cellen": 83,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_4",
+   "sweep_ohm": 2.5809,
+   "sweep_min_bij_hz": 1231.75,
+   "dip_breedte_oct": 0.1442,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5821,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5809,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5809,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5809,
+     "verschil_ohm": 0,
+     "extra_punten": 532,
+     "cellen": 88,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_5",
+   "sweep_ohm": 2.5715,
+   "sweep_min_bij_hz": 132.19,
+   "dip_breedte_oct": 0.2472,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5737,
+   "verschil_ohm": 0.0022,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5715,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5715,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5715,
+     "verschil_ohm": 0,
+     "extra_punten": 732,
+     "cellen": 158,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_6",
+   "sweep_ohm": 2.3879,
+   "sweep_min_bij_hz": 82.13,
+   "dip_breedte_oct": 0.1579,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.3883,
+   "verschil_ohm": 0.0005,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.3879,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.3879,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.3879,
+     "verschil_ohm": 0,
+     "extra_punten": 587,
+     "cellen": 104,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_7",
+   "sweep_ohm": 2.6038,
+   "sweep_min_bij_hz": 1032.89,
+   "dip_breedte_oct": 0.0687,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.604,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 496,
+     "cellen": 86,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_8",
+   "sweep_ohm": 2.5916,
+   "sweep_min_bij_hz": 1243.53,
+   "dip_breedte_oct": 0.1373,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5949,
+   "verschil_ohm": 0.0034,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5916,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5916,
+     "verschil_ohm": 0,
+     "extra_punten": 74,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5916,
+     "verschil_ohm": 0,
+     "extra_punten": 738,
+     "cellen": 136,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_9",
+   "sweep_ohm": 2.5677,
+   "sweep_min_bij_hz": 132.19,
+   "dip_breedte_oct": 0.254,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.571,
+   "verschil_ohm": 0.0033,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5677,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5677,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5677,
+     "verschil_ohm": 0,
+     "extra_punten": 611,
+     "cellen": 101,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V30_KAND_10",
+   "sweep_ohm": 2.5516,
+   "sweep_min_bij_hz": 420.17,
+   "dip_breedte_oct": 0.0481,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5561,
+   "verschil_ohm": 0.0045,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.554,
+     "verschil_ohm": 0.0024,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5516,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5516,
+     "verschil_ohm": 0,
+     "extra_punten": 606,
+     "cellen": 104,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V32_KAND_1",
+   "sweep_ohm": 2.5899,
+   "sweep_min_bij_hz": 1125.26,
+   "dip_breedte_oct": 0.1167,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5902,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5899,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5899,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5899,
+     "verschil_ohm": 0,
+     "extra_punten": 503,
+     "cellen": 83,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V32_KAND_2",
+   "sweep_ohm": 2.5809,
+   "sweep_min_bij_hz": 1231.75,
+   "dip_breedte_oct": 0.1442,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5821,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5809,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5809,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5809,
+     "verschil_ohm": 0,
+     "extra_punten": 532,
+     "cellen": 88,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V32_KAND_3",
+   "sweep_ohm": 2.5715,
+   "sweep_min_bij_hz": 132.19,
+   "dip_breedte_oct": 0.2472,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5737,
+   "verschil_ohm": 0.0022,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5715,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5715,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5715,
+     "verschil_ohm": 0,
+     "extra_punten": 732,
+     "cellen": 158,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V32_KAND_4",
+   "sweep_ohm": 2.6038,
+   "sweep_min_bij_hz": 1032.89,
+   "dip_breedte_oct": 0.0687,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.604,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 496,
+     "cellen": 86,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V32_KAND_5",
+   "sweep_ohm": 2.5916,
+   "sweep_min_bij_hz": 1243.53,
+   "dip_breedte_oct": 0.1373,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5949,
+   "verschil_ohm": 0.0034,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5916,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5916,
+     "verschil_ohm": 0,
+     "extra_punten": 74,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5916,
+     "verschil_ohm": 0,
+     "extra_punten": 738,
+     "cellen": 136,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V32_KAND_6",
+   "sweep_ohm": 2.5677,
+   "sweep_min_bij_hz": 132.19,
+   "dip_breedte_oct": 0.254,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.571,
+   "verschil_ohm": 0.0033,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5677,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5677,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5677,
+     "verschil_ohm": 0,
+     "extra_punten": 611,
+     "cellen": 101,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V32_KAND_7",
+   "sweep_ohm": 2.5516,
+   "sweep_min_bij_hz": 420.17,
+   "dip_breedte_oct": 0.0481,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5561,
+   "verschil_ohm": 0.0045,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.554,
+     "verschil_ohm": 0.0024,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5516,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5516,
+     "verschil_ohm": 0,
+     "extra_punten": 606,
+     "cellen": 104,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_1",
+   "sweep_ohm": 2.5967,
+   "sweep_min_bij_hz": 222.06,
+   "dip_breedte_oct": 0.103,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6,
+   "verschil_ohm": 0.0034,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5967,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5967,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5967,
+     "verschil_ohm": 0,
+     "extra_punten": 599,
+     "cellen": 100,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_2",
+   "sweep_ohm": 2.6035,
+   "sweep_min_bij_hz": 899.74,
+   "dip_breedte_oct": 0.0755,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.607,
+   "verschil_ohm": 0.0035,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6035,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6035,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6035,
+     "verschil_ohm": 0,
+     "extra_punten": 581,
+     "cellen": 96,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_3",
+   "sweep_ohm": 2.5608,
+   "sweep_min_bij_hz": 81.74,
+   "dip_breedte_oct": 0.151,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5608,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5608,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5608,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5608,
+     "verschil_ohm": 0,
+     "extra_punten": 570,
+     "cellen": 102,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_4",
+   "sweep_ohm": 2.5905,
+   "sweep_min_bij_hz": 98.88,
+   "dip_breedte_oct": 0.3021,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5911,
+   "verschil_ohm": 0.0006,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5911,
+     "verschil_ohm": 0.0006,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5905,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5905,
+     "verschil_ohm": 0,
+     "extra_punten": 751,
+     "cellen": 128,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_5",
+   "sweep_ohm": 2.5952,
+   "sweep_min_bij_hz": 970.92,
+   "dip_breedte_oct": 0.0893,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5951,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5951,
+     "verschil_ohm": 0.0002,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5951,
+     "verschil_ohm": 0.0002,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5951,
+     "verschil_ohm": 0.0002,
+     "extra_punten": 750,
+     "cellen": 128,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_6",
+   "sweep_ohm": 2.5494,
+   "sweep_min_bij_hz": 975.55,
+   "dip_breedte_oct": 0.206,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5497,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5494,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5494,
+     "verschil_ohm": 0,
+     "extra_punten": 60,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5494,
+     "verschil_ohm": 0,
+     "extra_punten": 580,
+     "cellen": 103,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_7",
+   "sweep_ohm": 2.5927,
+   "sweep_min_bij_hz": 1249.46,
+   "dip_breedte_oct": 0.1442,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5947,
+   "verschil_ohm": 0.002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5927,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5927,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5927,
+     "verschil_ohm": 0,
+     "extra_punten": 593,
+     "cellen": 98,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_8",
+   "sweep_ohm": 2.6148,
+   "sweep_min_bij_hz": 1032.89,
+   "dip_breedte_oct": 0.103,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6154,
+   "verschil_ohm": 0.0006,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6148,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6148,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6148,
+     "verschil_ohm": 0,
+     "extra_punten": 824,
+     "cellen": 140,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_9",
+   "sweep_ohm": 2.6124,
+   "sweep_min_bij_hz": 961.72,
+   "dip_breedte_oct": 0.0893,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6187,
+   "verschil_ohm": 0.0063,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6124,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6124,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6124,
+     "verschil_ohm": 0,
+     "extra_punten": 921,
+     "cellen": 156,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_SWEEP_KAND_10",
+   "sweep_ohm": 2.5995,
+   "sweep_min_bij_hz": 1180.11,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6027,
+   "verschil_ohm": 0.0032,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5995,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5995,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5995,
+     "verschil_ohm": 0,
+     "extra_punten": 436,
+     "cellen": 76,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_1",
+   "sweep_ohm": 2.5586,
+   "sweep_min_bij_hz": 83.31,
+   "dip_breedte_oct": 0.1579,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5606,
+   "verschil_ohm": 0.002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5587,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5586,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5586,
+     "verschil_ohm": 0,
+     "extra_punten": 612,
+     "cellen": 109,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_2",
+   "sweep_ohm": 2.5569,
+   "sweep_min_bij_hz": 80.97,
+   "dip_breedte_oct": 0.1373,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5614,
+   "verschil_ohm": 0.0045,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5585,
+     "verschil_ohm": 0.0016,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5569,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5569,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 98,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_3",
+   "sweep_ohm": 2.6094,
+   "sweep_min_bij_hz": 1141.44,
+   "dip_breedte_oct": 0.1304,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6115,
+   "verschil_ohm": 0.0021,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6094,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6094,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6094,
+     "verschil_ohm": 0,
+     "extra_punten": 581,
+     "cellen": 96,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_4",
+   "sweep_ohm": 2.5918,
+   "sweep_min_bij_hz": 1237.63,
+   "dip_breedte_oct": 0.1442,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5947,
+   "verschil_ohm": 0.003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5918,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5918,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5918,
+     "verschil_ohm": 0,
+     "extra_punten": 569,
+     "cellen": 94,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_5",
+   "sweep_ohm": 2.5931,
+   "sweep_min_bij_hz": 934.65,
+   "dip_breedte_oct": 0.0893,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6007,
+   "verschil_ohm": 0.0075,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5931,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5931,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5931,
+     "verschil_ohm": 0,
+     "extra_punten": 666,
+     "cellen": 114,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_6",
+   "sweep_ohm": 2.6259,
+   "sweep_min_bij_hz": 1037.81,
+   "dip_breedte_oct": 0.103,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6266,
+   "verschil_ohm": 0.0007,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6259,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6259,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6259,
+     "verschil_ohm": 0,
+     "extra_punten": 860,
+     "cellen": 150,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_7",
+   "sweep_ohm": 2.5907,
+   "sweep_min_bij_hz": 1008.6,
+   "dip_breedte_oct": 0.103,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5937,
+   "verschil_ohm": 0.003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0,
+     "extra_punten": 642,
+     "cellen": 110,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_8",
+   "sweep_ohm": 2.6108,
+   "sweep_min_bij_hz": 970.92,
+   "dip_breedte_oct": 0.1167,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6111,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6108,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6108,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6108,
+     "verschil_ohm": 0,
+     "extra_punten": 740,
+     "cellen": 126,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_9",
+   "sweep_ohm": 2.5867,
+   "sweep_min_bij_hz": 234,
+   "dip_breedte_oct": 0.2746,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5879,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5877,
+     "verschil_ohm": 0.001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5867,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5867,
+     "verschil_ohm": 0,
+     "extra_punten": 848,
+     "cellen": 144,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V33_KAND_10",
+   "sweep_ohm": 2.5819,
+   "sweep_min_bij_hz": 1146.89,
+   "dip_breedte_oct": 0.0687,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.587,
+   "verschil_ohm": 0.0051,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5819,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5819,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5819,
+     "verschil_ohm": 0,
+     "extra_punten": 667,
+     "cellen": 114,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_1",
+   "sweep_ohm": 2.5839,
+   "sweep_min_bij_hz": 132.19,
+   "dip_breedte_oct": 0.1304,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5895,
+   "verschil_ohm": 0.0056,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5895,
+     "verschil_ohm": 0.0056,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5839,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5839,
+     "verschil_ohm": 0,
+     "extra_punten": 635,
+     "cellen": 109,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_2",
+   "sweep_ohm": 2.5586,
+   "sweep_min_bij_hz": 83.31,
+   "dip_breedte_oct": 0.1579,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5606,
+   "verschil_ohm": 0.002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5587,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5586,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5586,
+     "verschil_ohm": 0,
+     "extra_punten": 612,
+     "cellen": 109,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_3",
+   "sweep_ohm": 2.5569,
+   "sweep_min_bij_hz": 80.97,
+   "dip_breedte_oct": 0.1373,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5614,
+   "verschil_ohm": 0.0045,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5585,
+     "verschil_ohm": 0.0016,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5569,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5569,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 98,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_4",
+   "sweep_ohm": 2.5696,
+   "sweep_min_bij_hz": 1119.92,
+   "dip_breedte_oct": 0.1716,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5696,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5696,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5696,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5696,
+     "verschil_ohm": 0,
+     "extra_punten": 582,
+     "cellen": 104,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_5",
+   "sweep_ohm": 2.6026,
+   "sweep_min_bij_hz": 1067.87,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6041,
+   "verschil_ohm": 0.0015,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6026,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6026,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6026,
+     "verschil_ohm": 0,
+     "extra_punten": 450,
+     "cellen": 74,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_6",
+   "sweep_ohm": 2.5858,
+   "sweep_min_bij_hz": 227.41,
+   "dip_breedte_oct": 0.1579,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5885,
+   "verschil_ohm": 0.0027,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5858,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5858,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5858,
+     "verschil_ohm": 0,
+     "extra_punten": 702,
+     "cellen": 120,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_7",
+   "sweep_ohm": 2.6085,
+   "sweep_min_bij_hz": 1163.38,
+   "dip_breedte_oct": 0.1236,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6103,
+   "verschil_ohm": 0.0018,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6085,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6085,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6085,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 91,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_8",
+   "sweep_ohm": 2.5757,
+   "sweep_min_bij_hz": 1072.97,
+   "dip_breedte_oct": 0.103,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5818,
+   "verschil_ohm": 0.0061,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5818,
+     "verschil_ohm": 0.0061,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5757,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5757,
+     "verschil_ohm": 0,
+     "extra_punten": 812,
+     "cellen": 138,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_9",
+   "sweep_ohm": 2.5841,
+   "sweep_min_bij_hz": 1208.53,
+   "dip_breedte_oct": 0.1373,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5875,
+   "verschil_ohm": 0.0034,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5841,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5841,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5841,
+     "verschil_ohm": 0,
+     "extra_punten": 641,
+     "cellen": 110,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V34_KAND_10",
+   "sweep_ohm": 2.5931,
+   "sweep_min_bij_hz": 966.31,
+   "dip_breedte_oct": 0.0893,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.595,
+   "verschil_ohm": 0.0018,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5931,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5931,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5931,
+     "verschil_ohm": 0,
+     "extra_punten": 945,
+     "cellen": 160,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_1",
+   "sweep_ohm": 2.5586,
+   "sweep_min_bij_hz": 83.31,
+   "dip_breedte_oct": 0.1579,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5606,
+   "verschil_ohm": 0.002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5587,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5586,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5586,
+     "verschil_ohm": 0,
+     "extra_punten": 612,
+     "cellen": 109,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_2",
+   "sweep_ohm": 2.5569,
+   "sweep_min_bij_hz": 80.97,
+   "dip_breedte_oct": 0.1373,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5614,
+   "verschil_ohm": 0.0045,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5585,
+     "verschil_ohm": 0.0016,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5569,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5569,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 98,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_3",
+   "sweep_ohm": 2.569,
+   "sweep_min_bij_hz": 904.03,
+   "dip_breedte_oct": 0.0755,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5807,
+   "verschil_ohm": 0.0117,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.569,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.569,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.569,
+     "verschil_ohm": 0,
+     "extra_punten": 653,
+     "cellen": 112,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_4",
+   "sweep_ohm": 2.5954,
+   "sweep_min_bij_hz": 1202.79,
+   "dip_breedte_oct": 0.1236,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5974,
+   "verschil_ohm": 0.002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5954,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5954,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5954,
+     "verschil_ohm": 0,
+     "extra_punten": 587,
+     "cellen": 97,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_5",
+   "sweep_ohm": 2.5892,
+   "sweep_min_bij_hz": 1072.97,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5939,
+   "verschil_ohm": 0.0047,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5937,
+     "verschil_ohm": 0.0045,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5892,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5892,
+     "verschil_ohm": 0,
+     "extra_punten": 830,
+     "cellen": 141,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_6",
+   "sweep_ohm": 2.6077,
+   "sweep_min_bij_hz": 1062.8,
+   "dip_breedte_oct": 0.1167,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6077,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6077,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.6077,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6077,
+     "verschil_ohm": 0,
+     "extra_punten": 673,
+     "cellen": 115,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_7",
+   "sweep_ohm": 2.5821,
+   "sweep_min_bij_hz": 132.19,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5863,
+   "verschil_ohm": 0.0041,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5821,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5821,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5821,
+     "verschil_ohm": 0,
+     "extra_punten": 696,
+     "cellen": 115,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_8",
+   "sweep_ohm": 2.6116,
+   "sweep_min_bij_hz": 1157.86,
+   "dip_breedte_oct": 0.1236,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6116,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6116,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.6116,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6116,
+     "verschil_ohm": 0,
+     "extra_punten": 672,
+     "cellen": 111,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_9",
+   "sweep_ohm": 2.5908,
+   "sweep_min_bij_hz": 970.92,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5907,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 963,
+     "cellen": 167,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V37_KAND_10",
+   "sweep_ohm": 3.5283,
+   "sweep_min_bij_hz": 1461.93,
+   "dip_breedte_oct": 0.0412,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.5333,
+   "verschil_ohm": 0.005,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.5283,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.5283,
+     "verschil_ohm": 0,
+     "extra_punten": 51,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.5283,
+     "verschil_ohm": 0,
+     "extra_punten": 189,
+     "cellen": 31,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_1",
+   "sweep_ohm": 2.586,
+   "sweep_min_bij_hz": 424.19,
+   "dip_breedte_oct": 0.0755,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5877,
+   "verschil_ohm": 0.0018,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.586,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.586,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.586,
+     "verschil_ohm": 0,
+     "extra_punten": 442,
+     "cellen": 73,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_2",
+   "sweep_ohm": 2.5611,
+   "sweep_min_bij_hz": 414.22,
+   "dip_breedte_oct": 0.0687,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5697,
+   "verschil_ohm": 0.0085,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5611,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5611,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5611,
+     "verschil_ohm": 0,
+     "extra_punten": 575,
+     "cellen": 95,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_3",
+   "sweep_ohm": 2.5821,
+   "sweep_min_bij_hz": 428.25,
+   "dip_breedte_oct": 0.0618,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.599,
+   "verschil_ohm": 0.0169,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5821,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5821,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5821,
+     "verschil_ohm": 0,
+     "extra_punten": 593,
+     "cellen": 102,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_4",
+   "sweep_ohm": 2.5681,
+   "sweep_min_bij_hz": 1174.51,
+   "dip_breedte_oct": 0.1991,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5692,
+   "verschil_ohm": 0.001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5681,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5681,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5681,
+     "verschil_ohm": 0,
+     "extra_punten": 630,
+     "cellen": 112,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_5",
+   "sweep_ohm": 2.5859,
+   "sweep_min_bij_hz": 132.19,
+   "dip_breedte_oct": 0.1442,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5926,
+   "verschil_ohm": 0.0067,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5905,
+     "verschil_ohm": 0.0045,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5859,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5859,
+     "verschil_ohm": 0,
+     "extra_punten": 756,
+     "cellen": 129,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_6",
+   "sweep_ohm": 2.5944,
+   "sweep_min_bij_hz": 404.48,
+   "dip_breedte_oct": 0.0412,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6217,
+   "verschil_ohm": 0.0273,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5944,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5944,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5944,
+     "verschil_ohm": 0,
+     "extra_punten": 484,
+     "cellen": 80,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_7",
+   "sweep_ohm": 2.5555,
+   "sweep_min_bij_hz": 1008.6,
+   "dip_breedte_oct": 0.2128,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5567,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5555,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5555,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5555,
+     "verschil_ohm": 0,
+     "extra_punten": 617,
+     "cellen": 109,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_8",
+   "sweep_ohm": 2.6104,
+   "sweep_min_bij_hz": 1146.89,
+   "dip_breedte_oct": 0.1304,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6109,
+   "verschil_ohm": 0.0005,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6104,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6104,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6104,
+     "verschil_ohm": 0,
+     "extra_punten": 835,
+     "cellen": 142,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_9",
+   "sweep_ohm": 2.5711,
+   "sweep_min_bij_hz": 83.31,
+   "dip_breedte_oct": 0.1579,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5735,
+   "verschil_ohm": 0.0024,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5711,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5711,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5711,
+     "verschil_ohm": 0,
+     "extra_punten": 576,
+     "cellen": 103,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V38FIX_KAND_10",
+   "sweep_ohm": 2.601,
+   "sweep_min_bij_hz": 980.21,
+   "dip_breedte_oct": 0.103,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6037,
+   "verschil_ohm": 0.0027,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.601,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.601,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.601,
+     "verschil_ohm": 0,
+     "extra_punten": 660,
+     "cellen": 113,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_1",
+   "sweep_ohm": 3.2885,
+   "sweep_min_bij_hz": 72.92,
+   "dip_breedte_oct": 0.1167,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.2885,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.2885,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 3.2885,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 50,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.2885,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 363,
+     "cellen": 60,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_2",
+   "sweep_ohm": 3.4002,
+   "sweep_min_bij_hz": 853.85,
+   "dip_breedte_oct": 0.2609,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.4011,
+   "verschil_ohm": 0.0009,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.4002,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.4002,
+     "verschil_ohm": 0,
+     "extra_punten": 38,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.4002,
+     "verschil_ohm": 0,
+     "extra_punten": 557,
+     "cellen": 96,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_3",
+   "sweep_ohm": 2.9855,
+   "sweep_min_bij_hz": 1062.8,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.9855,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.9855,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.9855,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.9855,
+     "verschil_ohm": 0,
+     "extra_punten": 653,
+     "cellen": 108,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_4",
+   "sweep_ohm": 3.7502,
+   "sweep_min_bij_hz": 75.03,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.7502,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.7502,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 3.7502,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 9,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.7502,
+     "verschil_ohm": 0,
+     "extra_punten": 508,
+     "cellen": 88,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_5",
+   "sweep_ohm": 3.6419,
+   "sweep_min_bij_hz": 75.75,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.6422,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.6419,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.6419,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.6419,
+     "verschil_ohm": 0,
+     "extra_punten": 278,
+     "cellen": 46,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_6",
+   "sweep_ohm": 3.4997,
+   "sweep_min_bij_hz": 77.57,
+   "dip_breedte_oct": 0.1991,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.4998,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.4997,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.4997,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.4997,
+     "verschil_ohm": 0,
+     "extra_punten": 501,
+     "cellen": 87,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_7",
+   "sweep_ohm": 2.6409,
+   "sweep_min_bij_hz": 975.55,
+   "dip_breedte_oct": 0.103,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6411,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6409,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6409,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 15,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6409,
+     "verschil_ohm": 0,
+     "extra_punten": 859,
+     "cellen": 146,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V41_KAND_8",
+   "sweep_ohm": 2.6377,
+   "sweep_min_bij_hz": 10045.66,
+   "dip_breedte_oct": 0.3502,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6377,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6377,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6377,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 17,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6377,
+     "verschil_ohm": 0,
+     "extra_punten": 786,
+     "cellen": 134,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V42_KAND_1",
+   "sweep_ohm": 3.2885,
+   "sweep_min_bij_hz": 72.92,
+   "dip_breedte_oct": 0.1167,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.2885,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.2885,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 3.2885,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 50,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.2885,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 363,
+     "cellen": 60,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V42_KAND_2",
+   "sweep_ohm": 2.9855,
+   "sweep_min_bij_hz": 1062.8,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.9855,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.9855,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.9855,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.9855,
+     "verschil_ohm": 0,
+     "extra_punten": 653,
+     "cellen": 108,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V42_KAND_3",
+   "sweep_ohm": 3.6419,
+   "sweep_min_bij_hz": 75.75,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.6422,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.6419,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.6419,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.6419,
+     "verschil_ohm": 0,
+     "extra_punten": 278,
+     "cellen": 46,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V42_KAND_4",
+   "sweep_ohm": 2.6377,
+   "sweep_min_bij_hz": 10045.66,
+   "dip_breedte_oct": 0.3502,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6377,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6377,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6377,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 17,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6377,
+     "verschil_ohm": 0,
+     "extra_punten": 786,
+     "cellen": 134,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V43_KAND_1",
+   "sweep_ohm": 2.9425,
+   "sweep_min_bij_hz": 357.4,
+   "dip_breedte_oct": 0.206,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.9433,
+   "verschil_ohm": 0.0008,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.9425,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.9425,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.9425,
+     "verschil_ohm": 0,
+     "extra_punten": 575,
+     "cellen": 95,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V43_KAND_2",
+   "sweep_ohm": 3.9684,
+   "sweep_min_bij_hz": 1093.59,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.9684,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.9684,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.9684,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.9684,
+     "verschil_ohm": 0,
+     "extra_punten": 533,
+     "cellen": 92,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V43_KAND_3",
+   "sweep_ohm": 2.5867,
+   "sweep_min_bij_hz": 1003.81,
+   "dip_breedte_oct": 0.4875,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5868,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5867,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5867,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5867,
+     "verschil_ohm": 0,
+     "extra_punten": 920,
+     "cellen": 156,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V43_KAND_4",
+   "sweep_ohm": 2.5974,
+   "sweep_min_bij_hz": 263.56,
+   "dip_breedte_oct": 0.1648,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5986,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5974,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5974,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 13,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5974,
+     "verschil_ohm": 0,
+     "extra_punten": 860,
+     "cellen": 146,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V43_KAND_5",
+   "sweep_ohm": 2.558,
+   "sweep_min_bij_hz": 449.12,
+   "dip_breedte_oct": 0.0549,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5592,
+   "verschil_ohm": 0.0011,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.558,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.558,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 13,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.558,
+     "verschil_ohm": 0,
+     "extra_punten": 974,
+     "cellen": 165,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V43_KAND_6",
+   "sweep_ohm": 2.6178,
+   "sweep_min_bij_hz": 975.55,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6187,
+   "verschil_ohm": 0.0009,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6178,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6178,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6178,
+     "verschil_ohm": 0,
+     "extra_punten": 957,
+     "cellen": 162,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V43_KAND_7",
+   "sweep_ohm": 2.61,
+   "sweep_min_bij_hz": 235.11,
+   "dip_breedte_oct": 0.3845,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6121,
+   "verschil_ohm": 0.0021,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.61,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.61,
+     "verschil_ohm": 0,
+     "extra_punten": 121,
+     "cellen": 21,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.61,
+     "verschil_ohm": 0,
+     "extra_punten": 908,
+     "cellen": 154,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V44_KAND_1",
+   "sweep_ohm": 3.4567,
+   "sweep_min_bij_hz": 1078.09,
+   "dip_breedte_oct": 0.254,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.4574,
+   "verschil_ohm": 0.0007,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.4567,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.4567,
+     "verschil_ohm": 0,
+     "extra_punten": 61,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.4567,
+     "verschil_ohm": 0,
+     "extra_punten": 726,
+     "cellen": 124,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V44_KAND_2",
+   "sweep_ohm": 3.612,
+   "sweep_min_bij_hz": 312.81,
+   "dip_breedte_oct": 0.309,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.6121,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.612,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.612,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.612,
+     "verschil_ohm": 0,
+     "extra_punten": 721,
+     "cellen": 119,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V44_KAND_3",
+   "sweep_ohm": 2.5864,
+   "sweep_min_bij_hz": 758.07,
+   "dip_breedte_oct": 0.1991,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5882,
+   "verschil_ohm": 0.0018,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5864,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5864,
+     "verschil_ohm": 0,
+     "extra_punten": 48,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5864,
+     "verschil_ohm": 0,
+     "extra_punten": 974,
+     "cellen": 165,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V44_KAND_4",
+   "sweep_ohm": 2.5804,
+   "sweep_min_bij_hz": 226.33,
+   "dip_breedte_oct": 0.9063,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5808,
+   "verschil_ohm": 0.0004,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5804,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5804,
+     "verschil_ohm": 0,
+     "extra_punten": 132,
+     "cellen": 23,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5804,
+     "verschil_ohm": 0,
+     "extra_punten": 1150,
+     "cellen": 194,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V44_KAND_5",
+   "sweep_ohm": 2.6267,
+   "sweep_min_bij_hz": 263.56,
+   "dip_breedte_oct": 0.1716,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6279,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6267,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6267,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 13,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6267,
+     "verschil_ohm": 0,
+     "extra_punten": 907,
+     "cellen": 154,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V44_KAND_6",
+   "sweep_ohm": 2.6058,
+   "sweep_min_bij_hz": 9578.79,
+   "dip_breedte_oct": 0.3158,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6064,
+   "verschil_ohm": 0.0006,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6058,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6058,
+     "verschil_ohm": 0,
+     "extra_punten": 109,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6058,
+     "verschil_ohm": 0,
+     "extra_punten": 1138,
+     "cellen": 225,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V44_KAND_7",
+   "sweep_ohm": 2.5929,
+   "sweep_min_bij_hz": 230.68,
+   "dip_breedte_oct": 0.5561,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5929,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5929,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5929,
+     "verschil_ohm": 0,
+     "extra_punten": 133,
+     "cellen": 24,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5929,
+     "verschil_ohm": 0,
+     "extra_punten": 975,
+     "cellen": 165,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V45_KAND_1",
+   "sweep_ohm": 2.693,
+   "sweep_min_bij_hz": 349,
+   "dip_breedte_oct": 0.2472,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6938,
+   "verschil_ohm": 0.0009,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.693,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.693,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.693,
+     "verschil_ohm": 0,
+     "extra_punten": 665,
+     "cellen": 110,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V45_KAND_2",
+   "sweep_ohm": 3.0245,
+   "sweep_min_bij_hz": 359.11,
+   "dip_breedte_oct": 0.1922,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.0257,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.0245,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.0245,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.0245,
+     "verschil_ohm": 0,
+     "extra_punten": 666,
+     "cellen": 110,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V45_KAND_3",
+   "sweep_ohm": 2.5964,
+   "sweep_min_bij_hz": 1008.6,
+   "dip_breedte_oct": 0.3639,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5967,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5964,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5964,
+     "verschil_ohm": 0,
+     "extra_punten": 60,
+     "cellen": 11,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5964,
+     "verschil_ohm": 0,
+     "extra_punten": 865,
+     "cellen": 147,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V45_KAND_4",
+   "sweep_ohm": 2.6094,
+   "sweep_min_bij_hz": 248.93,
+   "dip_breedte_oct": 0.1922,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6097,
+   "verschil_ohm": 0.0003,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6094,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6094,
+     "verschil_ohm": 0,
+     "extra_punten": 60,
+     "cellen": 11,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6094,
+     "verschil_ohm": 0,
+     "extra_punten": 992,
+     "cellen": 168,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V45_KAND_5",
+   "sweep_ohm": 2.5683,
+   "sweep_min_bij_hz": 1119.92,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5683,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5683,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5683,
+     "verschil_ohm": 0,
+     "extra_punten": 156,
+     "cellen": 27,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5683,
+     "verschil_ohm": 0,
+     "extra_punten": 1119,
+     "cellen": 189,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "V45_KAND_6",
+   "sweep_ohm": 2.5511,
+   "sweep_min_bij_hz": 1078.09,
+   "dip_breedte_oct": 0.3227,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5516,
+   "verschil_ohm": 0.0006,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5511,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5511,
+     "verschil_ohm": 0,
+     "extra_punten": 158,
+     "cellen": 27,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5511,
+     "verschil_ohm": 0,
+     "extra_punten": 1096,
+     "cellen": 185,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V45_KAND_7",
+   "sweep_ohm": 2.8127,
+   "sweep_min_bij_hz": 438.56,
+   "dip_breedte_oct": 0.0412,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.8343,
+   "verschil_ohm": 0.0216,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.8127,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.8127,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 17,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.8127,
+     "verschil_ohm": 0,
+     "extra_punten": 908,
+     "cellen": 154,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V47_KAND_1",
+   "sweep_ohm": 2.9267,
+   "sweep_min_bij_hz": 294.05,
+   "dip_breedte_oct": 0.2128,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.9284,
+   "verschil_ohm": 0.0017,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.9267,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.9267,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.9267,
+     "verschil_ohm": 0,
+     "extra_punten": 574,
+     "cellen": 95,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V47_KAND_2",
+   "sweep_ohm": 3.5519,
+   "sweep_min_bij_hz": 276.41,
+   "dip_breedte_oct": 0.4051,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.552,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.5519,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.5519,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.5519,
+     "verschil_ohm": 0,
+     "extra_punten": 677,
+     "cellen": 127,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V47_KAND_3",
+   "sweep_ohm": 2.5946,
+   "sweep_min_bij_hz": 234,
+   "dip_breedte_oct": 0.1854,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5964,
+   "verschil_ohm": 0.0018,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5946,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5946,
+     "verschil_ohm": 0,
+     "extra_punten": 60,
+     "cellen": 11,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5946,
+     "verschil_ohm": 0,
+     "extra_punten": 968,
+     "cellen": 164,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V47_KAND_4",
+   "sweep_ohm": 2.5979,
+   "sweep_min_bij_hz": 238.5,
+   "dip_breedte_oct": 0.1716,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5981,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5979,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5979,
+     "verschil_ohm": 0,
+     "extra_punten": 60,
+     "cellen": 12,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5979,
+     "verschil_ohm": 0,
+     "extra_punten": 810,
+     "cellen": 138,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V48_KAND_1",
+   "sweep_ohm": 3.717,
+   "sweep_min_bij_hz": 1023.1,
+   "dip_breedte_oct": 0.2197,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.7175,
+   "verschil_ohm": 0.0005,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.717,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.717,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.717,
+     "verschil_ohm": 0,
+     "extra_punten": 442,
+     "cellen": 73,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V48_KAND_2",
+   "sweep_ohm": 3.5856,
+   "sweep_min_bij_hz": 984.88,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.5868,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.5856,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.5856,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.5856,
+     "verschil_ohm": 0,
+     "extra_punten": 569,
+     "cellen": 94,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V48_KAND_3",
+   "sweep_ohm": 2.9228,
+   "sweep_min_bij_hz": 263.56,
+   "dip_breedte_oct": 0.1922,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.9242,
+   "verschil_ohm": 0.0013,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.9228,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.9228,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.9228,
+     "verschil_ohm": 0,
+     "extra_punten": 575,
+     "cellen": 95,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V48_KAND_4",
+   "sweep_ohm": 2.6454,
+   "sweep_min_bij_hz": 268.63,
+   "dip_breedte_oct": 0.1785,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6464,
+   "verschil_ohm": 0.001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6454,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6454,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6454,
+     "verschil_ohm": 0,
+     "extra_punten": 593,
+     "cellen": 98,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V48_KAND_5",
+   "sweep_ohm": 2.6038,
+   "sweep_min_bij_hz": 1104.05,
+   "dip_breedte_oct": 0.0824,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6116,
+   "verschil_ohm": 0.0078,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 108,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6038,
+     "verschil_ohm": 0,
+     "extra_punten": 1106,
+     "cellen": 237,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V49_KAND_1",
+   "sweep_ohm": 4.1686,
+   "sweep_min_bij_hz": 1057.76,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 4.1686,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 4.1686,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 4.1686,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 4.1686,
+     "verschil_ohm": 0,
+     "extra_punten": 563,
+     "cellen": 97,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V49_KAND_2",
+   "sweep_ohm": 3.6256,
+   "sweep_min_bij_hz": 984.88,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.627,
+   "verschil_ohm": 0.0014,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.6256,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.6256,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.6256,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 91,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V49_KAND_3",
+   "sweep_ohm": 2.9763,
+   "sweep_min_bij_hz": 267.35,
+   "dip_breedte_oct": 0.1922,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.9765,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.9763,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.9763,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.9763,
+     "verschil_ohm": 0,
+     "extra_punten": 478,
+     "cellen": 79,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V49_KAND_4",
+   "sweep_ohm": 2.6959,
+   "sweep_min_bij_hz": 257.36,
+   "dip_breedte_oct": 0.1922,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6965,
+   "verschil_ohm": 0.0006,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6959,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6959,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6959,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 91,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V49_KAND_5",
+   "sweep_ohm": 2.5898,
+   "sweep_min_bij_hz": 135.37,
+   "dip_breedte_oct": 0.6248,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5906,
+   "verschil_ohm": 0.0008,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5898,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5898,
+     "verschil_ohm": 0,
+     "extra_punten": 133,
+     "cellen": 23,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5898,
+     "verschil_ohm": 0,
+     "extra_punten": 1060,
+     "cellen": 179,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V49_KAND_6",
+   "sweep_ohm": 2.6556,
+   "sweep_min_bij_hz": 10336.64,
+   "dip_breedte_oct": 0.3502,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6556,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6556,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6556,
+     "verschil_ohm": 0,
+     "extra_punten": 132,
+     "cellen": 23,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6556,
+     "verschil_ohm": 0,
+     "extra_punten": 926,
+     "cellen": 157,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V49_KAND_7",
+   "sweep_ohm": 2.582,
+   "sweep_min_bij_hz": 1047.74,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5861,
+   "verschil_ohm": 0.0041,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.582,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.582,
+     "verschil_ohm": 0,
+     "extra_punten": 146,
+     "cellen": 25,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.582,
+     "verschil_ohm": 0,
+     "extra_punten": 1011,
+     "cellen": 171,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V50_KAND_1",
+   "sweep_ohm": 4.1686,
+   "sweep_min_bij_hz": 1057.76,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 4.1686,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 4.1686,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 4.1686,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 14,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 4.1686,
+     "verschil_ohm": 0,
+     "extra_punten": 563,
+     "cellen": 97,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V50_KAND_2",
+   "sweep_ohm": 3.6256,
+   "sweep_min_bij_hz": 984.88,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 3.627,
+   "verschil_ohm": 0.0014,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 3.6256,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 3.6256,
+     "verschil_ohm": 0,
+     "extra_punten": 49,
+     "cellen": 10,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 3.6256,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 91,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V50_KAND_3",
+   "sweep_ohm": 2.9763,
+   "sweep_min_bij_hz": 267.35,
+   "dip_breedte_oct": 0.1922,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.9765,
+   "verschil_ohm": 0.0002,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.9763,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.9763,
+     "verschil_ohm": 0,
+     "extra_punten": 37,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.9763,
+     "verschil_ohm": 0,
+     "extra_punten": 478,
+     "cellen": 79,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V50_KAND_4",
+   "sweep_ohm": 2.6959,
+   "sweep_min_bij_hz": 257.36,
+   "dip_breedte_oct": 0.1922,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6965,
+   "verschil_ohm": 0.0006,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6959,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6959,
+     "verschil_ohm": 0,
+     "extra_punten": 36,
+     "cellen": 8,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6959,
+     "verschil_ohm": 0,
+     "extra_punten": 551,
+     "cellen": 91,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V50_KAND_5",
+   "sweep_ohm": 2.5898,
+   "sweep_min_bij_hz": 135.37,
+   "dip_breedte_oct": 0.6248,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5906,
+   "verschil_ohm": 0.0008,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5898,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5898,
+     "verschil_ohm": 0,
+     "extra_punten": 133,
+     "cellen": 23,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5898,
+     "verschil_ohm": 0,
+     "extra_punten": 1060,
+     "cellen": 179,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V50_KAND_6",
+   "sweep_ohm": 2.6556,
+   "sweep_min_bij_hz": 10336.64,
+   "dip_breedte_oct": 0.3502,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6556,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6556,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6556,
+     "verschil_ohm": 0,
+     "extra_punten": 132,
+     "cellen": 23,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6556,
+     "verschil_ohm": 0,
+     "extra_punten": 926,
+     "cellen": 157,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V50_KAND_7",
+   "sweep_ohm": 2.582,
+   "sweep_min_bij_hz": 1047.74,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5861,
+   "verschil_ohm": 0.0041,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.582,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.582,
+     "verschil_ohm": 0,
+     "extra_punten": 146,
+     "cellen": 25,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.582,
+     "verschil_ohm": 0,
+     "extra_punten": 1011,
+     "cellen": 171,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V51_KAND_1",
+   "sweep_ohm": 2.5717,
+   "sweep_min_bij_hz": 10.07,
+   "dip_breedte_oct": 0.0343,
+   "cel_breedte_oct": 0.0069,
+   "barriere_ohm": 2.5717,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5717,
+     "verschil_ohm": 0,
+     "extra_punten": 0,
+     "cellen": 1,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5717,
+     "verschil_ohm": 0,
+     "extra_punten": 60,
+     "cellen": 11,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5717,
+     "verschil_ohm": 0,
+     "extra_punten": 979,
+     "cellen": 316,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V51B_KAND_1",
+   "sweep_ohm": 2.7348,
+   "sweep_min_bij_hz": 136.02,
+   "dip_breedte_oct": 0.3982,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.7376,
+   "verschil_ohm": 0.0028,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.7348,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.7348,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.7348,
+     "verschil_ohm": 0,
+     "extra_punten": 774,
+     "cellen": 132,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V51B_KAND_2",
+   "sweep_ohm": 2.8681,
+   "sweep_min_bij_hz": 136.02,
+   "dip_breedte_oct": 0.2472,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.8706,
+   "verschil_ohm": 0.0025,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.8681,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.8681,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.8681,
+     "verschil_ohm": 0,
+     "extra_punten": 738,
+     "cellen": 126,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V51B_KAND_3",
+   "sweep_ohm": 2.8872,
+   "sweep_min_bij_hz": 136.02,
+   "dip_breedte_oct": 0.2472,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.8905,
+   "verschil_ohm": 0.0033,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.8872,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.8872,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 16,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.8872,
+     "verschil_ohm": 0,
+     "extra_punten": 618,
+     "cellen": 102,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V51B_KAND_4",
+   "sweep_ohm": 2.5921,
+   "sweep_min_bij_hz": 133.45,
+   "dip_breedte_oct": 0.3707,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5921,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5921,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5921,
+     "verschil_ohm": 0,
+     "extra_punten": 108,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5921,
+     "verschil_ohm": 0,
+     "extra_punten": 1210,
+     "cellen": 204,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V51B_KAND_5",
+   "sweep_ohm": 2.5909,
+   "sweep_min_bij_hz": 1067.87,
+   "dip_breedte_oct": 0.2266,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5914,
+   "verschil_ohm": 0.0005,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5913,
+     "verschil_ohm": 0.0004,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5909,
+     "verschil_ohm": 0,
+     "extra_punten": 108,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5909,
+     "verschil_ohm": 0,
+     "extra_punten": 1095,
+     "cellen": 185,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "V51B_KAND_6",
+   "sweep_ohm": 2.5856,
+   "sweep_min_bij_hz": 254.93,
+   "dip_breedte_oct": 0.3364,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5857,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5856,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5856,
+     "verschil_ohm": 0,
+     "extra_punten": 120,
+     "cellen": 21,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5856,
+     "verschil_ohm": 0,
+     "extra_punten": 1047,
+     "cellen": 177,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "A5E3ARM_KAND_1",
+   "sweep_ohm": 2.6164,
+   "sweep_min_bij_hz": 1163.38,
+   "dip_breedte_oct": 0.0893,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.619,
+   "verschil_ohm": 0.0027,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6164,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6164,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 15,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6164,
+     "verschil_ohm": 0,
+     "extra_punten": 1083,
+     "cellen": 186,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "A5E3VELD_KAND_1",
+   "sweep_ohm": 2.8063,
+   "sweep_min_bij_hz": 321.88,
+   "dip_breedte_oct": 0.1373,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.8099,
+   "verschil_ohm": 0.0036,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.8063,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.8063,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 17,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.8063,
+     "verschil_ohm": 0,
+     "extra_punten": 1161,
+     "cellen": 196,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "A5E3VELD_KAND_2",
+   "sweep_ohm": 2.5499,
+   "sweep_min_bij_hz": 10.07,
+   "dip_breedte_oct": 0.0961,
+   "cel_breedte_oct": 0.0069,
+   "barriere_ohm": 2.5499,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5499,
+     "verschil_ohm": 0,
+     "extra_punten": 0,
+     "cellen": 1,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5499,
+     "verschil_ohm": 0,
+     "extra_punten": 74,
+     "cellen": 13,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5499,
+     "verschil_ohm": 0,
+     "extra_punten": 939,
+     "cellen": 309,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "A5E3VELD_KAND_3",
+   "sweep_ohm": 2.5883,
+   "sweep_min_bij_hz": 312.81,
+   "dip_breedte_oct": 0.2128,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5905,
+   "verschil_ohm": 0.0022,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5893,
+     "verschil_ohm": 0.001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5893,
+     "verschil_ohm": 0.001,
+     "extra_punten": 73,
+     "cellen": 13,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5883,
+     "verschil_ohm": 0,
+     "extra_punten": 914,
+     "cellen": 160,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "A5E3VELD_KAND_4",
+   "sweep_ohm": 2.6005,
+   "sweep_min_bij_hz": 975.55,
+   "dip_breedte_oct": 0.6454,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6006,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6005,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6005,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 17,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6005,
+     "verschil_ohm": 0,
+     "extra_punten": 950,
+     "cellen": 161,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "A5E3VELD_KAND_5",
+   "sweep_ohm": 2.6941,
+   "sweep_min_bij_hz": 53.01,
+   "dip_breedte_oct": 0.0618,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.694,
+   "verschil_ohm": 0.0001,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.694,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.694,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 85,
+     "cellen": 15,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.694,
+     "verschil_ohm": 0.0001,
+     "extra_punten": 872,
+     "cellen": 148,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    }
+   }
+  },
+  {
+   "netlist": "A5E3VELD_KAND_6",
+   "sweep_ohm": 2.664,
+   "sweep_min_bij_hz": 52.76,
+   "dip_breedte_oct": 0.151,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6644,
+   "verschil_ohm": 0.0004,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.664,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.664,
+     "verschil_ohm": 0,
+     "extra_punten": 72,
+     "cellen": 13,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.664,
+     "verschil_ohm": 0,
+     "extra_punten": 1059,
+     "cellen": 194,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "A5E3VELD_KAND_7",
+   "sweep_ohm": 2.6,
+   "sweep_min_bij_hz": 13950.42,
+   "dip_breedte_oct": 0.3433,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6012,
+   "verschil_ohm": 0.0012,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6006,
+     "verschil_ohm": 0.0006,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.6,
+     "verschil_ohm": 0,
+     "extra_punten": 85,
+     "cellen": 15,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6,
+     "verschil_ohm": 0,
+     "extra_punten": 945,
+     "cellen": 160,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_1",
+   "sweep_ohm": 2.5536,
+   "sweep_min_bij_hz": 416.19,
+   "dip_breedte_oct": 0.0206,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6349,
+   "verschil_ohm": 0.0813,
+   "boven_speling": true,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5536,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5536,
+     "verschil_ohm": 0,
+     "extra_punten": 121,
+     "cellen": 21,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5536,
+     "verschil_ohm": 0,
+     "extra_punten": 914,
+     "cellen": 155,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_2",
+   "sweep_ohm": 2.6104,
+   "sweep_min_bij_hz": 422.18,
+   "dip_breedte_oct": 0.0206,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.612,
+   "verschil_ohm": 0.0016,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.6104,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.6104,
+     "verschil_ohm": 0,
+     "extra_punten": 109,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.6104,
+     "verschil_ohm": 0,
+     "extra_punten": 987,
+     "cellen": 167,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_3",
+   "sweep_ohm": 2.5855,
+   "sweep_min_bij_hz": 52.01,
+   "dip_breedte_oct": 0.0755,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5933,
+   "verschil_ohm": 0.0078,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5933,
+     "verschil_ohm": 0.0078,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5855,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 18,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5855,
+     "verschil_ohm": 0,
+     "extra_punten": 811,
+     "cellen": 134,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_4",
+   "sweep_ohm": 2.589,
+   "sweep_min_bij_hz": 335.96,
+   "dip_breedte_oct": 0.0206,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.6007,
+   "verschil_ohm": 0.0117,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.589,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.589,
+     "verschil_ohm": 0,
+     "extra_punten": 110,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.589,
+     "verschil_ohm": 0,
+     "extra_punten": 993,
+     "cellen": 168,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_5",
+   "sweep_ohm": 2.5907,
+   "sweep_min_bij_hz": 606.14,
+   "dip_breedte_oct": 0.0618,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5998,
+   "verschil_ohm": 0.0091,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5996,
+     "verschil_ohm": 0.0089,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": false
+    },
+    "lokale_minima": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0,
+     "extra_punten": 84,
+     "cellen": 15,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5907,
+     "verschil_ohm": 0,
+     "extra_punten": 944,
+     "cellen": 160,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_6",
+   "sweep_ohm": 2.5772,
+   "sweep_min_bij_hz": 292.65,
+   "dip_breedte_oct": 0.2197,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5782,
+   "verschil_ohm": 0.0009,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5772,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5772,
+     "verschil_ohm": 0,
+     "extra_punten": 96,
+     "cellen": 17,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5772,
+     "verschil_ohm": 0,
+     "extra_punten": 951,
+     "cellen": 169,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_7",
+   "sweep_ohm": 2.5895,
+   "sweep_min_bij_hz": 262.31,
+   "dip_breedte_oct": 0.1099,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5973,
+   "verschil_ohm": 0.0078,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5895,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5895,
+     "verschil_ohm": 0,
+     "extra_punten": 97,
+     "cellen": 17,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5895,
+     "verschil_ohm": 0,
+     "extra_punten": 1126,
+     "cellen": 214,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_8",
+   "sweep_ohm": 2.5672,
+   "sweep_min_bij_hz": 48.66,
+   "dip_breedte_oct": 0.0893,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5673,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5672,
+     "verschil_ohm": 0,
+     "extra_punten": 13,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5672,
+     "verschil_ohm": 0,
+     "extra_punten": 111,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5672,
+     "verschil_ohm": 0,
+     "extra_punten": 889,
+     "cellen": 160,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_9",
+   "sweep_ohm": 2.5839,
+   "sweep_min_bij_hz": 228.5,
+   "dip_breedte_oct": 0.151,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5852,
+   "verschil_ohm": 0.0014,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5839,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5839,
+     "verschil_ohm": 0,
+     "extra_punten": 110,
+     "cellen": 19,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5839,
+     "verschil_ohm": 0,
+     "extra_punten": 1264,
+     "cellen": 223,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  },
+  {
+   "netlist": "KAND_V2_10",
+   "sweep_ohm": 2.5828,
+   "sweep_min_bij_hz": 943.59,
+   "dip_breedte_oct": 0.2403,
+   "cel_breedte_oct": 0.0415,
+   "barriere_ohm": 2.5828,
+   "verschil_ohm": 0,
+   "boven_speling": false,
+   "verdicht": {
+    "globaal_minimum": {
+     "ohm": 2.5828,
+     "verschil_ohm": 0,
+     "extra_punten": 12,
+     "cellen": 2,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "lokale_minima": {
+     "ohm": 2.5828,
+     "verschil_ohm": 0,
+     "extra_punten": 73,
+     "cellen": 13,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    },
+    "onder_2x_vloer": {
+     "ohm": 2.5828,
+     "verschil_ohm": 0,
+     "extra_punten": 1137,
+     "cellen": 255,
+     "boven_speling": false,
+     "zelfde_lezing_als_sweep": true
+    }
+   }
+  }
+ ]
+}

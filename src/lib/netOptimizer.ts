@@ -575,6 +575,19 @@ export interface NetOptimizeOptions {
    *                statable, which is what keeps the A5e.3-veld corpus a run
    *                somebody can still ask for.
    *
+   *   `'safety-extended-refined'` — E-1: the extended grid above, REFINED
+   *                around its own dips with the gate reference's points
+   *                (`refinedSystemMinImpedanceOhm`, `BARRIER_DIP_REFINEMENT`).
+   *                Measured on the A5e.3c corpus: KAND_V2_1's minimum sits in
+   *                a dip at 416 Hz narrower than one safety-grid cell — 2.5536 Ω
+   *                on the sweep against 2.6349 on the extended grid, 0.081 Ω
+   *                above the 0.052 Ω floor slack — and the barrier aimed 0.08 Ω
+   *                too high. The refined source re-solves the sweep's own points
+   *                inside the cells around every coarse local minimum, so a dip
+   *                the coarse grid lands beside is read where the gate reads
+   *                it, at the price of a few dozen extra points per evaluation
+   *                instead of the sweep's 1600. Needs the same two inputs as
+   *                `'safety-extended'`; missing either, the term is inert.
    * All three go through the same reader (`systemMinImpedanceOhm` →
    * `minImpedanceAt`), so the GRID is a parameter and not a second
    * implementation. That is what makes `'safety'` defensible rather than
@@ -603,7 +616,7 @@ export interface NetOptimizeOptions {
    * decides which band "good" is measured over, which is a different search
    * and not a different amount of polish.
    */
-  zFloorBarrierSource?: 'grid' | 'safety' | 'sweep' | 'safety-extended';
+  zFloorBarrierSource?: 'grid' | 'safety' | 'sweep' | 'safety-extended' | 'safety-extended-refined';
   /**
    * V47 — WHICH RULE JUDGES THE UPPER DRIVER'S PROTECTION IN THE FULL-BAND
    * SAFETY GATE.
@@ -1291,6 +1304,131 @@ export function extendGridToSweepExtent(
   };
 }
 
+/**
+ * E-1 — WHICH CELLS OF A COARSE |Z| READING GET THE FINE GRID'S OWN POINTS.
+ *
+ *   'minimum'      — the two cells around the coarse GLOBAL minimum only.
+ *   'local-minima' — the two cells around EVERY coarse local minimum (a point
+ *                    no higher than both neighbours; an endpoint counts against
+ *                    its one neighbour). No level, no tolerance: a dip is a dip
+ *                    whatever its depth, and the minimum the gate will read may
+ *                    sit in a dip the coarse grid does not read as the lowest.
+ *   'below'        — every cell whose coarse reading lies under `ohm` — the
+ *                    "finer grid wherever |Z| < 2× floor" shape of E-1's brief,
+ *                    with the level handed in rather than invented here.
+ *
+ * All three are measured against each other in `measure-e1-barrier-resolution.ts`
+ * on every frozen netlist of casus 1; the barrier reads ONE of them
+ * (`BARRIER_DIP_REFINEMENT`), chosen on that measurement.
+ */
+export type DipRefinement = { kind: 'minimum' } | { kind: 'local-minima' } | { kind: 'below'; ohm: number };
+
+/**
+ * The refinement the `'safety-extended-refined'` barrier source reads with.
+ *
+ * `'minimum'` — the SMALLEST intervention that brings every frozen netlist
+ * under the floor slack, and the choice is a measurement and not a preference
+ * (E-1, 06-09-2026, all 161 frozen netlists of casus 1, `measure-e1-barrier-
+ * resolution.ts`): on the extended grid two read a slack or more away from
+ * the sweep (KAND_V2_1 0.081 Ω, V28_KAND_2 0.073 Ω), both with a dip narrower
+ * than one barrier cell (0.021 and 0.014 oct against 0.042), and no netlist
+ * with a wider dip does. Refining the two cells around the coarse global
+ * minimum closes both: largest remaining gap 0.0089 Ω (KAND_V2_5), 128 of
+ * 161 bit-identical to the sweep, 12 extra points (13 at most) — 2.98 → 3.07 ms
+ * per evaluation on HUIDIG, +3 %. Refining around EVERY local minimum reads
+ * bit-identical on 146 of 161 (13 of 13 live) for 73 extra points at the
+ * median (+14–29 % per evaluation); the "below 2× floor" shape costs 696
+ * points, nearly the sweep itself. The brief asked for the smallest
+ * intervention that clears the slack; the local-minima arm is the next word
+ * to change if a frozen netlist ever reads above the slack on this one — the
+ * guard in `frozenNetlistGates.test.ts` asserts the slack per netlist.
+ */
+export const BARRIER_DIP_REFINEMENT: DipRefinement = { kind: 'minimum' };
+
+/** The coarse indices a refinement selects — exported so the measurement and the term read one rule. */
+export function dipCellsOf(mag: readonly number[], refinement: DipRefinement): number[] {
+  if (mag.length === 0) return [];
+  if (refinement.kind === 'minimum') {
+    let best = 0;
+    for (let i = 1; i < mag.length; i++) if (mag[i] < mag[best]) best = i;
+    return [best];
+  }
+  if (refinement.kind === 'below') {
+    const out: number[] = [];
+    for (let i = 0; i < mag.length; i++) if (mag[i] < refinement.ohm) out.push(i);
+    return out;
+  }
+  const out: number[] = [];
+  for (let i = 0; i < mag.length; i++) {
+    const left = i === 0 || mag[i] <= mag[i - 1];
+    const right = i === mag.length - 1 || mag[i] <= mag[i + 1];
+    if (left && right) out.push(i);
+  }
+  return out;
+}
+
+/**
+ * E-1 — THE SYSTEM'S SHORTEST IMPEDANCE ON A COARSE GRID, REFINED AROUND ITS
+ * DIPS WITH THE FINE GRID'S OWN POINTS.
+ *
+ * The coarse reading first (the same solve `systemMinImpedanceOhm` makes), then
+ * the cells the refinement selects — the open interval between the coarse
+ * neighbours of each selected index — are filled with every point of `fine`
+ * that lies strictly inside them, those points are solved in one pass, and the
+ * lowest of both readings is returned. Where the fine grid's minimum lies in a
+ * refined cell the result IS the fine grid's reading, bit for bit: the same
+ * points through the same solver and the same `minImpedanceAt` rule. Where it
+ * does not, the coarse reading stands and the gap is what it was — which is
+ * why the choice of refinement is measured rather than assumed.
+ *
+ * Null when the network cannot be solved on the coarse grid, or when a driver
+ * model of the coarse grid is missing from the fine reference: the merged
+ * subset could not honestly be built, and the caller treats that as "no data"
+ * rather than quietly reading the coarse grid alone (the V32 rule).
+ */
+export function refinedSystemMinImpedanceOhm(
+  net: { nodeCount: number; elements: NetElement[] },
+  coarse: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> },
+  fine: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> },
+  refinement: DipRefinement = BARRIER_DIP_REFINEMENT,
+): { ohm: number; coarseOhm: number; refinedPoints: number; cells: number } | null {
+  let mag: number[];
+  try {
+    mag = solveNetwork(net, coarse.grid, coarse.driverZ).inputZ.map((z) => Math.hypot(z.re, z.im));
+  } catch {
+    return null;
+  }
+  const coarseMin = minImpedanceAt(mag.map((m) => ({ re: m, im: 0 })));
+  if (!coarseMin) return null;
+  const cells = dipCellsOf(mag, refinement);
+  const lo = new Set<number>();
+  for (const i of cells) {
+    if (i > 0) lo.add(i - 1);
+    if (i < coarse.grid.length - 1) lo.add(i);
+  }
+  const inside = (f: number): boolean => {
+    for (const k of lo) if (f > coarse.grid[k] && f < coarse.grid[k + 1]) return true;
+    return false;
+  };
+  const sub: number[] = [];
+  for (let i = 0; i < fine.grid.length; i++) if (inside(fine.grid[i])) sub.push(i);
+  if (sub.length === 0) return { ohm: coarseMin.ohm, coarseOhm: coarseMin.ohm, refinedPoints: 0, cells: lo.size };
+  const driverZ: Record<string, Complex[]> = {};
+  for (const model of Object.keys(coarse.driverZ)) {
+    const r = fine.driverZ[model];
+    if (!r) return null;
+    driverZ[model] = sub.map((i) => r[i]);
+  }
+  let fineMin: { ohm: number } | null;
+  try {
+    fineMin = minImpedanceAt(solveNetwork(net, sub.map((i) => fine.grid[i]), driverZ).inputZ);
+  } catch {
+    return null;
+  }
+  const ohm = fineMin && fineMin.ohm < coarseMin.ohm ? fineMin.ohm : coarseMin.ohm;
+  return { ohm, coarseOhm: coarseMin.ohm, refinedPoints: sub.length, cells: lo.size };
+}
+
 /** Soft buildability bounds, as in synthesis. */
 const BOUNDS: Record<'C' | 'L' | 'R', [number, number]> = {
   C: [0.33e-6, 100e-6],
@@ -1712,7 +1850,7 @@ export function optimizeNetworkValues(
    * gate — is deliberately untouched: they are the veto half, they were not
    * what disagreed with the gate, and V33's remit was the objective.
    */
-  const barrierSource: 'grid' | 'safety' | 'sweep' | 'safety-extended' = opts.zFloorBarrierSource ?? 'grid';
+  const barrierSource: NonNullable<NetOptimizeOptions['zFloorBarrierSource']> = opts.zFloorBarrierSource ?? 'grid';
   /**
    * The grid the barrier reads on, when it is not the evaluation grid.
    *
@@ -1744,7 +1882,7 @@ export function optimizeNetworkValues(
               what: opts.zFloorBarrierImpedance.span,
             }
           : null
-        : barrierSource === 'safety-extended'
+        : barrierSource === 'safety-extended' || barrierSource === 'safety-extended-refined'
           ? (() => {
               /* A5e.3b (c2) — the safety grid, widened to the sweeps' extent
                * with the gate reference's own points. Both inputs or nothing:
@@ -1763,10 +1901,22 @@ export function optimizeNetworkValues(
                   `${ext.grid[0].toFixed(0)}-${ext.grid[ext.grid.length - 1].toFixed(0)} Hz, ` +
                   `${ext.grid.length} points — the full-band safety grid extended to the measured ` +
                   `sweeps' extent with ${ext.addedBelow + ext.addedAbove} of the gate reference's own ` +
-                  'points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b)',
+                  'points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b)' +
+                  (barrierSource === 'safety-extended-refined'
+                    ? `, refined with the gate reference's own points inside the cells beside its coarse ` +
+                      `minimum (E-1, dip refinement '${BARRIER_DIP_REFINEMENT.kind}'), so a dip narrower than ` +
+                      'one safety-grid cell is read where the gate reads it'
+                    : ''),
               };
             })()
           : null;
+  /* E-1 — the fine reference the refined source re-solves its dip cells on:
+   * the gate's own points. Present only on that source; the term above it
+   * reads the coarse grid alone on every other. */
+  const barrierRefineOn: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> } | null =
+    barrierSource === 'safety-extended-refined' && barrierGrid !== null && opts.zFloorBarrierImpedance
+      ? { grid: opts.zFloorBarrierImpedance.grid, driverZ: opts.zFloorBarrierImpedance.driverZ }
+      : null;
   /**
    * The shortfall the barrier term is pulling against, from the stated source.
    *
@@ -1802,7 +1952,9 @@ export function optimizeNetworkValues(
   ): number => {
     if (barrierSource === 'grid') return m.zShortOhm;
     if (barrierGrid === null || ampFloorOhm === null) return 0;
-    const ohm = systemMinImpedanceOhm(net, barrierGrid.grid, barrierGrid.driverZ);
+    const ohm = barrierRefineOn
+      ? (refinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, BARRIER_DIP_REFINEMENT)?.ohm ?? null)
+      : systemMinImpedanceOhm(net, barrierGrid.grid, barrierGrid.driverZ);
     return ohm === null ? 0 : Math.max(0, ampFloorOhm - ohm);
   };
   /** Prose about the line above, for the run notes. Absent unless asked. */

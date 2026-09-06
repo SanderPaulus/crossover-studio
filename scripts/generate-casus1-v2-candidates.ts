@@ -73,6 +73,7 @@ import {
   CASUS1_CONTINUOUS_POWER_W,
   CASUS1_EXCURSION,
   CASUS1_MAX_DRIVE_ON_FS_DB,
+  CASUS1_WINDOW_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
@@ -111,6 +112,8 @@ const report = buildReport({
     ...(Object.keys(CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER).length > 0
       ? { maxDriveOnFsDbByDriver: { ...CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER } }
       : {}),
+    /* E-1 — a stated ceiling per pair, when the project states one (unstated today). */
+    ...CASUS1_WINDOW_SETTINGS,
     ...CASUS1_BUILDABILITY,
     /* V51 — the wiring per way and the level-work requirement, for the report's
      * own block; the requirement reaches the SEARCH through the candidate's
@@ -265,6 +268,10 @@ const outcomes: {
     wegen_zonder_familie: string[];
     buiten_bereik: string[];
   } | null;
+  /* E-1 — de looptijd van deze kandidaat in de generator, seconden wandklok
+   * (uit de shard; `withRuntime`). De twee live ketenruns kiezen er hun
+   * onderwerp op. Absent alleen in een herkomst van vóór E-1. */
+  looptijd_s?: number;
 }[] = [];
 /* ------------------------------------------------------------------ *
  * V47 — DE VIJFTIEN KETENRUNS OVER DE CORES, IN PLAATS VAN ACHTER ELKAAR
@@ -547,6 +554,23 @@ function runCandidate(c: (typeof field.field.candidates)[number], n: number): Sh
   };
 }
 
+/**
+ * E-1 — DE LOOPTIJD REIST MEE IN DE HERKOMST (`kandidaat_uitkomst[].looptijd_s`).
+ *
+ * Tot E-1 stond de looptijd per kandidaat alleen in de shard (gitignored) en in
+ * de A5e.3c-tabel; de herkomst — het bestand dat de suite leest — droeg hem
+ * niet. Sinds E-1 kiezen de twee live ketenruns hun onderwerp op de LAAGSTE
+ * geregistreerde looptijd (`liveSubjects` in `casus1Corpora.fixture.ts`): de
+ * byte-reproductie de goedkoopste geleverde netlist, de verwerpingsrun de
+ * goedkoopste verwerping. Gemeten aanleiding: A5e.3c reproduceerde KAND-V2-1
+ * (377,8 · 1948, 8671 s in de generator, 7182 s live) en de volle suite kostte
+ * twee uur; de goedkoopste geleverde kost 1787 s. Seconden zoals het kind ze
+ * mat (wandklok onder `V2_JOBS` gelijktijdige processen — een ORDE, geen
+ * meting op een lege machine).
+ */
+const withRuntime = (shard: Shard): (typeof outcomes)[number] =>
+  ({ ...(shard.outcome as object), looptijd_s: Number(shard.seconds.toFixed(3)) }) as (typeof outcomes)[number];
+
 /* ---- child mode: één kandidaat, één shard-bestand, klaar ---------------- */
 if (ONLY !== null) {
   const c = field.field.candidates[ONLY - 1];
@@ -567,7 +591,7 @@ if (process.env.V2_SEQUENTIAL === '1') {
   for (const c of field.field.candidates) {
     const shard = runCandidate(c, ++i);
     rows.push(shard.row as unknown as ShortlistInput<Chain3Result>);
-    outcomes.push(shard.outcome as (typeof outcomes)[number]);
+    outcomes.push(withRuntime(shard));
     perCandidate[c.label] = { provenance: c.provenance, crossings: c.crossings };
   }
 } else {
@@ -630,7 +654,7 @@ if (process.env.V2_SEQUENTIAL === '1') {
       readFileSync(join(SHARD_DIR, `cand-${String(n).padStart(3, '0')}.json`), 'utf-8'),
     ) as Shard;
     rows.push(shard.row as unknown as ShortlistInput<Chain3Result>);
-    outcomes.push(shard.outcome as (typeof outcomes)[number]);
+    outcomes.push(withRuntime(shard));
     const c = field.field.candidates[n - 1];
     perCandidate[c.label] = { provenance: c.provenance, crossings: c.crossings };
   }
@@ -1214,6 +1238,13 @@ const meetopstelling = {
         'set). Dezelfde lezer (`minImpedanceAt`, via `extendGridToSweepExtent`); de aanleiding ' +
         'is KAND_V2_2 van het A5e.3-veld, wiens minimum op 10,07 Hz buiten de barrière-' +
         'uitgestrektheid lag terwijl de poort er wél op oordeelde.',
+      'safety-extended-refined':
+        'De barrièreterm leest zijn tekort op het verlengde veiligheidsraster, VERDICHT rond élk lokaal ' +
+        'minimum dat het leest met de eigen punten van het poortraster in de cellen ernaast (de vijfde ' +
+        'waarde van de V33-sleutel, E-1): een dip smaller dan één veiligheidsrastercel wordt gelezen waar ' +
+        'de poort hem leest. Dezelfde lezer (`refinedSystemMinImpedanceOhm` → `minImpedanceAt`); de ' +
+        'aanleiding is KAND_V2_1 van A5e.3c (2,5536 Ω op de sweep tegen 2,6349 op het barrièreraster, ' +
+        '0,081 Ω tegen een speling van 0,052).',
     }[lastPayload.candidate?.declaration.stated.zFloorBarrierSource ?? 'grid'],
   vloer_is_zoekdoel:
     lastPayload.candidate?.declaration.stated.zFloorBarrier === true,
