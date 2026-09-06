@@ -29,7 +29,6 @@ import { computeIntegration } from './lib/integration.ts';
 import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { assessNetwork, notSimulatedTag, type NetworkReadiness } from './lib/networkReadiness.ts';
 import { solveNetwork, type Netlist } from './lib/network.ts';
-import { peakInputVolts } from './lib/engine2/metrics/driveExcursion.ts';
 import type { WayWiring } from './lib/engine2/ingest/wiring.ts';
 import {
   canonicalModelForRole,
@@ -133,7 +132,6 @@ import {
   recommendedBand,
   type RecommendedBandResult,
 } from './lib/engine2/predesign/recommendedBand.ts';
-import { factsForWorker } from './lib/engine2/optimizer/measurementFacts.ts';
 import {
   smoothingConsistency,
   type SmoothingNotice,
@@ -161,8 +159,17 @@ import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import {
   declareCandidateChainChoices,
-  declareCandidateChoices,
 } from './lib/engine2/optimizer/candidateDeclaration.ts';
+/* E-3b — the N-neutral half of the v2 scan door: what the app hands the worker,
+ * for two ways exactly as for three. One implementation, two callers. */
+import {
+  candidateDeclarationFor,
+  collectV2Scan,
+  measurementFactsFor,
+  pairDerivationInputs,
+  reportingPowerW,
+  v2RunSettingsFor,
+} from './lib/engine2/optimizer/scanRequest.ts';
 import { seriesRMaxOhmOf, type LowestWayLevelWork } from './lib/levelWork.ts';
 import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
@@ -219,12 +226,15 @@ import {
   cancelOptimTasks,
   CancelledError,
   runChainScan,
+  runChainScanV2,
   runNetOptimizeTask,
   runMinimizeTask,
   runSoloChainTask,
   runVfRoundsTask,
   runChain3Scan,
   runChain3ScanV2,
+  type V2ChainItem,
+  type V2ScanSettings,
   type V2Chain3Item,
   stopKeepingResults,
   type ScanProgress,
@@ -245,7 +255,7 @@ import {
 } from './lib/partAudit.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
-import { crossoverVariants, rankChainResults, type ChainResult, type ChainSettings } from './lib/designChain.ts';
+import { crossoverVariants, rankChainResults, type ChainInput, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
 import { fromPolar, abs as cAbs, mul as cMul, type Complex } from './lib/complex.ts';
 import {
@@ -643,7 +653,57 @@ const nextPaint = (): Promise<void> =>
     requestAnimationFrame(() => requestAnimationFrame(finish));
   });
 
-function scanRowVerdict(r: Chain3Result): { text: string; warn?: string } {
+/**
+ * ONE ROW OF THE SCAN / SHORTLIST / PARETO TABLES.
+ *
+ * E-3b — named, because since E-3b there are two builders for it (a two-way
+ * and a three-way chain result) and three readers. It was an inferred shape on
+ * the `chainScan` state while there was one builder per surface; a shape that
+ * only exists as an inference cannot be the contract two builders agree on.
+ */
+export interface ScanTableRow {
+  label: string;
+  rippleDb: number;
+  /** Peak of the error-smoothed sum (what the search judged); shown in the
+   *  column, the raw rippleDb in the tooltip. */
+  peakSmoothedDb: number | null;
+  /** Fitted power-response slope of the delivered design (dB/decade). */
+  powerSlopeDbDec: number | null;
+  /** Source resistance at the low driver (Ω) from the part audit; null = unknown. */
+  rSourceOhm: number | null;
+  /** Disqualification reasons (fix 1/2); empty = in the race. */
+  disqualified: string[];
+  /** Per-pair physics-floor verdict (3-way); null on a 2-way row. */
+  xoFloorVerdict: ('ok' | 'warn' | 'fail' | null)[] | null;
+  /** Whole-range avg |deviation| — the number the ranking judges on. */
+  avgDevDb: number | null;
+  phaseDeg: number;
+  bomEur: number | null;
+  /** Delivered minimum system |Zin| — what the amplifier sees. Shown because
+   *  the ranking judges it: a criterion you cannot read is a criterion you
+   *  cannot argue with. */
+  zMinOhm: number | null;
+  /** Physics verdict on the delivered handovers (null = unjudged) + the
+   *  delivered overlap width per pair in octaves. */
+  xoWindowOk: boolean | null;
+  pairOverlapOct: (number | null)[] | null;
+  winner: boolean;
+  /** LABEL = MEASURED HANDOVER (Sanders' rule 8): the row is named after the
+   *  crossing the tuned network actually DELIVERS, not after the candidate it
+   *  aimed at. `target` keeps the aim (and stays the row key); `unrealisable`
+   *  marks a delivery more than ⅓ octave off its aim — a diagnosis (the window
+   *  or the topology binds), not cosmetics. */
+  delivered: string;
+  target: string;
+  unrealisable: boolean;
+  /** 2-way and 3-way scans produce different result shapes; the table only
+   *  displays numbers, so it carries either and the loader branches. */
+  result: ChainResult | Chain3Result;
+}
+
+/* E-3b — reads only `net` and `zOk`, which both chain results carry; the
+ * signature said `Chain3Result` because that was the only caller. */
+function scanRowVerdict(r: ChainResult | Chain3Result): { text: string; warn?: string } {
     const nums = `${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
     const kinds = r.net.safetyKinds ?? [];
     const LABEL: Record<string, string> = {
@@ -1350,6 +1410,18 @@ export default function App() {
    *  is inherently a single-pair quantity (the overall integration score —
    *  `pairScores` reports per adjacent pair instead). */
   const threeWay = !!(woofer && midDrv && tweeter);
+  /**
+   * E-3b — THE BRANCH ROLES THIS PROJECT HAS, in order, once.
+   *
+   * Written out at four call sites before E-3b (the report adapter, the timing
+   * base, the alias map, the measured facts) and needed at a fifth the moment
+   * a two-way run reaches the v2 worker. One list, so no two of them can
+   * disagree about whether a project has a mid.
+   */
+  const v2Roles = useMemo<BranchRole[]>(
+    () => (threeWay ? ['low', 'mid', 'high'] : ['low', 'high']),
+    [threeWay],
+  );
   /** Mid data without a full 3-way cannot be placed — say so loudly and keep
    *  it out of the sim AND the solver map (signalling, never a silent guess).
    *  Publishing the mid Z while !threeWay would shift the 2-way canonical
@@ -3378,6 +3450,23 @@ export default function App() {
   }, [v2Meas]);
 
   /**
+   * E-3b — the same stated M-C figures keyed by WORKER MODEL. `threeWay` is
+   * what makes it N-aware: on a two-way the LOW role is the model `mid`
+   * (`canonicalModelForRole`), which is exactly what the worker's `v2ChainOne`
+   * branch keys its `driverZ` by.
+   */
+  const driveOnFsMaxDbByModel = useMemo(
+    () =>
+      Object.fromEntries(
+        (Object.entries(driveOnFsMaxDbByRole) as [BranchRole, number][]).map(([r, v]) => [
+          canonicalModelForRole(r, threeWay),
+          v,
+        ]),
+      ),
+    [driveOnFsMaxDbByRole, threeWay],
+  );
+
+  /**
    * A5e.3 — the loaded catalogue's coil fits (one per brand, series and
    * gauge), and the coil family per way as stated in the measurement block.
    * The fits are what a stated family resolves to, in the report and in the
@@ -3741,6 +3830,74 @@ export default function App() {
     const active = designs.find((d) => d.id === activeDesignId);
     return buildV2Report(active ? { name: active.name, parts: active.parts } : null);
   }, [buildV2Report, designs, activeDesignId]);
+
+  /**
+   * E-3b — THE SAME FIGURES KEYED BY REPORT DRIVER ID, and the same rekeyed by
+   * WORKER MODEL. Three vocabularies for one fact — the app speaks roles, the
+   * report speaks driver ids, the worker speaks models — and until E-3b each
+   * of the three call sites did its own `find` over `driverIds`. Once, here, so
+   * a two-way and a three-way run cannot disagree about which way stated what.
+   *
+   * `threeWay` is what makes the model half N-aware: on a two-way the LOW role
+   * is the model `mid` (`canonicalModelForRole`), which is exactly what the
+   * worker's `v2ChainOne` branch keys its `driverZ` by.
+   */
+  const v2DriveLimitDbByDriverId = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const id = engineV2Report?.driverIds?.[role];
+      const v = driveOnFsMaxDbByRole[role];
+      if (id !== undefined && v !== undefined) out[id] = v;
+    }
+    return out;
+  }, [engineV2Report, driveOnFsMaxDbByRole]);
+
+  /* F4b — THE MEASURED FACTS THAT CROSS THE BORDER (audit §4, leaks 1 and 2).
+   *
+   * `reOhmByModel` existed in the payload since F2 and was read by the worker
+   * since F2, and nothing ever filled it: the worker fell back to
+   * `estimateRe(curve)` with no options, which cannot run the motional fit and
+   * therefore always produced the direct low-frequency reading. On the casebook
+   * woofer that is 3.81 Ω against a resolved 2.90 Ω, with the panel showing one
+   * number and the bound dividing by the other (V21). The A5b.1 validity
+   * intervals never crossed at all, so the frozen passbands were the whole
+   * analysis grid (V22).
+   *
+   * ONE SOURCE OF TRUTH: the ingest pass resolved both, this hands them over,
+   * and the worker consumes rather than re-derives. The keys are translated
+   * from the report's driver ids to the canonical model names the worker's
+   * `driverZ` uses — the same bridge `driverSlots.ts` is for. A missing report
+   * is not patched over: the worker's fallback is still there, it says so in
+   * the notes, and the run fingerprint records it.
+   *
+   * E-3b — A MEMO RATHER THAN A BLOCK INSIDE THE THREE-WAY SCAN, because the
+   * two-way v2 route needs exactly the same facts and re-deriving them beside
+   * it would be two answers to "what did we measure". It is N-neutral by
+   * construction: it walks `v2Roles`, and a role without a driver id is
+   * skipped.
+   */
+  const v2MeasuredFacts = useMemo(
+    () =>
+        measurementFactsFor({
+          report: engineV2Report?.report,
+          roles: v2Roles,
+          driverIdOf: (r) => engineV2Report?.driverIds?.[r],
+          modelOf: (r) => canonicalModelForRole(r, threeWay),
+          /* F4b2 — the raw impedance sweeps, keyed the way the REPORT keys its
+           * drivers. They go with the facts because A4 M-D evaluates around f_p,
+           * which for a woofer sits below the chain's analysis grid entirely:
+           * inverting on that grid does not refuse, it publishes a ceiling of a
+           * thousand henries (V25). The report does not keep the curve — it keeps
+           * the classification of it — so it is handed over from here, where it
+           * was read from disk in the first place. */
+          sweepOf: (r) => {
+            const zma = zStandalone[r]?.zma ?? impedances[canonicalModelForRole(r, threeWay)];
+            return zma ? { freq: zma.freq, magnitude: zma.magnitude, phaseDeg: zma.phase } : null;
+          },
+        }),
+    [engineV2Report, v2Roles, threeWay, zStandalone, impedances],
+  );
+
 
   /**
    * 3-way pins for the design chain (freq ± margin per handover).
@@ -6902,32 +7059,19 @@ export default function App() {
          * the two policies. The full mode passes NO policy — absent is the
          * field it has been since F4d, byte for byte (`fieldMode.ts`). */
         const fieldSettings = fieldModeSettings(fieldMode, { stepsPerAxis: scanSteps3, pairs: wis.length });
-        const perPair: PairDerivationInput[] = wis.map((wi, i) => ({
-            /* The order the designer stated for this handover — read from the
-             * SAME place the window already reads it (`orderByPair`, derived
-             * from the acoustic slope settings), not from a second parse of
-             * the alignment fields. A window computed at one order and a
-             * candidate generated at another would be two answers to one
-             * question. `NaN` is what the window treats as "not stated". */
-            statedOrder: Number.isFinite(wi.order) ? wi.order : null,
-            // M-C's stated limit arms A5d.3(ii). Absent = not armed (P4);
-            // nothing here invents a protection budget. V50: the UPPER way's
-            // own figure first, the single field as the fallback — the same
-            // order the gate reads (`statedDriveLimitDb`).
-            maxDriveOnFsDb: (() => {
-              const role = (['low', 'mid', 'high'] as const).find(
-                (r) => engineV2Report?.driverIds?.[r] === wi.upper,
-              );
-              const perWay = role ? driveOnFsMaxDbByRole[role] : undefined;
-              return perWay ?? engineV2Gates.maxDriveOnFsDb ?? null;
-            })(),
-            lowerTargetSlopeDbPerOct:
-              (i === 0 && wis.length > 1 ? slopes?.low?.lower : slopes?.mid) ?? null,
-            upperTargetSlopeDbPerOct:
-              (i === 0 && wis.length > 1 ? slopes?.low?.upper : slopes?.tweeter) ?? null,
-            lowerCurve: curveOfDriver(wi.lower),
-            upperCurve: curveOfDriver(wi.upper),
-          }));
+        /* E-3b — the per-pair derivation inputs, built by the one function
+         * both routes call (`scanRequest.ts`). It maps over the windows the
+         * report derived — one per adjacent pair — so it counts handovers and
+         * never ways. */
+        const perPair: PairDerivationInput[] = pairDerivationInputs({
+          windowInputs: wis,
+          ...(slopes ? { slopes } : {}),
+          statedDriveLimitDbByDriverId: v2DriveLimitDbByDriverId,
+          ...(engineV2Gates.maxDriveOnFsDb !== undefined
+            ? { fallbackDriveLimitDb: engineV2Gates.maxDriveOnFsDb }
+            : {}),
+          curveOfDriverId: curveOfDriver,
+        });
         return { windowInputs: wis, perPair, fieldSettings };
       })();
       const v2Generated = v2FieldRequest
@@ -7155,80 +7299,29 @@ export default function App() {
       const coilFamilyByModel: Record<string, string> = Object.fromEntries(
         (Object.entries(coilFamilyByRole) as [BranchRole, string][]).map(([r, v]) => [canonicalModelForRole(r, threeWay), v]),
       );
-      /** The A5d declaration that travels beside one generated candidate. */
+      /** The A5d declaration that travels beside one generated candidate.
+       *
+       * E-3b — the body is `candidateDeclarationFor` (`scanRequest.ts`), the
+       * one implementation both routes call; what stays here is what the CHAIN
+       * decides and this module may not: `orderByModel`, because which way's
+       * high-pass flank belongs to which handover is the chain's vocabulary. */
       const declarationFor = (cand: GeneratedCandidate, input: Chain3Input) => ({
-        declaration: declareCandidateChoices({
-          cages: cand.crossings.map((x) => x.cageHz),
-          windowFloorsHz: cand.crossings.map((x) => x.windowHz[0]),
-          multiWay: true,
-          stated: {
-            band: input.settings.band,
-            acousticSlopes: input.settings.acousticSlopes,
-            staged: input.settings.targets,
-            ampTarget: input.settings.ampTarget,
-            powerMetric: input.settings.powerMetric,
-            phaseMetric: input.settings.phaseMetric,
-            catalogSnap: input.settings.catalogSnap,
-            snapPrefs: input.settings.snapPrefs,
-            breakupGuard: input.settings.breakupGuard,
-            safety: input.settings.safety,
-            audit: input.settings.audit,
-            loadFloor: input.settings.loadFloor,
-            ampMinLoadOhm: input.settings.ampMinLoadOhm,
-            rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
-            // The chain sets this itself, with a stated reason ("the seed here
-            // is OUR OWN synthesis"). Restated rather than inherited: the value
-            // is identical, and F4c's whole point is that a value nobody names
-            // is indistinguishable from a decision.
-            zFloorStrict: true,
-          },
-          /* A5e.2/V45 — the design's own voicing, so the candidate can declare
-           * WHAT the amplitude term is flat against. The same object the
-           * shortlist judges the window and the RMS against; handing the
-           * declaration a different one would be the split V45 closed. */
+        declaration: candidateDeclarationFor({
+          candidate: cand,
+          settings: input.settings,
           targetCurve: activeTargetCurve,
-          /* V47 — the design's stated drive limit, so the candidate can declare
-           * WHICH RULE forbids an unprotected upper driver. The limit itself
-           * does not travel here: it is a gate and it crosses in
-           * `v2.gates.maxDriveOnFsDb`, judged by the same machinery the panel
-           * reads. Absent leaves the historic seed comparison in force (P4). */
-          ...(engineV2Gates.maxDriveOnFsDb !== undefined
-            ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb }
-            : {}),
-          /* V50 — and the per-way figures, keyed by model like the gate. */
-          ...(Object.keys(driveOnFsMaxDbByRole).length > 0
-            ? {
-                driveOnFsLimitDbByDriver: Object.fromEntries(
-                  (Object.entries(driveOnFsMaxDbByRole) as [BranchRole, number][]).map(([r, v]) => [
-                    canonicalModelForRole(r, threeWay),
-                    v,
-                  ]),
-                ),
-              }
-            : {}),
-          /* V49 — and whether the report derived an EXCURSION ceiling for any
-           * way (M-C v2.0). That is an absolute requirement too, so the
-           * candidate declares `protectionRule: 'stated'` on it even without a
-           * stated dB figure. The ceilings themselves cross as a measured fact
-           * in `v2Facts`, never through the declaration. */
-          ...((engineV2Report?.report?.metrics.driveExcursion.length ?? 0) > 0
-            ? { driveCeilingDerived: true }
-            : {}),
-          /* V48 — the design's stated LF-lift budget, so the candidate can
-           * declare WHICH NETWORK the series-inductance ceiling describes. The
-           * budget itself does not travel here: it crosses as
-           * `v2.budgets.lfBumpBudgetDb` and is what `invertBudgets` inverts.
-           * Absent leaves the ceiling solved at the seed (P4). */
-          ...(engineV2Gates.lfBumpBudgetDb !== undefined
-            ? { lfBumpBudgetDb: engineV2Gates.lfBumpBudgetDb }
-            : {}),
-          /* A5e.3 — the coil family per way, keyed by MODEL like the M-C
-           * figures, and the loaded catalogue's fits, so the candidate can
-           * declare WHAT PHYSICS its coils are judged on. Nothing stated =
-           * nothing handed over = absent with the P4 reason. */
-          ...(Object.keys(coilFamilyByModel).length > 0
-            ? { coilDcrFamilyByWay: coilFamilyByModel, coilDcrFits, coilDcrCatalogLabel: coilCatalogLabel }
-            : {}),
+          limits: engineV2Gates,
+          driveOnFsMaxDbByModel,
+          /* V49 — did the report derive an EXCURSION ceiling for any way
+           * (M-C v2.0)? That is an absolute requirement too, so the candidate
+           * declares `protectionRule: 'stated'` on it even without a stated dB
+           * figure. The ceilings themselves cross as a measured fact in
+           * `v2Facts`, never through the declaration. */
+          driveCeilingDerived: (engineV2Report?.report?.metrics.driveExcursion.length ?? 0) > 0,
+          coilFamilyByModel,
+          coilDcrFits,
+          coilDcrCatalogLabel: coilCatalogLabel,
+          multiWay: true,
         }),
         chainDeclaration: chainDecl,
         provenance: cand.provenance,
@@ -7314,127 +7407,28 @@ export default function App() {
        * the worker's `driverZ` uses — the same bridge `driverSlots.ts` is for.
        * A missing report is not patched over: the worker's fallback is still
        * there, it says so in the notes, and the run fingerprint records it. */
-      const v2Facts = (() => {
-        const rep = engineV2Report?.report;
-        if (!rep) return {};
-        const modelByDriverId: Record<string, string> = {};
-        /* F4b2 — the raw impedance sweeps, keyed the way the REPORT keys its
-         * drivers. They go with the facts because A4 M-D evaluates around f_p,
-         * which for a woofer sits below the chain's analysis grid entirely:
-         * inverting on that grid does not refuse, it publishes a ceiling of a
-         * thousand henries (V25). The report does not keep the curve — it keeps
-         * the classification of it — so it is handed over from here, where it
-         * was read from disk in the first place. */
-        const sweepByDriverId: Record<
-          string,
-          { freq: readonly number[]; magnitude: readonly number[]; phaseDeg: readonly number[] }
-        > = {};
-        for (const role of ['low', 'mid', 'high'] as const) {
-          const id = engineV2Report?.driverIds?.[role];
-          if (id === undefined) continue;
-          modelByDriverId[id] = canonicalModelForRole(role, threeWay);
-          const zma =
-            zStandalone[role]?.zma ?? impedances[canonicalModelForRole(role, threeWay)];
-          if (zma) {
-            sweepByDriverId[id] = {
-              freq: zma.freq,
-              magnitude: zma.magnitude,
-              phaseDeg: zma.phase,
-            };
-          }
-        }
-        return factsForWorker(rep, modelByDriverId, sweepByDriverId);
-      })();
       const v2GatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }> = {};
       const v2Field: ShortlistInput<Chain3Result>[] = [];
       let v2Stamp: V2RunStamp | null = null;
       const v2ScanSettings = useV2
         ? {
-            gates: {
-              ...(engineV2Gates.maxDissipationFraction !== undefined
-                ? { maxDissipationFraction: engineV2Gates.maxDissipationFraction }
+            /* E-3b — the gates, the budgets, the determinism, the measured
+             * facts, the voicing, the judged band and the reporting power: one
+             * assembly for both routes (`scanRequest.ts`). The three IDENTITY
+             * KEYS below are NOT in it on purpose — they name what the run
+             * searched OVER, which is the half that depends on how many
+             * handovers a variant carries. */
+            ...v2RunSettingsFor({
+              limits: engineV2Gates,
+              driveOnFsMaxDbByModel,
+              ampMinLoadOhm,
+              facts: v2MeasuredFacts,
+              targetCurve: activeTargetCurve,
+              judgeBandHz: settings.band,
+              ...(reportingPowerW(engineV2Settings.amplifierPowerW) !== undefined
+                ? { amplifierPowerW: reportingPowerW(engineV2Settings.amplifierPowerW)! }
                 : {}),
-              ...(engineV2Gates.minEpdrOhm !== undefined ? { minEpdrOhm: engineV2Gates.minEpdrOhm } : {}),
-              ...(engineV2Gates.maxDriveOnFsDb !== undefined
-                ? { maxDriveOnFsDb: engineV2Gates.maxDriveOnFsDb }
-                : {}),
-              /* V50 — the per-way figures, keyed by MODEL (what the worker's
-               * `driverZ` is keyed by), and the buildability inputs. The peak
-               * input the coil gate reads at is derived here from the same two
-               * V49 fields the report derives it from. */
-              ...(Object.keys(driveOnFsMaxDbByRole).length > 0
-                ? {
-                    maxDriveOnFsDbByDriver: Object.fromEntries(
-                      (Object.entries(driveOnFsMaxDbByRole) as [BranchRole, number][]).map(([r, v]) => [
-                        canonicalModelForRole(r, threeWay),
-                        v,
-                      ]),
-                    ),
-                  }
-                : {}),
-              ...(engineV2Gates.resistorClassW !== undefined ? { resistorClassW: engineV2Gates.resistorClassW } : {}),
-              ...(engineV2Gates.resistorPowerMargin !== undefined
-                ? { resistorPowerMargin: engineV2Gates.resistorPowerMargin }
-                : {}),
-              ...(engineV2Gates.coilClassA !== undefined ? { coilClassA: engineV2Gates.coilClassA } : {}),
-              /* V51 — the thermal design power the resistor gate judges at on
-               * the search, when stated. */
-              ...(engineV2Gates.resistorThermalPowerW !== undefined
-                ? { resistorThermalPowerW: engineV2Gates.resistorThermalPowerW }
-                : {}),
-              ...(engineV2Gates.amplifierPeakPowerW !== undefined &&
-              engineV2Gates.amplifierPeakPowerW > 0 &&
-              engineV2Gates.amplifierNominalLoadOhm !== undefined &&
-              engineV2Gates.amplifierNominalLoadOhm > 0
-                ? {
-                    peakInputVolts: peakInputVolts({
-                      peakPowerW: engineV2Gates.amplifierPeakPowerW,
-                      nominalLoadOhm: engineV2Gates.amplifierNominalLoadOhm,
-                    }),
-                  }
-                : {}),
-              ...(ampMinLoadOhm !== null ? { ampMinLoadOhm } : {}),
-            },
-            budgets: {
-              ...(engineV2Gates.lfBumpBudgetDb !== undefined
-                ? { lfBumpBudgetDb: engineV2Gates.lfBumpBudgetDb }
-                : {}),
-              ...(engineV2Gates.qesMultiplierMax !== undefined
-                ? { qesMultiplierMax: engineV2Gates.qesMultiplierMax }
-                : {}),
-              ...(engineV2Gates.dampingMarginDb !== undefined
-                ? { dampingMarginDb: engineV2Gates.dampingMarginDb }
-                : {}),
-            },
-            determinism: {
-              ...(engineV2Gates.runSeed !== undefined ? { seed: engineV2Gates.runSeed } : {}),
-              ...(engineV2Gates.runBudgetEvals !== undefined
-                ? { budgetEvaluations: engineV2Gates.runBudgetEvals }
-                : {}),
-            },
-            // F4b — the resolved R_e per driver with the source that produced
-            // it, and the A5b.1 validity interval per driver. See `v2Facts`.
-            ...v2Facts,
-            // A5e.2 — the design's own target curve, or flat when it has
-            // never stated one. On the DESIGN, so two voicings can sit side by
-            // side and be compared.
-            targetCurve: activeTargetCurve,
-            // The band the window and the RMS are judged on: the same
-            // evaluation band the tuner used, which is already clipped to
-            // measurement validity (A5.5).
-            judgeBandHz: settings.band,
-            /* V36 — the power the shortlist's dissipation column turns M-A's
-             * scale-free fraction into watts at. Reporting only: it steers
-             * nothing and is not in the fingerprint. Read from the SAME field
-             * the report panel reads, so the two surfaces cannot print watts at
-             * two different powers; absent when the designer stated none, and
-             * then there are no watts at all rather than watts at a default. */
-            ...(() => {
-              const w = Number(engineV2Settings.amplifierPowerW);
-              return engineV2Settings.amplifierPowerW !== '' && Number.isFinite(w) && w > 0
-                ? { amplifierPowerW: w }
-                : {};
-            })(),
+            }),
             // Stable identities for the fingerprint. Each is a hash INPUT, so
             // what matters is that it changes when the thing it names changes
             // — never that a human can read it.
@@ -7543,42 +7537,17 @@ export default function App() {
       ): Promise<Chain3Result[]> => {
         if (!useV2 || !v2ScanSettings) return runChain3Scan(ins.map((i) => i.input), onProgress);
         return runChain3ScanV2(ins, v2ScanSettings, onProgress).then((r) => {
-          /* F4b — the worker's own notes get a screen.
-           *
-           * `collect.notes` has existed since F2 and nothing ever rendered it,
-           * which is precisely how leak 3 survived: a channel with no reader is
-           * a channel that reports nothing. The notes are per candidate and
-           * mostly identical across a field of them (they describe the
-           * MEASUREMENT SET, not the design), so they are de-duplicated —
-           * forty copies of one sentence is a different way of being unread. */
-          const workerNotes = new Set<string>();
-          for (const c of r.candidates) {
-            for (const n of c.notes) workerNotes.add(n);
-            v2GatesByLabel[c.result.label] = { verdicts: c.gates, violation: c.violation };
-            // Every candidate the scan produced, feasible or not — the
-            // shortlist decides feasibility, and it cannot decide it over a
-            // field it was never shown.
-            v2Field.push({
-              label: c.result.label,
-              parts: c.result.parts,
-              result: c.result,
-              topology: c.topology,
-              measurements: c.measurements,
-              gates: c.gates,
-              // V36 — what it burns, measured by the worker that already
-              // solved it. A column, never a criterion.
-              dissipation: c.dissipation,
-              disqualified: c.result.disqualified,
-              /* V31 — a candidate whose tune was refused wholesale carries no
-               * network. It still goes into the field: the shortlist is what
-               * lists it as a refusal, and a field it never saw is a field it
-               * cannot report on. */
-              ...(c.rejection ? { rejection: c.rejection } : {}),
-            });
-          }
+          /* E-3b — the fold into gate map, shortlist field and notes is
+           * `collectV2Scan` (`scanRequest.ts`): generic in the chain result,
+           * because a candidate is a label, a part list, a topology, a set of
+           * measurements and a set of verdicts on two ways exactly as on
+           * three. F4b's reason for the notes stands there. */
+          const collected = collectV2Scan(r.candidates);
+          Object.assign(v2GatesByLabel, collected.gatesByLabel);
+          v2Field.push(...collected.field);
           setV2RunNotes((prev) => {
             const seen = new Set(prev);
-            return [...prev, ...[...workerNotes].filter((n) => !seen.has(n))];
+            return [...prev, ...collected.notes.filter((n) => !seen.has(n))];
           });
           // The LAST stamp wins, and for the axis-by-axis scan that is the
           // right one: a run that was stopped in round two is aborted, whatever
@@ -8106,6 +8075,15 @@ export default function App() {
     setVfError(null);
     setVfProgress(null);
     setChainScan(null);
+    /* E-3b — a stale v2 shortlist may not survive into a new two-way run, on
+     * either engine. With the toggle off these are always null already, so the
+     * v1 route is untouched; what this prevents is the state after switching
+     * back to v1, where the shortlist table would render over a v1 scan and
+     * offer rows from a run that no longer exists (the three-way route clears
+     * the same two). */
+    setV2Run(null);
+    setV2Shortlist(null);
+    setShortlistPick(null);
 
     const grid = result.freq;
     const w = resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid);
@@ -8252,6 +8230,533 @@ export default function App() {
       // more sims and comes back with a better filter (SPL AND phase), because
       // it explores 3× wider. Give the free run the same breadth automatically.
       // No band at all (no impedance floor) → one truly-free chain (+ rescue).
+      /* ================================================================
+       * E-3b — THE TWO-WAY v2 DOOR: the same door as the three-way one.
+       *
+       * Until E-3b the two-way scan went to the v1 worker whatever the engine
+       * selector said (`runChainScan`), and the E-3 map put four of its
+       * twenty-six rows on "open in the app" for exactly that reason: the
+       * A5d field, the measured facts and the gates, the shortlist (UI-1) and
+       * the field mode with its export (E-2) all exist and are tested, and a
+       * two-way request reached none of them.
+       *
+       * WHAT IS SHARED, and it is nearly everything: the field generator
+       * (`buildCandidateField` counts handovers, never ways), the field mode,
+       * the measured facts, the run settings, the candidate declaration, the
+       * fold of the finished scan, the shortlist and its selection, the run
+       * export. All of it lives in `scanRequest.ts` and `selection.ts` and is
+       * called from here with the same arguments the three-way branch uses.
+       *
+       * WHAT DIFFERS is the shape of a handover: one crossing instead of two,
+       * so a variant carries ONE cage and ONE window, the chain input is
+       * `ChainInput` rather than `Chain3Input`, and `orderByModel` names the
+       * tweeter alone — a two-way's lowest way has no high-pass flank of its
+       * own. That is the whole of it.
+       *
+       * WHAT IS NOT PORTED: the v1 RESCUE (a truly-free chain first, pinned
+       * follow-ups appended when it misses) and the free-band estimate below
+       * it. Both are ways of GENERATING candidates, and on the v2 route
+       * generation belongs to A5d — the same reason the three-way route skips
+       * its axis-by-axis mode and says so.
+       * ================================================================ */
+      const useV2 = engineSelection.optimizer === 'v2';
+      if (useV2) {
+        /* SHOW THE CARD BEFORE THE SETUP: everything below is synchronous
+         * main-thread work and until it finishes React cannot paint. */
+        await nextPaint();
+        setShortlistSort(null);
+        setNetOptDiff(null);
+        /* The "no candidate beat what you had" line belongs to the run that
+         * measured it. Only the three-way branch has ever SET a reference, so
+         * on this route it can only be a leftover from an earlier three-way
+         * run — a bar from another speaker. Cleared here and not at the top of
+         * the two-way path, because the v1 two-way route has always left it
+         * alone and this session does not move v1. */
+        setScanReference(null);
+        /* UI-1 — WHICH VOICING THIS RUN SEARCHED AGAINST, said out loud at the
+         * top of its own notes. Since V45 the target curve steers the
+         * AMPLITUDE TERM as well as the window and the RMS, so it is the most
+         * consequential setting in the run that leaves no trace in a number. */
+        setV2RunNotes([
+          `Voicing (A5e.2): ${describeTargetCurve(activeTargetCurve)}. Every window, RMS and ` +
+            'amplitude term in this run is measured against it.',
+        ]);
+        /* E-2 — THE FIELD MODE this run uses: the "Run the full field" button
+         * passes it explicitly (state has not landed yet in that tick), every
+         * other start reads the setting. */
+        const fieldMode: FieldMode = runOpts.fieldMode ?? fieldModeOf(engineV2Settings.fieldMode);
+        /* E-2 — the field REQUEST, kept apart from the field so the run export
+         * can carry exactly what the generator was handed (`runExport.ts`). */
+        const v2FieldRequest = (() => {
+          const wis = engineV2Report?.report?.predesign.windowInputs ?? [];
+          if (wis.length === 0) {
+            /* NO WINDOWS, SO NO FIELD — and the fallback to the v1 generator is
+             * said out loud rather than taken quietly, exactly as on the
+             * three-way route. Absence is not a verdict (P4), and neither is it
+             * a licence. */
+            setV2RunNotes((prev) => [
+              ...prev,
+              'No A5d.3 window could be derived, so the v2 candidate generator produced nothing ' +
+                'and the candidates below come from the v1 generator instead. That is a fallback, ' +
+                'not a v2 field: check that the report panel has a window for this handover.',
+            ]);
+            return null;
+          }
+          const slopes = settings.acousticSlopes;
+          /* The bare measured responses for A5d.3(i)'s natural-slope fit. On
+           * this route `w` and `t` ARE `sim.base.w` and `sim.base.t` — the same
+           * resample of the same files onto the same grid — so they are read
+           * from here rather than through a second lookup. */
+          const curveOfDriver = (driver: string) => {
+            const role = v2Roles.find((r) => engineV2Report?.driverIds?.[r] === driver);
+            const g = role === 'low' ? w : role === 'high' ? t : null;
+            return g ? { freq: g.freq, db: g.spl } : null;
+          };
+          const fieldSettings = fieldModeSettings(fieldMode, {
+            stepsPerAxis: scanSteps2,
+            pairs: wis.length,
+          });
+          const perPair: PairDerivationInput[] = pairDerivationInputs({
+            windowInputs: wis,
+            ...(slopes ? { slopes } : {}),
+            statedDriveLimitDbByDriverId: v2DriveLimitDbByDriverId,
+            ...(engineV2Gates.maxDriveOnFsDb !== undefined
+              ? { fallbackDriveLimitDb: engineV2Gates.maxDriveOnFsDb }
+              : {}),
+            curveOfDriverId: curveOfDriver,
+          });
+          return { windowInputs: wis, perPair, fieldSettings };
+        })();
+        const v2Generated = v2FieldRequest
+          ? buildCandidateField({
+              windowInputs: v2FieldRequest.windowInputs,
+              alignments: AUTO_STRUCTS,
+              ...v2FieldRequest.fieldSettings,
+              perPair: v2FieldRequest.perPair,
+            })
+          : null;
+        {
+          const lines = [
+            ...v2Floors.flatMap((f) => [f.message, f.warning].filter((x): x is string => !!x)),
+            ...(v2Generated?.orders.flatMap((o) => [...o.why, ...o.notes]) ?? []),
+            ...(v2Generated?.field.axes.flatMap((a) => a.notes) ?? []),
+            ...(v2Generated?.field.refusals ?? []),
+            ...(v2Generated?.field.notes ?? []),
+          ];
+          if (lines.length > 0) setV2RunNotes((prev) => [...prev, ...lines]);
+        }
+        const v2Candidates: GeneratedCandidate[] = v2Generated?.field.candidates ?? [];
+        /* A variant on this chain is a LABEL and a CAGE. On the v2 route the
+         * cage is the generated candidate's own (one spacing wide in an
+         * exploration); without a field it is the v1 free/pinned band, which is
+         * the fallback the note above announced. */
+        const v2Variants: { label: string; xoRange?: [number, number] }[] = v2Generated
+          ? v2Candidates.map((c) => ({ label: c.label, xoRange: [c.crossings[0].cageHz[0], c.crossings[0].cageHz[1]] }))
+          : crossoverVariants(userXo ?? saneFree, scanSteps2);
+        /* DELIVERABLE 3 — the pre-start estimate, on the list that is ABOUT TO
+         * RUN. It STOPS NOTHING: "start anyway" is an ordinary button. A
+         * two-way has one handover, so the estimate has one pair. */
+        if (v2Windows && !runOpts.acknowledgedWindowNotice) {
+          const estimate = candidatesOutsideWindows(
+            v2Variants.map((v) => ({
+              label: v.label,
+              hz: [v.xoRange ? Math.sqrt(v.xoRange[0] * v.xoRange[1]) : null],
+            })),
+            [
+              {
+                pairLabel: v2PairLabel('high'),
+                window: v2Windows.high,
+                recommendedHz: v2Recommended('high')?.effectiveHz ?? null,
+              },
+            ],
+          );
+          if (estimate.message) {
+            setVfBusy(false);
+            setV2PreStart({
+              message: estimate.message,
+              proceed: () => {
+                setV2PreStart(null);
+                void runVfOptimize({ ...runOpts, acknowledgedWindowNotice: true }).catch((e) => {
+                  setVfBusy(false);
+                  setVfError(String((e as Error).message ?? e));
+                });
+              },
+            });
+            return;
+          }
+        }
+        /* V41/V51/V51b — the CHAIN-level half of the declaration, built once
+         * because it is a property of the RUN and not of one handover. The
+         * two-way chain names its EQ budget `eqBandsPerDriver`; the declaration
+         * speaks the three-way key and the worker translates
+         * (`withDeclaredChainChoicesTwoWay`, E-3), so it is handed over under
+         * the name the declaration uses. */
+        const chainDecl = declareCandidateChainChoices({
+          stated: { eqBands: settings.eqBandsPerDriver },
+          ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
+          ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
+            ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
+            : {}),
+        });
+        /* A5e.3 — the coil family per way keyed by MODEL. On a two-way the LOW
+         * role is the model `mid` (`canonicalModelForRole`), which is what the
+         * worker's `v2ChainOne` branch keys its `driverZ` by. */
+        const coilFamilyByModel: Record<string, string> = Object.fromEntries(
+          (Object.entries(coilFamilyByRole) as [BranchRole, string][]).map(([r, v]) => [
+            canonicalModelForRole(r, threeWay),
+            v,
+          ]),
+        );
+        const tAdjust = branchAdj.tweeter;
+        const chainInputFor = (
+          v: { label: string; xoRange?: [number, number] },
+          cand?: GeneratedCandidate,
+        ): ChainInput => ({
+          grid: [...grid],
+          w,
+          t,
+          driverZ: zOnGrid,
+          adjust: tAdjust,
+          seed: defaultVFilters(),
+          settings: cand
+            ? {
+                ...settings,
+                /* The candidate's alignment binds the design step's structure
+                 * enumeration (V26 row 39 on the two-way chain:
+                 * `structurePreference` is the BINDING choice of
+                 * `vfOptimizer`). */
+                structurePreference: {
+                  kind: cand.crossings[0].alignment.kind as 'LR' | 'BW' | 'BS',
+                  order: cand.crossings[0].alignment.order as 1 | 2 | 3 | 4,
+                },
+              }
+            : settings,
+          ...(v.xoRange ? { xoRange: v.xoRange } : {}),
+          /* A pin is the designer's promise; the A5d.3 window is the drivers'.
+           * A generated candidate is judged against its OWN window — audit
+           * §6.3 in one line: the floor that steers is stated, and the other
+           * one is reported beside it. */
+          judgeWindow: cand
+            ? { floorHz: cand.crossings[0].windowHz[0], ceilHz: cand.crossings[0].windowHz[1] }
+            : userXo
+              ? { floorHz: userXo[0], ceilHz: userXo[1] }
+              : measuredFree
+                ? { floorHz: measuredFree[0], ceilHz: measuredFree[1] }
+                : null,
+        });
+        const items: V2ChainItem[] = v2Variants.map((v, i) => {
+          const cand = v2Candidates[i];
+          const input = chainInputFor(v, cand);
+          return {
+            input,
+            label: v.label,
+            ...(cand
+              ? {
+                  candidate: {
+                    declaration: candidateDeclarationFor({
+                      candidate: cand,
+                      settings: input.settings,
+                      targetCurve: activeTargetCurve,
+                      limits: engineV2Gates,
+                      driveOnFsMaxDbByModel,
+                      driveCeilingDerived:
+                        (engineV2Report?.report?.metrics.driveExcursion.length ?? 0) > 0,
+                      coilFamilyByModel,
+                      coilDcrFits,
+                      coilDcrCatalogLabel: coilCatalogLabel,
+                      multiWay: true,
+                    }),
+                    chainDeclaration: chainDecl,
+                    provenance: cand.provenance,
+                    /* The HP flank of the tweeter belongs to the one handover;
+                     * the lowest way of a two-way has no high-pass flank of its
+                     * own (the three-way convention `parseHpLpPref` documents,
+                     * with the mid's entry absent rather than zero). */
+                    orderByModel: { tweeter: cand.crossings[0].order },
+                  },
+                }
+              : {}),
+          };
+        });
+        const v2ScanSettings: V2ScanSettings = {
+          /* E-3b — gates, budgets, determinism, facts, voicing, judged band and
+           * reporting power: the same assembly the three-way route uses
+           * (`scanRequest.ts`). */
+          ...v2RunSettingsFor({
+            limits: engineV2Gates,
+            driveOnFsMaxDbByModel,
+            ampMinLoadOhm,
+            facts: v2MeasuredFacts,
+            targetCurve: activeTargetCurve,
+            judgeBandHz: settings.band ?? opts.band,
+            ...(reportingPowerW(engineV2Settings.amplifierPowerW) !== undefined
+              ? { amplifierPowerW: reportingPowerW(engineV2Settings.amplifierPowerW)! }
+              : {}),
+          }),
+          // Stable identities for the fingerprint. Each is a hash INPUT, so
+          // what matters is that it changes when the thing it names changes.
+          designKey: stableJson({ variants: v2Variants.map((v) => [v.label, v.xoRange ?? null]) }),
+          measurementKey: stableJson({
+            grid: [grid[0], grid[grid.length - 1], grid.length],
+            w: w.spl,
+            t: t.spl,
+          }),
+          tuningKey: stableJson({
+            phasePriority: settings.phasePriority,
+            targets: settings.targets,
+            band: settings.band,
+            catalogSnap: settings.catalogSnap,
+            acousticSlopes: settings.acousticSlopes,
+            chainChoices: chainDeclarationKey(chainDecl),
+          }),
+          ...(v2Generated
+            ? { candidateFieldKey: stableJson(candidateFieldKey(v2Generated.field)) }
+            : {}),
+        };
+        /* E-2 — THE RUN, EXPORTABLE. Everything the generator was handed and
+         * everything the worker was told, as plain data, so
+         * `scripts/replay-app-run.ts` can rebuild this field in the repository
+         * and say candidate by candidate whether it derives the same one. */
+        const v2RunExport: RunExport | null =
+          v2Generated && v2FieldRequest && engineV2Report?.input
+            ? (() => {
+                const input = engineV2Report.input;
+                const { programmeWeight: _pw, ...reportSettings } = input.settings;
+                void _pw;
+                return {
+                  format: RUN_EXPORT_FORMAT,
+                  exportedAt: '',
+                  engine: runExportEngine(),
+                  session: input.manifest.sessionId,
+                  drivers: {
+                    idsByRole: { ...engineV2Report.driverIds },
+                    files: input.manifest.entries.map((e) => ({
+                      driver: e.driver,
+                      kind: e.kind,
+                      file: e.file,
+                      ...(e.angleDeg !== undefined ? { angleDeg: e.angleDeg } : {}),
+                    })),
+                  },
+                  reportSettings,
+                  ...(engineV2Report.geometry ? { geometry: engineV2Report.geometry } : {}),
+                  field: buildFieldExport(
+                    v2Generated,
+                    v2FieldRequest.windowInputs,
+                    v2FieldRequest.perPair,
+                    {
+                      chainBudget: v2FieldRequest.fieldSettings.chainBudget,
+                      minSpacingOctaves: v2Generated.field.parameters.minSpacingOctaves,
+                      ...(v2FieldRequest.fieldSettings.positionPolicy !== undefined
+                        ? { positionPolicy: v2FieldRequest.fieldSettings.positionPolicy }
+                        : {}),
+                      ...(v2FieldRequest.fieldSettings.alignmentPolicy !== undefined
+                        ? { alignmentPolicy: v2FieldRequest.fieldSettings.alignmentPolicy }
+                        : {}),
+                      alignments: AUTO_STRUCTS,
+                      stepsPerAxis: scanSteps2,
+                    },
+                  ),
+                  run: {
+                    gates: v2ScanSettings.gates,
+                    budgets: v2ScanSettings.budgets,
+                    determinism: v2ScanSettings.determinism,
+                    targetCurve: v2ScanSettings.targetCurve,
+                    judgeBandHz: v2ScanSettings.judgeBandHz,
+                    ...(v2ScanSettings.amplifierPowerW !== undefined
+                      ? { amplifierPowerW: v2ScanSettings.amplifierPowerW }
+                      : {}),
+                    chainDeclaration: chainDecl,
+                    tuning: {
+                      phasePriority: settings.phasePriority,
+                      targets: settings.targets,
+                      band: settings.band,
+                      catalogSnap: settings.catalogSnap,
+                      acousticSlopes: settings.acousticSlopes,
+                    },
+                    keys: {
+                      design: digest(v2ScanSettings.designKey),
+                      measurement: digest(v2ScanSettings.measurementKey),
+                      tuning: digest(v2ScanSettings.tuningKey),
+                      candidateField: digest(v2ScanSettings.candidateFieldKey ?? ''),
+                    },
+                  },
+                  stamp: null,
+                  shortlist: null,
+                };
+              })()
+            : null;
+        const runId = `scan-${Date.now()}`;
+        let scanSeq = 0;
+        void beginScanRun({
+          runId,
+          at: Date.now(),
+          status: 'running',
+          planned: items.length,
+          label: `${items.length}-candidate scan`,
+        });
+        runChainScanV2(items, v2ScanSettings, (d) => setVfProgress(d))
+          .then((r) => {
+            /* E-3b — the fold into gate map, shortlist field and notes is
+             * `collectV2Scan`, the same function the three-way route folds
+             * with. */
+            const collected = collectV2Scan(r.candidates);
+            setV2RunNotes((prev) => {
+              const seen = new Set(prev);
+              return [...prev, ...collected.notes.filter((n) => !seen.has(n))];
+            });
+            const results = r.candidates.map((c) => c.result);
+            for (const rr of results) void putScanRow(runId, scanSeq++, rr);
+            /* A5e.1 — the FEASIBLE REGION, built here on the main thread from
+             * the field the workers produced. Held in a LOCAL as well as in
+             * state, because the selection below reads it in this same tick
+             * (UI-1). */
+            const shortlist = buildShortlist(collected.field, r.stamp.fingerprint, {
+              requirements: {
+                ...(engineV2Gates.splWindowPlusMinusDb !== undefined
+                  ? { splWindowPlusMinusDb: engineV2Gates.splWindowPlusMinusDb }
+                  : {}),
+                ...(engineV2Gates.maxPhaseTrackingDeg !== undefined
+                  ? { maxPhaseTrackingDeg: engineV2Gates.maxPhaseTrackingDeg }
+                  : {}),
+              },
+              targetCurve: v2ScanSettings.targetCurve,
+              ...(engineV2Gates.shortlistSize !== undefined
+                ? { size: Math.max(1, Math.round(engineV2Gates.shortlistSize)) }
+                : {}),
+            });
+            setV2Run({
+              stamp: r.stamp,
+              gatesByLabel: { ...collected.gatesByLabel },
+              field: v2Generated
+                ? { mode: fieldMode, description: describeFieldMode(v2Generated.field) }
+                : null,
+              export: v2RunExport,
+            });
+            setV2Shortlist(shortlist);
+            setShortlistPick(null);
+            // "Stop and use what finished" can land before the first candidate
+            // does. Committing nothing and saying why is the honest outcome.
+            const partial = scanStopped();
+            if (results.length === 0) {
+              setNetOptNote(
+                tx('Stopped before any candidate finished — nothing was changed. Your design is exactly as it was.'),
+              );
+              return;
+            }
+            /* The v1 READING of the same field: a weighted ranking with no
+             * gate, no requirement and no notion of a refused tune. It stays
+             * visible because a second reading of one's own field is worth
+             * having; it may not crown anything (UI-1). */
+            const ranked = rankChainResults(
+              results,
+              targets,
+              phasePriority / 100,
+              tweeterHpFloor ?? undefined,
+              rSourceLimitOhm,
+              rSourceDisqOhm,
+              bomCapEur,
+              ampMinLoadOhm ?? 0,
+            );
+            /* ---- UI-1: WHAT LANDS IN THE WORKING TAB ----------------------
+             * The SHORTLIST decides, and if it delivers nothing then nothing
+             * is loaded. Falling back to the v1 ranking's top row here is the
+             * whole bug UI-1 fixed on the three-way route: V31 blanks a
+             * refused candidate's part list, so `win.parts` can be `[]` and
+             * the Working tab then says "No generator — add a source
+             * element" under a green "Design ready". See `selection.ts`. */
+            const selection = selectFromShortlist(shortlist);
+            if (selection.kind === 'design') {
+              applyScanCandidate({ label: selection.label, result: selection.result });
+              setShortlistPick(selection.label);
+            } else {
+              setShortlistPick(null);
+            }
+            setVfOpt(null);
+            setVfRunStats(null);
+            setScanSort(null);
+            setChainScan(
+              results.length > 1
+                ? {
+                    rows: ranked.map((rr) => scanRowOf(rr, null)),
+                    active: selection.kind === 'design' ? selection.label : '',
+                  }
+                : null,
+            );
+            void endScanRun(runId);
+            const loaded: ChainResult | null =
+              selection.kind === 'design' ? (selection.result as ChainResult) : null;
+            const line = (r: ChainResult): string =>
+              `${r.label}: ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°` +
+              (r.net.after.xoHz ? ` · crosses ${Math.round(r.net.after.xoHz)} Hz` : '') +
+              (r.overlapOct !== null ? ` · ovl ${r.overlapOct.toFixed(1)} oct` : '') +
+              (r.xoWindowOk === false ? ' · ⚠ xo window' : '') +
+              (r.zMinOhm !== null ? ` · Z ${r.zMinOhm.toFixed(1)} Ω` : '') +
+              (r.bomTotalEur !== null ? ` · €${Math.round(r.bomTotalEur)}` : '') +
+              (r.zOk ? '' : ' · ⚠ amp-load');
+            /* UI-1 — THE WARNINGS BELONG TO THE DESIGN THAT WAS LOADED. When
+             * the shortlist delivered nothing there is no design to warn
+             * about, so the reader gets the shortlist's own diagnosis. */
+            const zLow =
+              loaded !== null &&
+              ampMinLoadOhm !== null &&
+              loaded.zMinOhm !== null &&
+              !meetsAmpFloor(loaded.zMinOhm, ampMinLoadOhm);
+            const anySane = ranked.some(
+              (rr) =>
+                rr.zMinOhm !== null && ampMinLoadOhm !== null && meetsAmpFloor(rr.zMinOhm, ampMinLoadOhm),
+            );
+            const zNote = !zLow
+              ? ''
+              : `⚠ amplifier load: the loaded design dips to ${loaded!.zMinOhm!.toFixed(1)} Ω ` +
+                `(your amplifier is rated to ${ampMinLoadOhm!.toFixed(1)} Ω)` +
+                (anySane
+                  ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
+                  : ' — no candidate stayed above it; check the Impedance panel.');
+            const xoNote =
+              loaded === null || loaded.xoWindowOk !== false
+                ? ''
+                : `⚠ handover: the delivered crossing (${
+                    loaded.net.after.xoHz ? Math.round(loaded.net.after.xoHz) : '—'
+                  } Hz) sits outside its window` +
+                  (ranked.some((rr) => rr.xoWindowOk !== false)
+                    ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
+                    : ' — no candidate stayed inside; check the Driver limits or pin the crossing.');
+            setNetOptNote(
+              [
+                `2-way scan — ${results.length} candidate${results.length > 1 ? 's' : ''}` +
+                  (partial
+                    ? ` — ⏹ STOPPED EARLY: this is what the ${results.length} that finished produced, the rest was never computed`
+                    : ''),
+                `shortlist  ${shortlist.rows.length} design${shortlist.rows.length === 1 ? '' : 's'} ` +
+                  `of ${shortlist.consideredCount} candidates meet every requirement and every gate` +
+                  (shortlist.rejected.length > 0
+                    ? ` · ${shortlist.rejected.length} delivered no network at all (refused)`
+                    : ''),
+                selection.kind === 'design'
+                  ? `loaded     ${selection.label}` +
+                    (loaded?.net.after.avgDevDb !== undefined
+                      ? ` · avg ${loaded.net.after.avgDevDb.toFixed(2)} dB`
+                      : '')
+                  : `loaded     NOTHING — ${selection.describe}`,
+                ...(loaded ? [`        ${line(loaded)}`] : []),
+                ...shortlist.diagnosis.map((d) => `        ${d}`),
+                ...[zNote, xoNote, loaded?.net.snapNote ?? '',
+                  loaded?.net.safetyNote ? `⚠ ${loaded.net.safetyNote}` : '',
+                  loaded?.net.ampFloorNote ? `⚠ ${loaded.net.ampFloorNote}` : ''].filter(Boolean),
+              ].join('\n'),
+            );
+            setDesignTab('network');
+          })
+          .catch((e) => {
+            if (!(e instanceof CancelledError))
+              setVfError(e instanceof Error ? e.message : String(e));
+          })
+          .finally(() => {
+            setVfProgress(null);
+            setVfBusy(false);
+          });
+        return;
+      }
       const variants: { label: string; xoRange?: [number, number] }[] =
         crossoverVariants(userXo ?? saneFree, scanSteps2);
       const adjust = branchAdj.tweeter;
@@ -8316,45 +8821,7 @@ export default function App() {
           setChainScan(
             results.length > 1
               ? {
-                  rows: ranked.map((rr) => {
-                    const aim = rr.xoRange ? Math.sqrt(rr.xoRange[0] * rr.xoRange[1]) : null;
-                    const dl = deliveredLabel([aim], [rr.net.after.xoHz ?? null], ['xo']);
-                    return {
-                      label: rr.label,
-                      delivered: dl.text,
-                      target: rr.label,
-                      unrealisable: dl.unrealisable,
-                      rippleDb: rr.net.after.rippleDb,
-                      peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
-                      powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
-                      rSourceOhm: rSrcDelivered(rr),
-                      disqualified: [
-                        /* A3g: whatever the CHAIN gave up on comes first — the
-                         * table may not be gentler than the engine. Read from
-                         * `rr.disqualified` and not from `net.infeasible`
-                         * alone: since the degenerate-load refusal the chain
-                         * carries reasons the tuner never saw (a branch that
-                         * shorts the amplifier is refused at the synthesis
-                         * output, before any tune), and rebuilding the list
-                         * here would silently drop them — a candidate ranked
-                         * last with no reason on screen is the exact failure
-                         * this column exists to prevent. */
-                        ...(rr.disqualified ?? (rr.net.infeasible ? [rr.net.infeasible] : [])),
-                        ...(rSrcDelivered(rr) != null && rSourceDisqOhm > 0 && rSrcDelivered(rr)! >= rSourceDisqOhm
-                          ? [`source resistance at the low driver ${rSrcDelivered(rr)!.toFixed(2)} Ω ≥ ${rSourceDisqOhm.toFixed(1)} Ω`]
-                          : []),
-                      ],
-                      xoFloorVerdict: null,
-                      avgDevDb: rr.net.after.avgDevDb ?? null,
-                      phaseDeg: rr.net.after.phaseDeg,
-                      zMinOhm: rr.net.after.zMinOhm ?? null,
-                      xoWindowOk: rr.xoWindowOk,
-                      pairOverlapOct: rr.overlapOct != null ? [rr.overlapOct] : null,
-                      bomEur: rr.bomTotalEur,
-                      winner: rr === win,
-                      result: rr,
-                    };
-                  }),
+                  rows: ranked.map((rr) => chainScanRow(rr, win)),
                   active: win.label,
                 }
               : null,
@@ -8743,7 +9210,11 @@ export default function App() {
    * over topologies, with its own two-stage stamp. Null when the last scan ran
    * on v1 or produced nothing.
    */
-  const [v2Shortlist, setV2Shortlist] = useState<Shortlist<Chain3Result> | null>(null);
+  /* E-3b — EITHER chain result. `buildShortlist` and `selectFromShortlist` are
+   * generic in it and always were; only this state said three ways. */
+  const [v2Shortlist, setV2Shortlist] = useState<Shortlist<ChainResult | Chain3Result> | null>(
+    null,
+  );
   /**
    * F4b — what the v2 run SUBSTITUTED or REFUSED before it started.
    *
@@ -8876,45 +9347,7 @@ export default function App() {
    *  design into Working (Sanders "keuzelijst") — the scan is a menu, not
    *  just a report. Session-only (not persisted). */
   const [chainScan, setChainScan] = useState<{
-    rows: {
-      label: string;
-      rippleDb: number;
-      /** Peak of the error-smoothed sum (what the search judged); shown in the
-       *  column, the raw rippleDb in the tooltip. */
-      peakSmoothedDb: number | null;
-      /** Fitted power-response slope of the delivered design (dB/decade). */
-      powerSlopeDbDec: number | null;
-      /** Source resistance at the low driver (Ω) from the part audit; null = unknown. */
-      rSourceOhm: number | null;
-      /** Disqualification reasons (fix 1/2); empty = in the race. */
-      disqualified: string[];
-      /** Per-pair physics-floor verdict (3-way). */
-      xoFloorVerdict: ('ok' | 'warn' | 'fail' | null)[] | null;
-      /** Whole-range avg |deviation| — the number the ranking judges on. */
-      avgDevDb: number | null;
-      phaseDeg: number;
-      bomEur: number | null;
-      /** Delivered minimum system |Zin| — what the amplifier sees. Shown
-       *  because the ranking now judges it: a criterion you cannot read is a
-       *  criterion you cannot argue with. null for 2-way rows. */
-      zMinOhm: number | null;
-      /** Physics verdict on the delivered handovers (3-way; null = unjudged
-       *  or 2-way row) + the delivered overlap width per pair in octaves. */
-      xoWindowOk: boolean | null;
-      pairOverlapOct: (number | null)[] | null;
-      winner: boolean;
-      /** LABEL = MEASURED HANDOVER (Sanders' rule 8): the row is named after
-       *  the crossing the tuned network actually DELIVERS, not after the
-       *  candidate it aimed at. `target` keeps the aim (and stays the row key);
-       *  `unrealisable` marks a delivery more than ⅓ octave off its aim — a
-       *  diagnosis (the window or the topology binds), not cosmetics. */
-      delivered: string;
-      target: string;
-      unrealisable: boolean;
-      /** 2-way and 3-way scans produce different result shapes; the table only
-       *  displays numbers, so it carries either and the loader branches. */
-      result: ChainResult | Chain3Result;
-    }[];
+    rows: ScanTableRow[];
     /** Label of the row currently loaded in Working. */
     active: string;
   } | null>(null);
@@ -8982,7 +9415,7 @@ export default function App() {
    * would be the A6b mistake again: a rescued row measured differently from
    * the row it replaces.
    */
-  const chain3ScanRow = (rr: Chain3Result, win: Chain3Result | null) => {
+  const chain3ScanRow = (rr: Chain3Result, win: Chain3Result | null): ScanTableRow => {
                     // In a sweep round the HELD axis is an anchor, not an aim:
                     // only the swept axis can be "not realisable".
                     // (point 5b) The WINNER is judged on BOTH axes regardless of
@@ -9019,6 +9452,72 @@ export default function App() {
                       result: rr,
                     };
   };
+
+  /**
+   * E-3b — THE TWO-WAY SCAN ROW, lifted out of the v1 `.then` where it was
+   * written inline.
+   *
+   * Byte for byte the row the two-way scan has always built; it is a function
+   * now for the same reason `chain3ScanRow` is one — since E-3b a two-way v2
+   * run has a SHORTLIST, and the shortlist table and the Pareto plot build
+   * their rows from the same builder the scan table uses. Two builders would
+   * print two prices for one design (the failure UI-1 named on the three-way
+   * side).
+   */
+  const chainScanRow = (rr: ChainResult, win: ChainResult | null): ScanTableRow => {
+    const aim = rr.xoRange ? Math.sqrt(rr.xoRange[0] * rr.xoRange[1]) : null;
+    const dl = deliveredLabel([aim], [rr.net.after.xoHz ?? null], ['xo']);
+    return {
+      label: rr.label,
+      delivered: dl.text,
+      target: rr.label,
+      unrealisable: dl.unrealisable,
+      rippleDb: rr.net.after.rippleDb,
+      peakSmoothedDb: rr.net.after.ripplePeakSmoothedDb ?? null,
+      powerSlopeDbDec: rr.net.after.powerSlopeDbDec ?? null,
+      rSourceOhm: rSrcDelivered(rr),
+      disqualified: [
+        /* A3g: whatever the CHAIN gave up on comes first — the table may not be
+         * gentler than the engine. Read from `rr.disqualified` and not from
+         * `net.infeasible` alone: since the degenerate-load refusal the chain
+         * carries reasons the tuner never saw (a branch that shorts the
+         * amplifier is refused at the synthesis output, before any tune), and
+         * rebuilding the list here would silently drop them — a candidate
+         * ranked last with no reason on screen is the exact failure this column
+         * exists to prevent. */
+        ...(rr.disqualified ?? (rr.net.infeasible ? [rr.net.infeasible] : [])),
+        ...(rSrcDelivered(rr) != null && rSourceDisqOhm > 0 && rSrcDelivered(rr)! >= rSourceDisqOhm
+          ? [`source resistance at the low driver ${rSrcDelivered(rr)!.toFixed(2)} Ω ≥ ${rSourceDisqOhm.toFixed(1)} Ω`]
+          : []),
+      ],
+      xoFloorVerdict: null,
+      avgDevDb: rr.net.after.avgDevDb ?? null,
+      phaseDeg: rr.net.after.phaseDeg,
+      zMinOhm: rr.net.after.zMinOhm ?? null,
+      xoWindowOk: rr.xoWindowOk,
+      pairOverlapOct: rr.overlapOct != null ? [rr.overlapOct] : null,
+      bomEur: rr.bomTotalEur,
+      winner: rr === win,
+      result: rr,
+    };
+  };
+
+  /**
+   * E-3b — one row builder for a result of EITHER chain.
+   *
+   * The dispatch is `'vf' in r`, exactly as `applyScanCandidate` has always
+   * done it: a two-way candidate carries a virtual-filter result and a
+   * three-way one does not. Both branches produce the same row shape, so every
+   * surface that shows candidates — the scan table, the shortlist table, the
+   * Pareto plot — takes either without knowing how many ways it has.
+   */
+  const scanRowOf = (
+    r: ChainResult | Chain3Result,
+    win: ChainResult | Chain3Result | null,
+  ): ScanTableRow =>
+    'vf' in r
+      ? chainScanRow(r, win !== null && 'vf' in win ? win : null)
+      : chain3ScanRow(r, win !== null && !('vf' in win) ? win : null);
 
   /** Load a scan candidate's complete design (specs + synth + tuned network)
    *  into Working — same application as the winner gets, undo-able. */
@@ -17733,7 +18232,7 @@ export default function App() {
                * (`chain3ScanRow`), so a point and a shortlist row cannot print
                * two different prices for one design. */
               const paretoRows = v2Shortlist
-                ? v2Shortlist.rows.map((r) => chain3ScanRow(r.result, null))
+                ? v2Shortlist.rows.map((r) => scanRowOf(r.result, null))
                 : chainScan?.rows;
               if (!paretoRows || paretoRows.filter((r) => r.bomEur !== null).length < 2) return null;
               // B3 — Pareto scatter. y = chosen quality (lower is better), x = BOM.

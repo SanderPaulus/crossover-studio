@@ -6831,6 +6831,170 @@ reproductie in de volle run.
 `goldenClassification.test.ts` (3), vier E-3-claims in `chainChoices.test.ts`; `ciLayer` en de tagbewaker herzien;
 `tsc -b` groen (scripts inbegrepen).
 
+### E-3b — de app stuurt een tweewegverzoek naar de v2-worker, door dezelfde deur als drieweg (06-09-2026, alleen UI- en client-laag; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**AANLEIDING EN OMVANG.** E-3 maakte de tweewegroute door de v2-worker echt en mat wat er open bleef: van de
+zesentwintig rijen van zijn kaart zijn er VIER de app — het A5d-veld, de feiten en de poorten, de shortlist (UI-1) en
+de veldmodus met haar export (E-2) — en een tweewegverzoek bereikte er geen van. `optimClient.ts` droeg daar het
+commentaarblok over: *"NO `runChainScanV2` HERE, and that is deliberate"*, met de reden dat de clienthelft toen een
+ongeteste export zou zijn geweest wier enige aanroeper een latere fase was. E-3b is die fase. Eén commit, alleen
+UI- en clientlaag; de v1-route byte-identiek, geen enkele engine-wijziging, geen regeneratie.
+
+**UITKOMST IN ÉÉN ZIN: de vier app-rijen zijn dicht — een tweewegverzoek loopt sinds E-3b door dezelfde deur als een
+driewegverzoek, en die deur is ÉÉN implementatie met twee aanroepers, niet twee deuren naast elkaar.**
+
+**STAP 1 — DE INVENTARIS (de kaart van de app-kolom, bestand:regel bij de stand vóór E-3b).**
+
+| stap van de driewegdeur | regel | N-neutraal? |
+|---|---|---|
+| veldMODUS (`fieldModeOf`, `fieldModeSettings`) | `App.tsx:6871` | **ja** — `pairs` is een argument |
+| veldVERZOEK (`windowInputs`, `perPair`) | `App.tsx:6874` | **ja** op de lus, N=3 alleen in de rol→kromme-opzoeking |
+| `buildCandidateField` | `App.tsx:6933` | **ja** (E-3: N-weg, één paar werkt) |
+| `variants` | `App.tsx:6986` | **N=3**: `Chain3Variant` draagt twee kruispunten |
+| vóórstart-raming | `App.tsx:7021` | **ja** — zij neemt `hz: number[]` |
+| `judgeWindows {low, high}` | `App.tsx:7073` | **N=3** |
+| `chainInputFor` → `Chain3Input` | `App.tsx:7105` | **N=3** |
+| `chainDecl` (`declareCandidateChainChoices`) | `App.tsx:7142` | **ja** |
+| `declarationFor` (`declareCandidateChoices`) | `App.tsx:7159` | ja behalve `orderByModel` |
+| `v2Facts` (`factsForWorker`) | `App.tsx:7317` | **ja** — de rollenlus sloeg een ontbrekende rol al over |
+| gates / budgets / determinisme | `App.tsx:7351` | **ja** |
+| `designKey` / `measurementKey` | `App.tsx:7440` | **N=3** in twee regels |
+| `v2RunExport` | `App.tsx:7478` | ja behalve `stepsPerAxis` |
+| `scan3` → `runChain3ScanV2` | `App.tsx:7540` | route N=3; de `.then`-body **N-neutraal** |
+| `buildShortlist` / `selectFromShortlist` / `applyScanCandidate` | `App.tsx:7710/7764` | **ja** — generiek in T, en de loader kende `'vf' in r` al |
+| `rankChain3Results` / `chain3ScanRow` | `App.tsx:7737/7807` | **N=3** |
+
+En de tweewegtak zelf: `App.tsx:8104` (`if (!woofer || !tweeter || !result) return;`) had geen enkele
+`useV2`-vertakking, `App.tsx:8262` → `optimClient.ts:308` stuurde naar `runChainScan` (kind `chainOne`, de v1-pool),
+en de ranking eronder was `rankChainResults` met een eigen rij-bouwer inline.
+
+**Elf van de zestien stappen zijn dus N-neutraal (acht helemaal, twee op één regel na, en één — `scan3` — waarvan
+alleen de ROUTE N=3 is en de body niet); vijf dragen een echte N=3-aanname.** Dat is de meting die de bouw bepaalde:
+wat de app deed was niet drieweg-REKENEN maar drieweg-LIJMEN — vierhonderd regels die React-state in N-neutrale
+bibliotheekfuncties gieten.
+
+**STAP 2 — DE BOUW: één deur, twee aanroepers.**
+
+1. **`optimClient.ts` — `runScanV2`, de gedeelde poolkern.** `runChain3ScanV2` en het nieuwe `runChainScanV2`
+   verschillen in exact drie dingen: het berichtsoort (`v2Chain3One` / `v2ChainOne`), hoe de payload zijn kandidaat
+   NOEMT (de driewegkandidaat draagt zijn eigen `label`, de tweeweg niet — `ChainInput` is v1's type en heeft er nooit
+   een gehad), en het resultaattype. Pooldiscipline, de gethrottlede voortgangstabel, de stop-semantiek, de
+   ⚠gate/⚠Z-glyphregel en de aborted-stempel zijn hetzelfde en staan één keer. Twee kopieën hiervan zouden twee
+   antwoorden zijn op "was deze run compleet", en dat is de ene vraag waarop A5e.4 zegt dat er geen twee mogen zijn.
+   `V2ChainItem` draagt het label naast de invoer (nooit erin: dat zou een scan-begrip in een structuur zetten die de
+   toggle-invariant onveranderd wil), `V2ChainCandidate = V2CandidateResult<ChainResult>`.
+   **Wat NIET meeverhuist is de v1-REDDING** — een werkelijk vrije ketenrun eerst en pas als die het trapdoel mist de
+   gepinde vervolgen erachteraan. Redding is een manier om KANDIDATEN te maken, en op de v2-route hoort dat bij A5d;
+   dezelfde reden waarom de driewegroute haar as-voor-as-modus overslaat en dat hardop zegt.
+
+2. **`engine2/optimizer/scanRequest.ts` — de N-neutrale helft van de deur, als zuivere functies.**
+   `pairDerivationInputs` (één afleidingsinvoer per overname, uit de vensters die het rapport zelf afleidde — het telt
+   overnames en nooit wegen), `measurementFactsFor` (loopt de rollen die de AANROEPER noemt; een rol zonder driver-id
+   wordt overgeslagen), `gateSettingsFor` / `budgetSettingsFor` / `determinismSettingsFor` / `v2RunSettingsFor`,
+   `reportingPowerW`, `candidateDeclarationFor` en `collectV2Scan` (de vouw van een afgeronde scan naar shortlistveld,
+   poortkaart en ontdubbelde notities, generiek in het ketenresultaat). **P4 in elke functie:** een niet-gestelde
+   instelling levert een ONTBREKENDE SLEUTEL, nooit een nul en nooit een default — daarom zijn de blokken spreads en
+   geen objectliteralen met optionele velden. **Niets hierin leest React-state**, en dat is meer dan netheid: de
+   UI-laag ná `handleV2Request` lag tot UI-1 buiten élke test en deed al die tijd het verkeerde; hetzelfde argument
+   geldt één stap eerder, bij waar de run VAN GEMAAKT wordt.
+
+3. **`App.tsx` — de driewegtak leest sindsdien die functies, en de tweewegtak is erbij gekomen.** Nieuw op
+   componentniveau: `v2Roles` (de rollen die dit project heeft, één lijst waar er vier waren), `v2DriveLimitDbByDriverId`
+   en `driveOnFsMaxDbByModel` (dezelfde gestelde M-C-getallen in de twee andere vocabulaires — app-rollen,
+   rapport-driver-ids, worker-modellen), `v2MeasuredFacts` (een memo in plaats van een blok binnen de driewegscan),
+   `ScanTableRow` als BENOEMD type, `chainScanRow` (de tweewegrij, uit de v1-`.then` gelicht) en `scanRowOf`, dat op
+   `'vf' in r` splitst zoals `applyScanCandidate` dat altijd al deed. `v2Shortlist` is `Shortlist<ChainResult |
+   Chain3Result>`; `buildShortlist` en `selectFromShortlist` waren altijd al generiek, alleen deze state zei drieweg.
+
+4. **De tweewegdeur zelf** (`App.tsx`, in de tweewegtak vóór de v1-kandidaatgeneratie, en alleen betreden als
+   `engineSelection.optimizer === 'v2'`): veldmodus → veldverzoek → `buildCandidateField` → vóórstart-raming (één paar)
+   → ketenverklaring → `chainInputFor` (`ChainInput` met ÉÉN kooi als `xoRange` en het venster van de kandidaat als
+   `judgeWindow`) → `candidateDeclarationFor` met `orderByModel: { tweeter }` (de laagste weg van een tweeweg heeft
+   geen eigen hoogdoorlaatflank) → `v2RunSettingsFor` + de drie identiteitssleutels → `runChainScanV2` →
+   `collectV2Scan` → `buildShortlist` → `selectFromShortlist` → `applyScanCandidate`. Geen venster afgeleid ⇒ dezelfde
+   terugval als op de driewegroute, met dezelfde notitie: v1-kandidaten door de v2-tuner is een terugval en geen
+   v2-veld, en zij wordt hardop gezegd.
+
+**STAP 3 — DAT DE DRIEWEGDEUR NIET BEWOOG, GEMETEN EN NIET BEREDENEERD.** Een extractie van vierhonderd regels uit
+`runVfOptimize` kan de driewegstempel stil verschuiven, en geen enkele test in deze repo keek naar wat de app
+ASSEMBLEERT. Twee dingen sluiten dat af. (a) **De bewaarde browserrun van E-2**
+(`test-fixtures/casus1_e2_verkenning_run.json`, een echte casus-1-verkenning van 2032 s in een headless Chrome)
+replayt ná de extractie nog steeds **laag 1 SAME** (digest `299ef5e7` = de `choices`-component van de stempel) en
+**laag 2 `--set demo` SAME** (6 van 6) — precies wat E-2 mat. (b) `scanRequest.test.ts` reproduceert het
+`run`-blok van diezelfde opname SLEUTEL VOOR SLEUTEL uit dezelfde gestelde grenzen, met `peakInputVolts` als échte
+afleiding (√(2·160·8) = 50,596…) en niet als rondgang. Een fixture die in deze sessie geschreven wordt kan naar de code
+gevormd zijn die zij moet bewaken; een opname die er al lag niet.
+
+**STAP 4 — DE BROWSERCONTROLE: casus 1's mid en tweeter, zonder woofers, in de draaiende app.** Sanders eigen
+voorstel voor de tweewegcontrole ("de huidige 3-weg data, alleen zonder de woofers") IS casus 1b. Headless Chrome,
+verse `localStorage`, Expert-modus, `mid_hor_0.txt` + `mid_hor_30.txt` + `mid.lim` in de LAGE kaart en
+`tweeter_hor_0.txt` + `tweeter.lim` in de tweeterkaart, midrange leeg, Engine v2 aan, versterkervloer 2,6 Ω,
+veldmodus verkenning. De app leidt af: **low → high 1294–2283,5 Hz, vloer 1294 Hz — f_s, plafond 2283,5 Hz —
+breakup**, en de verkenning legt **VIJF posities LR4 op 1364,3 / 1531,4 / 1719 / 1929,5 / 2165,8 Hz** — het
+venstercentrum en twee buren aan elke kant, één uitlijning, binnen het budget van acht. Vijf rijen in de
+voortgangstabel, elk met zijn eigen ketenstadium. De vóórstart-melding verscheen NIET, en dat is de F4d-eigenschap:
+geen kandidaat ligt buiten zijn venster.
+
+**De uitkomst, 496 s wandklok (vijf ketens naast elkaar op de pool):**
+
+| kandidaat | rimpel / fase (tuner) | kruispunt gesteld → geleverd | min \|Z\| | avg |
+|---|---|---|---|---|
+| 1364,3 LR4 | 1,60 dB / 7,6° | 1364,3 → 1367 Hz | 2,6 Ω | 0,54 dB |
+| 1531,4 LR4 | 1,59 dB / 6,0° | 1531,4 → 1522 Hz | 2,6 Ω | 0,67 dB |
+| 1719 LR4 | 1,91 dB / 7,7° | 1719 → 1803 Hz | 2,8 Ω | 0,78 dB |
+| **1929,5 LR4** | **1,14 dB / 6,0°** | **1929,5 → 2086 Hz** | **2,8 Ω** | **0,50 dB** |
+| 2165,8 LR4 | 1,10 dB / 6,4° | 2165,8 → 2341 Hz | — | 0,53 dB |
+
+`2-way scan — 5 candidates · shortlist 5 designs of 5 candidates meet every requirement and every gate · loaded
+low→high 1929,5 LR4 · avg 0,50 dB`, met eronder de UI-1-tabel **"v1 reading — not the route that made this run"**:
+dezelfde vijf kandidaten in de v1-rangorde, niets gekroond, en de actieve rij (◂) die van de shortlist. Het ontwerp
+staat in de Working-tab, 16 onderdelen, 0 inert. Dat is de UI-1-belofte, nu op de tweewegroute.
+
+**De export en de replay.** De knop "Export run (JSON)" schreef het blok; `npx vite-node scripts/replay-app-run.ts
+test-fixtures/casus1b_e3b_verkenning_run.json --set casus1b` geeft **laag 1 SAME — 5 van 5 gematcht, 0 ontbrekend,
+0 extra, 0 gewijzigd, digest `74f30494` = de `choices`-component van de stempel.** Het blok volstaat dus: de
+generator herbouwt uit de export exact het veld dat gedraaid heeft. Laag 2 zegt DIFFERENT en NOEMT alle vijf de
+verschillen: de browsersessie had geen geometrie ingevoerd (`spacingMm` null tegen casus 1b's 129,2 mm, met de bron
+erbij), de breakup-scan en de −6 dB@30° wijken honderdsten van een dB en tienden van een hertz af omdat de app de
+responsen op HAAR eigen raster leest en de fixture op het hare (5377,5 tegen 5387,6 Hz), en de
+`validityFloorSource` noemt de winnende driver bij de naam die elke helft hem geeft. De posities schuiven daardoor
+0,4 % (1364,3 tegen 1370,5). Benoemde INVOERverschillen en geen routeverschil — precies waarvoor E-2 laag 2 gebouwd
+heeft. **De run is bewaard als `test-fixtures/casus1b_e3b_verkenning_run.json`**, om dezelfde reden als E-2's
+driewegrun: een browsercontrole die alleen in een sessieverslag bestaat is een controle die niemand kan herhalen.
+`scanRequest.test.ts` pint er drie dingen op: dat het een tweewegrun is (één overname), dat P4 de HELE app overleefde
+(één gestelde poort — de vloer 2,6 Ω — en géén budget en géén seed verzonnen, met dezelfde blokken uit de assemblage
+gereproduceerd), en dat elke shortlist-rij een kandidaat is die de run heeft opgeleverd.
+
+**BEVINDING ZONDER REPARATIE (v1-parser, buiten de omvang van E-3b).** Met Sanders GEMERGEDE mid (`Koan_M_merged.frd`)
+weigert `refuseIfUnverified` de run: de v1-vensterlezer (`xoWindow.gateHeaderOf`) leest de M-1-regel
+`* Merge floor reason = sealed pod f_c 88.8 Hz: …` als een vensterregel zonder millisecondenlengte en meldt *"a window
+line is present but states no length in ms"*. Dat is het spiegelbeeld van de UI-1-les — daar las de engine-parser op
+VELDNAAM en de v1-parser op proza, en hier is het de proza-heuristiek die op een gestructureerd mergeblok stukloopt.
+`parseArtaHeader` (engine2) leest hetzelfde bestand zonder klacht; de repo-route en de fixture draaien er dagelijks op.
+Gemeld, niet gerepareerd: de reparatie zit in de v1-vensterlezer en die staat onder de toggle-invariant.
+
+**WAT NIET GEDAAN IS.** (1) M-K in de vf-ONTWERPSTAP (`phaseMetric: 'band'` zonder toelating) — E-3 benoemde het en
+E-3b raakt het niet: het is een engine-wijziging en deze sessie is UI en client. (2) De KOOI als mechanisme op de
+tweewegtuner: nog steeds niet gemeten; op het browserveld bleef de vraag open omdat de run zijn kandidaten binnen het
+venster hield. (3) De tweeweg over de driewegketen met N = 2 — nog steeds een v1-refactor en nog steeds niet nodig:
+de deur levert de app-kolom zonder hem.
+
+**TESTS EN TELLING.** Snelle laag 421 s (159 bestanden, 1818 tests, naast een browsersessie gedraaid en dus GEEN
+referentie); **volle run 1608 s (26 min 48), 159 bestanden, 1821 tests, niets overgeslagen, in één keer groen, alleen
+gedraaid ná de browsercontrole** — en wat die volle run hier bewijst is precies het punt van stap 3: E-3b raakt geen
+engine-, poort- of corpuscode, en de byte-baselines plus alle DRIE de live ketenruns reproduceren onder de E-3b-app.
+`npx tsc -b` groen, `scripts/` inbegrepen. Zie CLAUDE.md voor de metingen. Nieuw: `optimizer/scanRequest.test.ts` (21 claims in vijf groepen: de opname
+sleutel voor sleutel, de bewaarde tweewegrun, casus 1b's ene overname met de verkenning tegen het volle veld, P4 op een
+leeg formulier, en een tweewegkandidaat door `collectV2Scan` → `buildShortlist` → `selectFromShortlist` mét de
+UI-1-val ingebouwd — de GEWEIGERDE kandidaat draagt de beste RMS van het veld en een lege onderdelenlijst, en de
+selectie levert de andere), plus vijf E-3b-claims in `selection.test.ts` — een
+BRONSCAN op de tweewegtak van `App.tsx` die pint dat er door `selectFromShortlist` geladen wordt en dat `ranked[0]`
+er niet voorkomt: de UI-1-bug is sinds E-3b op een tweede route mogelijk, en dat is de goedkoopste bewaker die hem
+vangt (nagemeten dat hij kán falen). `toggleRegression`'s vóórstart-bewaker is van VORM veranderd zonder van claim te
+veranderen: hij telde drie `setV2PreStart`-plekken in totaal, en een totaal dat met het aantal routes meebeweegt is een
+getal dat iemand ophoogt in plaats van een claim die iemand controleert — hij telt sindsdien ARMS en CLEARS apart en
+eist dat de dichtstbijzijnde voorafgaande vensterbewaker van arm n bewaker n is.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

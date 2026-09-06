@@ -48,6 +48,12 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná E-3b (06-09-2026) gemeten op 421 s — 159 bestanden (158 geslaagd, 1 overgeslagen), 1818 tests (1815 geslaagd,
+    3 overgeslagen), in één keer groen, gedraaid naast een browsersessie (zie de meetregel hieronder: dit is dus GEEN
+    referentie); de telling erna is 159 bestanden en 1821 tests, want de bewaarde tweewegrun bracht drie claims meer.**
+    +1 bestand (`optimizer/scanRequest.test.ts`, 21 claims) en +26 tests: die 21 plus vijf E-3b-claims in
+    `selection.test.ts` (de bronscan op de tweewegtak van `App.tsx`). `toggleRegression` blijft op 10 — zijn
+    vóórstart-bewaker veranderde van vorm, niet van aantal. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná E-3 (06-09-2026) gemeten op 409 s — 158 bestanden (157 geslaagd, 1 overgeslagen), 1795 tests (1792 geslaagd,
     3 overgeslagen), in één keer groen, gedraaid ná de casus-1b-regeneratie en de recorder, alleen.** +2 bestanden
     (`goldenCasus1b.test.ts` 14, `casus1bV2Candidates.test.ts` 5 waarvan één `[live]`) en +26 tests: die 19, +4 E-3-claims in
@@ -245,14 +251,21 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (E-3): 158 bestanden, 1795 tests, 1573 s (26 min 13),
+- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (E-3b): 159 bestanden, 1821 tests, 1608 s (26 min 48),
+  niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de browsercontrole en NOOIT ernaast.** +1 bestand
+  (`optimizer/scanRequest.test.ts`, 21 claims) en +26 tests: die 21 plus vijf E-3b-claims in `selection.test.ts`. De
+  wandkloktijd is onveranderd de twee live casus-1-ketenruns; E-3b raakt geen engine-, poort- of corpuscode, dus wat de
+  volle run hier bewijst is precies dat: **de byte-baselines (`f4cRegression`, `workerRouteRegression`) en alle DRIE de
+  live ketenruns reproduceren onder de E-3b-app** — de extractie van vierhonderd regels uit `runVfOptimize` heeft geen
+  enkel netwerk verplaatst. (De casus-1b-run kostte 142 s en verdwijnt in de schaduw; `threeWayChain` 327 s.)
+  (De stand ervoor: **GEMETEN 06-09-2026 (E-3): 158 bestanden, 1795 tests, 1573 s (26 min 13),
   niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en NOOIT ernaast.** +6 bestanden en
   +79 tests sinds E-1 (E-2's vier bestanden en 53 tests, E-3's twee bestanden en 26 tests — zie de `test:fast`-regels).
   **De wandkloktijd is nog steeds de byte-reproductie van KAND-V2-8 (1565 s), de verwerping 455,7 · 2304 ernaast
   1240 s; de DERDE live ketenrun — casus 1b door `v2ChainOne` (`casus1bV2Candidates.test.ts`) — kost 137 s en verdwijnt
   in de schaduw** (`frozenNetlistGates` 373 s, `lowestWayLevelWork` 373 s). Het casus-1-corpus reproduceert byte-voor-byte
   onder de E-3-worker (de polariteitsvouw en de vijfde ketensleutel zijn op het LR4-veld de identiteit — gemeten, niet
-  aangenomen).
+  aangenomen).)
   (De stand ervoor: **GEMETEN 06-09-2026 (E-1): 152 bestanden, 1716 tests, 1609 s (26 min 49),
   niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de reparatie van de V33-bronscan en NOOIT
   ernaast.** Geen nieuw bestand; +6 tests (zie de `test:fast`-regel). **Van 7194 s naar 1609 s zonder één test minder, en
@@ -1044,7 +1057,7 @@
   **De app stuurt een tweewegverzoek nog naar de v1-worker** (`runChainScan`); deze route is de tweewegroute door de
   v2-worker en niet de knop — casusboek E-3, "wat niet gedaan is".
 - **Een app-run naspelen in de repo (E-2, 06-09-2026)**: `npx vite-node scripts/replay-app-run.ts <export.json>
-  [--set merged|gated] [--run]` — seconden zonder `--run`. De invoer is wat de knop **"Export run (JSON)"** onder de
+  [--set merged|gated|demo|casus1b] [--run]` — seconden zonder `--run`. De invoer is wat de knop **"Export run (JSON)"** onder de
   run-stempel van de app schrijft (`runExport.ts`, formaat `crossover-studio-run/1`): de gestelde eisen, de
   run-instellingen, de VELD-instellingen (modus, budget, uitlijningen, de per-paar-afleidingsinvoer), de vensterinvoer en
   de orde-afleidingen waarop het veld stond, élke kandidaat (label, positie, kooi, orde, uitlijning, venster), de
@@ -1067,7 +1080,12 @@
   DIFFERENT — de demobundel is een herbemonstering op 500 punten en de posities schuiven 0,2 Hz (W-M) en 1,3–1,8 Hz
   (M-T); het script benoemt de breakup-hoogten, de geometrie (382,4 tegen 261 mm) en de directiviteit (0–60° tegen één
   hoek) als de verschillen.** Het bewaarde blok draagt nog geen `geometry` (het is geschreven vóór het blok het
-  droeg); het script zegt dat en neemt dan de demokast. **`tsconfig.scripts.json` kent sinds E-2 ook `vite/client`
+  droeg); het script zegt dat en neemt dan de demokast. **`--set casus1b` (E-3b) is de TWEEWEGHELFT**: het script leest
+  het aantal overnames van de export zelf (`exp.field.windowInputs.length` — één per aangrenzend paar, dus 1 = tweeweg)
+  en WEIGERT een tweewegexport tegen een driewegset en omgekeerd, bij naam, in plaats van een diff af te drukken die
+  niemand kan lezen. Laag 1 had nooit een set nodig en was N-neutraal vanaf het begin; laag 2 bouwt op casus 1b
+  (`casus1bManifest`, `HUIDIG_MT` als geladen filter, casus 1b's geometrie) en `--run` gaat door `v2ChainOne` met
+  `casus1bChainInputFor` en `casus1bV2Declaration`, precies zoals de casus-1b-generator. **`tsconfig.scripts.json` kent sinds E-2 ook `vite/client`
   als type** (`types: ["node", "vite/client"]`), omdat het replay-script `demo3way.ts` importeert en die module
   Vite's `?raw`-imports draagt — zonder die declaratie 21 TS2307-fouten in `tsc -b`.
 - **De barrière-resolutie op smalle dips, gemeten vóór er gekozen is (E-1, 06-09-2026)**:
@@ -2470,6 +2488,76 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de zeven andere geleverde droegen `binnen_eis: true`, de twaalf geweigerde waren al geweigerd vóór (a) leest)
   draait alleen díé opnieuw (`V2_ONLY=9`, 2566 s) en zijn de negentien andere shards wat een herhaling zou
   opleveren. Elke shard moet er zijn; wie élke kandidaat opnieuw wil zien draait zonder de vlag.
+
+### E-3b-guards (de app stuurt N=2 door dezelfde v2-deur als N=3; alleen UI- en clientlaag)
+- `src/lib/optimClient.ts` — **`runScanV2`: ÉÉN gepoolde v2-scan, twee routes.** `runChain3ScanV2` en het nieuwe
+  `runChainScanV2` verschillen in drie dingen (berichtsoort, hoe de payload zijn kandidaat NOEMT, resultaattype) en in
+  niets anders: pooldiscipline, de gethrottlede voortgangstabel, de stop-semantiek, de ⚠gate/⚠Z-glyphregel en de
+  aborted-stempel staan één keer. Twee kopieën zouden twee antwoorden zijn op "was deze run compleet", de ene vraag
+  waarop A5e.4 zegt dat er geen twee mogen zijn. `V2ChainItem` draagt het label NAAST de invoer, nooit erin
+  (`ChainInput` is v1's type en heeft er nooit een gedragen). **Het commentaarblok "NO `runChainScanV2` HERE" is weg en
+  zijn reden staat in de nieuwe doc-noot**: hij was juist zolang de enige aanroeper een latere fase was, en E-3b is die
+  fase. **Wat NIET meeverhuist is de v1-REDDING** (vrije ketenrun eerst, gepinde vervolgen erachteraan): redding is een
+  manier om kandidaten te MAKEN en dat hoort op de v2-route bij A5d — dezelfde reden waarom de driewegroute haar
+  as-voor-as-modus overslaat.
+- `src/lib/engine2/optimizer/scanRequest.ts` + `scanRequest.test.ts` — **wat de app de v2-worker geeft, voor élk aantal
+  wegen, als zuivere functies.** De v2-deur stond één keer geschreven, voor drie wegen, binnen `runVfOptimize`:
+  vierhonderd regels lijm tussen React-state en `buildCandidateField` / `factsForWorker` / `declareCandidateChoices` /
+  de poort- en budgetblokken / de export / de shortlist. Elf van de zestien stappen zijn N-neutraal (gemeten, zie
+  casusboek E-3b), dus die lijm is één implementatie met twee aanroepers geworden in plaats van twee deuren.
+  **Niets erin leest React-state**, en dat is de UI-1-les één stap eerder: de laag ná `handleV2Request` lag buiten élke
+  test en deed maandenlang het verkeerde; wat de run VAN GEMAAKT wordt is dezelfde soort laag.
+  **P4 in elke functie:** een niet-gestelde instelling levert een ONTBREKENDE SLEUTEL, nooit een nul en nooit een
+  default — daarom zijn de blokken spreads en geen objectliteralen met optionele velden.
+  Achttien claims, in vier groepen. (1) **DE EXTRACTIE VERANDERDE NIETS AAN DE DRIEWEGRUN, gemeten tegen een ECHTE
+  OPNAME**: het `run`-blok van `casus1_e2_verkenning_run.json` (E-2's browserrun van 2032 s) wordt sleutel voor sleutel
+  gereproduceerd uit dezelfde gestelde grenzen, met `peakInputVolts` als échte afleiding (√(2·160·8)) en niet als
+  rondgang. Een fixture die vandaag geschreven wordt kan naar de code gevormd zijn; een opname van gisteren niet.
+  (2) N=2 op casus 1b: één vensterinvoer (de rapportlus is `i + 1 < order.length`), de gestelde orde en het EIGEN
+  M-C-getal van de bovenste weg (V50: per weg vóór het enkele veld), en de VERKENNING tegen het volle veld — élke
+  positie binnen het afgeleide venster, het venstercentrum erbij (dat IS centre-first), beleid in de parameters.
+  (3) P4: een leeg formulier levert `{}` voor gates, budgets en determinisme; een piekspanning vraagt BEIDE
+  versterkervelden; `reportingPowerW` weigert leeg, nul en onzin en neemt een getal. (4) Een tweewegkandidaat door
+  `collectV2Scan` → `buildShortlist` → `selectFromShortlist`, met de UI-1-val ingebouwd: de GEWEIGERDE kandidaat draagt
+  de beste RMS van het veld en een lege onderdelenlijst, en de selectie levert de andere.
+- `src/lib/engine2/optimizer/selection.test.ts` — **vijf E-3b-claims als BRONSCAN op de tweewegtak van `App.tsx`.**
+  De beslissing is hierboven getest zonder browser; wat een test niet bereikt is of de app haar AANROEPT, en dat is
+  precies wat de eerste keer misging. Sinds E-3b is dezelfde vergissing op een tweede route beschikbaar, dus: de
+  tweeweg-v2-tak bestaat, staat achter de motorkeuze, gaat naar `runChainScanV2` en niet naar `runChainScan`, laadt via
+  `selectFromShortlist` + `applyScanCandidate`, en **`ranked[0]` komt er niet in voor** — `ranked` wordt wél berekend
+  (het vult de scan-tabel, de tweede lezing die UI-1 bewaarde) maar niets neemt zijn eerste rij. Nagemeten dat de scan
+  kán falen: één `void ranked[0];` erin zet hem op rood.
+- `src/lib/engine2/toggleRegression.test.ts` — **de vóórstart-bewaker telt sinds E-3b per SOORT in plaats van in
+  totaal.** Hij eiste drie `setV2PreStart`-plekken; een totaal dat met het aantal scanroutes meebeweegt is een getal dat
+  iemand ophoogt in plaats van een claim die iemand controleert. Sindsdien: twee vensterbewakers, twee ARMS, drie
+  CLEARS, arms + clears = alle plekken, en de dichtstbijzijnde voorafgaande bewaker van arm n IS bewaker n. Die vorm kan
+  niet vervuld worden door een route toe te voegen die de melding ongewapend zet.
+- **In `App.tsx`:** `v2Roles` (de rollen die dit project heeft — één lijst waar er vier uitgeschreven stonden),
+  `v2DriveLimitDbByDriverId` en `driveOnFsMaxDbByModel` (dezelfde gestelde M-C-getallen in de twee andere vocabulaires:
+  app-rollen, rapport-driver-ids, worker-modellen — drie plaatsen deden hun eigen `find` over `driverIds`),
+  `v2MeasuredFacts` als memo, `ScanTableRow` als BENOEMD type (er zijn sinds E-3b twee bouwers en drie lezers; een vorm
+  die alleen als inferentie bestaat kan niet het contract van twee bouwers zijn), `chainScanRow` (de tweewegrij, uit de
+  v1-`.then` gelicht) en `scanRowOf`, dat op `'vf' in r` splitst zoals `applyScanCandidate` dat altijd al deed.
+  `v2Shortlist` is `Shortlist<ChainResult | Chain3Result>` — `buildShortlist` en `selectFromShortlist` waren altijd al
+  generiek, alleen deze state zei drieweg.
+- **Een v1-BEVINDING, gemeld en niet gerepareerd (buiten de omvang: v1-parser onder de toggle-invariant).** Met Sanders
+  gemergede mid (`Koan_M_merged.frd`) weigert `refuseIfUnverified` de run: de v1-vensterlezer
+  (`xoWindow.gateHeaderOf`) leest de M-1-regel `* Merge floor reason = sealed pod f_c 88.8 Hz: …` als een vensterregel
+  zonder millisecondenlengte. Het spiegelbeeld van de UI-1-les: daar las de engine op VELDNAAM en de v1-parser op proza,
+  hier loopt diezelfde proza-heuristiek stuk op een gestructureerd mergeblok. `parseArtaHeader` leest hetzelfde bestand
+  zonder klacht.
+- **`test-fixtures/casus1b_e3b_verkenning_run.json` — de BEWAARDE TWEEWEGRUN**, naast E-2's
+  `casus1_e2_verkenning_run.json` en om dezelfde reden: een browsercontrole die alleen in een sessieverslag bestaat is
+  een controle die niemand kan herhalen. Casus 1's mid en tweeter als tweeweg, Engine v2 aan, vloer 2,6 Ω, verkenning,
+  vijf kandidaten door `runChainScanV2` (496 s). Naspelen met
+  `npx vite-node scripts/replay-app-run.ts test-fixtures/casus1b_e3b_verkenning_run.json --set casus1b`: **laag 1
+  SAME** (5 van 5, digest `74f30494` = de stempel), laag 2 DIFFERENT met de invoerverschillen bij naam (geen geometrie
+  ingevoerd, en de app draait op haar eigen `.zma`-conversie van `mid.lim`). `scanRequest.test.ts` pint er drie claims
+  op, waaronder **P4 over de HELE app**: één gestelde poort in het exportblok en géén verzonnen budget of seed.
+- **`scanRequest.test.ts` telt 21 claims in VIJF groepen**: de opname sleutel voor sleutel; de bewaarde tweewegrun;
+  casus 1b's ene overname met de verkenning tegen het volle veld; P4 op een leeg formulier; en een tweewegkandidaat
+  door `collectV2Scan` → `buildShortlist` → `selectFromShortlist` mét de UI-1-val ingebouwd — de GEWEIGERDE kandidaat
+  draagt de beste RMS van het veld en een lege onderdelenlijst, en de selectie levert de andere.
 
 ### E-3-guards (de tweewegroute door de worker; vijfde ketensleutel; polariteit in het netwerk; casus 1b)
 - `src/lib/engine2/optimizer/worker.ts` — **de `v2ChainOne`-tak leest sinds E-3 de ketenverklaring in het vocabulaire van

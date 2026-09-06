@@ -1,7 +1,7 @@
 /**
  * E-2 — REPLAY AN APP RUN IN THE REPOSITORY (the V48 gap).
  *
- *   npx vite-node scripts/replay-app-run.ts <export.json> [--set merged|gated|demo] [--run]
+ *   npx vite-node scripts/replay-app-run.ts <export.json> [--set merged|gated|demo|casus1b] [--run]
  *
  * The export is what the app's "Export run (JSON)" button writes after a v2
  * run (`runExport.ts`): the stated requirements, the run settings, the FIELD
@@ -41,6 +41,14 @@
  *  promised across machines (V46, A5e.4): what is compared is which labels
  *  qualified, and the tolerance classes do the rest.
  *
+ *  `--set casus1b` — E-3b: a TWO-WAY export, replayed on casus 1b (casus 1's
+ *  mid and tweeter). Layer 1 never needed a set and was N-neutral from the
+ *  start — it maps over the exported window inputs, one per adjacent pair —
+ *  but layer 2 and `--run` were written for three ways and would silently have
+ *  compared a two-way export against a three-way set. The script now READS the
+ *  number of handovers off the export and refuses a mismatch by name rather
+ *  than producing a diff nobody can read.
+ *
  * WHAT IS COMPARED IS CANDIDATES, NOT BYTES. A field is labels, positions,
  * orders and alignments, and a field is a field on any machine.
  */
@@ -74,6 +82,19 @@ import { measurementFactsKey } from '../src/lib/engine2/optimizer/measurementFac
 import { buildShortlist, type ShortlistInput } from '../src/lib/engine2/optimizer/shortlist.ts';
 import { handleV2Request, type V2Chain3Payload, type V2Response } from '../src/lib/engine2/optimizer/worker.ts';
 import { casus1ChainInput, casus1V2Declaration, casus1V2Facts, CASUS1_V2_SETTINGS } from '../src/lib/engine2/casus1V2.fixture.ts';
+import {
+  casus1bChainInput,
+  casus1bChainInputFor,
+  casus1bFiles,
+  casus1bFilter,
+  casus1bGeometry,
+  casus1bManifest,
+  casus1bSeed,
+  casus1bV2Declaration,
+  casus1bV2Facts,
+} from '../src/lib/engine2/casus1b.fixture.ts';
+import type { ChainInput, ChainResult } from '../src/lib/designChain.ts';
+import type { V2ChainOnePayload } from '../src/lib/engine2/optimizer/worker.ts';
 import type { Chain3Input, Chain3Result } from '../src/lib/threeWayChain.ts';
 import type { GeneratedCandidate } from '../src/lib/engine2/predesign/candidates.ts';
 import { buildEngineV2Input, type AdapterBranch, type AdapterGeometry, type AdapterResponse } from '../src/lib/engine2/appAdapter.ts';
@@ -95,12 +116,36 @@ if (!file) {
   process.exit(2);
 }
 const setArg = args.find((a) => a.startsWith('--set='))?.slice('--set='.length) ?? (args.includes('--set') ? args[args.indexOf('--set') + 1] : 'merged');
-const SET: 'merged' | 'gated' | 'demo' = setArg === 'gated' ? 'gated' : setArg === 'demo' ? 'demo' : 'merged';
+const SET: 'merged' | 'gated' | 'demo' | 'casus1b' =
+  setArg === 'gated' ? 'gated' : setArg === 'demo' ? 'demo' : setArg === 'casus1b' ? 'casus1b' : 'merged';
 const RUN = args.includes('--run');
 
 const exp = JSON.parse(readFileSync(file, 'utf-8')) as RunExport;
 if (exp.format !== RUN_EXPORT_FORMAT) {
   console.error(`not a run export: format ${String(exp.format)} (expected ${RUN_EXPORT_FORMAT})`);
+  process.exit(2);
+}
+/**
+ * E-3b — HOW MANY HANDOVERS THE EXPORTED FIELD STOOD ON, read off the export
+ * itself: one per adjacent pair, so 1 is a two-way run and 2 a three-way one.
+ * Layer 1 does not care and never did; layer 2 and `--run` rebuild a
+ * MEASUREMENT SET, and a two-way export against a three-way set is a
+ * comparison whose diff nobody can read.
+ */
+const PAIRS = exp.field.windowInputs.length;
+const TWO_WAY = PAIRS === 1;
+if (TWO_WAY && SET !== 'casus1b') {
+  console.error(
+    `this export has ONE handover (a two-way run) and --set ${SET} is a three-way measurement set. ` +
+      'Replay it with --set casus1b (casus 1\'s mid and tweeter), or read layer 1 alone.',
+  );
+  process.exit(2);
+}
+if (!TWO_WAY && SET === 'casus1b') {
+  console.error(
+    `this export has ${PAIRS} handovers (a three-way run) and --set casus1b is the two-way set. ` +
+      'Replay it with --set merged, gated or demo.',
+  );
   process.exit(2);
 }
 
@@ -153,7 +198,14 @@ const golden = loadGolden();
  * 'woofer', 'mid', 'tweeter' and the demo bundle through the adapter by the
  * role names. Re-key everything through the role map the export carries. */
 const REPO_ID: Record<'low' | 'mid' | 'high', string> =
-  SET === 'demo' ? { low: 'low', mid: 'mid', high: 'high' } : { low: 'woofer', mid: 'mid', high: 'tweeter' };
+  SET === 'demo'
+    ? { low: 'low', mid: 'mid', high: 'high' }
+    : /* E-3b — on casus 1b the LOWEST way is the mid, exactly as
+       * `canonicalModelForRole` maps a two-way's `low` role to the model
+       * `mid`; the `mid` entry is unreachable there and kept for the type. */
+      SET === 'casus1b'
+      ? { low: 'mid', mid: 'mid', high: 'tweeter' }
+      : { low: 'woofer', mid: 'mid', high: 'tweeter' };
 const appToRepo: Record<string, string> = {};
 for (const role of ['low', 'mid', 'high'] as const) {
   const id = exp.drivers.idsByRole[role];
@@ -185,7 +237,7 @@ const settings: ReportSettings = {
 };
 /* The woofer's meter reading is a casus-1 fact the app carries in its A5a
  * block; when the export has none the repository's own is used and said. */
-if (!settings.reOhmByDriver?.[REPO_ID.low]) {
+if (SET !== 'casus1b' && !settings.reOhmByDriver?.[REPO_ID.low]) {
   settings.reOhmByDriver = { ...(settings.reOhmByDriver ?? {}), [REPO_ID.low]: CASUS1_WOOFER_DC_OHM };
   line(`note: the export states no measured R_e for the lowest way; the repository's ${CASUS1_WOOFER_DC_OHM} Ω is used`);
 }
@@ -234,6 +286,19 @@ if (SET === 'demo') {
   manifest = built.input.manifest;
   files = [...built.input.files];
   report = buildReport(built.input);
+} else if (SET === 'casus1b') {
+  /* E-3b — the TWO-WAY set: casus 1's mid and tweeter, its own golden refs and
+   * its own geometry, with `HUIDIG_MT` as the loaded filter exactly as the
+   * casus-1 branch loads `HUIDIG`. */
+  manifest = casus1bManifest();
+  files = casus1bFiles(manifest);
+  report = buildReport({
+    manifest,
+    files,
+    filter: casus1bFilter('HUIDIG_MT', manifest, files),
+    geometry: casus1bGeometry(),
+    settings,
+  });
 } else {
   manifest = casus1Manifest(golden, SET);
   files = casus1Files(manifest);
@@ -246,7 +311,9 @@ line(`windows: ${wis.map((w) => `${w.lower}→${w.upper}`).join(', ')}`);
  * of the fixture on the casus-1 sets; on the demo bundle the on-axis files
  * resampled to a log grid, as the app's sim base is. The fit decides the
  * exact order only, never a position. */
-const gridded = SET === 'demo' ? null : casus1ChainInput(manifest, files, golden);
+const gridded = SET === 'demo' || SET === 'casus1b' ? null : casus1ChainInput(manifest, files, golden);
+/** E-3b — the two-way chain input of casus 1b, for `--run` and the slope fit. */
+const gridded1b = SET === 'casus1b' ? casus1bChainInput(manifest, files) : null;
 const demoCurve = (driver: string) => {
   const b = driver === 'low' ? KOAN_3WAY_DEMO.low : driver === 'mid' ? KOAN_3WAY_DEMO.mid : driver === 'high' ? KOAN_3WAY_DEMO.high : null;
   if (!b) return null;
@@ -256,6 +323,12 @@ const demoCurve = (driver: string) => {
   return { freq: grid, db: g.spl };
 };
 const curveOf = (driver: string) => {
+  /* E-3b — on casus 1b the LOW slot of the chain input is the mid (its `w`),
+   * the same slot `v2ChainOne` reads as the model `mid`. */
+  if (gridded1b) {
+    const g = driver === 'mid' ? gridded1b.w : driver === 'tweeter' ? gridded1b.t : null;
+    return g ? { freq: g.freq, db: g.spl } : null;
+  }
   if (!gridded) return demoCurve(driver);
   const g = driver === 'woofer' ? gridded.w : driver === 'mid' ? gridded.m : driver === 'tweeter' ? gridded.t : null;
   return g ? { freq: g.freq, db: g.spl } : null;
@@ -307,8 +380,86 @@ for (const a of repoField.field.axes) {
  * --run — tune the replayed candidates the way the corpus generator does
  * ------------------------------------------------------------------ */
 
-if (RUN && !gridded) {
-  head('--run is only available on the casus-1 sets (merged, gated): the demo bundle has no chain input in the repository');
+if (RUN && !gridded && !gridded1b) {
+  head('--run is only available on the repository sets with a chain input (merged, gated, casus1b): the demo bundle has none');
+}
+
+/* ------------------------------------------------------------------ *
+ * --run, TWO WAYS (E-3b): the same discipline through `v2ChainOne`
+ * ------------------------------------------------------------------ */
+
+if (RUN && gridded1b) {
+  head('--run — tuning the replayed two-way candidates through handleV2Request (v2ChainOne)');
+  const facts = casus1bV2Facts(report, manifest, files);
+  const seed = casus1bSeed();
+  const rows: ShortlistInput<ChainResult>[] = [];
+  const t0 = Date.now();
+  repoField.field.candidates.forEach((c: GeneratedCandidate, n: number) => {
+    const input: ChainInput = casus1bChainInputFor(c, gridded1b, seed);
+    const payload: V2ChainOnePayload = {
+      input,
+      label: c.label,
+      v2: {
+        ...facts,
+        gates: { ...exp.run.gates },
+        budgets: { ...exp.run.budgets },
+        determinism: { ...exp.run.determinism },
+        ...(exp.run.targetCurve ? { targetCurve: exp.run.targetCurve } : {}),
+        ...(exp.run.judgeBandHz ? { judgeBandHz: exp.run.judgeBandHz } : {}),
+        ...(exp.run.amplifierPowerW !== undefined ? { amplifierPowerW: exp.run.amplifierPowerW } : {}),
+      },
+      candidate: casus1bV2Declaration(c, gridded1b.safety),
+    };
+    const tc = Date.now();
+    const wire = structuredClone({ id: n, kind: 'v2ChainOne' as const, payload });
+    const collected: {
+      result: ChainResult;
+      measurements: ShortlistInput<ChainResult>['measurements'];
+      topology: ShortlistInput<ChainResult>['topology'];
+      gates: ShortlistInput<ChainResult>['gates'];
+      rejection: ShortlistInput<ChainResult>['rejection'];
+    }[] = [];
+    handleV2Request(wire, (m: V2Response) => {
+      if (m.kind === 'error') throw new Error(m.message);
+      if (m.kind === 'done') collected.push(m.data as (typeof collected)[number]);
+    });
+    const done = collected[0];
+    if (!done) throw new Error(`candidate ${c.label} produced nothing`);
+    rows.push({
+      label: c.label,
+      parts: done.result.parts,
+      result: done.result,
+      topology: done.topology,
+      measurements: done.measurements,
+      gates: done.gates,
+      disqualified: done.result.disqualified,
+      ...(done.rejection ? { rejection: done.rejection } : {}),
+    });
+    line(`  ${n + 1}/${repoField.field.candidates.length} ${c.label}: ${done.rejection ? `REFUSED (${done.rejection.kinds.join(',')})` : `delivered, ${done.result.parts.length} parts`} in ${((Date.now() - tc) / 1000).toFixed(0)} s`);
+  });
+  const stamp = stampRun(
+    {
+      determinism: resolveDeterminism(exp.run.determinism),
+      design: 'replay',
+      measurements: stableJson({ set: SET }),
+      gates: stableJson(gateSettingsKey(exp.run.gates)),
+      bounds: stableJson(budgetSettingsKey(exp.run.budgets)),
+      tuning: 'replay',
+      choices: exp.field.key,
+      facts: stableJson(measurementFactsKey(facts)),
+    },
+    'completed',
+  );
+  const shortlist = buildShortlist(rows, stamp.fingerprint, {
+    ...(exp.run.targetCurve ? { targetCurve: exp.run.targetCurve } : {}),
+  });
+  line(`shortlist: ${shortlist.rows.map((r) => r.label).join(' | ') || '(nothing qualified)'}`);
+  line(`refused: ${shortlist.rejected.map((r) => `${r.label} [${r.kinds.join(',')}]`).join(' | ') || 'none'}`);
+  if (exp.shortlist) {
+    line(`app shortlist: ${exp.shortlist.rows.join(' | ') || '(nothing qualified)'}`);
+    line(`app refused: ${exp.shortlist.rejected.map((r) => `${r.label} [${r.kinds.join(',')}]`).join(' | ') || 'none'}`);
+  }
+  line(`total ${((Date.now() - t0) / 1000).toFixed(0)} s`);
 }
 if (RUN && gridded) {
   head('--run — tuning the replayed candidates through handleV2Request');

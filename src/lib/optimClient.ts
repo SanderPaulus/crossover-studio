@@ -545,6 +545,26 @@ export interface V2Chain3Item {
 }
 
 /**
+ * E-3b — one item of a TWO-WAY v2 scan.
+ *
+ * The label is a field of the ITEM and not of the input, because `ChainInput`
+ * is v1's type and has never carried one — the two-way chain is told which
+ * variant it is running through a separate argument, and `V2ChainOnePayload`
+ * keeps that shape. Widening `ChainInput` to hold a label would put a scan
+ * concept inside a structure the toggle invariant says must not change, for
+ * the same reason `V2Chain3Item` keeps the candidate beside the input rather
+ * than inside it.
+ */
+export interface V2ChainItem {
+  input: ChainInput;
+  label: string;
+  candidate?: V2CandidatePayload;
+}
+
+/** One two-way v2 candidate: the chain result the v1 route also produces, plus verdicts. */
+export type V2ChainCandidate = V2CandidateResult<ChainResult>;
+
+/**
  * Did this v2 scan COMPLETE, and if not, why not.
  *
  * One rule for both routes, and it is deliberately not "did the designer press
@@ -595,7 +615,16 @@ function v2Stamp(
 }
 
 /**
- * The 3-way scan on the v2 worker.
+ * ONE POOLED v2 SCAN, TWO ROUTES (E-3b).
+ *
+ * `runChain3ScanV2` and `runChainScanV2` differ in exactly three things: the
+ * message kind, how the payload names its candidate (the three-way input
+ * carries its own `label`, the two-way one does not), and the result type.
+ * Everything else — the pool discipline, the throttled progress table, the
+ * stop semantics, the ⚠gate/⚠Z glyph rule and the aborted-run stamp — is the
+ * same run, so it is written once. Two copies of this body would be two
+ * answers to "was this run complete", which is the one question A5e.4 says may
+ * not have two answers.
  *
  * Same pool discipline, same throttled progress and the same stop semantics as
  * the v1 route — with ONE difference that A5e.4 requires: a run that was
@@ -603,13 +632,13 @@ function v2Stamp(
  * The v1 route reports its partial field through a module-global flag the
  * caller has to remember to ask about; here it is in the result.
  */
-export function runChain3ScanV2(
-  items: V2Chain3Item[],
+function runScanV2<I, C extends V2CandidateResult<{ label: string; net: ChainResult['net']; zOk: boolean }>>(
+  items: readonly { input: I; label: string; candidate?: V2CandidatePayload }[],
   v2: V2ScanSettings,
+  kind: 'v2Chain3One' | 'v2ChainOne',
+  payloadFor: (item: { input: I; label: string; candidate?: V2CandidatePayload }) => unknown,
   onProgress?: (d: ScanProgress) => void,
-): Promise<V2ScanResult<V2Chain3Candidate>> {
-  const inputs = items.map((i) => i.input);
-  const candidateOf = new Map(items.map((i) => [i.input.label, i.candidate]));
+): Promise<V2ScanResult<C>> {
   stoppedEarly = false;
   const size = poolSize();
   const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
@@ -621,41 +650,36 @@ export function runChain3ScanV2(
       emitQueued = false;
       let evals = 0;
       let done = 0;
-      const items: { label: string; text: string; done: boolean; warn?: string }[] = [];
+      const rows: { label: string; text: string; done: boolean; warn?: string }[] = [];
       for (const [label, st] of state) {
         evals += st.evals;
         if (st.done) done++;
-        items.push({ label, text: st.text, done: st.done, warn: st.warn });
+        rows.push({ label, text: st.text, done: st.done, warn: st.warn });
       }
-      onProgress({ round: done, evals, items });
+      onProgress({ round: done, evals, items: rows });
     }, 80);
   };
-  for (const input of inputs) state.set(input.label, { evals: 0, text: 'queued', done: false });
+  for (const it of items) state.set(it.label, { evals: 0, text: 'queued', done: false });
   emit();
 
   return runPooled(
-    inputs,
+    [...items],
     size,
-    (input, slot) => {
-      const st0 = state.get(input.label);
+    (it, slot) => {
+      const label = it.label;
+      const st0 = state.get(label);
       if (st0) st0.text = 'starting';
       emit();
-      const candidate = candidateOf.get(input.label);
-      return runV2<V2Chain3Candidate>(
-        slot,
-        'v2Chain3One',
-        { input, v2, ...(candidate ? { candidate } : {}) },
-        (d) => {
-          const pr = d as ChainOneProgress;
-          const st = state.get(input.label);
-          if (!st) return;
-          if (pr.evals > st.evals) st.evals = pr.evals;
-          st.text = stageText(pr);
-          emit();
-        },
-      )
+      return runV2<C>(slot, kind, payloadFor(it), (d) => {
+        const pr = d as ChainOneProgress;
+        const st = state.get(label);
+        if (!st) return;
+        if (pr.evals > st.evals) st.evals = pr.evals;
+        st.text = stageText(pr);
+        emit();
+      })
         .then((c) => {
-          const st = state.get(input.label);
+          const st = state.get(label);
           if (st) {
             st.evals = c.result.net.evaluations;
             st.text = `✓ ${c.result.net.after.rippleDb.toFixed(2)} dB/${c.result.net.after.phaseDeg.toFixed(1)}°`;
@@ -677,28 +701,71 @@ export function runChain3ScanV2(
     },
     () => stoppedEarly,
   ).then((rs) => {
-    const candidates = rs.filter((r): r is V2Chain3Candidate => !!r);
-    const outcome = v2ScanOutcome(candidates.length, inputs.length, stoppedEarly);
+    const candidates = rs.filter((r): r is C => !!r);
+    const outcome = v2ScanOutcome(candidates.length, items.length, stoppedEarly);
     return {
       candidates,
-      requested: inputs.length,
+      requested: items.length,
       stamp: v2Stamp(v2, outcome.status, outcome.reason),
     };
   });
 }
 
-/*
- * NO `runChainScanV2` HERE, and that is deliberate.
+/** The 3-way scan on the v2 worker. See `runScanV2`. */
+export function runChain3ScanV2(
+  items: V2Chain3Item[],
+  v2: V2ScanSettings,
+  onProgress?: (d: ScanProgress) => void,
+): Promise<V2ScanResult<V2Chain3Candidate>> {
+  return runScanV2<Chain3Input, V2Chain3Candidate>(
+    items.map((i) => ({ ...i, label: i.input.label })),
+    v2,
+    'v2Chain3One',
+    ({ input, candidate }) => ({ input, v2, ...(candidate ? { candidate } : {}) }),
+    onProgress,
+  );
+}
+
+/**
+ * THE 2-WAY SCAN ON THE v2 WORKER (E-3b) — the function `optimClient.ts` said
+ * out loud it was not writing.
  *
- * The two-way scan route is not wired to v2 yet (TODO(F2c) at the façade): it
- * carries its own rescue semantics — a truly-free single candidate runs first
- * and only then appends pinned follow-ups — and porting those is a
- * behavioural change to a path F2b promised not to touch. The WORKER side is
- * ready and tested (`v2ChainOne` in `engine2/optimizer/worker.ts`), which is
- * the half that had to exist; writing the client half now would ship an
- * untested function whose only caller is a future phase, and an untested
- * export that claims to work is worse than an absent one.
+ * The note that stood here until E-3b was right at the time and is worth
+ * keeping as history: the worker side (`v2ChainOne`) was ready and tested and
+ * the client half would have been an untested export whose only caller was a
+ * future phase. E-3 made the worker branch real — it reads the chain
+ * declaration in `designChain`'s own vocabulary, the declared search
+ * smoothing reaches the vf design step, the synthesis fits on the live points
+ * and the chosen polarity is folded into the netlist — and casus 1b ran its
+ * exploration through it. E-3b is that future phase: this is its caller.
+ *
+ * WHAT IT DOES NOT PORT, and that is the whole reason the two-way v2 route is
+ * a different door rather than a flag on `runChainScan`: the v1 two-way scan
+ * carries RESCUE SEMANTICS — a truly-free single candidate runs first and only
+ * when it misses the staged targets are pinned follow-ups appended. Rescue is
+ * a way of GENERATING candidates, and on the v2 route generation belongs to
+ * A5d (the same reason the three-way route skips its axis-by-axis mode). So
+ * the field arrives here already made, every candidate runs, and nothing is
+ * appended.
+ *
+ * The two-way payload names its candidate SEPARATELY (`V2ChainOnePayload`),
+ * because `ChainInput` — v1's type — has no label field and giving it one
+ * would put a scan concept inside the structure the toggle invariant says must
+ * not change.
  */
+export function runChainScanV2(
+  items: readonly V2ChainItem[],
+  v2: V2ScanSettings,
+  onProgress?: (d: ScanProgress) => void,
+): Promise<V2ScanResult<V2ChainCandidate>> {
+  return runScanV2<ChainInput, V2ChainCandidate>(
+    items,
+    v2,
+    'v2ChainOne',
+    ({ input, label, candidate }) => ({ input, label, v2, ...(candidate ? { candidate } : {}) }),
+    onProgress,
+  );
+}
 
 export function runVfRoundsTask(
   payload: VfRoundsPayload,

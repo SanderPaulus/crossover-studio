@@ -315,14 +315,33 @@ describe('engine v2 toggle — off means unchanged', () => {
 
     it('the pre-start notice can only be set from inside that guard', () => {
       const text = app();
-      const sets = [...text.matchAll(/setV2PreStart\(/g)];
-      // Two: the one that arms it (inside the guard) and the Cancel button
-      // that clears it. A third would be a path worth looking at.
-      expect(sets.length).toBe(3);
-      const armed = text.indexOf('if (v2Windows && !runOpts.acknowledgedWindowNotice)');
-      const arm = text.indexOf('setV2PreStart({');
-      expect(armed).toBeGreaterThan(0);
-      expect(arm).toBeGreaterThan(armed);
+      /* E-3b — COUNTED PER KIND INSTEAD OF IN TOTAL, and each ARM is checked
+       * against the guard that must precede it.
+       *
+       * The claim has always been "nothing arms this notice outside the window
+       * check"; the assert was a total of three call sites, which held while
+       * there was one scan route that could arm it. E-3b gives the two-way
+       * scan the same door, so there are two arms and two clears beside them —
+       * and a total that moves with the number of routes is a number somebody
+       * bumps rather than a claim somebody checks. The shape below cannot be
+       * satisfied by adding a route that arms the notice unguarded. */
+      const guards = [...text.matchAll(/if \(v2Windows && !runOpts\.acknowledgedWindowNotice\)/g)].map(
+        (m) => m.index!,
+      );
+      const arms = [...text.matchAll(/setV2PreStart\(\{/g)].map((m) => m.index!);
+      const clears = [...text.matchAll(/setV2PreStart\(null\)/g)].map((m) => m.index!);
+      // One guard and one arm per scan route (two-way and three-way), and one
+      // clear beside each arm plus the Cancel button that dismisses it.
+      expect(guards.length).toBe(2);
+      expect(arms.length).toBe(2);
+      expect(clears.length).toBe(3);
+      expect(arms.length + clears.length).toBe([...text.matchAll(/setV2PreStart\(/g)].length);
+      // EVERY arm sits after a guard, and no two arms share one: the nearest
+      // preceding guard of arm n is guard n.
+      for (let i = 0; i < arms.length; i++) {
+        const nearest = guards.filter((g) => g < arms[i]).pop();
+        expect(nearest).toBe(guards[i]);
+      }
       // ...and it renders behind its own null check, so an unset notice draws
       // nothing at all.
       expect(text).toContain('{v2PreStart && (');

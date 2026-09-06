@@ -24,6 +24,9 @@
  * what the selection actually receives.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { buildShortlist, type ShortlistInput } from './shortlist.ts';
 import { selectFromShortlist } from './selection.ts';
@@ -248,5 +251,96 @@ describe('UI-1: which design the Working tab holds after a v2 run', () => {
     for (const r of sl.rows) selectFromShortlist(sl, r.label);
     selectFromShortlist(sl, 'nope');
     expect(JSON.stringify(sl)).toBe(before);
+  });
+});
+
+/* ==================================================================== *
+ * E-3b — THE SAME RULE ON THE TWO-WAY ROUTE, AS A SOURCE SCAN
+ * ==================================================================== */
+
+/**
+ * WHY A SCAN AND NOT A RENDER.
+ *
+ * The decision is tested above, without a browser, exactly as UI-1 intended.
+ * What a test cannot reach is whether the app CALLS it — and that is precisely
+ * what went wrong the first time: `selectFromShortlist` did not exist, the
+ * three-way route ended at `rankChain3Results(results)[0]`, and an empty
+ * netlist landed in the Working tab under a green "Design ready".
+ *
+ * E-3b gives the two-way scan the same v2 door, so the same mistake is
+ * available on a second route. These four claims are the cheapest thing that
+ * catches it: the two-way v2 branch exists, it is guarded by the engine
+ * selector, it goes to the v2 client, and it loads through the selection —
+ * with `ranked[0]` never assigned to anything inside it.
+ */
+describe('UI-1 / E-3b — the two-way v2 route loads through the shortlist, not the v1 ranking', () => {
+  const APP = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'App.tsx'),
+    'utf-8',
+  );
+
+  /** The two-way v2 branch, from its guard to the `runChainScanV2` call's end. */
+  const twoWayV2 = (): string => {
+    const start = APP.indexOf("const useV2 = engineSelection.optimizer === 'v2';\n      if (useV2) {");
+    expect(start).toBeGreaterThan(0);
+    /* The end is the v1 variant list, which sits at the component's own
+     * indentation — the same call appears INSIDE the branch as the no-window
+     * fallback, one level deeper, so the anchor carries its indentation. */
+    const end = APP.indexOf(
+      '      const variants: { label: string; xoRange?: [number, number] }[] =\n' +
+        '        crossoverVariants(userXo ?? saneFree, scanSteps2);',
+      start,
+    );
+    expect(end).toBeGreaterThan(start);
+    return APP.slice(start, end);
+  };
+
+  it('this scan is reading the file it thinks it is', () => {
+    // A scan that quietly read an empty string would keep every assertion
+    // below green.
+    expect(APP.length).toBeGreaterThan(100_000);
+    expect(APP).toContain('function runVfOptimize(');
+  });
+
+  it('the two-way v2 branch is behind the engine selector, and sends to the v2 client', () => {
+    const block = twoWayV2();
+    expect(block).toContain('runChainScanV2(items, v2ScanSettings');
+    // The v1 two-way client is NOT called from inside it: the rescue semantics
+    // are a candidate strategy and generation belongs to A5d on this route.
+    expect(block).not.toContain('runChainScan(');
+    // ...and the v1 call still exists, outside the branch, for the v1 route.
+    expect(APP).toContain('runChainScan(');
+  });
+
+  it('what lands in Working is the SELECTION, and `ranked` is only a second reading', () => {
+    const block = twoWayV2();
+    expect(block).toContain('const selection = selectFromShortlist(shortlist);');
+    expect(block).toContain("if (selection.kind === 'design') {");
+    expect(block).toContain('applyScanCandidate({ label: selection.label, result: selection.result });');
+    /* THE BUG ITSELF, spelled out so it cannot come back quietly: the v1
+     * ranking's top row may never be loaded, applied, or used as a fallback on
+     * this route. `ranked` is computed — it fills the scan table, the second
+     * reading UI-1 kept — but nothing takes its first element. */
+    expect(block).toContain('const ranked = rankChainResults(');
+    expect(block).not.toContain('ranked[0]');
+    expect(block).not.toContain('setWorkingDesign(');
+    expect(block).not.toContain('setVFilters(');
+  });
+
+  it('a run that selects nothing loads nothing, and the note says so', () => {
+    const block = twoWayV2();
+    // The `else` of the selection sets the pick to null and does not apply a
+    // design. Falling back to `win` here is the whole bug.
+    expect(block).toContain('setShortlistPick(null);');
+    expect(block).toContain('`loaded     NOTHING — ${selection.describe}`');
+  });
+
+  it('the scan table on this route crowns nobody and follows the shortlist', () => {
+    const block = twoWayV2();
+    // `scanRowOf(rr, null)` — no winner argument, so no row is marked winner;
+    // and the active row is whatever the shortlist loaded, which is often not
+    // the ranking's top row and is sometimes nothing at all.
+    expect(block).toContain('rows: ranked.map((rr) => scanRowOf(rr, null))');
+    expect(block).toContain("active: selection.kind === 'design' ? selection.label : ''");
   });
 });
