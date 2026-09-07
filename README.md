@@ -45,22 +45,47 @@ waar klassieke tools zoals VituixCAD minimum-fase reconstrueren.
   overheen:
   - je stelt **eisen**, geen gewichten: versterkerbelasting (|Z|- en
     EPDR-vloer), dissipatie, aandrijving op de eigen resonantie van een
-    driver, opslingering rond de reflexpiek, Q_es-vermenigvuldiging, een
-    basplateau als doelcurve, en het piekvermogen van de versterker met de
-    X_max-marge. Leeg veld = geen oordeel; er zijn geen verborgen
-    standaardwaarden, en het rapportpaneel toont per poort `off`,
-    `not judged` of `inside`;
+    driver (per weg), opslingering rond de reflexpiek, Q_es-vermenigvuldiging,
+    een basplateau als doelcurve, het piekvermogen van de versterker met de
+    X_max-marge, **bouwbaarheid** (vermogen per weerstand tegen klasse × marge
+    bij een gesteld thermisch ontwerpvermogen, piekstroom per spoel) en de
+    **topologie-eis op de laagste weg** (geen niveauwerk, of serieweerstand tot
+    een gesteld maximum). Leeg veld = geen oordeel; er zijn geen verborgen
+    standaardwaarden, het rapportpaneel toont per poort `off`, `not judged`,
+    `inside` of `exceeded`, en een ingevuld veld draagt "stated by you on
+    <datum>";
   - het **kruisvenster** wordt afgeleid uit de meetgeldigheid van je
-    bestanden (de vensterheader van de meting), met de klassieke
+    bestanden (de vensterheader van de meting, of het merge-/geldigheidsblok
+    dat een NF/FF-gemerged bestand over zichzelf schrijft), met de klassieke
     fysica-vloer ernaast als tegenoordeel — de app kiest niet stilzwijgend
-    één van de twee;
+    één van de twee. De vloer is de strengste van meetgeldigheid, k·f_s, het
+    afgeleide excursieplafond en het gestelde M-C-getal; het plafond de
+    strengste van breakup, directiviteit en een gesteld plafond, met de
+    bindende grens bij naam;
   - de uitkomst is een **shortlist** van kandidaten die élke gestelde eis
-    halen, gesorteerd als weergave en niet als oordeel; kandidaten die een
-    beschermingsregel weigerde staan eronder mét de regel die ze weigerde,
-    en leveren geen netwerk;
+    halen, gesorteerd als weergave en niet als oordeel (elke kolom sorteert;
+    dat verandert nooit wélke ontwerpen erop staan). De lijst heeft een lengte
+    (standaard tien) en kiest bij overvloed op spreiding over topologieklassen;
+    kandidaten die een beschermingsregel weigerde staan eronder mét de regel
+    die ze weigerde, en leveren geen netwerk;
   - de **driverbescherming** wordt afgeleid uit versterkervermogen, X_max,
     Bl, M_ms en de gemeten resonantie; de gestelde dB-grens blijft ernaast
-    staan en de strengste van de twee oordeelt.
+    staan en de strengste van de twee oordeelt;
+  - elke continue spoel draagt de **DCR van haar gestelde familie**, gefit op
+    de catalogus (merk, serie, draaddikte) — in de tuner per evaluatie en in
+    elke poort, inversie en inventaris hetzelfde getal; de spanwijdte van het
+    grootste enkele onderdeel van die familie is een zoekgrens op de laagste
+    weg;
+  - je kiest het **kandidatenveld**: een *verkenning* (klein veld, venster-
+    centra eerst, één uitlijning per overname) of het *volledige veld*.
+    Dezelfde eisen, poorten, seed en tuner — een kleiner veld, geen lossere
+    zoektocht; leeg = verkenning;
+  - **twee- en driewegverzoeken gaan door dezelfde deur** naar de v2-worker
+    (dezelfde ketenverklaring, dezelfde poorten, dezelfde shortlist);
+  - **"Export run (JSON)"** onder de run-stempel schrijft de hele run weg —
+    eisen, run- en veldinstellingen, vensterinvoer, elke kandidaat en de
+    shortlist — en `scripts/replay-app-run.ts` speelt hem in de repo na
+    (laag 1 uit het blok alleen, laag 2 op de meetset van de repo).
 - **Grafische schema-editor** met live simulatie — elke bewerking herrekent,
   of de app zegt waarom niet — plus directivity/sonogram, impedantie- en
   fasebewaking, tijddomein-analyse, bouwtolerantie-band en een
@@ -72,25 +97,53 @@ waar klassieke tools zoals VituixCAD minimum-fase reconstrueren.
 npm install
 npm run dev          # dev-server op :5173 (landing op /, app op /app/)
 npx tsc -b           # typecheck, inclusief scripts/
-npm run test:fast    # alles behalve de twee live ketenruns (~5 min)
-npm test             # de volle suite (~20 min) — verplicht vóór elke commit die de zoektocht raakt
+npm run test:fast    # alles behalve de live ketenruns (~7 min; referentie 289 s op een leeg systeem)
+npm test             # de volle suite (~27 min) — verplicht vóór elke commit die de zoektocht raakt
 npm run test:ci      # wat GitHub Actions draait
 npm run build        # productie-build in dist/
 ```
 
-Drie testlagen, met een reden. `test:fast` is de standaard tijdens het werk.
-De volle run draait daarnaast twee live ketenruns op casus 1 die het levende
-kandidatencorpus byte-voor-byte reproduceren; die zijn de acceptatie-autoriteit.
-`test:ci` laat precies die byte-vergelijkingen weg, want zij zijn gebonden aan
-machine en runtime (alleen de Node-versie wisselen verplaatst een zoektocht al
-naar een ander lokaal optimum) — CI bewaakt de natuurkunde op de bevroren
-netlists, de lokale suite bewaakt de bytes. Draai de lagen na elkaar, nooit
-naast elkaar. Details, meettijden en de regeneratiescripts voor het
-casus-1-corpus staan in `CLAUDE.md`. Sinds M-1 (sep 2026) leest de v2-route de
-NF/FF-gemergede meetset van casus 1 (woofers vanaf 20,5 Hz, mid vanaf 60 Hz, elk
-bestand met een geldigheidsblok dat de parser leest); de gepoorte sessie van
-22-08-2026 blijft ernaast bestaan voor v1 en voor de tests die de gate-vloer zelf
-toetsen.
+**Drie testlagen, met een reden.** `test:fast` is de standaard tijdens het
+werk. De volle run draait daarnaast **drie live ketenruns** die een bevroren
+netlist byte-voor-byte reproduceren door de échte worker-route; die zijn de
+acceptatie-autoriteit, en falen daar betekent niet af, hoe plausibel de code ook
+oogt. `test:ci` laat precies die byte-vergelijkingen weg, want zij zijn gebonden
+aan (machine, runtime): alleen de Node-versie wisselen — 26 → 22, zelfde machine
+— verplaatst het zaad al op het vijfde significante cijfer en de simplex naar een
+ánder lokaal optimum (3,005 → 3,034 mH), en afronden repareert dat niet. Over
+machines heen geldt dus EQUIVALENTIE BINNEN DE TOLERANTIEKLASSEN en geen
+byte-gelijkheid; een corpus dat elders wordt opgewekt is een legitiem ánder
+corpus. **CI bewaakt de natuurkunde op de bevroren netlists, de lokale suite
+bewaakt de bytes**, en `ciLayer.test.ts` bewaakt die taakverdeling zelf.
+**Draai de lagen na elkaar, nooit naast elkaar** — twee vitest-pools
+vermenigvuldigen elkaars geheugengebruik in plaats van op te tellen.
+
+**Het casus-1-corpus opnieuw opwekken** (alleen nodig als de generator of het
+veld verandert): `npx vite-node scripts/generate-casus1-v2-candidates.ts`, dan
+`scripts/record-casus1-v2-references.ts` voor de referentieblokken en
+`scripts/compare-corpora.ts` voor de vóór/ná-tabel. De generator draait één
+proces per kandidaat, `V2_JOBS` tegelijk — en **kies die naar GEHEUGEN en niet
+naar kernen**: een ketenrun houdt grote rasters vast, en achttien naast elkaar
+zwiept de machine het geheugen uit (gemeten: dezelfde meting kostte er twintig
+keer de prijs per run). Acht tegelijk was op deze machine de goede orde.
+Meettijden per sessie, de andere meetscripts en de regeneratieprocedure staan in
+`CLAUDE.md`.
+
+**De acceptatie-autoriteit is het casusboek plus de golden references.** Elke
+engine-uitspraak over casus 1 staat als referentie in
+`test-fixtures/golden_refs_casus1.json`, met haar tolerantieklasse en — sinds
+V15 — de parameters waaronder zij gemeten is; elke wijziging die er een
+verplaatst is een meting in Deel B van
+`docs/CrossoverStudio_OptimizerV2_strategie_v2.md` en geen redenering.
+
+Sinds M-1 (sep 2026) leest de v2-route de NF/FF-gemergede meetset van casus 1
+(woofers vanaf 20,5 Hz, mid vanaf 60 Hz, elk bestand met een geldigheidsblok dat
+de parser leest); de gepoorte sessie van 22-08-2026 blijft ernaast bestaan voor
+v1 en voor de tests die de gate-vloer zelf toetsen. **De demobundel in de app is
+niet die fixture maar een herbemonstering ervan** (de gepoorte set op 500
+punten): goed genoeg om hetzelfde veld af te leiden, niet identiek. Wie een
+resultaat wil reproduceren gebruikt de fixture — of exporteert de run uit de app
+en speelt hem na met `scripts/replay-app-run.ts`.
 
 Twee pagina's uit één Vite-build (`build.rollupOptions.input`): `index.html` is de
 landing page (statisch, eigen CSS/JS in `landing/`, screenshots in `public/shots/`),
@@ -99,6 +152,31 @@ landing page (statisch, eigen CSS/JS in `landing/`, screenshots in `public/shots
 Elke push naar `main` draait `test:ci` en de build en publiceert naar GitHub
 Pages (zie `.github/workflows/deploy.yml`); een push die alleen documentatie
 raakt slaat de deploy over.
+
+## Voor bijdragers
+
+Vier werkregels die dit project duur heeft geleerd; `CLAUDE.md` draagt ze
+voluit, met de meting die er telkens achter zit.
+
+- **Inventariseer vóór je wijzigt.** Een grootheid heeft één huis en meerdere
+  lezers; wie er een tweede implementatie naast zet krijgt twee antwoorden op
+  één vraag en merkt dat pas als zij uiteenlopen. Zoek eerst wie de bestaande
+  regel al leest.
+- **Metingen gaan vóór toeschrijvingen.** "Dit is vast trager / veiliger /
+  beter" is geen bevinding. Elke claim in het casusboek draagt het script dat
+  haar produceerde, en meerdere hypotheses van deze zomer zijn door hun eigen
+  meting afgeschoten.
+- **P6 — geen projectgetallen in engine-code.** Geen frequenties, geen
+  componentgrenzen, geen drempels: alles komt uit projectdata of uit een
+  expliciete projectinstelling. `p6Lint.test.ts` handhaaft het; de whitelist is
+  eenheidsconversies en c = 343.
+- **P4 — leeg is geen oordeel.** Een niet-gestelde eis wapent niets, wordt
+  nergens door een default vervangen, en zegt in het rapport dat zij niets
+  beoordeelt. Een grens waarvan de ontwerper gelooft dat zij gesteld is terwijl
+  zij het niet is, is de gevaarlijkste toestand die deze app kan hebben.
+
+Typecheck (`npx tsc -b`, inclusief `scripts/`) vóór elke oplevering, en rapporteer
+per deliverable het resultaat plus de testuitslag.
 
 ## Documentatie
 
@@ -116,7 +194,10 @@ raakt slaat de deploy over.
 
 ## Status
 
-Testversie, actief in ontwikkeling. Engine v2 is gevalideerd op één echt
-driewegproject met echte metingen; of dat ontwerp passief gebouwd wordt of
-hybride, is nog niet beslist — de app is er om dát te beslissen. Feedback is
-welkom via de [issues](https://github.com/SanderPaulus/crossover-studio/issues).
+Testversie, actief in ontwikkeling. Engine v2 is gevalideerd op **één** echt
+driewegproject met echte metingen; de tweewegroute is gemeten op één afgeleide
+casus (datzelfde project zonder zijn woofers) en niet op een onafhankelijk
+tweewegproject. Een tweede volledige meetset is wat dit van één ontwerp naar een
+regel brengt. Of het ontwerp zelf passief gebouwd wordt of hybride, is nog niet
+beslist — de app is er om dát te beslissen. Feedback is welkom via de
+[issues](https://github.com/SanderPaulus/crossover-studio/issues).

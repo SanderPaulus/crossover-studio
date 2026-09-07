@@ -4,9 +4,9 @@ Voertaal: Nederlands (zoals alle projectdocumentatie voor Sander & Stefan).
 Volgorde binnen een blok = aanbevolen prioriteit. Inschattingen zijn grof:
 **S** = uurtje(s), **M** = dagdeel–dag, **L** = meerdere dagen/gefaseerd.
 
-## Stand ná A5e.3c (6 sep 2026) — engine v2
+## Stand ná E-3b / P-1 (7 sep 2026) — engine v2
 
-De regels hieronder vatten samen wat F4 tot en met A5e.3c hebben opgeleverd; het
+De regels hieronder vatten samen wat F4 tot en met P-1 hebben opgeleverd; het
 bewijs per stap staat in het casusboek (`docs/CrossoverStudio_OptimizerV2_strategie_v2.md`,
 Deel B) en de suite-meting in `CLAUDE.md`. Alles wat hier staat is gemeten op
 casus 1 (Koan 2951) en geldt alleen met de v2-toggle aan; met de toggle uit is
@@ -147,6 +147,60 @@ de app byte-identiek aan vóór F1.
   De drie om als eerste te bekijken: 377,8 · 1948 (RMS 0,85, M-K 4,9/3,8°),
   377,8 · 1647 (20 onderdelen, € 237, tweeter −28,6) en 259,6 · 2304 (de lage
   kruising, M-K 2,7/3,6°). Casusboek A5e.3b en A5e.3c.
+- **Vier engine-posten zonder regeneratie** (E-1, 06-09-2026): de twee live
+  ketenruns kiezen het GOEDKOOPSTE onderwerp op de geregistreerde looptijd (volle
+  suite 7194 → 1609 s zonder één test minder); de M-T-bovengrens is de strengste
+  van gesteld en afgeleid (`statedCeilingHz`, op casus 1 niet gesteld — en
+  gemeten: geen bekende grens drukt het geleverde kruispunt omlaag, de kooi op de
+  plafondpositie is eenzijdig en het akoestische kruispunt klapt naar het lokale
+  minimum van mid − tweeter op 2056 Hz); de barrière kan haar raster verdichten
+  rond de smalle dips (`'safety-extended-refined'`: twee van 161 bevroren
+  netlists lagen boven de speling, beide met een dip smaller dan één cel; +3 %
+  per evaluatie — de route leidt nog `'safety-extended'` af, omschakelen is één
+  regeneratie); en de zestien (netlist, weg)-paren waarop poortroute en rapport
+  ándere kruispunten afleiden staan als benoemd manifestblok met een test die de
+  verzameling EXACT pint.
+- **Product: het snelle veld, P4 op het formulier, een run reproduceerbaar**
+  (E-2, 06-09-2026): een run-instelling **verkenning / volledig** (verkenning =
+  budget 8, venstercentra eerst, één uitlijning per overname; dezelfde eisen,
+  poorten, seed en tuner — een kleiner veld, geen lossere zoektocht; leeg =
+  verkenning). De zes vooringevulde getallen in het v2-formulier waren
+  HTML-placeholders op lege velden en zijn weg: `V2_GHOSTS` zet `—` op élk
+  oordeelsveld, precies twee numerieke ghosts blijven (seed en shortlist-grootte,
+  de twee waar leeg werkelijk de gepubliceerde default is), en een ingevulde
+  waarde draagt "stated by you on <datum>" die in het project meereist. En het
+  V48-gat is dicht: **"Export run (JSON)"** schrijft de hele run weg en
+  `scripts/replay-app-run.ts` speelt hem in de repo na — laag 1 uit het blok
+  alleen (exact), laag 2 op de meetset van de repo (kandidaten, geen bytes).
+  De eerste volledige browserrun van casus 1 die in de repo staat: 2032 s
+  (33 min 52) voor zes kandidaten, één gekwalificeerd, vijf geweigerd op het
+  LF-budget.
+- **De tweewegroute** (E-3 / E-3b, 06-09-2026): elke bevinding sinds F4 is op de
+  tweewegroute nagelopen (26 rijen, bestand:regel). Twee KETENS en geen twee
+  implementaties: `designChain` leest sinds E-3 de ketenverklaring in zijn eigen
+  vocabulaire, de verklaarde zoekgladding bereikt de vf-ontwerpstap, de vijfde
+  ketensleutel `synthesisGrid` fit op de LEVENDE rasterpunten (op het volle
+  raster jaagt de synthese −400 dB bij 20 kHz na en degenereert de tweetertak),
+  en de polariteit die de ontwerpstap koos wordt op BEIDE routes in het
+  Driver-onderdeel gevouwen (zij reisde als `adjust` en elke lezer buiten de
+  keten las de niet-omgekeerde som: shortlist ±70 dB, rapport 177°). E-3b bracht
+  de app mee: **een tweewegverzoek gaat door dezelfde deur als drieweg**
+  (`optimClient.runScanV2` als gedeelde poolkern, `optimizer/scanRequest.ts` als
+  de zuivere functies die de vierhonderd regels lijm tussen React-state en de
+  worker vervangen — elf van de zestien stappen waren al N-neutraal). **Casus 1b**
+  is nieuw: casus 1's mid en tweeter als tweeweg, met eigen golden references en
+  de DERDE live ketenrun; het venster is tot op de hertz casus 1's
+  `mid_tweeter_orde4`. Open gebleven en benoemd: M-K bereikt de vf-ONTWERPSTAP
+  niet, en of de kooi op de tweewegtuner bindt is niet als mechanisme gemeten.
+- **Een prozaregel met "=" in een merge-header is geen vensterregel** (P-1,
+  07-09-2026, v1-bugfix): de v1-vensterlezer las `* Merge floor reason = … FF
+  gate floor 396.7 Hz` als een vensterregel zonder ms en blokkeerde Optimize op
+  ALLE DRIE Sanders gemergede bestanden ("the window … could not be read").
+  Sindsdien filtert `xoWindow` het gestructureerde merge-blok eruit vóór de parse
+  én vóór de claim-detector, en leest de geldigheid net als engine2 uit het blok
+  zelf (`Valid from`, kruispuntvloer uit de splice-band). Browsercontrole op HEAD
+  en op de fix: twee `src-unverified`-badges en een weigerende knop worden geen
+  badge en een lopende optimizer. De toggle-invariant is niet geraakt.
 - **Verwerpingen zijn zichtbaar** (V31/V33, UI-1): een kandidaat waarvan de
   tune in zijn geheel geweigerd is levert geen netwerk maar een verwerping met
   de regel; de shortlist is de bron van de Working-tab en de v1-ranglijst staat
@@ -227,12 +281,27 @@ de app byte-identiek aan vóór F1.
    plateaudiepte gemeten kan worden (V45).
 4. **M-K-validatie** — de drie VituixCAD-projecten in
    `test-fixtures/casus1/v40_vituix/` staan klaar; de vraag is "reproduceert
-   M-K?" en niet meer welke van twee maten.
-5. **Tweewegroute op v2** — de 2-weg-scan draait nog op v1 en de app zegt dat
-   onder de tabel (TODO(F2c) bij de façade).
-6. **Tweede casus** — alles hierboven is op één luidspreker gemeten; een
-   tweede volledige meetset (liefst een tweeweg) is wat de doctrine van "één
-   ontwerp" naar "een regel" brengt. Zie ook `.claude/skills/casus-toevoegen`.
+   M-K?" en niet meer welke van twee maten. **Ernaast, sinds E-3: M-K bereikt de
+   vf-ONTWERPSTAP niet** (`phaseMetric: 'band'` zonder toelating), terwijl tuner
+   en rapport er wél op oordelen — de ontwerpstap kiest dus zijn topologie op een
+   andere fasemaat dan degene waarop hij beoordeeld wordt. Benoemd bij E-3,
+   niet gemeten.
+5. ~~**Tweewegroute op v2**~~ — **AF** (E-3 / E-3b, 06-09-2026): de tweewegroute
+   loopt door de v2-worker en de app stuurt haar door dezelfde deur als drieweg.
+   Wat er van dit punt overblijft: **de kooi als mechanisme op de tweewegtuner**
+   is niet gemeten (`xoRange` is een zachte straf, en op casus 1b bleef élke
+   levering erbinnen, dus het veld heeft de vraag niet beantwoord), en de
+   tweeweg over de driewegketen met N = 2 blijft een v1-refactor die niet
+   gedaan is — twintig van de zesentwintig kaartrijen zijn "dezelfde code" zodra
+   het verzoek de v2-worker bereikt, dus er valt weinig te winnen en er staat een
+   werkende v1-route op het spel.
+6. **Tweede casus (C-2)** — **het zwaarste open punt van dit moment.** Alles
+   hierboven is op één luidspreker gemeten, en de tweewegroute op een AFGELEIDE
+   casus van diezelfde luidspreker (casus 1b = mid + tweeter). Een tweede
+   volledige meetset, liefst een echte tweeweg van andere drivers, is wat de
+   doctrine van "één ontwerp" naar "een regel" brengt — en het is ook wat
+   verschillende punten hierboven pas beslisbaar maakt (het EQ-budget-omslagpunt,
+   de degeneratiedrempel, X als meting). Zie `.claude/skills/casus-toevoegen`.
 7. **De zoektocht op de eigen kruispunten** (A5e.3c): de tuner-hook oordeelt M-C
    op de passbands van het zaad en het geleverde netwerk wordt daarna op zijn eigen
    kruispunten geweigerd — drie van veertien in A5e.3c. Beide conventies in de
