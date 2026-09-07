@@ -48,6 +48,7 @@ import {
   sumRadiators,
 } from './lib/nearField.ts';
 import {
+  declaredMergeValidity,
   gatedFarFieldValidity,
   intersectValidity,
   nearFieldValidity,
@@ -69,6 +70,7 @@ import {
   deriveXoWindow,
   gateMsFromHeader,
   readGateHeader,
+  readMergeBlock,
   type GateHeaderResult,
   dataFloorFromGateMs,
   DEFAULT_GATE_TAPER_ALPHA,
@@ -4435,6 +4437,45 @@ export default function App() {
         };
         continue;
       }
+      /* P-1 — A FILE THAT ARRIVED ALREADY MERGED ANSWERS A DIFFERENT QUESTION.
+       * The branch above is a splice THIS APP made, so it knows the splice it
+       * chose. This one is a file merged elsewhere that declares itself in a
+       * merge block: same data source, and the validity is READ rather than
+       * derived. It has no window of its own — 2/T describes the far-field
+       * ingredient, not the merge — so the gated path below cannot answer for
+       * it, and until P-1 it did not merely fail to: it read the block's
+       * floor-reason line as a broken window statement and marked all three of
+       * Sanders merged files UNVERIFIED, which blocked Optimize outright. */
+      const mb = readMergeBlock(l.raw);
+      if (mb) {
+        const mv = declaredMergeValidity(mb, { fromHz: l.frd.freq[0] ?? null, toHz: topOf(l) });
+        out[role] = {
+          name: role,
+          meta: {
+            dataSource: 'nearfield-merged',
+            validity: mv.validity,
+            derivation:
+              `declared ${mb.kind} merge, read from the file's own merge block` +
+              (mb.nfSource && mb.ffSource ? ` (${mb.nfSource} + ${mb.ffSource})` : ''),
+            /* A merge that states no floor stays unverified, for the reason
+             * A3h exists: "merged, therefore fine" is the assumption with no
+             * evidence behind it. The ASK is different from the gated one —
+             * there is no window to re-export, there is a validity to state. */
+            ...(mv.validity.fromHz !== null
+              ? { verified: true }
+              : {
+                  verified: false,
+                  unverifiedReason:
+                    `${role}: "${l.name}" declares a ${mb.kind} merge but states no "Valid from", ` +
+                    `so there is no way to know how low it is honest — and its far-field half's ` +
+                    `gate does not bound it. Add "Valid from = … Hz" to the header (that is what ` +
+                    `the merge block is for), or load the unmerged far field instead.`,
+                }),
+            ...(mv.notes.length > 0 ? { notes: mv.notes } : {}),
+          },
+        };
+        continue;
+      }
       /* The file's own header wins over the cabinet's single global field —
        * and it can finally be read: ARTA writes "Right window = 5,021 ms,
        * Tukey 0.25", never the word "gate". Ten of Sanders far-field exports
@@ -5537,6 +5578,40 @@ export default function App() {
         const blend = Number(nearField[role].blendOctaves) || 1;
         const hz = sp * Math.pow(2, blend / 2);
         return { hz, label: `above the near-field splice blend (${Math.round(sp)} Hz ± ${blend / 2} oct) = ${Math.round(hz)} Hz` };
+      }
+      /* P-1 — a merge made ELSEWHERE, declaring itself in a merge block. The
+       * same question as the branch above and the same answer: a handover may
+       * not sit inside the blend, where the sum hangs on the merge's gain and
+       * delay fit. The app did not choose this splice, so it reads the band
+       * the file states (`Merge splice band = 500-800 Hz`) instead of
+       * splice × 2^(blend/2) — the same quantity, stated rather than derived.
+       *
+       * NOT the validity floor, deliberately: at 20.5 Hz that would permit a
+       * handover three octaves inside the blend. Where a response may be
+       * BELIEVED and where a crossover may SIT are two questions, exactly as
+       * the branch above says.
+       *
+       * A block that states no splice band leaves this with no answer, and it
+       * says so rather than substituting one. Null here means rule 1 does not
+       * clamp, which is the permissive direction — so it is named in the
+       * readout instead of passing silently. All three merged files in this
+       * project state their band; a merge that does not is a header to fix. */
+      const dm = src === 'nearfield-merged' && l ? readMergeBlock(l.raw) : null;
+      if (dm) {
+        const band = dm.spliceBandHz;
+        return band
+          ? {
+              hz: band[1],
+              label:
+                `above the splice band the merge states (${Math.round(band[0])}–` +
+                `${Math.round(band[1])} Hz) = ${Math.round(band[1])} Hz`,
+            }
+          : {
+              hz: null,
+              label:
+                `declared ${dm.kind} merge stating no splice band — no data floor could be ` +
+                `derived, so rule 1 does not clamp this handover`,
+            };
       }
       // Gated far field, and ONLY here: 2/T is a statement about a window that
       // has to keep a room reflection out. The file's own header wins over the

@@ -15,8 +15,11 @@ import {
   gateMsFromHeader,
   gateHeaderOf,
   readGateHeader,
+  readMergeBlock,
   DEFAULT_GATE_TAPER_ALPHA,
 } from './xoWindow.ts';
+import { declaredMergeValidity } from './sourceMeta.ts';
+import { parseArtaHeader } from './engine2/ingest/manifest.ts';
 
 // The KOAN 2951 3-way session (Aug 2026) as the fixture — see demo3way.
 const DIR = join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures', 'koan-3way');
@@ -399,5 +402,215 @@ describe('A3h — "states nothing" and "I could not read it" are different answe
     // consulted for it.
     const r = readGateHeader(REAL.arta);
     expect(r.kind === 'parsed' && r.gateMs).not.toBe(4.5);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * P-1 — a prose line with an "=" in a merge header is not a window line
+ * ------------------------------------------------------------------ */
+
+/**
+ * THE FILES, NOT COPIES OF THEM. The block above uses inline strings on
+ * purpose ("regex work against invented examples is how this was introduced"),
+ * and that is right for the ARTA forms — they are stable and short. These are
+ * not: the merge block is long, it is Sanders own, and the whole finding is
+ * that THESE THREE FILES could not be optimised on. An inline copy could be
+ * corrected into passing without the files ever changing.
+ */
+const CASUS1 = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'test-fixtures', 'casus1');
+/* latin1, as `casus1.fixture.ts` reads them — these headers carry degree signs
+ * and Dutch text, and utf8 would mangle bytes this test then matches on. */
+const casus1 = (n: string) => readFileSync(join(CASUS1, n), 'latin1');
+
+/** Sanders three NF/FF-merged responses (M-1). */
+const MERGED = [
+  'Koan_M_merged.frd',
+  'Koan_W_up_merged_ingespeeld_mild.frd',
+  'Koan_W_down_merged_ingespeeld_mild.frd',
+] as const;
+
+/** The five gated far fields the merges were built from. Nothing here may move. */
+const GATED = [
+  'mid_hor_0.txt',
+  'mid_hor_30.txt',
+  'tweeter_hor_0.txt',
+  'woofer_up_hor_0.txt',
+  'woofer_down_hor_0.txt',
+] as const;
+
+/** The near fields, which state a 1000 ms window that is read and then ignored. */
+const NEAR = ['mid_near.txt', 'woofer_up_near.txt', 'woofer_down_near.txt'] as const;
+
+describe('P-1 — the v1 window reader and the structured merge block', () => {
+  it('the bug: all three merged files were read as carrying a broken window line', () => {
+    /* WHAT IT COST. `readGateHeader` matched the bare word "gate" in
+     *   "* Merge floor reason = … FF gate floor 396.7 Hz"
+     * (the woofers: "the far-field gate (1/T = 396.7 Hz) applies only above
+     * the splice"), found no "ms" on the line, and returned `unparseable`.
+     * That is `verified: false`, which is what `refuseIfUnverified` refuses
+     * on — so Optimize was blocked on a project whose files state their
+     * validity in named fields. */
+    for (const name of MERGED) {
+      const r = readGateHeader(casus1(name));
+      expect(r.kind, `${name}: a merge block is not a broken window`).not.toBe('unparseable');
+      expect(r.kind, `${name}: and it states no window of its own`).toBe('absent');
+    }
+  });
+
+  it('the counter-proof: the claim-detector still fires on genuine prose', () => {
+    /* Without this the test above is also passed by a detector that has been
+     * switched off. Same sentence, same missing "ms" — as an ordinary comment
+     * rather than a `Merge …` field it is still a window-shaped line that
+     * could not be read, and still says so. */
+    const asMergeField = '* Merge floor reason = FF gate floor 396.7 Hz\n20 84 -12';
+    const asProse = '* the far-field gate floor is 396.7 Hz\n20 84 -12';
+    expect(readGateHeader(asMergeField).kind).toBe('absent');
+    const r = readGateHeader(asProse);
+    expect(r.kind).toBe('unparseable');
+    if (r.kind !== 'unparseable') return;
+    expect(r.why).toMatch(/no length in ms/);
+  });
+
+  it("the block's FF window is never taken as the merged file's own window", () => {
+    /* THE NUMBER THAT MATTERS MOST. The block quotes the window of the FAR
+     * FIELD it was built from — 5.021 ms → a 455 Hz floor. Read as this file's
+     * window it would put the merge back on the gate it exists to get below,
+     * and it would look completely plausible: the right number, off the right
+     * measurement, on the wrong file.
+     *
+     * Today's spelling ("right 5.021 ms") happens not to match the ARTA
+     * pattern, so the second line proves it is the FILTER and not that luck
+     * doing the work: written the way ARTA writes it, it is still ignored. */
+    const asWritten = '* Merge = NF/FF\n* Merge FF window = reference 2.5 ms, right 5.021 ms, Tukey 0.25\n20 84 -12';
+    const artaSpelling = '* Merge = NF/FF\n* Merge FF window = Right window = 5,021 ms, Tukey 0.25\n20 84 -12';
+    for (const text of [asWritten, artaSpelling]) {
+      expect(readGateHeader(text).kind).toBe('absent');
+      expect(gateHeaderOf(text)).toBeNull();
+      expect(gateMsFromHeader(text)).toBeNull();
+    }
+    // And on the real files, for the same reason.
+    for (const name of MERGED) expect(gateMsFromHeader(casus1(name))).toBeNull();
+  });
+
+  it('the five gated files are untouched — 5.021 ms, Tukey 0.25, as before', () => {
+    for (const name of GATED) {
+      const r = readGateHeader(casus1(name));
+      expect(r.kind, name).toBe('parsed');
+      if (r.kind !== 'parsed') continue;
+      expect(r.gateMs, name).toBeCloseTo(5.021, 6);
+      expect(r.alpha, name).toBeCloseTo(0.25, 6);
+      expect(r.quote, name).toContain('Right window');
+    }
+    // The near fields too: read, and left for nearFieldMergedValidity to ignore.
+    for (const name of NEAR) {
+      const r = readGateHeader(casus1(name));
+      expect(r.kind, name).toBe('parsed');
+      if (r.kind !== 'parsed') continue;
+      expect(r.gateMs, name).toBeCloseTo(1000, 6);
+    }
+    // None of them declares a merge, so none takes the merge path at all.
+    for (const name of [...GATED, ...NEAR]) expect(readMergeBlock(casus1(name)), name).toBeNull();
+  });
+
+  it('the merge block is read, by field name, off the real files', () => {
+    const mid = readMergeBlock(casus1('Koan_M_merged.frd'))!;
+    expect(mid.kind).toBe('NF/FF');
+    expect(mid.validFromHz).toBeCloseTo(60, 6);
+    expect(mid.validToHz).toBeCloseTo(20000, 6);
+    expect(mid.spliceBandHz).toEqual([500, 800]);
+    expect(mid.nfSource).toBe('mid_near.txt');
+    expect(mid.floorReason).toMatch(/sealed pod/);
+    for (const name of ['Koan_W_up_merged_ingespeeld_mild.frd', 'Koan_W_down_merged_ingespeeld_mild.frd']) {
+      const w = readMergeBlock(casus1(name))!;
+      expect(w.validFromHz, name).toBeCloseTo(20.5, 6);
+      expect(w.spliceBandHz, name).toEqual([500, 800]);
+    }
+  });
+
+  it('"Valid from" alone is not a merge — A5b.1(i) keeps its front door', () => {
+    /* A gated export that happens to carry `Valid from = 20 Hz` must not be
+     * able to walk past its own gate floor through this reader. No
+     * `Merge = …`, no merge — and the gated path answers, as it always did. */
+    const gated = '* Right window = 5,021 ms, Tukey 0.25\n* Valid from = 20 Hz\n20 84 -12';
+    expect(readMergeBlock(gated)).toBeNull();
+    const r = readGateHeader(gated);
+    expect(r.kind).toBe('parsed');
+    if (r.kind !== 'parsed') return;
+    expect(r.gateMs).toBeCloseTo(5.021, 6);
+  });
+
+  it('two readers of ONE convention: v1 and engine2 agree on the real files', () => {
+    /* The duplication is real — the v1 layer may not import engine2 (the
+     * toggle-invariant's dependency arrow), so the FIELD NAMES are shared and
+     * the implementations are not. A test file may import both, and this is
+     * what stops them drifting apart in silence. They do not even see the same
+     * input: engine2 is handed comment lines with the marker already stripped,
+     * this one is handed the raw file. */
+    for (const name of MERGED) {
+      const raw = casus1(name);
+      const mine = readMergeBlock(raw)!;
+      const theirs = parseArtaHeader(parseFrd(raw).meta.rawComments);
+      expect(theirs.merge, name).toBeDefined();
+      expect(mine.kind, name).toBe(theirs.merge!.kind);
+      expect(mine.validFromHz, name).toBeCloseTo(theirs.statedValidity!.fromHz!, 6);
+      expect(mine.validToHz, name).toBeCloseTo(theirs.statedValidity!.toHz!, 6);
+      expect(mine.spliceBandHz, name).toEqual(theirs.merge!.spliceBandHz);
+      expect(mine.ffSource, name).toBe(theirs.merge!.ffSource);
+    }
+  });
+
+  it('the band: the stated floor, raised by the data and never lowered past it', () => {
+    const mid = readMergeBlock(casus1('Koan_M_merged.frd'))!;
+    const plain = declaredMergeValidity(mid, { fromHz: 20.5078125, toHz: 20000 });
+    expect(plain.validity.fromHz).toBeCloseTo(60, 6);
+    expect(plain.validity.reason).toMatch(/valid from a stated 60 Hz/);
+    // Data that starts ABOVE the claim wins: a band may not reach past its numbers.
+    const clipped = declaredMergeValidity(mid, { fromHz: 100, toHz: 20000 });
+    expect(clipped.validity.fromHz).toBeCloseTo(100, 6);
+    expect(clipped.notes.join(' ')).toMatch(/the data wins/);
+    // `Valid to` narrows and never raises.
+    expect(declaredMergeValidity(mid, { fromHz: 20.5, toHz: 40000 }).validity.toHz).toBeCloseTo(20000, 6);
+    expect(declaredMergeValidity(mid, { fromHz: 20.5, toHz: 15000 }).validity.toHz).toBeCloseTo(15000, 6);
+  });
+
+  it('the app CALLS it — a source scan, because a rule the UI skips is no rule', () => {
+    /* THE UI-1 / E-3b LESSON. Everything above tests the decision; none of it
+     * can see whether `App.tsx` asks. That gap is exactly how the Working tab
+     * spent months loading `rankChain3Results[0]`, and it is why the two
+     * consumers get pinned here by name rather than assumed. */
+    const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
+
+    // 1. The source ledger asks, and asks BEFORE the gated path answers.
+    const merge = app.indexOf('const mb = readMergeBlock(l.raw);');
+    const gated = app.indexOf('const gr = readGateHeader(l.raw);');
+    expect(merge, 'sourceMeta consults the merge block').toBeGreaterThan(-1);
+    expect(gated, 'and still has its gated path').toBeGreaterThan(-1);
+    expect(merge, 'a declared merge is answered before 2/T is reached').toBeLessThan(gated);
+    expect(app).toContain('declaredMergeValidity(mb,');
+
+    // 2. The window derivation asks too — otherwise rule 1 silently stops
+    //    clamping on exactly these files, which is the permissive direction.
+    expect(app).toContain('const dm = src === \'nearfield-merged\' && l ? readMergeBlock(l.raw) : null;');
+
+    // 3. NEITHER is behind the v2 toggle. This is a v1 bug and its fix lives
+    //    in v1; a fix that only applied with Engine v2 on would leave the
+    //    reported symptom exactly where it was.
+    for (const call of ['readMergeBlock(l.raw)']) {
+      for (let i = app.indexOf(call); i !== -1; i = app.indexOf(call, i + 1)) {
+        const line = app.lastIndexOf('\n', app.lastIndexOf('\n', i - 1) - 1);
+        expect(app.slice(Math.max(0, line), i)).not.toContain('engineV2Enabled');
+      }
+    }
+  });
+
+  it('a merge with no stated floor is UNKNOWN, not fine', () => {
+    /* The permissive failure this whole area exists to prevent: "merged,
+     * therefore honest low down" is the assumption with nothing behind it. A
+     * null floor is what keeps the source unverified in App.tsx. */
+    const bare = readMergeBlock('* Merge = NF/FF\n* Merge NF source = x.txt\n20 84 -12')!;
+    expect(bare.validFromHz).toBeNull();
+    const v = declaredMergeValidity(bare, { fromHz: 20, toHz: 20000 });
+    expect(v.validity.fromHz).toBeNull();
+    expect(v.validity.reason).toMatch(/UNKNOWN, not absent/);
   });
 });

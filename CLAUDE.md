@@ -48,6 +48,14 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná P-1 (07-09-2026) gemeten op 415 s — 159 bestanden (158 geslaagd, 1 overgeslagen), 1830 tests
+    (1827 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** GEEN nieuw bestand; +10 claims, alle
+    tien in `xoWindow.test.ts` (23 → 33). **De delta is ENUMEREERD en niet afgeleid:** `npx vitest list -t
+    '^(?!.*\[live\])'` op HEAD tegen dezelfde lijst op de fix geeft 1818 → 1828, en de diff bevat precies de
+    tien P-1-claims en verder niets — geen test verplaatst, verdwenen of bijgekomen. (Die lijstgetallen liggen
+    twee onder de RUN-telling: `vitest list` somt de overgeslagen tests binnen een overgeslagen describe niet op.
+    Het verschil is aan beide kanten hetzelfde en valt in de diff weg; wie de twee tellingen naast elkaar legt
+    moet ze niet verwarren.) GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná E-3b (06-09-2026) gemeten op 421 s — 159 bestanden (158 geslaagd, 1 overgeslagen), 1818 tests (1815 geslaagd,
     3 overgeslagen), in één keer groen, gedraaid naast een browsersessie (zie de meetregel hieronder: dit is dus GEEN
     referentie); de telling erna is 159 bestanden en 1821 tests, want de bewaarde tweewegrun bracht drie claims meer.**
@@ -2488,6 +2496,80 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de zeven andere geleverde droegen `binnen_eis: true`, de twaalf geweigerde waren al geweigerd vóór (a) leest)
   draait alleen díé opnieuw (`V2_ONLY=9`, 2566 s) en zijn de negentien andere shards wat een herhaling zou
   opleveren. Elke shard moet er zijn; wie élke kandidaat opnieuw wil zien draait zonder de vlag.
+
+### P-1-guards (een prozaregel met "=" in een merge-header is geen vensterregel; v1-bugfix)
+- `src/lib/xoWindow.ts` — **de v1-vensterlezer herkent sinds P-1 alleen ECHTE ARTA-vensterregels; het
+  gestructureerde merge-blok wordt eruit gefilterd vóór de parse ÉN vóór de claim-detector**
+  (`MERGE_FIELD_LINE`, `withoutMergeBlock`, het gedeelde `HEADER_SCAN_CHARS` waar drie lezers elk hun eigen
+  `slice(0, 4000)` hadden). **De bevinding komt uit E-3b en is in de draaiende app gereproduceerd, op HEAD, vóór
+  er iets veranderd was:** `readGateHeader` matchte het kale woord "gate" in `* Merge floor reason = … FF gate
+  floor 396.7 Hz` (de woofers: "the far-field gate (1/T = 396.7 Hz) applies only above the splice"), vond geen
+  "ms" op die regel en antwoordde `unparseable` — dus `verified: false`, dus `refuseIfUnverified` en de knop gaf
+  **"Cannot optimise yet — low: the window in "Koan_W_up_merged_ingespeeld_mild.frd" could not be read"**.
+  **ALLE DRIE Sanders gemergede bestanden, niet alleen de mid** (E-3b noemde de mid; de twee woofers dragen
+  dezelfde regel). `parseArtaHeader` in engine2, dat op VELDNAAM matcht, las dezelfde bestanden zonder klacht.
+  **Het is de UI-1-les in spiegelbeeld:** daar las de engine veldnamen en de v1-parser proza — en proza liet een
+  willekeurige commentaarregel een geldigheidsvloer zetten; hier loopt diezelfde proza-heuristiek stuk op een blok
+  dát juist geen proza is. Het antwoord is beide keren hetzelfde: matcht op de NAAM.
+- **De regel die er het meest toe doet is niet de regel die de melding gaf.** Het blok citeert het venster van de
+  VER-VELDHELFT waaruit de merge gemaakt is — `* Merge FF window = reference 2.5 ms, right 5.021 ms, Tukey 0.25`,
+  dus 455 Hz. Gelezen als het venster van dít bestand zet dat de merge terug op de poort waar hij omheen gebouwd
+  is, en het zou volkomen plausibel lezen: het juiste getal, van de juiste meting, op het verkeerde bestand — de
+  A3h-val ("een plausibel fout getal is gevaarlijker dan een absurd"). De huidige spelling matcht toevallig niet,
+  dus de test pint het ook in ARTA's eigen spelling: het is het FILTER dat het tegenhoudt en niet het toeval.
+- `src/lib/xoWindow.ts` + `src/lib/sourceMeta.ts` — **de geldigheid komt dan, net als op v2, uit het blok.**
+  Alleen filteren repareert de MELDING en niet het SYMPTOOM: `absent` is óók `verified: false` ("states no
+  measurement window"), dus Optimize bleef geblokkeerd — gemeten, niet aangenomen. Daarom `readMergeBlock`
+  (veldnaam-gebaseerd, `Merge = …` verplicht) en `declaredMergeValidity`: de vloer is de gestelde `Valid from`,
+  door de eigen uitgestrektheid van de data alleen omhoog te brengen, `Valid to` vernauwt en verruimt nooit, en
+  een merge ZONDER gestelde vloer is UNKNOWN en blijft onverifieerd — "gemerged, dus wel goed" is precies de
+  aanname waar niets achter zit. **Waarom een GESTELDE vloer hier wél het antwoord mag zijn terwijl A3h een hele
+  ronde besteedde aan "een getypt getal mag nooit voor de eigenschap van een bestand invallen": er valt niets in.
+  Een merge HEEFT geen eigen poort** — 2/T beschrijft de ver-veldhelft — dus er wordt geen gemeten getal
+  verdrongen; het bestand is de autoriteit over zijn eigen constructie. Dezelfde regel die engine2 sinds M-1
+  toepast, waar de herkomst van die vloer niet voor niets `merge-block` heet.
+- **`Valid from` alleen is GEEN merge** (`readMergeBlock` eist `Merge = …`): een gepoorte export die toevallig
+  zo'n regel draagt kan langs deze deur niet onder zijn eigen poortvloer stappen. A5b.1(i) houdt zijn voordeur.
+- `src/App.tsx` — twee lezers, en allebei moesten het weten. (1) `sourceMeta` beantwoordt een verklaarde merge
+  vóórdat de gepoorte tak eraan toekomt. (2) `dataFloorOf` óók — anders klapt regel 1 op precies deze bestanden
+  stil naar `null` en clampt niet meer, de PERMISSIEVE richting, wat dit hele bestand nu juist wil voorkomen. De
+  kruispuntvloer wordt daar de door het blok gestelde SPLICE-BAND (`Merge splice band = 500-800 Hz` → 800 Hz), de
+  tegenhanger van `splice × 2^(blend/2)` op de eigen merge van de app — **en met opzet NIET de geldigheidsvloer**:
+  op 20,5 Hz zou dat een overname drie octaven binnen de blend toestaan. Waar mag geloofd worden en waar mag een
+  kruispunt zitten zijn twee vragen, zoals de tak erboven al zei. Een blok zonder splice-band zegt dat in de
+  readout in plaats van een getal te verzinnen.
+- `src/lib/xoWindow.test.ts` — **tien claims, op de ECHTE bestanden en niet op kopieën ervan.** Het blok erboven
+  gebruikt met reden inline strings ("regex work against invented examples is how this was introduced"); dit niet,
+  want de bevinding IS dat déze drie bestanden niet te optimaliseren waren, en een inline kopie kan naar de code
+  toe gecorrigeerd worden zonder dat de bestanden bewegen. De vijf gepoorte bestanden staan er als
+  onveranderlijkheid naast (5,021 ms / Tukey 0,25) plus de drie nabij-velden (1000 ms). **De tegenproef draagt
+  het blok:** dezelfde zin als gewone commentaarregel leest nog steeds `unparseable` — zonder die claim is de
+  eerste ook waar voor een detector die uitgezet is. **Twee lezers van ÉÉN conventie:** v1 en engine2 worden op de
+  echte bestanden tegen elkaar gepind (soort, `Valid from`/`Valid to`, splice-band, FF-bron), want de v1-laag mag
+  engine2 niet importeren (de dependency-pijl van de toggle-invariant) — de VELDNAMEN zijn gedeeld, de
+  implementaties niet, en een testbestand mag beide importeren. Plus de E-3b-vorm: een BRONSCAN op `App.tsx` dat
+  de app het ook echt aanroept, in de goede volgorde, en niet achter `engineV2Enabled`. **Nagemeten dat elk van
+  die guards kán falen** (filter uitgezet: drie rood, en de ARTA-spelling van de FF-vensterregel parseert dan
+  inderdaad als 5,021 ms; app-koppeling weggehaald: de bronscan rood).
+- **DE TOGGLE-INVARIANT IS NIET GERAAKT, en dat is gemeten en niet beredeneerd.** `toggleRegression` is groen,
+  inclusief de byte-identieke referentierun: die run leest helemaal geen header (hij gaat rechtstreeks van
+  `parseFrd` naar `optimizeNetworkValues` op de koan-3way-fixtures), dus **er is geen nieuwe baseline om
+  gedateerd vast te leggen** — de baseline bewoog niet. Ook `f4cRegression` en `workerRouteRegression` (de twee
+  byte-baselines) reproduceren. Wat er wél verandert verandert in BEIDE motorstanden gelijk: dit is een
+  v1-bugfix, geen v2-lek, en het gedrag beweegt uitsluitend waar een bestand een merge-blok DRAAGT.
+- **BROWSERCONTROLE, en zij is de reden dat dit als af geldt.** Headless via de Browser-pane op de dev-server,
+  casus 1's bestanden door de echte invoervelden geladen (gepoorte tweeter + gemergede mid + gemergede woofer,
+  elk met impedantie). **Op HEAD:** twee `src-unverified`-badges met de "Merge floor reason"-regel woordelijk in
+  hun title, en de knop weigert met "Cannot optimise yet — …". **Met de fix:** geen enkele badge, en de optimizer
+  LOOPT ("W-M sweep — round 1 of 2–3"). De evaluatieband leest sindsdien *"evaluated on 455–20000 Hz (bottom set
+  by high (gated far field), top by low (near-field merged))"* — de ondergrens komt van de tweeter, die echt
+  gepoort is, en niet meer van een merge waarvan de vloer onbekend heette.
+- **EEN v1-BEVINDING DIE HIERMEE NIET WEG IS.** De drie gemergede bestanden komen binnen als
+  `dataSource: 'nearfield-merged'` terwijl de app zelf niets gesplitst heeft. Dat is het bestaande vocabulaire en
+  het klopt (het IS een NF/FF-merge), maar het onderscheid "door deze app gesplitst" versus "elders gemerged en
+  het zegt het zelf" leeft nu alleen in `derivation` en in de reden-zin, niet in het type. Benoemd, niet
+  gerepareerd: een nieuwe `DataSource` raakt `DATA_SOURCE_LABEL`, `describeSources` en het projectbestand, en dat
+  is geen bugfix meer.
 
 ### E-3b-guards (de app stuurt N=2 door dezelfde v2-deur als N=3; alleen UI- en clientlaag)
 - `src/lib/optimClient.ts` — **`runScanV2`: ÉÉN gepoolde v2-scan, twee routes.** `runChain3ScanV2` en het nieuwe

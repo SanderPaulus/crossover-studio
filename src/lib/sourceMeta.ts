@@ -19,6 +19,8 @@
  * behavioural risk of its own.
  */
 
+import type { DeclaredMerge } from './xoWindow';
+
 const C_AIR = 343;
 
 /* ------------------------------------------------------------------ *
@@ -254,6 +256,79 @@ export function nearFieldMergedValidity(opts: {
       reason:
         `near field below ${Math.round(opts.spliceHz)} Hz, gated far field above it; ` +
         `honest down to a stated ${Math.round(fromHz)} Hz (a near-field measurement has no gate floor)`,
+    },
+    notes,
+  };
+}
+
+/**
+ * Validity of a response that arrived ALREADY MERGED, with a merge block
+ * declaring where it may be believed (P-1).
+ *
+ * The sibling above, {@link nearFieldMergedValidity}, is for a splice THIS APP
+ * made: it knows the splice frequency because it chose it. This one is for a
+ * file that was merged elsewhere and says so — Sanders NF/FF woofers and mid.
+ * Same data source, different provenance: the app is reading a claim rather
+ * than reporting its own work, and the reason says which.
+ *
+ * WHY A STATED FLOOR IS ALLOWED TO BE THE ANSWER HERE, when A3h spent a whole
+ * round establishing that a typed number may never stand in for a file's own
+ * property: it is not standing in for anything. A merged response HAS no gate
+ * of its own — 2/T describes the far-field ingredient, not the merge — so
+ * there is no measured number being displaced. The file is the authority on
+ * its own construction, and `Valid from` is that authority speaking in a named
+ * field. The same rule engine2 has applied since M-1, where the floor's
+ * provenance is called `merge-block` for exactly this reason.
+ *
+ * Three properties, all of them the conservative direction:
+ *  - the floor may only be RAISED by the data's own extent, never lowered past
+ *    it — a band that cannot leave its data, as everywhere else here;
+ *  - `Valid to` NARROWS the top and never raises it;
+ *  - a merge with no stated floor is UNKNOWN, not absent. It returns a null
+ *    floor and the caller keeps it unverified, because "merged, therefore
+ *    fine" is precisely the assumption that has no evidence behind it.
+ */
+export function declaredMergeValidity(
+  merge: DeclaredMerge,
+  extent: { fromHz: number | null; toHz: number | null },
+): { validity: ValidityBand; notes: string[] } {
+  const notes: string[] = [];
+  const recipe =
+    `${merge.nfSource ?? 'a near field'} below the splice` +
+    (merge.spliceBandHz ? ` (${merge.spliceBandHz[0]}–${merge.spliceBandHz[1]} Hz)` : '') +
+    `, ${merge.ffSource ?? 'a gated far field'} above it`;
+
+  const stated = merge.validFromHz;
+  const fromHz =
+    stated !== null && stated > 0
+      ? extent.fromHz !== null
+        ? Math.max(extent.fromHz, stated)
+        : stated
+      : null;
+
+  const tops = [extent.toHz, merge.validToHz].filter((x): x is number => x !== null && x > 0);
+  const toHz = tops.length > 0 ? Math.min(...tops) : null;
+
+  if (fromHz !== null && stated !== null && fromHz > stated) {
+    notes.push(
+      `the merge states validity from ${stated} Hz but the file's own data starts at ` +
+        `${Math.round(fromHz)} Hz — the data wins; a band may not reach past its numbers.`,
+    );
+  }
+  if (merge.floorReason) notes.push(`Floor reason, as the file states it: ${merge.floorReason}`);
+  if (merge.status) notes.push(`Merge status: ${merge.status}`);
+
+  return {
+    validity: {
+      fromHz,
+      toHz,
+      reason:
+        fromHz !== null
+          ? `declared ${merge.kind} merge, valid from a stated ${Math.round(fromHz)} Hz — ${recipe}. ` +
+            `A merged response has no gate of its own; 2/T would describe the far-field half only.`
+          : `declared ${merge.kind} merge WITHOUT a stated "Valid from" — ${recipe}. The floor is ` +
+            `UNKNOWN, not absent: the gate of the far-field half does not bound the merge, and ` +
+            `nothing else here says how low the near field was honest.`,
     },
     notes,
   };

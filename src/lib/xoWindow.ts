@@ -280,6 +280,74 @@ export function deriveXoWindow(
   return { floorHz: floor, ceilHz: ceil, floorBy, ceilBy, limits, conflict, dataClamped, userClampedByData, banner };
 }
 
+/* ------------------------------------------------------------------ *
+ * Header readers
+ * ------------------------------------------------------------------ */
+
+/**
+ * How far into a file the header is looked for.
+ *
+ * Headers are comment lines at the top. One number, three readers — it used
+ * to be written out at each of them. Measured on the widest real header in
+ * this repository (Sanders merged woofer, P-1): 22 comment lines, longest
+ * 330 characters, and the deepest field that has to be found — `Valid from` —
+ * sits at byte 804.
+ */
+const HEADER_SCAN_CHARS = 4000;
+
+const headOf = (text: string) => text.slice(0, HEADER_SCAN_CHARS);
+
+/**
+ * A line of the structured MERGE BLOCK — `Merge = NF/FF`,
+ * `Merge FF window = …`, `Merge floor reason = …`.
+ *
+ * ⚠ THESE LINES DESCRIBE THE INGREDIENTS, NOT THIS FILE, and that is why they
+ * have to be held apart from the window readers below. An NF/FF-merged
+ * response is BUILT FROM a gated far field, so its block quotes that far
+ * field's window and that far field's gate floor — and neither is a property
+ * of the merged file, whose entire purpose is to reach below them. Read one as
+ * this file's own window and the merge lands back on the gate it was made to
+ * escape.
+ *
+ * MEASURED, P-1 (06-09-2026), on all three of Sanders merged files. Each
+ * carries a floor-reason line naming the gate it does NOT obey —
+ *
+ *     * Merge floor reason = … NF Keele limit 1078 Hz, FF gate floor 396.7 Hz
+ *     * Merge floor reason = … the far-field gate (1/T = 396.7 Hz) applies
+ *                              only above the splice
+ *
+ * — the claim-detector in {@link readGateHeader} matched the bare word "gate",
+ * found no "ms" on the line, and answered `unparseable`: "a window line is
+ * present but states no length in ms". All three then loaded as UNVERIFIED and
+ * `refuseIfUnverified` blocked Optimize on a project whose files state their
+ * validity perfectly well. `parseArtaHeader` in engine2, which matches on
+ * FIELD NAME, reads the same files without a complaint.
+ *
+ * It is the UI-1 lesson in a mirror. There the engine read field names while
+ * the v1 parser read prose, and prose let an arbitrary comment set a validity
+ * floor; here that same prose heuristic trips over a block that is not prose
+ * at all. The answer is the same either way: match the NAME.
+ *
+ * So: a comment marker, a field name beginning with "Merge", an `=`. The same
+ * shape `parseArtaHeader` matches, deliberately — see {@link readMergeBlock}.
+ */
+const MERGE_FIELD_LINE = /^\s*[*;#]*\s*merge\b[A-Za-z .]*=/i;
+
+/**
+ * The header with its merge block removed, for the window readers.
+ *
+ * Not "the merge block is unreadable" — it is read, by {@link readMergeBlock},
+ * and it is where a merged file's validity comes from. It is simply not an
+ * answer to the question "what window was THIS file exported with", and the
+ * two questions had been sharing one parser.
+ */
+function withoutMergeBlock(head: string): string {
+  return head
+    .split(/\r?\n/)
+    .filter((l) => !MERGE_FIELD_LINE.test(l))
+    .join('\n');
+}
+
 /** What an exporter wrote about its time window. */
 export interface GateHeader {
   /** Gate length, ms. */
@@ -316,7 +384,10 @@ export interface GateHeader {
  *   - `Right window = 5,021 ms, Tukey 0.25`   (ARTA export)
  *   - `ARTA gated 5.021 ms`                   (our own comment, and Sanders')
  *   - `Gate = 4.5 ms` / `gate length: 5ms` / `gate time = 5 ms`
- * The LEFT window line is never matched — it is anchored on "Right".
+ * The LEFT window line is never matched — it is anchored on "Right". Neither
+ * is any line of the structured MERGE BLOCK: see {@link MERGE_FIELD_LINE} for
+ * what those say and why quoting one here puts a merged file's floor back at
+ * the gate it was built to get below.
  */
 export type GateHeaderResult =
   /** A window was found and read. */
@@ -349,7 +420,11 @@ export type GateHeaderResult =
  * substitute something reasonable.
  */
 export function readGateHeader(text: string): GateHeaderResult {
-  const head = text.slice(0, 4000);
+  /* The merge block is not a window statement about this file (P-1). It is
+   * dropped BEFORE the claim-detector too, not just before the parse: a line
+   * that cannot legitimately be a window here must not be able to become an
+   * import error either. */
+  const head = withoutMergeBlock(headOf(text));
   const parsed = gateHeaderOf(text);
   if (parsed) return { kind: 'parsed', ...parsed };
   /* Nothing parsed. Does the header CLAIM to state a window? Only lines that
@@ -369,7 +444,7 @@ export function readGateHeader(text: string): GateHeaderResult {
 }
 
 export function gateHeaderOf(text: string): GateHeader | null {
-  const head = text.slice(0, 4000);
+  const head = withoutMergeBlock(headOf(text));
   const num = (raw: string): number => Number(raw.replace(',', '.'));
   const right = head.match(
     /^[^\n]*\bright\s+window\s*[=:]\s*([\d]+(?:[.,]\d+)?)\s*ms\s*(?:,\s*([^\n]*))?/im,
@@ -402,6 +477,119 @@ export function gateHeaderOf(text: string): GateHeader | null {
  */
 export function gateMsFromHeader(text: string): number | null {
   return gateHeaderOf(text)?.gateMs ?? null;
+}
+
+/* ------------------------------------------------------------------ *
+ * The merge block (P-1)
+ * ------------------------------------------------------------------ */
+
+/**
+ * What an NF/FF-merged response file states about itself.
+ *
+ * A merged file has no window of its own — that is the whole point of it — so
+ * the question "how low may this be believed" is answered by a STATED
+ * validity instead of by 2/T. The file says so in named fields, and this reads
+ * exactly those.
+ *
+ * Every field except {@link kind} is optional: a merge produced by another
+ * tool may state only its validity, and a block that states nothing at all is
+ * still a declared merge. What is NOT optional is `Merge = …` itself — without
+ * it there is no merge, and the gated readers keep the file.
+ */
+export interface DeclaredMerge {
+  /** The value of `Merge = …` — `NF/FF` so far, kept as text so another kind is data. */
+  kind: string;
+  /** `Valid from = … Hz`. The floor, and the only thing that can supply one. */
+  validFromHz: number | null;
+  /** `Valid to = … Hz`. Narrows the top; never raises it. */
+  validToHz: number | null;
+  /** `Merge NF source` / `Merge FF source` — what it was made from. */
+  nfSource: string | null;
+  ffSource: string | null;
+  /** `Merge splice band = 500-800 Hz`. */
+  spliceBandHz: [number, number] | null;
+  /** `Merge floor reason = …` — why the floor sits there, in the author's words. */
+  floorReason: string | null;
+  /** `Merge status = …` — e.g. "PLACEHOLDER tot groundplane". */
+  status: string | null;
+}
+
+/**
+ * Read a declared merge block, or null when the file does not declare one.
+ *
+ * BY FIELD NAME, never by prose — the same rule, and deliberately the same
+ * field names, as `parseArtaHeader` in engine2. That duplication is real and
+ * is named here rather than hidden: engine2 may not be imported from the v1
+ * layer (the toggle-invariant's dependency arrow), so the CONVENTION is shared
+ * and the implementations are not. `xoWindow.test.ts` pins the two readers
+ * against each other on the real files, so they cannot drift apart quietly.
+ *
+ * `Valid from` is read even though it is not a `Merge …` field: it is what the
+ * block is FOR. On a file with no `Merge = …` it is not consulted at all, so a
+ * stray "Valid from" in a gated export cannot relax A5b.1(i) through this door.
+ */
+export function readMergeBlock(text: string): DeclaredMerge | null {
+  const field = /^\s*[*;#]*\s*([A-Za-z][A-Za-z .]*?)\s*=\s*(.+?)\s*$/;
+  const num = (raw: string): number | null => {
+    const m = raw.match(/-?\d+(?:[.,]\d+)?/);
+    if (!m) return null;
+    const v = Number(m[0].replace(',', '.'));
+    return Number.isFinite(v) ? v : null;
+  };
+  const pos = (raw: string): number | null => {
+    const v = num(raw);
+    return v !== null && v > 0 ? v : null;
+  };
+
+  let kind: string | null = null;
+  const out: Omit<DeclaredMerge, 'kind'> = {
+    validFromHz: null,
+    validToHz: null,
+    nfSource: null,
+    ffSource: null,
+    spliceBandHz: null,
+    floorReason: null,
+    status: null,
+  };
+
+  for (const line of headOf(text).split(/\r?\n/)) {
+    const m = line.match(field);
+    if (!m) continue;
+    const key = m[1].trim().toLowerCase();
+    const value = m[2].trim();
+    switch (key) {
+      case 'merge':
+        kind = value;
+        break;
+      case 'valid from':
+        out.validFromHz = pos(value);
+        break;
+      case 'valid to':
+        out.validToHz = pos(value);
+        break;
+      case 'merge nf source':
+        out.nfSource = value;
+        break;
+      case 'merge ff source':
+        out.ffSource = value;
+        break;
+      case 'merge splice band': {
+        // Unsigned: "500-800 Hz" is a band and its dash is not a minus.
+        const ns = value.match(/\d+(?:[.,]\d+)?/g)?.map((x) => Number(x.replace(',', '.'))) ?? [];
+        if (ns.length >= 2 && ns[0] > 0 && ns[1] > ns[0]) out.spliceBandHz = [ns[0], ns[1]];
+        break;
+      }
+      case 'merge floor reason':
+        out.floorReason = value;
+        break;
+      case 'merge status':
+        out.status = value;
+        break;
+      default:
+        break;
+    }
+  }
+  return kind === null ? null : { kind, ...out };
 }
 
 /**
