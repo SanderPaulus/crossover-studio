@@ -231,6 +231,25 @@ export const CHOICE_KEYS = [
    * reason (P4) — never a default family (P6).
    */
   'coilDcrModel',
+  /**
+   * E-4 — WHOSE OPINION OF "ENOUGH COPPER" THE CATALOGUE SNAP OBEYS: the v1
+   * branch budget (`'branch'`, the default and every v1 route) or the coil's
+   * OWN stated family (`'family'`).
+   *
+   * A CHOICE and not polish, on the A3j reading: it decides which real parts
+   * a delivered design may be built from, and casus 1 is the measurement —
+   * the stated 1.4/1.0 mm air cores put 1.82 Ω of honest copper on the series
+   * path where the branch budget allows 0.39 Ω, so the snap refused a network
+   * the search had been told to build with exactly that wire (LP-1, E-4).
+   *
+   * It has no polish twin: the fits it reads travel inside `coilDcrModel`,
+   * which is the run's own data — the same arrangement that key already has,
+   * and for the same reason.
+   *
+   * It cannot move a corpus or a search box: the snap runs AFTER the tune.
+   * That is what let E-4 repair it without a regeneration.
+   */
+  'coilSnapDcrCeiling',
   'breakupGuard',
   'safety',
   'audit',

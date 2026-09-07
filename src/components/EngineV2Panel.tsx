@@ -1190,12 +1190,23 @@ export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = n
           anchor), and determinism at F2. A footer that keeps calling a settled
           decision open is not a caveat, it is a wrong statement about the
           engine standing under every number on the page. What is genuinely
-          still open is the catalog schema, and it says only that. */}
+          still open is the catalog schema, and it says only that.
+
+          E-4 — AND THAT SENTENCE HAD GONE STALE IN ITS TURN. A5e.3 gave every
+          continuous coil the DCR of its stated family, and A5e.3b made that
+          family's single-part SPAN a search bound on the lowest way, so
+          "component bounds do not follow a catalogue's span" stopped being
+          true while the footer went on saying it — the same defect one layer
+          up from the one UI-1 fixed here. What is still open is narrower and
+          is now named: the span bounds ONE way, and stacking is a stated
+          exception nobody has stated. */}
       <p className="v2-foot">
-        {report.engine.mark} · one A5e decision is still open — the catalog schema (A5e.3), so
-        component bounds here do not follow a catalogue's span. Aggregation (A5e.1, satisficing
-        with no weights), the target curve (A5e.2, with its level anchor) and the determinism
-        policy (A5e.4) are settled, and this panel applies them.
+        {report.engine.mark} · one A5e decision is still open — the catalog schema (A5e.3). Since
+        A5e.3b the single-part span of a stated coil family IS a search bound on the lowest way;
+        what is open is the rest of the schema — the span bounds no other way, and a stack is a
+        stated exception. Aggregation (A5e.1, satisficing with no weights), the target curve
+        (A5e.2, with its level anchor) and the determinism policy (A5e.4) are settled, and this
+        panel applies them.
       </p>
     </div>
   );

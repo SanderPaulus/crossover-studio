@@ -6995,6 +6995,88 @@ veranderen: hij telde drie `setV2PreStart`-plekken in totaal, en een totaal dat 
 getal dat iemand ophoogt in plaats van een claim die iemand controleert — hij telt sindsdien ARMS en CLEARS apart en
 eist dat de dichtstbijzijnde voorafgaande vensterbewaker van arm n bewaker n is.
 
+### E-4 — de A5d.6-inversie is niet de inverse van de M-D-metriek (meten en pinnen), en de catalogus-snap leest sinds nu het koper van de tuner (07-09-2026, alleen v2-runs; **geen regeneratie, geen zoekdoos-wijziging, corpus en vensters onaangeraakt**)
+
+**AANLEIDING.** LP-1 draaide E-2's verkenning opnieuw in de browser (2102 s tegen E-2's 2032 s, dezelfde zes kandidaten, dezelfde één gekwalificeerd, dezelfde vijf geweigerd) en leverde twee bevindingen op die als vraag naar E-4 gingen: (1) het paneel meldde bij een weigering dat de V48-plafondvolger *niet sluit* — "the A5d.6 ceiling FOLLOWED the tune on this run, so this should not have been reachable — the ceiling and the delivered network disagree"; en (2) de catalogus-snap WEIGERDE ("purchasable parts would break the source-resistance limit") op een netwerk met 1,82 Ω spoelkoper tegen een takbudget van 0,39 Ω.
+
+**EERST EEN CORRECTIE OP LP-1's EIGEN COMMITBOODSCHAP, want zij overdreef.** Daar staat "het paneel meldt op de GELEVERDE kandidaat zélf dat de V48-reparatie niet sluit". Dat klopt niet: het blok in `worker.ts` dat die noot schrijft zet `refused`, dus een kandidaat die eroverheen gaat wordt geweigerd en wordt nooit een shortlist-rij. De noot hoorde bij een gewéigerde kandidaat (466,7 · 2178,5, 2,41 dB) en **de bewaker deed precies wat hij moet doen**. De bevinding zelf — de plafondvolger sluit niet — staat; de plaats waar zij zich toonde niet.
+
+---
+
+**DEEL 1 — WAT HET NIET IS, GEMETEN.**
+
+**Het raster niet.** Poort en rapport zouden een andere band of referentie kunnen lezen (de V32-vorm). Zij lezen dezelfde: `lfBump` is één functie, en `frozenNetlistGates` assert sinds V45 al op élke bevroren netlist dat `deliveredResonantDb` het getal van het paneel teruggeeft ("the check reads the SAME number the panel reads"). Het acceptatiepunt dat E-4 hiervoor vroeg bestond dus al.
+
+**De meetset ook niet.** De demobundel is de gepoorte set herbemonsterd (E-2), dus de reflexpiek zou kunnen schuiven. Gemeten op ÉÉN netwerk over BEIDE sets — HUIDIG door de repo-manifest en HUIDIG door de eigen adapter van de app op de demobundel:
+
+| set | f_p | extra | lift | **resonant** |
+| --- | --- | --- | --- | --- |
+| repo (`merged` én `gated`, identiek) | 52,4 Hz | 3,749 | 4,688 | **−0,939** |
+| demobundel via `buildEngineV2Input` | 52,4 Hz | 3,788 | 4,712 | **−0,924** |
+
+0,015 dB uit elkaar. Het wooferveld verschilt wél — de repo somt `woofer_up_near` en `woofer_down_near`, de demobundel draagt één cone (`woofer-near.txt`, "Source file = woofer down near.pir") en leest ~5,7 dB lager — maar `resonantDb` is een VERSCHIL en die offset valt weg. En merged tegen gated is over het hele casusboek byte-identiek, om dezelfde reden: de merge verving het ver-veld, en M-D leest het nabije veld en de `.lim`.
+
+**WAT HET WEL IS.** `lfBumpForSeriesRL` modelleert de weg als een KALE serie R+L in de gemeten driverimpedantie — `H = Z/(Z + R + jωL)`. M-D lost het ÉCHTE netwerk op, met elke shunt die de tak draagt. Dat zijn twee functies van hetzelfde ontwerp, en op deze casus dempen de shunts de reflexpiek zo sterk dat het echte netwerk vér onder het model leest (`scripts/measure-e4-inversion.ts`, 161 bevroren netlists):
+
+| netlist | L_som mH | plafond mH | M-D gemeten | inversie voorspelt |
+| --- | --- | --- | --- | --- |
+| KAND_V2_1 | 5,195 | 2,576 | −0,99 | +4,60 |
+| KAND_V2_5 | 3,845 | 2,486 | −1,29 | +3,07 |
+| KAND_V2_8 | 5,986 | 2,622 | −2,64 | +5,45 |
+| KAND_V2_10 | 6,326 | 2,640 | −2,90 | +5,80 |
+| HUIDIG | 3,000 | 3,850 | −0,94 | +0,91 |
+
+**Alle tien de levende netlists staan 1,5–2,4× boven hun eigen plafond en zitten ruim binnen het budget van 1,4 dB.** Over het hele casusboek: **69 netlists boven het plafond én binnen het budget, NUL andersom**; Δ (inversie − metriek) van −0,856 via mediaan 1,737 tot 8,701 dB. De drie referentiefilters staan er ONDER hun plafond, en dat is geen toeval: zij dragen 2,35–4,42 Ω padweerstand waar het levende corpus 0,88–1,20 draagt, en het plafond stijgt met de padweerstand.
+
+**DE LEESREGEL, en zij is de reden dat dit geen schending is.** Het PLAFOND is een ZOEKGRENS (A5d.6: een budget wordt door de gemeten impedantie en het nabije veld geïnverteerd tot een grens op een componentwaarde). De POORT is M-D op het geleverde netwerk (V45/V48). Boven het plafond en binnen het budget is dus een te strenge doos en geen overtreding; andersom zou het wel een zijn. Op deze sets is de doos systematisch te streng, nooit permissief — en de browserrun is precies waar de andere richting zich toonde, op een veld dat de repo niet draagt.
+
+**GEPIND EN NIET GEREPAREERD.** `test-fixtures/casus1_e4_inversie.json` draagt de tabel; `frozenNetlistGates` pint de verzameling EXACT (gelijkheid, geen deelverzameling en geen complement — de V37/V38-fix-les, waar dit casusboek nu driemaal voor betaald heeft), dat de twee aantoonbaar verschillende functies zijn (Δ tot 8,7 dB én ergens vrijwel nul, dus geen kalibreerbare offset), dat er nul netlists onder hun plafond en over hun budget zijn, en de leesregel zelf: élke netlist boven zijn plafond heeft nog steeds een M-D-oordeel, en dát beslist.
+
+**HET VOORSTEL VOOR C-2, waar de regeneratie toch komt.** Twee opties, met de meting die ze scheidt.
+
+*(i) De inversie vervangen door de netwerk-opgeloste bult* — één functie, twee lezers (de V32-vorm). Het plafond wordt dan de echte inverse van de poort. **Verwachting: het veld wordt GROTER.** De doos is vandaag op 69 van 161 netlists te streng en nergens te ruim, dus ontwerpen die nu buiten de doos vallen komen erbij; op het levende corpus zou het plafond van ~2,5 mH naar ergens boven de 6 mH schuiven. Prijs: één netwerkoplossing per bisectiestap per evaluatie — V45 mat één inversie op 13 ms en een kandidaat doet ~100 000 evaluaties, dus dit vraagt dezelfde memoïsatie-truc als V48 en waarschijnlijk meer.
+
+*(ii) Het plafond een ZACHTE grens maken* (straf, geen kooi) en de M-D-poort de enige autoriteit laten. **Verwachting: het veld wordt ook groter, maar minder voorspelbaar**, en de zoektocht bezoekt grond die zij nu niet ziet. Het argument ervóór is dat de poort aantoonbaar zélf weigert — de vijf `[budget]`-verwerpingen van LP-1 zijn precies dat — dus de kooi bewaakt niets wat de poort niet al bewaakt. Het argument ertegen is de reden dat A5d.6 bestaat: een zoektocht die verboden grond bezoekt betaalt er evaluaties aan.
+
+**DE METING DIE ZE SCHEIDT** is één regeneratie per arm op hetzelfde veld, met dezelfde seed: hoeveel kandidaten leveren, wat de RMS doet, en — de kolom die telt — hoeveel evaluaties elke arm kost. (i) hoort meer te leveren voor meer rekentijd per evaluatie; (ii) hoort hetzelfde te leveren voor meer evaluaties. Verschillen zij niet, dan is (ii) de goedkopere.
+
+---
+
+**DEEL 2 — DE SNAP LEEST SINDS NU HET KOPER VAN DE TUNER.**
+
+**DE DIAGNOSE.** De familie REIST wél: `App.tsx` → `scanRequest.ts` → `candidateDeclaration` → `coilDcrModel`, en de run-noot bewijst het ("On the seed: 13 coil(s) stamped (L1 3.80 mH → 0.666 Ω …)"). De 1,82 Ω is de eerlijke fit-DCR van de gestelde 1,4/1,0 mm luchtspoelen — L1 2,19 mH → 0,307 · 2,19^0,58 = 0,485 Ω, precies de gemelde 0,48. Geen ontbrekend veld, geen fit buiten bereik. Wat er botst zijn TWEE OPVATTINGEN van "hoeveel spoelweerstand mag": `branchDcrBudgetOhms(R_e, rSrcLimit)` — een v1-budget uit de eigen minimale |Z| van de driver en de bronweerstandstier, dat van vóór A5e.3 dateert — tegenover de familie waarmee de zoektocht sinds A5e.3 ontwerpt en waarop élke poort oordeelt.
+
+**DE REPARATIE, en zij kan geen corpus bewegen: de snap draait ná de tune.** Zesendertigste keuze-sleutel `coilSnapDcrCeiling: 'branch' | 'family'` (default `'branch'` = elke v1-route byte-identiek). Op `'family'` is het plafond van elke spoel de DCR die HAAR EIGEN familie voorspelt bij haar inductie, verbreed met de grootste residu van die familie (`snapDcrCeilingOhm` in `coilDcr.ts`, dezelfde functie die de tuner leest). De bronweerstandsgrens blijft wat zij was: een poort op het GESNAPTE netwerk (M-E), nooit een snapbudget. `candidateDeclaration` leidt `'family'` af zodra een DCR-model gesteld is en verklaart anders ABSENT met de P4-reden — nooit een gesteld `'branch'`, want niemand koos dat.
+
+**HET VERBREDEN GAAT MET `exp` EN NIET MET `1 +`, en de test vond dat.** De residuen die de fit rapporteert zijn LOG-residuen in procent — zo berekent `fitCoilDcrFamilies` ze en zo leest de SKU-continuïteitsclaim ze terug. Lineair verbreden is tot eerste orde hetzelfde getal en aan de RAND niet, en de rand is de enige plek waar een plafond ooit iets gevraagd wordt: op de v8-catalogus valt precies één SKU (`JAZ-AC-000-0346`, 0,0100 Ω) buiten de lineaire band en binnen de logaritmische. Een plafond dat één onderdeel weigert van de familie die het beweert te beschrijven is precies het gebrek dat deze functie moet wegnemen. Gevonden doordat de test élke SKU aflooopt in plaats van er een paar te prikken.
+
+**TESTS.** `coilDcr.test.ts` (+4): het plafond is de fit maal `exp(maxPct/100)` met een handberekening, het admitteert ÉLKE van de 2116 catalogus-SKU's binnen zijn familie, het is op casus 1's gestelde draad aantoonbaar RUIMER dan het takbudget (de tegenproef: zonder haar is "de familie admitteert de familie" ook waar voor een plafond dat alles admitteert), en het zegt niets over een spoel zonder inductie (P4/F0). `optimizer/coilSnapCeiling.test.ts` (+5, nieuw): op het levende corpus draagt élke spoel met een gestelde familie meer koper dan het takbudget toelaat (het onderwerp van de reparatie), het familieplafond admitteert het én levert een échte SKU via `pickCandidates`, het weigert nog steeds de VERKEERDE draaddikte (0,7 mm tegen een 1,4 mm-plafond — geen blanco cheque), en absent houdt de snap het plafond dat hij altijd had.
+
+**DE BROWSERCONTROLE, en zij is eerlijk half.** Dezelfde verkenning opnieuw gedraaid met dezelfde invulling en dezelfde seed (2093 s tegen LP-1's 2102 s): hetzelfde veld, dezelfde geleverde kandidaat 466,7 · 1729, dezelfde vijf `[budget]`-verwerpingen — de snap draait ná de tune, dus er hóórt niets anders te bewegen. Wat wél bewoog is de snap zelf:
+
+| | LP-1 (takbudget) | E-4 (familieplafond) |
+| --- | --- | --- |
+| DCR-melding | `⚠ coil DCR over budget: L1 0,48 Ω (budget 0,23); L3 0,34 (0,16); B·L5 0,66 (0,30); B·L7 0,34 (0,15) — de serieweg telt op tot 1,82 Ω tegen een takbudget van 0,39 Ω` | **weg** |
+| de snap zelf | `1 stack — singles-only would fit 75 % worse and cost € 88 less` | `2 stacks — singles-only would fit 6 % worse and cost € 77 less` |
+
+**De DCR-weigering is verdwenen en de pasvorm ging van 75 % naar 6 % slechter.** Wat NIET verdwenen is: `⚠ snap REFUSED: purchasable parts would break the source-resistance limit`. Dat is met opzet — de bronweerstandsgrens is een POORT op het gesnapte netwerk (M-E) en geen snapbudget, en E-4 raakt haar niet. **Deze kandidaat is dus nog steeds niet met catalogusonderdelen te bouwen**, en de reden die het paneel daarvoor geeft is sinds E-4 de juiste: niet "het koper past niet bij een budget dat de familie niet kent", maar "deze onderdelen zouden de bronweerstandsgrens breken". Of die grens op deze casus de goede is, is een eigen vraag — zij staat op 1,0 Ω terwijl de gestelde 1,4/1,0 mm luchtspoelen alleen al 1,82 Ω koper op de serieweg leggen, en dat is een gesprek over de gestelde draaddikte of over de grens, niet over de snap.
+
+---
+
+**DEEL 3 — DRIE COSMETISCHE POSTEN.**
+
+**(a) De legenda beloofde een kleuring die op een drieweg niet wordt toegepast.** `integration = result && !threeWay ? computeIntegration(result) : null`, dus `alignColors` bestaat alleen op een tweeweg — terwijl "Combined-curve color = phase alignment" onder élke niet-solo chart stond. Live nagemeten op de LP-1-run: de somcurve is over de hele band één kleur terwijl M-K 11,1° is. De legenda hangt sindsdien aan `integration`. Wat een drieweg wél doet staat er al: een score per overname in de kop, en de FASE-chart kleurt haar curve wél, met de zones erachter ("Zones & line color = distance from 0°").
+
+**(b) `buildShortlist` zei niet dat zij ontwerpen liet vallen.** `selectDiverse` houdt `size` van alles wat haalbaar is en kiest op spreiding; A5e.3c was de eerste regeneratie waar dat bijt (elf haalbaar, tien bevroren) en de lijst zweeg, wat leest als "elf was alles". Sindsdien een noot met beide getallen en waar de rest is. Presentatie, zoals de ordening eronder: niets stroomafwaarts mag erop vertakken.
+
+**(c) De paneelvoet was zelf verouderd** — hij meldde dat componentgrenzen "do not follow a catalogue's span" terwijl A5e.3b de spanwijdte van de gestelde spoelfamilie juist een zoekgrens op de laagste weg maakte. Hij noemt sindsdien wat er nog wél open is: de spanwijdte bindt geen andere weg, en de stapel is een gestelde uitzondering die niemand gesteld heeft. Dezelfde soort veroudering die UI-1 één laag lager repareerde.
+
+**(d) `CLAUDE.md`** draagt de LP-1-les: bewerk tijdens een browserrun geen enkel bestand dat de dev-server dient. `index.html` en `app/index.html` zijn twee entries van één Vite-build, dus een bewerking van de landing stuurt de app-pagina een full-reload en een lopende v2-run verdwijnt spoorloos — 0 van 6 na 452 s, zonder melding. Pollen met `page.evaluate` stoort een run NIET, en dat is nagemeten en niet aangenomen.
+
+---
+
+**WAT ER NIET GEBEURD IS.** Geen regeneratie. Geen wijziging aan de inversie, de zoekdoos, de eisen, de budgetten, het corpus of de vensters. Het v1-snapbudget is onaangeraakt en blijft de default.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

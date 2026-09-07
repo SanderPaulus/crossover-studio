@@ -106,6 +106,7 @@ import { solveNetwork } from '../network.ts';
 import { crossoverToNetlist } from '../vxpNetwork.ts';
 import type { VxpCrossover } from '../parsers/vxp.ts';
 import { impedanceReferenceFrom } from './optimizer/impedanceReference.ts';
+import { lfBumpForSeriesRL } from './optimizer/bounds.ts';
 import { protectionByPair } from './metrics/protection.ts';
 import { buildAnalysis } from './metrics/analysis.ts';
 import { epdr } from './metrics/electrical.ts';
@@ -113,7 +114,7 @@ import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
 import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
 import { BUILDABILITY_VERSION } from './metrics/buildability.ts';
-import { LEVEL_WORK_VERSION, levelWorkOnNetlist, seriesInductanceByWay, seriesRMaxOhmOf } from '../levelWork.ts';
+import { LEVEL_WORK_VERSION, levelWorkOnNetlist, levelWorkOnWay, seriesInductanceByWay, seriesRMaxOhmOf } from '../levelWork.ts';
 import type { LevelWorkAnalysis } from './report.ts';
 import { BARRIER_DIP_REFINEMENT, busTopology, extendGridToSweepExtent, refinedSystemMinImpedanceOhm, systemMinImpedanceOhm } from '../netOptimizer.ts';
 import {
@@ -3780,5 +3781,133 @@ describe('A5e.3-veld — the stated coil families, and every live netlist judged
     for (const hz of datedMt) if (hz < mt.window['4'].floorHz! - 0.5) expect(hz).toBeLessThan(1647); // P6-OK: the recorded finding of the pre-measurement, not an engine number
     // ...and no position of the LIVE field lies under the floor.
     for (const hz of mt.positionsByOrder[0].hz) expect(hz).toBeGreaterThanOrEqual(mt.window['4'].floorHz! - 0.5);
+  });
+});
+
+describe('E-4 — the A5d.6 inversion is not the inverse of the M-D metric', () => {
+  /* WHAT THIS PINS, AND WHY IT IS NOT A FAILURE.
+   *
+   * `bump-series-l` inverts a budget into a CEILING on a component value by
+   * modelling the way as a BARE series R+L into the measured driver impedance
+   * (`lfBumpForSeriesRL`: H = Z/(Z + R + jwL)). M-D solves the ACTUAL netlist,
+   * with every shunt the branch carries. Those are two functions of the same
+   * design and nothing makes them agree.
+   *
+   * THE READING RULE, and every assert below rests on it. The ceiling is a
+   * SEARCH BOUND — A5d.6 inverts a budget so the search does not visit ground
+   * the budget forbids. The GATE is M-D on the delivered network
+   * (`deliveredResonantDb`, V45/V48). A netlist above its ceiling and inside
+   * its budget is therefore NOT a violation: it is a box that was stricter
+   * than the requirement it stands for. The other direction WOULD be one, and
+   * that is what the second claim counts.
+   *
+   * MEASURED, NOT REPAIRED. Repairing the inversion means solving the real
+   * network per evaluation — a different search box, so a different corpus,
+   * so a regeneration. E-4 measures and pins it; casebook E-4 carries the two
+   * options and the measurement that separates them.
+   *
+   * THE SET IS NAMED AND PINNED EXACTLY — no subset, no complement (the
+   * V37/V38-fix lesson, which this case book has now paid for three times).
+   * A netlist that leaves the set fails by still being listed; one that joins
+   * it fails by not being. */
+  const E4 = JSON.parse(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../../test-fixtures/casus1_e4_inversie.json'), 'utf-8'),
+  ) as {
+    budget_dB: number;
+    boven_plafond_binnen_budget: string[];
+    onder_plafond_over_budget: string[];
+    rijen: {
+      netlist: string; weg: string; L_som_mH: number; padweerstand_ohm: number;
+      M_D_gemeten_dB: number; inversie_voorspelt_dB: number; verschil_dB: number;
+      plafond_mH: number | null; boven_plafond: boolean; binnen_budget: boolean;
+    }[];
+  };
+  /** The dB class of the case book — a tolerance belongs to the reference. */
+  const E4_TOL_DB = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
+  const factsE4 = casus1V2Facts(report('HUIDIG'), manifest, files);
+  const toC = (m: readonly number[], ph: readonly number[]): Complex[] =>
+    m.map((mag, i) => {
+      const r = (ph[i] * Math.PI) / 180;
+      return { re: mag * Math.cos(r), im: mag * Math.sin(r) };
+    });
+
+  /** The inversion's own input for a way, at the path resistance a netlist carries. */
+  const inversionInput = (way: string, pathROhm: number) => {
+    const z = factsE4.impedanceByModel?.[way];
+    const nf = factsE4.nearFieldByModel?.[way];
+    const fP = factsE4.fundamentalHzByModel?.[way];
+    if (!z || !nf || fP === undefined) return null;
+    return {
+      nfGrid: nf.grid, nfDb: nf.db, zGrid: z.grid, z: toC(z.magnitude, z.phaseDeg),
+      fPeakHz: fP, nfValidHz: nf.validHz, pathROhm,
+    };
+  };
+
+  it('the recorded divergence reproduces from a fresh measurement, per netlist', () => {
+    let checked = 0;
+    for (const row of E4.rijen) {
+      const f = FIELD.find((x) => x.key === row.netlist);
+      if (!f) continue;
+      const parts = casus1Parts(row.netlist);
+      const henry = seriesInductanceByWay(parts)[row.weg] ?? 0;
+      const inv = levelWorkOnWay(parts, row.weg);
+      const input = inversionInput(row.weg, inv.reachable ? inv.totalSeriesOhm : 0);
+      expect(input, `${row.netlist}: no inversion input for ${row.weg}`).not.toBeNull();
+      const zero = lfBumpForSeriesRL(input!, 0);
+      const full = lfBumpForSeriesRL(input!, henry);
+      expect(zero, `${row.netlist}: the inversion produced nothing`).not.toBeNull();
+      expect(full).not.toBeNull();
+      expect(
+        Math.abs(full! - zero! - row.inversie_voorspelt_dB),
+        `${row.netlist}: the inversion reads ${full! - zero!} where the record says ${row.inversie_voorspelt_dB}`,
+      ).toBeLessThanOrEqual(E4_TOL_DB);
+      expect(
+        Math.abs(f.lfResonantDb! - row.M_D_gemeten_dB),
+        `${row.netlist}: M-D reads ${f.lfResonantDb} where the record says ${row.M_D_gemeten_dB}`,
+      ).toBeLessThanOrEqual(E4_TOL_DB);
+      checked++;
+    }
+    // A loop over an empty list passes silently, which is how a guard rots.
+    expect(checked).toBe(E4.rijen.length);
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('the two are DIFFERENT functions — the divergence is not a rounding error', () => {
+    /* Without this the first claim is also true of an inversion that happens
+     * to be the metric: the point is that they part company by decibels. */
+    const deltas = E4.rijen.map((r) => r.verschil_dB);
+    expect(Math.max(...deltas)).toBeGreaterThan(E4_TOL_DB * 10);
+    // ...and they agree somewhere too, so the divergence is a property of the
+    // NETWORK and not a constant offset anyone could calibrate away.
+    expect(Math.min(...deltas.map(Math.abs))).toBeLessThan(E4_TOL_DB * 10);
+  });
+
+  it('the set above its ceiling and inside its budget is EXACTLY the recorded one', () => {
+    const fresh = E4.rijen.filter((r) => r.boven_plafond && r.binnen_budget).map((r) => r.netlist);
+    expect(fresh.slice().sort()).toEqual(E4.boven_plafond_binnen_budget.slice().sort());
+    expect(fresh.length).toBeGreaterThan(0);
+  });
+
+  it('and NO frozen netlist is under its ceiling yet over its budget — the box errs strict', () => {
+    /* THE DIRECTION THAT WOULD BE A DEFECT. A netlist the box allowed and the
+     * gate refuses is a permissive box; on these sets there is none, and the
+     * browser run that started E-4 is where the other direction showed up —
+     * which is why casebook E-4 proposes the measurement rather than a fix. */
+    const fresh = E4.rijen.filter((r) => !r.boven_plafond && !r.binnen_budget).map((r) => r.netlist);
+    expect(fresh.slice().sort()).toEqual(E4.onder_plafond_over_budget.slice().sort());
+  });
+
+  it('the ceiling is a SEARCH BOUND and M-D is the gate — the reading rule, as code', () => {
+    /* The rule the four claims above rest on, asserted where a reader will
+     * look for it: every netlist above its ceiling still HAS an M-D verdict,
+     * and that verdict is what decides. A ceiling that decided anything would
+     * make 69 frozen netlists violations. */
+    const above = E4.rijen.filter((r) => r.boven_plafond);
+    expect(above.length).toBeGreaterThan(0);
+    for (const r of above) {
+      const f = FIELD.find((x) => x.key === r.netlist)!;
+      expect(f.lfResonantDb, `${r.netlist}: above its ceiling and no M-D reading`).not.toBeNull();
+      expect(r.binnen_budget).toBe(f.lfResonantDb! <= E4.budget_dB);
+    }
   });
 });

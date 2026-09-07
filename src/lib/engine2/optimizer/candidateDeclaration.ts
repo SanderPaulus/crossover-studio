@@ -90,6 +90,7 @@ export type StatedByDesigner = Partial<
     | 'protectionRule'
     | 'seriesInductanceCeilingSource'
     | 'coilDcrModel'
+    | 'coilSnapDcrCeiling'
   >
 >;
 
@@ -273,6 +274,34 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
           "designer's statement, and nothing here may make it for them",
       });
     }
+  }
+
+  /* ---- E-4: whose opinion of "enough copper" the catalogue snap obeys ----
+   *
+   * DERIVED FROM THE KEY ABOVE, and it is the third unconditional-in-context
+   * derivation on this route (V37's and V38-fix's are the others). A run that
+   * designs with a stated family's copper hands the delivered network to a
+   * snap whose own budget predates that family; on casus 1 that refused a
+   * network the search had been told to build (LP-1, casebook E-4). So: the
+   * moment a DCR model is stated, the snap is told to read the same families.
+   *
+   * With no model the key is ABSENT with the P4 reason — the snap keeps the
+   * v1 branch budget, which is the only ceiling any v1 route ever had, and a
+   * stated `'branch'` would claim someone chose it. An explicit value wins,
+   * so the two can be measured against each other in one commit. */
+  if (s.coilSnapDcrCeiling !== undefined) {
+    stated.coilSnapDcrCeiling = s.coilSnapDcrCeiling;
+  } else if (stated.coilDcrModel !== undefined) {
+    stated.coilSnapDcrCeiling = 'family';
+  } else {
+    absent.push({
+      key: 'coilSnapDcrCeiling',
+      why:
+        'no coil DCR model is stated, so there is no family whose residual could bound the snap: ' +
+        "the catalogue snap keeps the branch budget it has always used (`branchDcrBudgetOhms`, the " +
+        'driver\'s own minimum |Z| against the source-resistance tier). Absent rather than a stated ' +
+        "`'branch'` (P4): nobody chose it here",
+    });
   }
 
   /* ---- V30: is the stated floor a SEARCH GOAL, or only a veto? ---------

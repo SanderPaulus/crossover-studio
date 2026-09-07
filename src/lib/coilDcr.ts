@@ -180,6 +180,53 @@ export function dcrOf(henry: number, fit: CoilDcrFit): { ohm: number; inRange: b
 }
 
 /**
+ * E-4 — THE SNAP'S OWN DCR CEILING, for a run that STATES a coil family.
+ *
+ * The catalogue snap has always carried a ceiling on the DCR a picked coil may
+ * have (`branchDcrBudgetOhms` in `partAudit.ts`, split over the branch's coils
+ * by L^0.65). That budget is a v1 opinion of "how much copper a branch may
+ * carry", derived from the driver's own minimum |Z| and the source-resistance
+ * tier — and it predates A5e.3 entirely. Since A5e.3 the SEARCH designs with
+ * the copper of a family the designer STATED: `refreshDcr` gives every free
+ * coil the DCR its family has at its inductance, every gate and inversion
+ * reads that number, and the delivered network is a design that owns its
+ * resistance. Handing that network to a snap whose budget never heard of the
+ * family is two answers to one question, and the measured consequence is a
+ * refusal: casus 1's stated 1.4/1.0 mm air cores put 1.82 Ω of honest copper
+ * on the series path against a 0.39 Ω branch budget (LP-1, casebook E-4).
+ *
+ * So on a run that states the model, the ceiling is the FAMILY'S OWN: the DCR
+ * the fit predicts at the coil's inductance, widened by the fit's own residual
+ * — the same tolerance the continuous design was already allowed to be wrong
+ * by. A SKU inside it is a part the design already assumed; one outside it is
+ * a different gauge, which is the thing worth refusing.
+ *
+ * `null` when the coil has no family (the run states none for that way, or the
+ * inductance is not a number): the caller then keeps whatever ceiling it had,
+ * which on every v1 route is the only one there ever was (P2).
+ *
+ * WHICH RESIDUAL, and it is a choice with a reason. `maxPct` — the largest
+ * residual over the family's own SKUs — and not `rmsPct`: the ceiling has to
+ * admit every part the family actually stocks, and an rms band would refuse
+ * the family's own worst-fitting SKU while claiming to describe that family.
+ *
+ * AND IT IS WIDENED BY `exp`, NOT BY `1 +`. The residuals this fit reports are
+ * LOG residuals in percent — that is how `fitCoilDcrFamilies` computes them and
+ * how the SKU-continuity claim reads them back. Widening linearly is the same
+ * number to first order and NOT the same number at the edge, and the edge is
+ * the only place a ceiling is ever asked: on the v8 catalogue exactly one SKU
+ * (JAZ-AC-000-0346, 0.0100 Ω) sits above the linear band and inside the log
+ * one. A ceiling that refuses one part of the family it claims to describe is
+ * the defect this function exists to remove, so it is the log form. Found by
+ * the test, which is why the test enumerates every SKU instead of sampling.
+ */
+export function snapDcrCeilingOhm(henry: number, fit: CoilDcrFit): number | null {
+  const d = dcrOf(henry, fit);
+  if (!d) return null;
+  return d.ohm * Math.exp(fit.maxPct / 100);
+}
+
+/**
  * The DCR MODEL a run states: which family each way builds with, and the fits
  * those families resolve to. The fits travel INSIDE the value so the model is
  * pure data (structured-cloneable, fingerprintable) and a run can be

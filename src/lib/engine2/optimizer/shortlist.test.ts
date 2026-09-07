@@ -330,3 +330,34 @@ describe('the shortlist', () => {
 function field2(): ShortlistInput<string>[] {
   return [candidate('a', 2, 4.0, measurements(1.0, 0.4, 3))];
 }
+
+describe('E-4 — the list says when more qualified than fit', () => {
+  /* A5e.3c was the first regeneration where the feasible field was larger than
+   * the list: eleven designs met every requirement and ten were frozen. The
+   * list said nothing, which reads as "eleven was all there was" — and what
+   * was dropped is exactly what a designer would want to ask about. */
+  /* Distinct topology classes, so `selectDiverse` has real spread to choose
+   * from and the cap is what limits the list rather than the classes. */
+  const field = (n: number): ShortlistInput<string>[] =>
+    Array.from({ length: n }, (_, i) =>
+      candidate(`c${i}`, i % 2 === 0 ? 2 : 4, 4 + i, measurements(1.0, 0.4 + i / 100, 3), [], i % 3 === 0),
+    );
+
+  it('notes the overflow, with both numbers and where the rest are', () => {
+    const s = buildShortlist(field(6), 'fp', { size: 3 });
+    expect(s.rows).toHaveLength(3);
+    const note = s.notes.find((n) => /met every requirement/.test(n));
+    expect(note, `no overflow note in ${JSON.stringify(s.notes)}`).toBeTruthy();
+    expect(note).toContain('6 designs');
+    expect(note).toContain('holds 3');
+    expect(note).toMatch(/export/);
+  });
+
+  it('and says nothing when the list holds everything that qualified', () => {
+    /* Without this the note is also "true" of a list that always prints it,
+     * which would make it noise rather than a finding. */
+    const s = buildShortlist(field(3), 'fp', { size: 10 });
+    expect(s.rows).toHaveLength(3);
+    expect(s.notes.find((n) => /met every requirement/.test(n))).toBeUndefined();
+  });
+});

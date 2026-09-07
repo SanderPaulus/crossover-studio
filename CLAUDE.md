@@ -48,6 +48,17 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná E-4 (07-09-2026) gemeten op 411 s — 160 bestanden (159 geslaagd, 1 overgeslagen), 1847 tests
+    (1844 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 bestand
+    (`optimizer/coilSnapCeiling.test.ts`, 5 claims) en +16 claims: die vijf, +5 E-4-claims in
+    `frozenNetlistGates` (de inversie-divergentie), +4 in `coilDcr.test.ts` (het snapplafond van een
+    gestelde familie) en +2 in `shortlist.test.ts` (de noot bij overvloed). **De delta is ENUMEREERD
+    en niet afgeleid** (`npx vitest list -t '^(?!.*\[live\])'` op HEAD tegen dezelfde lijst op E-4):
+    elf namen erbij in de drie gewijzigde bestanden, nul verdwenen, plus de vijf van het nieuwe
+    bestand — samen zestien, precies de claims hierboven. **Eén losse eindje, gemeten en niet
+    weggepoetst:** HEAD lijst vandaag 1828 en zou dus 1831 draaien, waar de P-1-regel hieronder 1830
+    noteert. Eén test verschil met een record van een vorige sessie; niets in LP-1 of E-4 raakt een
+    test die dat verklaart. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná P-1 (07-09-2026) gemeten op 415 s — 159 bestanden (158 geslaagd, 1 overgeslagen), 1830 tests
     (1827 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** GEEN nieuw bestand; +10 claims, alle
     tien in `xoWindow.test.ts` (23 → 33). **De delta is ENUMEREERD en niet afgeleid:** `npx vitest list -t
@@ -259,13 +270,23 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 06-09-2026 (E-3b): 159 bestanden, 1821 tests, 1608 s (26 min 48),
+- `npx vitest run` — volledige testsuite. **GEMETEN 07-09-2026 (E-4): 160 bestanden, 1847 tests, 1593 s
+  (26 min 33), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en
+  NOOIT ernaast.** +1 bestand (`optimizer/coilSnapCeiling.test.ts`, 5 claims) en +16 claims (zie de
+  `test:fast`-regel; de delta is met `vitest list` geënumereerd). **Wat deze run bewijst is precies het
+  punt van E-4: de nieuwe keuze-sleutel kan geen netwerk verplaatsen.** Casus 1 en casus 1b draaien met
+  `catalogSnap: false` — geen enkele van de 129 spoelen in het levende casus-1-corpus en geen enkele van
+  casus 1b draagt een catalogus-onderdeel — dus het familieplafond raakt een snap die nooit gebeurt, en
+  de byte-baselines (`f4cRegression`, `workerRouteRegression`) plus alle DRIE de live ketenruns
+  reproduceren. De wandkloktijd is onveranderd de byte-reproductie van KAND-V2-8 (1581 s); casus 1b's
+  run kostte 138 s en verdwijnt in de schaduw.
+  (De stand ervoor: **GEMETEN 06-09-2026 (E-3b): 159 bestanden, 1821 tests, 1608 s (26 min 48),
   niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de browsercontrole en NOOIT ernaast.** +1 bestand
   (`optimizer/scanRequest.test.ts`, 21 claims) en +26 tests: die 21 plus vijf E-3b-claims in `selection.test.ts`. De
   wandkloktijd is onveranderd de twee live casus-1-ketenruns; E-3b raakt geen engine-, poort- of corpuscode, dus wat de
   volle run hier bewijst is precies dat: **de byte-baselines (`f4cRegression`, `workerRouteRegression`) en alle DRIE de
   live ketenruns reproduceren onder de E-3b-app** — de extractie van vierhonderd regels uit `runVfOptimize` heeft geen
-  enkel netwerk verplaatst. (De casus-1b-run kostte 142 s en verdwijnt in de schaduw; `threeWayChain` 327 s.)
+  enkel netwerk verplaatst. (De casus-1b-run kostte 142 s en verdwijnt in de schaduw; `threeWayChain` 327 s.))
   (De stand ervoor: **GEMETEN 06-09-2026 (E-3): 158 bestanden, 1795 tests, 1573 s (26 min 13),
   niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en NOOIT ernaast.** +6 bestanden en
   +79 tests sinds E-1 (E-2's vier bestanden en 53 tests, E-3's twee bestanden en 26 tests — zie de `test:fast`-regels).
@@ -1064,6 +1085,18 @@
     −16,1 dB).** De live reproductie (`casus1bV2Candidates.test.ts`) kiest de goedkoopste geleverde op `looptijd_s`.
   **De app stuurt een tweewegverzoek nog naar de v1-worker** (`runChainScan`); deze route is de tweewegroute door de
   v2-worker en niet de knop — casusboek E-3, "wat niet gedaan is".
+- **EEN BROWSERRUN EN DE DEV-SERVER: BEWERK TIJDENS DIE RUN GEEN ENKEL BESTAND DAT DE SERVER
+  DIENT (LP-1, 07-09-2026).** `index.html` (de landing) en `app/index.html` zijn twee entries van
+  ÉÉN Vite-build, dus een bewerking van de landing stuurt de app-pagina een full-reload — en een
+  lopende v2-run verdwijnt daarmee SPOORLOOS: 0 van 6 kandidaten na 452 s, geen melding, geen
+  shortlist, geen stempel. Het vite-log is de enige aanwijzing (`page reload index.html`). De
+  volgorde is dus: eerst de bestanden, dan de run, dan de screenshots. **Pollen met
+  `page.evaluate` stoort een run NIET** — dat is nagemeten, niet aangenomen: de verkenning
+  reproduceerde onder een poll van elke 60 s op 2102 s tegen E-2's 2032 s. De oudere notitie
+  "leave the page alone, cause not established" is hiermee vervangen; de oorzaak is HMR en niet
+  het screenshotten. Bij het screenshotten zelf: het SPL-paneel is `position: sticky` bovenin
+  `.analysis-pane` en dekt af wat je eronder scrolt — ontpin het met zijn 📌-knop, of neem
+  volle-venster-opnamen (wat `public/shots/*.jpg` sowieso zijn).
 - **Een app-run naspelen in de repo (E-2, 06-09-2026)**: `npx vite-node scripts/replay-app-run.ts <export.json>
   [--set merged|gated|demo|casus1b] [--run]` — seconden zonder `--run`. De invoer is wat de knop **"Export run (JSON)"** onder de
   run-stempel van de app schrijft (`runExport.ts`, formaat `crossover-studio-run/1`): de gestelde eisen, de
@@ -1111,6 +1144,25 @@
   2× de vloer 696 punten, bijna de sweep zelf.** De engine leest de eerste (`BARRIER_DIP_REFINEMENT`, de vijfde waarde van
   de V33-sleutel: `'safety-extended-refined'`); de route leidt nog `'safety-extended'` af — omschakelen is één woord in
   `candidateDeclaration.ts` en één regeneratie. Schrijft `test-fixtures/casus1_e1_barriere_verdichting.json`.
+- **Is de A5d.6-inversie de inverse van de M-D-metriek? (E-4, 07-09-2026)**:
+  `npx vite-node scripts/measure-e4-inversion.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen
+  tune. Per bevroren netlist: de totale seriespoel van de laagste weg, de padweerstand die de
+  driver ziet (discreet plus het koper van diezelfde spoelen, `levelWork.ts`), M-D GEMETEN op het
+  echte netwerk, wat de kale-RL-inversie (`lfBumpForSeriesRL`, H = Z/(Z+R+jωL)) daar voorspelt, en
+  het plafond dat `maxSeriesInductanceFromBump` bij die padweerstand oplevert. Schrijft
+  `test-fixtures/casus1_e4_inversie.json`; met sleutels als argument draait hij een deelverzameling
+  en schrijft niets. **Gemeten 07-09-2026: 161 netlists, Δ (inversie − metriek) van −0,856 via
+  mediaan 1,737 tot 8,701 dB; NEGENENZESTIG staan boven hun plafond én binnen het budget en NUL
+  andersom — de doos is op deze sets systematisch te streng en nergens permissief.** Alle tien de
+  levende netlists dragen 3,8–6,3 mH tegen een plafond van ~2,5 mH en meten −0,4..−2,9 dB tegen
+  een budget van 1,4. **DE LEESREGEL: het plafond is een ZOEKGRENS (A5d.6) en M-D is de POORT
+  (V45/V48), dus boven het plafond en binnen het budget is geen schending maar een te strenge
+  doos.** Twee verklaringen zijn als NIET-oorzaak vastgelegd: poort en rapport lezen hetzelfde
+  raster (`frozenNetlistGates` assert dat sinds V45), en de meetset doet niets — HUIDIG leest
+  `resonantDb` −0,939 op de repo-set en −0,924 door de adapter van de app op de demobundel, want
+  het wooferveld verschilt ~5,7 dB en `resonantDb` is een verschil. Repareren vraagt het echte
+  netwerk per evaluatie, dus een andere zoekdoos en een ander corpus: casusboek E-4 draagt de twee
+  opties en de meting die ze scheidt.
 - **De M-T-bovengrens: wat de bovenkant weet, wat de tuner ermee doet, het veld onder een gesteld plafond (E-1)**:
   `npx vite-node scripts/measure-e1-mt-ceiling.ts` — seconden, geen ketenrun en geen tune. Vier tabellen: (1) élke grens
   die de bovenkant van het M-T-venster kent (breakup 2304 Hz bindt; directiviteit −6 dB@30° van de mid 5388 Hz bindt
@@ -2570,6 +2622,53 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   het zegt het zelf" leeft nu alleen in `derivation` en in de reden-zin, niet in het type. Benoemd, niet
   gerepareerd: een nieuwe `DataSource` raakt `DATA_SOURCE_LABEL`, `describeSources` en het projectbestand, en dat
   is geen bugfix meer.
+
+### E-4-guards (de inversie gepind, de snap leest het koper van de tuner)
+- `scripts/measure-e4-inversion.ts` + `test-fixtures/casus1_e4_inversie.json` +
+  **vijf claims in `frozenNetlistGates.test.ts`** — de divergentie tussen de A5d.6-inversie en de
+  M-D-metriek als MEETRESULTAAT, niet als reparatie. De verzameling "boven het plafond én binnen
+  het budget" is EXACT gepind (gelijkheid, geen deelverzameling en geen complement: de
+  V37/V38-fix-les, waarvoor dit casusboek nu driemaal betaald heeft) — een netlist die de
+  verzameling verlaat faalt door er nog op te staan, een die erbij komt door er niet op te staan.
+  Daarnaast: de opgenomen getallen reproduceren uit een verse meting per netlist; de twee zijn
+  aantoonbaar VERSCHILLENDE functies (Δ tot 8,7 dB én ergens vrijwel nul, dus geen offset die
+  iemand kan wegkalibreren); er is NUL netlist onder zijn plafond en over zijn budget; en de
+  leesregel zelf staat er als code — élke netlist boven zijn plafond heeft nog steeds een
+  M-D-oordeel en dát beslist. Nagemeten dat hij kán falen: één naam uit de opgenomen verzameling
+  halen zet hem op rood.
+- `src/lib/coilDcr.ts` — **`snapDcrCeilingOhm`: het plafond dat een GESTELDE familie de
+  catalogus-snap oplegt.** De fit bij de inductie van de spoel, verbreed met de grootste residu van
+  die familie. **Verbreed met `exp(maxPct/100)` en niet met `1 + maxPct/100`, en de test vond dat:**
+  de residuen zijn LOG-residuen in procent (zo berekent `fitCoilDcrFamilies` ze en zo leest de
+  SKU-continuïteitsclaim ze terug), en lineair verbreden is tot eerste orde hetzelfde getal en aan
+  de RAND niet — op de v8-catalogus valt precies één SKU (`JAZ-AC-000-0346`, 0,0100 Ω) buiten de
+  lineaire band en binnen de logaritmische. Een plafond dat één onderdeel weigert van de familie
+  die het beweert te beschrijven is precies het gebrek dat deze functie wegneemt; de test loopt
+  daarom élke SKU af in plaats van er een paar te prikken.
+- `src/lib/engine2/optimizer/coilSnapCeiling.test.ts` (5 claims, nieuw) — het levende corpus tegen
+  de twee plafonds: élke spoel met een gestelde familie draagt méér koper dan het TAKBUDGET
+  toelaat (het onderwerp van de reparatie — zonder die claim gaat de rest over niets), het
+  FAMILIEPLAFOND admitteert het én levert een échte SKU via `pickCandidates`, het weigert nog
+  steeds de verkeerde draaddikte (0,7 mm tegen een 1,4 mm-plafond — geen blanco cheque), en absent
+  houdt de snap het plafond dat hij altijd had, met de P4-reden erbij.
+- `choiceKeyGuard.test.ts` — de ZESENDERTIGSTE keuze-sleutel `coilSnapDcrCeiling` (52 sleutels,
+  36/5/11). De VIERDE zonder polish-tweeling, om dezelfde reden als de sleutel waarvan hij wordt
+  afgeleid: de fits reizen binnen `coilDcrModel`. **En de enige keuze-sleutel die geen corpus kán
+  bewegen** — de snap draait ná de tune, en dát is wat E-4 toestond hem zonder regeneratie te
+  repareren.
+- `shortlist.test.ts` (+2) — de lijst zegt sinds E-4 wanneer er méér haalbaar was dan er past
+  ("N designs met every requirement; the list holds M, chosen for spread"), en zegt het NIET
+  wanneer alles past. Zonder die tweede helft is de noot ruis in plaats van een bevinding. A5e.3c
+  was de eerste regeneratie waar het bijt: elf haalbaar, tien bevroren, en de lijst zweeg.
+- **In `App.tsx`:** de legenda "Combined-curve color = phase alignment" hangt sinds E-4 aan
+  `integration` en niet alleen aan `!soloDriver`. Op een drieweg is `integration` null (het is een
+  twee-driver-grootheid) en de somcurve bleef één kleur terwijl de legenda een kleuring beloofde —
+  live nagemeten op de LP-1-run vóór de wijziging. Wat een drieweg wél doet stond er al: een score
+  per overname in de kop, en de FASE-chart die haar curve wél kleurt.
+- **In `EngineV2Panel.tsx`:** de voet meldde dat componentgrenzen "do not follow a catalogue's
+  span" terwijl A5e.3b de spanwijdte van de gestelde familie juist een zoekgrens op de laagste weg
+  maakte. Hij noemt sindsdien wat er nog open is: de spanwijdte bindt geen andere weg, en de
+  stapel is een gestelde uitzondering die niemand gesteld heeft.
 
 ### E-3b-guards (de app stuurt N=2 door dezelfde v2-deur als N=3; alleen UI- en clientlaag)
 - `src/lib/optimClient.ts` — **`runScanV2`: ÉÉN gepoolde v2-scan, twee routes.** `runChain3ScanV2` en het nieuwe

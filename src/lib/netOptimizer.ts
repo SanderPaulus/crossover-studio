@@ -22,7 +22,7 @@ import {
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
-import { catalogFamilyOf, dcrOf, roundDcr, stampCoilDcr, type CoilDcrFit, type CoilDcrModel } from './coilDcr.ts';
+import { catalogFamilyOf, dcrOf, roundDcr, snapDcrCeilingOhm, stampCoilDcr, type CoilDcrFit, type CoilDcrModel } from './coilDcr.ts';
 import { floorCurve, type FloorShape } from './impedanceFloor.ts';
 import { ampFloorSlackOhm, minImpedanceAt } from './impedanceFloor.ts';
 import {
@@ -387,6 +387,34 @@ export interface NetOptimizeOptions {
    * resonance of 1.99 Ω and one that clears the floor (M-1 diagnosis).
    */
   coilDcrModel?: CoilDcrModel;
+  /**
+   * E-4 — WHOSE OPINION OF "ENOUGH COPPER" THE CATALOGUE SNAP OBEYS.
+   *
+   * `'branch'` (the default, and every v1 route) is the ceiling the snap has
+   * always used: `branchDcrBudgetOhms` from the branch driver's own minimum
+   * |Z| and the source-resistance tier, split over the branch's series coils
+   * by L^0.65. It knows nothing about a stated coil family, because it
+   * predates A5e.3.
+   *
+   * `'family'` is the E-4 form and it only means anything beside
+   * `coilDcrModel`: each coil's ceiling is the DCR ITS OWN family's fit
+   * predicts at its inductance, widened by that family's largest residual
+   * (`snapDcrCeilingOhm`) — the same copper the SEARCH already designed with
+   * and every gate already judged. A coil without a family keeps the branch
+   * ceiling, so a run that states a family for one way and not another is
+   * exactly as mixed as it says it is (P4).
+   *
+   * WHY IT IS A CHOICE AND NOT POLISH (A3j): it decides which PARTS may be
+   * bought for a delivered design, and casus 1 is the measurement — the
+   * stated 1.4/1.0 mm air cores put 1.82 Ω of honest copper on the series
+   * path, the branch budget allows 0.39 Ω, and the snap refused a network the
+   * whole search had been told to build. It changes nothing about the search
+   * itself: the snap runs AFTER the tune, so no corpus and no search box move.
+   *
+   * The source-resistance limit stays what it was — a gate on the SNAPPED
+   * network (M-E), never a snap budget.
+   */
+  coilSnapDcrCeiling?: 'branch' | 'family';
   /** Target ACOUSTIC slopes beside the crossing (dB/oct) — same steering as
    *  the design optimizer, so the tuner keeps the achieved orders. In 3-way
    *  `mid`/`tweeter` steer the TOP pair (their historical meaning: lower and
@@ -4763,6 +4791,20 @@ export function optimizeNetworkValues(
     }
     const dcrCeilFor = (q: VxpPart): number | undefined => {
       if (q.type !== 'Inductor') return undefined;
+      /* E-4 — A COIL WITH A STATED FAMILY IS JUDGED BY THAT FAMILY. The search
+       * designed this coil with its family's copper (`refreshDcr`, A5e.3) and
+       * every gate read that number; the branch budget below is a v1 opinion
+       * that predates the family and refuses the design's own wire. Only when
+       * the run asks for it, and only for a coil the model actually named —
+       * everything else falls through to the ceiling it always had (P2/P4). */
+      if (opts.coilSnapDcrCeiling === 'family') {
+        const fit = dcrFitById[q.partId!];
+        const henry = q.params.find((p) => p.name === 'L')?.value;
+        if (fit && henry !== undefined) {
+          const ceil = snapDcrCeilingOhm(henry * 1e-3, fit); // mH → H, the reader's own conversion (vxpNetwork.ts)
+          if (ceil !== null) return ceil;
+        }
+      }
       const models = bus.driversOf(q.partId!);
       if (models.length === 0) return undefined;
       const w = coilWeight(q);

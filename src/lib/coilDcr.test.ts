@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deserializeCatalog } from './catalogFile.ts';
-import { catalogParts, coilDcr, pickCandidates, setCustomSeries, type CatalogPart } from './catalog.ts';
+import { branchDcrBudgetOhms, catalogParts, coilDcr, pickCandidates, setCustomSeries, type CatalogPart } from './catalog.ts';
 import {
   catalogFamilyOf,
   coilDcrInventory,
@@ -43,6 +43,7 @@ import {
   waysOfElements,
   type CoilDcrFit,
   type CoilDcrModel,
+  snapDcrCeilingOhm,
 } from './coilDcr.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import type { VxpCrossover, VxpPart } from './parsers/vxp.ts';
@@ -310,5 +311,83 @@ describe('A5e.3 — the declaration and the fingerprint', () => {
     expect(k(m1)).not.toBe(k(m2));
     expect(JSON.stringify(coilDcrModelKey(m1))).not.toBe(JSON.stringify(coilDcrModelKey(m2)));
     expect(coilDcrModelKey(undefined)).toBeNull();
+  });
+});
+
+describe('E-4 — the snap ceiling a stated family sets', () => {
+  /* WHY THIS EXISTS, and it is a measurement and not a preference.
+   *
+   * The catalogue snap has always carried a DCR ceiling per coil: the v1
+   * `branchDcrBudgetOhms`, from the branch driver's own minimum |Z| and the
+   * source-resistance tier, split over the branch's coils by L^0.65. It
+   * predates A5e.3 by every commit that matters. Since A5e.3 the SEARCH
+   * designs with the copper of a family the DESIGNER stated, and every gate
+   * and inversion reads that copper — so handing the delivered network to a
+   * budget that never heard of the family is two answers to one question.
+   *
+   * LP-1 measured the consequence in the browser: casus 1's stated 1.4 mm and
+   * 1.0 mm air cores put 1.82 Ω of honest copper on the series path against a
+   * 0.39 Ω branch budget, and the snap REFUSED the network the search had
+   * been told to build with exactly that wire.
+   *
+   * `snapDcrCeilingOhm` is the other answer: the DCR the coil's OWN family
+   * predicts at its inductance, widened by that family's largest residual. */
+  const imported = deserializeCatalog(readFileSync(V8, 'utf-8'));
+  const fits = fitCoilDcrFamilies(imported.parts);
+  const byId = new Map(fits.map((f) => [f.family, f]));
+
+  it('is the fit widened by the family\'s own worst LOG residual — by hand', () => {
+    const f = fitCoilDcrFamilies(paperFamily())[0];
+    const henry = 4e-3;
+    const at = dcrOf(henry, f)!;
+    expect(snapDcrCeilingOhm(henry, f)).toBeCloseTo(at.ohm * Math.exp(f.maxPct / 100), 12);
+    // An exact power law has no residual, so its ceiling IS its fit.
+    expect(f.maxPct).toBeLessThan(1e-6);
+    expect(snapDcrCeilingOhm(henry, f)).toBeCloseTo(at.ohm, 12);
+  });
+
+  it('admits EVERY SKU of the family it describes — the claim the fix rests on', () => {
+    /* A ceiling that refused the family's own worst-fitting part would refuse
+     * the catalogue while claiming to describe it. This is why the widening is
+     * `maxPct` and not `rmsPct`, and it is asserted rather than argued. */
+    let checked = 0;
+    for (const p of imported.parts) {
+      if (p.kind !== 'L' || !(p.seriesR > 0)) continue;
+      const f = byId.get(catalogFamilyOf(p));
+      if (!f) continue;
+      const ceil = snapDcrCeilingOhm(p.value, f);
+      expect(ceil, p.id).not.toBeNull();
+      expect(p.seriesR, `${p.id}: ${p.seriesR} Ω against a ceiling of ${ceil}`).toBeLessThanOrEqual(ceil! * (1 + 1e-9));
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(2000);
+  });
+
+  it('and it is the LOOSER of the two on casus 1\'s stated wire — which is the finding', () => {
+    /* THE COUNTER-PROOF. Without it "the family ceiling admits the family" is
+     * also true of a ceiling that admits everything: the point is that the two
+     * ceilings disagree, on the wire this project actually states, at the
+     * inductances its networks actually carry.
+     *
+     * The branch budget is read at casus 1's own woofer pair — Re-like minimum
+     * |Z| 3.17 Ω, the measured figure the case book records for the amplifier
+     * floor — with the source-resistance tier the v2 route states. */
+    const f14 = byId.get('jantzen|air core wire coil|1.4')!;
+    const branch = branchDcrBudgetOhms(3.17, 1.0); // P6-OK: the case book's own measured minimum |Z| and the v1 source tier
+    // Two series coils on the woofer way, as every live netlist carries.
+    for (const mH of [2.19, 3.0, 5.2]) {
+      const family = snapDcrCeilingOhm(mH * 1e-3, f14)!;
+      expect(family, `${mH} mH`).toBeGreaterThan(branch / 2);
+    }
+    // ...and the honest copper of the largest of them is over the WHOLE branch
+    // budget on its own: that is the refusal LP-1 met.
+    expect(dcrOf(5.2e-3, f14)!.ohm).toBeGreaterThan(branch);
+  });
+
+  it('says nothing when there is no inductance to say it about (P4/F0)', () => {
+    const f = fitCoilDcrFamilies(paperFamily())[0];
+    expect(snapDcrCeilingOhm(0, f)).toBeNull();
+    expect(snapDcrCeilingOhm(-1, f)).toBeNull();
+    expect(snapDcrCeilingOhm(Number.NaN, f)).toBeNull();
   });
 });

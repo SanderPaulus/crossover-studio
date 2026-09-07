@@ -302,6 +302,17 @@ de app byte-identiek aan vóór F1.
    doctrine van "één ontwerp" naar "een regel" brengt — en het is ook wat
    verschillende punten hierboven pas beslisbaar maakt (het EQ-budget-omslagpunt,
    de degeneratiedrempel, X als meting). Zie `.claude/skills/casus-toevoegen`.
+   **En sinds E-4 hangt er één engine-besluit aan, met de meting er al bij: de
+   A5d.6-inversie `bump-series-l` is niet de inverse van de M-D-metriek** — zij
+   modelleert de weg als een kale serie R+L waar M-D het echte netwerk oplost,
+   en over 161 bevroren netlists staan er NEGENENZESTIG boven hun plafond én
+   binnen hun budget (Δ tot 8,7 dB), nul andersom. De doos is dus systematisch
+   te streng en het corpus is kleiner dan het had kunnen zijn. Twee opties, elk
+   één regeneratie per arm: de inversie vervangen door de netwerk-opgeloste bult
+   (één functie, twee lezers — duurder per evaluatie), of het plafond een zachte
+   grens maken en de M-D-poort de enige autoriteit laten (goedkoper per
+   evaluatie, meer evaluaties). Casusboek E-4 draagt de verwachting per arm en
+   de kolom die ze scheidt.
 7. **De zoektocht op de eigen kruispunten** (A5e.3c): de tuner-hook oordeelt M-C
    op de passbands van het zaad en het geleverde netwerk wordt daarna op zijn eigen
    kruispunten geweigerd — drie van veertien in A5e.3c. Beide conventies in de

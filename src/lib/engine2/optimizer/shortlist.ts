@@ -311,6 +311,20 @@ export function buildShortlist<T>(
     .sort((a, b) => (a.sortKey === b.sortKey ? a.index - b.index : a.sortKey - b.sortKey))
     .map((p) => p.item);
 
+  /* E-4 — SAY IT WHEN MORE QUALIFIED THAN FIT. `selectDiverse` keeps `size`
+   * designs out of everything feasible and picks them for SPREAD, so on a
+   * field larger than the list some designs that met every requirement are not
+   * rows. A5e.3c was the first regeneration where that happened — eleven
+   * qualified, ten were frozen — and the list said nothing at all, which reads
+   * as "eleven was all there was". The note is presentation, like the ordering
+   * below it: nothing downstream may branch on it. */
+  if (feasible.length > rows.length) {
+    notes.push(
+      `${feasible.length} designs met every requirement; the list holds ${rows.length}, chosen ` +
+        'for spread across topology classes — the rest are in the export.',
+    );
+  }
+
   const rejected: ShortlistRejection[] = candidates
     .filter((c) => c.rejection)
     .map((c) => ({

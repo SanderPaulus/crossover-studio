@@ -81,7 +81,23 @@ describe('E-3 casus 1b — the record of the two-way run agrees with the fixture
   it('the declaration the generator carried is the declaration the fixture builds today, key for key', () => {
     const c = field.field.candidates[field.field.candidates.length - 1];
     const decl = casus1bV2Declaration(c, gridded.safety);
-    expect(Object.keys(decl.declaration.stated).sort()).toEqual(HERKOMST.meetopstelling.beschermingen_via_kandidaat);
+    /* E-4 — THE RECORD IS OLDER THAN ONE KEY, AND SAYS SO RATHER THAN BEING
+     * REWRITTEN (the V15 bridge form). `coilSnapDcrCeiling` is derived from
+     * `coilDcrModel`, which this run states, so the fixture declares it today
+     * and the recorded run did not. Rewriting the record would need the
+     * generator, and the generator would change nothing it records: this
+     * casus runs with `catalogSnap: false`, so the key cannot reach a snap
+     * that never happens and no delivered netlist moves (the `[bytes]` run
+     * below is what proves that, and it reproduces). Naming the delta here
+     * keeps the claim exact in both directions — a key that appears without
+     * being named fails, and so does one that stops appearing. */
+    const SINCE_THE_RECORD = ['coilSnapDcrCeiling'];
+    expect(Object.keys(decl.declaration.stated).sort()).toEqual(
+      [...HERKOMST.meetopstelling.beschermingen_via_kandidaat, ...SINCE_THE_RECORD].sort(),
+    );
+    for (const k of SINCE_THE_RECORD) {
+      expect(HERKOMST.meetopstelling.beschermingen_via_kandidaat, `${k} is in the record after all`).not.toContain(k);
+    }
     expect(stableJson(decl.chainDeclaration.stated)).toBe(stableJson(HERKOMST.meetopstelling.ketenverklaring.stated));
     /* The two E-3 readings that made this route usable, as the record shows
      * them: the search smoothing is stated (and reaches the vf design step),

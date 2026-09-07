@@ -19563,8 +19563,16 @@ export default function App() {
                 solid dot for EQ freq/gain, scroll on it for Q.
               </p>
             )}
-            {/* Alignment coloring compares two drivers — nothing to color solo. */}
-            {!soloDriver && (
+            {/* E-4 — THE LEGEND ONLY SPEAKS WHERE THE COLOURING IS APPLIED.
+                Alignment colouring compares two drivers, so there is nothing to
+                colour solo — and `integration` is null on a THREE-WAY (it is a
+                two-driver quantity; a three-way is scored per handover instead,
+                in the headline above and on the phase chart, which does carry
+                the colouring). Until E-4 this legend rendered there too, over a
+                curve in one flat colour: a promise the chart was not keeping,
+                and the kind of thing P4 forbids the app to say about its own
+                numbers. Measured on the LP-1 run before it was changed. */}
+            {!soloDriver && integration && (
             <div className="align-legend">
               <span className="align-title">{t('Combined-curve color = phase alignment:')}</span>
               {TIER_ORDER.map((c) => (

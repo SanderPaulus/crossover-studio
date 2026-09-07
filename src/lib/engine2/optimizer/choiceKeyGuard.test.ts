@@ -161,9 +161,17 @@ describe('F4c — every tuner option has a class', () => {
     // inside the value on the V51b rule (a mode without its numbers means
     // nothing), and they are catalogue data, not a measurement the run holds
     // elsewhere. Split becomes 35/5/11.
-    expect(keys.length).toBe(51);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(51);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([35, 5, 11]);
+    // 52 since E-4 added `coilSnapDcrCeiling` (choice — WHOSE opinion of
+    // "enough copper" the catalogue snap obeys: the v1 branch budget, or the
+    // coil's own stated family widened by that family's residual). The FOURTH
+    // without a polish companion, and for the same reason as the key it is
+    // derived from: the fits travel inside `coilDcrModel`. It is the one
+    // choice key that cannot move a corpus — the snap runs AFTER the tune,
+    // which is what let E-4 repair it without a regeneration.
+    // Split becomes 36/5/11.
+    expect(keys.length).toBe(52);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(52);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([36, 5, 11]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -288,7 +296,7 @@ describe('F4c — every tuner option has a class', () => {
      * compares against. Folding them together would make "watch the full band
      * against a stated requirement" unsayable. */
     expect(CHOICE_KEYS).toContain('safety');
-    expect(CHOICE_KEYS.length).toBe(35);
+    expect(CHOICE_KEYS.length).toBe(36); // E-4: coilSnapDcrCeiling
     expect(GREY_KEYS.length).toBe(5);
     expect(POLISH_KEYS.length).toBe(11);
   });
