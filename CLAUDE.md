@@ -48,6 +48,13 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná I-1 (08-09-2026) gemeten op 449 s — 163 bestanden (162 geslaagd, 1 overgeslagen), 1888 tests
+    (1885 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
+    dev-server gestopt.** +1 BESTAND (`v2InputRegister.test.ts`, 18 claims) en +18 tests, en die twee
+    getallen zijn HETZELFDE getal: het corpus is niet geregenereerd, dus geen enkele `it.each` over
+    het levende corpus beweegt en de delta is precies de inhoud van het nieuwe bestand. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 449 tegen C-2's 458 s is dezelfde laag op
+    dezelfde machine.
     **Ná C-2 (08-09-2026) gemeten op 458 s — 162 bestanden (161 geslaagd, 1 overgeslagen), 1870 tests
     (1867 geslaagd, 3 overgeslagen), in één keer groen, gedraaid ná de twee regeneraties op een verder lege
     machine.** +2 BESTANDEN sinds E-4 (`goldenCasus2.test.ts` 14 claims,
@@ -2669,6 +2676,67 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   het zegt het zelf" leeft nu alleen in `derivation` en in de reden-zin, niet in het type. Benoemd, niet
   gerepareerd: een nieuwe `DataSource` raakt `DATA_SOURCE_LABEL`, `describeSources` en het projectbestand, en dat
   is geen bugfix meer.
+
+### I-1-guards (elke invoer gelabeld; het paneel geordend op die labels; alleen UI/ordening)
+- `src/lib/v2InputRegister.ts` — **het REGISTER: élke invoer die de v2-route kan bereiken, gefiled onder EXACT
+  vier labels** (NOODZAKELIJK / OORDEEL-WAPENEND / NICE TO HAVE / V1-ERFGOED), met per rij waar hij staat, hoe hij
+  reist (state → payload → lezer), wat leeg betekent en waar de ontwerper het getal vandaan haalt. Data en geen
+  documentatie, in de vorm die `choices.ts` één laag lager al draagt: het paneel leest er zijn koppen, zijn
+  leeg-hulptekst en zijn v1-lade uit, de test leest er zijn claims uit, en een sleutel die aan het formulier
+  wordt toegevoegd zonder rij breekt de build. Geen engine-import (de toggle-regressiescan laat alleen de
+  UI-instappunten in `engine2/`). **De inventaris is tegen de CODE gecontroleerd** — `worker.ts` en
+  `scanRequest.ts` zijn de autoriteit over wat de grens oversteekt, nooit een commentaar.
+- **VIJF v1-KNOPPEN DIE DE v2-ROUTE NIET LEEST, en vier ervan waren ongemarkeerd** (E-2 markeerde alleen
+  "Design for … dB", V49). (1) **Error smoothing** — de kandidaat verklaart `errorSmoothOct` ONVOORWAARDELIJK
+  als `SEARCH_SMOOTHING_OCTAVES` (0) en `withDeclaredSearchSmoothing` schrijft die waarde op de tweewegroute
+  óók terug in de ketensettings, dus de select bereikt geen enkele lezer (V38-fix). Dat is de ergste van de
+  vier: **V38-fix MAT die sleutel op tot 2,45 dB geleverde rimpel** — daarom verhuisde hij van POLISH naar
+  CHOICE — en de app wist het al op één plek (`v2Smoothing`, de F3c-gladdingsregel, leest sinds V38-fix
+  `SEARCH_SMOOTHING_OCTAVES` zodra v2 gekozen is), twaalfduizend regels van het veld vandaan. (2) **HP/LP
+  preference** (laag én hoog) — `chainInputFor` overschrijft `structureLow/High` met de uitlijning die A5d.3
+  afleidde, dus de `??`-terugval vuurt nooit zolang er een kandidaat is (F4d). (3) **Scan strategy** —
+  overgeslagen mét een notitie, maar die notitie staat in de RUN, ná de klik. (4) **BOM cap per channel** —
+  bereikt uitsluitend `rankChain3Results` en dus de v1-scantabel; geen v2-poort, -budget, -eis of shortlist
+  leest ooit een prijs. **Alle vier gelden zolang er een A5d.3-veld gegenereerd wordt**; in de terugval waar
+  geen venster afgeleid kan worden reist er geen verklaring mee en leest de run ze alsnog — die terugval
+  schreeuwt zichzelf al uit in de run-notities.
+- **TWEE BESTAANDE CLASSIFICATIES ZIJN HET NIET EENS, en dat is BENOEMD in plaats van gladgestreken.** E-2's
+  `V2_JUDGEMENT_KEYS` is de GHOST-regel (welk veld geen getal mag tonen dat het niet draagt); dit registers
+  klasse `judgement` is de WAPEN-regel (welk veld iets scherpstelt). Twee sleutels staan op E-2's lijst als
+  rapportageschaal en één daarvan wapent tóch: `amplifierPowerW` is sinds V51 het vermogen waarbij M-A/part
+  OORDEELT zodra er geen thermisch ontwerpvermogen gesteld is (gefiled als OORDEEL-WAPENEND, de strengste
+  lezing), `verticalWindowDeg` is een kolom en nooit een poort geweest (V20a, gefiled als NICE).
+  `GHOST_KEYS_FILED_AS_NICE` pint dat als BENOEMDE VERZAMELING en niet als telling — de V47/V48-les,
+  preventief: een complement groeit mee met het formulier. `JUDGEMENT_KEYS_WHERE_BLANK_DEFERS` doet hetzelfde
+  voor de ENE oordeelssleutel waar leeg niet ontwapent maar DELEGEERT (`resistorThermalPowerW`: M-A/part
+  oordeelt dan bij het continue vermogen, V50, en de poortregel zegt bij welk vermogen hij las).
+- `src/lib/v2InputRegister.test.ts` (18 claims) — twee helften. De DATA-helft: élke formuliersleutel heeft een
+  rij, élke rij één van vier labels, ids uniek, élke oordeelsrij NEGEERT iets en belooft nergens een default
+  (met de tegenproef dat de run-instellingen, géén oordeelsrijen, juist wél een gepubliceerde standaard noemen),
+  élke v1-rij draagt haar notitie en géén andere klasse doet dat, en de notitie is null op v1. De PANEEL-helft
+  is een BRONSCAN (het `v2Settings`/`selection`-idioom, en de UI-1-les één laag hoger): de vier koppen in de
+  volgorde van het register, de vijf oude koppen weg, de v1-lade een `<details>` ZONDER `open` binnen
+  `{engineV2Enabled && (`, `{v2Empty(key)}` bij élk veld met een rij, `{v1Legacy(id)}` bij élke v1-knop.
+  **Nagemeten dat de scans kunnen falen:** één `v2Empty` weg, één `v1Legacy` weg en `open` op de lade geeft
+  drie rode claims met naam.
+- **In `App.tsx`: `v2Empty(key)` toont de leeg-betekenis ALLEEN terwijl het veld leeg is** — een ingevuld
+  paneel zegt niets dat het niet hoeft te zeggen, een leeg veld zegt precies wat zijn leegte kost; het is
+  dezelfde zin die het register aan de tests geeft. `v1Legacy(id)` is de generalisatie van `designLevelNote`,
+  dat er precies één markeerde; de rij `excursionSpl` LEEST die functie in plaats van haar zin over te typen
+  (één huis, twee lezers), zodat `v2Settings.test.ts`' pin blijft staan. **De v1-velden zijn NIET naar de lade
+  verplaatst en NIET `disabled`:** verplaatsen zou één veld op twee plaatsen zetten afhankelijk van een vlag
+  (de faalvorm die dit project herhaaldelijk betaald heeft), en uitzetten zou onwaar zijn in de terugval waar
+  drie van de vier alsnog gelden.
+- **`V2_MINIMAL_SET` — de kortste route naar een eerste verkenning:** de zeven NOODZAKELIJK-rijen plus ÉÉN
+  gestelde versterkervloer. De verwachte set (metingen + posities + diameters + één vloer) klopt, met één
+  toevoeging die de code afdwingt: de MEETVENSTERS — zonder geldigheidsvloer weigert v1 de run ronduit (P-1)
+  en berekenen de verankerde gaps niets (UI-1). Wat de verkenning dan wél en niet oordeelt staat in casusboek
+  I-1 §3, en de shortlist zegt het zelf (`describeFieldMode` leest de modus van het VELD af, de niet-gestelde
+  eisen drukken "— no requirement stated" af, en de poortkolom scheidt `off` / `not judged` / `inside`).
+- **DE VOLLE RUN IS BIJ I-1 NIET GEDRAAID**, met de E-2/E-3b-afweging: geen engine-, poort-, budget-, venster-
+  of corpuswijziging, en de twee byte-baselines die dát bewaken (`f4cRegression`, `workerRouteRegression`)
+  draaien in de snelle laag en reproduceerden. De drie live ketenruns zouden een corpus reproduceren dat deze
+  sessie niet aangeraakt heeft.
 
 ### C-2-guards (de synthetische casus, en de drie besluiten van de laatste regeneratie)
 - `src/lib/engine2/goldenCasus2.test.ts` (14 claims, nieuw) — **de acceptatie-autoriteit van casus 2, en de enige

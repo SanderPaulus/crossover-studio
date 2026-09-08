@@ -7380,6 +7380,380 @@ wélke van de twee de rapportagewaarde hoort te zijn is een besluit over de scha
 (4) M-C route 1 op een reflexkast is +43 % conservatief (C-2/B3); een reflex-eigen excursieroute is een
 metriekwijziging. (5) Een ECHTE tweede meetset blijft het open punt dat casus 2 niet vervangt.
 
+### I-1 — elke invoer van de v2-route geïnventariseerd en gelabeld, en het expertpaneel heringedeeld op die labels (08-09-2026, alleen UI/ordening; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding (Sander).** Het Filter-kopje in expert mode komt ingewikkeld over en het is niet te
+zien welk veld welk regime voedt. Dat is geen klacht over dichtheid: het paneel toont vier
+werkelijk verschillende soorten getal als velden van gelijk gewicht — een meting zonder welke er
+geen run is, een grens die alleen bestaat omdat de ontwerper hem stelde, een datasheetgetal dat een
+oordeel verrijkt zonder te blokkeren, en een v1-knop die deze route niet leest. Ze zien er identiek
+uit, en de laatste soort is de gevaarlijke: wie eraan draait denkt een run te sturen die hem nooit
+ziet.
+
+**Wat er gebouwd is, en wat NIET.** Eén nieuw bestand (`src/lib/v2InputRegister.ts`, het register
+als DATA), één nieuw testbestand, vier groepskoppen in plaats van vijf ad-hoc koppen, de
+leeg-betekenis naast elk leeg veld, en een ingeklapte lade met de v1-knoppen. **Geen enkel veld is
+verplaatst, geen enkele regel logica is verhuisd en geen enkel getal is aangeraakt.** De byte-
+baselines (`f4cRegression`, `workerRouteRegression`), `toggleRegression`, `p6Lint` (beide scopes) en
+`ciLayer` zijn groen; het corpus, de vensters en de poorten zijn onaangeroerd.
+
+---
+
+#### 1 — DE INVENTARIS (het hoofdproduct)
+
+Élk invoerveld dat de v2-route kan bereiken, gecontroleerd **tegen de code** — `worker.ts` en
+`scanRequest.ts` zijn de autoriteit over wat de grens oversteekt, nooit een commentaar — en gefiled
+onder exact vier labels. De tabel hieronder is gegenereerd uit `v2InputRegister.ts`, dat het levende
+huis is; deze afdruk is de gedateerde stand van 08-09-2026.
+
+**NOODZAKELIJK** (7) — paneelkop: *Engine v2 — 1. necessary (no run without it)*
+
+| veld | waar het staat | waar het reist | leeg | bron |
+| --- | --- | --- | --- | --- |
+| **On-axis response per way (FRD)** | Drivers tab — measurement slots | parseFrd → AdapterBranch.onAxis → ingest → report.predesign.windowInputs → buildCandidateField | fewer than two responses means no adjacent pair, so no A5d.3 window and no candidate field; the run falls back to the v1 generator and says so in its notes. | meting |
+| **Measurement window in the file header (or the A5a window fields)** | the FRD header itself; Drivers tab → Engine v2 — measurement → “Window (no header)” | parseArtaHeader / mergeBlock → validity.ts → the judged band and every window floor (A5b.1) | the response has no floor it may be believed at, the anchored gaps refuse to compute, and v1 refuses the run outright (“the window could not be read”). | meting |
+| **Impedance sweep per way (ZMA/LIMP)** | Drivers tab — impedance slots | parseZma → AdapterBranch.impedance → z-resonance → f_s, R_e, the gate grid, M-B/\|Z\|, M-C | no f_s, so no k·f_s window floor and no M-C; no measured \|Z\|, so M-B and the amplifier floor have nothing to read and every electrical gate reports “not judged”. | meting |
+| **Number of ways** | implicit — which measurement slots are filled | branches → roles → one window input per ADJACENT PAIR (report.ts, i + 1 < order.length) | nothing is assumed: two filled slots is a two-way run, three a three-way. | meting |
+| **Driver positions (x, y) — the centre-to-centre spacing** | Setup tab → Cabinet & drivers | cabinet.drivers[role].xMm/yMm → geometry.verticalMm → c-t-c → the lobing zones and M-F | no c-t-c, so no lobing zone and no vertical-lobing synthesis; the window keeps its other limits and says the spacing is unknown. | meting |
+| **S_d per driver** | Setup tab → driver card | sdCm2 → AdapterBranch.driverCard.sdCm2 → piston diameter → the beaming ceiling; M-C route 2 | no cone diameter, so the measured beaming ceiling falls back to the nominal size select and, without that too, the window has no directivity ceiling. | datasheet |
+| **Baffle width** | Setup tab → Cabinet & drivers | cabinet.baffleWidthMm → geometry.baffleWidthMm → the baffle step → the target curve transition | a stated bass plateau has a depth and no transition: the curve produces no offsets and names the half that was missing. | meting |
+
+**OORDEEL-WAPENEND** (22) — paneelkop: *Engine v2 — 2. judgement (a limit exists only because you state it)*
+
+| veld | waar het staat | waar het reist | leeg | bron |
+| --- | --- | --- | --- | --- |
+| **Amplifier min load** | Filters → Goals & weighting | ampMinLoadOhm → gateSettingsFor → GateSettings.ampMinLoadOhm → M-B/\|Z\| and the barrier | no floor is applied; the delivered impedance minimum is measured and only reported. | typeplaatje |
+| **Max dissipation %** | Filters → Engine v2 | engineV2Gates.maxDissipationFraction → GateSettings → M-A | M-A judges nothing; the percentage is still reported. | keuze |
+| **Min EPDR Ω** | Filters → Engine v2 | engineV2Gates.minEpdrOhm → GateSettings → M-B/EPDR | M-B/EPDR judges nothing; the EPDR minimum is still reported. | keuze |
+| **Max drive on f_s dB** | Filters → Engine v2 | engineV2Gates.maxDriveOnFsDb → GateSettings.maxDriveOnFsDb AND the candidate declaration (protectionRule: 'stated') AND the A5d.3(ii) order derivation | M-C judges nothing unless an excursion ceiling is derived, the order derivation stays unarmed on rule (ii), and the historic seed comparison stays in force. | keuze |
+| **max drive on f_s (per way)** | Drivers tab → Engine v2 — measurement | v2Meas[role].driveOnFsMaxDb → driveOnFsMaxDbByModel → GateSettings.maxDriveOnFsDbByDriver | nothing is stated for this way: the single M-C field above judges it, and blank there too leaves only a derived excursion ceiling — or nothing at all. | keuze |
+| **Amplifier peak power W** | Filters → Engine v2 | peakInputVolts(peak, nominal) → GateSettings.peakInputVolts → M-C v2.0 and M-L | no peak input voltage, so no derived excursion ceiling and no coil-current judgement; the stated dB figure alone judges M-C. | typeplaatje |
+| **Nominal load Ω** | Filters → Engine v2 | the other half of peakInputVolts — both are needed or neither counts | no peak input voltage, exactly as above: the peak power alone states nothing. | typeplaatje |
+| **X_max margin** | Filters → Engine v2 | ReportSettings → driveExcursion → ceilingDbReInput → the M-C limit and the window floor | no derived excursion ceiling; only a stated dB figure can judge M-C. | keuze |
+| **Amplifier power W** | Filters → Engine v2 | ReportSettings.amplifierPowerW → M-A watts AND, unless a thermal power is stated, the power M-A/part is JUDGED at | no watts anywhere — only M-A’s scale-free fraction — and M-A/part has no power to judge at. | typeplaatje |
+| **Resistor class W** | Filters → Engine v2 | GateSettings.resistorClassW → M-A/part (class × margin, or the snapped part’s own rating) | no allowance, so M-A/part judges nothing; the watts per resistor are still shown. | keuze |
+| **Resistor margin** | Filters → Engine v2 | the other half of the M-A/part allowance — class without margin arms nothing | no allowance, exactly as above: a class on its own states nothing. | keuze |
+| **Coil current class A** | Filters → Engine v2 | GateSettings.coilClassA → M-L (peak current per coil at the amplifier peak) | M-L judges nothing; the peak current per coil is still shown. Air cores never saturate. | keuze |
+| **Thermal design power W** | Filters → Engine v2 | GateSettings.resistorThermalPowerW → the power M-A/part reads (V51) | M-A/part judges at the amplifier power above; the gate row always says which power it read. | keuze |
+| **Level work on lowest way** | Filters → Engine v2 | engineV2Gates.lowestWayLevelWork → declareCandidateChainChoices → the design and synthesis steps, and the worker’s topology refusal | nothing is forbidden — absent, never a stated “allowed” — so the search keeps its own behaviour and may pad the lowest way down to the anchor. | keuze |
+| **Max series R on lowest way (Ω)** | Filters → Engine v2 (shown once “series R up to a maximum” is chosen) | the maximum that makes the mode a statement — discrete R plus every series coil’s DCR | the mode cannot be stated without its number, so the whole rule reads as not stated. | keuze |
+| **LF lift budget dB** | Filters → Engine v2 | BudgetSettings.lfBumpBudgetDb → the A5d.6 inversion (a soft ceiling since C-2) AND M-D on the delivered network | no ceiling is inverted and M-D judges nothing; the lift is still reported. | keuze |
+| **Max Q_es ×** | Filters → Engine v2 | BudgetSettings.qesMultiplierMax → the exact inversion R_s ≤ R_e·(q−1) → M-E | no bound on the series resistance in the lowest path; M-E is reported only. | keuze |
+| **Damping margin dB** | Filters → Engine v2 | BudgetSettings.dampingMarginDb → the A5d.4 pad inversion against the way’s own passband \|Z\| | no bound on how much attenuation a way may spend beyond its measured gap. | keuze |
+| **SPL window ±dB** | Filters → Engine v2 | the shortlist’s A5e.1 requirements — which finished designs you are shown | not asked; the value is shown beside every row and filters nothing. | keuze |
+| **Max phase error °** | Filters → Engine v2 | the shortlist’s A5e.1 requirements, judged PER handover | not asked; the value is shown beside every row and filters nothing. | keuze |
+| **Target curve** | Filters → Engine v2 — voicing (on the DESIGN, not the project) | activeDesign.targetCurve → V2RunSettings.targetCurve AND the candidate declaration (amplitudeReference) → what “flat” means for the search, the window and the RMS | flat is the neutral reference, not a missing answer — it is stated by being chosen. | keuze |
+| **Bass plateau depth dB** | Filters → Engine v2 — voicing | the depth half of the curve; the transition is the baffle step and is never stored | the curve produces no offsets at all and says which half was missing. | keuze |
+
+**NICE TO HAVE** (17) — paneelkop: *Engine v2 — 3. nice to have (enriches, never blocks)*
+
+| veld | waar het staat | waar het reist | leeg | bron |
+| --- | --- | --- | --- | --- |
+| **Bl** | Drivers tab → Engine v2 — measurement | v2Meas[role].blTm → driverCard → driveExcursion route 1 (x/V on the resonance) | no excursion ceiling for this way; M-C falls back to the stated dB figure, if any. | datasheet |
+| **M_ms** | Drivers tab → Engine v2 — measurement | the other half of route 1 — Bl and M_ms are needed together | no excursion ceiling for this way, exactly as above. | datasheet |
+| **X_max** | Setup tab → driver card | xmaxMm → driverCard.xMaxMm → the allowed voltage on f_s | no excursion ceiling; the excursion per volt is still derived and shown. | datasheet |
+| **measured at (V)** | Drivers tab → Engine v2 — measurement | responseDrive → driveExcursion route 2 (the independent x/V from the far field) | route 2 stays off and says the drive voltage is not documented; route 1 is unaffected. | meting |
+| **coil family** | Drivers tab → Engine v2 — measurement | coilFamilyByModel + the loaded catalogue’s fits → the candidate’s coilDcrModel → every coil carries its family’s DCR, in the solver and in every gate | this way’s coils are lossless in every judgement, and the report says so as a deviation from any real build. | keuze |
+| **measured R_e** | Drivers tab → Engine v2 — measurement | measuredReOhm → the A5c.1 hierarchy (above both sweep derivations) → M-E, the Q_es bound | R_e comes from the motional fit, or from the direct low-frequency reading, and says which. | meting |
+| **rotationally symmetric** | Drivers tab → Engine v2 — measurement | geometry.rotationallySymmetric → the M-F-final point-source assumption | not stated — three states, and this is one of them; M-F-final says which it used. | keuze |
+| **acoustic centre z** | Drivers tab → Engine v2 — measurement | v2Meas[role].zMm → geometry.verticalMm (in place of the baffle position) | the cabinet position is used, which is the right number for a flush-mounted driver. | meting |
+| **measured / intended wiring** | Drivers tab → Engine v2 — measurement | AdapterBranch.wiring → the level-work report (what N in series would deliver) | no wiring statement; a half-stated wiring is absent, and nothing is converted. | keuze |
+| **Woofer / mid nominal size** | Filters → Driver limits | diameterInch → the beaming ceiling when S_d gives no piston diameter | the window keeps its measured beaming ceiling, or has none and says so. | datasheet |
+| **Use real catalog parts** | Filters → Components | catalogSnap → the candidate declaration → the snap AFTER the tune; since E-4 it obeys the stated coil family’s own residual rather than the v1 branch budget | the design keeps continuous values; nothing is judged against a purchasable part. | keuze |
+| **Vertical window °** | Filters → Engine v2 | ReportSettings.verticalWindowDeg → the vertical-lobing synthesis (M-F-final) | the lobing synthesis stays off and says so. It is a column, never a gate. | keuze |
+| **Shortlist size** | Filters → Engine v2 | buildShortlist — how many designs the list holds, spread over topology and component space | the published default holds; since E-4 the list says when more designs qualified than fit. | keuze |
+| **Run seed** | Filters → Engine v2 | DeterminismSettings.seed → the run fingerprint (A5e.4) | the ONE field where blank does not mean off: the published default runs and is reported, because “no seed” would mean “not reproducible”. | keuze |
+| **Budget (evals)** | Filters → Engine v2 | DeterminismSettings.budgetEvaluations → the tuner’s iteration ceiling | the tuner’s own policy, exactly as a v1 run. A budget bounds effort, never acceptance. | keuze |
+| **Candidate field** | Filters → Engine v2 | fieldModeSettings → the chain budget and the position/alignment policies of the field | the exploration runs: a smaller field with the same requirements, gates and seed, and the shortlist says which mode made it. | keuze |
+| **Points per axis / handover candidates** | Filters → Crossover | scanSteps3 → fieldModeSettings(full) → chainBudget = steps^pairs | read by the FULL field only; an exploration uses its own chain budget and ignores this number. | keuze |
+
+**V1-ERFGOED** (5) — paneelkop: *v1 (not read by Engine v2)*
+
+| veld | waar het staat | waar het reist | leeg | bron |
+| --- | --- | --- | --- | --- |
+| **Error smoothing** | Filters → Goals & weighting | settings.errorSmoothOct → OVERWRITTEN by the candidate, which states SEARCH_SMOOTHING_OCTAVES unconditionally (declareCandidateChoices) and, on the two-way route, writes it back into the chain settings (withDeclaredSearchSmoothing) | v1 — not read by Engine v2 since V38-fix: the candidate states the search-smoothing width itself (0 — the summed curve every judgement reads). It is read only in the fallback where no A5d.3 window could be derived and no declaration travels. | keuze |
+| **HP/LP preference (low xo / high xo)** | Filters → Filter shape | settings.structureLow/structureHigh → OVERRIDDEN per candidate by the alignment A5d.3 derived (chainInputFor: alignmentOf(i) ?? settings.structureLow) | v1 — not read by Engine v2 since F4d: the candidate field derives the alignment and the order per handover, and the candidate overrides this. It applies only in the fallback where no A5d.3 window could be derived. | keuze |
+| **Scan strategy** | Filters → Crossover | skipped on the v2 route, with a note in the run notes | v1 — not read by Engine v2: the axis-by-axis sweep is a v1 way of GENERATING candidates, and on the v2 route the field comes from A5d. The run says so out loud when it skips it. | keuze |
+| **BOM cap per channel** | Filters → Targets | rankChain3Results → the v1 scan TABLE only; it reaches no gate and no shortlist | v1 — not read by Engine v2’s shortlist: it orders the v1 scan table beside it. No v2 requirement, gate or budget reads a price. | keuze |
+| **Design for … dB** | Filters → Driver limits | excursionFloorHz → the v1 physics window floor; the v2 window floor is M-C v2.0’s ceiling | v1 design level — not read by Engine v2 since V49; M-C v2.0 derives the excursion limit from the driver card and the amplifier peak | keuze |
+
+---
+
+#### 2 — WAT DE INVENTARIS GEVONDEN HEEFT
+
+**(a) VIJF v1-KNOPPEN DIE DE v2-ROUTE NIET LEEST, EN VIER ERVAN WAREN ONGEMARKEERD.** E-2 markeerde
+er één ("Design for … dB", V49). De andere vier lazen als v2-instellingen:
+
+| knop | wat v2 er werkelijk mee doet | sinds |
+| --- | --- | --- |
+| **Error smoothing** (select, echte default 1/12 oct) | de kandidaat verklaart `errorSmoothOct` ONVOORWAARDELIJK als `SEARCH_SMOOTHING_OCTAVES` (0); op de tweewegroute schrijft `withDeclaredSearchSmoothing` die waarde óók terug in de ketensettings, dus de select bereikt geen enkele lezer | V38-fix |
+| **HP/LP preference** (laag + hoog) | `chainInputFor` overschrijft `structureLow/High` met de uitlijning die A5d.3 afleidde (`alignmentOf(i) ?? settings.structureLow`), dus de `??` vuurt nooit zolang er een kandidaat is | F4d |
+| **Scan strategy** (as-voor-as / raster) | overgeslagen, mét een notitie — maar die notitie staat in de RUN, ná de klik, niet naast de knop | F4d |
+| **BOM cap per channel** | bereikt `rankChain3Results` en dus uitsluitend de v1-scantabel; geen v2-poort, -budget, -eis of shortlist leest ooit een prijs | F3 |
+
+De ergste is de eerste, en niet omdat zij het meest verborgen was: **V38-fix MAT dat deze sleutel
+tot 2,45 dB geleverde rimpel waard is** — dat is waarom hij van POLISH naar CHOICE verhuisde. Een
+select met die hefboom en een echte default, die op de route die de ontwerper draait niets doet,
+is precies de klasse fout die dit project elders met een testbestand bewaakt. **En de app WIST het
+al, op één plek:** `v2Smoothing` (de F3c-gladdingsregel) leest sinds V38-fix
+`SEARCH_SMOOTHING_OCTAVES` zodra de v2-optimizer gekozen is, met een commentaarblok dat de
+uitzondering benoemt. Die kennis stond twaalfduizend regels van het veld vandaan.
+
+**Eén eerlijke nuance, en zij staat in élke rij:** alle vier gelden zij zolang er een A5d.3-veld
+gegenereerd wordt. Kan er géén venster afgeleid worden, dan valt de v2-route terug op de
+v1-kandidaatgenerator, reist er geen verklaring mee, en leest de run deze knoppen alsnog. Die
+terugval schreeuwt zichzelf al uit in de run-notities op het moment dat hij gebeurt.
+
+**(b) TWEE BESTAANDE CLASSIFICATIES ZIJN HET NIET EENS, EN DAT IS NU BENOEMD IN PLAATS VAN
+GLADGESTREKEN.** E-2's `V2_JUDGEMENT_KEYS` en dit registers klasse `judgement` beantwoorden
+verschillende vragen: de eerste is de GHOST-regel (welk veld geen getal mag tonen dat het niet
+draagt), de tweede is de WAPEN-regel (welk veld iets scherpstelt). Twee sleutels staan op E-2's
+lijst als *rapportageschaal*, en één daarvan blijkt tóch te wapenen:
+
+- `amplifierPowerW` — een schaal én, sinds V51, het vermogen waarbij M-A/part OORDEELT zodra er
+  geen thermisch ontwerpvermogen gesteld is. Hier gefiled als OORDEEL-WAPENEND, de strengste van de
+  twee lezingen.
+- `verticalWindowDeg` — de verticale lobing-synthese is een kolom en is nooit een poort geweest
+  (V20a's blijvend verbod). Gefiled als NICE TO HAVE.
+
+Dat is de hele afwijking, uitgeschreven, en `GHOST_KEYS_FILED_AS_NICE` pint haar als BENOEMDE
+VERZAMELING en niet als telling — de V47/V48-les: een complement groeit mee met het corpus.
+
+**(c) ÉÉN OORDEELSVELD WAAR LEEG NIET ONTWAPENT.** `resistorThermalPowerW` leeg betekent niet
+"niets oordeelt", maar "M-A/part oordeelt bij het continue versterkervermogen" (V50's gedrag, dat
+V51 liet staan) — en de poortregel zegt bij élk oordeel bij welk vermogen hij las. Dat is nog steeds
+P4, maar het is een ándere zin, dus staat hij als `JUDGEMENT_KEYS_WHERE_BLANK_DEFERS` apart in
+plaats van in de vorm van de andere gewrongen te worden.
+
+**(d) P4 IS NAGELOPEN PER VELD EN HIJ KLOPT.** Elke poort met een gestelde grens en geen waarde
+leest `not judged` (UI-1), elke ongewapende poort `off` met "no limit set", elke niet-gestelde
+A5e.1-eis "— no requirement stated" (`requirements.ts`), en de weigeringen noemen de invoer die
+ontbrak. Wat ontbrak was niet de eerlijkheid maar de VINDBAARHEID: die zinnen staan in het
+rapportpaneel en in de shortlist, en de ontwerper leest ze pas ná een run van een half uur. Daarom
+staat de leeg-betekenis sinds I-1 náást het lege veld.
+
+**(e) DE NOODZAKELIJKE HELFT WOONT NIET IN DIT PANEEL.** Zeven van de zeven NOODZAKELIJK-rijen zijn
+metingen en geometrie, en die staan op de Setup- en Drivers-tabs. Het paneel kon daar niets aan
+doen behalve ernaar wijzen, en dat doet het nu — met per rij waar hij staat en wat zijn afwezigheid
+kost.
+
+---
+
+#### 3 — DE MINIMALE SET: de eerste verkenning in tien minuten
+
+`V2_MINIMAL_SET` = **de zeven NOODZAKELIJK-rijen plus één gestelde versterkervloer**, en niets meer.
+De verwachting uit de opdracht ("metingen + posities + diameters + één gestelde vloer") klopt, met
+één toevoeging die de code afdwingt en die de opdracht niet noemde: **de meetvensters**. Zonder
+geldigheidsvloer weigert v1 de run ronduit ("the window could not be read", zie P-1) en berekenen de
+verankerde gaps niets (UI-1); de FRD-header levert hem meestal zelf.
+
+Met precies die set draait een VERKENNING (`fieldMode` leeg = exploration): acht ketens, de
+venstercentra eerst, één uitlijning per overname. Op casus 1 is dat 2 × 3 = 6 kandidaten uit 33
+afgeleide, minuten tot een half uur in plaats van uren.
+
+**Wat zij dan WEL oordeelt.** De vensters zelf (A5d.3: geldigheid, k·f_s, breakup, directiviteit),
+de orde-afleiding, de M-B/|Z|-vloer op de gestelde ohm — inclusief de barrière als ZOEKDOEL (V30),
+want een gestelde vloer wapent hem — en het volledige rapport: rimpel, RMS tegen de doelcurve, M-K
+per overname, M-A-fractie, M-D, M-E, dissipatie, EPDR, min |Z|. De shortlist rangschikt en spreidt.
+
+**Wat zij NIET oordeelt, en dat zegt zij per rij.** M-A (geen percentage gesteld), M-B/EPDR, M-C
+(geen dB-getal én geen afgeleid plafond, want dat vraagt X_max, marge, Bl, M_ms, piekvermogen en
+nominale last), M-A/part en M-L (geen klasse, geen marge, geen piekingang), M-D en M-E (geen budget),
+de A5e.1-eisen (SPL-venster en fase: "no requirement stated"), en de topologie-regel op de laagste
+weg. De doelcurve is `flat` — en dat is de NEUTRALE referentie en geen ontbrekend antwoord.
+
+**En de shortlist zegt beide dingen zelf.** De modusregel erboven komt uit
+`describeFieldMode(field)` en leest de modus van het VELD af (`fieldModeOfParameters`), nooit van een
+select ernaast — "Exploration field — 6 of 33 derived candidates: chain budget 8, positions
+centre-first …, the same requirements as the full field", met de knop "Run the full field →"
+eronder. Sinds E-4 zegt zij er ook bij wanneer er méér ontwerpen kwalificeerden dan er passen. De
+eisen die niet gesteld zijn drukken hun waarde af met "— no requirement stated" ernaast, en de
+poortkolom `off` / `not judged` / `inside` / `EXCEEDED` scheidt "niet gevraagd" van "niet gekeken"
+van "gehaald".
+
+---
+
+#### 4 — HET PANEEL, HERINGEDEELD OP DE LABELS
+
+Vijf ad-hoc koppen ("hard gates", "search-space budgets", "requirements", "voicing", "run") zijn
+**vier** koppen geworden, in de volgorde van het register, en de koppen ZIJN de uitleg:
+
+1. `Engine v2 — 1. necessary (no run without it)` — geen velden, want die wonen elders: een
+   opsomming uit het register (`rowsOfClass('required')`) met per rij de tab die hem draagt en wat
+   zijn afwezigheid kost.
+2. `Engine v2 — 2. judgement (a limit exists only because you state it)` — élke gestelde eis, met
+   de vier oude koppen erin bewaard als *presentatie* (`v2-subcap`, cursief): hard gates,
+   search-space budgets, requirements, voicing.
+3. `Engine v2 — 3. nice to have (enriches, never blocks)` — het lobingvenster, de shortlist-grootte
+   en het runblok (seed, budget, veldmodus).
+4. `v1 (not read by Engine v2)` — een INGEKLAPTE `<details>`, gerenderd uit
+   `rowsOfClass('v1-legacy')`.
+
+Daarnaast twee dingen naast de velden zelf:
+
+- **`{v2Empty(key)}` — de leeg-betekenis, en alléén terwijl het veld leeg is.** Dat is de
+  ontwerpkeuze en geen besparing: een ingevuld paneel zegt niets dat het niet hoeft te zeggen, en
+  een leeg veld zegt precies wat zijn leegte kost. Het is dezelfde zin die het register aan de
+  tests en aan de opsommingen geeft, dus scherm en inventaris kunnen niet uit elkaar lopen.
+- **`{v1Legacy(id)}` — de v1-markering naast élke v1-knop**, de generalisatie van E-2's
+  `designLevelNote`, dat er precies één markeerde. Null op de v1-route, om dezelfde reden als daar:
+  met de vlag uit is het veld wat het altijd was.
+
+**Wat met opzet NIET gedaan is: de v1-velden VERPLAATSEN naar die lade.** Dat was de eerste lezing
+van de opdracht en zij is verworpen na één stap doordenken: "Error smoothing" hoort in v1 thuis in
+*Goals & weighting*, waar hij werkelijk gelezen wordt, dus verplaatsen zou betekenen dat één veld op
+twee plaatsen woont afhankelijk van een vlag — precies de faalvorm die dit codebestand herhaaldelijk
+betaald heeft (twee kruispuntafleidingen, twee fasematen, twee "is deze curve bruikbaar"-predicaten).
+Het veld blijft dus staan waar het staat, draagt zijn markering, en de LADE draagt de lijst met de
+reden. Eén huis voor het veld, één huis voor de uitleg.
+
+**De eerlijke prijs.** De leeg-betekenis maakt elk leeg veld twee regels hoog, dus een vers paneel
+is langer dan het was. Dat is de goede kant van de ruil — een vers paneel is precies het paneel
+waarin niemand weet wat de velden doen — en de regels verdwijnen stuk voor stuk zodra er iets in
+staat.
+
+**Browsercontrole (headless, dev-server).** Groepskoppen in de goede volgorde en met de woorden van
+het register; vier `v2-subcap`-regels; de lade aanwezig, `open === false`, gerenderd uit het
+register; 33 `v2-empty`-regels (zeven in de noodzakelijk-lijst, vijf in de lade, de rest naast lege
+velden); "Min EPDR Ω" leest *"empty — M-B/EPDR judges nothing; the EPDR minimum is still reported."*;
+zes v1-markeringen (vijf nieuw plus E-2's V49-regel). **Met de v2-toggle UIT: geen enkele markering,
+geen groep, geen lade** — de toggle-invariant zoals de ontwerper hem ziet. Geen console-fout.
+
+---
+
+#### 5 — HET I-3-VOORSTEL (specificatie voor de guided-sessie; hier NIET gebouwd)
+
+Guided mode kent de v2-route vandaag niet. Wat zij nodig heeft is niet een tweede paneel maar een
+VOLGORDE en een zin per veld in gewone taal. Beide staan hieronder; het register is de bron, en I-3
+hoort de zinnen daar te zetten (een `guided`-veld naast `emptyMeans`) in plaats van ze te
+hertypen.
+
+**De volgorde: van wat je hebt naar wat je wilt.** Metingen → de kast → je versterker → de grenzen
+van je drivers → hoe het gebouwd moet kunnen worden → hoe het moet klinken → hoe hard de zoektocht
+mag duwen → de run. Elke stap is af zonder de volgende: na stap 1–3 draait er een verkenning.
+
+**Stap 1 — wat je gemeten hebt.** *"Laad per weg de responsie en de impedantiesweep. De responsie
+zegt zelf tot hoe laag zij te geloven is (dat staat in de kop van het bestand); heeft zij die regel
+niet, dan vraag ik je het venster."* — Zonder twee responsies is er geen overname om te ontwerpen;
+zonder sweep weet ik de resonantie van je driver niet en kan ik hem niet beschermen.
+
+**Stap 2 — je kast.** *"Waar zitten de drivers, gemeten van hetzelfde punt? En hoe breed is het
+front?"* — De afstand tussen twee drivers bepaalt waar hun samenwerking scheef gaat in de hoogte;
+de breedte van het front bepaalt waar de bas zijn 6 dB verliest. *"Hoe groot is elke conus (S_d)?"*
+— daaruit volgt vanaf welke frequentie hij gaat bundelen, en dus hoe hoog hij nog mag overnemen.
+
+**Stap 3 — je versterker.**
+- *"Hoe laag mag de impedantie voor jouw versterker worden? Het typeplaatje zegt het; 4 Ω is
+  gebruikelijk."* — Vul je niets in, dan meet ik de dip wel maar keurt niemand hem af.
+- *"Hoeveel watt zet je er doorgaans op (continu)?"* — Zonder dit blijven alle vermogens
+  procenten in plaats van watt.
+- *"En wat is zijn korte piekvermogen, in welke last?"* (bv. de IHF-opgave) — die twee samen geven
+  de piekspanning waarbij ik excursie en spoelstroom beoordeel. Weet je ze niet: dan blijft die
+  beoordeling uit, en zeg ik dat.
+
+**Stap 4 — de grenzen van je drivers** (datasheet).
+- *"Hoe ver mag de conus lineair bewegen (X_max), en welk deel daarvan wil je op de resonantie
+  gebruiken?"* — een fractie onder 1 is gebruikelijk; fabrikanten meten X_max verschillend.
+- *"Bl en de bewegende massa M_ms?"* — daarmee reken ik uit hoeveel de conus per volt beweegt, en
+  dus hoe hoog deze weg minstens moet overnemen.
+- *"Wil je voor deze weg zelf een grens stellen aan de aandrijving op zijn eigen resonantie?"* —
+  bv. −20 dB onder zijn doorlaatband. Laat je het leeg, dan telt de afgeleide grens hierboven.
+
+**Stap 5 — hoe het gebouwd moet kunnen worden.**
+- *"Met welke weerstanden bouw je (hoeveel watt per stuk), en welk deel van die opgave mag hij
+  werkelijk verstoken?"* — een weerstand in een dichte kast zonder luchtstroom wordt heet op de
+  helft van zijn opgave; hoeveel je accepteert is jouw beslissing.
+- *"En bij welk vermogen luister je gemiddeld?"* — thermisch telt het gemiddelde, niet wat de
+  versterker kán.
+- *"Gebruik je spoelen met een kern? Wat is hun verzadigingsstroom?"* — luchtspoelen verzadigen
+  niet en worden nooit beoordeeld.
+- *"Mag de laagste weg een weerstand in zijn pad dragen?"* — een pad op de woofer kost warmte,
+  demping en impedantie; de vuistregel is: pad de mid of de tweeter, niet de woofer. Zeg je
+  "hooguit zoveel ohm", dan telt de DCR van de spoelen mee — koper is óók weerstand.
+
+**Stap 6 — hoe het moet klinken.**
+- *"Vlak, of met een basplateau?"* — vlak is de neutrale referentie en geen ontbrekend antwoord;
+  een plateau is de stemming van een luidspreker die tegen een wand komt te staan. *"Hoeveel dB
+  lager mag de bas dan zitten?"* — de OVERGANG vraag ik niet: die volgt uit de breedte van je front.
+- *"Hoeveel golving accepteer je (±dB), en hoeveel faseverschil bij een overname (°)?"* — dit
+  bepaalt WELKE afgemaakte ontwerpen je te zien krijgt, niets meer. Leeg = ik toon ze allemaal.
+
+**Stap 7 — hoe hard de zoektocht mag duwen** (alledrie mag leeg, en dan begrenst niets):
+*"Hoeveel extra laagversterking mag het filter maken (dB)?"*, *"Hoeveel mag de bronweerstand de
+Q_es van je woofer vermenigvuldigen?"*, *"Hoeveel demping mag een weg uitgeven bovenop zijn gemeten
+gevoeligheidsverschil?"*
+
+**Stap 8 — de run.** *"Eerst verkennen (minuten) of het volle veld (uren)?"*, *"Hoeveel ontwerpen
+wil je zien?"*, *"Zaad"* — dit is de ENE plek waar leeg niet 'uit' betekent: dan draait de
+gepubliceerde standaard en zeg ik welke.
+
+**Wat guided NIET hoeft te tonen:** de vier v1-knoppen uit de lade. Zij sturen deze route niet.
+
+---
+
+#### 6 — GUARDS
+
+- `src/lib/v2InputRegister.ts` — **het register als DATA, met twee lezers en geen tweede kopie.**
+  Het paneel leest er zijn koppen, zijn leeg-hulptekst en zijn v1-lade uit; de test leest er zijn
+  claims uit. Vier labels en niet vijf; élke rij zegt waar hij staat, hoe hij reist, wat leeg
+  betekent en waar de ontwerper het getal vandaan haalt. Geen engine-import, om dezelfde reden als
+  `v2Settings.ts`: de toggle-regressiescan laat alleen de UI-instappunten in `engine2/`.
+  **De ene zin die al een huis had wordt gelezen en niet overgetypt:** de rij `excursionSpl` draagt
+  `designLevelNote(true)`, E-2's eigen functie, die `v2Settings.test.ts` al pint.
+- `src/lib/v2InputRegister.test.ts` (18 claims) — twee helften. De DATA-helft: élke sleutel van het
+  formulier heeft een rij; élke rij is gefiled onder één van exact vier labels en élk label wordt
+  gebruikt; de ids zijn uniek; élke oordeelsrij NEGEERT iets en belooft nergens een default (met de
+  tegenproef dat de run-instellingen, die géén oordeelsrijen zijn, juist wél een gepubliceerde
+  standaard noemen); élke v1-rij draagt haar v1-notitie en géén andere klasse draagt er een; de
+  notitie is null op v1. De PANEEL-helft is een BRONSCAN in het idioom van `v2Settings.test.ts` en
+  `selection.test.ts` — de UI-1-les één laag hoger, waar de laag ná `handleV2Request` buiten élke
+  test lag en maandenlang het verkeerde deed: de vier koppen staan in de volgorde van het register,
+  de vijf oude koppen zijn weg, de v1-lade is een `<details>` ZONDER `open` en staat binnen
+  `{engineV2Enabled && (`, élk veld met een rij rendert `{v2Empty(key)}`, en élke v1-knop draagt
+  `{v1Legacy(id)}`. **Nagemeten dat de scans kunnen falen:** één `{v2Empty('minEpdrOhm')}` weghalen,
+  één `{v1Legacy('bomCapEur')}` weghalen en `open` op de lade zetten geeft drie rode claims met
+  naam.
+- `GHOST_KEYS_FILED_AS_NICE` en `JUDGEMENT_KEYS_WHERE_BLANK_DEFERS` — twee **benoemde verzamelingen**
+  in plaats van tellingen of complementen, allebei van beide kanten getoetst (de sleutel staat erop
+  én is de enige die erop hoort). Dat is de V47/V48-les, hier preventief toegepast: een complement
+  groeit mee met het formulier.
+
+**ACCEPTATIE.** `npx tsc -b` schoon (vier projecten). **`npm run test:fast` groen — 163 bestanden
+(162 geslaagd, 1 overgeslagen), 1888 tests (1885 geslaagd, 3 overgeslagen), 449 s, in één keer
+groen, alleen gedraaid ná de browsercontrole met de dev-server gestopt.** +1 BESTAND
+(`v2InputRegister.test.ts`) en +18 tests sinds C-2 (1870 → 1888), en dat zijn exact de achttien
+claims van dat bestand: het corpus is niet geregenereerd, dus geen enkele `it.each` over het levende
+corpus beweegt. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan, en 449 tegen C-2's
+458 s is dezelfde laag op dezelfde machine. `toggleRegression` (10), `p6Lint` (8, beide scopes),
+`ciLayer` (5), `v2Settings` (13), `engineV2Panel` (2) en `selection` (13) apart nagedraaid en groen.
+
+**DE VOLLE RUN IS BIJ I-1 NIET GEDRAAID, en dat is een besluit met een reden.** Wat hij bovenop de
+snelle laag toetst zijn de drie live ketenruns: dat de route de bevroren netlist byte-voor-byte
+levert. I-1 raakt geen engine-, poort-, budget-, venster- of corpuscode — het is één nieuw
+data-module plus JSX-ordening — en de twee BYTE-BASELINES die dát bewaken (`f4cRegression`,
+`workerRouteRegression`) draaien in de snelle laag en reproduceerden. De drie live runs zouden een
+corpus reproduceren dat deze sessie niet aangeraakt heeft. Dezelfde afweging, met dezelfde
+formulering, als bij E-2 en E-3b.
+
+---
+
+#### 7 — WAT NIET GEDAAN IS
+
+1. **Guided mode is niet gebouwd** — dat is I-3, en §5 is zijn specificatie.
+2. **De NF-merge is niet aangeraakt** — dat is I-2.
+3. **Geen veld is verwijderd, verplaatst of hernoemd.** De vier v1-knoppen blijven volledig werkzaam
+   op de v1-route; wat erbij kwam is een zin ernaast en een regel in een lade.
+4. **De vier v1-knoppen zijn niet UITGESCHAKELD op de v2-route.** Ze zouden `disabled` kunnen —
+   maar drie van de vier gelden nog wél in de terugval waar geen A5d.3-venster afgeleid kan worden,
+   en een knop die uitstaat op een route waarop hij soms telt is een tweede stille beslissing. Ze
+   zeggen wat zij zijn; dat is de eerlijke vorm.
+5. **Het register beschrijft de INVOER, niet de UITVOER.** Wat een run OPLEVERT (de poortkolom, de
+   shortlist, het rapportpaneel) heeft zijn eigen eerlijkheidsregels (UI-1, UI-2) en is hier niet
+   opnieuw geïnventariseerd.
+6. **`xo3Steps` is als NICE gefiled en niet als V1-ERFGOED**, want hij is het niet: het VOLLE veld
+   leest hem (`chainBudget = steps^pairs`) en alleen de verkenning niet. Zijn rij zegt dat; een
+   markering die "v1" beweert zou onwaar zijn zodra iemand het volle veld kiest.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 
