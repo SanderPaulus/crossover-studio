@@ -285,6 +285,23 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  A5E3C:
+    'HET GEDATEERDE A5E3C-CORPUS. Bevroren voor C-2, de laatste regeneratie van casus 1, en het is de ' +
+    '"voor"-helft van drie besluiten tegelijk. (1) De A5d.6-inversie lag als KOOI om de zoekdoos: ' +
+    'bump-series-l plafonneerde de seriespoel van de laagste weg hard, per onderdeel en op de som. E-4 mat ' +
+    'over het hele casusboek dat die kooi in EEN richting fout staat - 69 netlists boven hun plafond en ' +
+    'binnen het M-D-budget, nul andersom, want de inversie leest de weg als een kale serie R+L terwijl M-D ' +
+    'het echte netwerk met zijn shunts oplost (mediaan 1,7 dB, uiterste 8,7 dB) - dus de doos sloot ' +
+    'ontwerpen uit die de eis toelaat. Sinds C-2 is het plafond ZACHT (straf, geen kooi) en is M-D op het ' +
+    'geleverde netwerk de enige autoriteit. (2) De barriere las het verlengde veiligheidsraster ZONDER ' +
+    'verdichting: E-1 mat twee van 161 bevroren netlists boven de vloerspeling, beide op een dip smaller dan ' +
+    'een rastercel (KAND_V2_1: 2,5536 ohm op de sweep tegen 2,6349 op het raster, 0,081 tegen een speling ' +
+    'van 0,052 - door de poort binnen de tolerantie). Sinds C-2 leidt de route safety-extended-refined af. ' +
+    '(3) De posities lagen met EENZIJDIGE kooien op de vensterranden (spread, budget 24, 8 x 3 = 24 uit 36): ' +
+    'elke geleverde netlist op de M-T-plafondpositie 2304 Hz kruiste 61-255 Hz lager en drie van vier ' +
+    'verlieten hun kooi, elke vloerpositie kruiste op of boven 1647. Sinds C-2 is de positieregel tweezijdig ' +
+    '(elke kooi een spacing breed en binnen het venster) en het budget 16: 8 x 2 = 16 uit 22, W-M 157-519 Hz ' +
+    'in acht posities, M-T 1745 en 2175. Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   A5E3VELD:
     'HET GEDATEERDE A5E3VELD-CORPUS. Bevroren voor A5e.3c, toen de M-T-as nog op k maal f_s (1294 Hz) stond en ' +
     'het gestelde tweetergetal (-20 dB) niet als vensterinvoer werd gelezen: veld 4 x 5 = 20 (W-M 148/229/355/550 ' +
@@ -798,15 +815,17 @@ const barrierGrids = (() => {
      * veiligheidsraster (240 punten, de eigen keuze van de app) is het open punt. */
     resolutie_boven_speling: live
       .filter(inside)
-      .filter((r) => r.verschil_ohm !== null && r.verschil_ohm >= ampFloorSlackOhm(statedFloorOhm))
-      .map((r) => ({ netlist: r.netlist, poortraster_ohm: r.poortraster_ohm, barriereraster_ohm: r.barriereraster_ohm, verschil_ohm: r.verschil_ohm, poortraster_min_bij_hz: r.poortraster_min_bij_hz })),
+      .filter((r) => r.verschil_verdicht_ohm_E1 !== null && r.verschil_verdicht_ohm_E1 >= ampFloorSlackOhm(statedFloorOhm))
+      .map((r) => ({ netlist: r.netlist, poortraster_ohm: r.poortraster_ohm, barriereraster_ohm: r.verdicht_ohm_E1, verschil_ohm: r.verschil_verdicht_ohm_E1, poortraster_min_bij_hz: r.poortraster_min_bij_hz })),
     resolutie_regel:
       'De levende netlists (en de drie referentiefilters) waarvan de barrière een vloerspeling of meer van de poort ' +
       'af leest — een RESOLUTIEverschil op een smalle dip, geen uitgestrektheidsverschil. Boekhouding en geen ' +
-      'vrijstelling: op elk ervan vellen beide rasters hetzelfde oordeel (frozenNetlistGates assert dat), en de ' +
-      'lijst hoort leeg te raken zodra de v2-route de VERDICHTE bron afleidt (E-1: `safety-extended-refined`, gebouwd ' +
-      'en gemeten in `verdichting` hieronder — het verschil zit dan onder de speling op ÉLKE bevroren netlist; de ' +
-      'omschakeling is één woord in candidateDeclaration.ts en één regeneratie).',
+      'vrijstelling: op elk ervan vellen beide rasters hetzelfde oordeel (frozenNetlistGates assert dat). ' +
+      'SINDS C-2 GEMETEN OP WAT DE ROUTE WERKELIJK LEEST: de v2-verklaring leidt `safety-extended-refined` af, dus ' +
+      'de kolom is het verschil tussen de poortsweep en de VERDICHTE lezing. E-1 voorspelde dat de lijst daarmee ' +
+      'leeg raakt (grootste rest 0,0089 Ohm, nul boven de speling); dat de lijst nu leeg IS, is die voorspelling ' +
+      'nagemeten. Het verschil met het ONVERDICHTE raster staat er als gedateerde kolom naast ' +
+      '(per_netlist.verschil_ohm) — dat was de arm tot A5e.3c.',
     /* E-1 — wat de verdichte bron op dezelfde netlists leest, als het bewijs
      * onder de keuze: het grootste resterende verschil, wie er nog boven de
      * speling zou staan (niemand), en de prijs in punten. */

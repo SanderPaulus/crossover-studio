@@ -795,6 +795,23 @@ export interface NetOptimizeOptions {
    */
   valueCeilings?: Readonly<Record<string, number>>;
   /**
+   * C-2 / A5d.6 — SOFT ceilings on individual free values, SI, by partId.
+   *
+   * The same numbers `valueCeilings` carries and a different mechanism: the
+   * slot's soft window is narrowed to the ceiling and the slot stays SOFT, so a
+   * value above it costs the same quadratic the app's own realism window costs
+   * and is never unreachable. It is what a budget inversion is entitled to do
+   * when the inversion is not the exact inverse of the requirement it stands
+   * for — casebook E-4 measured `bump-series-l` to be 1.7 dB high at the median
+   * and 8.7 dB at the worst against the M-D metric it inverts, in one direction
+   * only, so the cage excluded designs the requirement accepts. Absent = off,
+   * and then every ceiling this run carries is a box exactly as before.
+   *
+   * A part may not appear in both maps; the caller files each ceiling one way
+   * or the other (`searchBoxFor`).
+   */
+  valueSoftCeilings?: Readonly<Record<string, number>>;
+  /**
    * F2 / A5d.6 — HARD ceilings on the SUM of several elements' values, SI.
    *
    * A5d.6's first exact inversion is "max TOTALE serie-R in het laagste pad",
@@ -810,6 +827,14 @@ export interface NetOptimizeOptions {
     maxSI: number;
     fixedSI?: number;
     label: string;
+    /**
+     * C-2 — PENALISE the excess instead of projecting onto the ceiling. The
+     * group is scored `(log10(total / room))²` above its room, on the same
+     * scale and with the same weight as the per-slot soft windows, and the
+     * members are left where the search put them. Absent/false = the
+     * projection, which is every group before C-2.
+     */
+    soft?: boolean;
     /* ---- V48: the ceiling as a function of what the tune is building ------
      *
      * `maxSI` above is solved ONCE, at the path resistance of the seed, and a
@@ -857,6 +882,23 @@ export interface NetOptimizeOptions {
    * at the end (casebook V48).
    */
   seriesInductanceCeilingSource?: 'seed' | 'tuned';
+  /**
+   * C-2 — WHETHER THE A5d.6 LF-LIFT CEILING CAGES OR ONLY SHAPES.
+   *
+   * `'box'` (and absent, which is every run before C-2): the ceiling is a box
+   * constraint — clamped per part, projected on the sum. `'soft'`: the same
+   * ceiling is filed as a penalty, and M-D on the delivered network is the only
+   * thing that can refuse a design.
+   *
+   * NOT READ HERE. The tuner reads `valueSoftCeilings` and the groups' `soft`
+   * flag; this key says which way `searchBoxFor` files the bound, and it lives
+   * on this interface so it is classified with the other choices (A3j) and
+   * travels in the run fingerprint. A run that states it and hands over a box
+   * built the other way gets the box it was handed — the option is a statement
+   * about how the box was MADE, and re-deriving it here would be a second
+   * opinion about the same thing.
+   */
+  seriesInductanceBound?: 'box' | 'soft';
 }
 
 /**
@@ -3620,6 +3662,24 @@ export function optimizeNetworkValues(
         }
       }
     }
+    /* C-2 — A SOFT CEILING NARROWS THE WINDOW AND NEVER TURNS THE SLOT HARD.
+     *
+     * The same three lines as above with the two that cage left out: no
+     * `hard[i]`, so the objective pays the quadratic instead of clamping, and
+     * no `capLg[i]`, so a ceiling ABOVE the app's own realism edge does not
+     * become a hard cap by the back door (A5e.3b built `capLg` for a STATED
+     * cap, and a soft ceiling is the opposite statement). A ceiling that is
+     * already looser than the realism edge changes nothing, which is correct:
+     * the app's own opinion about buildable values is not a budget and this
+     * key says nothing about it. */
+    if (opts.valueSoftCeilings) {
+      for (let i = 0; i < free.length; i++) {
+        const ceil = opts.valueSoftCeilings[free[i].id];
+        if (ceil === undefined || !(ceil > 0)) continue;
+        const lg = Math.log10(ceil);
+        if (lg < winHi[i]) winHi[i] = Math.max(lg, winLo[i]);
+      }
+    }
     /* The SUM ceilings (A5d.6's "max totale serie-R in het laagste pad").
      *
      * Enforced by projection rather than by a penalty: when the free members
@@ -3661,7 +3721,10 @@ export function optimizeNetworkValues(
             : [],
       }))
       .filter((g) => g.idx.length > 0);
-    const projectSums = (): void => {
+    /* Returns the SOFT-sum penalty (C-2); zero when no group is soft, which is
+     * every run before C-2 and every run that files its ceilings as a box. */
+    const projectSums = (): number => {
+      let softOver = 0;
       for (const g of sumGroups) {
         let maxSI = g.maxSI;
         /* A5e.3 — the seed's coil DCR inside the group's fixed sums, replaced
@@ -3676,6 +3739,26 @@ export function optimizeNetworkValues(
         const room = maxSI - ((g.fixedSI ?? 0) + dcrAdj);
         let total = 0;
         for (const i of g.idx) total += free[i].value;
+        if (g.soft) {
+          /* C-2 — SCORED, NOT PROJECTED. The members stay where the search put
+           * them; the group pays `(log10(total / room))²`, the same decade
+           * measure and the same weight the per-slot soft windows pay, so one
+           * convention covers both halves of the bound.
+           *
+           * An already-spent budget (room ≤ 0, locked parts and coil DCR alone
+           * over the ceiling) is measured against the smallest total the box
+           * admits — the same floor the projection collapses to — rather than
+           * against zero, which would be an infinite penalty for a network the
+           * requirement may still accept. */
+          let floor = 0;
+          for (const i of g.idx) floor += 10 ** winLo[i];
+          const ref = room > 0 ? room : floor;
+          if (ref > 0 && total > ref) {
+            const d = Math.log10(total / ref);
+            softOver += d * d;
+          }
+          continue;
+        }
         if (room <= 0) {
           for (const i of g.idx) free[i].value = 10 ** winLo[i];
           continue;
@@ -3684,6 +3767,7 @@ export function optimizeNetworkValues(
         const k = room / total;
         for (const i of g.idx) free[i].value = Math.max(free[i].value * k, 10 ** winLo[i]);
       }
+      return softOver;
     };
     // The barrier must not SPEND fundamentals: capture the seed's tweeter
     // protection so target-chasing cannot buy ripple with resonance drive
@@ -3713,7 +3797,7 @@ export function optimizeNetworkValues(
           else if (logVals[i] > winHi[i]) penalty += (logVals[i] - winHi[i]) ** 2;
         }
       }
-      projectSums();
+      penalty += projectSums();
       refreshDcr();
       let m;
       try {

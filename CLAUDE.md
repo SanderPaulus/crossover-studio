@@ -48,6 +48,15 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná C-2 (08-09-2026) gemeten op 458 s — 162 bestanden (161 geslaagd, 1 overgeslagen), 1870 tests
+    (1867 geslaagd, 3 overgeslagen), in één keer groen, gedraaid ná de twee regeneraties op een verder lege
+    machine.** +2 BESTANDEN sinds E-4 (`goldenCasus2.test.ts` 14 claims,
+    `optimizer/softInductanceBound.test.ts` 5; `casus2.fixture.ts` is geen test) en netto +23 tests, en die
+    telling sluit alleen mét de corpusgrootte erin — voor de zoveelste keer: 14 + 5 nieuw, +1 in `corpusPairing`
+    (de C-2-claim), +4 in `goldenClassification` (de casus-2-describe), en **−1 uit de `it.each` over casus 1b's
+    netlists, dat van drie naar twee ging** toen die casus meegeregenereerd werd en haar corpus van twee naar
+    één netlist kromp. 24 − 1 = 23. Geteld met `grep -c '^\s*it('` per bestand tegen dezelfde telling op HEAD.
+    GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná E-4 (07-09-2026) gemeten op 411 s — 160 bestanden (159 geslaagd, 1 overgeslagen), 1847 tests
     (1844 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 bestand
     (`optimizer/coilSnapCeiling.test.ts`, 5 claims) en +16 claims: die vijf, +5 E-4-claims in
@@ -270,7 +279,18 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 07-09-2026 (E-4): 160 bestanden, 1847 tests, 1593 s
+- `npx vitest run` — volledige testsuite. **GEMETEN 08-09-2026 (C-2): 162 bestanden, 1870 tests, 1557 s
+  (25 min 57), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en NOOIT
+  ernaast.** +2 bestanden en +23 tests (zie de `test:fast`-regel; de telling sluit alleen mét de corpusgrootte
+  erin). **Wat deze run bewijst is precies wat C-2 verandert:** de drie live ketenruns draaien op DRIE opnieuw
+  opgewekte corpora — casus 1 (16 kandidaten, budget 16, tweezijdige kooien, zacht A5d.6-plafond, verdichte
+  barrière), casus 1b (meegeregenereerd, van twee naar één netlist) en casus 2 (nieuw) — en alle drie
+  reproduceren. De wandkloktijd IS de byte-reproductie van casus 1 (`casus1V2Candidates` 1550 s op KAND-V2-10 =
+  437,3 · 1744,8, de goedkoopste geleverde op looptijd); de verwerping ernaast kostte 905 s, casus 1b's live run
+  308 s, `frozenNetlistGates` 421 s, `lowestWayLevelWork` 393 s en `threeWayChain` 338 s — alles in de schaduw.
+  **De byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren:** de zachte grens en de verdichte
+  bron zijn afwezig op élke v1-route, en dat is wat P2 hier betekent.
+  (De stand ervoor: **GEMETEN 07-09-2026 (E-4): 160 bestanden, 1847 tests, 1593 s
   (26 min 33), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en
   NOOIT ernaast.** +1 bestand (`optimizer/coilSnapCeiling.test.ts`, 5 claims) en +16 claims (zie de
   `test:fast`-regel; de delta is met `vitest list` geënumereerd). **Wat deze run bewijst is precies het
@@ -279,7 +299,7 @@
   casus 1b draagt een catalogus-onderdeel — dus het familieplafond raakt een snap die nooit gebeurt, en
   de byte-baselines (`f4cRegression`, `workerRouteRegression`) plus alle DRIE de live ketenruns
   reproduceren. De wandkloktijd is onveranderd de byte-reproductie van KAND-V2-8 (1581 s); casus 1b's
-  run kostte 138 s en verdwijnt in de schaduw.
+  run kostte 138 s en verdwijnt in de schaduw.)
   (De stand ervoor: **GEMETEN 06-09-2026 (E-3b): 159 bestanden, 1821 tests, 1608 s (26 min 48),
   niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de browsercontrole en NOOIT ernaast.** +1 bestand
   (`optimizer/scanRequest.test.ts`, 21 claims) en +26 tests: die 21 plus vijf E-3b-claims in `selection.test.ts`. De
@@ -1085,6 +1105,33 @@
     −16,1 dB).** De live reproductie (`casus1bV2Candidates.test.ts`) kiest de goedkoopste geleverde op `looptijd_s`.
   **De app stuurt een tweewegverzoek nog naar de v1-worker** (`runChainScan`); deze route is de tweewegroute door de
   v2-worker en niet de knop — casusboek E-3, "wat niet gedaan is".
+- **Casus 2 — de SYNTHETISCHE drieweg met grondwaarheid (C-2, 08-09-2026)** — vier scripts, één model en één
+  vaste volgorde. `scripts/casus2-model.ts` is het MODEL en dus de grondwaarheid: T/S per driver, een reflexkast
+  (woofer, f_s 34, f_b 38) en een gesloten pod (mid, f_c 460), een dome met hoge f_s (tweeter, 1500), de gekozen
+  poort (3,0/7,0 ms → 1/T = 250 Hz op de kop), de GEDOCUMENTEERDE meetspanning (2,83 V op 1 m) en de breakups.
+  Elk getal is bewust anders dan casus 1.
+  - `npx vite-node scripts/generate-casus2-measurements.ts` — seconden. Schrijft `test-fixtures/casus2/`: drie
+    ZMA-sweeps, twee nabij-velden, zes ver-velden (FRD met ARTA-header) en `grondwaarheid.json`. Eén keten
+    natuurkunde: `Z_mech = R_ms + sM_ms + 1/(sC_ms) + S_d²·Z_ab`, daaruit de impedantie, de conussnelheid, de
+    uitgestraalde volumesnelheid (poortsplitsing op de reflexkast), het verre veld (kolvenkarakteristiek ×
+    baffle-step × breakups) en het nabije veld. Breakups zijn analoge peaking-secties, dus de gestelde hoogte IS
+    de piekwinst.
+  - `npx vite-node scripts/sync-casus2-project-input.ts` — seconden. Kopieert het model naar de projectinvoer
+    (driverkaart, geometrie, headerblok, de drie versterkergetallen). **Een eigen script en geen stap in de
+    recorder**, want de fixture leest haar constanten bij IMPORT: een recorder die het bestand halverwege zijn
+    eigen run bijwerkt meet nog steeds met de oude kaart. Dát is precies wat er misging — de eerste run meldde de
+    excursieroute 42/51/35 % naast de grondwaarheid, en alle drie waren een kaart uit een eerdere afstemming.
+  - `npx vite-node scripts/record-casus2-references.ts` — seconden, geen tune. Schrijft klasse A (élke grootheid
+    met grondwaarheid ERNAAST, het verschil en de tolerantieklasse; `soort` scheidt ACCEPTATIE van CONTROLE), de
+    bevindingen mét reden, de vensters, het anker, en klasse B op élke netlist die op schijf staat. Draai hem ná
+    de generator en ná de sync.
+  - `V2_JOBS=<n> npx vite-node scripts/generate-casus2-v2-candidates.ts` — ÉÉN KETENRUN PER KANDIDAAT (gemeten
+    803–2361 s), `V2_ONLY` / `V2_MERGE` zoals de casus-1-generator. De verkenning (E-2, budget 8) door
+    `handleV2Request` kind `v2Chain3One`.
+  **DE VOLGORDE IS BINDEND**: measurements → sync → generator → recorder. En de tolerantieklassen zijn die van
+  casus 1, ONGEWIJZIGD overgenomen: zij zijn voor gemeten data met ruis gekozen, dus een synthetische casus hoort
+  ze met marge te halen — waar zij dat niet doet is dat een bevinding over de schatter en geen tolerantie die
+  opgerekt moet worden.
 - **EEN BROWSERRUN EN DE DEV-SERVER: BEWERK TIJDENS DIE RUN GEEN ENKEL BESTAND DAT DE SERVER
   DIENT (LP-1, 07-09-2026).** `index.html` (de landing) en `app/index.html` zijn twee entries van
   ÉÉN Vite-build, dus een bewerking van de landing stuurt de app-pagina een full-reload — en een
@@ -2623,6 +2670,54 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   gerepareerd: een nieuwe `DataSource` raakt `DATA_SOURCE_LABEL`, `describeSources` en het projectbestand, en dat
   is geen bugfix meer.
 
+### C-2-guards (de synthetische casus, en de drie besluiten van de laatste regeneratie)
+- `src/lib/engine2/goldenCasus2.test.ts` (14 claims, nieuw) — **de acceptatie-autoriteit van casus 2, en de enige
+  in dit boek met een DERDE kolom.** Elders is een klasse-A-referentie een gemeten getal dat vastligt zodat een
+  latere engine ernaast kan meten; hier staat het getal dat het MODEL kende voordat er iets gemeten werd
+  ernaast. De poort komt er exact uit (1/T = 250, 2/T = 500 Hz, herkomst `header`), de vergelijkingstabel
+  reproduceert rij voor rij uit een verse meting, **de bevindingenverzameling is EXACT gepind** (gelijkheid, geen
+  deelverzameling — de E-4-vorm), de twee semi-inductantieschatters lopen aantoonbaar in tegengestelde richting,
+  M-C route 1 is conservatief op de reflexkast en exact op de gesloten wegen, route 2 draait en haar verhouding
+  IS de baffle-step binnen 2 %, het anker is de stilste weg van het model, de vensters staan op de regels die het
+  model voorspelt, het veld ligt buiten élk casus-1-venster, A7 als schaaltest (×1,37 op de frequentie-as: élke
+  resonantie exact mee, de Q's NIET, de vensterdrempel twee afleidingen verderop wel), klasse A is klasse A op
+  élke netlist, de DCR van élke spoel is die van haar gestelde familie, en manifest ↔ schijf ↔ herkomst.
+- `src/lib/engine2/optimizer/softInductanceBound.test.ts` (5 claims, nieuw) — **kooi tegen straf, op één
+  fixture.** De premisse (het plafond ligt ONDER de zaadspoel, anders meet niets); `searchBoxFor` filet dezelfde
+  bound twee kanten op en NOOIT allebei (een onderdeel staat in `valueCeilings` of in `valueSoftCeilings`, want
+  hard filen naast een zachte som zou terugkooien wat de som losliet); P2 op de weggelaten sleutels; de kooi
+  houdt de spoel op of onder het plafond en de straf laat haar erboven, met een ander netwerk als gevolg; en de
+  straf is EXACT NUL binnen het plafond en verandert de zoektocht erbuiten. **Eén ding dat het opschrijven waard
+  is: de straf is nul in het PUNT en niet nul in het PAD** — een zacht plafond binnen het eigen realismevenster
+  van de app verandert het geleverde netwerk óók als de levering er ruim onder blijft, want de simplex evalueert
+  onderweg punten erboven. Boven die rand doet de sleutel per constructie niets, en dát is de byte-claim.
+- `choiceKeyGuard.test.ts` — 52 → 54 sleutels, 37/5/12. `seriesInductanceBound` is CHOICE (de VIJFDE zonder
+  polish-tweeling, om V48's reden: de metingen die de inversie leest zijn al polish binnen `valueSumCeilings`) en
+  `valueSoftCeilings` is POLISH (dezelfde inversie, de andere filing).
+- `casus1Field.test.ts` — het veld is 8 × 2 = 16 uit 22 bij budget 16, en **élke kooi is tweezijdig en ligt
+  binnen het venster**, met de buitenste twee rakend aan de rand. `twoSided` reist als VELD op de kandidaat en
+  wordt op de ONGEAFRONDE randen bepaald: de printafronding op een tiende hertz is bij 2 kHz al 7e-5 octaaf,
+  genoeg om een symmetrische kooi als eenzijdig te laten lezen.
+- `frozenNetlistGates.test.ts` — de V33-guard meet sinds C-2 op de VERDICHTE lezing, want dat is wat de route
+  leest; `resolutie_boven_speling` is daarmee leeg (grootste rest op het levende corpus 0,0002 Ω tegen een
+  speling van 0,052). **En de V49-mid-claim is HERANKERD** op het V47/V48-corpus: zij zei "de afgeleide grens
+  ligt op élke netlist van het beoordeelde veld onder −7,3 dB" met "het beoordeelde veld" = het levende corpus,
+  en dat is een claim over élk toekomstig veld. C-2 is waar hij vervalt: met de W-M-overname op 156,7 Hz loopt de
+  doorlaatband van de mid anderhalf octaaf lager, het gemiddelde zakt en de afgeleide grens STIJGT naar −4,92 dB
+  op KAND_V2_7 — ruimer dan de weigering. Niets onveiligs volgt (die netlist leest M-C −17,8 op de mid), en de
+  bevinding is echt: hoe streng de afgeleide grens is hangt af van waar de overname ligt. De V47/V48-les voor de
+  vierde keer in dit bestand.
+- `corpusPairing.test.ts` — de A5e.3c-claim is HERANKERD op `a5e3veld → a5e3c` (beide gedateerd) en de nieuwe
+  C-2-claim staat ernaast: `a5e3c → live` heeft opnieuw GEEN enkel paar, want de tweezijdige positieregel
+  verspringt per constructie élke positie. De opbrengst van de A5e.3c-run (elf geleverd, tien bevroren) staat
+  sinds C-2 in `casus1_a5e3c_herkomst.json` — een feit over de RUN, en de levende herkomst wordt door de
+  volgende overschreven.
+- `ciLayer.test.ts` — `goldenCasus2.test.ts` staat in `CI_LOAD_BEARING`. Het is de meest portable acceptatie van
+  het boek: de metingen zijn gegenereerd, élke referentie is een functie van hen, en geen enkele hangt aan een
+  zoektocht of aan een machine.
+- `casus1bV2Candidates.test.ts` — de E-4-brug `SINCE_THE_RECORD` is LEEG sinds casus 1b meegeregenereerd is, en
+  blijft als lege lijst staan zodat de volgende sleutel die zonder regeneratie arriveert een plek heeft.
+
 ### E-4-guards (de inversie gepind, de snap leest het koper van de tuner)
 - `scripts/measure-e4-inversion.ts` + `test-fixtures/casus1_e4_inversie.json` +
   **vijf claims in `frozenNetlistGates.test.ts`** — de divergentie tussen de A5d.6-inversie en de
@@ -3443,7 +3538,13 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   Zie casusboek V19 en `.claude/skills/casus-toevoegen/SKILL.md`.
 
 ### De casus-1-fixtures die een SCRIPT opwekt (F4d)
-`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden — **TIEN sinds A5e.3c
+`test-fixtures/casus1/KAND-V2-*.adsfilter.json` zijn de v2-kandidaten die de shortlist haalden — **TIEN sinds C-2
+(08-09-2026), de LAATSTE regeneratie van casus 1: het veld van 16 (8 × 2 uit 22, budget 16, tweezijdige kooien)
+leverde er elf, waarvan de shortlist er tien bevroor; vijf geweigerd (vier op `topology`, één op `budget` — de
+eerste M-D-weigering in dit boek waar de zoekdoos de zoektocht er niet vandaan hield, want het A5d.6-plafond is
+sinds C-2 ZACHT). Élke geleverde netlist draagt 4,5–20,8 mH seriespoel op de laagste weg tegen een plafond van
+2,5–3,2 mH, en M-D houdt op alle tien (opslingering −1,41..+1,16 dB tegen een budget van 1,4). Het vorige corpus
+staat als `A5E3C-KAND-*` — daarvoor **TIEN sinds A5e.3c
 (06-09-2026): het veld van 24 op de A5e.3b-grenzen (M-T-vloer 1647 Hz `drive-stated`, spanwijdte-cap 22,0 mH,
 barrière `safety-extended`, level-work/1.2) leverde er veertien, waarvan drie na de A5e.3c-weigering op de eigen
 kruispunten (M-C tweeter −19,6..−19,9 tegen −20 op de passbands van het geleverde netwerk, waar het zaad −20,10..−20,19
@@ -3524,7 +3625,7 @@ te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij 
 `casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
 Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
-**Sinds A5e.3c zijn het er EENENTWINTIG corpora plus één gedateerde HERKOMST, en dat is opzet.** `KAND_V2_*` is het levende corpus (het A5e.3c-veld: tien netlists). `A5E3VELD_KAND_*` is het A5e.3-veld-corpus van zeven, bevroren vóór A5e.3c — toen de M-T-as nog op k·f_s (1294 Hz) stond en het gestelde tweetergetal niet als vensterinvoer werd gelezen, spoelen op de laagste weg boven de spanwijdte van de gestelde familie 'gevlagd en doorgezet' werden (22–36 mH in de val van vijf van de zeven), de barrière het veiligheidsraster vanaf 20,5 Hz las en niet de sweepbodem (KAND_V2_2: 2,55 Ω op 10,07 Hz waar de barrière 2,85 las), en een L+R-shunt zonder C niet als pad gold (drie van de zeven dragen er een): de vier grenzen die A5e.3b sloot en waarop A5e.3c het veld opnieuw opwekte. `A5E3ARM_KAND_1` is het geleverde netwerk van de arm `m1+dcr` — één netlist, geregistreerd met `scripts/register-a5e3-arm.ts` omdat het M-1-corpus LEEG was en er niets te bevriezen viel; de M-1-boekhouding zelf (115 uitkomsten, geen bestanden) staat als `casus1_m1_herkomst.json` (corpus-id `m1`, `DATED_HERKOMST`). 
+**Sinds C-2 zijn het er TWEEËNTWINTIG corpora plus TWEE gedateerde HERKOMSTEN, en dat is opzet.** `KAND_V2_*` is het levende corpus (het C-2-veld: tien netlists). `A5E3C_KAND_*` is het A5e.3c-corpus van tien, bevroren vóór C-2 — toen de A5d.6-inversie nog als KOOI om de zoekdoos lag (E-4 mat 69 van 161 netlists boven hun plafond én binnen hun budget, nul andersom), de barrière het verlengde veiligheidsraster ZONDER verdichting las (twee van 161 boven de vloerspeling, beide op een dip smaller dan één rastercel) en de posities met EENZIJDIGE kooien op de vensterranden lagen (8 × 3 = 24 uit 36, budget 24); `casus1_a5e3c_herkomst.json` bewaart die run zelf, want elf geleverd tegen tien bevroren is een feit over de RUN dat de netlists niet dragen. `A5E3VELD_KAND_*` is het A5e.3-veld-corpus van zeven, bevroren vóór A5e.3c — toen de M-T-as nog op k·f_s (1294 Hz) stond en het gestelde tweetergetal niet als vensterinvoer werd gelezen, spoelen op de laagste weg boven de spanwijdte van de gestelde familie 'gevlagd en doorgezet' werden (22–36 mH in de val van vijf van de zeven), de barrière het veiligheidsraster vanaf 20,5 Hz las en niet de sweepbodem (KAND_V2_2: 2,55 Ω op 10,07 Hz waar de barrière 2,85 las), en een L+R-shunt zonder C niet als pad gold (drie van de zeven dragen er een): de vier grenzen die A5e.3b sloot en waarop A5e.3c het veld opnieuw opwekte. `A5E3ARM_KAND_1` is het geleverde netwerk van de arm `m1+dcr` — één netlist, geregistreerd met `scripts/register-a5e3-arm.ts` omdat het M-1-corpus LEEG was en er niets te bevriezen viel; de M-1-boekhouding zelf (115 uitkomsten, geen bestanden) staat als `casus1_m1_herkomst.json` (corpus-id `m1`, `DATED_HERKOMST`). 
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière

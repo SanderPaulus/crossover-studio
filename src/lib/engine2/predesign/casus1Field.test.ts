@@ -133,36 +133,64 @@ describe('the field casus 1 implies', () => {
     expect(axes[1].window['2']).toBeUndefined();
   });
 
-  it('places eight LR4 positions on the lower axis and three on the upper under a budget of 24, and says why', () => {
-    /* The count is derived: `1 + floor(span / smoothing)`, over the A5d.3
-     * WINDOW, per order. On the merged set the W-M window spans ~148–550 Hz
-     * (1.89 octaves ⇒ twelve at the acceptance smoothing); the M-T window
-     * spans 1647–2304 Hz since A5e.3b (0.48 octaves at the stated-figure
-     * floor) ⇒ three. 12 × 3 = 36 offered, and the STATED budget of 24 thins
-     * POSITIONS on the widest axis one at a time: the lower axis goes from
-     * twelve to eight and the field is 8 × 3 = 24. Orders are never thinned
-     * (there is one). The A5e.3-veld field was 4 × 5 = 20 out of 60 — the
-     * axes traded places when the M-T floor moved to 1647 Hz. */
+  it('places eight LR4 positions on the lower axis and two on the upper under a budget of 16, and says why', () => {
+    /* The count is derived: `1 + floor(span / smoothing)`, over the stretch a
+     * position may SIT on, per order. Since C-2 that stretch is the A5d.3
+     * window INSET by half a spacing on each side, because every cage is one
+     * spacing wide and two-sided and has to fit inside the window. On the
+     * merged set the W-M window spans ~148–550 Hz and its inset ~157–519
+     * (1.73 octaves ⇒ eleven at the acceptance smoothing); the M-T window
+     * spans 1647–2304 Hz and its inset ~1745–2175 (0.32 octaves) ⇒ two.
+     * 11 × 2 = 22 offered, and the STATED budget of 16 thins POSITIONS on the
+     * widest axis one at a time: the lower axis goes from eleven to eight and
+     * the field is 8 × 2 = 16. Orders are never thinned (there is one).
+     *
+     * The A5e.3c field was 8 × 3 = 24 out of 36 at budget 24 with edge-clipped
+     * cages — the upper axis loses its third position because a 0.48-octave
+     * window has room for exactly two two-sided cages, which is the honest
+     * answer rather than a refusal. */
     const wm = FIELD.field.axes[0].positionsByOrder;
     const mt = FIELD.field.axes[1].positionsByOrder;
     expect(FIELD.field.axes[0].orders).toEqual([CASUS1_FIELD_STATED_ORDER]);
     expect(FIELD.field.axes[1].orders).toEqual([CASUS1_FIELD_STATED_ORDER]);
     expect(wm).toHaveLength(1);
     expect(mt).toHaveLength(1);
-    expect(wm[0].derivedCount).toBe(12);
+    expect(wm[0].derivedCount).toBe(11);
     expect(wm[0].count).toBe(8);
-    expect(mt[0].derivedCount).toBe(3);
-    expect(mt[0].count).toBe(3);
+    expect(mt[0].derivedCount).toBe(2);
+    expect(mt[0].count).toBe(2);
     expect(FIELD.field.parameters.chainBudget).toBe(CASUS1_FIELD_CHAIN_BUDGET);
-    expect(FIELD.field.parameters.derivedSize).toBe(36);
+    expect(FIELD.field.parameters.positionPolicy).toBe('two-sided');
+    expect(FIELD.field.parameters.derivedSize).toBe(22);
     expect(FIELD.field.parameters.deliveredSize).toBe(wm[0].count * mt[0].count);
-    expect(FIELD.field.candidates).toHaveLength(24);
+    expect(FIELD.field.candidates).toHaveLength(16);
     expect(FIELD.field.candidates.length).toBeLessThanOrEqual(CASUS1_FIELD_CHAIN_BUDGET);
     // The thinning is said out loud, with both numbers.
-    expect(FIELD.notes.join(' ')).toContain('offered 36 candidates and the stated budget is 24');
-    expect(FIELD.notes.join(' ')).toContain('24 are delivered');
+    expect(FIELD.notes.join(' ')).toContain('offered 22 candidates and the stated budget is 16');
+    expect(FIELD.notes.join(' ')).toContain('16 are delivered');
     // The lowest position is the drive floor itself, and no position lies under it.
     for (const h of wm[0].hz) expect(h).toBeGreaterThanOrEqual(FIELD.field.axes[0].window['4'].floorHz! - 0.5);
+
+    /* C-2 — EVERY CAGE IS TWO-SIDED AND INSIDE THE WINDOW, on both axes, and
+     * that is the whole point of the policy: a candidate on a band edge could
+     * be judged in one direction only, and E-1 measured the field behaving
+     * accordingly (every delivered network on the 2304 Hz ceiling position
+     * crossed 61–255 Hz lower). The extreme cages TOUCH the window edges —
+     * that is the inset working — and none crosses them. */
+    for (const c of FIELD.field.candidates) {
+      for (let i = 0; i < c.crossings.length; i++) {
+        const x = c.crossings[i];
+        const w = FIELD.field.axes[i].window['4'];
+        expect(x.twoSided, `${x.pairLabel} @ ${x.hz} Hz`).toBe(true);
+        expect(x.cageHz[0]).toBeGreaterThanOrEqual(w.floorHz! - 0.05);
+        expect(x.cageHz[1]).toBeLessThanOrEqual(w.ceilingHz! + 0.05);
+        expect(x.hz).toBeGreaterThan(x.cageHz[0]);
+        expect(x.hz).toBeLessThan(x.cageHz[1]);
+      }
+    }
+    // ...and the provenance says so rather than leaving it to be re-derived.
+    expect(FIELD.field.candidates[0].provenance).toContain('laid two-sided');
+    expect(FIELD.field.candidates.some((c) => c.provenance.includes('one-sided'))).toBe(false);
     // The stated order is said out loud on both axes.
     expect(FIELD.orders[0].why.join(' ')).toContain('the designer stated');
     expect(FIELD.orders[1].why.join(' ')).toContain('the designer stated');

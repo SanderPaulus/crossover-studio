@@ -1,7 +1,7 @@
 {
  "format": "acoustic-design-studio-filter",
  "version": 1,
- "savedAt": "2026-09-06T15:49:37.393Z",
+ "savedAt": "2026-09-08T07:21:18.381Z",
  "name": "KAND-V2-1",
  "parts": [
   {
@@ -41,12 +41,12 @@
    "params": [
     {
      "name": "L",
-     "value": 0.6866,
+     "value": 0.6882,
      "unit": "mH"
     },
     {
      "name": "DCR",
-     "value": 0.4189,
+     "value": 0.4195,
      "unit": "Ω"
     }
    ],
@@ -67,7 +67,7 @@
    "params": [
     {
      "name": "C",
-     "value": 36.61,
+     "value": 36.64,
      "unit": "uF"
     }
    ],
@@ -112,12 +112,12 @@
    "params": [
     {
      "name": "L",
-     "value": 9.391,
+     "value": 9.411,
      "unit": "mH"
     },
     {
      "name": "DCR",
-     "value": 1.955,
+     "value": 1.957,
      "unit": "Ω"
     }
    ],
@@ -138,7 +138,7 @@
    "params": [
     {
      "name": "C",
-     "value": 103.1,
+     "value": 102.4,
      "unit": "uF"
     }
    ],
@@ -160,7 +160,7 @@
    "params": [
     {
      "name": "R",
-     "value": 2.598,
+     "value": 2.639,
      "unit": "Ω"
     }
    ],
@@ -205,12 +205,12 @@
    "params": [
     {
      "name": "L",
-     "value": 0.4763,
+     "value": 0.4791,
      "unit": "mH"
     },
     {
      "name": "DCR",
-     "value": 0.3378,
+     "value": 0.3389,
      "unit": "Ω"
     }
    ],
@@ -231,7 +231,7 @@
    "params": [
     {
      "name": "C",
-     "value": 20.31,
+     "value": 20.6,
      "unit": "uF"
     }
    ],
@@ -304,7 +304,7 @@
    "params": [
     {
      "name": "C",
-     "value": 3.132,
+     "value": 3.097,
      "unit": "uF"
     }
    ],
@@ -326,12 +326,12 @@
    "params": [
     {
      "name": "L",
-     "value": 0.3144,
+     "value": 0.3171,
      "unit": "mH"
     },
     {
      "name": "DCR",
-     "value": 0.2645,
+     "value": 0.2658,
      "unit": "Ω"
     }
    ],
@@ -362,7 +362,7 @@
    "params": [
     {
      "name": "C",
-     "value": 8.802,
+     "value": 8.948,
      "unit": "uF"
     }
    ],
@@ -377,42 +377,6 @@
     }
    ],
    "locked": false
-  },
-  {
-   "type": "Inductor",
-   "partId": "B·L4",
-   "params": [
-    {
-     "name": "L",
-     "value": 1.153,
-     "unit": "mH"
-    },
-    {
-     "name": "DCR",
-     "value": 0.5685,
-     "unit": "Ω"
-    }
-   ],
-   "wires": [
-    {
-     "x": 17,
-     "y": 30
-    },
-    {
-     "x": 17,
-     "y": 37
-    }
-   ]
-  },
-  {
-   "type": "Ground",
-   "params": [],
-   "wires": [
-    {
-     "x": 17,
-     "y": 37
-    }
-   ]
   },
   {
    "type": "Wire",
@@ -434,12 +398,12 @@
    "params": [
     {
      "name": "L",
-     "value": 0.6069,
+     "value": 0.3968,
      "unit": "mH"
     },
     {
      "name": "DCR",
-     "value": 0.3896,
+     "value": 0.3033,
      "unit": "Ω"
     }
    ],
@@ -512,12 +476,12 @@
    "params": [
     {
      "name": "L",
-     "value": 0.7805,
+     "value": 0.9071,
      "unit": "mH"
     },
     {
      "name": "DCR",
-     "value": 0.4518,
+     "value": 0.4936,
      "unit": "Ω"
     }
    ],
@@ -538,7 +502,7 @@
    "params": [
     {
      "name": "C",
-     "value": 1.5,
+     "value": 1.2,
      "unit": "uF"
     }
    ],
@@ -560,7 +524,7 @@
    "params": [
     {
      "name": "R",
-     "value": 18.35,
+     "value": 19.27,
      "unit": "Ω"
     }
    ],

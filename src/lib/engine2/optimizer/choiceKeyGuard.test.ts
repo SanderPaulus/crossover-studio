@@ -169,9 +169,16 @@ describe('F4c — every tuner option has a class', () => {
     // choice key that cannot move a corpus — the snap runs AFTER the tune,
     // which is what let E-4 repair it without a regeneration.
     // Split becomes 36/5/11.
-    expect(keys.length).toBe(52);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(52);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([36, 5, 11]);
+    // 54 since C-2 added `seriesInductanceBound` (choice — whether the A5d.6
+    // LF-lift ceiling CAGES the search or only shapes it) and
+    // `valueSoftCeilings` (polish — the same inversion's numbers, filed the
+    // soft way; `run.ts` and the worker have always written the box). The
+    // FIFTH choice without a polish companion, and for the same reason as
+    // V48's: the measurements the inversion reads are already filed inside
+    // `valueSumCeilings`. Split becomes 37/5/12.
+    expect(keys.length).toBe(54);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(54);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([37, 5, 12]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -296,9 +303,9 @@ describe('F4c — every tuner option has a class', () => {
      * compares against. Folding them together would make "watch the full band
      * against a stated requirement" unsayable. */
     expect(CHOICE_KEYS).toContain('safety');
-    expect(CHOICE_KEYS.length).toBe(36); // E-4: coilSnapDcrCeiling
+    expect(CHOICE_KEYS.length).toBe(37); // C-2: seriesInductanceBound
     expect(GREY_KEYS.length).toBe(5);
-    expect(POLISH_KEYS.length).toBe(11);
+    expect(POLISH_KEYS.length).toBe(12); // C-2: valueSoftCeilings
   });
 
   /* V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES, and it may
@@ -505,8 +512,17 @@ describe('F4d — a generated candidate declares every choice key', () => {
      * 10.07 Hz). Same reader, the gate's own points where only the sweeps
      * live, safety resolution everywhere else. Absent when the barrier is not
      * armed, for the same P4 reason `zFloorBarrier` itself is: naming a band
-     * for a term nobody switched on reads as a decision about where to aim. */
-    expect(full().stated.zFloorBarrierSource).toBe('safety-extended');
+     * for a term nobody switched on reads as a decision about where to aim.
+     *
+     * `'safety-extended-refined'` since C-2 and no longer `'safety-extended'`:
+     * E-1 measured the last gap over all 161 frozen netlists — two read above
+     * the floor slack on the extended grid, both on a dip NARROWER than one
+     * grid cell, and no netlist with a wider dip reads above it — and priced
+     * three refinements. The cheapest closes it (twelve of the gate sweep's own
+     * points in the two cells around the coarse minimum, +3 % per evaluation),
+     * and that is what the route now derives. Same two inputs, same silence
+     * when either is missing. */
+    expect(full().stated.zFloorBarrierSource).toBe('safety-extended-refined');
     expect(full().absent.some((a) => a.key === 'zFloorBarrierSource')).toBe(false);
 
     const d = bare();

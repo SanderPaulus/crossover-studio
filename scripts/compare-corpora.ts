@@ -14,11 +14,12 @@
  * default is the newest comparison.
  *
  *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` ·
- *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `v50` · `v51` · `v51b` ·
+ *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `v50` · `v51` · `v51b` · `a5e3c` ·
  *            `a5e3arm` (één netlist: de geregistreerde arm m1+dcr) · `m1` (alleen uitkomsten,
  *            geen bestanden: het lege M-1-corpus) · `live`   (de kaart staat in
  *            `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
- *   default: `v51b` → `live`   (casebook A5e.3-veld; `v51b m1` is de M-1-tabel — een lege ná-helft —,
+ *   default: `a5e3c` → `live`  (casusboek C-2 — de LAATSTE regeneratie van casus 1;
+ *            `v51b live` was de A5e.3-veld-tabel, `v51b m1` de M-1-tabel — een lege ná-helft —,
  *            `v51 v51b` de V51b-tabel, `v50 v51` de V51-tabel, `v49 v50` de V50-tabel,
  *            `v48 v49` de V47b-tabel, `v47 v48` de V48-tabel).
  *   SINDS M-1 meet de bank op de GEMERGEDE set (casus1Corpora.fixture.ts, corpusBank(golden, 'merged')):
@@ -121,7 +122,7 @@ const golden = loadGolden();
 const bank = corpusBank(golden);
 const { manifest, files, settings: SETTINGS, floorOhm: FLOOR } = bank;
 
-const [beforeId = 'v51b', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'a5e3c', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId, golden);
 const after = corpusOf(afterId, golden);
 

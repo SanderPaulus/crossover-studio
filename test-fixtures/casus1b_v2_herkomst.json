@@ -1,7 +1,7 @@
 {
  "_": "E-3 — DOCUMENTATIE, geen acceptatiewaarde. Zie scripts/generate-casus1b-v2-candidates.ts. Casus 1b: casus 1's mid en tweeter als tweeweg, door de v2-worker (v2ChainOne → runDesignChain onder de hook).",
  "route": "handleV2Request kind v2ChainOne → runDesignChain (vfOptimizer-ontwerpstap, synthese, tuner onder de hook) — de tweewegroute door de v2-worker; de app stuurt een tweewegverzoek nog naar de v1-worker (E-3, open punt).",
- "gegenereerd_op_commit": "267c599fce141369a12446f9f021c0b873af1816",
+ "gegenereerd_op_commit": "08f4fb805930b4402ffab35b33be773ae02efb48",
  "seed": 20260906,
  "opgenomen_op": {
   "platform": "darwin",
@@ -149,6 +149,7 @@
    "breakupGuard",
    "catalogSnap",
    "coilDcrModel",
+   "coilSnapDcrCeiling",
    "dissipationReferenceSource",
    "errorSmoothOct",
    "phaseAdmission",
@@ -169,6 +170,7 @@
    "amplitudeReference",
    "loadFloor",
    "rSourceDisqualifyOhm",
+   "seriesInductanceBound",
    "seriesInductanceCeilingSource",
    "snapPrefs",
    "solo",
@@ -198,7 +200,7 @@
   },
   "ketenverklaring_gelezen_door": "withDeclaredChainChoicesTwoWay (E-3): eqBands → eqBandsPerDriver, leanTargetDb, lowestWayLevelWork, lowestWayCoilMaxHenry op ChainSettings; en withDeclaredSearchSmoothing: de gestelde errorSmoothOct bereikt de vf-ontwerpstap.",
   "zoekmaat_gladding_oct": 0,
-  "vloer_zoekdoel_bron": "safety-extended",
+  "vloer_zoekdoel_bron": "safety-extended-refined",
   "probe_raster": "safety",
   "dissipatie_noemer": "re",
   "fase_toelating": "measured",
@@ -223,8 +225,8 @@
  "shortlist": {
   "overwogen": 3,
   "geweigerd_door_een_poort": 0,
-  "leverde_geen_netwerk": 1,
-  "bevroren": 2
+  "leverde_geen_netwerk": 2,
+  "bevroren": 1
  },
  "verwerpingen": [
   {
@@ -240,6 +242,21 @@
     "rippleDb": 1.2241410693795558,
     "phaseDeg": 4.275858160957017,
     "driveOnFsDb": -16.06522591131718
+   }
+  },
+  {
+   "label": "mid→tweeter 2186.5 LR4",
+   "kinds": [
+    "gate"
+   ],
+   "reason": "on the passbands its own crossings imply — M-C (tweeter): -19.9 dB exceeds the stated ceiling of -20.0 dB",
+   "rejectedTune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 70.09640594310048,
+    "rmsDeviationDb": 1.3314072981814324,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -20.32598312008875
    }
   }
  ],
@@ -277,10 +294,10 @@
    },
    "pas": {
     "tuned": 0,
-    "evaluaties": 36587,
+    "evaluaties": 39122,
     "ampFloorRepair": null,
     "safetyNote": null,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "verwerping": {
     "regels": [
@@ -401,7 +418,7 @@
     "tweeter: the series-capacitance pre-bound (23.8 µF) would have excluded this design's own 32.1 µF. It carries SLACK, so it was widened to the design rather than applied — a pre-bound shapes the box and never condemns (A5d.6, casebook V12).",
     "tweeter: the series-capacitance pre-bound carries SLACK (A5d.6) — it shapes the search box and decides nothing; M-C is the authority on the f_s drive.",
     "mid: 4 coil(s) capped at the family's single-part span of 34.0 mH (L1, L3, L6, L8) — A5d.6's catalogue ∩ measurement intersection, the catalogue half (A5e.3b).",
-    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
+    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · seriesInductanceBound — this design states no LF-lift budget, so no ceiling is inverted and there is nothing for a box to hold or a penalty to score. Absent rather than a stated 'box' (P4): naming the caging reading would claim somebody chose to let a shaping bound condemn a design · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
     "Delegated by the candidate to a named stage: branchTargets → the chain's design step (the per-branch corridor is derived from the alignment and the knees that step has just settled, so it does not exist until it has run. Re-deriving it here would be a second implementation of chain logic, which is exactly how two descriptions of one thing start to disagree (V21, one layer up)) · angleData → the chain input (the measured angle sets already travel in the payload as `input.angleData`. Restating them would put a second copy of the same measurement on the wire, and the copy is a second thing that can be wrong. Whether they travel at all is the app's decision and is visible there) · midBranch → the chain input (the mid branch's response and adjustment are the payload's own `input.m` and `midAdjust`. Same argument as angleData: one copy of a measurement, not two)",
     "Chain-level choices stated by the candidate: eqBands = 2, leanTargetDb = 0.5, lowestWayCoilMaxHenry = 0.034, synthesisGrid = alive. They are read by the design and synthesis steps, which run before the tuner exists, so they decide what the topology CAN be rather than what its values are (V41).",
     "Declared ABSENT at the chain layer: lowestWayLevelWork — this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything",
@@ -410,14 +427,14 @@
     "M-L (V50) judges nothing: no coil class is stated, and the snap is off so no catalogue rating exists either. The peak current per coil is still reported at 50.6 V.",
     "M-C (V50): a stated dB figure exists PER WAY for tweeter (-20 dB); every other protected way carries NO stated figure and is judged on the excursion-derived ceiling alone (or on nothing).",
     "Upper-driver protection is judged by the STATED requirement — M-C at most the excursion-derived ceiling (V49), enforced by the gate at every point a pass accepts a network — and the full-band safety gate no longer compares against the seed. The two rules do not order the same designs: the seed comparison is stricter than the requirement on a well-protected seed and looser on a poor one (V47).",
-    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
+    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
     "The source-resistance probe read over 21-20000 Hz, 240 points — the tuner's own full-band safety grid and probed mid at 89.1 Hz (its impedance peak — no box tuning was stated, so the probe took the peak; on a ported box that is a peak beside the tuning and not the tuning itself).",
     "The dissipation term divided by the resolved R_e of mid, 3.358 Ohm — the DC resistance the Q_es multiplication is defined on (A4 M-E), resolved once by the ingest pass and carried across the border rather than re-derived here.",
     "Plateau: the design states the flat target: there is no plateau to judge.",
     "The whole tune was refused, so this candidate delivers no network. What the tuner returned is its SEED — a design nobody judged against anything this candidate asked for — and it is withdrawn here rather than offered (F0: an empty field is not a judgement, and a seed is not empty either; casebook V31). The figures under `rejectedTune` describe the network that was REFUSED and will not be built. Refused by: gate (active-gate). An active gate refused the whole value tune, and what the run then fell back on is refused as well — M-B/|Z|: 2.28 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -13.9 dB exceeds the stated ceiling of -20.0 dB. So this run delivers no network rather than a seed nobody tuned against the goal it was given (casebook V31, V33).",
     "Refusing rule: M-C (tweeter): -16.1 dB exceeds the stated ceiling of -20.0 dB"
    ],
-   "looptijd_s": 104.786
+   "looptijd_s": 118.468
   },
   {
    "label": "mid→tweeter 1947.9 LR4",
@@ -440,7 +457,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 1.37,
+     "waarde": 1.372,
      "grens": null
     },
     {
@@ -448,7 +465,7 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 2.597,
+     "waarde": 2.6,
      "grens": 2.6
     },
     {
@@ -456,7 +473,7 @@
      "onderwerp": "tweeter",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": -40.848,
+     "waarde": -40.748,
      "grens": -20
     },
     {
@@ -464,7 +481,7 @@
      "onderwerp": "system",
      "gewapend": true,
      "geslaagd": true,
-     "waarde": 0.877,
+     "waarde": 0.881,
      "grens": 5
     },
     {
@@ -472,7 +489,7 @@
      "onderwerp": "system",
      "gewapend": false,
      "geslaagd": true,
-     "waarde": 19.432,
+     "waarde": 19.404,
      "grens": null
     }
    ],
@@ -499,11 +516,11 @@
     ]
    },
    "pas": {
-    "tuned": 15,
-    "evaluaties": 119860,
+    "tuned": 14,
+    "evaluaties": 143357,
     "ampFloorRepair": "none",
     "safetyNote": null,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
    "verwerping": null,
    "niveauwerk": {
@@ -511,66 +528,58 @@
     "laagste_weg": "mid",
     "anker": "mid",
     "gevraagd_X_dB": 0,
-    "geleverd_serie_R_totaal_ohm": 0.757,
+    "geleverd_serie_R_totaal_ohm": 0.758,
     "geleverd_shunt_pad": []
    },
    "spoel_dcr": {
     "model": "mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %)",
-    "totaal_ohm": 4.386,
+    "totaal_ohm": 3.778,
     "per_spoel": [
      {
       "id": "L1",
       "weg": "mid",
-      "mH": 0.687,
-      "dcr_ohm": 0.4189,
+      "mH": 0.688,
+      "dcr_ohm": 0.4195,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "L3",
       "weg": "mid",
-      "mH": 9.391,
-      "dcr_ohm": 1.955,
+      "mH": 9.411,
+      "dcr_ohm": 1.957,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "L9",
       "weg": "mid",
-      "mH": 0.476,
-      "dcr_ohm": 0.3378,
+      "mH": 0.479,
+      "dcr_ohm": 0.3389,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "B·L2",
       "weg": "tweeter",
-      "mH": 0.314,
-      "dcr_ohm": 0.2645,
-      "familie": "jantzen|air core wire coil|1",
-      "binnen_bereik": true
-     },
-     {
-      "id": "B·L4",
-      "weg": "tweeter",
-      "mH": 1.153,
-      "dcr_ohm": 0.5685,
+      "mH": 0.317,
+      "dcr_ohm": 0.2658,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "B·L7",
       "weg": "tweeter",
-      "mH": 0.607,
-      "dcr_ohm": 0.3896,
+      "mH": 0.397,
+      "dcr_ohm": 0.3033,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "B·L10",
       "weg": "tweeter",
-      "mH": 0.78,
-      "dcr_ohm": 0.4518,
+      "mH": 0.907,
+      "dcr_ohm": 0.4936,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      }
@@ -605,7 +614,7 @@
     "tweeter: the series-capacitance pre-bound (23.9 µF) would have excluded this design's own 27.9 µF. It carries SLACK, so it was widened to the design rather than applied — a pre-bound shapes the box and never condemns (A5d.6, casebook V12).",
     "tweeter: the series-capacitance pre-bound carries SLACK (A5d.6) — it shapes the search box and decides nothing; M-C is the authority on the f_s drive.",
     "mid: 4 coil(s) capped at the family's single-part span of 34.0 mH (L1, L3, L6, L9) — A5d.6's catalogue ∩ measurement intersection, the catalogue half (A5e.3b).",
-    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
+    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · seriesInductanceBound — this design states no LF-lift budget, so no ceiling is inverted and there is nothing for a box to hold or a penalty to score. Absent rather than a stated 'box' (P4): naming the caging reading would claim somebody chose to let a shaping bound condemn a design · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
     "Delegated by the candidate to a named stage: branchTargets → the chain's design step (the per-branch corridor is derived from the alignment and the knees that step has just settled, so it does not exist until it has run. Re-deriving it here would be a second implementation of chain logic, which is exactly how two descriptions of one thing start to disagree (V21, one layer up)) · angleData → the chain input (the measured angle sets already travel in the payload as `input.angleData`. Restating them would put a second copy of the same measurement on the wire, and the copy is a second thing that can be wrong. Whether they travel at all is the app's decision and is visible there) · midBranch → the chain input (the mid branch's response and adjustment are the payload's own `input.m` and `midAdjust`. Same argument as angleData: one copy of a measurement, not two)",
     "Chain-level choices stated by the candidate: eqBands = 2, leanTargetDb = 0.5, lowestWayCoilMaxHenry = 0.034, synthesisGrid = alive. They are read by the design and synthesis steps, which run before the tuner exists, so they decide what the topology CAN be rather than what its values are (V41).",
     "Declared ABSENT at the chain layer: lowestWayLevelWork — this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything",
@@ -614,70 +623,21 @@
     "M-L (V50) judges nothing: no coil class is stated, and the snap is off so no catalogue rating exists either. The peak current per coil is still reported at 50.6 V.",
     "M-C (V50): a stated dB figure exists PER WAY for tweeter (-20 dB); every other protected way carries NO stated figure and is judged on the excursion-derived ceiling alone (or on nothing).",
     "Upper-driver protection is judged by the STATED requirement — M-C at most the excursion-derived ceiling (V49), enforced by the gate at every point a pass accepts a network — and the full-band safety gate no longer compares against the seed. The two rules do not order the same designs: the seed comparison is stricter than the requirement on a well-protected seed and looser on a poor one (V47).",
-    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
+    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
     "The source-resistance probe read over 21-20000 Hz, 240 points — the tuner's own full-band safety grid and probed mid at 89.1 Hz (its impedance peak — no box tuning was stated, so the probe took the peak; on a ported box that is a peak beside the tuning and not the tuning itself).",
     "The dissipation term divided by the resolved R_e of mid, 3.358 Ohm — the DC resistance the Q_es multiplication is defined on (A4 M-E), resolved once by the ingest pass and carried across the border rather than re-derived here.",
     "Plateau: the design states the flat target: there is no plateau to judge."
    ],
-   "looptijd_s": 209.297
+   "looptijd_s": 254.544
   },
   {
    "label": "mid→tweeter 2186.5 LR4",
-   "geleverd": true,
-   "rimpel_dB": 3.76,
-   "fase_graden": 13.8,
+   "geleverd": false,
+   "rimpel_dB": 3.01,
+   "fase_graden": 23.8,
    "kruispunt_gesteld_hz": 2186.5,
    "kruispunt_geleverd_hz": 2157.4,
-   "poorten": [
-    {
-     "poort": "M-A",
-     "onderwerp": "system",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": 0.08,
-     "grens": null
-    },
-    {
-     "poort": "M-B/EPDR",
-     "onderwerp": "system",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": 1.31,
-     "grens": null
-    },
-    {
-     "poort": "M-B/|Z|",
-     "onderwerp": "system",
-     "gewapend": true,
-     "geslaagd": true,
-     "waarde": 2.598,
-     "grens": 2.6
-    },
-    {
-     "poort": "M-C",
-     "onderwerp": "tweeter",
-     "gewapend": true,
-     "geslaagd": true,
-     "waarde": -27.059,
-     "grens": -20
-    },
-    {
-     "poort": "M-A/part",
-     "onderwerp": "system",
-     "gewapend": true,
-     "geslaagd": true,
-     "waarde": 0.483,
-     "grens": 5
-    },
-    {
-     "poort": "M-L",
-     "onderwerp": "system",
-     "gewapend": false,
-     "geslaagd": true,
-     "waarde": 19.366,
-     "grens": null
-    }
-   ],
+   "poorten": [],
    "geweigerd_door": [],
    "door_de_ketenzelf_gediskwalificeerd": [],
    "kruisvenster_oordeel": true,
@@ -702,77 +662,98 @@
    },
    "pas": {
     "tuned": 20,
-    "evaluaties": 35994,
+    "evaluaties": 36792,
     "ampFloorRepair": "none",
     "safetyNote": null,
-    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+    "vloerbron": "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
    },
-   "verwerping": null,
+   "verwerping": {
+    "regels": [
+     "gate"
+    ],
+    "reden": "on the passbands its own crossings imply — M-C (tweeter): -19.9 dB exceeds the stated ceiling of -20.0 dB",
+    "geweigerde_tune": {
+     "minZOhm": null,
+     "windowPlusMinusDb": 70.09640594310048,
+     "rmsDeviationDb": 1.3314072981814324,
+     "rippleDb": null,
+     "phaseDeg": null,
+     "driveOnFsDb": -20.32598312008875
+    }
+   },
    "niveauwerk": {
     "eis": null,
     "laagste_weg": "mid",
     "anker": "mid",
     "gevraagd_X_dB": 0,
-    "geleverd_serie_R_totaal_ohm": 0.75,
+    "geleverd_serie_R_totaal_ohm": 0.706,
     "geleverd_shunt_pad": []
    },
    "spoel_dcr": {
     "model": "mid → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %); tweeter → Jantzen Air Core Wire Coil 1.0 mm (k 0.59, 0.523 Ω @ 1 mH, 0.016–34.0 mH, 250 SKUs, rms 7.0 %)",
-    "totaal_ohm": 4.626,
+    "totaal_ohm": 5.208,
     "per_spoel": [
      {
       "id": "L1",
       "weg": "mid",
-      "mH": 0.569,
-      "dcr_ohm": 0.375,
+      "mH": 0.445,
+      "dcr_ohm": 0.3244,
+      "familie": "jantzen|air core wire coil|1",
+      "binnen_bereik": true
+     },
+     {
+      "id": "L3",
+      "weg": "mid",
+      "mH": 2.769,
+      "dcr_ohm": 0.9523,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "L6",
       "weg": "mid",
-      "mH": 0.569,
-      "dcr_ohm": 0.3751,
+      "mH": 0.587,
+      "dcr_ohm": 0.382,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "L8",
       "weg": "mid",
-      "mH": 12.92,
-      "dcr_ohm": 2.359,
+      "mH": 11.9,
+      "dcr_ohm": 2.247,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "B·L2",
       "weg": "tweeter",
-      "mH": 2.64,
-      "dcr_ohm": 0.9259,
+      "mH": 0.822,
+      "dcr_ohm": 0.4658,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "B·L4",
       "weg": "tweeter",
-      "mH": 0.271,
-      "dcr_ohm": 0.2421,
+      "mH": 0.962,
+      "dcr_ohm": 0.511,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "B·L5",
       "weg": "tweeter",
-      "mH": 0.285,
-      "dcr_ohm": 0.2496,
+      "mH": 0.218,
+      "dcr_ohm": 0.2134,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      },
      {
       "id": "B·L8",
       "weg": "tweeter",
-      "mH": 0.059,
-      "dcr_ohm": 0.0988,
+      "mH": 0.073,
+      "dcr_ohm": 0.1117,
       "familie": "jantzen|air core wire coil|1",
       "binnen_bereik": true
      }
@@ -807,7 +788,7 @@
     "tweeter: the series-capacitance pre-bound (23.9 µF) would have excluded this design's own 24.3 µF. It carries SLACK, so it was widened to the design rather than applied — a pre-bound shapes the box and never condemns (A5d.6, casebook V12).",
     "tweeter: the series-capacitance pre-bound carries SLACK (A5d.6) — it shapes the search box and decides nothing; M-C is the authority on the f_s drive.",
     "mid: 4 coil(s) capped at the family's single-part span of 34.0 mH (L1, L3, L6, L8) — A5d.6's catalogue ∩ measurement intersection, the catalogue half (A5e.3b).",
-    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
+    "Declared ABSENT by the candidate (no value on this design, not merely unset): acousticSlopes — the designer stated no acoustic slope target, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · snapPrefs — the designer stated no snap preferences, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · loadFloor — the designer stated no derived amplifier-load floor, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · rSourceDisqualifyOhm — the designer stated no source-resistance disqualification limit, and absent is absent (P4) — a stated nothing judges nothing, here and in the tuner · amplitudeReference — this design states the FLAT target, which is the neutral reference and therefore the identity — subtracting it from the response would change no evaluation. Absent rather than armed: a mechanism that provably cannot move anything should not appear in a run as though it might have · seriesInductanceCeilingSource — this design states no LF-lift budget, so nothing inverts to a series-inductance ceiling and there is no ceiling for the tune to move underneath. Absent rather than a stated 'seed' (P4): naming the seed reading would claim somebody chose which network the ceiling should describe, and with no budget stated nobody chose anything · seriesInductanceBound — this design states no LF-lift budget, so no ceiling is inverted and there is nothing for a box to hold or a penalty to score. Absent rather than a stated 'box' (P4): naming the caging reading would claim somebody chose to let a shaping bound condemn a design · xoRange — it pins ONE handover, and this design has 1. The same statement is made N-way by xoRangePairs, which the candidate does state; naming one axis here would leave the reader guessing which · xoPinHard — the stiff crossing barrier belongs to the hold-the-pin repair pass, which runs only after a pinned axis has escaped its window. Arming it up front turns every candidate's cage into a wall, and a cage is bookkeeping rather than a promise · solo — the solo family describes a single-way design, and this design has several ways · soloSensitivityDb — the solo family describes a single-way design, and this design has several ways · soloTargetLevelDb — the solo family describes a single-way design, and this design has several ways",
     "Delegated by the candidate to a named stage: branchTargets → the chain's design step (the per-branch corridor is derived from the alignment and the knees that step has just settled, so it does not exist until it has run. Re-deriving it here would be a second implementation of chain logic, which is exactly how two descriptions of one thing start to disagree (V21, one layer up)) · angleData → the chain input (the measured angle sets already travel in the payload as `input.angleData`. Restating them would put a second copy of the same measurement on the wire, and the copy is a second thing that can be wrong. Whether they travel at all is the app's decision and is visible there) · midBranch → the chain input (the mid branch's response and adjustment are the payload's own `input.m` and `midAdjust`. Same argument as angleData: one copy of a measurement, not two)",
     "Chain-level choices stated by the candidate: eqBands = 2, leanTargetDb = 0.5, lowestWayCoilMaxHenry = 0.034, synthesisGrid = alive. They are read by the design and synthesis steps, which run before the tuner exists, so they decide what the topology CAN be rather than what its values are (V41).",
     "Declared ABSENT at the chain layer: lowestWayLevelWork — this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything",
@@ -816,12 +797,14 @@
     "M-L (V50) judges nothing: no coil class is stated, and the snap is off so no catalogue rating exists either. The peak current per coil is still reported at 50.6 V.",
     "M-C (V50): a stated dB figure exists PER WAY for tweeter (-20 dB); every other protected way carries NO stated figure and is judged on the excursion-derived ceiling alone (or on nothing).",
     "Upper-driver protection is judged by the STATED requirement — M-C at most the excursion-derived ceiling (V49), enforced by the gate at every point a pass accepts a network — and the full-band safety gate no longer compares against the seed. The two rules do not order the same designs: the seed comparison is stricter than the requirement on a well-protected seed and looser on a poor one (V47).",
-    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
+    "The amp-load barrier aimed at the |Z| minimum over 20-20317 Hz, 251 points — the full-band safety grid extended to the measured sweeps' extent with 11 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33).",
     "The source-resistance probe read over 21-20000 Hz, 240 points — the tuner's own full-band safety grid and probed mid at 89.1 Hz (its impedance peak — no box tuning was stated, so the probe took the peak; on a ported box that is a peak beside the tuning and not the tuning itself).",
     "The dissipation term divided by the resolved R_e of mid, 3.358 Ohm — the DC resistance the Q_es multiplication is defined on (A4 M-E), resolved once by the ingest pass and carried across the border rather than re-derived here.",
-    "Plateau: the design states the flat target: there is no plateau to judge."
+    "Plateau: the design states the flat target: there is no plateau to judge.",
+    "The whole tune was refused, so this candidate delivers no network. What the tuner returned is its SEED — a design nobody judged against anything this candidate asked for — and it is withdrawn here rather than offered (F0: an empty field is not a judgement, and a seed is not empty either; casebook V31). The figures under `rejectedTune` describe the network that was REFUSED and will not be built. Refused by: gate (derived-gate). The tune COMPLETED and passed every active gate on the passbands frozen from the seed — the reference the search was held to — but the network it delivered fails one on the passbands its OWN crossings imply. The frozen reference exists so the optimiser cannot satisfy M-C by moving the crossing (gates.ts, rule 4); when the crossing moves anyway, the built design is judged on where it crosses and not on where its seed did. Refused in the V31 form since A5e.3c: until then this second verdict was computed and read by nobody on this route.",
+    "Refusing rule: on the passbands its own crossings imply — M-C (tweeter): -19.9 dB exceeds the stated ceiling of -20.0 dB"
    ],
-   "looptijd_s": 102.773
+   "looptijd_s": 112.48
   }
  ],
  "referentie_kruispunt_hz": [
@@ -842,10 +825,6 @@
   {
    "name": "KAND-V2-1",
    "label": "mid→tweeter 1947.9 LR4"
-  },
-  {
-   "name": "KAND-V2-2",
-   "label": "mid→tweeter 2186.5 LR4"
   }
  ],
  "kandidaat_herkomst": {
@@ -861,6 +840,7 @@
       1646.9,
       1838.6
      ],
+     "twoSided": false,
      "order": 4,
      "alignment": {
       "kind": "LR",
@@ -913,6 +893,7 @@
       1838.6,
       2063.8
      ],
+     "twoSided": true,
      "order": 4,
      "alignment": {
       "kind": "LR",
@@ -965,6 +946,7 @@
       2063.8,
       2304
      ],
+     "twoSided": false,
      "order": 4,
      "alignment": {
       "kind": "LR",

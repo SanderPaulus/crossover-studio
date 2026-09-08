@@ -977,7 +977,16 @@ function tuneOptionsFor(
               : 'the stated lowestWayCoilMaxHenry chain key (A5e.3b)',
         }
       : undefined;
-  const box = searchBoxFor(seedParts, inverted.bounds, inverted.ceilingTrackers, coilSpanCatalog);
+  /* C-2 — the candidate says whether the LF-lift ceiling cages or only shapes,
+   * and the box is BUILT that way. The tuner never re-derives it: filing is
+   * this function's job and the key is a statement about the filing. */
+  const box = searchBoxFor(
+    seedParts,
+    inverted.bounds,
+    inverted.ceilingTrackers,
+    coilSpanCatalog,
+    network.declaration?.stated.seriesInductanceBound === 'soft' ? 'soft' : 'box',
+  );
   collect.notes.push(...box.notes);
 
   /* ---- F4c: the choices and the weights, STATED ------------------------- *
@@ -1020,8 +1029,20 @@ function tuneOptionsFor(
     const tracked =
       stated.seriesInductanceCeilingSource === 'tuned' &&
       box.valueSumCeilings.some((g) => g.ceilingAt !== undefined);
+    /* C-2 — and WHETHER it caged anything, which is a different sentence from
+     * which network it described. A soft ceiling still moves with the tune
+     * when the tracker is armed; what it no longer does is forbid. */
+    const soft = box.valueSumCeilings.some((g) => g.soft === true);
     collect.notes.push(
-      tracked
+      soft
+        ? `The LF-lift ceiling on ${bumpBound.subject}'s series inductance is SOFT on this run ` +
+            `(C-2): ${(bumpBound.maxSI / H_PER_MH).toFixed(2)} mH ` +
+            (tracked ? 're-solved at the path resistance of each network evaluated (V48) ' : "held at the seed's path resistance ") +
+            'SHAPES the search and forbids nothing. M-D on the delivered network is the only ' +
+            'authority on the resonant lift — the inversion reads the way as a bare series R+L ' +
+            'and the metric solves the real network, and E-4 measured those two to differ by up ' +
+            'to 8.7 dB in one direction on this casebook.'
+        : tracked
         ? `The LF-lift ceiling on ${bumpBound.subject}'s series inductance is RE-SOLVED at the ` +
             'path resistance of the network being evaluated, not held at the ' +
             `${(bumpBound.parameters.path_R_ohm as number).toFixed(2)} Ω the seed carried. The ` +
@@ -1466,6 +1487,7 @@ function tuneOptionsFor(
         }
       : {}),
     ...(Object.keys(box.valueCeilings).length > 0 ? { valueCeilings: box.valueCeilings } : {}),
+    ...(box.valueSoftCeilings ? { valueSoftCeilings: box.valueSoftCeilings } : {}),
     ...(box.valueSumCeilings.length > 0 ? { valueSumCeilings: box.valueSumCeilings } : {}),
     ...(v2.determinism.budgetEvaluations !== undefined
       ? { maxIterations: v2.determinism.budgetEvaluations }
@@ -2205,17 +2227,26 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
        * point: it turns the message from an explanation into a report that
        * something is wrong with the repair rather than with the candidate. */
       const tracked = network.declaration?.stated.seriesInductanceCeilingSource === 'tuned';
+      /* C-2 — a THIRD answer, and it is the one that makes this check the
+       * mechanism rather than the backstop. With the ceiling filed soft the
+       * search was never forbidden this network; M-D refusing it here is the
+       * design working as stated, not a defect in a repair. */
+      const softBound = network.declaration?.stated.seriesInductanceBound === 'soft';
       collect.notes.push(
         `The delivered network was tested against the stated LF budget on M-D's RESONANT half ` +
           `(V43) and exceeded it: ${got.toFixed(3)} dB against ${v2.budgets.lfBumpBudgetDb} dB on ` +
           `${model}. ` +
-          (tracked
+          (softBound
+            ? 'The A5d.6 ceiling was SOFT on this run (C-2), so it shaped the search and forbade ' +
+              'nothing; this refusal is the only authority speaking, which is exactly the ' +
+              'arrangement the run stated.'
+            : tracked
             ? 'The A5d.6 ceiling FOLLOWED the tune on this run (V48), so this should not have ' +
               'been reachable — the ceiling and the delivered network disagree, and that is a ' +
               'finding about the repair rather than about this candidate.'
-            : "The A5d.6 ceiling that bounded the search was solved at the SEED's path " +
-              'resistance and could not follow the tune (V45; stating ' +
-              "`seriesInductanceCeilingSource: 'tuned'` makes it follow — V48)."),
+              : "The A5d.6 ceiling that bounded the search was solved at the SEED's path " +
+                'resistance and could not follow the tune (V45; stating ' +
+                "`seriesInductanceCeilingSource: 'tuned'` makes it follow — V48)."),
       );
       refused = {
         by: 'stated-budget',
@@ -2224,7 +2255,14 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
           `the delivered network amplifies ${model}'s reflex peak by ${got.toFixed(2)} dB of ` +
           `resonant lift, against a stated budget of ${v2.budgets.lfBumpBudgetDb} dB (A4 M-D, ` +
           'the resonant half — casebook V43)',
-        note: tracked
+        note: softBound
+          ? 'The A5d.6 ceiling was filed SOFT on this run (C-2): it narrowed the search box as a ' +
+            'penalty and excluded nothing, because the inversion is not the exact inverse of this ' +
+            'requirement (E-4 measured it 1.7 dB high at the median and 8.7 at the worst, in one ' +
+            'direction only). A network above the budget is therefore refused HERE and nowhere ' +
+            'else, which is the arrangement A5d.6 describes: the inversion shapes, the requirement ' +
+            'decides.'
+          : tracked
           ? 'The search box re-read this way\'s series-inductance ceiling at the path resistance ' +
             'of each network it evaluated (V48), so the ceiling described the network being ' +
             'built. That this check still fired means the two disagree — the quantised ceiling ' +

@@ -334,19 +334,68 @@ describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
      * spreiding, wat A5e.3c voor het eerst zichtbaar maakt (elk vorig veld
      * leverde er ten hoogste tien). Gelezen uit de boekhouding van de
      * generator, niet gemeten. */
+    /* C-2 — HERANKERD op het bevroren A5e.3c-corpus. Deze claim las tot C-2
+     * `corpusOf('live')`, en de laatste regeneratie van casus 1 zou hem
+     * daarmee stil onwaar hebben gemaakt: de tien netlists die hij beschrijft
+     * heten sindsdien `A5E3C_KAND_*`. Dezelfde herankering die V43 op
+     * `v42_bult_bevinding` toepaste en V48 op deze test — een claim over een
+     * regeneratie hoort op de twee corpora te staan die zij vergeleek, en op
+     * geen van beide "het huidige". */
     const before = corpusOf('a5e3veld');
-    const after = corpusOf('live');
+    const after = corpusOf('a5e3c');
     expect(before.byCandidate.size).toBe(7);
     expect(after.byCandidate.size).toBe(10);
     expect(pairedCandidates(before, after)).toHaveLength(0);
     for (const label of before.order) expect(after.order).not.toContain(label);
-    const delivered = after.outcomes!.filter((o) => o.verwerping === null);
+    /* De OPBRENGST van die run staat in haar eigen herkomst, sinds C-2 gedateerd
+     * bewaard: elf kandidaten leverden en tien zijn bevroren — de eerste
+     * regeneratie waarin de shortlist KLEINER is dan het veld
+     * (`DEFAULT_SHORTLIST_SIZE`, gekozen op spreiding). De netlists kunnen dat
+     * niet zeggen; het is een feit over de RUN, en de levende herkomst wordt
+     * door de volgende overschreven. */
+    const run = corpusOf('a5e3cRun');
+    const delivered = run.outcomes!.filter((o) => o.verwerping === null);
+    expect(run.order.length).toBe(24);
     expect(delivered.length).toBe(11);
     expect(after.byCandidate.size).toBeLessThan(delivered.length);
     for (const pick of [PHASE, DISS]) {
       const d = pairedDelta([], pick);
       expect(d.n).toBe(0);
     }
+  });
+
+  it('C-2: A5e.3c → levend heeft opnieuw GEEN enkel paar — élke positie verhuisde toen de kooi tweezijdig werd', () => {
+    /* De laatste regeneratie van casus 1. De positieregel is TWEEZIJDIG
+     * geworden (elke kooi één spacing breed en binnen het venster), en dat
+     * verspringt per constructie ÉLKE positie: de W-M-as ging van
+     * 147,9–549,7 in acht naar 156,7–518,8 in acht, de M-T-as van drie
+     * posities (1646,9 / 1947,9 / 2304) naar twee (1744,8 / 2174,7). Geen
+     * enkel label overleeft, dus de gepaarde lezing is n = 0 en élk
+     * corpusgemiddelde in de tabel is COMPOSITIE — de leesregel van de
+     * V47-nazorg in haar uiterste vorm, voor de tweede regeneratie op rij.
+     *
+     * En het veld is kleiner: budget 24 → 16, tien geleverd van zestien tegen
+     * elf van vierentwintig. De shortlist houdt er sindsdien tien van tien in
+     * plaats van tien van elf. */
+    const before = corpusOf('a5e3c');
+    const after = corpusOf('live');
+    expect(before.byCandidate.size).toBe(10);
+    expect(after.byCandidate.size).toBe(10);
+    expect(pairedCandidates(before, after)).toHaveLength(0);
+    for (const label of before.order) expect(after.order).not.toContain(label);
+    const run = corpusOf('live');
+    expect(run.order.length).toBe(16);
+    const delivered = run.outcomes!.filter((o) => o.verwerping === null);
+    expect(delivered.length).toBe(11);
+    /* De DERDE TOESTAND die A5e.3c introduceerde staat er weer, en op precies
+     * dezelfde schaal: ELF geleverd, TIEN bevroren. De shortlist houdt
+     * `DEFAULT_SHORTLIST_SIZE` en kiest op spreiding, dus één geleverd netwerk
+     * (261,8 · 1744,8) bestaat alleen in de shards. Dat is geen verlies dat
+     * deze regeneratie veroorzaakte maar de grootte van de lijst, en sinds E-4
+     * zegt `buildShortlist` het zelf. */
+    expect(after.byCandidate.size).toBe(10);
+    expect(after.byCandidate.size).toBeLessThan(delivered.length);
+    for (const pick of [PHASE, DISS]) expect(pairedDelta([], pick).n).toBe(0);
   });
 
   it('een paar waarvan één helft niets meet telt aan GEEN van beide kanten mee', () => {

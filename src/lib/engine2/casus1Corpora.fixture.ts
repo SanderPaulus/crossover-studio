@@ -150,6 +150,11 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
    * the A5e.3b boundaries (M-T floor 'drive-stated', coil-span cap, extended
    * barrier, level-work/1.2). The "before" half of the A5e.3c comparison. */
   a5e3veld: { block: 'a5e3veld_corpus', name: 'A5e.3-veld' },
+  /* C-2 — the ten A5e.3c netlists, frozen before the LAST regeneration of casus
+   * 1. The "before" half of three decisions at once: the A5d.6 ceiling as a
+   * CAGE, the barrier on the unrefined extended grid, and edge-clipped
+   * (one-sided) cages at budget 24. */
+  a5e3c: { block: 'a5e3c_corpus', name: 'A5e.3c' },
 };
 
 /**
@@ -165,6 +170,13 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
  */
 export const DATED_HERKOMST: Record<string, { file: string; name: string }> = {
   m1: { file: 'casus1_m1_herkomst.json', name: 'M-1' },
+  /* C-2 — the A5e.3c run's own record, frozen beside its netlists. Not because
+   * the field delivered nothing (M-1's reason) but because the OUTCOMES carry a
+   * fact the netlists cannot: eleven candidates delivered and ten were frozen,
+   * the first regeneration where the shortlist is smaller than the field. A
+   * claim about that lives on the run, and the live record is overwritten by
+   * the next one. */
+  a5e3cRun: { file: 'casus1_a5e3c_herkomst.json', name: 'A5e.3c (herkomst)' },
 };
 
 interface Herkomst {

@@ -62,6 +62,16 @@
     "A5E3VELD_KAND_5",
     "A5E3VELD_KAND_6",
     "A5E3VELD_KAND_7",
+    "A5E3C_KAND_1",
+    "A5E3C_KAND_2",
+    "A5E3C_KAND_3",
+    "A5E3C_KAND_4",
+    "A5E3C_KAND_5",
+    "A5E3C_KAND_6",
+    "A5E3C_KAND_7",
+    "A5E3C_KAND_8",
+    "A5E3C_KAND_9",
+    "A5E3C_KAND_10",
     "KAND_V2_1",
     "KAND_V2_2",
     "KAND_V2_3",
@@ -1888,7 +1898,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_1",
+      "netlist": "A5E3C_KAND_1",
       "weg": "woofer",
       "L_som_mH": 5.195,
       "padweerstand_ohm": 1.0667,
@@ -1900,7 +1910,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_2",
+      "netlist": "A5E3C_KAND_2",
       "weg": "woofer",
       "L_som_mH": 4.908,
       "padweerstand_ohm": 1.0295,
@@ -1912,7 +1922,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_3",
+      "netlist": "A5E3C_KAND_3",
       "weg": "woofer",
       "L_som_mH": 5.013,
       "padweerstand_ohm": 1.0442,
@@ -1924,7 +1934,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_4",
+      "netlist": "A5E3C_KAND_4",
       "weg": "woofer",
       "L_som_mH": 5.498,
       "padweerstand_ohm": 1.1031,
@@ -1936,7 +1946,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_5",
+      "netlist": "A5E3C_KAND_5",
       "weg": "woofer",
       "L_som_mH": 3.845,
       "padweerstand_ohm": 0.8775999999999999,
@@ -1948,7 +1958,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_6",
+      "netlist": "A5E3C_KAND_6",
       "weg": "woofer",
       "L_som_mH": 6.192,
       "padweerstand_ohm": 1.1832,
@@ -1960,7 +1970,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_7",
+      "netlist": "A5E3C_KAND_7",
       "weg": "woofer",
       "L_som_mH": 5.867,
       "padweerstand_ohm": 1.1463,
@@ -1972,7 +1982,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_8",
+      "netlist": "A5E3C_KAND_8",
       "weg": "woofer",
       "L_som_mH": 5.986,
       "padweerstand_ohm": 1.1602,
@@ -1984,7 +1994,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_9",
+      "netlist": "A5E3C_KAND_9",
       "weg": "woofer",
       "L_som_mH": 6.036,
       "padweerstand_ohm": 1.1658,
@@ -1996,7 +2006,7 @@
       "binnen_budget": true
     },
     {
-      "netlist": "KAND_V2_10",
+      "netlist": "A5E3C_KAND_10",
       "weg": "woofer",
       "L_som_mH": 6.326,
       "padweerstand_ohm": 1.198,
@@ -2004,6 +2014,126 @@
       "inversie_voorspelt_dB": 5.803638779688459,
       "verschil_dB": 8.701468243701674,
       "plafond_mH": 2.640035624205804,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_1",
+      "weg": "woofer",
+      "L_som_mH": 13.203,
+      "padweerstand_ohm": 1.8321999999999998,
+      "M_D_gemeten_dB": 1.1609879991991612,
+      "inversie_voorspelt_dB": 11.15729464144154,
+      "verschil_dB": 9.996306642242379,
+      "plafond_mH": 2.963247844137158,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_2",
+      "weg": "woofer",
+      "L_som_mH": 6.458,
+      "padweerstand_ohm": 1.2002,
+      "M_D_gemeten_dB": -0.3226269842570222,
+      "inversie_voorspelt_dB": 5.958175883344177,
+      "verschil_dB": 6.280802867601199,
+      "plafond_mH": 2.6411152806603964,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_3",
+      "weg": "woofer",
+      "L_som_mH": 11.843,
+      "padweerstand_ohm": 1.6936,
+      "M_D_gemeten_dB": -0.5835867405652717,
+      "inversie_voorspelt_dB": 10.39888469964157,
+      "verschil_dB": 10.982471440206842,
+      "plafond_mH": 2.89057926313975,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_4",
+      "weg": "woofer",
+      "L_som_mH": 7.8500000000000005,
+      "padweerstand_ohm": 1.3527,
+      "M_D_gemeten_dB": -0.11277723433169218,
+      "inversie_voorspelt_dB": 7.287422244406894,
+      "verschil_dB": 7.400199478738586,
+      "plafond_mH": 2.7166664481570675,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_5",
+      "weg": "woofer",
+      "L_som_mH": 6.907,
+      "padweerstand_ohm": 1.2376,
+      "M_D_gemeten_dB": 0.523536201125804,
+      "inversie_voorspelt_dB": 6.42580177001428,
+      "verschil_dB": 5.902265568888476,
+      "plafond_mH": 2.6595141888183544,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_6",
+      "weg": "woofer",
+      "L_som_mH": 4.962,
+      "padweerstand_ohm": 1.0175,
+      "M_D_gemeten_dB": -1.124401171602333,
+      "inversie_voorspelt_dB": 4.362641871582808,
+      "verschil_dB": 5.487043043185141,
+      "plafond_mH": 2.5524548997571666,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_7",
+      "weg": "woofer",
+      "L_som_mH": 20.805999999999997,
+      "padweerstand_ohm": 2.382,
+      "M_D_gemeten_dB": -0.36385023932442095,
+      "inversie_voorspelt_dB": 14.18911368860877,
+      "verschil_dB": 14.552963927933192,
+      "plafond_mH": 3.228147548802243,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_8",
+      "weg": "woofer",
+      "L_som_mH": 4.5120000000000005,
+      "padweerstand_ohm": 0.9584999999999999,
+      "M_D_gemeten_dB": -0.943869446564253,
+      "inversie_voorspelt_dB": 3.851720731425573,
+      "verschil_dB": 4.795590177989826,
+      "plafond_mH": 2.524257719882522,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_9",
+      "weg": "woofer",
+      "L_som_mH": 18.161,
+      "padweerstand_ohm": 2.1942,
+      "M_D_gemeten_dB": -1.414206763979407,
+      "inversie_voorspelt_dB": 13.343102339267034,
+      "verschil_dB": 14.757309103246442,
+      "plafond_mH": 3.145540597441392,
+      "boven_plafond": true,
+      "binnen_budget": true
+    },
+    {
+      "netlist": "KAND_V2_10",
+      "weg": "woofer",
+      "L_som_mH": 4.539000000000001,
+      "padweerstand_ohm": 0.9675,
+      "M_D_gemeten_dB": -1.1785009017722499,
+      "inversie_voorspelt_dB": 3.876048022031126,
+      "verschil_dB": 5.054548923803376,
+      "plafond_mH": 2.5285452287290684,
       "boven_plafond": true,
       "binnen_budget": true
     }

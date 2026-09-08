@@ -89,6 +89,7 @@ export type StatedByDesigner = Partial<
     | 'amplitudeReference'
     | 'protectionRule'
     | 'seriesInductanceCeilingSource'
+    | 'seriesInductanceBound'
     | 'coilDcrModel'
     | 'coilSnapDcrCeiling'
   >
@@ -373,8 +374,22 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
      * over the union of the two extents, at the safety resolution where the
      * responses live and the gate's own points where only the sweeps do. An
      * explicit `'safety'` still wins, which is what keeps the A5e.3-veld
-     * corpus reproducible as the run its generator made. */
-    stated.zFloorBarrierSource = 'safety-extended';
+     * corpus reproducible as the run its generator made.
+     *
+     * C-2 — `'safety-extended-refined'` and no longer `'safety-extended'`. E-1
+     * measured the remaining gap over all 161 frozen netlists: two read above
+     * the floor slack on the extended grid, both with a dip NARROWER than one
+     * grid cell, and no netlist with a wider dip reads above it — the
+     * difference is resolution and nothing else. Of the three refinements E-1
+     * priced, the cheapest closes it: fill the two cells around the coarse
+     * GLOBAL minimum with the gate sweep's own points (largest residue
+     * 0.0089 Ω, nothing above the slack, +3 % per evaluation). The refined
+     * source takes the same two inputs as the extended one, so a run that
+     * carries the safety set and the sweep gets it; missing either, the term is
+     * inert exactly as before (the V32 rule, no silent fallback). An explicit
+     * `'safety-extended'` still wins, which keeps the A5e.3c corpus
+     * reproducible as the run its generator made. */
+    stated.zFloorBarrierSource = 'safety-extended-refined';
   } else {
     absent.push({
       key: 'zFloorBarrierSource',
@@ -669,6 +684,39 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
         'and there is no ceiling for the tune to move underneath. Absent rather than a stated ' +
         '\'seed\' (P4): naming the seed reading would claim somebody chose which network the ' +
         'ceiling should describe, and with no budget stated nobody chose anything',
+    });
+  }
+
+  /* ---- C-2: WHETHER THAT CEILING MAY FORBID ANYTHING -------------------
+   *
+   * Derived from the same fact as the key above and stating the other half of
+   * it. With an LF budget stated the inversion exists and shapes the box; what
+   * this says is that it may not also condemn, because it is not the inverse
+   * of the requirement it stands for. E-4 measured the gap on every frozen
+   * netlist of the casebook: `lfBumpForSeriesRL` reads the way as a bare
+   * series R+L in the measured impedance, M-D solves the real network with its
+   * shunts, and on these sets the first is 1.7 dB high at the median and
+   * 8.7 dB at the worst — 69 netlists above their ceiling and inside their
+   * budget, none the other way. A cage that is wrong in one direction only is
+   * a cage that excludes designs the requirement accepts.
+   *
+   * ABSENT AND NEVER A STATED `'box'` (P4), the same rule V45 applies to
+   * `'flat'`, V47 to `'seed'` and V48 to `'tuned'`: with no budget stated
+   * there is no ceiling, so there is nothing to be soft or hard ABOUT, and
+   * naming the caging reading would claim somebody chose it. An explicit
+   * `'box'` still wins, so the A5e.3c corpus stays a run somebody can ask for
+   * and the two arms of E-4's measurement are one word apart. */
+  if (s.seriesInductanceBound !== undefined) {
+    stated.seriesInductanceBound = s.seriesInductanceBound;
+  } else if (input.lfBumpBudgetDb !== undefined) {
+    stated.seriesInductanceBound = 'soft';
+  } else {
+    absent.push({
+      key: 'seriesInductanceBound',
+      why:
+        'this design states no LF-lift budget, so no ceiling is inverted and there is nothing for ' +
+        'a box to hold or a penalty to score. Absent rather than a stated \'box\' (P4): naming the ' +
+        'caging reading would claim somebody chose to let a shaping bound condemn a design',
     });
   }
 

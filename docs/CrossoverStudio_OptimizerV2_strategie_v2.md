@@ -7077,6 +7077,309 @@ eist dat de dichtstbijzijnde voorafgaande vensterbewaker van arm n bewaker n is.
 
 **WAT ER NIET GEBEURD IS.** Geen regeneratie. Geen wijziging aan de inversie, de zoekdoos, de eisen, de budgetten, het corpus of de vensters. Het v1-snapbudget is onaangeraakt en blijft de default.
 
+### C-2 — casus 2: een synthetische drieweg met grondwaarheid, en de laatste regeneratie van casus 1 met de drie opgespaarde besluiten (08-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING EN OMVANG.** Twee delen in één oplevering, en zij hebben één ding gemeen: allebei sluiten zij een
+open punt dat alleen met een MÉTING te sluiten was. **Deel 1** is de tweede casus die de ROADMAP als "het zwaarste
+open punt van dit moment" noteert — alles in dit boek is op één luidspreker gemeten, en een regel die op één
+ontwerp is afgesteld is geen regel. Zij is SYNTHETISCH, met grondwaarheid, want dat is de enige soort casus die
+de vraag "vindt de extractor het goede getal" kán beantwoorden: op gemeten data bestaat geen goed getal, alleen
+een tweede meting. **Deel 2** is de laatste regeneratie van casus 1, met de drie besluiten die E-1 en E-4
+opspaarden omdat elk van hen precies één regeneratie kost.
+
+---
+
+**DEEL 1 — CASUS 2: DRIE WEGEN UIT BEKENDE MODELLEN.**
+
+**HET MODEL IS DE GRONDWAARHEID, EN HET HEEFT ÉÉN HUIS.** `scripts/casus2-model.ts` draagt de T/S-parameters per
+driver, de kasten, de geometrie, de gekozen poort en de gedocumenteerde meetspanning;
+`scripts/generate-casus2-measurements.ts` maakt daar elf bestanden van (drie ZMA-sweeps, twee nabij-velden, zes
+ver-velden met ARTA-header) plus `grondwaarheid.json`, en
+`scripts/sync-casus2-project-input.ts` kopieert dat model naar de projectinvoer van de casus (driverkaart,
+geometrie, headerblok). Die derde stap is er omdat de eerste run van de recorder de excursieroute 42 %, 51 % en
+35 % naast de grondwaarheid meldde en élk van die drie een KAART was die de Bl en M_ms van een eerdere afstemming
+van het model droeg. P6 één laag hoger: het getal heeft één huis, en een kopie die met de hand wordt bijgehouden
+is geen kopie maar een tweede bron.
+
+**DE NATUURKUNDE IS ÉÉN KETEN EN GEEN DRIE LOSSE MODELLEN.** Per driver
+`Z_mech = R_ms + sM_ms + 1/(sC_ms) + S_d²·Z_ab`, met `Z_ab` de akoestische last van de kast (1/(sC_ab) gesloten,
+die compliantie parallel aan `sM_ap + R_ap` voor een reflexkast, nul in vrije lucht); daaruit volgen de
+elektrische impedantie, de conussnelheid, de uitgestraalde volumesnelheid (`U_d·Z_p/(Z_C+Z_p)` op een reflexkast,
+dus het conusdal op f_b en de vierde-orde helling vallen eruit in plaats van erin gestopt te worden), het verre
+veld (`p = ρ₀·s·U/(2πr)` maal de kolvenkarakteristiek `2J₁(x)/x`, maal de baffle-step, maal de breakups) en het
+nabije veld. Elke breakup is een analoge peaking-sectie, zodat de gestelde hoogte EXACT de piekwinst is en dus
+een grondwaarheid waaraan de breakup-schatter gehouden kan worden.
+
+**ELK GETAL IS ANDERS DAN CASUS 1, en dat is een eis en geen toeval:** één 8 Ω-woofer in plaats van een parallel
+paar, een kleiner front (210 tegen 260 mm, dus de baffle-step op 547,6 tegen 442,3 Hz), andere c-t-c (195/96
+tegen 261/129,2 mm), andere gevoeligheden (88,5 / 93,1 / 96,3 dB), een andere poort (3,0/7,0 ms → T = 4,0 ms op
+de kop, dus 1/T = 250 Hz en 2/T = 500 Hz — ronde getallen, waar 396,7 Hz alles kan zijn), andere spoelfamilies
+(1,2 / 0,8 / 0,7 mm tegen 1,4 / 1,0 / 1,0) en andere gestelde eisen (vloer 3,2 Ω, piek 120 W op 6 Ω, marge 0,75,
+tweeter −22 dB, weerstandsklasse 5 W × 0,6 bij 8 W thermisch, plateau 2,0 dB, opslingering 2,0 dB, Q_es-factor
+2,5). Een synthetische casus die toevallig in de buurt van de echte ligt kan een schatter die op de echte is
+afgeregeld niet betrappen.
+
+**EN ÉÉN DING DAT CASUS 1 NIET HEEFT: DE MEETSPANNING STAAT IN DE HEADER.** Route 2 van M-C (de akoestische
+route) staat op casus 1 UIT omdat de ARTA-headers daar geen meetspanning dragen — zij is dus nooit op een casus
+geoefend. Hier is zij gedocumenteerd (2,83 V op 1 m, in élk ver-veldbestand en in de driverkaart), en de twee
+routes kunnen naast elkaar.
+
+**DE EXTRACTIETABEL — VIERENVEERTIG VERGELIJKINGEN, GRONDWAARHEID NAAST EXTRACTIE.** `afgeleide_parameters.
+extractie_tegen_grondwaarheid` draagt élke grootheid waarvan het model het antwoord kent, met de schatter erbij,
+de tolerantieklasse van casus 1 (ONGEWIJZIGD overgenomen — die klassen zijn voor gemeten data met ruis gekozen,
+dus een synthetische casus hoort ze met ruime marge te halen) en het oordeel. Veertig ACCEPTATIERIJEN (dezelfde
+vraag aan beide kanten) en vier CONTROLERIJEN (met opzet twee vragen). **Vijfendertig van de veertig
+acceptatierijen halen hun tolerantie**, de meeste met ordes marge:
+
+| grootheid | grondwaarheid | extractie | verschil | klasse |
+| --- | --- | --- | --- | --- |
+| geldigheidsvloer 1/T | 250 Hz | 250 Hz | **0** | 2 % |
+| fijnstructuur 2/T | 500 Hz | 500 Hz | **0** | 2 % |
+| R_e (motionele fit) woofer / mid / tweeter | 6,2 / 5,4 / 4,1 Ω | 6,1852 / 5,4000000 / 4,0999999 Ω | −0,015 / 3e-8 / −6e-8 Ω | 0,03 Ω |
+| f_c mid (motionele fit) | 459,7362 Hz | 459,7362 Hz | 2e-7 % | 2 % |
+| Q_mc mid (motionele fit) | 4,24372 | 4,24372 | −4e-6 % | 7 % |
+| R_es mid / tweeter (motionele fit) | 20,9032 / 11,9273 Ω | idem | 4e-6 / 7e-6 % | 7 % |
+| f_s tweeter (motionele fit) | 1500 Hz | 1500,00002 Hz | 2e-6 % | 2 % |
+| f_b woofer (reflexdal) | 38,0 Hz | 37,95 Hz | −0,13 % | 2 % |
+| breakups (vijf stuks) | 3400 / 7200 / 11000 / 15500 / 18500 Hz | 3393 / 7221 / 11007 / 15502 / 18478 | −0,20 .. +0,29 % | 2 % |
+| NF-plafond (Keele) woofer / mid | 663,23 / 1437 Hz | idem | **0** | 2 % |
+| x/V mid / tweeter | 0,05357 / 0,01749 mm/V | 0,05358 / 0,01749 | < 0,1 % | 7 % |
+
+**DE VIJF BEVINDINGEN, EXACT GEPIND EN NIET GEREPAREERD** (stap 4 van `casus-toevoegen`, en de E-4-vorm:
+GELIJKHEID en geen deelverzameling — een nieuwe afwijking valt om door er niet op te staan, een verdwenen
+afwijking door er nog op te staan):
+
+| # | bevinding | verschil | wat het is |
+| --- | --- | --- | --- |
+| **C-2/B1** | `semi-inductantie n (HF-fit)` op alle drie de wegen | +12,6 / +9,6 / +44,2 % | `z-semi-inductance` fit log\|Z\| tegen log f bóven de resonantie zonder R_e af te trekken, dus hij leest de kromming van de SOM en komt systematisch TE HOOG uit. De motionele fit (`z-re`, die R_e als vrije parameter draagt) leest n op de twee gesloten wegen tot in het zevende cijfer goed. **Twee schatters voor één grootheid, en de grondwaarheid zegt welke gelijk heeft** — dat is precies wat een echte casus niet kan. |
+| **C-2/B2** | `semi-inductantie n (motionele fit)` op de woofer | −15,1 % | De spiegel, en een IDENTIFICEERBAARHEIDSGRENS: de fitband van de woofer loopt van 5 tot 177 Hz, waar de spoelbijdrage aan \|Z\| enkele honderdsten van een ohm is. De parameter is daar niet identificeerbaar, en de fit zegt dat niet — hij levert een getal. |
+| **C-2/B3** | `x/V op de resonantie` op de woofer | +42,7 % | M-C route 1 leest Small's Q_ms op de BOVENSTE piek van het reflexpaar en behandelt een tweegradensysteem als één — de engine schrijft dat zelf als `qmsSource` bij élk oordeel. Deze casus meet hoe groot die benadering is, en in welke richting: de engine denkt dat de conus MÉÉR beweegt dan het model zegt, dus haar plafond is STRENGER dan nodig. Op de twee gesloten wegen is dezelfde route exact. |
+
+En de twee controle-afwijkingen, allebei verwacht: de DIRECTE R_e-aflezing van de woofer leest 6,461 tegen 6,2 Ω
+(+0,26 Ω — de motionele rok, precies de casus-S1-bevinding, nu op een hele casus), en de √(f_L·f_H)-controle op
+de reflexkast leest 35,78 tegen 38,0 Hz (−5,8 %, want die gelijkheid geldt alleen in een verliesvrije kast en het
+model heeft Q_l = 7 — de engine draagt haar zelf als `sqrtCheckError`).
+
+**ROUTE 2 DRAAIT, EN HAAR VERSCHIL MET ROUTE 1 IS EEN BEKENDE GROOTHEID.** Op de mid en de tweeter (hun
+resonanties liggen boven de poortvloer) leest de akoestische route 0,748× respectievelijk 0,948× de
+elektromechanische — en dat is binnen 2 % de BAFFLE-STEP-winst op die frequentie. Route 2 neemt vrije halfruimte
+aan en de gemeten respons draagt de stap; de eerste keer dat die aanname op een casus is nagemeten, en zij klopt
+tot op de procent. Op de woofer staat zij uit met de reden die de engine zelf geeft (de resonantie ligt onder de
+ver-veldvloer).
+
+**HET VELD (VERKENNING, BUDGET 8).** De vensters komen op regels die het model voorspelt: de W-M-vloer is k·f_c
+van de mid (641 Hz uit f_c = 459,7), beide plafonds zijn de eerste significante breakup van de LAGERE weg
+(1312 uit 3400 Hz, 4290 uit 11 000 Hz) en de M-T-vloer is het GESTELDE −22 dB door de A5d.3(ii)-inversie
+(2821 Hz uit f_s = 1500). Het anker is de WOOFER — de weg die het model het stilst maakte — met gaps van 5,98
+en 7,90 dB. De verkenning levert 2 × 3 = 6 kandidaten: W-M op 816,9 / 917,0 Hz en M-T op 3099,2 / 3478,8 /
+3904,8 Hz. **Geen enkele positie ligt binnen een casus-1-venster** (147,9–549,7 en 1646,9–2304 Hz), en dat is een
+assert en geen observatie.
+
+**HET VELD VAN CASUS 2, GEDRAAID (6 ketenruns, 3612 s met drie tegelijk).** Zes van zes GELEVERD, geen enkele
+poort geweigerd, geen enkele verwerping:
+
+| kandidaat | rimpel | M-K W-M / M-T | min \|Z\| | EPDR | dissipatie | looptijd |
+| --- | --- | --- | --- | --- | --- | --- |
+| 816,9 · 3099,2 | 1,71 dB | 1,4 / 2,7° | 3,38 Ω | 1,69 Ω | 56 % | 904 s |
+| 816,9 · 3478,8 | 1,57 dB | 3,7 / 2,9° | 3,20 Ω | 1,61 Ω | 33 % | 1423 s |
+| 816,9 · 3904,8 | 1,63 dB | 3,1 / 3,1° | 3,20 Ω | 1,60 Ω | 30 % | 2361 s |
+| 917 · 3099,2 | 1,80 dB | 4,4 / 2,3° | 3,20 Ω | 1,60 Ω | 29 % | 1013 s |
+| 917 · 3478,8 | 1,90 dB | 4,5 / 3,2° | 3,20 Ω | 1,61 Ω | 33 % | 803 s |
+| 917 · 3904,8 | 1,46 dB | 5,3 / 1,8° | 4,63 Ω | 2,32 Ω | 16 % | 1688 s |
+
+De vloer van 3,2 Ω wordt op vijf van de zes op de komma gehaald — de barrière mikt erop, precies zoals op
+casus 1. De tuner verplaatst de overnames omhoog (816,9 → 887 of 931 Hz, 917 → 977 Hz), binnen de kooi. **Dat is
+de tweede eis van deze casus, gehaald: de route levert ontwerpen op een meetset die zij nooit gezien heeft, en
+geen enkel getal ervan ligt in de buurt van casus 1.**
+
+**WAT CASUS 2 NIET IS, en dat hoort erbij.** Zij is GEGENEREERD uit precies het lumped model dat de fit aanneemt,
+dus zij toetst de LUS rond dat model en niet of het model een echte driver beschrijft — die vraag beantwoordt
+casus 1, op gemeten data. De bestanden dragen ónder de poortvloer gewoon de modelrespons waar een echt gepoort
+bestand daar artefacten toont; dat is opzet, want een afwijking moet van de schatter komen en niet van ruis die
+de generator zelf verzonnen heeft. En er is GEEN live ketenreproductie: de zes kandidaten zijn bevroren als
+bestanden (klasse B, F4a/R2), en een vierde live ketenrun zou de volle suite een half uur duurder maken voor een
+claim die de bestanden al dragen.
+
+---
+
+**DEEL 2 — DE LAATSTE REGENERATIE VAN CASUS 1, MET DRIE BESLUITEN.**
+
+**BESLUIT 1 — DE BARRIÈRE LEEST DE VERDICHTE BRON (`'safety-extended-refined'`).** E-1 bouwde het mechanisme en
+mat de drie verdichtingen; wat er nog aan vast zat was één woord in `candidateDeclaration.ts` en één regeneratie.
+De aanleiding staat er: op het verlengde veiligheidsraster lezen twee van 161 bevroren netlists boven de
+vloerspeling, beide op een dip smaller dan één rastercel (KAND_V2_1 2,5536 Ω op de sweep tegen 2,6349 op het
+raster — 0,081 tegen een speling van 0,052), en geen enkele netlist met een bredere dip leest erboven. De
+goedkoopste van de drie verdichtingen sluit dat: twaalf punten van de poortsweep in de twee cellen rond het grove
+minimum, grootste rest 0,0089 Ω, +3 % per evaluatie. `'safety-extended'` blijft stelbaar, dus het gedateerde
+A5e.3c-corpus blijft de run die zijn generator maakte.
+
+**BESLUIT 2 — DE POSITIES KRIJGEN EEN TWEEZIJDIGE KOOI (`positionPolicy: 'two-sided'`).** E-1's open punt 2, en
+de aanleiding is een MÉTING: `positionsAlong` knipt de kooi op de bandrand, dus een positie ÓP het plafond kan
+alleen omlaag en een positie op de vloer alleen omhoog — en het A5e.3c-veld gedroeg zich ernaar (élke geleverde
+netlist op de M-T-plafondpositie 2304 Hz kruiste 61–255 Hz lager, drie van vier verlieten hun kooi; élke
+vloerpositie kruiste op of boven 1647). Een kandidaat op een vensterrand wordt in één richting beoordeeld en
+stelt daarmee een halve vraag. De nieuwe regel houdt élke kooi BINNEN het venster: de posities liggen op het
+venster ingesprongen met een halve spacing, elke kooi is één spacing breed en gecentreerd op haar positie, en het
+afgeleide aantal komt van die ingesprongen spanne — een venster van 0,48 octaaf heeft ruimte voor precies twee
+tweezijdige kooien, en dát is de honest answer in plaats van een derde positie die maar half beoordeeld wordt.
+Absent is de doos die er altijd stond (P2, gepind in `candidates.test.ts`), en de tweezijdigheid wordt op de
+ONGEAFRONDE randen bepaald en niet uit `cageHz` teruggerekend: de printafronding op een tiende hertz is bij 2 kHz
+al 7e-5 octaaf, genoeg om een symmetrische kooi als eenzijdig te laten lezen.
+
+**BESLUIT 3 — HET A5d.6-PLAFOND WORDT EEN ZACHTE GRENS (`seriesInductanceBound: 'soft'`), EN M-D IS DE ENIGE
+AUTORITEIT.** E-4's optie (ii), en de meting die haar draagt is die van E-4 zelf: `lfBumpForSeriesRL` modelleert
+de weg als een KALE serie R+L in de gemeten driverimpedantie terwijl M-D het ECHTE netwerk oplost met elke shunt
+die de tak draagt, en over het hele casusboek staan NEGENENZESTIG van 161 netlists boven hun plafond én binnen
+hun budget, NUL andersom (Δ mediaan 1,74 dB, uiterste 8,70). Een kooi die maar in één richting fout staat sluit
+ontwerpen uit die de eis toelaat. Sinds C-2 filet `searchBoxFor` diezelfde bound als STRAF: het per-onderdeel-
+plafond gaat naar `valueSoftCeilings` (het versmalt het zachte venster van de tuner en zet de slot NIET hard, en
+zet ook geen `capLg` — een plafond bóven de eigen realisme-rand van de app doet dan per constructie niets), en de
+somgroep draagt `soft: true` (de tuner PROJECTEERT niet meer maar scoort `(log10(totaal/ruimte))²`, op dezelfde
+decade-maat en met hetzelfde gewicht 8 als de per-slot-vensters — één conventie voor beide helften). Beide helften
+bewegen samen, want het per-onderdeel-plafond is de noodzakelijke voorwaarde van de som (V42) en hard filen naast
+een zachte som zou precies terugkooien wat de som losliet, één spoel tegelijk. **De V45/V48-toets op het GELEVERDE
+netwerk blijft staan, ongewijzigd, en verandert van betekenis:** zij was het vangnet onder een kooi en is nu het
+enige mechanisme — en de weigeringsnoot zegt dat, in een derde tak naast `'seed'` en `'tuned'`.
+
+De sleutel is CHOICE nummer zevenendertig (`seriesInductanceBound`), met `valueSoftCeilings` als polish ernaast
+(dezelfde inversie, de andere filing); afwezig is `'box'` en dus élke run vóór C-2, byte voor byte. **Dat laatste
+is gemeten en niet beredeneerd: `f4cRegression` en `workerRouteRegression` reproduceren.** Eén detail dat het
+opschrijven waard is: `valueSoftCeilings` is ABSENT en niet leeg wanneer er niets in staat, want het object wordt
+in `f4b2_v2_baseline.json` MEEGESERIALISEERD naast het geleverde netwerk — een altijd aanwezige lege map zou een
+byte-referentie hebben herschreven die pint dat er geen netwerk bewoog, voor een sleutel die daar niets houdt.
+
+**HET VELD, VÓÓR EN NÁ.** A5e.3c: `'spread'`, budget 24, 8 × 3 = 24 uit 36, W-M 147,9–549,7 Hz met eenzijdige
+kooien op beide randen, M-T 1646,9 / 1947,9 / 2304 idem. C-2: `'two-sided'`, budget 16, **8 × 2 = 16 uit 22** —
+W-M 156,7 / 185,9 / 220,6 / 261,8 / 310,6 / 368,5 / 437,3 / 518,8 Hz en M-T 1744,8 / 2174,7 Hz, élke kooi één
+spacing breed en tweezijdig, de buitenste twee rakend aan de vensterrand zonder eroverheen. De M-T-as verliest
+haar derde positie omdat een venster van 0,48 octaaf ruimte heeft voor precies twee tweezijdige kooien.
+**Geen enkel label overleeft**, dus de gepaarde lezing is n = 0 en élk corpusgemiddelde in
+`compare-corpora.ts a5e3c live` is COMPOSITIE — de leesregel van de V47-nazorg, voor de tweede regeneratie op rij
+in haar uiterste vorm.
+
+**DE RUN.** 16 kandidaten, `V2_JOBS=8`, **8453 s (2 u 21)**; per kandidaat 1060–5755 s. **ELF geleverd, VIJF
+geweigerd** (vier op `topology`, één op `budget`), **TIEN bevroren** — de shortlist houdt
+`DEFAULT_SHORTLIST_SIZE` en 261,8 · 1744,8 bestaat alleen in de shards, de derde toestand die A5e.3c
+introduceerde, op precies dezelfde schaal.
+
+| geleverd (W-M · M-T) | RMS | M-K W-M / M-T | min \|Z\| | serie-L woofer | bult / lift / opslingering | dissipatie | looptijd |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 156,7 · 2174,7 | 0,82 | 33,4 / 6,3° | 2,59 Ω | 20,81 mH | 3,13 / 3,49 / **−0,36** | 48 % | 3322 s |
+| 185,9 · 1744,8 | **0,53** | 34,3 / 3,3° | 2,60 | 13,20 | 4,05 / 2,89 / **+1,16** | 25 % | 2403 s |
+| 185,9 · 2174,7 | 0,57 | — / 3,7° | 2,61 | 11,84 | 2,14 / 2,73 / **−0,58** | 30 % | 2695 s |
+| 220,6 · 2174,7 | 0,94 | 1,9 / 8,5° | 2,63 | 18,16 | 1,88 / 3,30 / **−1,41** | 49 % | 3377 s |
+| 310,6 · 1744,8 | 0,69 | 5,2 / 7,9° | 2,60 | 7,85 | 2,18 / 2,29 / **−0,11** | 15 % | 4917 s |
+| 310,6 · 2174,7 | 0,77 | 4,5 / 3,2° | 2,81 | 6,91 | 2,66 / 2,14 / **+0,52** | 14 % | 3924 s |
+| 368,5 · 2174,7 | 0,75 | 4,7 / 4,1° | 2,63 | 6,46 | 1,76 / 2,08 / **−0,32** | 22 % | 5755 s |
+| 437,3 · 1744,8 | 1,25 | 7,9 / 18,1° | 2,60 | 4,54 | 0,57 / 1,74 / **−1,18** | 12 % | 1898 s |
+| 437,3 · 2174,7 | 0,92 | 5,6 / 4,2° | 2,60 | 4,51 | 0,79 / 1,73 / **−0,94** | 22 % | 3206 s |
+| 518,8 · 2174,7 | 0,77 | 17,2 / 3,9° | 2,59 | 4,96 | 0,70 / 1,82 / **−1,12** | 40 % | 2188 s |
+
+**WAT DE ZACHTE GRENS DEED, EN HET IS PRECIES WAT E-4 VOORSPELDE.** De totale seriespoel van de laagste weg gaat
+van 3,85–6,33 mH (A5e.3c, onder de kooi) naar **4,51–20,81 mH** — tegen een A5d.6-plafond dat op deze tien
+netlists 2,52–3,23 mH staat. Alle tien staan er dus boven, tot **6,4×**. En M-D op het geleverde netwerk houdt:
+de opslingering ligt op alle tien tussen −1,41 en +1,16 dB tegen een budget van 1,4, **nul overschrijdingen**.
+De kooi had die tien ontwerpen niet gezien; de eis heeft ze allemaal toegelaten. **En de poort sprak wél:** één
+kandidaat (156,7 · 1744,8) werd door M-D geweigerd met 1,47 dB tegen 1,4 — de enige `budget`-verwerping van het
+veld, en de eerste in dit boek waar de doos de zoektocht er niet vandaan hield. Dát is de arrangement die C-2
+stelt, in één regel gemeten.
+
+**DE VERDICHTE BARRIÈRE.** `resolutie_boven_speling` — de boekhoudingslijst die A5e.3c opende met KAND_V2_1
+(0,081 Ω tegen een speling van 0,052) — is **LEEG**. Grootste verschil tussen de poortsweep en wat de barrière
+werkelijk leest, over het levende corpus: **0,0002 Ω**; over het hele casusboek 0,0089 Ω (A5E3C_KAND_5). De
+onverdichte lezing staat er als gedateerde kolom naast en is op KAND_V2_4 nog 0,0419 Ω. Elke geleverde netlist
+haalt de vloer: min \|Z\| 2,59–2,81 Ω tegen 2,60 gesteld (de 2,59's binnen de 2 %-conventie, zoals altijd).
+
+**DE E-4-VERZAMELING, HERLEZEN.** `measure-e4-inversion.ts` opnieuw over het hele casusboek: **171 netlists** (was
+161 — de tien A5e.3c-netlists staan er nu gedateerd bij én er zijn tien nieuwe), **NEGENENZEVENTIG boven hun
+plafond en binnen hun budget** (was 69), **NUL andersom**. De verzameling is dus niet gedateerd stil blijven
+staan maar GEGROEID, en precies met de tien netlists die de zachte grens mogelijk maakte — de bevinding van E-4
+is er niet minder waar op geworden maar zichtbaarder. Δ (inversie − metriek) loopt nu van −0,856 via mediaan
+1,821 tot **14,757 dB**.
+
+**WAT DE LAGE W-M-POSITIES KOSTTEN EN OPLEVERDEN** (E-1's aanbeveling, nagemeten). De twee posities onder 215 Hz
+zijn NIET verboden — dat zou een nieuwe eis zijn geweest — en zij hebben zich als volgt gedragen: 156,7 · 1744,8
+is de ENIGE `budget`-verwerping van het veld (2383 s), 156,7 · 2174,7 levert met 48 % dissipatie en 33,4° W-M-fase
+(3322 s), en 185,9 levert twee keer met de **beste RMS van het hele veld** (0,53 en 0,57) maar met 34,3° W-M-fase
+en 11,8–13,2 mH op de wooferweg. E-1's waarschuwing gold de LOOPTIJD; wat deze regeneratie eraan toevoegt is dat
+zij op deze casus vlak zijn en faseslecht — een afruil, geen verspilling. Duur zijn zij overigens niet meer het
+meest: de duurste kandidaten van dit veld zijn 368,5 · 2174,7 (5755 s) en 310,6 · 1744,8 (4917 s).
+
+**TESTS.** Nieuw: `src/lib/engine2/goldenCasus2.test.ts` (13 claims — de poort exact, de tabel reproduceert rij
+voor rij, de bevindingenverzameling EXACT gepind, de twee semi-inductantieschatters in tegengestelde richting,
+M-C route 1 conservatief op de reflexkast en exact op de gesloten wegen, route 2 draait en haar verhouding IS de
+baffle-step, het anker is de stilste weg, de vensters staan op de regels die het model voorspelt, de band staat
+op de poortvloer, het veld ligt buiten élk casus-1-venster, A7 als schaaltest, klasse A is klasse A op élke
+netlist, en manifest ↔ schijf ↔ herkomst) en
+`src/lib/engine2/optimizer/softInductanceBound.test.ts` (5 claims — de premisse dat het plafond onder het zaad
+ligt, `searchBoxFor` filet dezelfde bound twee kanten op en nooit allebei, P2 op de weggelaten sleutels, kooi
+tegen straf op één fixture, en de straf is exact NUL binnen het plafond en verandert de zoektocht erbuiten).
+Uitgebreid: `goldenClassification` (een casus-2-describe plus de claim dat de GRONDWAARHEID projectinvoer is en
+dus in het manifestblok hoort), `ciLayer` (`goldenCasus2` is dragend voor CI — de meest portable acceptatie van
+het boek: gegenereerde metingen, geen zoektocht, geen machine-afhankelijkheid), `choiceKeyGuard` (52 → 54
+sleutels, 37/5/12), `casus1Field` (het nieuwe veld, en élke kooi tweezijdig en binnen het venster),
+`casus1V2Candidates` (het dertiende besluit en de verdichte bron), `corpusPairing` (de A5e.3c-claim herankerd op
+`a5e3veld → a5e3c`, plus de A5e.3c-herkomst als gedateerd bestand — elf geleverd, tien bevroren is een feit over
+de RUN en niet over de netlists), `frozenNetlistGates` (de V33-guard meet sinds C-2 op de VERDICHTE lezing, want
+dat is wat de route leest).
+
+**A7-VORM: DE NIEUWE-METING-TEST OP GRONDWAARHEID.** Casus 1 bewijst dat een band MEEBEWEEGT met een
+synthetische verschuiving; op casus 2 bewijst dezelfde test ook WAARHEEN. De frequentie-as van élke
+impedantiesweep maal 1,37 (geen rond getal en geen octaaf, zodat hij met niets kan samenvallen): élke resonantie
+moet dan exact op 1,37 × grondwaarheid landen, de Q's mogen NIET meebewegen, en de W-M-vensterdrempel — twee
+afleidingen verderop — moet met dezelfde factor mee.
+
+**CASUS 1b IS MEEGEREGENEREERD, en dat was geen keuze maar een gevolg dat de suite meldde.** Haar herkomst droeg
+`vloer_zoekdoel_bron: 'safety-extended'` en de verklaring die de fixture vandaag bouwt zegt
+`'safety-extended-refined'` — precies de drift-detector die `casus1bV2Candidates` daarvoor draagt. Opnieuw
+opgewekt (3 kandidaten, 256 s): **één geleverd in plaats van twee.** 1947,9 levert onveranderd 1,42 dB / 2,6°
+op de vloer 2,60 Ω (en kruist op 2055 Hz); 1735,4 wordt onveranderd op M-C geweigerd (tweeter −16,1 dB); en
+2186,5 — dat bij E-3 nog leverde met 3,76 dB / 13,8° — wordt nu op zijn EIGEN kruispunten geweigerd
+(tweeter −19,9 tegen −20,0, de A5e.3c-weigering). Casus 1b's corpus is daarmee één netlist, en alle drie de
+casussen van het boek staan weer op dezelfde enginestand. De E-4-brug in `casus1bV2Candidates`
+(`SINCE_THE_RECORD = ['coilSnapDcrCeiling']`) is daarmee leeg en blijft als lege lijst staan, zodat de volgende
+sleutel die zonder regeneratie arriveert een plek heeft om benoemd te worden.
+
+**METEN.** Nieuw: `scripts/casus2-model.ts` (het model), `scripts/generate-casus2-measurements.ts` (de elf
+bestanden plus `grondwaarheid.json`), `scripts/sync-casus2-project-input.ts` (het model → de projectinvoer),
+`scripts/record-casus2-references.ts` (de referenties, mét de vergelijkingstabel) en
+`scripts/generate-casus2-v2-candidates.ts` (de verkenning). Gewijzigd: `scripts/measure-c2-field.ts` (de
+vóórmeting van het casus-1-veld onder de drie besluiten — het veld vóór en ná, elke kooi met haar octaven boven
+en onder de positie, en de verklaring van een C-2-kandidaat), `compare-corpora.ts` (default `a5e3c live`, en
+`a5e3c` als corpus-id), `record-casus1-v2-references.ts` (het dertiende besluit; `resolutie_boven_speling` meet
+sinds C-2 op wat de ROUTE leest en niet meer op het onverdichte raster; `DATED_REASON` voor A5E3C) en
+`measure-e4-inversion.ts` (onveranderd, opnieuw gedraaid).
+
+**TESTS EN TELLING.** Snelle laag 08-09-2026: **458 s — 162 bestanden (161 geslaagd, 1 overgeslagen), 1870 tests
+(1867 geslaagd, 3 overgeslagen), in één keer groen**, gedraaid ná de twee regeneraties op een verder lege
+machine. **Volle run daarna, alleen gedraaid: 162 bestanden, 1870 tests, 1557 s (25 min 57), niets overgeslagen,
+in één keer groen.** +2 TESTBESTANDEN sinds E-4 en netto +23 tests, en die telling sluit alleen mét de
+corpusgrootte erin: 14 + 5 nieuw, +1 in `corpusPairing`, +4 in `goldenClassification`, en **−1 uit de `it.each`
+over casus 1b's netlists**, dat van drie naar twee ging toen die casus meegeregenereerd werd. 24 − 1 = 23. GEEN
+nieuwe referentie voor de snelle laag: de V43-waarde van 289 s blijft staan.
+
+**WAT DE VOLLE RUN BEWIJST, en het is meer dan gebruikelijk:** de drie live ketenruns draaien op DRIE opnieuw
+opgewekte corpora — casus 1, casus 1b en casus 2 — en alle drie reproduceren byte voor byte. De wandkloktijd is
+de byte-reproductie van casus 1 (1550 s op KAND-V2-10, de goedkoopste geleverde op looptijd), de verwerping
+ernaast 905 s, casus 1b's run 308 s. **En de twee byte-baselines (`f4cRegression`, `workerRouteRegression`)
+reproduceren**: de zachte grens en de verdichte bron zijn afwezig op élke v1-route, wat P2 hier betekent.
+`tsc -b` (ook `scripts/`) groen; `toggleRegression`, `p6Lint`, `noWeights`, `browserSafe` en `ciLayer`
+ongewijzigd groen.
+
+**WAT ER NIET GEBEURD IS.** Geen nieuwe eis en geen ingetrokken eis; casus 1's meetset en manifest zijn
+onaangeraakt; de inversie zelf en het LF-budget zijn niet aangeraakt (alleen of het plafond mag verbieden); de
+app is niet gewijzigd. **En één ding met opzet NIET gedaan:** de app's eigen VOLLE veld (`fieldModeSettings
+('full')`) stelt géén positieregel, dus zij legt haar posities nog steeds edge-to-edge met eenzijdige kooien op de
+randen. De casus STELT `'two-sided'` en de app niet; dat houdt E-2's byte-identiteitsclaim heel en is een keuze
+die één regel kost zodra Sander hem wil. **Genoteerd als open punt.**
+
+**OPENSTAAND.** (1) De app's volle veld draagt de tweezijdige kooi nog niet. (2) E-4's optie (i) — de inversie
+vervangen door de netwerk-opgeloste bult — staat nog open, en C-2 is de arm waar zij tegen afgezet kan worden.
+(3) De twee semi-inductantieschatters spreken elkaar tegen en de grondwaarheid zegt welke gelijk heeft (C-2/B1):
+wélke van de twee de rapportagewaarde hoort te zijn is een besluit over de schatter en niet over deze casus.
+(4) M-C route 1 op een reflexkast is +43 % conservatief (C-2/B3); een reflex-eigen excursieroute is een
+metriekwijziging. (5) Een ECHTE tweede meetset blijft het open punt dat casus 2 niet vervangt.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

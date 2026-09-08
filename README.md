@@ -188,6 +188,10 @@ per deliverable het resultaat plus de testuitslag.
   oude en de nieuwe engine.
 - `test-fixtures/golden_refs_casus1.json` — de golden references van casus 1,
   inclusief de gestelde eisen en de driverkaart.
+- `test-fixtures/casus2/golden_refs_casus2.json` — die van casus 2, de
+  synthetische drieweg: mét het MODEL waaruit de meetbestanden gegenereerd zijn
+  (`manifest_en_geometrie.grondwaarheid`) en de tabel die élke extractie ernaast
+  legt (`afgeleide_parameters.extractie_tegen_grondwaarheid`).
 - `VALIDATIE.md` — meten of de simulatie klopt met een gebouwd netwerk.
 - `ROADMAP.md` — wat af is en wat open staat.
 - `OVERDRACHT-2026-08.md`, `Optimizer_overdracht.md` — overdrachtsdocumenten.
@@ -197,7 +201,12 @@ per deliverable het resultaat plus de testuitslag.
 Testversie, actief in ontwikkeling. Engine v2 is gevalideerd op **één** echt
 driewegproject met echte metingen; de tweewegroute is gemeten op één afgeleide
 casus (datzelfde project zonder zijn woofers) en niet op een onafhankelijk
-tweewegproject. Een tweede volledige meetset is wat dit van één ontwerp naar een
-regel brengt. Of het ontwerp zelf passief gebouwd wordt of hybride, is nog niet
+tweewegproject. Sinds C-2 staat daar een **synthetische** drieweg naast (casus 2):
+elf bestanden uit bekende modellen, waar élke extractie een bekend antwoord heeft
+om naast te leggen — 44 vergelijkingen, en de vijf die er niet uit komen zijn als
+bevinding vastgelegd in plaats van weggewerkt. Dat toetst iets wat gemeten data
+niet kan toetsen (vindt de schatter het GOEDE getal, niet alleen hetzelfde als een
+andere schatter) en vervangt de echte tweede meetset niet: die blijft wat dit van
+één ontwerp naar een regel brengt. Of het ontwerp zelf passief gebouwd wordt of hybride, is nog niet
 beslist — de app is er om dát te beslissen. Feedback is welkom via de
 [issues](https://github.com/SanderPaulus/crossover-studio/issues).

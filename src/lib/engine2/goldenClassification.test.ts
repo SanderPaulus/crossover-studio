@@ -544,3 +544,101 @@ describe('E-3 — casus 1b: every golden reference says what it is a function of
     expect(String(baseline.v1_commit)).toMatch(/^[0-9a-f]{7,40}$/);
   });
 });
+
+/* ================================================================== *
+ * C-2 — the same rule on the THIRD casus file: casus 2 (synthetic)
+ * ================================================================== */
+
+import { loadGolden2 } from './casus2.fixture.ts';
+
+describe('C-2 — casus 2: every golden reference says what it is a function of', () => {
+  const golden2 = loadGolden2() as unknown as Record<string, unknown>;
+  const at2 = (path: string): Record<string, unknown> => {
+    let node: unknown = golden2;
+    for (const key of path.split('.')) {
+      expect(node, `casus 2 ${path}: missing at "${key}"`).toBeTruthy();
+      node = (node as Record<string, unknown>)[key];
+    }
+    expect(node, `casus 2 ${path}: not an object`).toBeTypeOf('object');
+    return node as Record<string, unknown>;
+  };
+  /* Written out, as casus 1's and 1b's are, so the completeness half below has
+   * a list to be complete against. The frozen netlists are DERIVED from the
+   * manifest for the reason casus 1 gives (V33). */
+  const CLASSED_2: readonly string[] = [
+    'afgeleide_parameters._extractie_parameters',
+    'afgeleide_parameters.extractie_tegen_grondwaarheid',
+    'afgeleide_parameters.woofer',
+    'afgeleide_parameters.mid',
+    'afgeleide_parameters.tweeter',
+    'verankerde_gaps_dB',
+    'kruisvensters.parameters',
+    'kruisvensters.woofer_mid_orde4',
+    'kruisvensters.mid_tweeter_orde4',
+    'kandidaten._parameters',
+    'manifest_en_geometrie',
+    'v1_baseline',
+  ];
+  const UNCLASSED_2: readonly string[] = ['casus', 'meetdata', 'vastgesteld', 'waarom', 'classificatie', 'toleranties', 'toleranties_toelichting'];
+  const NETLIST_KEYS_2 = Object.keys((golden2.manifest_en_geometrie as { netlists: Record<string, string> }).netlists);
+  const ALL_2 = [...CLASSED_2, ...NETLIST_KEYS_2.map((k) => `kandidaten.${k}`)];
+
+  it('each classed block carries a klasse and the afhankelijkheid that class implies', () => {
+    for (const path of ALL_2) {
+      const block = at2(path);
+      const klasse = block.klasse as string;
+      expect(Object.keys(DEPENDENCY_OF_CLASS), `casus 2 ${path}: klasse`).toContain(klasse);
+      expect(block.afhankelijkheid, `casus 2 ${path}: afhankelijkheid does not match klasse ${klasse}`).toBe(DEPENDENCY_OF_CLASS[klasse]);
+    }
+    // At least one live netlist is classed, and the manifest names it — so an
+    // empty `kandidaten` cannot make this vacuous.
+    expect(NETLIST_KEYS_2.some((k) => /^KAND_V2_\d+$/.test(k))).toBe(true);
+  });
+
+  it('a NEW top-level block without a class fails here', () => {
+    const parents = new Set(ALL_2.map((p) => p.split('.')[0]));
+    const stray = Object.keys(golden2).filter((k) => !parents.has(k) && !UNCLASSED_2.includes(k));
+    expect(stray, `casus 2: top-level blocks with no klasse and no exemption: ${stray.join(', ')}`).toEqual([]);
+  });
+
+  it('class C lives ONLY under the baseline block, and the baseline is empty', () => {
+    for (const path of ALL_2) {
+      if (path === 'v1_baseline') continue;
+      expect(at2(path).klasse, `casus 2 ${path} is class C outside a baseline block`).not.toBe('C');
+    }
+    const baseline = at2('v1_baseline');
+    expect(baseline.klasse).toBe('C');
+    /* Empty, and on this casus for a stronger reason than on casus 1: casus 2
+     * has never had a v1 route at all. Every candidate is a FILE, so no
+     * reference here is a function of a search. */
+    expect(baseline.referenties).toEqual({});
+  });
+
+  it('THE GROUND TRUTH is project input, so it lives in the manifest block and inherits its class', () => {
+    /* The one thing casus 2 has that no other casus in this book has, and the
+     * classification question it raises: the model is not a FUNCTION of the
+     * measurements — it is what produced them. It is therefore not A, B or C
+     * but project input, and it sits where `driverkaart` and `gestelde_eisen`
+     * sit, under a block that already carries the class it inherits. */
+    const m = at2('manifest_en_geometrie');
+    expect(m.klasse).toBe('A');
+    const truth = m.grondwaarheid as Record<string, unknown>;
+    expect(truth, 'the ground truth is missing from the manifest block').toBeTruthy();
+    expect(truth.klasse, 'the ground truth may not carry a class of its own').toBeUndefined();
+    for (const k of ['drivers', 'geometrie', 'poort', 'meetcondities', 'versterker']) {
+      expect(Object.keys(truth), `grondwaarheid.${k}`).toContain(k);
+    }
+    /* And it is a COPY with one home: the generator writes it, the sync script
+     * copies it here, and the driver card is derived from it rather than typed.
+     * The check is that the two agree — a copy that can drift is the failure
+     * this arrangement exists to prevent (the recorder's first run reported the
+     * excursion route 42 % off against a card from an earlier tuning). */
+    const card = m.driverkaart as Record<string, Record<string, number>>;
+    for (const [way, d] of Object.entries(truth.drivers as Record<string, Record<string, number>>)) {
+      expect(card[way].Bl_Tm, `${way}: the card's Bl does not match the model`).toBeCloseTo(d.Bl_Tm, 9);
+      expect(card[way].M_ms_g, `${way}: the card's M_ms does not match the model`).toBeCloseTo(d.M_ms_g, 9);
+      expect(card[way].S_d_cm2, `${way}: the card's S_d does not match the model`).toBeCloseTo(d.S_d_cm2, 9);
+      expect(card[way].X_max_mm, `${way}: the card's X_max does not match the model`).toBeCloseTo(d.X_max_mm, 9);
+    }
+  });
+});

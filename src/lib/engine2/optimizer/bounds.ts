@@ -424,11 +424,34 @@ export interface InvertedBound {
 /** The box a run hands the tuner: per-part ceilings plus per-path sum ceilings. */
 export interface SearchBox {
   valueCeilings: Record<string, number>;
+  /**
+   * C-2 — per-part ceilings that PENALISE instead of clamping. Present only on
+   * a run that states `seriesInductanceBound: 'soft'` AND has a
+   * `bump-series-l` bound to file, and then it holds what `valueCeilings`
+   * would have held for that bound and nothing else. The tuner narrows its
+   * soft window to these and never turns the slot hard: a point above the
+   * ceiling costs, it is not unreachable. See the `bump-series-l` branch below
+   * for why this rule and no other.
+   *
+   * ABSENT RATHER THAN EMPTY, and that is not tidiness. This object is
+   * SERIALISED into the byte baselines (`f4b2_v2_baseline.json` pins the whole
+   * search box beside the delivered network), so an always-present empty map
+   * would have rewritten a reference that pins that no network moved — for a
+   * key that, on those runs, holds nothing. The reference is worth more intact
+   * than the shape is worth uniform.
+   */
+  valueSoftCeilings?: Record<string, number>;
   valueSumCeilings: {
     ids: string[];
     maxSI: number;
     fixedSI: number;
     label: string;
+    /**
+     * C-2 — true when this group is a SOFT sum: the tuner penalises the excess
+     * instead of projecting the members down onto it. Absent/false is the
+     * projection every group has carried since F2.
+     */
+    soft?: boolean;
     /* ---- V48: what this group needs to let its ceiling follow the tune ----
      *
      * All three are absent unless a tracker was handed in, and with them
@@ -512,11 +535,17 @@ export function searchBoxFor(
    * for every caller that states no coil family, and then this function
    * builds exactly the box it always built. */
   catalog?: { coilSpanHByWay: Readonly<Record<string, number>>; source: string },
+  /* C-2 — how the LF-lift ceiling is filed: `'box'` (absent) is the cage F2
+   * has filed since the beginning, `'soft'` files it as a penalty and leaves
+   * M-D the only authority. Nothing else in this function reads it. */
+  seriesInductanceBound: 'box' | 'soft' = 'box',
 ): SearchBox {
   const bus = busTopology(parts);
   const valueCeilings: Record<string, number> = {};
+  const valueSoftCeilings: Record<string, number> = {};
   const valueSumCeilings: SearchBox['valueSumCeilings'] = [];
   const notes: string[] = [];
+  const softBump = seriesInductanceBound === 'soft';
 
   /** Free (unlocked, present) parts of one kind on the series path of a way. */
   const seriesOf = (driver: string, kind: 'R' | 'L' | 'C'): VxpPart[] =>
@@ -628,6 +657,7 @@ export function searchBoxFor(
           maxSI: b.maxSI,
           fixedSI,
           label: `${b.subject} ${b.quantity}`,
+          ...(softBump ? { soft: true } : {}),
           ...(tracker
             ? {
                 resistanceIds: freeR.map((p) => p.partId!),
@@ -639,10 +669,41 @@ export function searchBoxFor(
             : {}),
         });
         const room = Math.max(b.maxSI - fixedSI, 0);
+        /* C-2 — THE SAME CEILING, FILED SOFT.
+         *
+         * E-4 measured what this cage is worth on this project: over the whole
+         * casebook 69 netlists sit ABOVE their `bump-series-l` ceiling and
+         * INSIDE the M-D budget, and NOT ONE sits below its ceiling and over
+         * its budget. `lfBumpForSeriesRL` models the way as a bare series R+L
+         * in the measured driver impedance; M-D solves the REAL network, with
+         * every shunt the branch carries, and on casus 1 those shunts damp the
+         * reflex peak so hard that the inversion reads 1.7 dB high at the
+         * median and 8.7 dB high at the worst. The cage is therefore
+         * systematically too strict and nowhere permissive — it excludes
+         * designs the requirement accepts.
+         *
+         * A5d.6's own words are that a budget inversion SHAPES the search box;
+         * V45 and V48 established that the delivered-network M-D check is the
+         * verdict. Soft keeps the shaping and drops the exclusion: the tuner
+         * pays for inductance above the ceiling and may still buy it, and the
+         * only thing that can refuse a design is M-D on the network offered.
+         *
+         * WHY BOTH HALVES MOVE TOGETHER. The per-part ceiling is the necessary
+         * condition of the sum (V42) — filing it hard beside a soft sum would
+         * cage exactly what the sum stopped caging, one coil at a time. */
         for (const p of coils) {
-          valueCeilings[p.partId!] = Math.min(
-            valueCeilings[p.partId!] ?? Infinity,
-            room > 0 ? room : Number.MIN_VALUE,
+          const ceil = room > 0 ? room : Number.MIN_VALUE;
+          if (softBump) {
+            valueSoftCeilings[p.partId!] = Math.min(valueSoftCeilings[p.partId!] ?? Infinity, ceil);
+          } else {
+            valueCeilings[p.partId!] = Math.min(valueCeilings[p.partId!] ?? Infinity, ceil);
+          }
+        }
+        if (softBump) {
+          notes.push(
+            `${b.subject}: the LF-lift ceiling of ${(b.maxSI / H_PER_MH).toFixed(2)} mH is filed SOFT ` +
+              '(C-2) — it shapes the search box and excludes nothing; M-D on the delivered network ' +
+              'is the only authority on the resonant lift (A5d.6, casebook E-4).',
           );
         }
         if (coils.length > 1) {
@@ -755,7 +816,13 @@ export function searchBoxFor(
     }
   }
 
-  return { valueCeilings, valueSumCeilings, bounds: [...bounds, ...spanBounds], notes };
+  return {
+    valueCeilings,
+    ...(Object.keys(valueSoftCeilings).length > 0 ? { valueSoftCeilings } : {}),
+    valueSumCeilings,
+    bounds: [...bounds, ...spanBounds],
+    notes,
+  };
 }
 
 /* ================================================================== *

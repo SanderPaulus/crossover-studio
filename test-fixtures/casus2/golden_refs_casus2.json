@@ -1,0 +1,1602 @@
+{
+ "casus": "Casus 2 — SYNTHETISCHE GRONDWAARHEID, drie wegen (C-2, 08-09-2026)",
+ "meetdata": "Gegenereerd, niet gemeten: scripts/generate-casus2-measurements.ts uit scripts/casus2-model.ts. Elf bestanden in test-fixtures/casus2/ — drie impedantiesweeps (ZMA), twee nabij-velden en zes ver-velden (FRD met ARTA-header, poort 3,0/7,0 ms).",
+ "vastgesteld": "C-2, 08-09-2026",
+ "waarom": "A7 noemt synthetische grondwaarheid als onderdeel van de teststrategie. Casus S1 (F3b) leverde die voor EEN schatter (R_e) op EEN kromme; casus 1 en 1b zijn echte metingen, waar geen enkel getal een bekend antwoord heeft — twee schatters die het eens worden is consensus en geen validatie. Casus 2 is de eerste VOLLEDIGE casus met grondwaarheid: drie wegen uit bekende modellen (T/S-parameters, een reflexkast en een gesloten pod, kolvenrichtingskarakteristiek, baffle-step uit een gestelde frontbreedte, een gekozen venstertijd en een GEDOCUMENTEERDE meetspanning), zodat elke extractor een antwoord heeft om naast te leggen. Elk getal is bewust anders dan casus 1: een enkele 8 ohm-woofer in plaats van een parallel paar, een kleinere voorplaat (210 tegen 260 mm), andere c-t-c (195/96 tegen 261/129,2), andere gevoeligheden, een andere poort (4,0 tegen 2,521 ms) — een synthetische casus die toevallig in de buurt van de echte ligt kan een schatter die op de echte is afgeregeld niet betrappen.",
+ "classificatie": "Klassen zoals casus 1 (F4a/V19): A = (metingen) -> waarde, B = (metingen, gegeven netlist) -> metriek, C = (metingen, zoektocht) -> uitkomst. De GRONDWAARHEID is geen van drieen: zij is projectinvoer en staat daarom in manifest_en_geometrie, precies zoals driverkaart en gestelde_eisen. Elke klasse-A-referentie draagt haar grondwaarheid naast zich (`<naam>_grondwaarheid`) plus het verschil, zodat 'de extractor vindt de invoer terug' een assert is en geen bewering.",
+ "toleranties": {
+  "frequenties_pct": 2,
+  "dB": 0.15,
+  "graden": 0.3,
+  "ohm": 0.03,
+  "Q_pct": 7,
+  "exponent_pct": 5,
+  "watt_pct": 2,
+  "lambda_pct": 4,
+  "procentpunten": 1,
+  "fit_kwaliteit_pct": 5
+ },
+ "toleranties_toelichting": "OVERGENOMEN VAN CASUS 1, ongewijzigd, en dat is de scherpste vorm van deze casus: de tolerantieklassen zijn gekozen voor GEMETEN data met ruis, meetonzekerheid en een echte driver die het lumped model maar benadert. Een synthetische casus hoort ze met ruime marge te halen — waar zij dat NIET doet, zegt de afwijking iets over de schatter en niet over de meting, en dan is zij een bevinding (V-entry) en geen tolerantie die opgerekt moet worden. Zie afgeleide_parameters.extractie_tegen_grondwaarheid voor de gehaalde marges.",
+ "afgeleide_parameters": {
+  "_extractie_parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "De parameters waarop élke rij hieronder rust (R3): welke band, welke middeling, welk raster. Zij komen uit de rapportinstellingen die iedere casus-2-meetplek spreidt.",
+   "impedantie_sweep_hz": [
+    5,
+    20000
+   ],
+   "impedantie_punten": 1200,
+   "ver_veld_raster": "lineair, 48000/16384 Hz per punt, 20.5078125–20000 Hz",
+   "poort_ms": {
+    "referenceTimeMs": 3,
+    "rightWindowMs": 7,
+    "taper": "Tukey 0.25",
+    "effectieve_venstertijd_ms": 4,
+    "geldigheidsvloer_hz": 250,
+    "fijnstructuur_hz": 500
+   },
+   "orde_per_overname": 4,
+   "doelcurve": "{\"type\":\"bass-plateau\",\"plateauDepthDb\":2,\"stepHz\":547.6190476190476}"
+  },
+  "extractie_tegen_grondwaarheid": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "ELKE grootheid waarvan het model het antwoord kent, met de extractie ernaast. `binnen` is het oordeel in de tolerantieklasse die de rij noemt; `verschil` is absoluut voor ohm en dB en relatief (%) voor de rest. `soort` scheidt ACCEPTATIE (dezelfde vraag, dus een verschil is een bevinding) van CONTROLE (met opzet twee vragen: een tweede schatter, een piekhoogte die ook de spoel draagt, een benadering die de engine zelf als controle meedraagt).",
+   "rijen": [
+    {
+     "grootheid": "R_e",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 6.2,
+     "extractie": 6.18522601,
+     "schatter": "A5c.1 hierarchy → motional-fit",
+     "eenheid": "Ω",
+     "klasse": "ohm",
+     "verschil": -0.01477,
+     "toegestaan": 0.03,
+     "binnen": true
+    },
+    {
+     "grootheid": "R_e (directe aflezing)",
+     "weg": "woofer",
+     "soort": "controle",
+     "grondwaarheid": 6.2,
+     "extractie": 6.46111506,
+     "schatter": "z-re direct low-frequency median",
+     "eenheid": "Ω",
+     "klasse": "ohm",
+     "verschil": 0.2611,
+     "toegestaan": 0.03,
+     "binnen": false
+    },
+    {
+     "grootheid": "f_b (kastafstemming)",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 38,
+     "extractie": 37.9495,
+     "schatter": "z-resonance reflex dip",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -0.1329,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "f_b (√(f_L·f_H)-controle)",
+     "weg": "woofer",
+     "soort": "controle",
+     "grondwaarheid": 38,
+     "extractie": 35.7825028,
+     "schatter": "z-resonance √ check",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -5.836,
+     "toegestaan": 2,
+     "binnen": false
+    },
+    {
+     "grootheid": "Z_max op de kruin",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 47.550803,
+     "extractie": 47.54428,
+     "schatter": "z-resonance peak height",
+     "eenheid": "Ω",
+     "klasse": "Q_pct",
+     "verschil": -0.01372,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "f van de |Z|-kruin",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 59.1616749,
+     "extractie": 59.0849,
+     "schatter": "z-resonance peak",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -0.1298,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "semi-inductantie n (HF-fit)",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.7,
+     "extractie": 0.788382091,
+     "schatter": "z-semi-inductance",
+     "eenheid": "—",
+     "klasse": "exponent_pct",
+     "verschil": 12.63,
+     "toegestaan": 5,
+     "binnen": false
+    },
+    {
+     "grootheid": "semi-inductantie n (motionele fit)",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.7,
+     "extractie": 0.594660298,
+     "schatter": "z-re motional fit",
+     "eenheid": "—",
+     "klasse": "exponent_pct",
+     "verschil": -15.05,
+     "toegestaan": 5,
+     "binnen": false
+    },
+    {
+     "grootheid": "breakup 3400 Hz",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 3400,
+     "extractie": 3393.24813,
+     "schatter": "spl-breakup",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -0.1986,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "breakup 7200 Hz",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 7200,
+     "extractie": 7220.97367,
+     "schatter": "spl-breakup",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0.2913,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "NF-plafond (Keele)",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 663.230769,
+     "extractie": 663.230769,
+     "schatter": "validity-nearfield",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "x/V op de resonantie",
+     "weg": "woofer",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.307470932,
+     "extractie": 0.438634967,
+     "schatter": "drive-excursion route 1 (electromechanical)",
+     "eenheid": "mm/V",
+     "klasse": "Q_pct",
+     "verschil": 42.66,
+     "toegestaan": 7,
+     "binnen": false
+    },
+    {
+     "grootheid": "R_e",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 5.4,
+     "extractie": 5.40000003,
+     "schatter": "A5c.1 hierarchy → motional-fit",
+     "eenheid": "Ω",
+     "klasse": "ohm",
+     "verschil": 2.61e-8,
+     "toegestaan": 0.03,
+     "binnen": true
+    },
+    {
+     "grootheid": "R_e (directe aflezing)",
+     "weg": "mid",
+     "soort": "controle",
+     "grondwaarheid": 5.4,
+     "extractie": 5.42359934,
+     "schatter": "z-re direct low-frequency median",
+     "eenheid": "Ω",
+     "klasse": "ohm",
+     "verschil": 0.0236,
+     "toegestaan": 0.03,
+     "binnen": true
+    },
+    {
+     "grootheid": "f_c",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 459.736213,
+     "extractie": 457.8527,
+     "schatter": "z-resonance peak",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -0.4097,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "Q_mc",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 4.24371889,
+     "extractie": 4.22008172,
+     "schatter": "z-resonance Small's Q on the sealed fundamental",
+     "eenheid": "—",
+     "klasse": "Q_pct",
+     "verschil": -0.557,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "Q_ec",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 1.09629405,
+     "extractie": 1.06737831,
+     "schatter": "z-resonance",
+     "eenheid": "—",
+     "klasse": "Q_pct",
+     "verschil": -2.638,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "f_c (motionele fit)",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 459.736213,
+     "extractie": 459.736214,
+     "schatter": "z-re motional fit branch",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 2.271e-7,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "Q_mc (motionele fit)",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 4.24371889,
+     "extractie": 4.2437187,
+     "schatter": "z-re motional fit branch",
+     "eenheid": "—",
+     "klasse": "Q_pct",
+     "verschil": -0.000004453,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "R_es (motionele fit)",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 20.9032258,
+     "extractie": 20.9032267,
+     "schatter": "z-re motional fit branch",
+     "eenheid": "Ω",
+     "klasse": "Q_pct",
+     "verschil": 0.00000419,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "Z_max op de kruin",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 26.7523553,
+     "extractie": 26.74992,
+     "schatter": "z-resonance peak height",
+     "eenheid": "Ω",
+     "klasse": "Q_pct",
+     "verschil": -0.009103,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "f van de |Z|-kruin",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 458.598165,
+     "extractie": 457.8527,
+     "schatter": "z-resonance peak",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -0.1626,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "semi-inductantie n (HF-fit)",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.66,
+     "extractie": 0.72349711,
+     "schatter": "z-semi-inductance",
+     "eenheid": "—",
+     "klasse": "exponent_pct",
+     "verschil": 9.621,
+     "toegestaan": 5,
+     "binnen": false
+    },
+    {
+     "grootheid": "semi-inductantie n (motionele fit)",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.66,
+     "extractie": 0.660000171,
+     "schatter": "z-re motional fit",
+     "eenheid": "—",
+     "klasse": "exponent_pct",
+     "verschil": 0.00002589,
+     "toegestaan": 5,
+     "binnen": true
+    },
+    {
+     "grootheid": "breakup 11000 Hz",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 11000,
+     "extractie": 11006.632,
+     "schatter": "spl-breakup",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0.06029,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "breakup 15500 Hz",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 15500,
+     "extractie": 15502.0676,
+     "schatter": "spl-breakup",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0.01334,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "NF-plafond (Keele)",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 1437,
+     "extractie": 1437,
+     "schatter": "validity-nearfield",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "x/V op de resonantie",
+     "weg": "mid",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.0535709245,
+     "extractie": 0.0535955175,
+     "schatter": "drive-excursion route 1 (electromechanical)",
+     "eenheid": "mm/V",
+     "klasse": "Q_pct",
+     "verschil": 0.04591,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "R_e",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 4.1,
+     "extractie": 4.09999994,
+     "schatter": "A5c.1 hierarchy → motional-fit",
+     "eenheid": "Ω",
+     "klasse": "ohm",
+     "verschil": -5.767e-8,
+     "toegestaan": 0.03,
+     "binnen": true
+    },
+    {
+     "grootheid": "R_e (directe aflezing)",
+     "weg": "tweeter",
+     "soort": "controle",
+     "grondwaarheid": 4.1,
+     "extractie": 4.11188027,
+     "schatter": "z-re direct low-frequency median",
+     "eenheid": "Ω",
+     "klasse": "ohm",
+     "verschil": 0.01188,
+     "toegestaan": 0.03,
+     "binnen": true
+    },
+    {
+     "grootheid": "f_s",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 1500,
+     "extractie": 1494.3331,
+     "schatter": "z-resonance peak",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -0.3778,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "Q_ms",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 1.6,
+     "extractie": 1.60541773,
+     "schatter": "z-resonance Small's Q",
+     "eenheid": "—",
+     "klasse": "Q_pct",
+     "verschil": 0.3386,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "Q_es",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.55,
+     "extractie": 0.5342202,
+     "schatter": "z-resonance",
+     "eenheid": "—",
+     "klasse": "Q_pct",
+     "verschil": -2.869,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "f_s (motionele fit)",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 1500,
+     "extractie": 1500.00002,
+     "schatter": "z-re motional fit branch",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0.000001636,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "Q_ms (motionele fit)",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 1.6,
+     "extractie": 1.60000016,
+     "schatter": "z-re motional fit branch",
+     "eenheid": "—",
+     "klasse": "Q_pct",
+     "verschil": 0.000009877,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "R_es (motionele fit)",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 11.9272727,
+     "extractie": 11.9272736,
+     "schatter": "z-re motional fit branch",
+     "eenheid": "Ω",
+     "klasse": "Q_pct",
+     "verschil": 0.000007044,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "Z_max op de kruin",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 16.4218407,
+     "extractie": 16.42116,
+     "schatter": "z-resonance peak height",
+     "eenheid": "Ω",
+     "klasse": "Q_pct",
+     "verschil": -0.004145,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "f van de |Z|-kruin",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 1489.93634,
+     "extractie": 1494.3331,
+     "schatter": "z-resonance peak",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0.2951,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "semi-inductantie n (HF-fit)",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.62,
+     "extractie": 0.89402725,
+     "schatter": "z-semi-inductance",
+     "eenheid": "—",
+     "klasse": "exponent_pct",
+     "verschil": 44.2,
+     "toegestaan": 5,
+     "binnen": false
+    },
+    {
+     "grootheid": "semi-inductantie n (motionele fit)",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.62,
+     "extractie": 0.620000032,
+     "schatter": "z-re motional fit",
+     "eenheid": "—",
+     "klasse": "exponent_pct",
+     "verschil": 0.000005195,
+     "toegestaan": 5,
+     "binnen": true
+    },
+    {
+     "grootheid": "breakup 18500 Hz",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 18500,
+     "extractie": 18478.3879,
+     "schatter": "spl-breakup",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": -0.1168,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "x/V op de resonantie",
+     "weg": "tweeter",
+     "soort": "acceptatie",
+     "grondwaarheid": 0.0174882289,
+     "extractie": 0.0175669669,
+     "schatter": "drive-excursion route 1 (electromechanical)",
+     "eenheid": "mm/V",
+     "klasse": "Q_pct",
+     "verschil": 0.4502,
+     "toegestaan": 7,
+     "binnen": true
+    },
+    {
+     "grootheid": "geldigheidsvloer 1/T",
+     "weg": "alle ver-velden",
+     "soort": "acceptatie",
+     "grondwaarheid": 250,
+     "extractie": 250,
+     "schatter": "validity-header",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0,
+     "toegestaan": 2,
+     "binnen": true
+    },
+    {
+     "grootheid": "fijnstructuur 2/T",
+     "weg": "alle ver-velden",
+     "soort": "acceptatie",
+     "grondwaarheid": 500,
+     "extractie": 500,
+     "schatter": "validity-header",
+     "eenheid": "Hz",
+     "klasse": "frequenties_pct",
+     "verschil": 0,
+     "toegestaan": 2,
+     "binnen": true
+    }
+   ],
+   "totaal": 44,
+   "acceptatierijen": 40,
+   "controlerijen": 4,
+   "binnen_tolerantie": 37,
+   "buiten_tolerantie": 7,
+   "buiten": [
+    "CONTROLE — R_e (directe aflezing) (woofer, z-re direct low-frequency median): 6.46111506 tegen 6.2 Ω, 0.2611 tegen 0.03 toegestaan",
+    "CONTROLE — f_b (√(f_L·f_H)-controle) (woofer, z-resonance √ check): 35.7825028 tegen 38 Hz, -5.836 tegen 2 toegestaan",
+    "ACCEPTATIE — semi-inductantie n (HF-fit) (woofer, z-semi-inductance): 0.788382091 tegen 0.7 —, 12.63 tegen 5 toegestaan",
+    "ACCEPTATIE — semi-inductantie n (motionele fit) (woofer, z-re motional fit): 0.594660298 tegen 0.7 —, -15.05 tegen 5 toegestaan",
+    "ACCEPTATIE — x/V op de resonantie (woofer, drive-excursion route 1 (electromechanical)): 0.438634967 tegen 0.307470932 mm/V, 42.66 tegen 7 toegestaan",
+    "ACCEPTATIE — semi-inductantie n (HF-fit) (mid, z-semi-inductance): 0.72349711 tegen 0.66 —, 9.621 tegen 5 toegestaan",
+    "ACCEPTATIE — semi-inductantie n (HF-fit) (tweeter, z-semi-inductance): 0.89402725 tegen 0.62 —, 44.2 tegen 5 toegestaan"
+   ],
+   "bevindingen": [
+    {
+     "sleutel": "semi-inductantie n (HF-fit) · woofer",
+     "grondwaarheid": 0.7,
+     "extractie": 0.788382091,
+     "verschil": 12.63,
+     "klasse": "exponent_pct",
+     "toegestaan": 5,
+     "schatter": "z-semi-inductance",
+     "reden": "C-2/B1 — TWEE SCHATTERS VOOR EEN GROOTHEID, EN DE GRONDWAARHEID ZEGT WELKE. `z-semi-inductance` fit log|Z| tegen log f boven de resonantie; daar is |Z| = R_e + K·(jω)^n, en R_e wordt niet afgetrokken, dus de fit leest de kromming van de SOM en komt systematisch te hoog uit. De motionele fit (`z-re`, die R_e wél als vrije parameter draagt) leest n op de twee gesloten wegen tot in het zevende cijfer goed. Niet gerepareerd: welke van de twee de rapportagewaarde hoort te zijn is een besluit over de schatter en niet over deze casus."
+    },
+    {
+     "sleutel": "semi-inductantie n (motionele fit) · woofer",
+     "grondwaarheid": 0.7,
+     "extractie": 0.594660298,
+     "verschil": -15.05,
+     "klasse": "exponent_pct",
+     "toegestaan": 5,
+     "schatter": "z-re motional fit",
+     "reden": "C-2/B2 — DE SPIEGEL, EN EEN IDENTIFICEERBAARHEIDSGRENS. De motionele fit leest n exact op de mid en de tweeter en 15 % te laag op de woofer, en het verschil is de FITBAND: die loopt hier van 5 tot 177 Hz, waar de spoelbijdrage aan |Z| enkele honderdsten van een ohm is. De parameter is daar niet identificeerbaar, en de fit zegt dat niet — hij levert een getal. Niet gerepareerd: een fit die zijn eigen identificeerbaarheid rapporteert is een schatterwijziging."
+    },
+    {
+     "sleutel": "x/V op de resonantie · woofer",
+     "grondwaarheid": 0.307470932,
+     "extractie": 0.438634967,
+     "verschil": 42.66,
+     "klasse": "Q_pct",
+     "toegestaan": 7,
+     "schatter": "drive-excursion route 1 (electromechanical)",
+     "reden": "C-2/B3 — DE MAAT VAN EEN BENADERING DIE DE ENGINE ZELF BENOEMT. M-C route 1 leest Small's Q_ms op de BOVENSTE piek van het reflexpaar en behandelt een tweegradensysteem als één — de engine schrijft dat als `qmsSource` bij elk oordeel. Deze casus meet hoe groot die benadering is: +43 %, en in de CONSERVATIEVE richting (de engine denkt dat de conus méér beweegt dan het model zegt, dus haar plafond is strenger dan nodig). Op de twee gesloten wegen is dezelfde route exact. Niet gerepareerd: een reflex-eigen excursieroute is een metriekwijziging (A5e/engine2-metriek), en de richting maakt haar niet dringend."
+    },
+    {
+     "sleutel": "semi-inductantie n (HF-fit) · mid",
+     "grondwaarheid": 0.66,
+     "extractie": 0.72349711,
+     "verschil": 9.621,
+     "klasse": "exponent_pct",
+     "toegestaan": 5,
+     "schatter": "z-semi-inductance",
+     "reden": "C-2/B1 — dezelfde schatter en dezelfde richting als op de woofer: `z-semi-inductance` trekt R_e niet af vóór hij log|Z| tegen log f fit, dus hij leest de kromming van de SOM en komt te hoog uit. De motionele fit leest n op deze weg tot in het zevende cijfer goed."
+    },
+    {
+     "sleutel": "semi-inductantie n (HF-fit) · tweeter",
+     "grondwaarheid": 0.62,
+     "extractie": 0.89402725,
+     "verschil": 44.2,
+     "klasse": "exponent_pct",
+     "toegestaan": 5,
+     "schatter": "z-semi-inductance",
+     "reden": "C-2/B1 — dezelfde schatter, dezelfde richting, en dit is het uiterste van de drie: +44 %. Hoe zwaarder R_e weegt tegen de spoelbijdrage in de fitband, hoe meer de niet-afgetrokken R_e de exponent optilt — en op een 4 Ω-tweeter met 2,2 Ω spoel op 10 kHz weegt hij het zwaarst van het stel."
+    }
+   ],
+   "controle_afwijkingen": [
+    "R_e (directe aflezing) · woofer: 0.2611 — met opzet een andere vraag, zie de rij zelf",
+    "f_b (√(f_L·f_H)-controle) · woofer: -5.836 — met opzet een andere vraag, zie de rij zelf"
+   ]
+  },
+  "woofer": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "R_e_ohm": 6.185226012506608,
+   "R_e_bron": "motional-fit",
+   "R_e_direct_ohm": 6.461115059104788,
+   "R_e_grondwaarheid_ohm": 6.2,
+   "impedantie_soort": "reflex",
+   "fundamenteel_hz": 59.0849,
+   "reflex": {
+    "fLHz": 21.6703,
+    "fbHz": 37.9495,
+    "fHHz": 59.0849,
+    "zDipOhm": 8.44959,
+    "sqrtCheckHz": 35.78250282568283,
+    "sqrtCheckError": 0.057102127151007716,
+    "lossIndicator": 1.3660923599096975
+   },
+   "gesloten": null,
+   "motionele_fit": {
+    "R_e": 6.185226012506608,
+    "n": 0.5946602982245566,
+    "k": 0.011635480960816184,
+    "band_hz": [
+     5,
+     177.25469999999999
+    ],
+    "residu": 0.024549922635341816,
+    "takken": [
+     {
+      "rOhm": 25.352749023093224,
+      "fHz": 21.699672814562415,
+      "q": 3.21134951722052
+     },
+     {
+      "rOhm": 41.95106008007968,
+      "fHz": 59.242924262944705,
+      "q": 6.811555757443069
+     }
+    ]
+   },
+   "semi_inductantie_n": 0.7883820912500713,
+   "semi_inductantie_band_hz": [
+    590.8489999999999,
+    20000
+   ],
+   "semi_inductantie_n_grondwaarheid": 0.7,
+   "breakups": [
+    [
+     3393.2,
+     3.52
+    ],
+    [
+     7221,
+     2.8
+    ]
+   ],
+   "breakups_grondwaarheid": [
+    {
+     "hz": 3400,
+     "hoogte_dB": 6.2,
+     "Q": 12
+    },
+    {
+     "hz": 7200,
+     "hoogte_dB": 4.1,
+     "Q": 16
+    }
+   ],
+   "breakups_opmerking": "De dB-kolom van de extractor is de hoogte boven de TREND, de dB-kolom van de grondwaarheid de piekwinst van de resonantie zelf. Twee grootheden; alleen de FREQUENTIES worden vergeleken.",
+   "NF_plafond_hz": 663.2307692307693,
+   "directiviteit_min6_30gr_hz": 3677.1991353708568,
+   "baffle_step_fit_hz": 417.24914351661613,
+   "baffle_step_fit_diepte_dB": 5.439670445621429,
+   "baffle_step_grondwaarheid_hz": 547.6190476190476,
+   "baffle_step_grondwaarheid_diepte_dB": 6,
+   "bandgemiddeld_niveau_dB": 84.20957492597017,
+   "gevoeligheid_grondwaarheid_dB": 88.47625673275851,
+   "niveau_opmerking": "Het bandgemiddelde niveau is een energiegemiddelde over de BEOORDEELDE band en de gevoeligheid is het doorlaatbandplateau van het model. Twee grootheden, geen acceptatie: de eerste draagt de eigen afval van de driver en de baffle-step, de tweede niet.",
+   "geldigheid_ver_veld_hz": [
+    250,
+    19998.04688
+   ],
+   "geldigheid_bron": "header",
+   "fijnstructuur_vanaf_hz": 500,
+   "excursie": {
+    "f0_hz": 59.0849,
+    "x_per_V_mm_per_V": 0.4386349667100222,
+    "x_per_V_grondwaarheid_mm_per_V": 0.30747093197349024,
+    "f0_grondwaarheid_hz": 59.16167491431383,
+    "plafond_re_ingang_dB": -11.361439633858513,
+    "route2_x_per_V_mm_per_V": null,
+    "route2_verhouding": null,
+    "route2_uit": "acoustic route off for woofer: the resonance (59.1 Hz) lies outside the far-field validity band (250-19998 Hz), so no SPL there may be believed"
+   }
+  },
+  "mid": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "R_e_ohm": 5.400000026097191,
+   "R_e_bron": "motional-fit",
+   "R_e_direct_ohm": 5.423599340814263,
+   "R_e_grondwaarheid_ohm": 5.4,
+   "impedantie_soort": "sealed",
+   "fundamenteel_hz": 457.8527,
+   "reflex": null,
+   "gesloten": {
+    "fcHz": 457.8527,
+    "zMaxOhm": 26.74992,
+    "r0": 4.953688864948636,
+    "qmc": 4.220081722451123,
+    "qec": 1.067378305830838,
+    "qtc": 0.8519068995858061
+   },
+   "motionele_fit": {
+    "R_e": 5.400000026097191,
+    "n": 0.660000170874236,
+    "k": 0.004427045195550039,
+    "band_hz": [
+     5,
+     1373.5581000000002
+    ],
+    "residu": 4.998586433170695e-7,
+    "takken": [
+     {
+      "rOhm": 20.903226682296896,
+      "fHz": 459.7362144324885,
+      "q": 4.243718703829299
+     }
+    ]
+   },
+   "semi_inductantie_n": 0.7234971098273724,
+   "semi_inductantie_band_hz": [
+    4578.527,
+    20000
+   ],
+   "semi_inductantie_n_grondwaarheid": 0.66,
+   "breakups": [
+    [
+     11006.6,
+     3.39
+    ],
+    [
+     15502.1,
+     2.58
+    ]
+   ],
+   "breakups_grondwaarheid": [
+    {
+     "hz": 11000,
+     "hoogte_dB": 5.4,
+     "Q": 14
+    },
+    {
+     "hz": 15500,
+     "hoogte_dB": 3.6,
+     "Q": 18
+    }
+   ],
+   "breakups_opmerking": "De dB-kolom van de extractor is de hoogte boven de TREND, de dB-kolom van de grondwaarheid de piekwinst van de resonantie zelf. Twee grootheden; alleen de FREQUENTIES worden vergeleken.",
+   "NF_plafond_hz": 1437,
+   "directiviteit_min6_30gr_hz": 7468.506063242205,
+   "baffle_step_fit_hz": 404.3962479843158,
+   "baffle_step_fit_diepte_dB": 5.753391922860032,
+   "baffle_step_grondwaarheid_hz": 547.6190476190476,
+   "baffle_step_grondwaarheid_diepte_dB": 6,
+   "bandgemiddeld_niveau_dB": 90.14397714425557,
+   "gevoeligheid_grondwaarheid_dB": 93.09873474336969,
+   "niveau_opmerking": "Het bandgemiddelde niveau is een energiegemiddelde over de BEOORDEELDE band en de gevoeligheid is het doorlaatbandplateau van het model. Twee grootheden, geen acceptatie: de eerste draagt de eigen afval van de driver en de baffle-step, de tweede niet.",
+   "geldigheid_ver_veld_hz": [
+    250,
+    19998.04688
+   ],
+   "geldigheid_bron": "header",
+   "fijnstructuur_vanaf_hz": 500,
+   "excursie": {
+    "f0_hz": 457.8527,
+    "x_per_V_mm_per_V": 0.0535955174820272,
+    "x_per_V_grondwaarheid_mm_per_V": 0.05357092448069931,
+    "f0_grondwaarheid_hz": 458.5981649166515,
+    "plafond_re_ingang_dB": -2.644369110475285,
+    "route2_x_per_V_mm_per_V": 0.0401185578319087,
+    "route2_verhouding": 0.7485431565309938,
+    "route2_uit": null
+   }
+  },
+  "tweeter": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "R_e_ohm": 4.0999999423275755,
+   "R_e_bron": "motional-fit",
+   "R_e_direct_ohm": 4.111880268792273,
+   "R_e_grondwaarheid_ohm": 4.1,
+   "impedantie_soort": "sealed",
+   "fundamenteel_hz": 1494.3331,
+   "reflex": null,
+   "gesloten": {
+    "fcHz": 1494.3331,
+    "zMaxOhm": 16.42116,
+    "r0": 4.005161031948133,
+    "qmc": 1.6054177281733644,
+    "qec": 0.5342202002175678,
+    "qtc": 0.4008372485818579
+   },
+   "motionele_fit": {
+    "R_e": 4.0999999423275755,
+    "n": 0.6200000322078405,
+    "k": 0.002331048992528531,
+    "band_hz": [
+     5,
+     4482.9993
+    ],
+    "residu": 5.525330141623538e-7,
+    "takken": [
+     {
+      "rOhm": 11.927273567393463,
+      "fHz": 1500.000024539476,
+      "q": 1.6000001580276368
+     }
+    ]
+   },
+   "semi_inductantie_n": 0.8940272499346666,
+   "semi_inductantie_band_hz": [
+    14943.331,
+    20000
+   ],
+   "semi_inductantie_n_grondwaarheid": 0.62,
+   "breakups": [
+    [
+     18478.4,
+     2.1
+    ]
+   ],
+   "breakups_grondwaarheid": [
+    {
+     "hz": 18500,
+     "hoogte_dB": 3.2,
+     "Q": 20
+    }
+   ],
+   "breakups_opmerking": "De dB-kolom van de extractor is de hoogte boven de TREND, de dB-kolom van de grondwaarheid de piekwinst van de resonantie zelf. Twee grootheden; alleen de FREQUENTIES worden vergeleken.",
+   "NF_plafond_hz": null,
+   "directiviteit_min6_30gr_hz": 17025.16442091246,
+   "baffle_step_fit_hz": null,
+   "baffle_step_fit_diepte_dB": null,
+   "baffle_step_grondwaarheid_hz": 547.6190476190476,
+   "baffle_step_grondwaarheid_diepte_dB": 6,
+   "bandgemiddeld_niveau_dB": 91.16189633385345,
+   "gevoeligheid_grondwaarheid_dB": 96.25228184646858,
+   "niveau_opmerking": "Het bandgemiddelde niveau is een energiegemiddelde over de BEOORDEELDE band en de gevoeligheid is het doorlaatbandplateau van het model. Twee grootheden, geen acceptatie: de eerste draagt de eigen afval van de driver en de baffle-step, de tweede niet.",
+   "geldigheid_ver_veld_hz": [
+    250,
+    19998.04688
+   ],
+   "geldigheid_bron": "header",
+   "fijnstructuur_vanaf_hz": 500,
+   "excursie": {
+    "f0_hz": 1494.3331,
+    "x_per_V_mm_per_V": 0.017566966942815725,
+    "x_per_V_grondwaarheid_mm_per_V": 0.0174882288596264,
+    "f0_grondwaarheid_hz": 1489.9363400013171,
+    "plafond_re_ingang_dB": -3.4133103264532445,
+    "route2_x_per_V_mm_per_V": 0.01665101828326848,
+    "route2_verhouding": 0.9478596013455907,
+    "route2_uit": null
+   }
+  }
+ },
+ "verankerde_gaps_dB": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "anker": "woofer",
+  "anker_reden": "woofer is the lowest way and the quietest, so it is the anchor: attenuating it costs source resistance, low-frequency lift and dissipation",
+  "per_weg": [
+   {
+    "weg": "mid",
+    "gap_dB": 5.977803076033354,
+    "budget_dB": 5.977803076033354
+   },
+   {
+    "weg": "tweeter",
+    "gap_dB": 7.902421980024883,
+    "budget_dB": 7.902421980024883
+   }
+  ],
+  "anker_grondwaarheid": "De woofer, want het model geeft hem de LAAGSTE gevoeligheid (woofer 88.48, mid 93.10, tweeter 96.25 dB) en het anker is per definitie de stilste weg.",
+  "geblokkeerd": null
+ },
+ "kruisvensters": {
+  "parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "orde": 4,
+   "_": "De orde is GESTELD (A5d.3 verkiest symmetrische LR-flanken); de vensters worden per orde opnieuw afgeleid."
+  },
+  "woofer_mid_orde4": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "venster": [
+    640.99378,
+    1311.6873907894521
+   ],
+   "vloer_bindend": "fs",
+   "plafond_bindend": "breakup",
+   "grenzen": [
+    {
+     "kant": "floor",
+     "regel": "validity",
+     "hz": 250
+    },
+    {
+     "kant": "floor",
+     "regel": "fs",
+     "hz": 640.99378
+    },
+    {
+     "kant": "floor",
+     "regel": "drive",
+     "hz": 494.18991735042226
+    },
+    {
+     "kant": "ceiling",
+     "regel": "breakup",
+     "hz": 1311.6873907894521
+    },
+    {
+     "kant": "ceiling",
+     "regel": "directivity",
+     "hz": 3677.1991353708568
+    }
+   ]
+  },
+  "mid_tweeter_orde4": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "venster": [
+    2820.9252553600086,
+    4290.12062179158
+   ],
+   "vloer_bindend": "drive-stated",
+   "plafond_bindend": "breakup",
+   "grenzen": [
+    {
+     "kant": "floor",
+     "regel": "validity",
+     "hz": 250
+    },
+    {
+     "kant": "floor",
+     "regel": "fs",
+     "hz": 2092.06634
+    },
+    {
+     "kant": "floor",
+     "regel": "drive",
+     "hz": 1649.1504693153138
+    },
+    {
+     "kant": "floor",
+     "regel": "drive-stated",
+     "hz": 2820.9252553600086
+    },
+    {
+     "kant": "ceiling",
+     "regel": "breakup",
+     "hz": 4290.12062179158
+    },
+    {
+     "kant": "ceiling",
+     "regel": "directivity",
+     "hz": 7468.506063242205
+    }
+   ]
+  }
+ },
+ "kandidaten": {
+  "_parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "band_hz": [
+    "doelcurve"
+   ],
+   "_": "De metrieken hieronder zijn per netlist gemeten met CASUS2_REPORT_SETTINGS — dezelfde instellingen die de generator en de guards spreiden (de V42-regel)."
+  },
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "min_Z_ohm": 3.3769437078817326,
+   "min_Z_bij_hz": 198.7850681809125,
+   "EPDR_min_ohm": 1.6887221771495657,
+   "dissipatiefractie": 0.5547766184149174,
+   "dissipatie_W": 33.286597104895044,
+   "lf_bult_dB": 0.19204272821784873,
+   "lf_opslingering_dB": 0.021788410987598095,
+   "lf_lift_dB": 0.17025431723025064,
+   "Qes_mult": 1.1479872264442417,
+   "fase_M_K": [
+    {
+     "paar": "woofer->mid",
+     "graden": 1.3995002313362799
+    },
+    {
+     "paar": "mid->tweeter",
+     "graden": 2.7339439187260623
+    }
+   ],
+   "netlist": "KAND-V2-1.adsfilter.json"
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "min_Z_ohm": 3.1992892236405517,
+   "min_Z_bij_hz": 1582.930804657669,
+   "EPDR_min_ohm": 1.610890870704661,
+   "dissipatiefractie": 0.32774130550511665,
+   "dissipatie_W": 19.664478330307,
+   "lf_bult_dB": 0.06023577855508344,
+   "lf_opslingering_dB": -0.1343132013463887,
+   "lf_lift_dB": 0.19454897990147213,
+   "Qes_mult": 1.1708777480917523,
+   "fase_M_K": [
+    {
+     "paar": "woofer->mid",
+     "graden": 3.6854617168979082
+    },
+    {
+     "paar": "mid->tweeter",
+     "graden": 2.905447605026881
+    }
+   ],
+   "netlist": "KAND-V2-2.adsfilter.json"
+  },
+  "KAND_V2_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "min_Z_ohm": 3.2000041550465457,
+   "min_Z_bij_hz": 1947.91386090561,
+   "EPDR_min_ohm": 1.6038076419265175,
+   "dissipatiefractie": 0.2951857056644579,
+   "dissipatie_W": 17.711142339867475,
+   "lf_bult_dB": 0.07030191548691378,
+   "lf_opslingering_dB": -0.11678304991204369,
+   "lf_lift_dB": 0.18708496539895747,
+   "Qes_mult": 1.162337257917029,
+   "fase_M_K": [
+    {
+     "paar": "woofer->mid",
+     "graden": 3.0628430196553653
+    },
+    {
+     "paar": "mid->tweeter",
+     "graden": 3.0547656288697937
+    }
+   ],
+   "netlist": "KAND-V2-3.adsfilter.json"
+  },
+  "KAND_V2_4": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "min_Z_ohm": 3.2004834302978242,
+   "min_Z_bij_hz": 1820.8941781410444,
+   "EPDR_min_ohm": 1.6008970239612772,
+   "dissipatiefractie": 0.28624008614992885,
+   "dissipatie_W": 17.17440516899573,
+   "lf_bult_dB": 0.0767507853008913,
+   "lf_opslingering_dB": -0.11080133001672077,
+   "lf_lift_dB": 0.18755211531761207,
+   "Qes_mult": 1.1627222017971321,
+   "fase_M_K": [
+    {
+     "paar": "woofer->mid",
+     "graden": 4.433990894304176
+    },
+    {
+     "paar": "mid->tweeter",
+     "graden": 2.3224481272430633
+    }
+   ],
+   "netlist": "KAND-V2-4.adsfilter.json"
+  },
+  "KAND_V2_5": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "min_Z_ohm": 3.204463035635942,
+   "min_Z_bij_hz": 1693.35093288892,
+   "EPDR_min_ohm": 1.6109556238938672,
+   "dissipatiefractie": 0.3292771124177378,
+   "dissipatie_W": 19.75662674506427,
+   "lf_bult_dB": 0.046904829010985694,
+   "lf_opslingering_dB": -0.1476935994101387,
+   "lf_lift_dB": 0.1945984284211244,
+   "Qes_mult": 1.1712884845026377,
+   "fase_M_K": [
+    {
+     "paar": "woofer->mid",
+     "graden": 4.494724105224109
+    },
+    {
+     "paar": "mid->tweeter",
+     "graden": 3.241635928564749
+    }
+   ],
+   "netlist": "KAND-V2-5.adsfilter.json"
+  },
+  "KAND_V2_6": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "min_Z_ohm": 4.63065451740866,
+   "min_Z_bij_hz": 323.69584846654044,
+   "EPDR_min_ohm": 2.322801440302055,
+   "dissipatiefractie": 0.1613222786703683,
+   "dissipatie_W": 9.679336720222098,
+   "lf_bult_dB": 0.03168117564592854,
+   "lf_opslingering_dB": -0.16288428755158169,
+   "lf_lift_dB": 0.19456546319751022,
+   "Qes_mult": 1.1713544340750521,
+   "fase_M_K": [
+    {
+     "paar": "woofer->mid",
+     "graden": 5.296291028541865
+    },
+    {
+     "paar": "mid->tweeter",
+     "graden": 1.7694951084628325
+    }
+   ],
+   "netlist": "KAND-V2-6.adsfilter.json"
+  }
+ },
+ "v1_baseline": {
+  "klasse": "C",
+  "afhankelijkheid": "meting+zoektocht",
+  "v1_commit": "0000000",
+  "referenties": {},
+  "_": "LEEG, en dat is de bedoeling (F4a/R2): casus 2 heeft geen v1-baseline. Zij bestaat pas sinds de v2-route en haar kandidaten zijn BESTANDEN, dus geen enkele referentie in dit bestand is een functie van een zoektocht. De commit-hash staat op nul omdat er geen enginetoestand is waarop een baseline-waarde rust; zodra hier ooit een waarde komt hoort daar de echte hash bij."
+ },
+ "manifest_en_geometrie": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "klasse_toelichting": "PROJECTINVOER: het manifest, de geometrie, de gestelde eisen, de driverkaart en — uniek voor deze casus — de GRONDWAARHEID van het model waaruit de bestanden gegenereerd zijn. Geen van deze getallen is een afleiding; zij zijn wat de afleidingen tegen gehouden worden.",
+  "bestanden_map": "casus2",
+  "bestanden": {
+   "woofer.zma": {
+    "drv": "woofer",
+    "typ": "Z"
+   },
+   "mid.zma": {
+    "drv": "mid",
+    "typ": "Z"
+   },
+   "tweeter.zma": {
+    "drv": "tweeter",
+    "typ": "Z"
+   },
+   "woofer_near.frd": {
+    "drv": "woofer",
+    "typ": "NF"
+   },
+   "mid_near.frd": {
+    "drv": "mid",
+    "typ": "NF"
+   },
+   "woofer_hor_0.frd": {
+    "drv": "woofer",
+    "typ": "FF",
+    "hoek": 0
+   },
+   "woofer_hor_30.frd": {
+    "drv": "woofer",
+    "typ": "FF",
+    "hoek": 30
+   },
+   "mid_hor_0.frd": {
+    "drv": "mid",
+    "typ": "FF",
+    "hoek": 0
+   },
+   "mid_hor_30.frd": {
+    "drv": "mid",
+    "typ": "FF",
+    "hoek": 30
+   },
+   "tweeter_hor_0.frd": {
+    "drv": "tweeter",
+    "typ": "FF",
+    "hoek": 0
+   },
+   "tweeter_hor_30.frd": {
+    "drv": "tweeter",
+    "typ": "FF",
+    "hoek": 30
+   }
+  },
+  "ff_headers": {
+   "referentietijd_ms": 3,
+   "rechter_venster_ms": 7,
+   "effectieve_venstertijd_ms": 4,
+   "_": "GEKOZEN, niet gemeten: T = 4,0 ms op de kop, dus de A5b.1(i)-vloer 1/T is 250 Hz en de fijnstructuur 2/T 500 Hz — allebei ronde getallen, zodat een extractie die ernaast zit dat zichtbaar doet."
+  },
+  "geometrie": {
+   "D_inch": {
+    "woofer": 6.5,
+    "mid": 3
+   },
+   "z_offset_mm": {
+    "woofer": -155,
+    "mid": -38,
+    "tweeter": 0
+   },
+   "ctc_mm": {
+    "woofer_mid": 195,
+    "mid_tweeter": 96
+   },
+   "baffle_mm": {
+    "breedte": 210,
+    "hoogte": 900,
+    "herkomst": "GESTELD in het model (casus2-model.ts, CASUS2_BAFFLE_MM). Kleiner dan casus 1's 260 x 1124 mm, dus de baffle-step ligt hoger: 115/0,210 = 547,6 Hz tegen 442,3."
+   },
+   "rotatiesymmetrisch": {
+    "woofer": true,
+    "mid": true,
+    "tweeter": true
+   }
+  },
+  "netlists": {
+   "KAND_V2_1": "KAND-V2-1.adsfilter.json",
+   "KAND_V2_2": "KAND-V2-2.adsfilter.json",
+   "KAND_V2_3": "KAND-V2-3.adsfilter.json",
+   "KAND_V2_4": "KAND-V2-4.adsfilter.json",
+   "KAND_V2_5": "KAND-V2-5.adsfilter.json",
+   "KAND_V2_6": "KAND-V2-6.adsfilter.json"
+  },
+  "gestelde_eisen": {
+   "_": "GESTELD voor deze casus, met andere getallen dan casus 1 op elke regel waar een getal staat. Zij zijn projectinvoer, geen afleiding en geen meting (P4/P6).",
+   "gesteld_door": "C-2, 08-09-2026 — een synthetische casus heeft geen ontwerper; deze eisen zijn gesteld om de poorten en de budgetten op ANDERE getallen dan casus 1 te oefenen.",
+   "versterkervloer_ohm": 3.2,
+   "versterker_piekvermogen_W": 120,
+   "versterker_nominale_last_ohm": 6,
+   "versterker_continu_vermogen_W": 60,
+   "xmax_marge": 0.75,
+   "drive_op_fs_max_dB_per_weg": {
+    "tweeter": -22,
+    "mid": null
+   },
+   "weerstandsklasse_W": 5,
+   "weerstandsmarge": 0.6,
+   "spoelklasse_A": null,
+   "thermisch_ontwerpvermogen_W": 8,
+   "bouwbaarheid_op_de_zoektocht": {
+    "gewapend": true,
+    "waarom": "Dezelfde soort eis als casus 1 sinds V51, op andere getallen (klasse 5 W, marge 0,6, geoordeeld bij 8 W thermisch)."
+   },
+   "basplateau_offset_dB": 2,
+   "basplateau_waarom": "GESTELD op 2,0 dB, en anders dan casus 1 is hij hier BEOORDEELBAAR: de baffle-step ligt op 547,6 Hz en de beoordeelde band begint op de poortvloer 250 Hz, ruim een octaaf eronder, dus plateauCoverage oordeelt in plaats van zich te onthouden. Op casus 1 ligt de bandvloer 0,16 octaaf onder de overgang en wordt het plateau niet beoordeeld — die toestand had het casusboek al, deze niet.",
+   "lf_opslingering_budget_dB": 2,
+   "qes_vermenigvuldiging_max": 2.5,
+   "max_kruispunt_hz_per_paar": null
+  },
+  "driverkaart": {
+   "_": "PROJECTINVOER. Op een synthetische casus komt zij niet uit een datasheet maar uit het model zelf (grondwaarheid.drivers), en dat is precies wat haar bruikbaar maakt: X_max, S_d, Bl en M_ms zijn EXACT de waarden waarmee de bestanden gemaakt zijn, dus de excursie-afleiding heeft een antwoord.",
+   "gesteld_door": "C-2, 08-09-2026 — uit scripts/casus2-model.ts",
+   "ff_meetspanning_V": 2.83,
+   "ff_mic_afstand_mm": 1000,
+   "ff_meetspanning_toelichting": "GEDOCUMENTEERD, in de header van elk ver-veldbestand en hier. Dat is het verschil met casus 1, waar hij ontbreekt en route 2 van M-C daarom uit staat: op deze casus kunnen de twee routes naast elkaar gelegd worden.",
+   "spoelfamilie": {
+    "_": "A5e.3 — de spoelfamilie per weg, andere draaddiktes dan casus 1 (1,4/1,0/1,0 mm).",
+    "gesteld_door": "C-2, 08-09-2026",
+    "catalogus": "src/lib/parsers/fixtures/gemini-catalog-v8.json",
+    "per_weg": {
+     "woofer": "jantzen|air core wire coil|1.2",
+     "mid": "jantzen|air core wire coil|0.8",
+     "tweeter": "jantzen|air core wire coil|0.7"
+    }
+   },
+   "woofer": {
+    "model": "SYN-W165-8 (synthetic, one driver, 8 Ω nominal)",
+    "X_max_mm": 6,
+    "S_d_cm2": 132,
+    "Bl_Tm": 7.58359988386158,
+    "M_ms_g": 16.5,
+    "Re_datasheet_ohm": 6.2,
+    "schakeling": {
+     "aantal": 1,
+     "gemeten": "parallel",
+     "gewenst": "parallel"
+    }
+   },
+   "mid": {
+    "model": "SYN-D75-6 (synthetic 3-inch DOME midrange, 6 Ω nominal, closed pod)",
+    "X_max_mm": 2,
+    "S_d_cm2": 32,
+    "Bl_Tm": 5.060738488170675,
+    "M_ms_g": 1.8,
+    "Re_datasheet_ohm": 5.4,
+    "schakeling": {
+     "aantal": 1,
+     "gemeten": "parallel",
+     "gewenst": "parallel"
+    }
+   },
+   "tweeter": {
+    "model": "SYN-T22-4 (synthetic 22 mm dome on a waveguide, 4 Ω nominal, high f_s)",
+    "X_max_mm": 0.6,
+    "S_d_cm2": 6.2,
+    "Bl_Tm": 4.435322085048051,
+    "M_ms_g": 0.27999999999999997,
+    "Re_datasheet_ohm": 4.1,
+    "schakeling": {
+     "aantal": 1,
+     "gemeten": "parallel",
+     "gewenst": "parallel"
+    }
+   }
+  },
+  "grondwaarheid": {
+   "_": "CASUS 2 — DE GRONDWAARHEID. Geschreven door scripts/generate-casus2-measurements.ts uit scripts/casus2-model.ts. Elk getal hier is INVOER van het model of een gesloten gevolg ervan, nooit een meting en nooit een extractie. Dit is waar de extractoren tegen gelegd worden.",
+   "drivers": {
+    "woofer": {
+     "model": "SYN-W165-8 (synthetic, one driver, 8 Ω nominal)",
+     "R_e_ohm": 6.2,
+     "semi_inductantie_n": 0.7,
+     "semi_inductantie_ohm_op_10k": 14,
+     "f_s_hz": 34,
+     "Q_ms": 3.1,
+     "Q_es": 0.38,
+     "Q_ts": 0.33850574712643683,
+     "M_ms_g": 16.5,
+     "S_d_cm2": 132,
+     "X_max_mm": 6,
+     "Bl_Tm": 7.58359988386158,
+     "C_ms_mm_per_N": 1.3280012535694894,
+     "R_ms_Ns_per_m": 1.1370538572024995,
+     "diameter_inch": 6.5,
+     "z_offset_mm": -155,
+     "kast": {
+      "soort": "reflex",
+      "volume_l": 28,
+      "f_b_hz": 38,
+      "lek_Q": 7,
+      "compliantieverhouding_alpha": 1.1706824628069126,
+      "poortmassa_kg_per_m4": 88.74948369197456
+     },
+     "Z_max_zonder_spoel_ohm": 56.77894736842105,
+     "gevoeligheid_dB_1m_2V83": 88.47625673275851,
+     "breakups": [
+      {
+       "hz": 3400,
+       "hoogte_dB": 6.2,
+       "Q": 12
+      },
+      {
+       "hz": 7200,
+       "hoogte_dB": 4.1,
+       "Q": 16
+      }
+     ],
+     "excursie_op_impedantiepiek": {
+      "f0_hz": 59.16167491431383,
+      "Z_max_ohm": 47.550803020442835,
+      "x_per_V_mm_per_V": 0.30747093197349024,
+      "_": "Het model geëvalueerd op de frequentie waar |Z| maximaal is: x/V = |v(f0)|/ω0, met v uit dezelfde keten waaruit de bestanden geschreven zijn. Op een reflexkast is dat de BOVENSTE piek, dezelfde die M-C leest."
+     }
+    },
+    "mid": {
+     "model": "SYN-D75-6 (synthetic 3-inch DOME midrange, 6 Ω nominal, closed pod)",
+     "R_e_ohm": 5.4,
+     "semi_inductantie_n": 0.66,
+     "semi_inductantie_ohm_op_10k": 6.5,
+     "f_s_hz": 260,
+     "Q_ms": 2.4,
+     "Q_es": 0.62,
+     "Q_ts": 0.49271523178807947,
+     "M_ms_g": 1.8,
+     "S_d_cm2": 32,
+     "X_max_mm": 2,
+     "Bl_Tm": 5.060738488170675,
+     "C_ms_mm_per_N": 0.2081713996596355,
+     "R_ms_Ns_per_m": 1.2252211349000193,
+     "diameter_inch": 3,
+     "z_offset_mm": -38,
+     "kast": {
+      "soort": "gesloten",
+      "volume_l": 0.14200000000000002,
+      "compliantieverhouding_alpha": 2.126588548828797,
+      "f_c_hz": 459.7362133885329,
+      "Q_mc": 4.243718892817227,
+      "Q_ec": 1.096294047311117,
+      "Q_tc": 0.8712270574657883
+     },
+     "Z_max_zonder_spoel_ohm": 26.303225806451607,
+     "gevoeligheid_dB_1m_2V83": 93.09873474336969,
+     "breakups": [
+      {
+       "hz": 11000,
+       "hoogte_dB": 5.4,
+       "Q": 14
+      },
+      {
+       "hz": 15500,
+       "hoogte_dB": 3.6,
+       "Q": 18
+      }
+     ],
+     "excursie_op_impedantiepiek": {
+      "f0_hz": 458.5981649166515,
+      "Z_max_ohm": 26.752355260461677,
+      "x_per_V_mm_per_V": 0.05357092448069931,
+      "_": "Het model geëvalueerd op de frequentie waar |Z| maximaal is: x/V = |v(f0)|/ω0, met v uit dezelfde keten waaruit de bestanden geschreven zijn. Op een reflexkast is dat de BOVENSTE piek, dezelfde die M-C leest."
+     }
+    },
+    "tweeter": {
+     "model": "SYN-T22-4 (synthetic 22 mm dome on a waveguide, 4 Ω nominal, high f_s)",
+     "R_e_ohm": 4.1,
+     "semi_inductantie_n": 0.62,
+     "semi_inductantie_ohm_op_10k": 2.2,
+     "f_s_hz": 1500,
+     "Q_ms": 1.6,
+     "Q_es": 0.55,
+     "Q_ts": 0.40930232558139534,
+     "M_ms_g": 0.27999999999999997,
+     "S_d_cm2": 6.2,
+     "X_max_mm": 0.6,
+     "Bl_Tm": 4.435322085048051,
+     "C_ms_mm_per_N": 0.0402068189056896,
+     "R_ms_Ns_per_m": 1.6493361431346412,
+     "diameter_inch": 1,
+     "z_offset_mm": 0,
+     "kast": {
+      "soort": "vrije lucht"
+     },
+     "Z_max_zonder_spoel_ohm": 16.027272727272724,
+     "gevoeligheid_dB_1m_2V83": 96.25228184646858,
+     "breakups": [
+      {
+       "hz": 18500,
+       "hoogte_dB": 3.2,
+       "Q": 20
+      }
+     ],
+     "excursie_op_impedantiepiek": {
+      "f0_hz": 1489.9363400013171,
+      "Z_max_ohm": 16.42184071919803,
+      "x_per_V_mm_per_V": 0.0174882288596264,
+      "_": "Het model geëvalueerd op de frequentie waar |Z| maximaal is: x/V = |v(f0)|/ω0, met v uit dezelfde keten waaruit de bestanden geschreven zijn. Op een reflexkast is dat de BOVENSTE piek, dezelfde die M-C leest."
+     }
+    }
+   },
+   "geometrie": {
+    "baffle_mm": {
+     "breedte": 210,
+     "hoogte": 900
+    },
+    "baffle_step_hz": 547.6190476190476,
+    "baffle_step_diepte_dB": 6,
+    "ctc_mm": {
+     "woofer_mid": 195,
+     "mid_tweeter": 96
+    },
+    "z_offset_mm": {
+     "woofer": -155,
+     "mid": -38,
+     "tweeter": 0
+    }
+   },
+   "poort": {
+    "referenceTimeMs": 3,
+    "rightWindowMs": 7,
+    "taper": "Tukey 0.25",
+    "effectieve_venstertijd_ms": 4,
+    "geldigheidsvloer_hz": 250,
+    "fijnstructuur_hz": 500
+   },
+   "meetcondities": {
+    "voltsRms": 2.83,
+    "micDistanceMm": 1000
+   },
+   "versterker": {
+    "peakPowerW": 120,
+    "continuousPowerW": 60,
+    "nominalLoadOhm": 6
+   },
+   "bemonstering": {
+    "sampleRateHz": 48000,
+    "impulseLength": 32768,
+    "fftLength": 16384,
+    "ffFirstHz": 20.5078125,
+    "ffLastHz": 20000,
+    "zFromHz": 5,
+    "zToHz": 20000,
+    "zPoints": 1200,
+    "anglesDeg": [
+     0,
+     30
+    ]
+   },
+   "bestanden": [
+    "woofer.zma",
+    "woofer_hor_0.frd",
+    "woofer_hor_30.frd",
+    "woofer_near.frd",
+    "mid.zma",
+    "mid_hor_0.frd",
+    "mid_hor_30.frd",
+    "mid_near.frd",
+    "tweeter.zma",
+    "tweeter_hor_0.frd",
+    "tweeter_hor_30.frd"
+   ]
+  },
+  "v2_herkomst": "test-fixtures/casus2_v2_herkomst.json"
+ }
+}

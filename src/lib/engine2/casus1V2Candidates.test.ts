@@ -189,6 +189,8 @@ const HERKOMST = JSON.parse(
      *  waarmee de zoektocht begon, of dat wat zij aan het bouwen is. */
     plafond_bron: string | null;
     plafond_bron_waarom: string;
+    plafond_soort: string | null;
+    plafond_soort_waarom: string;
     /** V51 — MAG DE LAAGSTE WEG NIVEAUWERK DRAGEN: de derde ketensleutel,
      *  plus de schakeling per weg en het thermisch ontwerpvermogen. */
     niveauwerk_laagste_weg: unknown;
@@ -434,8 +436,14 @@ describe('the frozen v2 candidates are files, and the file says where they came 
      * the gate reference's own points outside its extent, 10.1–20 317 Hz), and
      * this record is the first one written under it. `'safety'` is what the
      * dated A5e.3-veld corpus was generated on, and it stays statable. */
-    expect(m.vloer_zoekdoel_bron).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null ? 'safety-extended' : null);
-    expect(m.vloer_zoekdoel_bron_waarom).toMatch(/V33/);
+    /* C-2 — de eerste regeneratie op de VERDICHTE bron. E-1 mat dat twee van
+     * 161 bevroren netlists boven de vloerspeling lazen op het verlengde
+     * raster, beide op een dip smaller dan één rastercel, en dat de goedkoopste
+     * van drie verdichtingen dat sluit (twaalf punten van de poortsweep rond
+     * het grove minimum, +3 % per evaluatie). `'safety-extended'` blijft
+     * stelbaar en is wat het gedateerde A5e.3c-corpus droeg. */
+    expect(m.vloer_zoekdoel_bron).toBe(CASUS1_AMP_MIN_LOAD_OHM !== null ? 'safety-extended-refined' : null);
+    expect(m.vloer_zoekdoel_bron_waarom).toMatch(/E-1|verdicht/);
     /* V37 — WHAT that probe's reading is a ratio of, which is a third decision
      * beside the two above and is recorded as one. The term is named
      * `R_source/R_e` and divided by the impedance PEAK until V37; on this casus
@@ -596,6 +604,16 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     if (CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined) {
       expect(m.v2_budgetten_gewapend).toContain('lfBumpBudgetDb');
     }
+    /* C-2 — het DERTIENDE besluit, en het tweede over dezelfde bound: V48 ging
+     * over WELK netwerk het plafond beschrijft, dit over of dat plafond iets
+     * mag verbieden. `'soft'` betekent straf en geen kooi, en M-D op het
+     * geleverde netwerk is dan de enige autoriteit — de reden is E-4's meting
+     * (69 van 161 bevroren netlists boven hun plafond én binnen hun budget,
+     * nul andersom) en niet een voorkeur. Zelfde vorm als de regel erboven: de
+     * sleutel staat gesteld ÉN het budget dat hem afleidt is gewapend. */
+    expect(m.beschermingen_via_kandidaat).toContain('seriesInductanceBound');
+    expect(m.plafond_soort).toBe(CASUS1_V2_BUDGETS.lfBumpBudgetDb !== undefined ? 'soft' : null);
+    expect(m.plafond_soort_waarom).toMatch(/E-4|ZACHTE/);
     /* A5e.3-veld — het ELFDE besluit, en het eerste over de FYSICA van de
      * onderdelen: op welk koper elke continue spoel geoordeeld is. De families
      * staan in het manifest en nergens anders (P6); gesteld door Sander op

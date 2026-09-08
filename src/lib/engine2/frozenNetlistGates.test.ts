@@ -781,9 +781,17 @@ describe('V32 — the search gate and the file measurement agree on every frozen
     for (const key of live) {
       const { filter, ref } = searchRef(key);
       const onSweep = systemMinImpedanceOhm(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ);
-      const onBarrier = systemMinImpedanceOhm(filter.netlist, ext!.grid, ext!.driverZ);
+      const onCoarse = systemMinImpedanceOhm(filter.netlist, ext!.grid, ext!.driverZ);
+      /* C-2 — WHAT THE ROUTE READS is the REFINED grid: the v2 declaration
+       * derives `'safety-extended-refined'` since C-2, so the gap this list
+       * books is the one between the gate sweep and the reading the barrier
+       * actually takes. The un-refined reading stays beside it as the dated
+       * arm (the recorder keeps it as `per_netlist.verschil_ohm`). */
+      const refined = refinedSystemMinImpedanceOhm(filter.netlist, { grid: ext!.grid, driverZ: ext!.driverZ }, ref.impedance!, BARRIER_DIP_REFINEMENT);
+      const onBarrier = refined?.ohm ?? null;
       expect(onSweep, `${key}: the gate grid produced no reading`).not.toBeNull();
-      expect(onBarrier, `${key}: the extended barrier grid produced no reading`).not.toBeNull();
+      expect(onCoarse, `${key}: the extended barrier grid produced no reading`).not.toBeNull();
+      expect(onBarrier, `${key}: the refined barrier grid produced no reading`).not.toBeNull();
       const sweepMin = minImpedanceAt(solveNetwork(filter.netlist, ref.impedance!.grid, ref.impedance!.driverZ).inputZ);
       const sweepMinHz = sweepMin ? ref.impedance!.grid[sweepMin.index] : null;
       if (sweepMinHz !== null && sweepMinHz < ext!.grid[0]) outside.push(key);
@@ -2975,16 +2983,39 @@ describe('V49 — M-C v2.0: the excursion-derived ceiling beside the stated figu
      * at the amplifier's peak. Asserted as a property of the whole field rather
      * than as one number: every mid limit is stricter than that refusal. */
     const V47B_MID_REFUSAL_DB = -7.3;
-    /* On the field V47b judged: the live corpus and the reference filters. Two
-     * dated V28 mids sit 23–25 dB BELOW the input (a mid padded to near
-     * silence) and read a derived limit above zero — a mid that quiet may take
-     * the full peak on f_s — so the claim is about the judged field, not the
-     * whole book. */
+    /* THE FIELD V47b JUDGED, AND SINCE C-2 IT IS NAMED RATHER THAN "THE LIVE
+     * CORPUS" — the V47/V48 lesson for the fourth time in this file. Two dated
+     * V28 mids sit 23–25 dB BELOW the input (a mid padded to near silence) and
+     * read a derived limit above zero, so the claim was never about the whole
+     * book; it was about the corpus that existed when V47b refused. Anchoring
+     * it on "whatever is live" made it a claim about every future field, and
+     * C-2 is the regeneration where that came due: with the woofer→mid handover
+     * at 156.7 Hz the mid's passband runs an octave and a half lower, its
+     * average drops, and the derived limit RISES to −4.92 dB on KAND_V2_7 —
+     * looser than the refusal. Nothing unsafe follows (that netlist's M-C on
+     * the mid is −17.8 dB, well inside), and the finding is real: how strict
+     * the derived ceiling is depends on where the handover sits, so a single
+     * "the derived limit is always stricter than X" cannot hold across fields.
+     * Recorded here, not repaired; the C-2 corpus gets the claim it can
+     * actually support, one line down. */
     const midWay = report('HUIDIG').driversLowToHigh[1];
+    const V47B_FIELD = /^(V47_KAND|V48_KAND)_\d+$/;
     const mids = DRIVE.filter((d) => d.driver === midWay && d.derived !== undefined)
-      .filter((d) => /^KAND_V2_\d+$/.test(d.key) || V1_BASELINES.includes(d.key));
-    expect(mids.length).toBeGreaterThan(0);
+      .filter((d) => V47B_FIELD.test(d.key) || V1_BASELINES.includes(d.key));
+    expect(mids.length, 'the V47b field is gone from the case book — re-anchor rather than widen').toBeGreaterThan(0);
     for (const d of mids) expect(d.derived!, `${d.key}/${d.driver}`).toBeLessThan(V47B_MID_REFUSAL_DB);
+
+    /* C-2 — WHAT THE CLAIM IS ON TODAY'S FIELD. The derived ceiling still
+     * BITES on the mid of every live netlist (it is the only rule there: casus
+     * 1 states no mid figure), and it is still far stricter than the −20 dB
+     * convention the tweeter carries. What it is no longer is uniformly
+     * stricter than one number picked from an older field. */
+    const live = DRIVE.filter((d) => d.driver === midWay && d.derived !== undefined && /^KAND_V2_\d+$/.test(d.key));
+    expect(live.length).toBeGreaterThan(0);
+    for (const d of live) {
+      expect(d.stated, `${d.key}/${d.driver}: the mid states no figure on casus 1`).toBeUndefined();
+      expect(d.derived!, `${d.key}/${d.driver}: the derived ceiling is the only rule and it must bite`).toBeLessThan(0);
+    }
   });
 
   it('the recorded block reproduces from a fresh measurement, per way', () => {

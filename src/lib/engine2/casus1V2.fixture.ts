@@ -577,8 +577,35 @@ const SAFETY_GRID_POINTS = 240;
 export const CASUS1_FIELD_ALIGNMENTS = AUTO_STRUCTS.filter((a) => a.kind === 'LR');
 /** The order the designer states on every handover of casus 1 (A5e.3-veld; M-1 abstained on the lower axis). */
 export const CASUS1_FIELD_STATED_ORDER = 4;
-/** The chain budget of the casus-1 field — Sander, 04-09-2026 (A5e.3-veld). A run parameter, like the seed. */
-export const CASUS1_FIELD_CHAIN_BUDGET = 24;
+/**
+ * The chain budget of the casus-1 field — Sander, 04-09-2026 (A5e.3-veld) at
+ * 24, C-2 (07-09-2026) at 16. A run parameter, like the seed.
+ *
+ * WHY IT CAME DOWN. A5e.3c measured the per-candidate runtime over the whole
+ * field: the refusals are cheap (1410-3348 s, they fall early) and the deliveries
+ * with 650 000-900 000 evaluations are the expensive ones (8671-14 690 s), and
+ * the expensive ones are the LOW woofer→mid handovers — big coils on the lowest
+ * way, the trap against its span cap. The recommendation there was 16, and this
+ * is it.
+ */
+export const CASUS1_FIELD_CHAIN_BUDGET = 16;
+
+/**
+ * C-2 — HOW THE POSITIONS ARE LAID: two-sided cages (`PositionPolicy`).
+ *
+ * E-1's open point 2, taken. `'spread'` lays its outermost positions ON the
+ * window edges and clips their cages there, and E-1 measured what that does on
+ * this field: every delivered network on the mid→tweeter CEILING position
+ * (2304 Hz, cage 2118-2304) crossed 61-255 Hz lower and three of four left the
+ * cage; every one on the FLOOR position (1647, cage 1647-1789) crossed at or
+ * above it. A candidate on a band edge is asked half a question — it can be
+ * judged in one direction only — and the answer it gives is a fact about the
+ * clipping rather than about the handover. Two-sided keeps every cage inside
+ * the window and centres it on its position, which moves every position: this
+ * is a DIFFERENT FIELD and says so in `field.parameters`, hence in the run
+ * fingerprint.
+ */
+export const CASUS1_FIELD_POSITION_POLICY = 'two-sided' as const;
 
 export function casus1Field(report: EngineV2Report): CandidateFieldResult {
   return buildCandidateField({
@@ -586,6 +613,7 @@ export function casus1Field(report: EngineV2Report): CandidateFieldResult {
     perPair: report.predesign.windowInputs.map(() => ({ statedOrder: CASUS1_FIELD_STATED_ORDER })),
     alignments: CASUS1_FIELD_ALIGNMENTS,
     chainBudget: CASUS1_FIELD_CHAIN_BUDGET,
+    positionPolicy: CASUS1_FIELD_POSITION_POLICY,
   });
 }
 

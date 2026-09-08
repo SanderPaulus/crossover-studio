@@ -93,6 +93,11 @@ const CI_LOAD_BEARING = [
   'src/lib/engine2/goldenCasus1.test.ts',
   /* E-3 — casus 1b's class-A/B references: fixed netlists, no search, portable. */
   'src/lib/engine2/goldenCasus1b.test.ts',
+  /* C-2 — casus 2's extraction against its ground truth. The most portable
+   * acceptance in the book: the measurements are generated from a model and
+   * every reference is a function of them, so nothing here depends on a search
+   * or on a machine. It is exactly the sort of thing CI must keep. */
+  'src/lib/engine2/goldenCasus2.test.ts',
   'src/lib/engine2/goldenClassification.test.ts',
   'src/lib/engine2/frozenNetlistGates.test.ts',
   'src/lib/engine2/metrics/lfBumpDecomposition.test.ts',

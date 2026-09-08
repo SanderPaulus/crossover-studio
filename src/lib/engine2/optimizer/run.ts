@@ -93,7 +93,7 @@ export interface V2OptimizeInput {
    */
   tuneOptions?: Omit<
     InheritableTuneOptions,
-    'gateViolation' | 'valueCeilings' | 'valueSumCeilings'
+    'gateViolation' | 'valueCeilings' | 'valueSoftCeilings' | 'valueSumCeilings'
   >;
   /**
    * WHAT this run searches — the candidate, in the tuner's own vocabulary.
@@ -256,7 +256,18 @@ export function runV2Optimization(input: V2OptimizeInput): V2OptimizeResult {
    * app takes is `handleV2Request`, which holds the measurements and hands
    * them over — see the erratum in audit §2.2 for why these two are different
    * routes at all. */
-  const searchBox = searchBoxFor(input.seedParts, input.bounds ?? []);
+  const searchBox = searchBoxFor(
+    input.seedParts,
+    input.bounds ?? [],
+    {},
+    undefined,
+    /* C-2 — this route takes bounds that are already solved and a caller that
+     * states the key states it here, in `choices`. Read from there rather than
+     * re-derived, and absent is the box every run before C-2 filed. */
+    (input.choices as { seriesInductanceBound?: 'box' | 'soft' } | undefined)?.seriesInductanceBound === 'soft'
+      ? 'soft'
+      : 'box',
+  );
   notes.push(...searchBox.notes);
 
   /* ---- the gate hook (A3) ---------------------------------------------- *
@@ -292,6 +303,7 @@ export function runV2Optimization(input: V2OptimizeInput): V2OptimizeResult {
     ...(Object.keys(searchBox.valueCeilings).length > 0
       ? { valueCeilings: searchBox.valueCeilings }
       : {}),
+    ...(searchBox.valueSoftCeilings ? { valueSoftCeilings: searchBox.valueSoftCeilings } : {}),
     ...(searchBox.valueSumCeilings.length > 0
       ? { valueSumCeilings: searchBox.valueSumCeilings }
       : {}),
@@ -461,7 +473,7 @@ function rankKey(net: NetOptimizeResult): number {
 }
 
 /** Which tuner options steer the SEARCH, hashed into the fingerprint. */
-function tuningKey(o: Omit<NetOptimizeOptions, 'gateViolation' | 'valueCeilings' | 'valueSumCeilings'>): unknown {
+function tuningKey(o: Omit<NetOptimizeOptions, 'gateViolation' | 'valueCeilings' | 'valueSoftCeilings' | 'valueSumCeilings'>): unknown {
   // Callbacks and measurement payloads are excluded: the first cannot be
   // serialised and the second is already a fingerprint component of its own.
   const { onStage: _s, safety: _y, angleData: _a, branchTargets: _b, midBranch: _m, ...rest } = o;

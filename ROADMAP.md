@@ -295,33 +295,34 @@ de app byte-identiek aan vóór F1.
    gedaan is — twintig van de zesentwintig kaartrijen zijn "dezelfde code" zodra
    het verzoek de v2-worker bereikt, dus er valt weinig te winnen en er staat een
    werkende v1-route op het spel.
-6. **Tweede casus (C-2)** — **het zwaarste open punt van dit moment.** Alles
-   hierboven is op één luidspreker gemeten, en de tweewegroute op een AFGELEIDE
-   casus van diezelfde luidspreker (casus 1b = mid + tweeter). Een tweede
-   volledige meetset, liefst een echte tweeweg van andere drivers, is wat de
-   doctrine van "één ontwerp" naar "een regel" brengt — en het is ook wat
-   verschillende punten hierboven pas beslisbaar maakt (het EQ-budget-omslagpunt,
-   de degeneratiedrempel, X als meting). Zie `.claude/skills/casus-toevoegen`.
-   **En sinds E-4 hangt er één engine-besluit aan, met de meting er al bij: de
-   A5d.6-inversie `bump-series-l` is niet de inverse van de M-D-metriek** — zij
-   modelleert de weg als een kale serie R+L waar M-D het echte netwerk oplost,
-   en over 161 bevroren netlists staan er NEGENENZESTIG boven hun plafond én
-   binnen hun budget (Δ tot 8,7 dB), nul andersom. De doos is dus systematisch
-   te streng en het corpus is kleiner dan het had kunnen zijn. Twee opties, elk
-   één regeneratie per arm: de inversie vervangen door de netwerk-opgeloste bult
-   (één functie, twee lezers — duurder per evaluatie), of het plafond een zachte
-   grens maken en de M-D-poort de enige autoriteit laten (goedkoper per
-   evaluatie, meer evaluaties). Casusboek E-4 draagt de verwachting per arm en
-   de kolom die ze scheidt.
+6. **Tweede casus — GEDAAN bij C-2 (08-09-2026), en anders dan hier stond.** Wat
+   hier gevraagd werd was "een tweede volledige meetset, liefst een echte
+   tweeweg van andere drivers". Wat er gekomen is, is een SYNTHETISCHE drieweg
+   met grondwaarheid (casus 2), en dat is een andere keuze met een eigen reden:
+   een echte set brengt de doctrine van "één ontwerp" naar "twee ontwerpen",
+   maar zij kan de vraag *vindt de extractor het goede getal* niet beantwoorden
+   — daar bestaat geen goed getal, alleen een tweede meting. Casus 2 beantwoordt
+   die vraag wél, op 44 vergelijkingen, en levert vijf bevindingen op die op
+   gemeten data onzichtbaar zijn (zie casusboek C-2, B1–B3). **Een echte tweede
+   meetset blijft open** — zij toetst iets anders: of de regels op een luidspreker
+   werken die niemand heeft ontworpen om ze te toetsen. **En de drie besluiten
+   die hier aan hingen zijn genomen** (C-2, één regeneratie): de A5d.6-inversie
+   is een ZACHTE grens geworden met M-D als enige autoriteit (E-4's optie ii),
+   de barrière leest de verdichte bron (E-1), en de posities dragen een
+   tweezijdige kooi (E-1). De niet-genomen arm — de inversie vervangen door de
+   netwerk-opgeloste bult (E-4's optie i) — staat nog steeds open en is nog
+   steeds één regeneratie; C-2 draagt de meting waartegen zij afgezet kan worden.
 7. **De zoektocht op de eigen kruispunten** (A5e.3c): de tuner-hook oordeelt M-C
    op de passbands van het zaad en het geleverde netwerk wordt daarna op zijn eigen
    kruispunten geweigerd — drie van veertien in A5e.3c. Beide conventies in de
    hook, of het M-T-kruispunt aan de gestelde positie houden, of een marge in de
    stated-figure-vloer (de drift die de tuner maakt): elk is een besluit over de
    zoektocht en één regeneratie per arm. Ernaast, geboekt: de resolutie van het
-   veiligheidsraster op een smalle dip (KAND-V2-1: 0,08 Ω tegen 0,05 speling), de
-   zestien gedateerde netlists waarop poortroute en rapport andere kruispunten
-   afleiden, en de shortlist-grootte als gesteld getal.
+   veiligheidsraster op een smalle dip — **gesloten bij C-2**: de route leest sinds
+   die regeneratie de verdichte bron (`safety-extended-refined`) en de
+   boekhoudingslijst `resolutie_boven_speling` is daarmee leeg —, de zestien
+   gedateerde netlists waarop poortroute en rapport andere kruispunten afleiden,
+   en de shortlist-grootte als gesteld getal.
 8. Kleiner en genoteerd in Deel A/B: V28 (mag een uitsnijding het veld
    vormen), V29 (bijna-kortsluiting zonder gestelde vloer), V35 (`audit.fbHz`
    en het reflexdal), V39 (`Chain3Settings` is voor dertig sleutels niet

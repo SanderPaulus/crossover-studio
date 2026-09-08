@@ -153,8 +153,25 @@ export interface CandidatePairInput {
  *    not a looser search" means. When two positions must be chosen the lower
  *    neighbour comes first — a lower handover loads the upper driver harder,
  *    so it is the more informative of the two to look at first.
+ *  · `'two-sided'` — C-2: the spread layout with every CAGE kept INSIDE the
+ *    window. `'spread'` lays its outermost positions ON the band edges and
+ *    clips their cages there, so a candidate on the ceiling can only leave its
+ *    cage downward and one on the floor only upward — E-1 measured exactly
+ *    that on casus 1's mid→tweeter axis (every delivered network on the 2304 Hz
+ *    ceiling position crossed 61-255 Hz lower, every one on the 1647 Hz floor
+ *    position at or above it). A one-sided cage asks half a question. Here the
+ *    positions are spread across the window INSET by half a spacing on each
+ *    side, and every cage is one spacing wide and centred on its position: a
+ *    candidate is judged AT its position, in both directions, and the extreme
+ *    cages touch the window edges without crossing them (rule 4 is untouched —
+ *    nothing leaves the window, and now nothing is pinned against it either).
+ *    The count is derived from the INSET span, because that is the stretch on
+ *    which a two-sided position can sit; a window narrower than one spacing
+ *    admits exactly one position and says so. Under a budget the survivors
+ *    re-spread and the cages stay one spacing wide (the centre-first
+ *    convention): a cage is a pin, not a partition.
  */
-export type PositionPolicy = 'spread' | 'centre-first';
+export type PositionPolicy = 'spread' | 'centre-first' | 'two-sided';
 
 /**
  * E-2 — HOW MANY ALIGNMENTS ONE HANDOVER IS BUILT AT.
@@ -225,6 +242,19 @@ export interface CandidateCrossing {
   hz: number;
   /** The slice of the recommended band this candidate owns during the tune. */
   cageHz: [number, number];
+  /**
+   * C-2 — whether that cage has equal octave room on BOTH sides of the
+   * position. False for a cage clipped at a band edge (`'spread'` lays its
+   * outermost positions there) and for the single-position case where the cage
+   * is the whole band. Decided on the unrounded edges by the layout that built
+   * it, never re-derived from `cageHz` — the printing rounding is enough to
+   * make a symmetric cage read otherwise.
+   *
+   * NOT A FINGERPRINT INGREDIENT: `candidateFieldKey` hashes the cage itself,
+   * and this is a property OF that cage rather than a second statement beside
+   * it.
+   */
+  twoSided: boolean;
   order: number;
   alignment: Alignment;
   /** The A5d.3 window this position was carved out of, at THIS order. */
@@ -330,6 +360,31 @@ function atArc(
 }
 
 /**
+ * One laid-out position: where it sits, the slice of band it owns during the
+ * tune, the segment it was carved from, and whether that cage is TWO-SIDED.
+ *
+ * C-2 — `twoSided` is decided on the UNROUNDED edges, here, and never
+ * recomputed from the rounded ones. The edges are rounded to a tenth of a hertz
+ * for printing (`roundEdge`), which at 2 kHz is 7e-5 of an octave — enough to
+ * make an exactly symmetric cage read asymmetric, and a reader who then sees
+ * "one-sided" is told the opposite of what was built. The layout knows the
+ * answer by construction; it says so rather than leaving it to be inferred.
+ */
+interface CandidatePoint {
+  hz: number;
+  cage: [number, number];
+  segment: readonly [number, number];
+  twoSided: boolean;
+}
+
+/** Equal octave room on both sides, on the unrounded edges. */
+const symmetricCage = (hz: number, lo: number, hi: number): boolean =>
+  lo > 0 &&
+  lo < hz &&
+  hi > hz &&
+  Math.abs(Math.log2(hi / hz) - Math.log2(hz / lo)) <= 1e-9;
+
+/**
  * Evenly spaced positions across the segments, in octave distance.
  *
  * `count === 1` puts the single position at the MIDPOINT of the allowed band
@@ -340,9 +395,9 @@ function atArc(
 function positionsAlong(
   segs: readonly (readonly [number, number])[],
   count: number,
-): { hz: number; cage: [number, number]; segment: readonly [number, number] }[] {
+): CandidatePoint[] {
   const span = spanOctaves(segs);
-  const out: { hz: number; cage: [number, number]; segment: readonly [number, number] }[] = [];
+  const out: CandidatePoint[] = [];
   const step = count > 1 ? span / (count - 1) : span;
   for (let i = 0; i < count; i++) {
     const t = count > 1 ? (i * span) / (count - 1) : span / 2;
@@ -356,6 +411,7 @@ function positionsAlong(
       // into a cliff, which is the lesson the v1 cage already carries.
       cage: [roundEdge(Math.min(lo, at.hz)), roundEdge(Math.max(hi, at.hz))],
       segment: at.segment,
+      twoSided: symmetricCage(at.hz, lo, hi),
     });
   }
   return out;
@@ -412,6 +468,74 @@ export function centreFirstPositionCount(spanOct: number, spacingOct: number): n
 }
 
 /**
+ * C-2 — the segments INSET by `halfOct` on each side: the stretch on which a
+ * position whose cage is `2 * halfOct` wide can sit without that cage leaving
+ * the segment. A segment narrower than the cage disappears rather than
+ * collapsing to a point — it has no room for a two-sided position at all.
+ */
+function insetSegments(
+  segs: readonly (readonly [number, number])[],
+  halfOct: number,
+): (readonly [number, number])[] {
+  const k = 2 ** halfOct;
+  return segs
+    .map((s) => [s[0] * k, s[1] / k] as const)
+    .filter((s) => s[1] > s[0]);
+}
+
+/**
+ * C-2 — how many positions the two-sided layout admits: the derived count of
+ * the INSET span. One when the window has no room for a two-sided position at
+ * all, which is the honest answer rather than a refusal — the single position
+ * then sits at the window's own midpoint with the widest cage that fits.
+ */
+export function twoSidedPositionCount(
+  segs: readonly (readonly [number, number])[],
+  spacingOct: number,
+): number {
+  const inner = insetSegments(segs, spacingOct / 2);
+  if (inner.length === 0) return 1;
+  return derivedPositionCount(spanOctaves(inner), spacingOct);
+}
+
+/**
+ * C-2 — the two-sided layout: positions spread evenly across the INSET band,
+ * each with a cage one spacing wide centred on it. The cage is clamped to the
+ * original segment as a belt-and-braces measure — by construction it already
+ * fits, and a clamp that never fires is cheaper than a claim that it cannot.
+ */
+function positionsTwoSided(
+  segs: readonly (readonly [number, number])[],
+  count: number,
+  spacing: number,
+): CandidatePoint[] {
+  const half = spacing / 2;
+  const inner = insetSegments(segs, half);
+  /* No room for a two-sided position: fall back to the one-position spread,
+   * which puts it at the midpoint and gives it the whole segment as its cage.
+   * That cage is one-sided at both edges and the provenance says so. */
+  if (inner.length === 0) return positionsAlong(segs, 1);
+  const span = spanOctaves(inner);
+  const out: CandidatePoint[] = [];
+  for (let i = 0; i < Math.max(1, count); i++) {
+    const t = count > 1 ? (i * span) / (count - 1) : span / 2;
+    const at = atArc(inner, t);
+    /* The cage belongs to the ORIGINAL segment the inset one came from: the
+     * inset is where positions may sit, the segment is what may be crossed. */
+    const seg = segs.find((s) => at.hz >= s[0] - 1e-9 && at.hz <= s[1] + 1e-9) ?? segs[0];
+    const lo = Math.max(seg[0], at.hz / 2 ** half);
+    const hi = Math.min(seg[1], at.hz * 2 ** half);
+    out.push({
+      hz: roundEdge(at.hz),
+      cage: [roundEdge(Math.min(lo, at.hz)), roundEdge(Math.max(hi, at.hz))],
+      segment: seg,
+      twoSided: symmetricCage(at.hz, lo, hi),
+    });
+  }
+  return out;
+}
+
+/**
  * E-2 — the centre-first layout (`PositionPolicy`): the window centre, then
  * ±1, ±2 … spacings out, the LOWER of each pair first; `count` of them,
  * returned in ascending frequency. The cage is one spacing wide around the
@@ -423,7 +547,7 @@ function positionsCentreFirst(
   segs: readonly (readonly [number, number])[],
   count: number,
   spacing: number,
-): { hz: number; cage: [number, number]; segment: readonly [number, number] }[] {
+): CandidatePoint[] {
   const span = spanOctaves(segs);
   const mid = span / 2;
   const order: number[] = [mid];
@@ -442,6 +566,7 @@ function positionsCentreFirst(
       hz: roundEdge(at.hz),
       cage: [roundEdge(Math.min(lo, at.hz)), roundEdge(Math.max(hi, at.hz))],
       segment: at.segment,
+      twoSided: symmetricCage(at.hz, lo, hi),
     };
   });
 }
@@ -452,8 +577,10 @@ function positionsFor(
   segs: readonly (readonly [number, number])[],
   count: number,
   spacing: number,
-): { hz: number; cage: [number, number]; segment: readonly [number, number] }[] {
-  return policy === 'centre-first' ? positionsCentreFirst(segs, count, spacing) : positionsAlong(segs, count);
+): CandidatePoint[] {
+  if (policy === 'centre-first') return positionsCentreFirst(segs, count, spacing);
+  if (policy === 'two-sided') return positionsTwoSided(segs, count, spacing);
+  return positionsAlong(segs, count);
 }
 
 /* ------------------------------------------------------------------ *
@@ -600,7 +727,9 @@ export function generateCandidates(
       const derivedCount =
         positionPolicy === 'centre-first'
           ? centreFirstPositionCount(spanOctaves(segments), spacing)
-          : derivedPositionCount(spanOctaves(segments), spacing);
+          : positionPolicy === 'two-sided'
+            ? twoSidedPositionCount(segments, spacing)
+            : derivedPositionCount(spanOctaves(segments), spacing);
       slot.orders.push(order);
       slot.byOrder.push({
         order,
@@ -664,8 +793,12 @@ export function generateCandidates(
           ? 'from the OUTSIDE in: the window centre and its nearest neighbours survive, the cages ' +
             'stay one spacing wide, and the band beyond the survivors is simply not explored ' +
             '(E-2 exploration). '
-          : 'and the spacing between the ones that remain is therefore wider than the acceptance ' +
-            'smoothing the count was derived from. ') +
+          : positionPolicy === 'two-sided'
+            ? 'and the survivors re-spread across the inset band; their cages stay one spacing ' +
+              'wide and two-sided, so what a thinning costs is the band BETWEEN the cages and ' +
+              'never the symmetry of one (C-2). '
+            : 'and the spacing between the ones that remain is therefore wider than the acceptance ' +
+              'smoothing the count was derived from. ') +
         'ORDERS were not thinned and will not be: a position is a ' +
         'sample of a continuum, an order is a choice, and dropping a choice to fit a budget ' +
         'answers a question that was asked to stay open.' +
@@ -713,20 +846,31 @@ export function generateCandidates(
          * 1647–1789) crossed at or above it. */
         const clippedTop = p.cage[1] >= seg[1] - 1e-9;
         const clippedBottom = p.cage[0] <= seg[0] + 1e-9;
+        /* C-2 — SYMMETRY, not edge contact, is what makes a cage two-sided.
+         * The two-sided layout puts its extreme cages exactly ON the window
+         * edges without crossing them, so `clippedTop` fires on a cage the
+         * tune can leave in either direction. Read the cage against its own
+         * position instead: equal octave room on both sides is a two-sided
+         * cage whatever it happens to touch. The `count === 1` case (the whole
+         * band as one cage) is symmetric too and keeps its own sentence, which
+         * is the true one there — it is one-sided at BOTH edges. */
         const cageNote =
           clippedTop && clippedBottom
             ? ' (the whole band: one-sided at both edges)'
-            : clippedTop
-              ? ' (clipped at the ceiling: one-sided, the tune can only leave it downward — E-1)'
-              : clippedBottom
-                ? ' (clipped at the floor: one-sided, the tune can only leave it upward — E-1)'
-                : '';
+            : p.twoSided
+              ? ''
+              : clippedTop
+                ? ' (clipped at the ceiling: one-sided, the tune can only leave it downward — E-1)'
+                : clippedBottom
+                  ? ' (clipped at the floor: one-sided, the tune can only leave it upward — E-1)'
+                  : '';
         rows.push({
           pairLabel: slot.pair.orders.pairLabel,
           lower: wi.lower,
           upper: wi.upper,
           hz: p.hz,
           cageHz: p.cage,
+          twoSided: p.twoSided,
           order: o.order,
           alignment: o.alignment,
           windowHz: win,
@@ -747,7 +891,10 @@ export function generateCandidates(
             (positionPolicy === 'centre-first'
               ? `laid centre-first from the window centre ${formatEdge(Math.sqrt(seg[0] * seg[1]))} Hz ` +
                 'across the candidate band '
-              : 'across the candidate band ') +
+              : positionPolicy === 'two-sided'
+                ? 'laid two-sided (every cage one spacing wide and inside the window, C-2) across ' +
+                  'the candidate band '
+                : 'across the candidate band ') +
             `${formatEdge(seg[0])}–${formatEdge(seg[1])} Hz, ${oct.toFixed(2)} oct above the ` +
             `window floor ${formatEdge(win[0])} Hz (${o.window.floorBy?.rule ?? 'none'}); ` +
             `ceiling ${formatEdge(win[1])} Hz (${o.window.ceilingBy?.rule ?? 'none'} — ${ceilingInventory}); ` +

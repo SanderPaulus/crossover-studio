@@ -213,6 +213,24 @@ export const CHOICE_KEYS = [
    */
   'seriesInductanceCeilingSource',
   /**
+   * C-2 — WHETHER THE A5d.6 LF-LIFT CEILING CAGES OR ONLY SHAPES.
+   *
+   * The same test as the key above, one question further along. V48 asked
+   * WHICH network the ceiling describes; this asks whether that ceiling is
+   * allowed to forbid anything. `'box'` bounds the search by it; `'soft'`
+   * scores it and leaves M-D on the delivered network the only authority.
+   * Measured (E-4): over the whole casebook 69 netlists sit above their
+   * ceiling and inside the budget and NOT ONE the other way round, because the
+   * inversion models the way as a bare series R+L while M-D solves the real
+   * network with its shunts — 1.7 dB apart at the median, 8.7 at the worst,
+   * in one direction. So the two values search different SETS, which is the
+   * definition of a choice and not of a polish.
+   *
+   * NO POLISH TWIN, and for the same reason as the key above: the measurements
+   * the inversion reads are already filed as polish inside the sum group.
+   */
+  'seriesInductanceBound',
+  /**
    * A5e.3 — WHAT PHYSICS THE COILS ARE JUDGED ON.
    *
    * A choice by the plainest test in this file: with it absent every coil the
@@ -324,6 +342,12 @@ export const POLISH_KEYS = [
   'onGateEvaluated',
   'gateViolation',
   'valueCeilings',
+  /* C-2 — the soft half of the same box, filed beside its hard half and for
+   * the same reason: the numbers are the run's own inversion of a stated
+   * budget, and `run.ts` and the worker have always written them. WHETHER a
+   * ceiling is filed here or in `valueCeilings` is the choice
+   * (`seriesInductanceBound`); the record itself is not. */
+  'valueSoftCeilings',
   'valueSumCeilings',
   /* V31 — instrumentation, and the classification is the argument. It changes
    * no decision anywhere: the safety gate still rejects exactly what it

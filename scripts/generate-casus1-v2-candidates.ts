@@ -78,6 +78,7 @@ import {
   CASUS1_QES_MULTIPLIER_MAX,
   CASUS1_TARGET_CURVE,
   CASUS1_LOWEST_WAY_LEVEL_WORK,
+  CASUS1_FIELD_POSITION_POLICY,
   CASUS1_LEVEL_WORK_SETTINGS,
   CASUS1_THERMAL_DESIGN_POWER_W,
   CASUS1_WIRING,
@@ -1174,6 +1175,25 @@ const meetopstelling = {
         'hij kan maken (V48).'
       : 'Het plafond is één keer opgelost, bij de padweerstand van het zaad, en staat voor de ' +
         'hele tune — de vóór-arm van V48, en de default die elke v1-run leest.',
+  /* C-2 — MAG DAT PLAFOND IETS VERBIEDEN? Het DERTIENDE besluit in dit blok en
+   * het tweede over dezelfde bound: V48 ging over WELK netwerk het plafond
+   * beschrijft, dit over of het plafond een kooi is of alleen vorm geeft. */
+  plafond_soort: lastPayload.candidate?.declaration.stated.seriesInductanceBound ?? null,
+  plafond_soort_waarom:
+    (lastPayload.candidate?.declaration.stated.seriesInductanceBound ?? null) === 'soft'
+      ? 'HET A5d.6-PLAFOND OP DE SERIESPOEL IS EEN ZACHTE GRENS: het geeft de zoekdoos vorm en ' +
+        'verbiedt niets, en M-D op het GELEVERDE netwerk is de enige autoriteit. De reden is een ' +
+        'meting en geen voorkeur (E-4): `lfBumpForSeriesRL` modelleert de weg als een KALE serie ' +
+        'R+L in de gemeten driverimpedantie, terwijl M-D het ECHTE netwerk oplost met elke shunt ' +
+        'die de tak draagt — en op deze sets dempen die shunts de reflexpiek zo sterk dat de ' +
+        'inversie mediaan 1,74 dB en uiterst 8,70 dB te hoog leest. Over het hele casusboek: ' +
+        'NEGENENZESTIG van 161 bevroren netlists staan boven hun plafond en binnen het budget, en ' +
+        'NUL andersom. Een kooi die maar in één richting fout staat sluit ontwerpen uit die de ' +
+        'eis toelaat, en A5d.6 zegt zelf dat een budgetinversie de zoekdoos VORM GEEFT terwijl de ' +
+        'eis oordeelt (V45/V48: de geleverde-netwerk-toets). De inversie zelf is niet aangeraakt ' +
+        'en het budget niet verplaatst; wat verandert is of zij mag veroordelen.'
+      : 'Het plafond is een KOOI: per onderdeel geklemd en op de som geprojecteerd — de vóór-arm ' +
+        'van C-2, en de doos die elke run tot A5e.3c filede.',
   doelcurve: describeTargetCurve(CASUS1_TARGET_CURVE),
   doelcurve_herkomst:
     'De DIEPTE is gesteld (`gestelde_eisen.basplateau_offset_dB`) en de OVERGANG is afgeleid ' +
@@ -1329,6 +1349,7 @@ writeFileSync(
         per_as: field.field.axes.map((a) => ({ paar: a.pairLabel, orden: a.orders, posities_per_orde: a.positionsByOrder.map((p) => ({ orde: p.order, aantal: p.count, hz: p.hz })) })),
         gestelde_orde: CASUS1_FIELD_STATED_ORDER,
         positiebudget: CASUS1_FIELD_CHAIN_BUDGET,
+        positieregel: CASUS1_FIELD_POSITION_POLICY,
         _:
           'A5e.3-veld: orde 4 GESTELD op beide overnames (M-1 liet de W-M-as zich onthouden en draaide LR2 naast ' +
           'LR4; LR2 gaf dezelfde weigeringen met 1-2 dB slechtere RMS en is ingetrokken), de bibliotheek blijft tot ' +
@@ -1338,7 +1359,13 @@ writeFileSync(
           'A5e.3b/A5e.3c: de M-T-vloer is de STRENGSTE van gesteld en afgeleid — het gestelde tweetergetal bij de ' +
           'gestelde orde door dezelfde A5d.3(ii)-inversie (drive-stated, kruisvensters.mid_tweeter_orde4) — zodat ' +
           'de assen van rol wisselden: de M-T-as krimpt tot drie posities en de W-M-as krijgt de ruimte van het ' +
-          'budget terug.',
+          'budget terug. C-2: de positieregel is TWEEZIJDIG en het budget 16. Elke kooi is een spacing breed en ' +
+          'ligt BINNEN het venster, dus de posities liggen op het venster INGESPRONGEN met een halve spacing en ' +
+          'het afgeleide aantal komt van die ingesprongen spanne (W-M 11, M-T 2 — een venster van 0,48 octaaf ' +
+          'heeft ruimte voor precies twee tweezijdige kooien). Aanleiding: E-1 mat dat elke geleverde netlist op ' +
+          'de M-T-plafondpositie 61-255 Hz lager kruiste en drie van vier haar eenzijdige kooi verliet — een ' +
+          'kandidaat op een vensterrand wordt maar in EEN richting beoordeeld. Het budget komt van de ' +
+          'looptijdmeting van A5e.3c (de dure kandidaten zijn de lage W-M-overnames).',
       },
       settings: CASUS1_V2_SETTINGS,
       meetopstelling,

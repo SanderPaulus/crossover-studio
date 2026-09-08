@@ -1,0 +1,195 @@
+{
+ "_": "CASUS 2 — DE GRONDWAARHEID. Geschreven door scripts/generate-casus2-measurements.ts uit scripts/casus2-model.ts. Elk getal hier is INVOER van het model of een gesloten gevolg ervan, nooit een meting en nooit een extractie. Dit is waar de extractoren tegen gelegd worden.",
+ "drivers": {
+  "woofer": {
+   "model": "SYN-W165-8 (synthetic, one driver, 8 Ω nominal)",
+   "R_e_ohm": 6.2,
+   "semi_inductantie_n": 0.7,
+   "semi_inductantie_ohm_op_10k": 14,
+   "f_s_hz": 34,
+   "Q_ms": 3.1,
+   "Q_es": 0.38,
+   "Q_ts": 0.33850574712643683,
+   "M_ms_g": 16.5,
+   "S_d_cm2": 132,
+   "X_max_mm": 6,
+   "Bl_Tm": 7.58359988386158,
+   "C_ms_mm_per_N": 1.3280012535694894,
+   "R_ms_Ns_per_m": 1.1370538572024995,
+   "diameter_inch": 6.5,
+   "z_offset_mm": -155,
+   "kast": {
+    "soort": "reflex",
+    "volume_l": 28,
+    "f_b_hz": 38,
+    "lek_Q": 7,
+    "compliantieverhouding_alpha": 1.1706824628069126,
+    "poortmassa_kg_per_m4": 88.74948369197456
+   },
+   "Z_max_zonder_spoel_ohm": 56.77894736842105,
+   "gevoeligheid_dB_1m_2V83": 88.47625673275851,
+   "breakups": [
+    {
+     "hz": 3400,
+     "hoogte_dB": 6.2,
+     "Q": 12
+    },
+    {
+     "hz": 7200,
+     "hoogte_dB": 4.1,
+     "Q": 16
+    }
+   ],
+   "excursie_op_impedantiepiek": {
+    "f0_hz": 59.16167491431383,
+    "Z_max_ohm": 47.550803020442835,
+    "x_per_V_mm_per_V": 0.30747093197349024,
+    "_": "Het model geëvalueerd op de frequentie waar |Z| maximaal is: x/V = |v(f0)|/ω0, met v uit dezelfde keten waaruit de bestanden geschreven zijn. Op een reflexkast is dat de BOVENSTE piek, dezelfde die M-C leest."
+   }
+  },
+  "mid": {
+   "model": "SYN-D75-6 (synthetic 3-inch DOME midrange, 6 Ω nominal, closed pod)",
+   "R_e_ohm": 5.4,
+   "semi_inductantie_n": 0.66,
+   "semi_inductantie_ohm_op_10k": 6.5,
+   "f_s_hz": 260,
+   "Q_ms": 2.4,
+   "Q_es": 0.62,
+   "Q_ts": 0.49271523178807947,
+   "M_ms_g": 1.8,
+   "S_d_cm2": 32,
+   "X_max_mm": 2,
+   "Bl_Tm": 5.060738488170675,
+   "C_ms_mm_per_N": 0.2081713996596355,
+   "R_ms_Ns_per_m": 1.2252211349000193,
+   "diameter_inch": 3,
+   "z_offset_mm": -38,
+   "kast": {
+    "soort": "gesloten",
+    "volume_l": 0.14200000000000002,
+    "compliantieverhouding_alpha": 2.126588548828797,
+    "f_c_hz": 459.7362133885329,
+    "Q_mc": 4.243718892817227,
+    "Q_ec": 1.096294047311117,
+    "Q_tc": 0.8712270574657883
+   },
+   "Z_max_zonder_spoel_ohm": 26.303225806451607,
+   "gevoeligheid_dB_1m_2V83": 93.09873474336969,
+   "breakups": [
+    {
+     "hz": 11000,
+     "hoogte_dB": 5.4,
+     "Q": 14
+    },
+    {
+     "hz": 15500,
+     "hoogte_dB": 3.6,
+     "Q": 18
+    }
+   ],
+   "excursie_op_impedantiepiek": {
+    "f0_hz": 458.5981649166515,
+    "Z_max_ohm": 26.752355260461677,
+    "x_per_V_mm_per_V": 0.05357092448069931,
+    "_": "Het model geëvalueerd op de frequentie waar |Z| maximaal is: x/V = |v(f0)|/ω0, met v uit dezelfde keten waaruit de bestanden geschreven zijn. Op een reflexkast is dat de BOVENSTE piek, dezelfde die M-C leest."
+   }
+  },
+  "tweeter": {
+   "model": "SYN-T22-4 (synthetic 22 mm dome on a waveguide, 4 Ω nominal, high f_s)",
+   "R_e_ohm": 4.1,
+   "semi_inductantie_n": 0.62,
+   "semi_inductantie_ohm_op_10k": 2.2,
+   "f_s_hz": 1500,
+   "Q_ms": 1.6,
+   "Q_es": 0.55,
+   "Q_ts": 0.40930232558139534,
+   "M_ms_g": 0.27999999999999997,
+   "S_d_cm2": 6.2,
+   "X_max_mm": 0.6,
+   "Bl_Tm": 4.435322085048051,
+   "C_ms_mm_per_N": 0.0402068189056896,
+   "R_ms_Ns_per_m": 1.6493361431346412,
+   "diameter_inch": 1,
+   "z_offset_mm": 0,
+   "kast": {
+    "soort": "vrije lucht"
+   },
+   "Z_max_zonder_spoel_ohm": 16.027272727272724,
+   "gevoeligheid_dB_1m_2V83": 96.25228184646858,
+   "breakups": [
+    {
+     "hz": 18500,
+     "hoogte_dB": 3.2,
+     "Q": 20
+    }
+   ],
+   "excursie_op_impedantiepiek": {
+    "f0_hz": 1489.9363400013171,
+    "Z_max_ohm": 16.42184071919803,
+    "x_per_V_mm_per_V": 0.0174882288596264,
+    "_": "Het model geëvalueerd op de frequentie waar |Z| maximaal is: x/V = |v(f0)|/ω0, met v uit dezelfde keten waaruit de bestanden geschreven zijn. Op een reflexkast is dat de BOVENSTE piek, dezelfde die M-C leest."
+   }
+  }
+ },
+ "geometrie": {
+  "baffle_mm": {
+   "breedte": 210,
+   "hoogte": 900
+  },
+  "baffle_step_hz": 547.6190476190476,
+  "baffle_step_diepte_dB": 6,
+  "ctc_mm": {
+   "woofer_mid": 195,
+   "mid_tweeter": 96
+  },
+  "z_offset_mm": {
+   "woofer": -155,
+   "mid": -38,
+   "tweeter": 0
+  }
+ },
+ "poort": {
+  "referenceTimeMs": 3,
+  "rightWindowMs": 7,
+  "taper": "Tukey 0.25",
+  "effectieve_venstertijd_ms": 4,
+  "geldigheidsvloer_hz": 250,
+  "fijnstructuur_hz": 500
+ },
+ "meetcondities": {
+  "voltsRms": 2.83,
+  "micDistanceMm": 1000
+ },
+ "versterker": {
+  "peakPowerW": 120,
+  "continuousPowerW": 60,
+  "nominalLoadOhm": 6
+ },
+ "bemonstering": {
+  "sampleRateHz": 48000,
+  "impulseLength": 32768,
+  "fftLength": 16384,
+  "ffFirstHz": 20.5078125,
+  "ffLastHz": 20000,
+  "zFromHz": 5,
+  "zToHz": 20000,
+  "zPoints": 1200,
+  "anglesDeg": [
+   0,
+   30
+  ]
+ },
+ "bestanden": [
+  "woofer.zma",
+  "woofer_hor_0.frd",
+  "woofer_hor_30.frd",
+  "woofer_near.frd",
+  "mid.zma",
+  "mid_hor_0.frd",
+  "mid_hor_30.frd",
+  "mid_near.frd",
+  "tweeter.zma",
+  "tweeter_hor_0.frd",
+  "tweeter_hor_30.frd"
+ ]
+}
