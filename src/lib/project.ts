@@ -463,10 +463,21 @@ export interface ProjectState {
         cone?: StoredFile;
         port?: StoredFile;
         portDiaMm?: string;
+        /** I-2 — how many drivers share the port. No default; see NearFieldSlot. */
+        portSharedBy?: string;
         transitionHz?: string;
         blendOctaves?: string;
         stepOn?: boolean;
         stepDepthDb?: string;
+        /** I-2 — the floor the written merge declares. Empty = derived. */
+        validFromHz?: string;
+        /**
+         * I-2 — the far field an accepted merge was built from. Stored so that
+         * accepting a merge overwrites nothing: the merged file is the branch's
+         * response, and its ingredients travel with the project beside it.
+         */
+        far?: StoredFile;
+        mergedName?: string;
       }
     >
   >;

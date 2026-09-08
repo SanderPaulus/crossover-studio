@@ -508,6 +508,18 @@ export interface DeclaredMerge {
   ffSource: string | null;
   /** `Merge splice band = 500-800 Hz`. */
   spliceBandHz: [number, number] | null;
+  /**
+   * `Merge splice fit = gain -7.92 dB, delay 0.5433 ms, …` — the level the
+   * near-field half was shifted by to meet the far field, dB.
+   *
+   * READ SINCE I-2, and it is the one number that lets a merged file be
+   * checked against a SIBLING: subtract it and the near field from the merged
+   * curve and what is left is the baffle step that merge actually applied. A
+   * baffle step belongs to the cabinet, so two drivers on one front must show
+   * the same one — that comparison is check 2, and without this field it can
+   * only be done by hand, which is how M-1 did it.
+   */
+  spliceGainDb: number | null;
   /** `Merge floor reason = …` — why the floor sits there, in the author's words. */
   floorReason: string | null;
   /** `Merge status = …` — e.g. "PLACEHOLDER tot groundplane". */
@@ -548,6 +560,7 @@ export function readMergeBlock(text: string): DeclaredMerge | null {
     nfSource: null,
     ffSource: null,
     spliceBandHz: null,
+    spliceGainDb: null,
     floorReason: null,
     status: null,
   };
@@ -577,6 +590,14 @@ export function readMergeBlock(text: string): DeclaredMerge | null {
         // Unsigned: "500-800 Hz" is a band and its dash is not a minus.
         const ns = value.match(/\d+(?:[.,]\d+)?/g)?.map((x) => Number(x.replace(',', '.'))) ?? [];
         if (ns.length >= 2 && ns[0] > 0 && ns[1] > ns[0]) out.spliceBandHz = [ns[0], ns[1]];
+        break;
+      }
+      case 'merge splice fit': {
+        // `gain -7.92 dB, delay 0.5433 ms` — named sub-fields, matched by name
+        // for the same reason the block itself is: a positional read would
+        // break the day someone writes the delay first.
+        const g = value.match(/gain\s*(-?\d+(?:[.,]\d+)?)/i);
+        if (g) out.spliceGainDb = num(g[1]);
         break;
       }
       case 'merge floor reason':

@@ -48,6 +48,15 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná I-2 (08-09-2026) gemeten op 444 s — 164 bestanden (163 geslaagd, 1 overgeslagen), 1944 tests
+    (1941 geslaagd, 3 overgeslagen), gedraaid ná de browsercontrole met de dev-server en de headless
+    Chrome gestopt.** +1 BESTAND (`nfMerge.test.ts`, 56 claims) en +56 tests, en die twee getallen zijn
+    HETZELFDE getal: het corpus is niet geregenereerd, dus geen enkele `it.each` over het levende corpus
+    beweegt en de delta is precies de inhoud van het nieuwe bestand. GEEN nieuwe referentie: de
+    V43-waarde van 289 s blijft staan, en 444 tegen I-1's 449 s is dezelfde laag op dezelfde machine.
+    (De eerste run had één rode claim — een bronscan die de regel `far: { name: loaded.name, … }` pinde
+    terwijl de reparatie van de HERMERGE er `far: n[role].far ?? { … }` van maakte; de scan deed wat
+    hij moet doen en is bijgewerkt vóór de volle run.)
     **Ná I-1 (08-09-2026) gemeten op 449 s — 163 bestanden (162 geslaagd, 1 overgeslagen), 1888 tests
     (1885 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server gestopt.** +1 BESTAND (`v2InputRegister.test.ts`, 18 claims) en +18 tests, en die twee
@@ -286,7 +295,16 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 08-09-2026 (C-2): 162 bestanden, 1870 tests, 1557 s
+- `npx vitest run` — volledige testsuite. **GEMETEN 08-09-2026 (I-2): 164 bestanden, 1944 tests, 1557 s
+  (25 min 57), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de browsercontrole
+  (dev-server en headless Chrome gestopt) en ná de snelle laag.** +1 bestand (`nfMerge.test.ts`, 56 claims)
+  en +56 tests — hetzelfde getal, want het corpus is niet geregenereerd. **Wat deze run bewijst is precies
+  dat I-2 niets van de zoektocht raakt:** de drie live ketenruns reproduceren op hun onveranderde corpora
+  (casus 1 in 1550 s, casus 1b 305 s, de verwerping 892 s), beide byte-baselines (`f4cRegression`,
+  `workerRouteRegression`) reproduceren, en casus 2's acceptatie ook. De ENE ingreep die iets buiten de
+  nieuwe module raakt is de v1-merge-blok-lezer, die er een VELD bij kreeg (`spliceGainDb`) zonder dat een
+  bestaand veld beweegt — `xoWindow.test.ts` en `sourceMeta.test.ts` staan.
+  (De stand ervoor: **GEMETEN 08-09-2026 (C-2): 162 bestanden, 1870 tests, 1557 s
   (25 min 57), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en NOOIT
   ernaast.** +2 bestanden en +23 tests (zie de `test:fast`-regel; de telling sluit alleen mét de corpusgrootte
   erin). **Wat deze run bewijst is precies wat C-2 verandert:** de drie live ketenruns draaien op DRIE opnieuw
@@ -296,7 +314,7 @@
   437,3 · 1744,8, de goedkoopste geleverde op looptijd); de verwerping ernaast kostte 905 s, casus 1b's live run
   308 s, `frozenNetlistGates` 421 s, `lowestWayLevelWork` 393 s en `threeWayChain` 338 s — alles in de schaduw.
   **De byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren:** de zachte grens en de verdichte
-  bron zijn afwezig op élke v1-route, en dat is wat P2 hier betekent.
+  bron zijn afwezig op élke v1-route, en dat is wat P2 hier betekent.)
   (De stand ervoor: **GEMETEN 07-09-2026 (E-4): 160 bestanden, 1847 tests, 1593 s
   (26 min 33), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en
   NOOIT ernaast.** +1 bestand (`optimizer/coilSnapCeiling.test.ts`, 5 claims) en +16 claims (zie de
@@ -1198,6 +1216,28 @@
   2× de vloer 696 punten, bijna de sweep zelf.** De engine leest de eerste (`BARRIER_DIP_REFINEMENT`, de vijfde waarde van
   de V33-sleutel: `'safety-extended-refined'`); de route leidt nog `'safety-extended'` af — omschakelen is één woord in
   `candidateDeclaration.ts` en één regeneratie. Schrijft `test-fixtures/casus1_e1_barriere_verdichting.json`.
+- **Wat de app-merge produceert naast de twee merges die al bestaan (I-2, 08-09-2026)**:
+  `npx vite-node scripts/measure-i2-appmerge.ts` — seconden, geen ketenrun en geen tune. Bouwt met
+  `nfMerge.ts` de merge van casus 1's mid en beide woofers uit hun eigen NF + FF, met de band en het
+  stapmodel UIT HET BLOK van de referentie (een merge reproduceren betekent het model gebruiken dat
+  zij stelt), en legt hem band voor band naast het referentiebestand; schrijft
+  `test-fixtures/casus1_i2_appmerge.json`, dat `nfMerge.test.ts` uit een verse meting laat
+  reproduceren. **DE MID IS DE STRENGE** (zelfde NF, zelfde FF, zelfde band, geen poort): de
+  MAGNITUDE reproduceert `Koan_M_merged.frd` binnen de afronding van het bestand zelf (max 0,0005 dB)
+  en de splice-gain exact. **De FASE niet, en dat is een bevinding over M-1:**
+  `scripts/merge-casus1-mid.ts` leest `atan2(Im, Re)` van het log-spectrum waar de minimumfase `Im`
+  is (174,55° bij 20,5 Hz, 139,9° bij 801, tegen een echte shelf-minimumfase van 3,6°–12,6°), dus de
+  gemergede fase onder de splice wijkt 28,9° af bij 20–40 Hz, 17,8° bij 80–150 en 0,00° boven 800 Hz
+  — precies onder de splice en nergens anders. **NIET gerepareerd:** dat vraagt casus 1's mid opnieuw
+  mergen en verplaatst élk corpus dat op de meetset rust; de eerstvolgende regeneratie is de plek.
+  `src/lib/minphase.ts` (de ene implementatie van dit project) nam altijd al `Im` en is wat
+  `nfMerge.ts` leest — nagemeten 0,08° van de exacte analytische cepstrum in de band die telt.
+  **DE WOOFERS kunnen niet exact gereproduceerd worden en hun eigen kop zegt waarom**
+  (`LF = eigen nearfield + 0.5 x poort, g=0.41`; die poortmeting bestaat hier niet en er een
+  verzinnen is verboden), dus de DIVERGENTIE is gepind: 5,3 dB rms bij 20–40 Hz, 1,0–1,4 bij
+  150–500, 0,4–0,5 in de fitband, 0,00 boven 800 Hz. **De poort is NIET verwaarloosbaar in de
+  fitband** — de niveaufit verschuift 1,36 en 0,99 dB, want een 600 mm neerwaartse poort resoneert
+  als orgelpijp bij 500–800 Hz. Dat corrigeert de lezing die "without the port ~80 Hz" uitlokt.
 - **Is de A5d.6-inversie de inverse van de M-D-metriek? (E-4, 07-09-2026)**:
   `npx vite-node scripts/measure-e4-inversion.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen
   tune. Per bevroren netlist: de totale seriespoel van de laagste weg, de padweerstand die de
@@ -2737,6 +2777,70 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   of corpuswijziging, en de twee byte-baselines die dát bewaken (`f4cRegression`, `workerRouteRegression`)
   draaien in de snelle laag en reproduceerden. De drie live ketenruns zouden een corpus reproduceren dat deze
   sessie niet aangeraakt heeft.
+
+### I-2-guards (de NF/FF-merge in de app; alleen app-/ingest-laag)
+- `src/lib/nfMerge.ts` + `nfMerge.test.ts` (56 claims) — **de merge als BESTAND, en dat is het hele
+  verschil met de live splice die er sinds de tweewegdagen naast staat.** `mergeNearFar` is de
+  splice; wat het niet doet is zeggen welk bestand het nabije veld is, een band uit de twee
+  geldigheidsgrenzen afleiden, het stapmodel een fase geven, zichzelf controleren, of iets opleveren
+  dat je kunt bewaren. Woont in `src/lib/` en niet in `engine2/ingest/` om de reden die
+  `impedanceFloor.ts` al draagt: een gemergede meting is een meting, moet met de vlag uit werken, en
+  niets buiten de UI-instappunten mag `engine2/` importeren. **De VELDNAMEN zijn de gedeelde
+  conventie** (P-1's vorm): dit bestand schrijft namen, en de test pint dat `parseArtaHeader`
+  (engine2) en `readMergeBlock` (v1) hetzelfde teruglezen — soort, bronnen, band, gain, `Valid from`
+  — en dat `declaredMergeValidity` er een vloer uit haalt, wat de tak van `unverified` af haalt.
+- **De herkenning is AFGELEID en niet getypt:** ligt 1/T binnen de band die het bestand zelf toont?
+  Casus 1's ver velden lezen 397 Hz tegen data vanaf 20,5 (`gated`), de nabije velden 1,01 Hz tegen
+  data vanaf 5,13 (`ungated`). Nergens een hertz-drempel. **De app wijst de rollen nooit zelf toe** —
+  het slot is het antwoord van de ontwerper en de app controleert het tegen de kop; `ungated` is óók
+  een groundplane of een dode kamer, dus zij VRAAGT (`ask: true`) in plaats van te raden.
+- **De splice-band leest de vloer van HET BESTAND** (`dataFloorFromGateMs`, 2/T getaperd = 455 Hz op
+  casus 1) en niet `cabinetInfo.reliable.fromHz` (1/gate op een kastbreed veld, 199 Hz): de band is
+  waar niveau en vertraging GEFIT worden, dus de fijnstructuur telt en het bestand is de autoriteit
+  (A3h). Voorstel: woofer 455–576 Hz, mid 455–1107. **Sanders eigen band (500–800) reikt 224 Hz boven
+  0,95 × ka = 1 op de woofer** — een ontwerpersoordeel dat gemeld en niet overruled wordt, en de test
+  pint dat het voorstel er ONDER ligt, want een voorstel dat er stilzwijgend mee instemde zou nergens
+  uit afgeleid zijn.
+- **`portWeight` heeft GEEN default en noemt het ontbrekende veld.** Keele weegt met de diameter, en
+  diameter en oppervlak zijn één grootheid; `gedeeld door N` is de tweede helft en een poort tussen
+  twee woofers draagt de helft van zichzelf bij aan elk. Nagerekend: mond 74 mm tegen conus 180,2 mm
+  = g 0,411, gehalveerd 0,205 — Sanders `g=0.41, 50/50`. Een poort zonder weging wordt NIET
+  meegesommeerd en de merge zegt dat; een poort die wél gewogen kan worden verplaatst de fit
+  (anders is het veld decoratie).
+- **`suggestValidFrom` weigert voor een reflexkast waarvan de poort niet gemeten is.** Niet f_b en
+  geen veelvoud: op de afstemming staat de conus op zijn MINIMUM en draagt de poort de uitgang, dus
+  de conus-alleen-fout is daar het grootst en valt niet af in een richting die een factor kan vangen.
+  Gesloten, en reflex mét de poort erin, leveren de reikwijdte van het nabije veld — precies waarom
+  Sanders woofers 20,5 Hz verklaren waar hij zonder poort ~80 noteert.
+- **De drie controles, en falen KLEURT (F0).** (1) Splice-band ±0,5 dB op p95 — **en álle drie de
+  merges in dit project falen hem** (mid 1,37, woofer 1,53 en 2,58 dB; Sanders eigen kop noteert een
+  rest van −1,57…+1,77). Dat is de bevinding en geen reden om het getal te verplaatsen; de test pint
+  dat hij ook KAN slagen (een bestand met zichzelf gemerged leest nul). (2) De stap tegen die van de
+  andere gemergede drivers op hetzelfde front, teruggewonnen als `merged − NF − de gain uit hun blok`
+  — waarvoor `readMergeBlock` sinds I-2 ook `Merge splice fit` leest. Twee lezingen die iets
+  verschillends zeggen: **1,63 dB tegen Sanders augustus-woofers** (zijn empirische stap draagt de
+  poort en de inspeel-predictie) en **0,01 dB tegen de woofer die de app zelf mergede**. NIET VAN
+  TOEPASSING is een echt antwoord en het gewone. (3) De sweep byte-identiek vóór en ná — een
+  structureel feit dat niemand meet is hoe een stille koppeling binnenkomt (M-1 deed het met
+  `git status`).
+- **In `App.tsx`, en een BRONSCAN pint elk van deze** (het UI-1-idioom, want wat een functietest niet
+  bereikt is of de app haar aanroept): de merge woont bij de meting-upload en niet in het
+  Filter-paneel; `runNearFieldMerge` bouwt alléén een preview en raakt geen enkele respons-setter aan;
+  de respons verandert uitsluitend in `acceptNearFieldMerge` en `undoNearFieldMerge`; het ver veld
+  waarop gemerged is blijft bewaard (`far`), zodat niets overschreven wordt en een HERMERGE datzelfde
+  bewaarde bestand leest in plaats van de merge op de merge te stapelen; en de live-splice-memo slaat
+  een respons over die zelf een merge verklaart (`if (readMergeBlock(loaded.raw)) continue;`).
+  **Nagemeten dat de scans kunnen falen**: de guard weghalen en `ranked`-achtige directe toepassing
+  invoeren zetten er elk één op rood.
+- **Vier registerrijen in `v2InputRegister.ts`, alle NICE TO HAVE** — zonder merge werkt alles, met
+  een smaller venster, en de app zegt dat naast het slot.
+- **HET OPEN PUNT, en het is het belangrijkste van I-2: de app heeft nu TWEE merge-paden voor
+  dezelfde tak en het oude vuurt nog op het moment van laden.** Gemeten op casus 1 met dezelfde twee
+  bestanden en dezelfde kast: mid LIVE gespliced (500 Hz, blend 1 oct) geeft `low → mid` **LEEG**,
+  mid GEMERGED (455–1107, geaccepteerd) geeft **124,3–2051,6 Hz · floor: fs**. De live regel is sinds
+  I-2 als zodanig gelabeld (`live preview, not a file: …`) en verder niet aangeraakt: hem intrekken
+  verandert het gedrag van élk project met een nabij veld en raakt `sourceMeta`, `dataFloorOf` en de
+  grafieken — eigen sessie, mét de toggle- en byte-regressies ernaast.
 
 ### C-2-guards (de synthetische casus, en de drie besluiten van de laatste regeneratie)
 - `src/lib/engine2/goldenCasus2.test.ts` (14 claims, nieuw) — **de acceptatie-autoriteit van casus 2, en de enige

@@ -48,6 +48,23 @@ import {
   sumRadiators,
 } from './lib/nearField.ts';
 import {
+  bandOf,
+  centreOf,
+  classifyMeasurementShape,
+  mergeNearField,
+  mergedFileName,
+  portWeight,
+  renderMergedFrd,
+  spliceBandCheck,
+  stepShapeCheck,
+  suggestSpliceBand,
+  suggestValidFrom,
+  sweepUntouchedCheck,
+  type MergeCheck,
+  type NfMergeResult,
+  type StepPeer,
+} from './lib/nfMerge.ts';
+import {
   declaredMergeValidity,
   gatedFarFieldValidity,
   intersectValidity,
@@ -973,21 +990,72 @@ interface NearFieldSlot {
   port: StoredFile | null;
   /** Effective diameter of the port mouth, mm — its weight in Keele's sum. */
   portDiaMm: string;
+  /**
+   * I-2 — how many drivers share this port. NO DEFAULT: a port shared by two
+   * woofers contributes half of itself to each, which is exactly what Sanders
+   * August header records (`0.5 x poort, 50/50 over beide woofers`). Assuming 1
+   * doubles the port on a two-woofer cabinet and assuming 2 halves it on a
+   * one-woofer cabinet; both are silent factors on the whole low end.
+   */
+  portSharedBy: string;
   /** Blend centre, Hz. Empty = the app proposes one. */
   transitionHz: string;
   blendOctaves: string;
   /** Put the baffle step back into the half-space near field. */
   stepOn: boolean;
   stepDepthDb: string;
+  /**
+   * I-2 — the validity floor the WRITTEN merge will declare. Empty = the app
+   * derives it (`suggestValidFrom`), which it can do for a sealed box and for a
+   * reflex box whose port is summed, and refuses to do for a reflex box whose
+   * port was not measured.
+   */
+  validFromHz: string;
+  /**
+   * I-2 — the far field this branch's loaded merge was BUILT FROM, kept so that
+   * accepting a merge overwrites nothing. The merged file becomes the branch's
+   * response; its ingredients stay here, and "undo merge" puts this back.
+   */
+  far: StoredFile | null;
+  /** I-2 — the name of the accepted merge, when one is loaded on this branch. */
+  mergedName: string | null;
 }
+/**
+ * I-2 — a merge the designer has asked for and not yet accepted.
+ *
+ * Either an `error` (naming the input that is missing — P4) or a complete
+ * merge with the file it would write. Nothing here has been applied: the whole
+ * point of the preview is that the three checks are read BEFORE the response
+ * of a branch changes.
+ */
+type NfPreview =
+  | { error: string }
+  | {
+      error?: undefined;
+      /** The file name the merge would take. */
+      name: string;
+      /** The merged FRD, block and all — exactly what accepting stores. */
+      text: string;
+      merge: NfMergeResult;
+      band: [number, number];
+      floorHz: number;
+      floorReason: string;
+      /** The branch's impedance as it stood when the merge ran — check 3's before. */
+      zAtMerge: StoredFile | null;
+    };
+
 const emptyNearField = (): NearFieldSlot => ({
   cone: null,
   port: null,
   portDiaMm: '',
+  portSharedBy: '',
   transitionHz: '',
   blendOctaves: '1',
   stepOn: true,
   stepDepthDb: '6',
+  validFromHz: '',
+  far: null,
+  mergedName: null,
 });
 
 /**
@@ -3352,6 +3420,23 @@ export default function App() {
           t('"{name}" looks like an impedance file (median ≈ {z} Ω), not a response.', { name: file.name, z: cls.medianLevel.toFixed(1) }),
         );
       }
+      /* I-2 — THE SLOT IS THE DESIGNER'S ANSWER to "which of these two is the
+       * near field"; what the app does is check that answer against the file's
+       * own header. A window that bites inside this file's own data is a gated
+       * far field, and loading one here would splice a measurement onto itself.
+       * Said out loud, and still loaded: a file name is a human's note to
+       * themselves and so is a slot, but the designer may know something the
+       * header does not say (the manifest's doctrine, one layer up). */
+      const shape = classifyMeasurementShape(raw);
+      if (shape.shape === 'gated' || shape.shape === 'merged') {
+        setError(
+          t('"{name}" reads as {kind}, not as a near field — {why}. It is loaded, because you may know something the header does not say; check that this is the file you meant.', {
+            name: file.name,
+            kind: shape.shape === 'merged' ? t('an NF/FF merge') : t('a gated far field'),
+            why: shape.evidence,
+          }),
+        );
+      }
       setNearField((n) => ({ ...n, [role]: { ...n[role], [which]: { name: file.name, raw } } }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -4303,6 +4388,16 @@ export default function App() {
     for (const [role, loaded] of src) {
       const slot = nearField[role];
       if (!loaded || !slot.cone) continue;
+      /* I-2 — A RESPONSE THAT ALREADY DECLARES A MERGE IS NOT MERGED AGAIN.
+       * The live splice below and a written merge answer the same question, so
+       * running both stacks two baffle-step models and two level fits on one
+       * branch. Until I-2 nothing could load a merged file WITH a near field in
+       * the slot, so the collision could not happen; accepting a merge here
+       * does exactly that (the ingredients stay in the slot on purpose), and
+       * Sanders own merged files would have collided the moment anyone dropped
+       * a cone near field beside one. The written block is the authority: the
+       * P-1 branch of `sourceMeta` below reads its validity straight off it. */
+      if (readMergeBlock(loaded.raw)) continue;
       const sd = Number(sdCm2[role]);
       const nearMax = nearFieldMaxHz(sd);
       const scaleDb = nearToFarDb(sd, micMm);
@@ -4410,6 +4505,320 @@ export default function App() {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [woofer, midDrv, tweeter, nearField, sdCm2, cabinet.micDistanceMm, cabinetInfo]);
+
+  /**
+   * I-2 — THE MERGE THE DESIGNER ASKS FOR, AS A FILE THEY CAN LOOK AT BEFORE
+   * IT COUNTS.
+   *
+   * The memo above is the LIVE splice: it re-derives itself from whatever the
+   * settings say, it exists only in memory, and nothing downstream can trace
+   * where its low end came from. This is the other half — one button, one
+   * merge, three checks, and then the designer accepts or discards. Nothing is
+   * applied on the way past, which is the whole difference (F0: the app
+   * reports, the designer judges).
+   *
+   * Preview state and not a memo, deliberately. A memo would re-run on every
+   * keystroke in the splice fields and the checks would flicker under the
+   * reader's eyes; a merge is a thing you ask for.
+   */
+  const [nfPreview, setNfPreview] = useState<Partial<Record<BranchRole, NfPreview>>>({});
+
+  /** The branch's own loaded impedance file, for check 3. Null when this
+   *  branch's impedance came from a project or a .vxp rather than a file. */
+  const zFileOf = useCallback(
+    (role: BranchRole): StoredFile | null => zStandalone[role]?.file ?? null,
+    [zStandalone],
+  );
+
+  /**
+   * Every OTHER branch on this baffle that already carries a merge, with the
+   * near field it was built from — check 2's peers. A baffle step belongs to
+   * the cabinet, so two drivers on one front must show the same one.
+   */
+  const stepPeersFor = useCallback(
+    (role: BranchRole): StepPeer[] => {
+      const out: StepPeer[] = [];
+      const all: [BranchRole, Loaded | null][] = [
+        ['low', woofer],
+        ['mid', midDrv],
+        ['high', tweeter],
+      ];
+      for (const [r, l] of all) {
+        if (r === role || !l) continue;
+        const blk = readMergeBlock(l.raw);
+        if (!blk || blk.spliceGainDb === null) continue;
+        const cone = nearField[r]?.cone;
+        if (!cone) continue;
+        try {
+          const near = parseFrd(cone.raw);
+          out.push({
+            name: l.name,
+            mergedFreq: l.frd.freq,
+            mergedSpl: l.frd.spl,
+            nearFreq: near.freq,
+            nearSpl: near.spl,
+            nearPhase: near.phase,
+            spliceGainDb: blk.spliceGainDb,
+          });
+        } catch {
+          // A peer whose near field no longer parses simply is not a peer.
+        }
+      }
+      return out;
+    },
+    [woofer, midDrv, tweeter, nearField],
+  );
+
+  /**
+   * THE FAR FIELD'S OWN VALIDITY FLOOR for this branch, from THIS FILE'S header
+   * — 2/T on the effective (tapered) window, the same number `dataFloorOf`
+   * gives the crossover window below.
+   *
+   * NOT `cabinetInfo.reliable.fromHz`, and the difference is not cosmetic: that
+   * one is 1/gate on a cabinet-wide field and reads 199 Hz on casus 1 where
+   * this reads 455. The splice band is where the level and the delay are FITTED
+   * against the far field, so it needs the band where the far field's fine
+   * structure is honest, not merely where its level is — and it needs the
+   * file's own window, not a global one (A3h).
+   */
+  const farFloorFor = useCallback((far: StoredFile | Loaded | null): number | null => {
+    if (!far) return null;
+    const gr = readGateHeader(far.raw);
+    if (gr.kind !== 'parsed') return null;
+    return dataFloorFromGateMs(gr.gateMs, gr.alpha ?? DEFAULT_GATE_TAPER_ALPHA);
+  }, []);
+
+  /**
+   * THE FAR FIELD THIS BRANCH MERGES FROM, and there is exactly one answer to
+   * that question: the source kept in the slot when a merge was accepted, and
+   * otherwise the loaded response.
+   *
+   * Without this, "merge near field again" would splice the near field onto the
+   * MERGED file — stacking a second step model and a second level fit on a
+   * curve that already carries one. The same collision the memo above refuses,
+   * arriving through the other door.
+   */
+  const farSourceFor = useCallback(
+    (role: BranchRole): StoredFile | null => {
+      const slot = nearField[role];
+      if (slot.far) return slot.far;
+      const loaded = role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
+      return loaded ? { name: loaded.name, raw: loaded.raw } : null;
+    },
+    [nearField, woofer, midDrv, tweeter],
+  );
+
+  /** The splice band this branch will use: what the designer typed, or the
+   *  widest band both validity limits allow. One quantity, two spellings —
+   *  `bandOf`/`centreOf` in `nfMerge.ts` is the only conversion. */
+  const spliceBandFor = useCallback(
+    (role: BranchRole): { band: [number, number] | null; suggestion: ReturnType<typeof suggestSpliceBand> } => {
+      const slot = nearField[role];
+      const suggestion = suggestSpliceBand({
+        farFloorHz: farFloorFor(farSourceFor(role)),
+        sdCm2: Number(sdCm2[role]) > 0 ? Number(sdCm2[role]) : null,
+      });
+      const t = Number(slot.transitionHz);
+      const b = Number(slot.blendOctaves);
+      if (t > 0 && b > 0) return { band: bandOf(t, b), suggestion };
+      return { band: suggestion.band, suggestion };
+    },
+    [nearField, sdCm2, farFloorFor, farSourceFor],
+  );
+
+  /**
+   * Build the merge for one branch. Every refusal names the input it is missing
+   * — there is no path here that substitutes a number for one (P4).
+   */
+  const runNearFieldMerge = useCallback(
+    (role: BranchRole) => {
+      const loaded = role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
+      const slot = nearField[role];
+      const far = farSourceFor(role);
+      if (!loaded || !far || !slot.cone) return;
+      const fail = (why: string) =>
+        setNfPreview((p) => ({ ...p, [role]: { error: why } }));
+
+      const { band } = spliceBandFor(role);
+      if (!band) {
+        fail(spliceBandFor(role).suggestion.note);
+        return;
+      }
+      const sd = Number(sdCm2[role]);
+      const coneDiaMm = sd > 0 ? 2 * Math.sqrt((sd * 1e-4) / Math.PI) * 1000 : null;
+      let weight: number | null = null;
+      let portNote: string | null = null;
+      if (slot.port) {
+        const w = portWeight({
+          portDiaMm: Number(slot.portDiaMm) > 0 ? Number(slot.portDiaMm) : null,
+          coneDiaMm,
+          sharedBy: Number(slot.portSharedBy) >= 1 ? Number(slot.portSharedBy) : null,
+        });
+        if (w.weight === null) {
+          fail(w.note);
+          return;
+        }
+        weight = w.weight;
+        portNote = w.note;
+      }
+      const stepHz = slot.stepOn ? (cabinetInfo.baffleStep ?? 0) : 0;
+      if (slot.stepOn && !(stepHz > 0)) {
+        fail(
+          t('The baffle step is switched on but the cabinet width is not stated, so there is no step frequency to model. Enter the baffle width, or switch the step off and say so in the block.'),
+        );
+        return;
+      }
+      const step = stepHz > 0 ? { hz: stepHz, depthDb: Number(slot.stepDepthDb) || 6 } : null;
+      const merge = mergeNearField({
+        farText: far.raw,
+        farName: far.name,
+        nearText: slot.cone.raw,
+        nearName: slot.cone.name,
+        portText: slot.port?.raw ?? null,
+        portName: slot.port?.name ?? null,
+        portWeight: weight,
+        spliceBandHz: band,
+        step,
+      });
+      if (!merge) {
+        fail(t('The merge refused: check that both files parse as responses and that the splice band lies inside them.'));
+        return;
+      }
+
+      /* THE FLOOR. Stated wins; otherwise derived, and for a reflex box whose
+       * port was not measured it cannot be derived at all — see
+       * `suggestValidFrom`, which says why f_b is not the answer either. */
+      const stated = Number(slot.validFromHz);
+      const tune = boxTuneFromZ[role];
+      /* THE APP'S WORD FOR IT IS `ported`; the merge's word is `reflex`, and
+       * the mapping is here rather than in `nfMerge.ts` because a library that
+       * knows this form's vocabulary is a library that has to change when the
+       * form does. `open` (dipole) is deliberately NOT mapped to either: a
+       * dipole's cone near field is not the system's output any more than a
+       * reflex cone alone is, but the reason is cancellation rather than a
+       * port, and this round has not measured that — it falls to `unknown`,
+       * which states the near field's reach and says the enclosure did not. */
+      const suggested = suggestValidFrom({
+        enclosure:
+          role === 'high'
+            ? 'sealed'
+            : cabinet.drivers[role].enclosure === 'ported'
+              ? 'reflex'
+              : cabinet.drivers[role].enclosure === 'sealed'
+                ? 'sealed'
+                : 'unknown',
+        boxTuneHz: tune?.kind === 'Fb' ? tune.hz : null,
+        portSummed: weight !== null,
+        nearLowestHz: parseFrd(slot.cone.raw).freq[0],
+        gridLowestHz: merge.freq[0],
+        farFloorHz: farFloorFor(far),
+      });
+      const floorHz = stated > 0 ? stated : suggested.hz;
+      if (floorHz === null) {
+        fail(suggested.reason);
+        return;
+      }
+      const floorReason =
+        stated > 0
+          ? `stated by the designer as ${stated} Hz; the app's own reading: ${suggested.reason}`
+          : suggested.reason;
+
+      const name = mergedFileName(far.name);
+      const text = renderMergedFrd({
+        merge,
+        farName: far.name,
+        nearName: slot.cone.name,
+        portName: slot.port?.name ?? null,
+        portNote,
+        spliceBandHz: band,
+        step,
+        cabinetStepHz: cabinetInfo.baffleStep ?? null,
+        validFromHz: floorHz,
+        validFromReason: floorReason,
+        madeOn: new Date().toISOString().slice(0, 10),
+        branchLabel: `${role} — ${far.name}`,
+      });
+      setNfPreview((p) => ({
+        ...p,
+        [role]: { name, text, merge, band, floorHz, floorReason, zAtMerge: zFileOf(role) },
+      }));
+    },
+    [woofer, midDrv, tweeter, nearField, sdCm2, cabinetInfo, cabinet, boxTuneFromZ, spliceBandFor, farFloorFor, farSourceFor, zFileOf],
+  );
+
+  /**
+   * Accept: the merged file becomes this branch's response and NOTHING is
+   * overwritten — the far field it was built from moves into the slot beside
+   * the near field, so the ingredients travel with the project and "undo merge"
+   * puts them back. From here the validity flows through the path P-1 built:
+   * `sourceMeta` reads the block, the window floor reads the splice band, and
+   * the branch stops being gate-limited without a line of new plumbing.
+   */
+  const acceptNearFieldMerge = useCallback(
+    (role: BranchRole) => {
+      const pv = nfPreview[role];
+      const loaded = role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
+      if (!pv || pv.error !== undefined || !loaded) return;
+      let frd: Parsed;
+      try {
+        frd = parseFrd(pv.text);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return;
+      }
+      const next: Loaded = { name: pv.name, raw: pv.text, frd };
+      setNearField((n) => ({
+        ...n,
+        // A RE-MERGE MUST NOT OVERWRITE THE INGREDIENT with the previous merge:
+        // whatever was kept stays kept, and only a first accept records it.
+        [role]: { ...n[role], far: n[role].far ?? { name: loaded.name, raw: loaded.raw }, mergedName: pv.name },
+      }));
+      if (role === 'low') setWoofer(next);
+      else if (role === 'mid') setMidDrv(next);
+      else setTweeter(next);
+      setNfPreview((p) => ({ ...p, [role]: undefined }));
+    },
+    [nfPreview, woofer, midDrv, tweeter],
+  );
+
+  /** Undo: the far field this branch was merged from goes back in as the
+   *  response. The near field stays in the slot, so the merge can be remade. */
+  const undoNearFieldMerge = useCallback(
+    (role: BranchRole) => {
+      const slot = nearField[role];
+      if (!slot.far) return;
+      let frd: Parsed;
+      try {
+        frd = parseFrd(slot.far.raw);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return;
+      }
+      const back: Loaded = { name: slot.far.name, raw: slot.far.raw, frd };
+      setNearField((n) => ({ ...n, [role]: { ...n[role], far: null, mergedName: null } }));
+      if (role === 'low') setWoofer(back);
+      else if (role === 'mid') setMidDrv(back);
+      else setTweeter(back);
+    },
+    [nearField],
+  );
+
+  /** The three checks, recomputed at render so check 3 compares the impedance
+   *  as it is NOW against the one that stood there when the merge ran. */
+  const nfChecksFor = useCallback(
+    (role: BranchRole): MergeCheck[] => {
+      const pv = nfPreview[role];
+      if (!pv || pv.error !== undefined) return [];
+      const slot = nearField[role];
+      const step = slot.stepOn && cabinetInfo.baffleStep ? { hz: cabinetInfo.baffleStep, depthDb: Number(slot.stepDepthDb) || 6 } : null;
+      return [
+        spliceBandCheck(pv.merge, pv.band),
+        stepShapeCheck(step, pv.band[0], stepPeersFor(role)),
+        sweepUntouchedCheck(pv.zAtMerge ?? null, zFileOf(role)),
+      ];
+    },
+    [nfPreview, nearField, cabinetInfo, stepPeersFor, zFileOf],
+  );
 
   /**
    * WHAT EACH BRANCH'S RESPONSE IS, AND WHERE IT MAY BE BELIEVED (step B2).
@@ -6494,15 +6903,19 @@ export default function App() {
         const out: NonNullable<ProjectState['nearField']> = {};
         for (const r of ['low', 'mid', 'high'] as BranchRole[]) {
           const n = nearField[r];
-          if (!n.cone && !n.port) continue;
+          if (!n.cone && !n.port && !n.far) continue;
           out[r] = {
             ...(n.cone ? { cone: n.cone } : {}),
             ...(n.port ? { port: n.port } : {}),
+            ...(n.far ? { far: n.far } : {}),
+            ...(n.mergedName ? { mergedName: n.mergedName } : {}),
             portDiaMm: n.portDiaMm,
+            portSharedBy: n.portSharedBy,
             transitionHz: n.transitionHz,
             blendOctaves: n.blendOctaves,
             stepOn: n.stepOn,
             stepDepthDb: n.stepDepthDb,
+            validFromHz: n.validFromHz,
           };
         }
         return Object.keys(out).length ? out : undefined;
@@ -6672,10 +7085,14 @@ export default function App() {
           cone: n.cone ?? null,
           port: n.port ?? null,
           portDiaMm: n.portDiaMm ?? '',
+          portSharedBy: n.portSharedBy ?? '',
           transitionHz: n.transitionHz ?? '',
           blendOctaves: n.blendOctaves ?? '1',
           stepOn: n.stepOn ?? true,
           stepDepthDb: n.stepDepthDb ?? '6',
+          validFromHz: n.validFromHz ?? '',
+          far: n.far ?? null,
+          mergedName: n.mergedName ?? null,
         };
       }
       return base;
@@ -14726,9 +15143,53 @@ export default function App() {
                             setNearField((n) => ({ ...n, [role]: { ...n[role], ...patch } }));
                           const nfMax = nearFieldMaxHz(Number(sdCm2[role]));
                           const rep = merged[role];
+                          /* I-2 — the merge the designer asked for, and the
+                             three checks recomputed at render (check 3 compares
+                             the impedance as it is NOW against the one that
+                             stood there when the merge ran). */
+                          const pv = nfPreview[role];
+                          const checks = nfChecksFor(role);
+                          const { band, suggestion } = spliceBandFor(role);
+                          /* THE SLOT IS THE ANSWER to "which of these two is the
+                             near field" — the designer said so by loading it
+                             here. What the app does is CHECK that answer against
+                             the file's own header and speak up on a
+                             contradiction; it never assigns the roles itself
+                             (the manifest's doctrine: auto-detection is a
+                             pre-fill, never a fact). */
+                          const coneShape = slot.cone ? classifyMeasurementShape(slot.cone.raw) : null;
+                          /* Once a merge is accepted the branch's response IS
+                             a merge, so the file to check for "is this really a
+                             far field" is the SOURCE it was built on. */
+                          const farSrc = slot.far ?? (loadedDrv ? { name: loadedDrv.name, raw: loadedDrv.raw } : null);
+                          const farShape = farSrc ? classifyMeasurementShape(farSrc.raw) : null;
+                          const shapeNote = (
+                            v: ReturnType<typeof classifyMeasurementShape> | null,
+                            expected: 'ungated' | 'gated',
+                            what: string,
+                          ) => {
+                            if (!v) return null;
+                            const bad = v.shape !== expected && v.shape !== 'unknown';
+                            return (
+                              <span className={`derived${bad ? ' alert' : ''}`} title={v.evidence}>
+                                {bad
+                                  ? `⚠ ${what}: ${t('this file reads as {kind} — is it really the one you meant?', { kind: v.shape })}`
+                                  : v.shape === 'unknown'
+                                    ? `${what}: ${t('the header says nothing about a window, so the app cannot tell what this is — you have told it by loading it here')}`
+                                    : `${what}: ${t('consistent with {kind}', { kind: v.shape })}`}
+                              </span>
+                            );
+                          };
                           return (
                             <div className="nf-slot">
                               <strong>{t('Near field — the low end the gate cannot reach')}</strong>
+                              {/* I-1's label, in the app's own voice: this is
+                                  NICE TO HAVE. Everything works without it —
+                                  with a narrower window, and the app says by
+                                  how much. */}
+                              <span className="derived">
+                                {t('Optional. Without a merge this branch is honest only above its gate; with one it reaches down to the near field, and the crossover window opens with it.')}
+                              </span>
 
                       <label
                         className="file-button"
@@ -14751,8 +15212,25 @@ export default function App() {
                           ✕
                         </button>
                       )}
+                      {/* A merge this app made and the designer accepted. The
+                          far field it was built from is kept beside it, so
+                          nothing was overwritten and this is reversible. */}
+                      {slot.mergedName && slot.far && (
+                        <span className="derived">
+                          {t('✓ merged: {name} — built on {far}, which is kept', { name: slot.mergedName, far: slot.far.name })}{' '}
+                          <button
+                            type="button"
+                            onClick={() => undoNearFieldMerge(role)}
+                            title={t('Put the far field back as this branch’s response. The near field stays, so the merge can be remade.')}
+                          >
+                            {t('undo merge')}
+                          </button>
+                        </span>
+                      )}
                       {slot.cone && (
                         <>
+                          {shapeNote(coneShape, 'ungated', t('near field'))}
+                          {shapeNote(farShape, 'gated', slot.far ? t('far field it was built on') : t('far field'))}
                           <label
                             className="file-button"
                             title={t('Optional: near-field measurement at the PORT mouth (or passive radiator). It is summed with the cone COMPLEX and weighted by its diameter — below the box tuning the two largely cancel, which a magnitude-only sum cannot represent.')}
@@ -14765,7 +15243,7 @@ export default function App() {
                             />
                           </label>
                           {slot.port && (
-                            <span className="inline-num" title={t('Effective diameter of the port mouth, mm. A rectangular vent: the diameter of a circle with the same area. This is its weight in the sum.')}>
+                            <span className="inline-num" title={t('Effective diameter of the port mouth AT THE PLANE THE MIC STOOD IN, mm. A rectangular vent: the diameter of a circle with the same area. This is its weight in Keele’s sum — a flared port’s waist and mouth are very different numbers.')}>
                               {t('port Ø') + ' '}
                               <input
                                 type="number"
@@ -14785,27 +15263,63 @@ export default function App() {
                               </button>
                             </span>
                           )}
-                          <span className="inline-num" title={t('Splice centre and how wide the crossfade is. Leave the frequency empty and the app proposes one that sits inside both validity limits: above what the gate supports, below where the cone stops being a simple source (ka = 1).')}>
-                            {t('splice at') + ' '}
+                          {/* NO DEFAULT, and the field says why it is asking: a
+                              port shared by two woofers contributes half of
+                              itself to each. Assuming either way is a silent
+                              factor on the whole low end. */}
+                          {slot.port && (
+                            <span className="inline-num" title={t('How many drivers share this port. A port between two woofers contributes half of itself to each; there is no default, because assuming one or two is a silent factor on the entire low end.')}>
+                              {t('shared by') + ' '}
+                              <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={slot.portSharedBy}
+                                onChange={(e) => set({ portSharedBy: e.target.value })}
+                              />
+                              {' ' + t('driver(s)')}
+                              {!(Number(slot.portSharedBy) >= 1) && (
+                                <span className="alert"> {t('— needed before the port can be summed')}</span>
+                              )}
+                            </span>
+                          )}
+                          {/* THE SPLICE BAND, shown as a band and edited as one.
+                              The project stores a centre and a width; `bandOf`
+                              and `centreOf` are the only conversion. */}
+                          <span className="inline-num" title={t('The band the level and delay are fitted in, and crossfaded across. Leave both empty and the app proposes the widest band both validity limits allow: above what the gate supports, below where the cone stops being a simple source (ka = 1).')}>
+                            {t('splice band') + ' '}
                             <input
                               type="number"
                               min={0}
                               step={10}
-                              placeholder="auto"
-                              value={slot.transitionHz}
-                              onChange={(e) => set({ transitionHz: e.target.value })}
+                              placeholder={band ? String(Math.round(band[0])) : 'auto'}
+                              value={slot.transitionHz === '' ? '' : String(Math.round(bandOf(Number(slot.transitionHz), Number(slot.blendOctaves) || 1)[0]))}
+                              onChange={(e) => {
+                                const lo = Number(e.target.value);
+                                const hi = band ? band[1] : 0;
+                                if (!(lo > 0 && hi > lo)) { set({ transitionHz: '' }); return; }
+                                const c = centreOf([lo, hi]);
+                                set({ transitionHz: String(c.transitionHz), blendOctaves: String(c.blendOct) });
+                              }}
                             />
-                            {' ' + t('Hz, blend') + ' '}
+                            {' – '}
                             <input
                               type="number"
-                              min={0.25}
-                              max={3}
-                              step={0.25}
-                              value={slot.blendOctaves}
-                              onChange={(e) => set({ blendOctaves: e.target.value })}
+                              min={0}
+                              step={10}
+                              placeholder={band ? String(Math.round(band[1])) : 'auto'}
+                              value={slot.transitionHz === '' ? '' : String(Math.round(bandOf(Number(slot.transitionHz), Number(slot.blendOctaves) || 1)[1]))}
+                              onChange={(e) => {
+                                const hi = Number(e.target.value);
+                                const lo = band ? band[0] : 0;
+                                if (!(hi > lo && lo > 0)) { set({ transitionHz: '' }); return; }
+                                const c = centreOf([lo, hi]);
+                                set({ transitionHz: String(c.transitionHz), blendOctaves: String(c.blendOct) });
+                              }}
                             />
-                            {' oct'}
+                            {' Hz'}
                           </span>
+                          <span className="derived">{suggestion.note}</span>
                           <label title={t('A near-field measurement is a half-space result throughout, but a real cabinet loses up to 6 dB at low frequency as it radiates into full space. Without this the spliced low end reads too high. Deliberately an adjustable shelf rather than a diffraction model: the published formulas disagree by about 3x and measurement disagrees with all of them.')}>
                             <input
                               type="checkbox"
@@ -14814,6 +15328,22 @@ export default function App() {
                             />
                             {' ' + t('baffle step back in')}
                           </label>
+                          {/* The floor the WRITTEN merge will declare. Empty =
+                              derived; for a reflex box whose port was not
+                              measured it cannot be derived and the merge says
+                              so instead of choosing a number. */}
+                          <span className="inline-num" title={t('The validity floor the merged file will declare. Leave it empty and the app derives it: as far down as the near field reaches for a sealed box, and for a reflex box only when the port is summed in. Without the port it refuses — at the tuning the cone is at its minimum and the port carries the output, so the cone-only error is largest exactly there.')}>
+                            {t('valid from') + ' '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              placeholder={t('derived')}
+                              value={slot.validFromHz}
+                              onChange={(e) => set({ validFromHz: e.target.value })}
+                            />
+                            {' Hz'}
+                          </span>
                           {nfMax !== null && (
                             <span className="derived">
                               {t('near field valid below ≈ {hz} Hz (ka = 1)', { hz: Math.round(nfMax) })}
@@ -14822,8 +15352,76 @@ export default function App() {
                                 : ` · ${t('enter the mic distance and reference height for the far-field limit')}`}
                             </span>
                           )}
+                          {/* THE LIVE SPLICE, LABELLED AS SUCH. It has run
+                              since the two-way days and it still runs: the
+                              moment a near field is loaded, this branch's
+                              response already carries a splice the designer
+                              never asked for. It is not a file, it is not
+                              checked, and it cannot be accepted — so it is
+                              named here rather than sitting one line above the
+                              merge button looking like its result. On casus 1
+                              the two disagree loudly: live-spliced, the low→mid
+                              window comes out EMPTY; merged, it opens to
+                              124–2052 Hz. See the entry's open point. */}
                           {rep && (
-                            <span className={`derived${rep.ok ? '' : ' alert'}`}>{rep.report}</span>
+                            <span className={`derived${rep.ok ? '' : ' alert'}`}>
+                              {t('live preview, not a file: {report}', { report: rep.report })}
+                            </span>
+                          )}
+                          {/* ONE BUTTON. Nothing is applied on the way past:
+                              the merge is built, the checks are read, and only
+                              then does the designer accept or discard. */}
+                          <button type="button" onClick={() => runNearFieldMerge(role)}>
+                            {slot.mergedName ? t('merge near field again →') : t('merge near field →')}
+                          </button>
+                          {pv?.error !== undefined && <span className="derived alert">{pv.error}</span>}
+                          {pv && pv.error === undefined && (
+                            <div className="nf-merge-preview">
+                              <strong>{t('{name} — read the three checks, then accept or discard', { name: pv.name })}</strong>
+                              <span className="derived">
+                                {t('splice {lo}–{hi} Hz · level {lvl} dB · delay {dly} ms · phase residual {res}°', {
+                                  lo: Math.round(pv.band[0]),
+                                  hi: Math.round(pv.band[1]),
+                                  lvl: pv.merge.fit.levelDb.toFixed(2),
+                                  dly: (pv.merge.fit.delayUs / 1000).toFixed(4),
+                                  res: pv.merge.fit.residualDeg.toFixed(1),
+                                })}
+                              </span>
+                              <span className="derived">
+                                {/* One decimal, not a round: the woofer floor
+                                    is 20.5 Hz and showing it as 21 rounds a
+                                    validity limit in the permissive direction. */}
+                                {t('valid from {hz} Hz — {why}', { hz: pv.floorHz.toFixed(1), why: pv.floorReason })}
+                              </span>
+                              {pv.merge.notes.map((n, i) => (
+                                <span className="derived" key={`nfnote${i}`}>{n}</span>
+                              ))}
+                              <span className="derived">{pv.merge.timeReferenceNote}</span>
+                              {/* Every check shows its NUMBER. A failing one
+                                  colours and blocks nothing — each of the three
+                                  can fail for a reason the designer knows and
+                                  the app does not. */}
+                              <ol className="nf-checks">
+                                {checks.map((c) => (
+                                  <li key={c.id} className={c.ok === null ? 'nf-check-na' : c.ok ? 'nf-check-ok' : 'nf-check-bad'}>
+                                    <span className="nf-check-title">
+                                      {c.ok === null ? '—' : c.ok ? '✓' : '⚠'} {t(c.title)}
+                                    </span>
+                                    {c.reading !== null && <span className="nf-check-reading"> {c.reading}</span>}
+                                    <span className="derived">{c.why}</span>
+                                  </li>
+                                ))}
+                              </ol>
+                              <button type="button" onClick={() => acceptNearFieldMerge(role)}>
+                                {t('accept — use this as the branch response')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNfPreview((prev) => ({ ...prev, [role]: undefined }))}
+                              >
+                                {t('discard')}
+                              </button>
+                            </div>
                           )}
                         </>
                       )}

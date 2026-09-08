@@ -1,0 +1,380 @@
+{
+  "_wat": "I-2 — de app-merge (nfMerge.ts) naast de twee merges die al in dit project bestaan. Gemeten, niet gesteld.",
+  "_hoe": "npx vite-node scripts/measure-i2-appmerge.ts",
+  "_gemeten_op": "2026-09-08",
+  "onderwerpen": {
+    "mid": {
+      "referentie": "Koan_M_merged.frd",
+      "nf": "mid_near.txt",
+      "ff": "mid_hor_0.txt",
+      "splice_band_hz": [
+        500,
+        800
+      ],
+      "stap_model": {
+        "depthDb": 6,
+        "hz": 440
+      },
+      "fit": {
+        "gain_dB": -13.684,
+        "gain_blok_dB": -13.68,
+        "delay_ms": 0.630743,
+        "delay_blok_ms": 0.5819,
+        "offset_deg": 54.806,
+        "fase_residu_deg": 2.481
+      },
+      "herkenning": {
+        "nf": "ungated",
+        "nf_vraagt": true,
+        "ff": "gated",
+        "ff_vraagt": false
+      },
+      "voorgestelde_band": {
+        "band_hz": [
+          396.668,
+          1106.594
+        ],
+        "ff_vloer_hz": 396.668,
+        "keele_hz": 1164.836,
+        "breedte_oct": 1.48,
+        "gebruikte_band_boven_keele_hz": 0
+      },
+      "controle_1": {
+        "lezing": "p95 1.37 dB (median 0.40, max 1.58)",
+        "ok": false
+      },
+      "per_band": [
+        {
+          "from": 20,
+          "to": 40,
+          "n": 14,
+          "db_rms": 0.000289,
+          "db_max": 0.000495,
+          "fase_rms": 26.685,
+          "fase_max": 28.907
+        },
+        {
+          "from": 40,
+          "to": 80,
+          "n": 27,
+          "db_rms": 0.00027,
+          "db_max": 0.000462,
+          "fase_rms": 20.977,
+          "fase_max": 24.199
+        },
+        {
+          "from": 80,
+          "to": 150,
+          "n": 48,
+          "db_rms": 0.000276,
+          "db_max": 0.000472,
+          "fase_rms": 14.155,
+          "fase_max": 17.784
+        },
+        {
+          "from": 150,
+          "to": 300,
+          "n": 102,
+          "db_rms": 0.000286,
+          "db_max": 0.000496,
+          "fase_rms": 6.953,
+          "fase_max": 10.752
+        },
+        {
+          "from": 300,
+          "to": 500,
+          "n": 137,
+          "db_rms": 0.000284,
+          "db_max": 0.000498,
+          "fase_rms": 1.862,
+          "fase_max": 3.584
+        },
+        {
+          "from": 500,
+          "to": 800,
+          "n": 205,
+          "db_rms": 0.000296,
+          "db_max": 0.000667,
+          "fase_rms": 0.084,
+          "fase_max": 0.317
+        },
+        {
+          "from": 800,
+          "to": 20000,
+          "n": 13107,
+          "db_rms": 0,
+          "db_max": 0,
+          "fase_rms": 0,
+          "fase_max": 0
+        }
+      ],
+      "m1_stapfase": {
+        "_wat": "M-1 nam atan2(Im, Re) van het LOG-spectrum waar de minimumfase Im is. De grootheid loopt van ~175° bij 20 Hz naar ~140° bij 800 Hz waar de echte minimumfase van de shelf tussen 3,6° en 12,6° ligt.",
+        "steekproef": [
+          {
+            "hz": 20.50781,
+            "m1_deg": 174.551,
+            "shelf_dB": -5.733
+          },
+          {
+            "hz": 60.05859,
+            "m1_deg": 168.673,
+            "shelf_dB": -5.279
+          },
+          {
+            "hz": 150.8789,
+            "m1_deg": 160.441,
+            "shelf_dB": -4.468
+          },
+          {
+            "hz": 401.3672,
+            "m1_deg": 148.756,
+            "shelf_dB": -3.138
+          },
+          {
+            "hz": 631.3477,
+            "m1_deg": 142.904,
+            "shelf_dB": -2.464
+          },
+          {
+            "hz": 801.2695,
+            "m1_deg": 139.869,
+            "shelf_dB": -2.127
+          }
+        ],
+        "gevolg": "de gemergede MAGNITUDE beweegt niet meetbaar (zie per_band: de dB-kolommen liggen binnen de afronding van het bestand zelf); de FASE onder de splice wel."
+      }
+    },
+    "woofer_up": {
+      "referentie": "Koan_W_up_merged_ingespeeld_mild.frd",
+      "nf": "woofer_up_near.txt",
+      "ff": "woofer_up_hor_0.txt",
+      "splice_band_hz": [
+        500,
+        800
+      ],
+      "stap_model": {
+        "depthDb": 6,
+        "hz": 440
+      },
+      "fit": {
+        "gain_dB": -6.564,
+        "gain_blok_dB": -7.92,
+        "delay_ms": 0.514252,
+        "delay_blok_ms": 0.5433,
+        "offset_deg": 0.591,
+        "fase_residu_deg": 4.074
+      },
+      "herkenning": {
+        "nf": "ungated",
+        "nf_vraagt": true,
+        "ff": "gated",
+        "ff_vraagt": false
+      },
+      "voorgestelde_band": {
+        "band_hz": [
+          396.668,
+          575.629
+        ],
+        "ff_vloer_hz": 396.668,
+        "keele_hz": 605.925,
+        "breedte_oct": 0.537,
+        "gebruikte_band_boven_keele_hz": 224.371
+      },
+      "controle_1": {
+        "lezing": "p95 1.53 dB (median 0.61, max 1.97)",
+        "ok": false
+      },
+      "per_band": [
+        {
+          "from": 20,
+          "to": 40,
+          "n": 14,
+          "db_rms": 5.338064,
+          "db_max": 7.391478,
+          "fase_rms": 83.136,
+          "fase_max": 119.965
+        },
+        {
+          "from": 40,
+          "to": 80,
+          "n": 27,
+          "db_rms": 1.524723,
+          "db_max": 4.003932,
+          "fase_rms": 8.097,
+          "fase_max": 15.427
+        },
+        {
+          "from": 80,
+          "to": 150,
+          "n": 48,
+          "db_rms": 1.0179,
+          "db_max": 1.49168,
+          "fase_rms": 7.774,
+          "fase_max": 12.921
+        },
+        {
+          "from": 150,
+          "to": 300,
+          "n": 102,
+          "db_rms": 1.429241,
+          "db_max": 2.957562,
+          "fase_rms": 5.77,
+          "fase_max": 10.731
+        },
+        {
+          "from": 300,
+          "to": 500,
+          "n": 137,
+          "db_rms": 1.029559,
+          "db_max": 2.158299,
+          "fase_rms": 9.631,
+          "fase_max": 14.511
+        },
+        {
+          "from": 500,
+          "to": 800,
+          "n": 205,
+          "db_rms": 0.431335,
+          "db_max": 1.420702,
+          "fase_rms": 2.623,
+          "fase_max": 8.821
+        },
+        {
+          "from": 800,
+          "to": 20000,
+          "n": 13107,
+          "db_rms": 0,
+          "db_max": 0,
+          "fase_rms": 0,
+          "fase_max": 0
+        }
+      ]
+    },
+    "woofer_down": {
+      "referentie": "Koan_W_down_merged_ingespeeld_mild.frd",
+      "nf": "woofer_down_near.txt",
+      "ff": "woofer_down_hor_0.txt",
+      "splice_band_hz": [
+        500,
+        800
+      ],
+      "stap_model": {
+        "depthDb": 6,
+        "hz": 440
+      },
+      "fit": {
+        "gain_dB": -9.427,
+        "gain_blok_dB": -10.42,
+        "delay_ms": 0.91008,
+        "delay_blok_ms": 0.9356,
+        "offset_deg": 21.129,
+        "fase_residu_deg": 3.354
+      },
+      "herkenning": {
+        "nf": "ungated",
+        "nf_vraagt": true,
+        "ff": "gated",
+        "ff_vraagt": false
+      },
+      "voorgestelde_band": {
+        "band_hz": [
+          396.668,
+          575.629
+        ],
+        "ff_vloer_hz": 396.668,
+        "keele_hz": 605.925,
+        "breedte_oct": 0.537,
+        "gebruikte_band_boven_keele_hz": 224.371
+      },
+      "controle_1": {
+        "lezing": "p95 2.58 dB (median 0.97, max 2.95)",
+        "ok": false
+      },
+      "per_band": [
+        {
+          "from": 20,
+          "to": 40,
+          "n": 14,
+          "db_rms": 5.294058,
+          "db_max": 7.559985,
+          "fase_rms": 79.45,
+          "fase_max": 117.581
+        },
+        {
+          "from": 40,
+          "to": 80,
+          "n": 27,
+          "db_rms": 1.521334,
+          "db_max": 3.827439,
+          "fase_rms": 6.817,
+          "fase_max": 13.702
+        },
+        {
+          "from": 80,
+          "to": 150,
+          "n": 48,
+          "db_rms": 0.73932,
+          "db_max": 1.174173,
+          "fase_rms": 6.882,
+          "fase_max": 11.981
+        },
+        {
+          "from": 150,
+          "to": 300,
+          "n": 102,
+          "db_rms": 1.081511,
+          "db_max": 2.349055,
+          "fase_rms": 5.258,
+          "fase_max": 11.18
+        },
+        {
+          "from": 300,
+          "to": 500,
+          "n": 137,
+          "db_rms": 0.841563,
+          "db_max": 1.702792,
+          "fase_rms": 8.962,
+          "fase_max": 13.878
+        },
+        {
+          "from": 500,
+          "to": 800,
+          "n": 205,
+          "db_rms": 0.486268,
+          "db_max": 1.696157,
+          "fase_rms": 1.826,
+          "fase_max": 6.404
+        },
+        {
+          "from": 800,
+          "to": 20000,
+          "n": 13107,
+          "db_rms": 0,
+          "db_max": 0,
+          "fase_rms": 0,
+          "fase_max": 0
+        }
+      ]
+    }
+  },
+  "controle_2": {
+    "lezing": "1.63 dB worst (woofer_up)",
+    "ok": false,
+    "waarom": "each peer's own step recovered as merged − near − its stated gain, smoothed 2/12 octave over 147–500 Hz (11 points): woofer_up: empirical step − shelf +0.56 dB mean, 0.82 dB spread, 1.63 dB worst; woofer_down: empirical step − shelf +0.44 dB mean, 0.67 dB spread, 1.43 dB worst. A difference here is the shelf model, not an error — it is a stated model and the published formulas disagree by about 3×."
+  },
+  "keele": {
+    "woofer": {
+      "Sd_cm2": 255,
+      "D_inch": 7.6
+    },
+    "mid": {
+      "Sd_cm2": 69,
+      "D_inch": 4
+    },
+    "tweeter": {
+      "Sd_cm2": 5.7,
+      "D_inch": null
+    }
+  }
+}

@@ -502,6 +502,60 @@ const NICE: readonly V2InputRow[] = [
       'from any real build.',
     source: 'choice',
   },
+  /* I-2 — THE NEAR-FIELD MERGE. Four rows, all NICE, and the class is the
+   * point: without a merge everything runs, on a narrower window. What the
+   * merge buys is the band BELOW the gate — on casus 1 that is the difference
+   * between a woofer honest from 455 Hz and one honest from 20.5 Hz, and the
+   * whole woofer-to-mid handover lives in between. The FILE it writes is what
+   * makes that reach travel: from the moment it exists the branch is an
+   * ordinary measurement with a stated validity, read by the path P-1 built. */
+  {
+    id: 'nearFieldCone',
+    label: 'Load cone near field…',
+    form: 'Drivers tab → driver card → Near field',
+    travels:
+      'the slot → mergeNearField → the merged FRD → this branch’s response → readMergeBlock / ' +
+      'parseArtaHeader → declaredMergeValidity → the window floor of every pair it touches',
+    cls: 'nice',
+    emptyMeans:
+      'no merge is possible, and this branch is honest only above its own gate — the crossover ' +
+      'window starts there and the app says so.',
+    source: 'measurement',
+  },
+  {
+    id: 'nearFieldPort',
+    label: 'Load port near field… (+ port Ø, shared by)',
+    form: 'Drivers tab → driver card → Near field',
+    travels: 'portWeight (Keele, complex) → the near-field half before the level fit',
+    cls: 'nice',
+    emptyMeans:
+      'the merge is the cone alone. On a sealed box that is the whole radiator; on a REFLEX box ' +
+      'the merge then refuses to state a validity floor at all, because at the tuning the cone is ' +
+      'at its minimum and the port is carrying the output.',
+    source: 'measurement',
+  },
+  {
+    id: 'spliceBand',
+    label: 'splice band (Hz)',
+    form: 'Drivers tab → driver card → Near field',
+    travels: 'bandOf / centreOf → mergeNearField’s level and delay fit and its crossfade',
+    cls: 'nice',
+    emptyMeans:
+      'the app proposes the widest band both limits allow — above the far field’s own floor, below ' +
+      '0.95 × ka = 1 — and shows both numbers beside it.',
+    source: 'choice',
+  },
+  {
+    id: 'mergeValidFrom',
+    label: 'valid from (Hz)',
+    form: 'Drivers tab → driver card → Near field',
+    travels: '`Valid from` in the written block → declaredMergeValidity → this branch’s validity floor',
+    cls: 'nice',
+    emptyMeans:
+      'derived: as far down as the near field reaches for a sealed box, and for a reflex box only ' +
+      'when the port is summed in. Without the port the merge refuses rather than choosing a number.',
+    source: 'choice',
+  },
   {
     id: 'measuredRe',
     label: 'measured R_e',

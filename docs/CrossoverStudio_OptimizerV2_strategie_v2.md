@@ -7754,6 +7754,223 @@ formulering, als bij E-2 en E-3b.
    leest hem (`chainBudget = steps^pairs`) en alleen de verkenning niet. Zijn rij zegt dat; een
    markering die "v1" beweert zou onwaar zijn zodra iemand het volle veld kiest.
 
+### I-2 — de NF/FF-merge in de app: één knop, drie controles, en een BESTAND dat zijn eigen geldigheid draagt (08-09-2026, alleen app-/ingest-laag; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding.** Sanders woofers en mid zijn NF/FF-gemerged, en dat werk is buiten deze app gedaan
+— met de hand in augustus, en met een script bij M-1. De app kan het niet: zij heeft sinds de
+tweewegdagen een LIVE splice (`mergeNearFar` in een memo), en die kan de vier dingen niet die een
+merge tot een MEETING maken. Zij zegt niet welk van twee bestanden het nabije veld is; zij leidt
+geen splice-band af uit de twee geldigheidsgrenzen; zij geeft het baffle-step-model geen fase, dus
+de nabij-veldhelft komt binnen met een magnitudecorrectie en geen bijbehorende fase; zij controleert
+zichzelf niet; en zij levert **niets dat je kunt bewaren.** De curve bestaat alleen in een memo:
+niets stroomafwaarts kan lezen waar dat laageinde vandaan komt, niets kan het aan een ander
+gereedschap geven, en het heropenen van het project leidt hem opnieuw af uit instellingen die
+inmiddels verschoven kunnen zijn.
+
+**Wat er gebouwd is.** Eén nieuw bestand (`src/lib/nfMerge.ts`), één nieuw testbestand (56 claims),
+één meetscript met zijn referentiebestand, vier registerrijen, en de knop met zijn drie controles in
+de meting-upload. **Geen engine-wijziging, geen regeneratie, geen enkel getal in `golden_refs_casus1.json`
+aangeraakt** — de app-merge is ERNAAST gemeten, niet in de casus gezet.
+
+**Waarom `src/lib/` en niet `engine2/ingest/`.** De LEZER van het blok woont daar, maar een gemergede
+meting is een meting en geen enginefunctie: zij moet werken met `engineV2Enabled` uit, en buiten de
+UI-instappunten mag niets uit `engine2/` importeren. De VELDNAMEN zijn de gedeelde conventie —
+precies de vorm die P-1 vastlegde toen dezelfde blokken op de v1-route onleesbaar bleken — dus dit
+bestand SCHRIJFT namen, en de test pint dat `parseArtaHeader` (engine2) en `readMergeBlock` (v1)
+hetzelfde teruglezen. Zelfde arbeidsdeling als `impedanceFloor.ts`, `phaseAdmission.ts` en
+`targetLevel.ts`.
+
+---
+
+#### (a) DE ACCEPTATIE: de app-merge naast de twee merges die al bestonden
+
+`npx vite-node scripts/measure-i2-appmerge.ts` (seconden, geen ketenrun) schrijft
+`test-fixtures/casus1_i2_appmerge.json`; `nfMerge.test.ts` eist dat élk getal erin uit een verse
+meting reproduceert.
+
+**DE MID IS DE STRENGE.** Zelfde nabije veld, zelfde ver veld, zelfde band, zelfde stap, geen poort:
+wat hier beweegt is een verschil tussen deze module en het script dat M-1 draaide, en niets anders.
+De MAGNITUDE reproduceert `Koan_M_merged.frd` **binnen de afronding van het bestand zelf**
+(max 0,0005 dB over de hele band; het bestand draagt drie decimalen), en de splice-gain komt exact
+op de −13,68 dB die het blok noteert.
+
+**MAAR DE FASE NIET, EN DAT IS EEN BEVINDING OVER M-1.**
+`scripts/merge-casus1-mid.ts` bouwt de minimumfase van de shelf uit het reële cepstrum en leest er
+dan `atan2(Im, Re)` van af. Dat spectrum is `ln|H| + jφ`: de minimumfase IS `Im`, en `atan2(Im, Re)`
+is de hoek tussen de fase en de log-magnitude. Gemeten waarden van die grootheid: **174,55° bij
+20,5 Hz, 168,7° bij 60, 160,4° bij 151, 148,8° bij 401, 139,9° bij 801** — waar de echte minimumfase
+van diezelfde shelf tussen 3,6° en 12,6° ligt. `src/lib/minphase.ts`, de ene implementatie die dit
+project heeft, neemt al sinds zijn eerste regel `Im`; het script had een eigen kopie.
+
+| band | Δ dB (app-merge − M-1) | Δ fase |
+| --- | --- | --- |
+| 20–40 Hz | 0,0005 | **28,9°** |
+| 80–150 Hz | 0,0005 | **17,8°** |
+| 150–300 Hz | 0,0005 | 10,8° |
+| 300–500 Hz | 0,0005 | 3,6° |
+| 500–800 Hz | 0,0007 | 0,3° |
+| 800–20 000 Hz | 0,0000 | **0,00°** |
+
+Die laatste rij is de tegenproef die het blok draagt: boven de blend IS de merge het ver veld, dus
+daar zijn de twee exact gelijk. Wat afwijkt zit uitsluitend ONDER de splice, en dat is precies waar
+de stapfase op de nabij-veldhelft zit. **NIET GEREPAREERD, met opzet:** `Koan_M_merged.frd`
+repareren betekent casus 1's mid opnieuw mergen, en dat verplaatst de meetset en élk corpus dat
+erop rust. Het is GEMETEN, gepind en blijven staan — de eerstvolgende regeneratie van casus 1 is de
+plek om het te doen, en dan hoort de mid-merge door deze module te lopen.
+
+**DE WOOFERS KUNNEN NIET EXACT GEREPRODUCEERD WORDEN, en hun eigen kop zegt waarom:**
+`LF = eigen nearfield + 0.5 x poort (g=0.41)`. Die poortmeting bestaat niet in deze repo en er een
+verzinnen is verboden. Dus is de DIVERGENTIE gemeten:
+
+| band | woofer_up Δ dB (rms / max) | woofer_down |
+| --- | --- | --- |
+| 20–40 Hz | 5,34 / 7,39 | 5,29 / 7,56 |
+| 40–80 Hz | 1,52 / 4,00 | 1,52 / 3,83 |
+| 80–150 Hz | 1,02 / 1,49 | 0,74 / 1,17 |
+| 150–300 Hz | 1,43 / 2,96 | 1,08 / 2,35 |
+| 300–500 Hz | 1,03 / 2,16 | 0,84 / 1,70 |
+| 500–800 Hz | 0,43 / 1,42 | 0,49 / 1,70 |
+| 800–20 000 Hz | 0,00 / 0,00 | 0,00 / 0,00 |
+
+**DE POORT IS NIET VERWAARLOOSBAAR IN DE FITBAND, en dat corrigeert de lezing die Sanders kop
+uitlokt.** Hij noteert "without the port ~80 Hz" naast een geldigheidsvloer, wat leest als "de poort
+telt alleen onderin". Hij verplaatst óók de NIVEAUFIT: onze gain is −6,56 dB tegen zijn −7,92
+(woofer boven) en −9,43 tegen −10,42 (onder), **1,36 en 0,99 dB** — want een 600 mm neerwaarts
+firende poort heeft orgelpijpresonanties bij 500–800 Hz, precies waar de gain gefit wordt. Vandaar
+dat `portWeight` GEEN default heeft en weigert in plaats van aan te nemen.
+
+---
+
+#### (b) WAT DE MODULE DOET, EN WAT ZIJ WEIGERT
+
+**1. Welk bestand is welk — DE DISCRIMINATOR IS AFGELEID EN NIET GETYPT.** Een gate bestaat om een
+kamerreflectie buiten te houden en kost alles onder 1/T; een nabij veld staat op 5 mm waar niets
+terugkomt, dus daar blijft ARTA's venster op de recordlengte staan. De vraag "is dit bestand
+gegate" beantwoordt het bestand dus TEGEN ZICHZELF: ligt 1/T binnen de band die het toont? Casus 1's
+ver velden lezen T = 2,521 ms → 397 Hz tegen data vanaf 20,5 Hz (**gated**); de nabije velden
+T = 993,7 ms → 1,01 Hz tegen data vanaf 5,13 Hz (**ungated**). Nergens een hertz-drempel, dus geen
+kast, driver of sessie kan hem ontgroeien. **De app WIJST DE ROLLEN NOOIT ZELF TOE:** het slot is
+het antwoord van de ontwerper, en wat de app doet is dat antwoord tegen de kop controleren en
+klagen bij tegenspraak — een `ungated` bestand is óók een groundplane of een dode kamer, en een
+bestandsnaam is een aantekening van een mens aan zichzelf (de manifest-doctrine, één laag hoger).
+Een gegate bestand in het nabij-veldslot laadt wél en zegt luid wat het is.
+
+**2. De splice-band.** De breedste band die beide grenzen toelaten: boven de eigen geldigheidsvloer
+van het ver veld, onder `SPLICE_KA_MARGIN` × ka = 1. **De vloer is die van HET BESTAND** (2/T op het
+getaperde venster, `dataFloorFromGateMs` — hetzelfde getal dat het kruispuntvenster gebruikt), niet
+`cabinetInfo.reliable.fromHz`: dat laatste is 1/gate op een kastbreed veld en leest 199 Hz waar dit
+455 leest, en de splice-band is waar niveau en vertraging GEFIT worden — daar telt de fijnstructuur,
+en dan is het bestand de autoriteit en niet het project (A3h). Gemeten in de app: woofer
+**455–576 Hz** (0,34 oct), mid **455–1107 Hz** (1,28 oct). **Sanders eigen band (500–800) reikt 224 Hz
+BOVEN 0,95 × ka = 1 op de woofer** — een ontwerpersoordeel dat de app meldt en niet overruleert, en
+een voorstel dat er stilzwijgend mee instemde zou nergens uit afgeleid zijn.
+
+**3. De poortweging.** Keele weegt elke straler met zijn diameter, en diameter en oppervlak zijn ÉÉN
+grootheid (D = 2√(S/π)), dus het veld dat het project al bewaarde blijft en de mond-oppervlakte
+staat ernaast in het blok. `gedeeld door N` heeft **geen default**: een poort tussen twee woofers
+draagt de helft van zichzelf bij aan elk — precies wat Sanders kop noteert. Nagerekend: een mond van
+74 mm tegen een conus van 180,2 mm is g 0,411, gehalveerd 0,205 — zijn `g=0.41, 50/50`. Een poort
+zonder weging wordt NIET meegesommeerd en de merge zegt dat.
+
+**4. De stapfase.** Magnitude uit `baffleStepShelfDb`, fase uit `minphase.ts` — één huis. Nagemeten
+tegen de exacte analytische cepstrum op de shelf: **0,08° verschil in de band die telt** (1,7° bij
+20 kHz, waar de merge sowieso zuiver ver veld is). Het blok noteert wat een TWEEDE-ORDE shelf
+anders zou doen, als gemeten getal en niet als proza.
+
+**5. Waar de merge geloofd mag worden.** Drie gevallen, en ze zijn niet symmetrisch. GESLOTEN: zo
+ver omlaag als het nabije veld reikt. REFLEX MET DE POORT ERIN: hetzelfde, en de reden noemt de
+poortsom — precies waarom Sanders woofers 20,5 Hz verklaren in plaats van de ~80 die hij zonder
+poort noteert. **REFLEX ZONDER POORT: ONBEKEND, en de ontwerper stelt hem.** Niet f_b en geen
+veelvoud ervan: op de afstemming staat de conus op zijn MINIMUM en draagt de poort de uitgang, dus
+de conus-alleen-fout is daar het GROOTST en valt niet af in een richting die een factor kan vangen.
+In de app: `reflex enclosure with the port NOT measured: below the tuning (f_b 31,3 Hz from the
+impedance) …`, met f_b uit de eigen impedantie van casus 1 — Sanders eigen `fb-autoriteit = ZMA
+31.3 Hz`.
+
+---
+
+#### (c) DE DRIE CONTROLES — elk toont zijn getal, falen KLEURT en blokkeert niets (F0)
+
+**Controle 1 — de twee helften over de splice-band, ±0,5 dB.** `|FF − (NF·model + niveau)|`, geoordeeld
+op p95. **En álle drie de merges in dit project falen hem**: mid p95 1,37 dB (op de band uit het blok),
+woofer_up 1,53, woofer_down 2,58 — en Sanders eigen kop noteert een splice-rest van −1,57…+1,77 dB.
+Dat is de bevinding en geen reden om het getal te verplaatsen: ±0,5 dB is een conventie die Sander
+opschreef, en geen merge in deze repo haalt hem. De test pint dat hij ook KAN slagen (een bestand
+met zichzelf gemerged leest exact nul), want anders is "faalt op alles" niet te onderscheiden van
+een controle die op false vastzit.
+
+**Controle 2 — dezelfde stap als de andere gemergede drivers op dit front.** Een baffle step hoort
+bij de KAST, dus twee drivers op één voorplaat moeten dezelfde tonen. De empirische stap van de peer
+wordt uit zijn eigen bestanden teruggewonnen — `merged − NF − de gain die zijn blok noteert`,
+1/6 octaaf gegladd — en tegen de shelf van deze merge gelegd. Dat is de vergelijking die M-1 met de
+hand deed; sinds I-2 leest `readMergeBlock` daarvoor ook `Merge splice fit`'s gain. **Twee lezingen,
+en ze zeggen iets verschillends:** tegen Sanders augustus-woofers leest de mid **1,63 dB** (zijn
+empirische stap draagt de poort en de inspeel-predictie mee), tegen de woofer die de APP een minuut
+eerder mergede **0,01 dB** — dezelfde kast, dezelfde shelf, dus nul. NIET VAN TOEPASSING is een echt
+antwoord en het gewone: een eerste merge op een kast heeft geen peer, en dan zegt de controle dat in
+plaats van leeg te slagen.
+
+**Controle 3 — de sweep is onafhankelijk en onaangeraakt.** De merge is een respons-operatie: hij
+leest geen sweep en schrijft er geen. Dat is een structureel feit, en juist daarom de moeite van het
+METEN waard — een structureel feit dat niemand meet is hoe een stille koppeling binnenkomt. M-1
+controleerde het met `git status`; hier zijn het de bytes van het bestand vóór en ná
+(`woofers_parallel__1_.zma, 13914 bytes, checksum f328626f`).
+
+---
+
+#### (d) HET BESTAND, EN WAAROM HET EEN BESTAND IS
+
+Vanaf het moment dat het bestaat is de gemergede respons een gewone meting met een gestelde
+geldigheid, en leest élk venster, anker en poort hem via het pad dat P-1 al bouwde. **Geen regel
+nieuwe leidingen.** Het blok draagt de bronnen, het FF-venster, de splice-band, de fit, het
+stapmodel mét zijn kastafleiding en zijn modelgevoeligheid, het poortmodel, `Valid from`/`Valid to`
+en de vloerreden. **De DATUM en het MODEL-gevalideerd-merk staan IN `Merge status`** en niet in een
+eigen veld: een veld dat geen parser leest is decoratie.
+
+**Het gemergede bestand overschrijft niets.** Het wordt de respons van de tak; het ver veld waaruit
+het gebouwd is verhuist naar het slot naast het nabije veld, reist mee in het project, en
+"undo merge" zet het terug. Een HERMERGE leest datzelfde bewaarde ver veld — zonder dat zou
+"merge near field again" de merge op de MERGE stapelen, met een tweede stapmodel en een tweede
+niveaufit op een curve die er al een draagt.
+
+**En de live splice wordt niet nog eens gedraaid.** De memo slaat een respons over die zelf een
+merge verklaart. Tot I-2 kon dat niet botsen (niets kon een gemerged bestand laden mét een nabij
+veld in het slot); accepteren doet precies dat, want de ingrediënten blijven met opzet staan.
+
+**Handmatige controle, in de draaiende app** (casus-1-bronbestanden door de echte invoervelden,
+headless Chrome): woofer en mid gemerged, de drie controles afgelezen, geaccepteerd. **Het venster
+opent**: `low → mid` gaat van `396,7–2051,6 Hz · floor: 396,7 Hz — validity` naar
+**`124,3–2051,6 Hz · floor: 124,3 Hz — fs`** — de geldigheidsvloer bindt niet meer en k·f_s van de
+mid neemt het over. Dat is exact wat M-1 met zijn gemergede set bereikte, nu vanuit de app.
+
+---
+
+#### (e) HET OPEN PUNT, EN HET IS HET BELANGRIJKSTE VAN DEZE ENTRY
+
+**DE APP HEEFT NU TWEE MERGE-PADEN VOOR DEZELFDE TAK, EN HET OUDE VUURT NOG STEEDS OP HET MOMENT
+VAN LADEN.** Zodra een nabij veld in het slot staat draagt de respons van die tak al een splice die
+de ontwerper niet gevraagd heeft — geen bestand, niet gecontroleerd, niet te accepteren. Gemeten op
+casus 1, met dezelfde twee bestanden en dezelfde kast:
+
+| | `low → mid`-venster |
+| --- | --- |
+| mid LIVE gespliced (500 Hz, blend 1 oct) | **LEEG** — geen enkele kruisfrequentie toegestaan |
+| mid GEMERGED (455–1107 Hz, geaccepteerd) | **124,3–2051,6 Hz** |
+
+Twee mechanismen, twee antwoorden, en één ervan is leeg. De regel is sinds I-2 als zodanig
+GELABELD in het paneel (`live preview, not a file: …`), en dat is alles wat deze sessie eraan doet:
+het live pad intrekken verandert het gedrag van élk project dat een nabij veld draagt en raakt
+`sourceMeta`, `dataFloorOf` en de grafieken. **Het hoort te verdwijnen ten gunste van het
+expliciete pad** — dat is werk voor een eigen sessie, mét de toggle- en byte-regressies ernaast.
+
+Twee kleinere, benoemd en niet gerepareerd: de merge draait op het RASTER van het ver veld, dus
+nabij-veldpunten daaronder worden niet meegedragen (op casus 1 twee octaven, 5,1 → 20,5 Hz — de
+merge zegt het met het getal erbij); en een dipool (`open`) valt in `unknown` in plaats van in een
+eigen geval, want de conus alleen is daar ook niet het systeem en de reden is cancellatie in plaats
+van een poort — deze ronde heeft dat niet gemeten.
+
+---
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

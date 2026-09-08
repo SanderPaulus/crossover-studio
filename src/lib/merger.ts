@@ -79,8 +79,16 @@ const C_MM_PER_S = C_AIR * 1000;
  */
 export const SPLICE_KA_MARGIN = 0.95;
 
-/** Below this the gain fit has too few points to mean much. */
-const THIN_WINDOW_OCT = 0.2;
+/**
+ * Below this the gain fit has too few points to mean much.
+ *
+ * EXPORTED SINCE I-2, and that is the whole reason it is not a local constant
+ * any more: `nfMerge.ts` asks the same question of the same physics when it
+ * proposes a splice band, and two copies of one number is the divergence this
+ * tree removes rather than detects.
+ */
+export const THIN_SPLICE_OCT = 0.2;
+const THIN_WINDOW_OCT = THIN_SPLICE_OCT;
 
 /* ------------------------------------------------------------------ *
  * Inputs

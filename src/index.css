@@ -3090,6 +3090,57 @@ button:disabled {
   font-size: 0.82rem;
 }
 
+/* I-2 — the merge preview: what a merge WOULD write, and the three checks,
+   before it counts. Full width inside the slot because it is a thing to read
+   rather than a control to reach for, and every line of it is a sentence. */
+.nf-merge-preview {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  margin-top: 0.3rem;
+  background: var(--panel);
+}
+.nf-merge-preview > strong,
+.nf-merge-preview > .derived {
+  flex-basis: 100%;
+}
+.nf-checks {
+  flex-basis: 100%;
+  margin: 0.2rem 0 0.3rem;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.nf-checks > li .derived {
+  display: block;
+}
+.nf-check-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+/* A failing check COLOURS and blocks nothing: each of the three can fail for a
+   reason the designer knows and the app does not (F0). So the colours are the
+   ones this app already uses for "look at this", never for "you may not". */
+.nf-check-ok > .nf-check-title {
+  color: var(--ok, inherit);
+}
+.nf-check-bad > .nf-check-title {
+  color: var(--warn, inherit);
+}
+.nf-check-na > .nf-check-title {
+  opacity: 0.7;
+}
+.nf-check-reading {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+}
+
 /* Each driver is its OWN card (Sanders): the house card idiom (border +
    radius + title bar, like .cab-card), plus a 3px accent in the colour the
    driver's curve wears in every chart — one identity across the app. */
