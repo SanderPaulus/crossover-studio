@@ -186,6 +186,12 @@ import {
   rowsOfClass,
   v1NoteFor,
 } from './lib/v2InputRegister.ts';
+import {
+  V1_FIELD_DEFAULTS,
+  describeV1Carryover,
+  v1CarryoverOf,
+  type V1CarryoverInput,
+} from './lib/v1Carryover.ts';
 /* I-3 — THE GUIDED ROUTE ON ENGINE v2. The register's sentences, asked one at
  * a time: the stage list the step bar walks, the fifteen requirement screens
  * in register order, what skipping each one costs, and the measured cost of
@@ -1947,7 +1953,25 @@ export default function App() {
   // the report has to be able to show it. Moved rather than duplicated — the
   // same number in two places is how the two come to disagree.
 
-  const [engineV2Enabled, setEngineV2Enabled] = useState(false);
+  /**
+   * U-1 — THE FLAG IS ON, AND THE INTERFACE NO LONGER OFFERS THE CHOICE.
+   *
+   * Engine v2 is the only route a designer can start since U-1: the checkbox
+   * that used to sit under "Engine" is gone, `applyProject` opens every file on
+   * v2 whatever it was saved on, and nothing in the visible UI writes `false`
+   * here any more.
+   *
+   * THE FLAG ITSELF IS NOT GONE, and that is deliberate rather than left over.
+   * `selectEngine` is still the one boundary between the two engines, the v1
+   * branches on the far side of it are still compiled and still tested, and
+   * `toggleRegression.test.ts` still proves the invariant by choosing `false`
+   * programmatically. What U-1 removed is a ROUTE THROUGH THE INTERFACE, not a
+   * capability: `setEngineV2Enabled` is still here, and a test or a console can
+   * still reach it. A flag nobody can flip from the screen is not the same
+   * thing as a flag that no longer exists, and the difference is what keeps the
+   * byte-identical v1 reference run meaningful.
+   */
+  const [engineV2Enabled, setEngineV2Enabled] = useState(true);
   /**
    * The v2 project settings. EMPTY = ABSENT, everywhere and always (P4): the
    * metric that needs it stays off, the gate that needs it is not judging, the
@@ -2302,10 +2326,10 @@ export default function App() {
    *  'auto' = free enumeration over the alignment library. In 3-way this is
    *  the HIGH (mid-tweeter) crossing — same convention as acSlopeMid/Tweeter,
    *  which have always meant the top pair. */
-  const [hpLpPref, setHpLpPref] = useState('auto');
+  const [hpLpPref, setHpLpPref] = useState(V1_FIELD_DEFAULTS.hpLpPref);
   /** 3-way: alignment preference for the LOW (woofer-mid) crossing. Two
    *  handovers are two independent foundations to choose. */
-  const [hpLpPrefLow, setHpLpPrefLow] = useState('auto');
+  const [hpLpPrefLow, setHpLpPrefLow] = useState(V1_FIELD_DEFAULTS.hpLpPrefLow);
   /** 3-way scan: candidate steps PER CROSSING (1/2/3 → 1/4/9 full chains).
    *  Independent of the crossover pin — every candidate is caged in its own
    *  slice either way, so "how many" is always a meaningful cost knob. */
@@ -2360,7 +2384,7 @@ export default function App() {
   const [xmaxMm, setXmaxMm] = useState<Record<BranchRole, string>>({ low: '', mid: '', high: '' });
   /** The SPL the excursion floor is computed FOR — a 1" dome is fine to 587 Hz
    *  at 90 dB and only to 829 Hz at 96 dB, and that is the whole point. */
-  const [excursionSpl, setExcursionSpl] = useState('96');
+  const [excursionSpl, setExcursionSpl] = useState(V1_FIELD_DEFAULTS.excursionSpl);
   /** Mid nominal size (inch) — sets the crossover CEILING via cone beaming
    *  (f ≈ c/π·d_eff; a MID property, per Gemini's window rules). '' = unknown
    *  → the free band falls back to the tweeter-anchored ceiling. */
@@ -7185,6 +7209,20 @@ export default function App() {
     URL.revokeObjectURL(a.href);
   };
   const [persistNote, setPersistNote] = useState<string | null>(null);
+  /**
+   * U-1 — THE ONE-TIME NOTICE THAT A PROJECT CARRIES v1 SETTINGS.
+   *
+   * Set by `applyProject` (so a file open and an autosave restore behave the
+   * same, because they are the same function) and cleared by the reader. It is
+   * a SENTENCE and not a state machine: nothing acts on it, no run reads it,
+   * and dismissing it changes no value in the project.
+   */
+  const [v1CarryNote, setV1CarryNote] = useState<string | null>(null);
+  /** What this file carries that engine v2 does not read, or null. */
+  const describeCarryover = (d: V1CarryoverInput): string | null => {
+    const c = v1CarryoverOf(d);
+    return c ? describeV1Carryover(c) : null;
+  };
 
   function snapshot(): ProjectState {
     const zByRole: NonNullable<ProjectState['zByRole']> = {};
@@ -7453,10 +7491,21 @@ export default function App() {
     // d.vfCutOnly is ignored: the tool is passive-only, cut-only is not optional.
     setCatalogSnap(d.catalogSnap ?? true);
     setBreakupGuard(d.breakupGuard ?? true);
-    // Absent means OFF, and it always will: the experimental engine is an
-    // opt-in, so a project that never mentions it must open exactly as it did
-    // before the flag existed.
-    setEngineV2Enabled(d.engineV2Enabled === true);
+    /* U-1 — EVERY PROJECT OPENS ON v2, whatever it was saved on. Until U-1 the
+     * line below read `d.engineV2Enabled === true`, because the engine was an
+     * opt-in and a file that never mentioned it had to open exactly as it did
+     * before the flag existed. There is nothing left to opt into: the interface
+     * offers one engine, so a file that says v1 would otherwise open into a
+     * route no button can start.
+     *
+     * NOTHING IS MIGRATED. The v1 fields the file carries are restored below
+     * exactly as they were written and saved back the same way; what the file
+     * carried that this route does not read is SAID, once, on the panel it was
+     * opened from (`v1Carryover.ts`). Converting a v1 setting into a v2
+     * requirement would be the app guessing what the designer meant, and the
+     * whole point of P4 is that it does not. */
+    setEngineV2Enabled(true);
+    setV1CarryNote(describeCarryover(d));
     /* E-2 — one restore for the whole block (`v2Settings.ts`): every key
      * present, unknown keys dropped, an absent block = every field EMPTY —
      * which is what "not stated" means (P4) — and the dates the file carried
@@ -7490,8 +7539,8 @@ export default function App() {
       setXoFreqHz(V1_PIN_DEFAULTS_LEGACY.highFreqHz);
       setXoMarginHz(V1_PIN_DEFAULTS_LEGACY.highMarginHz);
     }
-    setHpLpPref(d.hpLpPref ?? 'auto');
-    setHpLpPrefLow(d.hpLpPrefLow ?? 'auto');
+    setHpLpPref(d.hpLpPref ?? V1_FIELD_DEFAULTS.hpLpPref);
+    setHpLpPrefLow(d.hpLpPrefLow ?? V1_FIELD_DEFAULTS.hpLpPrefLow);
     setPhaseMetricMode(d.phaseMetric ?? 'band');
     setAcSlopeMid(d.acSlopeMid ?? '24');
     setAcSlopeTweeter(d.acSlopeTweeter ?? '12');
@@ -7509,7 +7558,7 @@ export default function App() {
     setBreakupHarmonic(d.breakupHarmonic ?? '3');
     setSdCm2({ low: d.sdCm2?.low ?? '', mid: d.sdCm2?.mid ?? '', high: d.sdCm2?.high ?? '' });
     setXmaxMm({ low: d.xmaxMm?.low ?? '', mid: d.xmaxMm?.mid ?? '', high: d.xmaxMm?.high ?? '' });
-    setExcursionSpl(d.excursionSpl ?? '96');
+    setExcursionSpl(d.excursionSpl ?? V1_FIELD_DEFAULTS.excursionSpl);
     setSnapProfile(d.snapProfile ?? 'auto');
     setSnapSeriesL(d.snapSeriesL ?? 'auto');
     setSnapSeriesC(d.snapSeriesC ?? 'auto');
@@ -16152,6 +16201,21 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* U-1 — SAID ONCE, WHERE THE FILE WAS OPENED. A project written before
+            U-1 could be saved on v1 and could hold controls this route does not
+            read; nothing about it is migrated or wiped, so the only honest move
+            is to name what it carries and leave it alone. Dismissing changes no
+            value — see `v1Carryover.ts`. */}
+        {v1CarryNote && (
+          <div className="verdict mismatch" style={{ margin: '0.6rem 0' }}>
+            <strong>{t('This project carries v1 settings')}</strong> — {v1CarryNote}
+            <div className="row" style={{ marginTop: '0.4rem' }}>
+              <button type="button" onClick={() => setV1CarryNote(null)}>
+                {t('Got it')}
+              </button>
+            </div>
+          </div>
+        )}
         {persistNote && <p className="filenames">{persistNote} · {t('autosaves locally on every change')}</p>}
         {vxpNote && <p className="filenames">{vxpNote}</p>}
         {/* One banner for parse failures AND content warnings — the old
@@ -17858,14 +17922,20 @@ export default function App() {
                   {t('Keep cone breakup ≥20 dB down')}
                 </label>
                 <span className="opt-group-cap">{t('Engine')}</span>
-                <label title={t('Engine v2 (experimental) — spec F1/F2. Switches on the measurement-ingest pass, the metric library, the pre-design blocks AND the hard gates: M-A dissipation, M-B EPDR beside the plain |Z| floor, M-C drive on a driver’s resonance. Turning it on arms no limit by itself — every gate and every budget below is blank until you state one. With it off the app behaves exactly as it always has.')}>
-                  <input
-                    type="checkbox"
-                    checked={engineV2Enabled}
-                    onChange={(e) => setEngineV2Enabled(e.target.checked)}
-                  />{' '}
-                  {t('Engine v2 (experimental) — metrics + hard gates')}
-                </label>
+                {/* ---- U-1: ONE ENGINE, AND NO SWITCH ---------------------------------
+                  * The checkbox that stood here until U-1 let a designer put the app
+                  * back on the v1 optimiser. It is gone, not disabled: a control that
+                  * cannot be operated still reads as a choice, and there is no choice
+                  * left to make. What replaces it is a STATEMENT — which engine runs,
+                  * and what that means for the v1 controls further up this panel.
+                  *
+                  * The v1 engine itself is untouched on the far side of `selectEngine`,
+                  * and `toggleRegression.test.ts` still turns the flag off in code to
+                  * prove the byte-identical reference run. See the note on the
+                  * `engineV2Enabled` state for why the flag survives its own switch. */}
+                <span className="derived" style={{ flexBasis: '100%' }}>
+                  {t('Engine v2 runs every optimisation: the measurement-ingest pass, the metric library, the pre-design blocks and the hard gates (M-A dissipation, M-B EPDR beside the plain |Z| floor, M-C drive on a driver’s resonance). It arms no limit by itself — every gate and every budget below is blank until you state one.')}
+                </span>
                 {engineV2Enabled && (
                   <>
                     {/* ---- I-1: THE PANEL IS ORDERED BY WHAT A FIELD DOES ----------------
@@ -18413,23 +18483,20 @@ export default function App() {
                         <option value="full">{t('full — every window edge to edge, every admitted order')}</option>
                       </select>
                     </label>
-                    {/* I-1 — THE v1 CONTROLS, COLLAPSED AND NAMED. Not removed and not
-                      * moved: every one of them still steers a v1 run from where it has
-                      * always been, and each carries a note beside itself on this route.
-                      * What this drawer adds is the LIST — so a designer who wonders why a
-                      * knob does nothing finds the answer here instead of in a run that
-                      * ignored it. */}
-                    <details className="v2-legacy" style={{ flexBasis: '100%' }}>
-                      <summary>{V2_CLASS_HEADING['v1-legacy']}</summary>
-                      <ul className="v2-need">
-                        {rowsOfClass('v1-legacy').map((r) => (
-                          <li key={r.id} title={r.travels}>
-                            <strong>{r.label}</strong> — <span className="v2-muted">{r.form}</span>
-                            <span className="v2-empty"> · {r.v1Note}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+                    {/* U-1 — THE v1 DRAWER IS GONE FROM THE PANEL, and its work moved
+                      * one step closer to the question. I-1 put the five v1 controls in a
+                      * collapsed list here so a designer who wondered why a knob did
+                      * nothing found the answer somewhere. With one engine left there is
+                      * no v1 run to steer at all, and a heading that offers "v1" reads as
+                      * a route — which is precisely what U-1 removed.
+                      *
+                      * WHAT DID NOT GO: the controls themselves and the badge each of
+                      * them carries. `v1Legacy(id)` still marks every one of them in
+                      * place, with the register's own sentence in its tooltip, so the
+                      * answer now sits ON the knob rather than in a list beside it. The
+                      * register still holds the class, and its rows are still read — by
+                      * the badge and by the project notice — so nothing about I-1's
+                      * inventory was lost, only its second rendering. */}
                   </>
                 )}
                 <span className="opt-group-cap">{t('Components')}</span>

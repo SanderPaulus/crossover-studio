@@ -24,11 +24,14 @@ waar klassieke tools zoals VituixCAD minimum-fase reconstrueren.
 - Je werk wordt automatisch lokaal in je browser bewaard (er gaat niets naar een
   server). Wil je een ontwerp delen of feedback geven? Gebruik **Save project**
   op de Project-tab en stuur het bestand mee.
-- **Engine v2 is experimenteel en staat standaard uit.** Aanzetten kan onder
-  **⚙ Settings** op de Filters-tab ("Engine v2 (experimental) — metrics + hard
-  gates"). Met de schakelaar uit gedraagt de app zich exact zoals altijd; met
-  de schakelaar aan verschijnen de eisenvelden, en die zijn allemaal leeg:
-  een eis die je niet stelt wordt niet beoordeeld, en de app zegt dat ook.
+- **Engine v2 draait elke optimalisatie, en er valt niets meer aan of uit te
+  zetten** (sinds sessie U-1). Het vinkje dat de app op de oude v1-optimizer kon
+  terugzetten is verdwenen; de v1-motor zelf bestaat nog onder water, maar geen
+  knop in de interface leidt er nog naartoe. De eisenvelden onder **⚙ Settings**
+  op de Filters-tab zijn allemaal leeg, en dat blijft de regel: een eis die je
+  niet stelt wordt niet beoordeeld, en de app zegt dat ook. Een project dat je
+  vóór U-1 hebt bewaard opent gewoon; wat het aan v1-instellingen draagt blijft
+  er ongewijzigd in staan, en de app zegt één keer welke dat zijn.
 
 ## Wat kan het?
 

@@ -48,6 +48,14 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-1 (09-09-2026) gemeten op 452 s — 167 bestanden (166 geslaagd, 1 overgeslagen), 2020 tests
+    (2017 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
+    dev-server en de headless Chrome gestopt.** +1 BESTAND (`v1Carryover.test.ts`, 16 claims) en
+    +16 tests, en die twee getallen zijn HETZELFDE getal: het corpus is niet geregenereerd, dus geen
+    enkele `it.each` over het levende corpus beweegt, en de twee herschreven I-1-claims in
+    `v2InputRegister.test.ts` zijn een herformulering en geen telling (18 vóór en ná). GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 452 tegen B-1's 461 s is dezelfde laag op
+    dezelfde machine.
     **Ná B-1 (09-09-2026) gemeten op 461 s — 166 bestanden (165 geslaagd, 1 overgeslagen), 2004 tests
     (2001 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 BESTAND
     (`ingest/motionalModel.test.ts`, 20 claims) en +22 tests, en die twee getallen sluiten exact: die
@@ -313,7 +321,16 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 08-09-2026 (I-2): 164 bestanden, 1944 tests, 1557 s
+- `npx vitest run` — volledige testsuite. **GEMETEN 09-09-2026 (U-1): 167 bestanden, 2020 tests,
+  1525 s (25 min 25), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle
+  laag en ná de browsercontrole (dev-server en headless Chrome gestopt).** +1 bestand
+  (`v1Carryover.test.ts`, 16 claims) en +16 tests — hetzelfde getal, want het corpus is niet
+  geregenereerd. **Wat deze run bewijst is precies dat U-1 niets van de zoektocht raakt:** de DRIE
+  live ketenruns reproduceren op hun onveranderde corpora (casus 1 in 1518 s, de verwerping 889 s,
+  casus 1b 302 s), beide byte-baselines (`f4cRegression` 96 s, `workerRouteRegression` 99 s)
+  reproduceren, en `toggleRegression` staat — die laatste rendert `App.tsx` niet, dus de invariant
+  is per constructie ongemoeid gebleven en dat is nagemeten in plaats van beredeneerd.
+  (De stand ervoor: **GEMETEN 08-09-2026 (I-2): 164 bestanden, 1944 tests, 1557 s
   (25 min 57), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de browsercontrole
   (dev-server en headless Chrome gestopt) en ná de snelle laag.** +1 bestand (`nfMerge.test.ts`, 56 claims)
   en +56 tests — hetzelfde getal, want het corpus is niet geregenereerd. **Wat deze run bewijst is precies
@@ -321,7 +338,7 @@
   (casus 1 in 1550 s, casus 1b 305 s, de verwerping 892 s), beide byte-baselines (`f4cRegression`,
   `workerRouteRegression`) reproduceren, en casus 2's acceptatie ook. De ENE ingreep die iets buiten de
   nieuwe module raakt is de v1-merge-blok-lezer, die er een VELD bij kreeg (`spliceGainDb`) zonder dat een
-  bestaand veld beweegt — `xoWindow.test.ts` en `sourceMeta.test.ts` staan.
+  bestaand veld beweegt — `xoWindow.test.ts` en `sourceMeta.test.ts` staan.)
   (De stand ervoor: **GEMETEN 08-09-2026 (C-2): 162 bestanden, 1870 tests, 1557 s
   (25 min 57), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle laag en NOOIT
   ernaast.** +2 bestanden en +23 tests (zie de `test:fast`-regel; de telling sluit alleen mét de corpusgrootte
@@ -2749,6 +2766,70 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   het zegt het zelf" leeft nu alleen in `derivation` en in de reden-zin, niet in het type. Benoemd, niet
   gerepareerd: een nieuwe `DataSource` raakt `DATA_SOURCE_LABEL`, `describeSources` en het projectbestand, en dat
   is geen bugfix meer.
+
+### U-1-guards (v1 verdwijnt uit de UI; de vlag blijft, programmatisch; alleen UI)
+- **`engineV2Enabled` STAAT SINDS U-1 AAN EN IS NIET MEER BEDIENBAAR VANUIT DE INTERFACE**
+  (`App.tsx:1974` `useState(true)`, `App.tsx:7507` `applyProject` opent élk bestand op v2). De
+  checkbox onder "Engine" is WEG — niet `disabled`, want een uitgezet vinkje leest nog steeds als
+  een keuze — en er staat een zin voor in de plaats die zegt welke motor draait. **Geen v1-code
+  verwijderd:** de v1-guided-wandeling (`!engineV2Enabled`), `guidedStages`, `runChain3Scan` en
+  `runChainScan` staan er nog en zijn onbereikbaar omdat hun guard nooit meer waar wordt. De
+  volledige inventaris — élke plek waar de UI v1 toonde, met regelnummers vóór en ná en met
+  weg/blijft-intern/blijft-als-referentie per rij — staat in casusboek U-1.
+- **DE VLAG BESTAAT NOG, EN DAT IS DE ACCEPTATIE ZELF.** `toggleRegression.test.ts` bewijst de
+  invariant door `false` te KIEZEN: een referentie-optimalisatierun byte-voor-byte met en zonder de
+  v2-modules in de graaf, plus de importscan. Een vlag die niemand vanaf het scherm kan omzetten is
+  niet hetzelfde als een vlag die niet meer bestaat, en het verschil is wat die byte-identieke run
+  een uitspraak over DEZE app houdt in plaats van over een verwijderde tak. `selectEngine` en
+  `ENGINE_V1_ONLY` (`engine2/facade.ts`) zijn ONAANGERAAKT; `setEngineV2Enabled` heeft precies één
+  aanroeper.
+- **WAT ALS REFERENTIE BLIJFT, met naam:** de v1-RANGLIJST naast de shortlist ("v1 reading — not
+  the route that made this run", `App.tsx:19753`), de per-rij v1-noot ("v1 note (not applied on
+  this route)", `App.tsx:19873`) en de lege-shortlist-zin ("the v1 ranking below has no knowledge
+  of your gates", `App.tsx:19620`). Vergelijkingen, geen routes; alle drie zeggen zelf dat zij
+  niets beslissen — de zinnen die UI-1 schreef toen de bovenste rij wél geladen werd. De vijf
+  v1-knoppen blijven óók staan, mét hun I-1-badge (`App.tsx:17576, 17715, 17731, 17897, 18540`,
+  plus `designLevelNote` op 18871): zij zijn niet dood, want `bomCapEur` ordent die leestabel nog.
+- `src/lib/v1Carryover.ts` + `v1Carryover.test.ts` (16 claims, nieuw) — **wat een oud project
+  draagt dat de v2-route niet leest, als zuivere functie, en er gebeurt niets mee.** Twee helften,
+  allebei FEITEN OVER HET BESTAND: het bestand zegt dat het op v1 bewaard is (`engineV2Enabled`
+  afwezig of `false` — afwezig en false zijn hier één ding, precies zoals `selectEngine` ze leest),
+  of een v1-knop staat op iets anders dan de startwaarde van de app. **Niets gemigreerd, niets
+  omgezet, niets gewist:** de velden worden hersteld zoals zij geschreven zijn en zo weer
+  opgeslagen, en de melding staat één keer op het paneel waar het bestand geopend is
+  (`App.tsx:16209`). **Drie van de vijf v1-knoppen zitten in het projectbestand, twee niet**
+  (`errorSmoothOct`, `scan3Mode` en `bomCapEur` leven in `localStorage`), en de test noemt dat gat
+  als claim zodat een latere sessie die er één verhuist hier langskomt.
+  **`V1_FIELD_DEFAULTS` is één huis met drie lezers** — drie `useState`-initialisatoren en drie
+  `??`-terugvallen in `App.tsx` — want een vierde kopie is hoe "onveranderd" en "gedragen" het
+  oneens raken over hetzelfde project. De LABELS komen uit het register (I-1) en worden nergens
+  overgetypt; de twee sleutels die één registerrij delen krijgen een DISCRIMINATOR ("high
+  crossing" / "low crossing") en geen tweede label.
+  **De UI-helft is een BRONSCAN op `App.tsx`** (het UI-1-idioom: een functietest kan niet zeggen of
+  de app een control RENDERT), en de twee claims trekken met opzet tegen elkaar in — geen route
+  door de zichtbare UI bereikt v1, én de v1-motor is er nog en is nog bereikbaar in code. Bewijs
+  alleen de eerste en een latere sessie gooit de tak weg waartegen `toggleRegression` vergelijkt;
+  bewijs alleen de tweede en het vinkje kruipt terug. Elke scan is tegen een opzettelijke breuk
+  gemeten vóórdat hij opgeschreven is (vinkje terug 2 rood, oude laadregel terug 2 rood, literale
+  default terug 1 rood, guarded v1-tak eruit 1 rood).
+- `src/lib/v2InputRegister.test.ts` — twee I-1-claims van vorm veranderd zonder van claim te
+  veranderen. De koppen-in-volgorde-claim telt er DRIE in plaats van vier (de vierde was de kop van
+  de v1-lade, en een kop die "v1" aanbiedt IS een route); de lade-claim is omgekeerd — de lade is
+  weg én élke v1-knop draagt nog zijn badge. Beide helften moeten er staan: de lade laten vallen
+  zonder de badges verliest het antwoord op "waarom doet deze knop niets", en allebei houden zet de
+  kop terug die dit bestand net gestopt is te verwachten.
+- **ONGEWIJZIGD EN GROEN, en dát is de acceptatie die telt:** `toggleRegression`, `p6Lint` (beide
+  scopes), `ciLayer`, `v2Guided`, `v2Settings`, `selection`, `browserSafe`, `noAppWideFloor`.
+- **HANDMATIGE CONTROLE (headless Chrome op de dev-server, 09-09-2026).** Verse localStorage:
+  guided opent met ZES stappen inclusief "What it must meet". Expert → Filters → ⚙ Settings: nul
+  engine-checkboxen, nul `details.v2-legacy`, nul koppen die met "v1 " beginnen, drie
+  `Engine v2 — n.`-koppen, en zes v1-badges nog op hun knoppen. Een project met
+  `engineV2Enabled: false`, `hpLpPrefLow: 'LR4'` en `excursionSpl: '90'` opent met de melding die
+  beide velden bij naam noemt; "Got it" laat hem verdwijnen, een tabwissel brengt hem niet terug,
+  en de twee waarden staan daarna nog ONGEWIJZIGD in het formulier. De demobundel-verkenning loopt
+  door de v2-route en is uitgedraaid: zes kandidaten (2 × 3, het E-2-veld), 902 s, ZES VAN ZES
+  gekwalificeerd, met de veldregel "Exploration field — 6 of 15 derived candidates" onder de
+  shortlist.
 
 ### I-1-guards (elke invoer gelabeld; het paneel geordend op die labels; alleen UI/ordening)
 - `src/lib/v2InputRegister.ts` — **het REGISTER: élke invoer die de v2-route kan bereiken, gefiled onder EXACT

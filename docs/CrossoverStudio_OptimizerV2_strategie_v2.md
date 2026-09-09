@@ -8447,6 +8447,165 @@ verderop: een gesteld getal is exact, een gefit getal is dat niet.
 
 ---
 
+### U-1 — v1 verdwijnt uit de UI: engine v2 is de enige zichtbare route (09-09-2026, alleen UI; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding.** De v2-motor draagt sinds F1 alles wat deze app onderscheidt — de ingest-pas, de
+metriekbibliotheek, de pre-design-blokken, de harde poorten, het kandidaatveld, de shortlist — en
+zat al die tijd achter een vinkje dat standaard UIT stond. Dat was juist zolang v2 experimenteel
+was: de toggle-invariant belooft dat de app met de vlag uit byte-identiek is, en een opt-in die
+zichzelf aanzet is geen opt-in. Sinds I-1, I-3 en E-2 is de verhouding omgedraaid. Het expertpaneel
+is geordend op wat een v2-invoer DOET, guided vraagt de eisen één voor één, de verkenning is de
+standaardrun — en daarnaast stond een vinkje dat dat alles in één klik kon uitzetten, plus een
+tweede wandeling, een tweede optimalisatieroute en een lade met knoppen die "v1" heet. **Twee
+routes door één interface is niet twee keuzes maar twee apps**, en de tweede krijgt geen enkele van
+de guards die de eerste sinds F2 draagt.
+
+**Wat er gebouwd is.** Eén nieuw bestand (`src/lib/v1Carryover.ts`), één nieuw testbestand (16
+claims), drie regels in `App.tsx` die de vlag aanzetten en hem daar houden, en twee stukken JSX weg.
+**Geen v1-code verwijderd, geen test verwijderd, geen enkel getal in `golden_refs_casus1.json`
+aangeraakt.** De twee byte-baselines (`f4cRegression`, `workerRouteRegression`) en
+`toggleRegression` staan, ongewijzigd.
+
+---
+
+#### 1 — DE INVENTARIS, EN ZIJ IS DE HELFT VAN DE SESSIE
+
+Vóór er iets verdween is élke plek geteld waar de interface v1 toonde of aanbood. Regelnummers
+links zijn die van `fd12db1` (HEAD vóór U-1), rechts die van de commit.
+
+| element | vóór | wat ermee gebeurde |
+| --- | --- | --- |
+| De engine-schakelaar (checkbox "Engine v2 (experimental) — metrics + hard gates") | `App.tsx:17861-17869` | **WEG.** Vervangen door een ZIN die zegt welke motor draait (`App.tsx:17925`). Niet `disabled`: een uitgezet vinkje leest nog steeds als een keuze. |
+| De ingeklapte v1-erfgoedlade (`<details className="v2-legacy">`, I-1) | `App.tsx:18422-18436` | **WEG uit de weergave** (`App.tsx:18486`). De KLASSE blijft in het register en de badges blijven op de knoppen: het antwoord verhuist van een lijst ernaast naar de knop zelf. |
+| De v1-guided-wandeling (vijf stappen + de "nine complete designs"-zin) | `App.tsx:17149-17155` | **BLIJFT INTERN.** Staat achter `!engineV2Enabled` en rendert dus nooit meer; de tak is niet verwijderd, want de toggle-invariant moet hem kunnen renderen. Gepind in `v1Carryover.test.ts` én `v2Guided.test.ts`. |
+| `guidedStages(engineV2Enabled)` — vijf stappen op v1, zes op v2 | `App.tsx:13189, 15281, 20462` | **BLIJFT INTERN**, ongewijzigd. Met de vlag aan is de wandeling de zes van I-3. |
+| De v1-Optimize-route (`runChain3Scan`, `runChainScan`) | `App.tsx:8387, 9616` | **BLIJFT INTERN.** Beide takken hangen aan `engineSelection.optimizer === 'v2'` (`App.tsx:7737, 9111`) en zijn onbereikbaar zodra de vlag aan staat. Geen regel routeringslogica aangeraakt. |
+| De vijf v1-knoppen met hun badge (`errorSmoothOct`, `hpLpPref` ×2, `bomCapEur`, `scan3Mode`) | `App.tsx:17512, 17651, 17667, 17833, 18473` | **BLIJVEN**, mét badge (`App.tsx:17576, 17715, 17731, 17897, 18540`). Zij zijn niet dood: `bomCapEur` ordent nog steeds de v1-leestabel onder de shortlist. |
+| "Design for … dB" met `designLevelNote` | `App.tsx:18804` | **BLIJFT**, mét badge (`App.tsx:18871`) — de E-2-markering, ongewijzigd. |
+| De v1-RANGLIJST naast de shortlist ("v1 reading — not the route that made this run") | `App.tsx:19686` | **BLIJFT ALS REFERENTIE** (`App.tsx:19753`). Een vergelijking, geen route; zij kroont niets sinds UI-1. |
+| De per-rij v1-noot ("v1 note (not applied on this route)") | `App.tsx:19806` | **BLIJFT ALS REFERENTIE** (`App.tsx:19873`). |
+| De lege-shortlist-zin ("the v1 ranking below has no knowledge of your gates") | `App.tsx:19553` | **BLIJFT ALS REFERENTIE** (`App.tsx:19620`) — de zin die UI-1 schreef toen de ranglijst wél geladen werd. |
+| "Engine v2 is on, but this scan ran on the v1 engine" | `App.tsx:19904` | **BLIJFT** (`App.tsx:19971`): hij beschrijft een scan die vóór U-1 gemaakt is en nog in beeld staat. |
+| `selectEngine` / `ENGINE_V1_ONLY` (`engine2/facade.ts`) | — | **ONAANGERAAKT.** De grens tussen de twee motoren is waar de invariant woont; U-1 komt er niet aan. |
+
+**Wat de vlag leest, en wat "aan" al verborg.** `engineV2Enabled` heeft drie soorten lezers en zij
+doen verschillende dingen. (i) `selectEngine` maakt er een SELECTIE van, die de optimizer-route én
+de rapportagelaag stuurt — 18 leesplekken in `App.tsx` (5 × `.optimizer`, 9 × `.reporting`, 2 ×
+`.label`, 2 × `.version`). (ii) De UI-guards die een OPPERVLAK tonen of verbergen: het
+A5a-meetformulier, de vensterannotatie, de F3c-gladdingsregel, het eisen-scherm van I-3, de zesde
+guided-stap, de drie v2-groepen van het instellingenpaneel. (iii) De drie NOOT-functies
+(`v1NoteFor`, `designLevelNote`, `guidedEngineNote`), die op v1 `null` teruggeven omdat de
+invariant ook de woorden op een tooltip dekt. **U-1 raakt geen van drieën.** Het zet de vlag aan en
+haalt de enige plek weg die hem kon uitzetten — de rest van de app merkt er niets van, en dat is
+precies waarom een façade in F1 de goede vorm was.
+
+---
+
+#### 2 — DE VLAG BLIJFT, EN DAT IS GEEN OVERBLIJFSEL
+
+`useState(false)` wordt `useState(true)` (`App.tsx:1974`) en `applyProject` opent élk bestand op v2
+(`App.tsx:7507`). Wat NIET gebeurt is de vlag opruimen, en de reden is de acceptatie zelf:
+`toggleRegression.test.ts` bewijst de invariant door `false` te KIEZEN — een referentie-optimalisatierun
+byte-voor-byte met en zonder de v2-modules in de graaf, plus de importscan die de afhankelijkheidspijl
+één kant op houdt. Een vlag die niemand vanaf het scherm kan omzetten is niet hetzelfde als een vlag
+die niet meer bestaat, en het verschil is wat die byte-identieke run een uitspraak over DEZE app
+houdt in plaats van over een verwijderde tak. `setEngineV2Enabled` staat er dus nog, met precies één
+aanroeper.
+
+**Waarom `applyProject` niet meer leest wat het bestand zegt.** De regel die verdween
+(`setEngineV2Enabled(d.engineV2Enabled === true)`) was juist zolang v1 bereikbaar was: een bestand
+dat de vlag nooit noemde moest openen zoals het altijd deed. Er is niets meer om voor te kiezen, en
+een op v1 bewaard project zou anders openen in een route die geen knop kan starten — een app die op
+zichzelf vastloopt op de manier die UI-1 al één keer heeft betaald.
+
+---
+
+#### 3 — WAT EEN OUD PROJECT DRAAGT, EN WAAROM ER NIETS MEE GEBEURT
+
+`src/lib/v1Carryover.ts` beantwoordt één vraag als zuivere functie: draagt dit bestand iets dat de
+v2-route niet leest? Twee helften, allebei FEITEN OVER HET BESTAND en geen gissingen over bedoeling:
+(a) het bestand zegt dat het op v1 bewaard is (`engineV2Enabled` afwezig of `false` — afwezig en
+false zijn hier één ding, precies zoals `selectEngine` ze leest), en (b) een v1-knop staat op iets
+anders dan de startwaarde van de app. Eén helft is genoeg voor een zin, en de zin zegt welke helft
+vuurde; een bestand dat op v2 bewaard is met alles op zijn startwaarde krijgt niets.
+
+**Er wordt niets gemigreerd, niets omgezet en niets gewist.** De velden worden hersteld zoals zij
+geschreven zijn en zo weer opgeslagen; de melding staat één keer op het paneel waar het bestand
+geopend is (`App.tsx:16209`), noemt de velden bij naam, en het wegklikken verandert geen enkele
+waarde. Een v1-instelling omzetten in een v2-eis zou de app zijn die raadt wat de ontwerper bedoelde,
+en dat is precies wat P4 verbiedt.
+
+**Drie van de vijf v1-knoppen zitten in het projectbestand, twee niet**, dus de melding kan alleen
+over die drie eerlijk spreken: `hpLpPref`, `hpLpPrefLow` en `excursionSpl` staan in `project.ts`;
+`errorSmoothOct`, `scan3Mode` en `bomCapEur` leven in `localStorage` en reizen niet mee met een
+bestand. `v1Carryover.test.ts` noemt dat gat als CLAIM, zodat een latere sessie die er één naar het
+bestand verhuist hier langskomt in plaats van een melding te houden die stil te weinig rapporteert.
+
+**`V1_FIELD_DEFAULTS` — één huis, drie lezers.** De startwaarden van die drie velden stonden als
+literalen op zes plaatsen in `App.tsx` (drie `useState`-initialisatoren, drie `??`-terugvallen). Zij
+lezen sinds U-1 alle zes dezelfde constante, want een vierde kopie is hoe "onveranderd" en
+"gedragen" het oneens raken over hetzelfde project: de melding zou vuren op een waarde die de app
+zelf de default noemt. **De labels komen uit het register** (`v2InputRegister.ts`) en worden nergens
+overgetypt — I-1 schreef één zin per v1-knop en dit is een tweede LEZER daarvan, geen tweede auteur.
+Twee sleutels delen één registerrij (`hpLpPref` en `hpLpPrefLow`, en die rij noemt in haar eigen
+label allebei de overnames), dus er staat een DISCRIMINATOR naast — "high crossing" / "low crossing"
+— en geen tweede label.
+
+---
+
+#### 4 — DE GUARDS, EN WAAROM ZIJ TEGEN ELKAAR IN TREKKEN
+
+`src/lib/v1Carryover.test.ts` (16 claims) draagt twee claims die elkaar in de weg zitten, en dat is
+waarom zij in één bestand staan: **geen route door de zichtbare UI bereikt v1, en de v1-motor is er
+nog en is nog bereikbaar in code.** Bewijs alleen de eerste en een latere sessie gooit de tak weg
+waartegen `toggleRegression` vergelijkt; bewijs alleen de tweede en het vinkje kruipt terug.
+
+De UI-helft is een BRONSCAN op `App.tsx`, in het idioom dat dit project sinds UI-1 gebruikt en om
+dezelfde reden: een functietest kan niet zeggen of de app een control RENDERT, en precies die laag
+was het defect waar UI-1 voor betaalde. **Elke scan is tegen een opzettelijke breuk gemeten vóórdat
+hij opgeschreven is:** het vinkje teruggezet → 2 rood; de oude laadregel terug → 2 rood; een literale
+default terug → 1 rood; de guarded v1-tak eruit → 1 rood; de lade terug plus één badge weg → 2 rood
+in `v2InputRegister.test.ts`.
+
+**Twee I-1-claims zijn van vorm veranderd zonder van claim te veranderen.** De koppen-in-volgorde-claim
+telt er DRIE in plaats van vier — de vierde was de kop van de lade, en een kop die "v1" aanbiedt IS
+een route. De lade-claim is omgekeerd: de lade is weg én élke v1-knop draagt nog zijn badge. Beide
+helften moeten er staan, want de lade laten vallen zonder de badges verliest het antwoord op "waarom
+doet deze knop niets", en allebei houden zet de kop terug die dit bestand net gestopt is te verwachten.
+
+**Wat ONGEWIJZIGD groen bleef, en dat is de acceptatie die telt:** `toggleRegression`, `p6Lint`
+(beide scopes), `ciLayer`, `v2Guided`, `v2Settings`, `selection`, `browserSafe`, `noAppWideFloor`.
+`toggleRegression` rendert `App.tsx` niet — hij vergelijkt een referentierun en scant de importboom —
+dus de invariant is per constructie byte-identiek gebleven, en dat is nagemeten in plaats van
+beredeneerd.
+
+---
+
+#### 5 — DE HANDMATIGE CONTROLE (headless Chrome op de dev-server, 09-09-2026)
+
+**Verse localStorage.** Guided opent met **zes** stappen inclusief "What it must meet" — de
+v2-wandeling van I-3, zonder dat iemand een vlag heeft aangeraakt.
+
+**Expert → Filters → ⚙ Settings.** Nul engine-checkboxen, nul `details.v2-legacy`, nul koppen die met
+"v1 " beginnen; drie `Engine v2 — n.`-koppen, de zin "Engine v2 runs every optimisation" aanwezig, en
+**zes v1-badges nog op hun knoppen** (vijf `v1Legacy`-plekken plus `designLevelNote`).
+
+**Een oud project.** Het demoproject bewaard, daarna in het bestand `engineV2Enabled: false`,
+`hpLpPrefLow: 'LR4'` en `excursionSpl: '90'` gezet en opnieuw geopend: de melding verschijnt en noemt
+beide velden bij naam met hun waarde. "Got it" laat hem verdwijnen; na een tabwissel komt hij niet
+terug. De twee waarden staan daarna nog ONGEWIJZIGD in het formulier (`LR4`, `90`) — niets gewist,
+niets omgezet.
+
+**De demobundel-verkenning loopt, en zij is uitgedraaid.** Zes kandidaten (2 × 3 — het E-2-veld op
+de demobundel: 415,8/466,7 Hz LR4 × 1532,6/1720,3/1931 Hz LR4), door de v2-route, met de
+vóórstart-melding en "Start anyway" precies zoals E-2 hem beschrijft. **902 s (15 min 2), zes van
+zes gekwalificeerd**, en de shortlist drukt de veldregel af: "Exploration field — 6 of 15 derived
+candidates: chain budget 8, positions centre-first …". De 2032 s die E-2 noteert waren een ander
+veld op een andere machinelast; wat deze run bewijst is niet de tijd maar de ROUTE — een verse
+sessie, niemand die een vlag aanraakt, en aan het eind een v2-shortlist.
+
+---
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

@@ -150,12 +150,16 @@ describe('the register covers the form', () => {
 });
 
 describe('the panel is ordered by the register', () => {
-  it('the four headings appear in the v2 block, in the order of the register', () => {
+  it('the three v2 headings appear in the v2 block, in the order of the register', () => {
+    /* U-1 — THREE, NOT FOUR. The fourth heading was the v1 drawer's, and a
+       heading that offers "v1" is a route through the interface: exactly what
+       U-1 removed. The class is still in the register and still read (the badge
+       beside each v1 control, and the project-carryover notice), so this counts
+       the headings the PANEL prints rather than the classes that exist. */
     const at = [
       V2_BLOCK.indexOf('{V2_CLASS_HEADING.required}'),
       V2_BLOCK.indexOf('{V2_CLASS_HEADING.judgement}'),
       V2_BLOCK.indexOf('{V2_CLASS_HEADING.nice}'),
-      V2_BLOCK.indexOf("{V2_CLASS_HEADING['v1-legacy']}"),
     ];
     for (const i of at) expect(i).toBeGreaterThan(-1);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
@@ -177,15 +181,20 @@ describe('the panel is ordered by the register', () => {
     expect((V2_BLOCK.match(/className="v2-subcap"/g) ?? []).length).toBe(V2_JUDGEMENT_BANDS.length);
   });
 
-  it('the v1 group is COLLAPSED and only exists on the v2 route', () => {
-    expect(V2_BLOCK).toContain('<details className="v2-legacy"');
-    expect(V2_BLOCK).not.toContain('<details className="v2-legacy" open');
-    // It renders the register rather than a second, typed-out list.
-    expect(V2_BLOCK).toContain("rowsOfClass('v1-legacy')");
-    // …and it is inside `{engineV2Enabled && (`, which is what makes it v2-only.
-    expect(APP.indexOf('<details className="v2-legacy"')).toBeGreaterThan(
-      APP.indexOf('{engineV2Enabled && ('),
-    );
+  it('U-1 — the v1 group is gone from the panel, and its per-field badges are not', () => {
+    /* The drawer was I-1's second rendering of the v1 class: a list beside the
+       controls. U-1 took the list and kept the badges, so the answer to "why
+       does this knob do nothing" now sits ON the knob. Both halves are asserted,
+       because dropping the drawer without the badges would lose the answer and
+       keeping both would restore the heading this file just stopped expecting. */
+    expect(APP).not.toContain('<details className="v2-legacy"');
+    expect(APP).not.toContain("{V2_CLASS_HEADING['v1-legacy']}");
+    // The class survives in the register and every v1 control still names it.
+    expect(rowsOfClass('v1-legacy').length).toBeGreaterThan(0);
+    for (const r of rowsOfClass('v1-legacy')) {
+      if (r.id === 'excursionSpl') continue; // its own call site, pinned below
+      expect(APP, r.id).toContain(`{v1Legacy('${r.id}')}`);
+    }
   });
 
   it('the required group points at the tabs that hold those inputs, from the register', () => {
