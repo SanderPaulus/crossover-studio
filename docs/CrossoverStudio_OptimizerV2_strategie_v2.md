@@ -8687,6 +8687,14 @@ maken. Sinds U-3 is er één applier (`applyDemoBundle`) en levert `demoBundleSt
 toestand: elke rol, elke settingssleutel, elk meetveld, met `''` of `null` waar een bundel zwijgt —
 zodat de lader alles kan toewijzen en niets van een vorige demo kan blijven staan.
 
+**Eén veld dat GEEN van beide laders zette, en dat de applier nu wél toewijst:** de nominale
+conusmaat (`wooferSizeInch` / `midSizeInch`, de v1-driverlimietvelden). Geen van beide bundels stelt
+er een — S_d geeft de zuigerdiameter, dus het bundelplafond is gemeten en heeft geen nominale maat
+nodig — dus beide demo's zetten hem sinds U-3 op leeg. Op een verse app verandert er niets (hij was
+al leeg, en de browsercontrole leest hem op beide demo's leeg); wat verandert is dat een maat uit een
+vorig project een demo niet meer binnenwandelt, en dat is dezelfde klasse fout als de vijf setters
+hierboven.
+
 ---
 
 #### 4 — DE BESTANDEN: DEZELFDE SESSIE, HUN EIGEN HEADERS
