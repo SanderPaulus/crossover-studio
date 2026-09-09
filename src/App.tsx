@@ -165,6 +165,7 @@ import { describeFieldMode, fieldModeOf, fieldModeSettings, type FieldMode } fro
 import { RUN_EXPORT_FORMAT, buildFieldExport, runExportEngine, type RunExport } from './lib/engine2/optimizer/runExport.ts';
 import {
   EMPTY_V2_SETTINGS,
+  UNSET_GHOST,
   V2_GHOSTS,
   designLevelNote,
   restoreV2Settings,
@@ -180,10 +181,37 @@ import {
  * anything (`v2InputRegister.ts`). */
 import {
   V2_CLASS_HEADING,
+  V2_INPUT_REGISTER,
   emptyHelpFor,
   rowsOfClass,
   v1NoteFor,
 } from './lib/v2InputRegister.ts';
+/* I-3 — THE GUIDED ROUTE ON ENGINE v2. The register's sentences, asked one at
+ * a time: the stage list the step bar walks, the fifteen requirement screens
+ * in register order, what skipping each one costs, and the measured cost of
+ * the two run choices. Data and pure functions; the controls are below
+ * (`v2Guided.ts`). */
+import {
+  LEVEL_WORK_OPTIONS,
+  REQUIREMENT_INPUT,
+  SOURCE_WORDS,
+  V2_GUIDED_STAGES,
+  V2_REQUIREMENT_SCREENS,
+  describeRunChoice,
+  describeSkipped,
+  guidedEngineNote,
+  guidedStages,
+  guidedValues,
+  requiredRowsOfStage,
+  screenName,
+  screenRows,
+  screenSources,
+  screenStatus,
+  skipLabelFor,
+  skipMeansFor,
+  type V2GuidedStageId,
+  type V2RequirementScreen,
+} from './lib/v2Guided.ts';
 import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import {
@@ -443,19 +471,31 @@ const COMPARE_PANELS: Record<PanelKey, boolean> = {
 };
 type VerifyEntry = { name: string; raw: string; frd: Parsed & { hasPhase: boolean } };
 
+/**
+ * The tabs of the left design pane. `requirements` is I-3's: the guided route
+ * asks the v2 requirements one screen at a time, and expert asks them all at
+ * once in its Filters panel — one project state, two views, so the tab exists
+ * only while Engine v2 is on and guided is the mode.
+ */
+type DesignTab = 'import' | 'drivers' | 'data' | 'requirements' | 'filters' | 'network';
+
 /* Labels the command palette and the 1–5 shortcuts share with the step bar and
  * the expert tabs — one naming, or the palette becomes a second map. */
-const GUIDED_STEP_LABEL: Record<'import' | 'drivers' | 'data' | 'filters' | 'network', string> = {
+const GUIDED_STEP_LABEL: Record<DesignTab, string> = {
   import: 'Your project',
   data: 'Your cabinet',
   drivers: 'Your drivers',
+  /* I-3 — the one step guided gains on the v2 route. Expert never shows it:
+     the same requirements live in its Filters panel, in one list. */
+  requirements: 'What it must meet',
   filters: 'Design it',
   network: 'Your build',
 };
-const EXPERT_TAB_LABEL: Record<'import' | 'drivers' | 'data' | 'filters' | 'network', string> = {
+const EXPERT_TAB_LABEL: Record<DesignTab, string> = {
   import: 'Import',
   data: 'Setup',
   drivers: 'Setup (drivers)',
+  requirements: 'Requirements',
   filters: 'Filters',
   network: 'Network',
 };
@@ -1718,11 +1758,11 @@ export default function App() {
   };
 
   /** Active tab of the left design pane (persisted: reopen where you left off). */
-  const [designTab, setDesignTab] = useState<
-    'import' | 'drivers' | 'data' | 'filters' | 'network'
-  >(() => {
+  const [designTab, setDesignTab] = useState<DesignTab>(() => {
     const t = localStorage.getItem('ads-ui-tab');
-    return t === 'drivers' || t === 'data' || t === 'filters' || t === 'network' ? t : 'import';
+    return t === 'drivers' || t === 'data' || t === 'filters' || t === 'network' || t === 'requirements'
+      ? t
+      : 'import';
   });
   useEffect(() => {
     localStorage.setItem('ads-ui-tab', designTab);
@@ -1925,6 +1965,40 @@ export default function App() {
    * value restored from a project written before E-2.
    */
   const [engineV2StatedAt, setEngineV2StatedAt] = useState<V2StatedAt>({});
+  /**
+   * I-3 — WHERE THE GUIDED REQUIREMENTS WALK HAS GOT TO.
+   *
+   * A CURSOR AND NOT AN ANSWER, which is why it may be persisted at all. The
+   * answers live in `engineV2Settings`, in `ampMinLoadOhm` and on the design —
+   * one project state, two views, exactly as the brief requires — and none of
+   * them is written from here. What this holds is the screen the designer is
+   * on, in the browser, like `ads-ui-tab` beside it; reaching the summary
+   * (index === the number of screens) is what ticks the step.
+   */
+  const [v2ReqIx, setV2ReqIxRaw] = useState<number>(() => {
+    const v = Number(localStorage.getItem('ads-v2-req-ix'));
+    return Number.isFinite(v) && v >= 0 && v <= V2_REQUIREMENT_SCREENS.length ? v : 0;
+  });
+  const setV2ReqIx = (n: number) => {
+    const clamped = Math.max(0, Math.min(V2_REQUIREMENT_SCREENS.length, n));
+    setV2ReqIxRaw(clamped);
+    localStorage.setItem('ads-v2-req-ix', String(clamped));
+  };
+  /**
+   * I-3 — THE REQUIREMENTS TAB EXISTS ONLY WHERE THE ROUTE HAS IT.
+   *
+   * It is a guided step on the v2 route and nothing else: expert asks the same
+   * requirements in its Filters panel, and with the flag off they are not
+   * asked at all. The tab is persisted like every other, so a session that
+   * left the browser standing there and came back with v2 off — or switched to
+   * expert — would otherwise land on a pane that renders nothing. It can only
+   * be reached from a stored value a v2 guided session wrote, so with the flag
+   * off in a session that never had it on this never fires.
+   */
+  useEffect(() => {
+    if (designTab === 'requirements' && !(uiMode === 'guided' && engineV2Enabled))
+      setDesignTab('filters');
+  }, [designTab, uiMode, engineV2Enabled]);
   /** E-2 — the one way a v2 field is edited: the value, and the date it was stated. */
   const setV2Field = (key: V2SettingKey, value: string) => {
     setEngineV2Settings((v) => ({ ...v, [key]: value }));
@@ -1972,6 +2046,212 @@ export default function App() {
         {' '}({t('v1 — not read by Engine v2')})
       </span>
     ) : null;
+  };
+  /**
+   * I-3 — ONE REQUIREMENT INPUT, RENDERED FOR THE GUIDED WALK.
+   *
+   * The second VIEW of a field expert already shows, never a second STORE:
+   * every branch below writes the state expert writes — `setV2Field`,
+   * `setAmpMinLoadOhm`, `setV2Meas`, the design's own `targetCurve` — so a
+   * requirement stated here is stated there and the other way round.
+   *
+   * Three row ids are not v2 settings keys and get their own branch, which is
+   * exactly why the screens name ROW IDS rather than keys: the amplifier floor
+   * is app state older than the v2 block, the per-way drive figure is one
+   * field per loaded way, and the voicing hangs on the DESIGN (A5e.2).
+   *
+   * No placeholder anywhere carries a number. A wizard is where a
+   * helpful-looking suggestion would do the most damage — it arrives when the
+   * reader has least reason to doubt it — so an empty field shows the unset
+   * mark and nothing else (E-2's rule, at the screen where it matters most).
+   */
+  const v2RequirementField = (rowId: string): ReactNode => {
+    const row = V2_INPUT_REGISTER.find((r) => r.id === rowId);
+    if (!row) return null;
+    const label = (
+      <span className="v2-req-label">
+        {t(row.label)}
+        {v2ReqStatedMark(rowId)}
+      </span>
+    );
+    if (rowId === 'ampMinLoadOhm') {
+      return (
+        <label key={rowId} className="v2-req-field">
+          {label}
+          <input
+            type="number"
+            min={0}
+            max={16}
+            step={0.1}
+            placeholder={UNSET_GHOST}
+            value={ampMinLoadOhm ?? ''}
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              if (raw === '') {
+                setAmpMinLoadOhm(null);
+                localStorage.removeItem('ads-amp-min-load');
+                return;
+              }
+              const v = Number(raw);
+              const nv = Number.isFinite(v) && v > 0 ? v : null;
+              setAmpMinLoadOhm(nv);
+              if (nv === null) localStorage.removeItem('ads-amp-min-load');
+              else localStorage.setItem('ads-amp-min-load', String(nv));
+            }}
+            style={{ width: '5rem' }}
+          />{' '}
+          Ω
+        </label>
+      );
+    }
+    if (rowId === 'driveOnFsMaxDb-per-way') {
+      /* A REFINEMENT, and the screen says so: with nothing here the single dB
+         figure above judges every protected way, which is the ordinary case.
+         One field per LOADED way — an empty cabinet gets no fields and no
+         invitation to state a limit for a driver that is not there. */
+      const ways = (['low', 'mid', 'high'] as const).filter((r) =>
+        r === 'low' ? !!woofer : r === 'mid' ? !!midDrv : !!tweeter,
+      );
+      if (ways.length === 0) return null;
+      return (
+        <div key={rowId} className="v2-req-field v2-req-perway">
+          {label}
+          {ways.map((r) => (
+            <label key={r} className="v2-req-perway-one">
+              {t(r === 'high' ? 'Tweeter' : r === 'mid' ? 'Midrange' : threeWay ? 'Woofer' : 'Woofer / mid')}
+              <input
+                type="number"
+                max={0}
+                placeholder={UNSET_GHOST}
+                value={v2Meas[r].driveOnFsMaxDb}
+                onChange={(e) =>
+                  setV2Meas((m) => ({ ...m, [r]: { ...m[r], driveOnFsMaxDb: e.target.value } }))
+                }
+                style={{ width: '4.5rem' }}
+              />{' '}
+              dB
+            </label>
+          ))}
+        </div>
+      );
+    }
+    if (rowId === 'targetCurve' || rowId === 'plateauDepthDb') {
+      if (!activeDesign)
+        return rowId === 'targetCurve' ? (
+          <p key={rowId} className="v2-req-blocked">
+            {t('Open a design tab to state a voicing — it hangs on the design, so two voicings of one loudspeaker can sit side by side.')}
+          </p>
+        ) : null;
+      if (rowId === 'targetCurve')
+        return (
+          <label key={rowId} className="v2-req-field">
+            {label}
+            <select
+              value={activeTargetCurve.type}
+              onChange={(e) => {
+                const type = e.target.value as TargetCurve['type'];
+                setDesigns((ds) =>
+                  ds.map((d) =>
+                    d.id !== activeDesign.id
+                      ? d
+                      : type === 'flat'
+                        ? { ...d, targetCurve: { type: 'flat' } }
+                        : { ...d, targetCurve: { ...(d.targetCurve ?? {}), type } },
+                  ),
+                );
+              }}
+            >
+              <option value="flat">{t('flat')}</option>
+              <option value="bass-plateau">{t('bass plateau')}</option>
+            </select>
+          </label>
+        );
+      if (activeTargetCurve.type !== 'bass-plateau') return null;
+      return (
+        <label key={rowId} className="v2-req-field">
+          {label}
+          <input
+            type="number"
+            min={0}
+            step={0.1}
+            placeholder={UNSET_GHOST}
+            value={
+              activeTargetCurve.plateauDepthDb === undefined
+                ? ''
+                : String(activeTargetCurve.plateauDepthDb)
+            }
+            onChange={(e) => {
+              const raw = e.target.value;
+              const v = Number(raw);
+              setDesigns((ds) =>
+                ds.map((d) => {
+                  if (d.id !== activeDesign.id) return d;
+                  const base = { ...(d.targetCurve ?? {}), type: 'bass-plateau' as const };
+                  // Empty is ABSENT, never zero — a plateau of 0 dB is a
+                  // stated voicing that happens to be flat (P4, V45).
+                  if (raw.trim() === '' || !Number.isFinite(v) || v < 0) {
+                    const { plateauDepthDb: _drop, ...rest } = base;
+                    void _drop;
+                    return { ...d, targetCurve: rest };
+                  }
+                  return { ...d, targetCurve: { ...base, plateauDepthDb: v } };
+                }),
+              );
+            }}
+            style={{ width: '5rem' }}
+          />{' '}
+          dB
+        </label>
+      );
+    }
+    const key = row.key;
+    if (key === undefined) return null;
+    if (key === 'lowestWayLevelWork')
+      return (
+        <label key={rowId} className="v2-req-field">
+          {label}
+          <select
+            value={engineV2Settings.lowestWayLevelWork}
+            onChange={(e) => setV2Field('lowestWayLevelWork', e.target.value)}
+          >
+            {LEVEL_WORK_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {t(o.label)}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    if (key === 'lowestWaySeriesRMaxOhm' && engineV2Settings.lowestWayLevelWork !== 'series-r-max')
+      return null;
+    const spec = REQUIREMENT_INPUT[key] ?? {};
+    return (
+      <label key={rowId} className="v2-req-field">
+        {label}
+        <input
+          type="number"
+          min={spec.min}
+          max={spec.max}
+          step={spec.step}
+          placeholder={UNSET_GHOST}
+          value={engineV2Settings[key]}
+          onChange={(e) => setV2Field(key, e.target.value)}
+          style={{ width: '5rem' }}
+        />
+        {spec.unit ? ` ${spec.unit}` : null}
+      </label>
+    );
+  };
+  /** I-3 — "stated by you on …" for a requirement row, whatever holds it. */
+  const v2ReqStatedMark = (rowId: string): ReactNode => {
+    const row = V2_INPUT_REGISTER.find((r) => r.id === rowId);
+    if (row?.key !== undefined) return v2Stated(row.key);
+    /* The three rows outside the settings block carry no DATE — they predate
+       E-2's stamp or live on the design, which has its own history — so they
+       say the value is yours and do not invent a day for it. */
+    return (v2GuidedValues[rowId] ?? '').trim() === '' ? null : (
+      <span className="v2-stated">{t('stated by you')}</span>
+    );
   };
   /**
    * A5a — PER-MEASUREMENT-SESSION METADATA THE ENGINE NEEDS AND NOBODY COULD
@@ -3576,6 +3856,36 @@ export default function App() {
     }
     return out;
   }, [v2Meas]);
+
+  /**
+   * I-3 — WHAT THE GUIDED REQUIREMENTS WALK READS BACK, keyed by register row.
+   *
+   * The same state expert writes, read the other way round. Three of the
+   * fifteen screens hold inputs that are not v2 settings fields — the
+   * amplifier floor is app state older than the v2 block, the per-way drive
+   * figure is one field per way on the driver cards, and the voicing hangs on
+   * the DESIGN (A5e.2) — so those come in as `extra` rather than being read
+   * from a settings key that does not exist.
+   *
+   * A `null` amplifier floor is '' here: absent is absent whatever the type
+   * that carries it, and a 0 would read as a stated floor of zero ohms.
+   */
+  const v2GuidedValues = useMemo(
+    () =>
+      guidedValues(engineV2Settings, {
+        ampMinLoadOhm: ampMinLoadOhm === null ? '' : String(ampMinLoadOhm),
+        'driveOnFsMaxDb-per-way': (['low', 'mid', 'high'] as const)
+          .map((r) => v2Meas[r].driveOnFsMaxDb.trim())
+          .filter((v) => v !== '')
+          .join(','),
+        targetCurve: activeTargetCurve.type === 'flat' ? '' : activeTargetCurve.type,
+        plateauDepthDb:
+          activeTargetCurve.plateauDepthDb === undefined
+            ? ''
+            : String(activeTargetCurve.plateauDepthDb),
+      }),
+    [engineV2Settings, ampMinLoadOhm, v2Meas, activeTargetCurve],
+  );
 
   /**
    * E-3b — the same stated M-C figures keyed by WORKER MODEL. `threeWay` is
@@ -5382,7 +5692,7 @@ export default function App() {
    * panel keep nagging about quality (timing, far field, gate). A tick that
    * demands perfection would just stop a beginner at step one.
    */
-  const guidedDone = useMemo(() => {
+  const guidedDone: Record<V2GuidedStageId, boolean> = useMemo(() => {
     /* A tick answers "did this step's PURPOSE happen", not "was a field
        touched" (Sanders: ticks that come for free say nothing — the old
        criteria turned the whole route green on load, because `result` exists
@@ -5394,7 +5704,7 @@ export default function App() {
     return {
       // Files: every loaded driver has BOTH a response and an impedance — the
       // route ends in a passive build, and without Z nothing can be built.
-      files:
+      measurements:
         !!(woofer || tweeter) &&
         roles.every((r) => !loaded[r] || !!zAliased[canonicalModelForRole(r, threeWay)]),
       // Cabinet: the numbers that anchor everything else — mic distance
@@ -5417,6 +5727,12 @@ export default function App() {
             cabinet.drivers[r].xMm.trim() !== '' ||
             cabinet.drivers[r].yMm.trim() !== '',
         ),
+      /* I-3 — the requirements step is done when the walk REACHED THE END,
+       * not when every question was answered: skipping is a legitimate answer
+       * and the fourteen sentences say what it costs. A tick that demanded
+       * fifteen stated requirements would mark a deliberately minimal run as
+       * unfinished forever, which is the opposite of what this route is for. */
+      requirements: v2ReqIx >= V2_REQUIREMENT_SCREENS.length,
       // Design: a network with real filter parts exists — a bare template
       // (generator + drivers) has not designed anything yet.
       design: designs.some(
@@ -5432,7 +5748,7 @@ export default function App() {
         return rows.length > 0 && rows.every((r) => r.match || r.stackMatch);
       })(),
     };
-  }, [woofer, midDrv, tweeter, threeWay, impedances, cabinet, designs, activeDesignId]);
+  }, [woofer, midDrv, tweeter, threeWay, impedances, cabinet, designs, activeDesignId, v2ReqIx]);
 
 
   /** Single-driver mode, floor control: the driver's own median level over the
@@ -12863,9 +13179,14 @@ export default function App() {
     setHeldTrace({ x: [...result.freq], y: [...result.combinedSpl] });
   }
 
-  const gotoKeys: (typeof designTab)[] =
+  /* I-3 — the palette's route is the step bar's route, read from the same
+     list: a second copy is how the palette becomes a second map (the warning
+     on `GUIDED_STEP_LABEL`), and the requirements step would have been the
+     first thing it lost. Expert has no such step — the same requirements are
+     its Filters panel — so its list is unchanged. */
+  const gotoKeys: DesignTab[] =
     uiMode === 'guided'
-      ? ['import', 'data', 'drivers', 'filters', 'network']
+      ? guidedStages(engineV2Enabled).map((st) => st.tab)
       : ['import', 'data', 'filters', 'network'];
 
   type PaletteAction = { id: string; label: string; hint?: string; run: () => void };
@@ -14720,7 +15041,14 @@ export default function App() {
                 aria-selected={uiMode === m}
                 className={uiMode === m ? 'active' : ''}
                 onClick={() => setUiMode(m)}
-                title={t(tip)}
+                /* I-3 — the mode switch says which engine is behind guided.
+                   Null on v1, exactly as `designLevelNote` and `v1NoteFor`:
+                   with the flag off the app is what it always was, and that
+                   covers the words on a tooltip. */
+                title={[t(tip), m === 'guided' ? guidedEngineNote(engineV2Enabled) : null]
+                  .filter((x): x is string => !!x)
+                  .map((x) => t(x))
+                  .join(' ')}
               >
                 <span className="mode-icon" aria-hidden="true">{icon}</span>
                 {t(label)}
@@ -14945,29 +15273,28 @@ export default function App() {
            element that kept moving. Later steps stay clickable on purpose:
            blocking them would hide what is coming, and a locked button
            teaches nothing about why. */
+        /* I-3 — THE ROUTE IS THE STAGE LIST, and on the v2 route it has one
+           step more: "What it must meet", between the facts and the run. With
+           the flag off `guidedStages` returns the five it always did, in the
+           same order, with the same labels and the same ticks. */
         <nav className="pane-steps step-bar" aria-label={t('Design steps')}>
-          {(
-            [
-              ['import', 'Your project', guidedDone.files, 'Load your measurement files, and save or reopen a project.'],
-              ['data', 'Your cabinet', guidedDone.cabinet, 'The box and how you measured it. Do this before the drivers: it fixes the reference point everything else is measured from.'],
-              ['drivers', 'Your drivers', guidedDone.drivers, 'Where each driver sits in that box, what is behind it, and its cone area and travel from the datasheet.'],
-              ['filters', 'Design it', guidedDone.design, 'One button. The app picks the crossover points, the filter shapes and the parts, and shows what it chose.'],
-              ['network', 'Your build', guidedDone.build, 'The schematic and the shopping list.'],
-            ] as const
-          ).map(([id, label, done, tip], i) => (
-            <button
-              key={id}
-              type="button"
-              className={`${designTab === id ? 'active' : ''}${done ? ' step-done' : ''}`}
-              onClick={() => setDesignTab(id)}
-              title={t(tip)}
-            >
-              <span className="step-num" aria-hidden="true">
-                {done ? '✓' : i + 1}
-              </span>
-              {t(label)}
-            </button>
-          ))}
+          {guidedStages(engineV2Enabled).map((stage, i) => {
+            const done = guidedDone[stage.id];
+            return (
+              <button
+                key={stage.id}
+                type="button"
+                className={`${designTab === stage.tab ? 'active' : ''}${done ? ' step-done' : ''}`}
+                onClick={() => setDesignTab(stage.tab)}
+                title={t(stage.what)}
+              >
+                <span className="step-num" aria-hidden="true">
+                  {done ? '✓' : i + 1}
+                </span>
+                {t(stage.label)}
+              </button>
+            );
+          })}
         </nav>
       )}
 
@@ -14975,7 +15302,10 @@ export default function App() {
         ref={workspaceRef}
         className={`workspace${designTab === 'network' && uiMode !== 'compare' ? ' wide-left' : ''}${
           uiMode === 'guided' &&
-          (designTab === 'import' || designTab === 'data' || designTab === 'drivers')
+          (designTab === 'import' ||
+            designTab === 'data' ||
+            designTab === 'drivers' ||
+            designTab === 'requirements')
             ? ' focus-form'
             : ''
         }`}
@@ -15018,6 +15348,32 @@ export default function App() {
               element — tab switching is frequent there, and frequent actions
               earn no animation. */}
           <div className="pane-body" key={uiMode === 'guided' ? designTab : uiMode}>
+            {/* I-3 — WHAT ENGINE v2 NEEDS FROM THIS STEP, on the step itself.
+              * I-1's seven NECESSARY rows are measurements and geometry, so the
+              * expert panel could only POINT at them from a list; a route can
+              * put each one where it is entered, with the register's own
+              * sentence about what its absence costs. Guided on the v2 route
+              * only — with the flag off this step is what it always was. */}
+            {uiMode === 'guided' &&
+              engineV2Enabled &&
+              (() => {
+                const stage = V2_GUIDED_STAGES.find((st) => st.tab === designTab);
+                const need = stage ? requiredRowsOfStage(stage.id) : [];
+                if (need.length === 0) return null;
+                return (
+                  <div className="v2-stage-need">
+                    <strong>{t('Engine v2 needs from this step')}</strong>
+                    <ul className="v2-need">
+                      {need.map((r) => (
+                        <li key={r.id} title={r.travels}>
+                          <strong>{t(r.label)}</strong>
+                          <span className="v2-empty"> · {t('without it')} — {r.emptyMeans}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
             {uiMode === 'compare' ? comparePane : (
             <>
             {designTab === 'import' && (
@@ -16583,6 +16939,198 @@ export default function App() {
               </>
             )}
 
+            {/* ================================================================
+              * I-3 — THE REQUIREMENTS, ONE QUESTION AT A TIME.
+              *
+              * The same fifteen groups of input the expert panel shows in one
+              * list, asked in the register's order with the register's own
+              * sentence under each. Two things make this more than a re-skin:
+              *
+              *  · EVERY SCREEN CAN BE SKIPPED, and the button says what
+              *    skipping costs — in the register's words, per input. Skipping
+              *    and forgetting leave the same empty field and the same
+              *    unarmed gate; only one of them is a decision, and a route
+              *    that cannot tell them apart teaches nothing.
+              *  · NOTHING IS FILLED IN. A wizard is where a helpful-looking
+              *    suggested value would do the most damage, so an empty
+              *    requirement shows the unset mark and its consequence.
+              *
+              * It renders only under `engineV2Enabled`: with the flag off this
+              * tab is not in the route, not in the palette and not reachable.
+              * ================================================================ */}
+            {designTab === 'requirements' && engineV2Enabled && (() => {
+              const screens = V2_REQUIREMENT_SCREENS;
+              const ix = Math.min(v2ReqIx, screens.length);
+              const statusOf = (sc: V2RequirementScreen) => screenStatus(v2GuidedValues, sc);
+              /* Skipping CLEARS, and the button label says so. Merely walking
+                 past a half-filled screen would leave a value that judges
+                 nothing while looking like an answer — the `partly` state — so
+                 the one button that promises "unjudged" has to deliver it. */
+              const clearScreen = (sc: V2RequirementScreen) => {
+                for (const row of screenRows(sc)) {
+                  if (row.id === 'ampMinLoadOhm') {
+                    setAmpMinLoadOhm(null);
+                    localStorage.removeItem('ads-amp-min-load');
+                  } else if (row.id === 'driveOnFsMaxDb-per-way') {
+                    setV2Meas((m) => ({
+                      low: { ...m.low, driveOnFsMaxDb: '' },
+                      mid: { ...m.mid, driveOnFsMaxDb: '' },
+                      high: { ...m.high, driveOnFsMaxDb: '' },
+                    }));
+                  } else if (row.id === 'targetCurve' || row.id === 'plateauDepthDb') {
+                    if (activeDesign)
+                      setDesigns((ds) =>
+                        ds.map((d) =>
+                          d.id === activeDesign.id ? { ...d, targetCurve: { type: 'flat' } } : d,
+                        ),
+                      );
+                  } else if (row.key !== undefined) {
+                    setV2Field(row.key, '');
+                  }
+                }
+              };
+              return (
+                <div className="panel v2-req">
+                  <h2>{t('What the design must meet')}</h2>
+                  <p className="sub">
+                    {t('One question at a time, in the order the engine reads them. Nothing here is filled in for you: a limit exists only because you state it, and every question can be skipped — the button says what that costs.')}
+                  </p>
+                  {/* The whole walk at a glance, and a way back into any of it:
+                      a dot per question, filled when it holds an answer, half
+                      when it holds part of one. */}
+                  <ol className="v2-req-dots" aria-label={t('Requirements')}>
+                    {screens.map((sc, i) => {
+                      const st = statusOf(sc);
+                      return (
+                        <li key={sc.id}>
+                          <button
+                            type="button"
+                            className={`v2-req-dot v2-req-${st}${i === ix ? ' active' : ''}`}
+                            title={`${t(sc.title)} — ${t(
+                              st === 'stated' ? 'stated' : st === 'partly' ? 'half-stated: judges nothing' : 'not stated',
+                            )}`}
+                            onClick={() => setV2ReqIx(i)}
+                          >
+                            {i + 1}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  {ix >= screens.length ? (
+                    <div className="v2-req-summary">
+                      <h3>{t('That is all of them.')}</h3>
+                      <ul className="v2-req-list">
+                        {screens.map((sc) => {
+                          const st = statusOf(sc);
+                          return (
+                            <li key={sc.id} className={`v2-req-${st}`}>
+                              <strong>{screenName(sc)}</strong>{' '}
+                              {st === 'stated'
+                                ? t('— stated')
+                                : st === 'partly'
+                                  ? t('— half-stated, so it judges nothing')
+                                  : sc.skip === 'neutral'
+                                    ? t('— flat, the neutral reference')
+                                    : t('— skipped, not judged')}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {(() => {
+                        const line = describeSkipped(v2GuidedValues);
+                        return line ? <p className="sub v2-req-skipped">{line}</p> : null;
+                      })()}
+                      <div className="v2-req-nav">
+                        <button type="button" onClick={() => setV2ReqIx(screens.length - 1)}>
+                          {t('← Back')}
+                        </button>
+                        <button
+                          type="button"
+                          className="step-next"
+                          onClick={() => setDesignTab('filters')}
+                        >
+                          {t('Next: Design it →')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    (() => {
+                      const sc = screens[ix];
+                      const rows = screenRows(sc);
+                      const st = statusOf(sc);
+                      return (
+                        <div className="v2-req-screen" key={sc.id}>
+                          <p className="v2-req-count">
+                            {t('Question {x} of {y}', { x: ix + 1, y: screens.length })}
+                          </p>
+                          <h3>{t(sc.title)}</h3>
+                          <p className="v2-req-source">
+                            {t('Where to find it:')}{' '}
+                            {screenSources(sc)
+                              .map((src) => t(SOURCE_WORDS[src]))
+                              .join('; ')}
+                            .
+                          </p>
+                          <div className="v2-req-fields">
+                            {rows.map((row) => v2RequirementField(row.id))}
+                          </div>
+                          {st === 'partly' && (
+                            <p className="result-warn">
+                              ⚠{' '}
+                              {t('Half an answer states nothing: these inputs only mean something together, so as it stands this judges no more than leaving it blank.')}
+                            </p>
+                          )}
+                          <div className="v2-req-cost">
+                            <strong>{t('If you leave this blank:')}</strong>
+                            <ul>
+                              {skipMeansFor(sc).map((c) => (
+                                <li key={c.rowId} className={c.defers ? 'v2-req-defers' : undefined}>
+                                  <em>{t(c.label)}</em> — {c.means}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="v2-req-nav">
+                            <button
+                              type="button"
+                              disabled={ix === 0}
+                              onClick={() => setV2ReqIx(ix - 1)}
+                            >
+                              {t('← Back')}
+                            </button>
+                            <button
+                              type="button"
+                              className="v2-req-skip"
+                              onClick={() => {
+                                clearScreen(sc);
+                                setV2ReqIx(ix + 1);
+                              }}
+                              title={t('Moves on without stating it — and clears anything typed here, so what the run sees matches what this button promises.')}
+                            >
+                              {t(
+                                st === 'blank'
+                                  ? skipLabelFor(sc)
+                                  : sc.skip === 'neutral'
+                                    ? 'Back to flat — the neutral reference'
+                                    : 'Skip — clear this and leave it unjudged',
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="step-next"
+                              onClick={() => setV2ReqIx(ix + 1)}
+                            >
+                              {t('Next →')}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              );
+            })()}
             {designTab === 'filters' && !result && (
               <p className="sub pane-hint">
                 {t('Nothing to design yet — load measurements in the Import tab first.')}
@@ -16598,12 +17146,44 @@ export default function App() {
             >
               {t('Charts show:')} <strong>{simSource}</strong>
             </p>
-            {uiMode === 'guided' && (
+            {uiMode === 'guided' && !engineV2Enabled && (
               <p className="sub">
                 {t('One button. The app works out where the drivers should hand over to each other, what shape each filter needs and which real parts to buy — using your measurements, not rules of thumb. It builds and measures')}{' '}
                 <strong>{t('nine complete designs')}</strong>{' '}
                 {t('across the crossover range your drivers allow and keeps the best — the widest search it offers, because here you are not going to hand-tune one. Expect several minutes; you can watch each candidate come in, and cancel at any time.')}
               </p>
+            )}
+            {/* I-3 — WHAT THE GUIDED RUN IS ON ENGINE v2, AND WHAT IT COSTS.
+              * The v1 sentence above describes a v1 scan ("nine complete
+              * designs") and is wrong here in every particular: the v2 route
+              * derives a candidate FIELD, judges it against what was stated,
+              * and returns a shortlist. The exploration is the standard run
+              * and always has been (`fieldModeOf('')`); what was missing was
+              * saying so, and saying what it costs in numbers that were
+              * measured rather than in "several minutes". */}
+            {uiMode === 'guided' && engineV2Enabled && (
+              <div className="sub v2-run-choice">
+                <p>
+                  {t('One button. The app derives the crossover windows your measurements allow, builds a field of candidate designs inside them, tunes each one and judges it against what you stated on the previous step — then shows the shortlist that survived. You can watch each candidate come in, and cancel at any time.')}
+                </p>
+                <p>
+                  <strong>{t('Exploration')}</strong>
+                  {' — '}
+                  {describeRunChoice('exploration', EXPLORATION_CHAIN_BUDGET)}
+                </p>
+                <p>
+                  <strong>{t('The full field')}</strong>
+                  {' — '}
+                  {describeRunChoice('full', EXPLORATION_CHAIN_BUDGET)}
+                </p>
+                {(() => {
+                  /* The questions that went unanswered, said BEFORE the run
+                     rather than only after it: half an hour is a long time to
+                     wait to be told that nothing judged the result. */
+                  const line = describeSkipped(v2GuidedValues);
+                  return line ? <p className="v2-req-skipped">{line}</p> : null;
+                })()}
+              </div>
             )}
             {uiMode === 'guided' && nonStandard.length > 0 && (
               /* Guided should BE the standard setting. It is not knob-free —
@@ -19378,6 +19958,18 @@ export default function App() {
                     )}
                   </p>
                 )}
+                {/* I-3 — WHICH REQUIREMENTS WENT UNANSWERED, BY NAME.
+                    The gate column has always said `off` per row and the
+                    requirement list "— no requirement stated" (P4, checked per
+                    field at I-1). What no row could say is the thing a reader
+                    wants at this moment: how many of the questions they were
+                    asked went unanswered, and which. One line, and null when
+                    everything was answered — "0 skipped" is noise. */}
+                {engineV2Enabled &&
+                  (() => {
+                    const line = describeSkipped(v2GuidedValues);
+                    return line ? <p className="sub v2-req-skipped">{line}</p> : null;
+                  })()}
                 {v2Shortlist.label && (
                   <p className="sub nl-warning">⚠ {v2Shortlist.label}</p>
                 )}
@@ -19564,6 +20156,21 @@ export default function App() {
                 {v2Shortlist.notes.map((n, i) => (
                   <p className="v2-muted" key={i}>{n}</p>
                 ))}
+                {/* I-3 — WHERE GUIDED ENDS AND EXPERT BEGINS.
+                    Nothing is handed over, and that is the point worth saying
+                    out loud on the button: guided and expert are two views of
+                    ONE project state, so everything stated on the way here is
+                    already stated over there. A route that ended by asking the
+                    designer to re-enter their requirements would have proved
+                    the opposite. */}
+                {uiMode === 'guided' && (
+                  <p className="sub v2-to-expert">
+                    <button type="button" onClick={() => setUiMode('expert')}>
+                      {t('Continue in Expert →')}
+                    </button>{' '}
+                    {t('Same project, same shortlist, everything you stated still stated — plus the network editor, the acoustic slopes and the full requirement list on one screen.')}
+                  </p>
+                )}
               </div>
             )}
             {/* F2b — the run stamp, under the table it belongs to.
@@ -19846,20 +20453,19 @@ export default function App() {
               (() => {
                 /* Wayfinding's second question — "where can I go?" — answered
                    at the place you arrive when the step is filled in: the
-                   bottom. Named, not generic: "Next" alone predicts nothing. */
-                const order = ['import', 'data', 'drivers', 'filters', 'network'] as const;
-                const labels: Record<(typeof order)[number], string> = {
-                  import: 'Your project',
-                  data: 'Your cabinet',
-                  drivers: 'Your drivers',
-                  filters: 'Design it',
-                  network: 'Your build',
-                };
-                const next = order[order.indexOf(designTab) + 1];
+                   bottom. Named, not generic: "Next" alone predicts nothing.
+                   I-3 — THE ORDER AND THE LABELS COME FROM THE STAGE LIST.
+                   They were a second copy of the step bar's route right down
+                   to its five labels, which is precisely what the comment on
+                   `GUIDED_STEP_LABEL` warns against; the requirements step
+                   would have been reachable from the bar and invisible here. */
+                const order = guidedStages(engineV2Enabled);
+                const next = order[order.findIndex((st) => st.tab === designTab) + 1];
+                if (!next) return null;
                 return (
                   <div className="step-next-row">
-                    <button type="button" className="step-next" onClick={() => setDesignTab(next)}>
-                      {t('Next: {step} →', { step: t(labels[next]) })}
+                    <button type="button" className="step-next" onClick={() => setDesignTab(next.tab)}>
+                      {t('Next: {step} →', { step: t(next.label) })}
                     </button>
                   </div>
                 );

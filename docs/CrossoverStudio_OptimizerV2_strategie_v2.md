@@ -7971,6 +7971,274 @@ van een poort — deze ronde heeft dat niet gemeten.
 
 ---
 
+### I-3 — guided is op de v2-route een WIZARD: de vijftien registerschermen, één vraag per keer, met de prijs van overslaan op de knop (09-09-2026, alleen UI; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding.** I-1 filede élke invoer die de v2-route kan bereiken onder vier labels en gaf er per
+stuk één zin gewone taal bij die zegt wat leeg kost. Die inventaris ging naar het EXPERTPANEEL,
+waar zij precies doet waarvoor zij gebouwd is: wie het veld al kent ziet welk regime een knop
+voedt. Voor de andere helft van het bestaansrecht van deze app doet zij niets — iemand met
+metingen en geen idee over welke van tweeëntwintig getallen hij een mening hoort te hebben. In
+expert zijn dat tweeëntwintig velden van gelijk gewicht op één scherm, en **een veld dat niemand
+begrijpt wordt per ongeluk overgeslagen in plaats van bewust.** Dat verschil is de hele sessie: de
+lege gate en het lege veld zijn in beide gevallen identiek — P4 wordt nergens versoepeld — maar
+alleen één ervan is een besluit dat iemand genomen heeft.
+
+**Wat er gebouwd is.** Eén nieuw bestand (`src/lib/v2Guided.ts`), één nieuw testbestand (38
+claims), één stap in de guided-route, en de CSS die erbij hoort. **Geen enkele engine-, poort-,
+budget-, venster- of corpuswijziging; geen regeneratie; geen getal in `golden_refs_casus1.json`
+aangeraakt.** De twee byte-baselines (`f4cRegression`, `workerRouteRegression`) en
+`toggleRegression` staan.
+
+---
+
+#### 1 — VIJFTIEN SCHERMEN, EN VEERTIEN DAARVAN ZIJN EISEN
+
+De opdracht vroeg om "de veertien I-1-zinnen als wizard". Dat getal is bijna goed, en het verschil
+is de moeite van het opschrijven waard omdat het GEDERIVEERD is en niet overgetypt: de tweeëntwintig
+OORDEEL-WAPENENDE registerrijen gegroepeerd naar de verzamelingen die SAMEN iets zeggen, leveren
+**vijftien schermen**. Veertien daarvan zijn eisen in de gewone zin — leeg betekent dat niets dit
+beoordeelt. Het vijftiende is de VOICING, en daar is leeg helemaal geen afwezigheid: vlak is de
+neutrale referentie en wordt gesteld dóór hem te kiezen (V45, A5e.2). Zijn knop zegt daarom niet
+"sla over" maar "houd vlak", en de scheiding staat als `V2GuidedSkipKind` in het type in plaats van
+in een commentaar. Zo komt de veertien er alsnog uit, langs de weg die hem kan controleren.
+
+De groepering is de enige vrijheid die genomen is, en zij is genomen om één reden: **invoeren die
+apart niets stellen.** Een piekvermogen zonder zijn nominale last levert geen piekspanning; een
+weerstandsklasse zonder haar marge wapent geen toelating. Die op aparte schermen vragen levert een
+ontwerper op die een halve vraag beantwoord heeft en een run die niets beoordeelt — het slechtste
+van beide. Eén groepering kruist daarvoor een registerrij: het weerstandsscherm neemt
+`resistorThermalPowerW`, dat het register ná `coilClassA` noemt. Zij zijn één toelating (de klasse,
+de marge, en het vermogen waarbij geoordeeld wordt) en een spoel ertussen zetten zou erger zijn dan
+de volgorde. De test pint dat de schermen op de registerindex van hun EERSTE rij gesorteerd staan
+en dat élke oordeelsrij op precies één scherm ligt — gelijkheid beide kanten op, geen
+deelverzameling (de E-4/A5e.3c-les).
+
+**De statusregel is DATA en geen gevoel**, want er zijn drie soorten scherm en niet één:
+
+| regel | wat het betekent | waar |
+| --- | --- | --- |
+| `all` | deze invoeren stellen alleen SAMEN iets; de helft stelt niets | excursie, weerstanden, en elk scherm met één invoer |
+| `any` | het zijn ALTERNATIEVEN; één ervan is een antwoord | M-C (het ene dB-getal of een getal per weg), de voicing |
+| `conditional` | een verfijning die stopt optioneel te zijn zodra een ander veld een waarde heeft | het niveauwerk-maximum: `series-r-max` zonder getal bindt niets (V51b) |
+
+Die derde is er omdat de sessie hem bij het testen tegenkwam: een scherm dat de MODUS `series-r-max`
+draagt en geen maximum leest als beantwoord terwijl de engine niets ontvangt. Het heet sindsdien
+`partly`, en `partly` is precies de toestand die de groepering bestaat om zichtbaar te maken — zij
+oordeelt niets en ziet er, op een ingevuld veld, uit als een antwoord.
+
+---
+
+#### 2 — DE ZINNEN ZIJN DIE VAN HET REGISTER, GELEZEN, NOOIT OVERGETYPT
+
+`skipMeansFor(scherm)` levert per invoer `row.emptyMeans` verbatim, en de test vergelijkt élke zin
+met het register. Een tweede kopie van een uitleg is een kopie die wegdrijft van de code die zij
+beschrijft — precies waarvoor `v2InputRegister.ts` bestaat. De schermen noemen daarom ROW IDS en
+nooit woorden; de woorden komen bij het lezen. Hetzelfde geldt voor `screenName` (de labels van de
+invoeren die beantwoord moeten worden) en voor de ENE invoer waarvan leeg DEFEREERT in plaats van
+ontwapent: `resistorThermalPowerW` wordt uit `JUDGEMENT_KEYS_WHERE_BLANK_DEFERS` gemarkeerd en
+apart getoond, niet in de vorm van de andere veertien gewrongen.
+
+**Geen enkel veld draagt een getal als placeholder.** E-2 haalde de zes spookgetallen uit het
+expertpaneel omdat een getal in een veld leest als een getal in het veld; een WIZARD is de plek waar
+zo'n suggestie het meeste schade doet, want zij arriveert op het moment dat de lezer de minste reden
+heeft om te twijfelen. De test scant de renderer en eist dat élke placeholder `UNSET_GHOST` is.
+
+---
+
+#### 3 — ÉÉN PROJECTSTAAT, TWEE WEERGAVEN
+
+Guided schrijft `engineV2Settings`, `ampMinLoadOhm`, `v2Meas[role].driveOnFsMaxDb` en de
+`targetCurve` van het ONTWERP — dezelfde setters die het expertpaneel gebruikt. Er is geen
+guided-opslag, geen guided-kopie en geen guided-default. Het enige wat de wandeling zelf onthoudt is
+een CURSOR (`ads-v2-req-ix`, welk scherm je op staat), en de test noemt hem bij naam zodat er geen
+tweede `useState` ongemerkt bij kan komen.
+
+Drie van de vijftien schermen dragen invoeren die GEEN v2-instellingssleutel zijn, en dat is precies
+waarom de schermen rijen noemen en geen sleutels: de versterkervloer is app-staat die ouder is dan
+het v2-blok, het M-C-getal per weg is één veld per weg op de driverkaarten, en de voicing hangt aan
+het ONTWERP (A5e.2, zodat twee voicings van één luidspreker naast elkaar kunnen staan).
+
+**Twee weergaven over één stuk staat kunnen het oneens zijn over wat erin getypt mag worden**, en
+een dissipatie die het paneel op 100 % kapt en de wandeling niet is een waarde die maar één van de
+twee schermen bestaat. De grenzen wonen daarom één keer in `REQUIREMENT_INPUT`, en de test LEEST de
+JSX van het expertpaneel uit `App.tsx` en vergelijkt `min`/`max`/`step` per veld. Een kopie in een
+commentaar zou de drift zijn die dit bestand voorkomt; een test die de andere kopie leest kan niet
+wegdrijven, alleen falen.
+
+**Overslaan WIST**, en het knopetiket zegt het ("Skip — clear this and leave it unjudged"). Langs
+een half ingevuld scherm lopen zou een waarde laten staan die niets beoordeelt en er als een antwoord
+uitziet; de ene knop die "unjudged" belooft moet dat ook leveren.
+
+---
+
+#### 4 — DE ROUTE: ÉÉN STAP ERBIJ, EN MET DE VLAG UIT IS ER NIETS
+
+`guidedStages(engineV2Enabled)` is de route, met drie lezers: de stappenbalk, het commandopalet en
+de "Volgende"-knop onderaan. Die laatste droeg tot I-3 een TWEEDE KOPIE van de route inclusief haar
+vijf etiketten — precies waar het commentaar op `GUIDED_STEP_LABEL` voor waarschuwt, en de nieuwe
+stap zou het eerste zijn geweest dat zo'n kopie kwijtraakte.
+
+Met `engineV2Enabled` UIT levert `guidedStages` de vijf stappen die guided altijd had, in dezelfde
+volgorde en met dezelfde etiketten; **in de browser nagemeten op een verse localStorage: vijf
+stappen, dezelfde woorden.** Met de vlag AAN staat "What it must meet" op plaats 4, tussen de feiten
+en de run — want daar kan de vraag pas gesteld worden: een eis over conusslag is onbeantwoordbaar
+vóór er een driver is om hem over te stellen, en onvraagbaar ná de run die erdoor beoordeeld had
+moeten worden.
+
+**Elke stap zegt wat de engine van HEM nodig heeft.** I-1's zeven NOODZAKELIJK-rijen zijn metingen
+en geometrie, dus het paneel kon er alleen naar wijzen — met per rij de tab die hem draagt. Een route
+kan meer: zij zet elke rij op de stap waar hij werkelijk ingevuld wordt, met de zin van het register
+over wat zijn afwezigheid kost. `V2_REQUIRED_BY_STAGE` is die toewijzing, als data, en de test eist
+dat de vereniging EXACT de noodzakelijke klasse is — beide kanten op, dus een nieuwe noodzakelijke
+invoer landt op een stap of de build breekt in plaats van te worden aangewezen vanuit een paneel dat
+in guided niemand opent. Eén rij staat bewust ergens anders dan het register zegt: `positions` op de
+DRIVERS-stap en niet op de kaststap, want het register noemt het FORMULIER dat een veld draagt en in
+guided is "Your drivers" waar de posities ingevuld worden (zijn eigen vinkje leest ze).
+
+**De moduskeuze zegt welke engine erachter zit** — en NULL op v1, wat de toggle-invariant is en geen
+verzuim. Met de vlag uit is de app wat zij altijd was, en "exact" dekt de woorden op een tooltip net
+zo goed als de bytes in een netlist (dezelfde reden waarom `designLevelNote` en `v1NoteFor` daar
+null teruggeven). **De prijs is echt en staat hier:** een guided gebruiker met de vlag uit hoort van
+hieruit niets over v2, en vindt hem waar hij altijd al stond — Expert → Filters → ⚙ Settings.
+
+---
+
+#### 5 — DE RUN: DE VERKENNING IS DE STANDAARD, EN DE PRIJS IS GEMETEN
+
+`fieldModeOf('')` levert sinds E-2 al de verkenning, dus de standaard was er; wat ontbrak was dat
+iemand het ZEI, en wat het kost in getallen die gemeten zijn in plaats van in "several minutes". De
+v1-zin op de guided ontwerpstap ("nine complete designs") beschrijft een v1-scan en is op de
+v2-route in élk opzicht onwaar; zij staat sindsdien achter `!engineV2Enabled`.
+
+Elk getal draagt de casus en de datum waarop het gemeten is, zodat het niet stil in een belofte kan
+verouderen — een getal met herkomst kan gecontroleerd worden, een getal zonder wordt geloofd:
+
+| keuze | gemeten | waar |
+| --- | --- | --- |
+| verkenning | 2032 s (34 min) voor 6 kandidaten | casus 1, drieweg, headless Chrome (E-2, 06-09-2026) |
+| verkenning | 496 s (8 min) voor 5 kandidaten | casus 1b, tweeweg, headless Chrome (E-3b, 06-09-2026) |
+| volledig veld | 17 884 s (4 u 58) voor 24 kandidaten | casus 1 in de generator, acht processen parallel (A5e.3c); de browser doet ze één voor één |
+
+---
+
+#### 6 — WAT DE SHORTLIST SINDS I-3 ZEGT
+
+De poortkolom zegt al `off` per rij en de eisenlijst "— no requirement stated" (P4, bij I-1 per veld
+nagelopen). Wat geen rij kon zeggen is wat de lezer op dat moment wil weten: **hoeveel van de
+vragen die hij gesteld kreeg onbeantwoord bleven, en welke.** Eén regel, met namen, en `null` zodra
+alles beantwoord is — "0 overgeslagen" is ruis. Zij staat op drie plekken: op het samenvattingsscherm
+van de wandeling, boven de knop (een half uur is lang om te wachten op de mededeling dat niets het
+resultaat beoordeeld heeft) en naast de shortlist.
+
+En daaronder de knop **"Continue in Expert →"**, met de zin die de hele sessie samenvat: hetzelfde
+project, dezelfde shortlist, alles wat gesteld is nog steeds gesteld. Er wordt niets overgedragen,
+en dát is het punt — een route die eindigt door de ontwerper zijn eisen opnieuw te laten intypen zou
+het tegendeel bewezen hebben.
+
+---
+
+#### 7 — WAT MET OPZET NIET GEDAAN IS
+
+- **De v1-wizard is niet aangeraakt.** Hij is de v1-route en blijft dat; de toggle-invariant staat.
+- **De v1-velden zijn niet verplaatst en niet uitgezet** (de I-1-afweging, ongewijzigd).
+- **Guided kreeg geen eigen v2-toggle.** Die zou de vlag bereikbaar maken vanuit guided — en zou met
+  de vlag uit gedrag toevoegen dat er niet was. Zie §4 voor de prijs.
+- **De eisen zijn niet verplicht gemaakt en er is er geen bijgekomen**; NICE TO HAVE-rijen worden
+  in guided niet gevraagd (zij blokkeren niets, en een wizard die ze vraagt maakt ze tot eisen).
+
+---
+
+#### 8 — DE GUARDS
+
+`src/lib/v2Guided.test.ts`, 38 claims in twee helften. De datahelft: dekking van het register beide
+kanten op, de volgorde, de vier statusregels met hun tegenproeven (alternatieven lezen nooit
+half-beantwoord; een modus die een getal nodig heeft is niet beantwoord tot hij het heeft), de zinnen
+verbatim uit het register, de ENE defererende invoer, en dat élk gemeten looptijdcijfer zijn casus en
+datum draagt. De bronscan-helft, in het idioom van `v2InputRegister.test.ts` en `selection.test.ts`:
+de pane rendert alleen onder de vlag en de tab wordt bewaakt; stappenbalk, palet en Volgende-knop
+lezen ÉÉN route en de vijf gekopieerde etiketten zijn weg; elke rij heeft een control; geen enkele
+placeholder is een getal; de knop wist; guided houdt GEEN eigen store; de shortlist draagt de regel;
+de moduskeuze noemt de engine; en de grenzen van de wandeling zijn gelijk aan de attributen van het
+paneel zelf.
+
+**Nagemeten dat zij kunnen falen** — vijf apart uitgeprobeerd: de vlag van de pane weghalen (het
+bestand faalt in zijn geheel, op de eerste regel), een `placeholder="2.6"` in de wandeling zetten
+(rood met het getal in de melding), een scherm zijn registerrij afnemen (drie claims rood), een
+grens laten wegdrijven van het paneel (`maxDissipationPct max: expected 200 to be 100`), en de
+tweede kopie van de route terugzetten (rood).
+
+---
+
+#### 9 — BROWSERCONTROLE (headless Chrome, dev-server)
+
+De casus-1-demobundel, verse localStorage, van upload tot shortlist.
+
+- **Vlag UIT:** vijf stappen, `Your project · Your cabinet · Your drivers · Design it · Your build`.
+  Geen wizard, geen tab, geen enkel woord over v2 — de toggle-invariant zoals de ontwerper hem ziet.
+- **Vlag AAN:** zes stappen met `4 What it must meet` op zijn plaats, en de moduskeuze leest
+  *"Engine v2 is on: guided asks what the design must meet, one requirement at a time, and judges the
+  run against your answers."*
+- **De wandeling:** vijftien schermen, "Question 1 of 15" … "Question 15 of 15", elk met zijn vraag,
+  zijn bron ("the amplifier's nameplate or spec sheet") en zijn kostenblok. Twaalf gesteld met casus
+  1's eigen getallen (2,6 Ω · 35 % · 1,6 Ω · −20 dB · 160 W/8 Ω/0,8 · 100 W · 10 W/0,5/10 W · none ·
+  1,4 dB · 2,4× · ±1,5 dB · 45°), **twee bewust overgeslagen** — spoelstroomklasse en dempingsmarge,
+  allebei eisen die casus 1 werkelijk niet stelt. (In de tweede run een derde: de EPDR-vloer, zie
+  onder.)
+- **Het samenvattingsscherm:** twaalf `— stated`, twee `— skipped, not judged`, en de voicing
+  `— flat, the neutral reference` (níet als overgeslagen geteld). De regel eronder:
+  *"2 requirements you skipped are not judged: Coil current class A, Damping margin dB. Every one of
+  them is still measured and shown; none of them decided anything."*
+- **Elke feitenstap zegt wat de engine van hem nodig heeft:** "Your project" draagt de vier
+  meetrijen, "Your cabinet" de frontbreedte, "Your drivers" de posities en S_d — elk met de zin van
+  het register erachter. De EISENstap draagt er geen, want dat is de ene stap die stelt in plaats van
+  meet, en de test pint dat.
+- **De ontwerpstap:** de v1-zin is afwezig, de twee runkeuzes staan er met hun gemeten looptijden
+  (*"Exploration — the standard run, and what the button does. A field of at most 8 candidate
+  crossovers …"*), en de overgeslagen-regel staat er vóór de knop. Geen console-fout.
+- **De run — TWEE keer gedraaid, en de tweede is er omdat de eerste iets liet zien.**
+
+  **(i) 1444 s (24 min), 6 kandidaten, NUL gekwalificeerd.** Alle zes geweigerd op M-B/EPDR
+  (1,30–1,34 Ω tegen de 1,60 die ik stelde), één daarvan ook op M-C (−18,6 tegen −20,0). De
+  shortlist zegt dan precies wat UI-1 haar leerde zeggen: *"No design was loaded: 0 of 6 candidates
+  meet the requirements you stated. The Working tab is untouched — the v1 ranking below has no
+  knowledge of your gates or requirements, so its top row is not a stand-in for an empty
+  shortlist."* **Die 1,60 Ω is niet casus 1's getal — casus 1 stelt helemaal geen EPDR-vloer**, en
+  het is uitgerekend een van E-2's spookgetallen dat Sander voor een waarde aanzag. Ik heb het als
+  plausibel klinkende keuze ingetypt en het wees het hele veld af. Dat is geen defect van de route
+  maar de scherpste demonstratie van waar zij voor bestaat: één getal dat niemand begrijpt, gesteld
+  omdat het er stond, en een half uur later een lege lijst. Het scherm dat het vraagt zegt nu wat
+  het doet, en de lijst zegt achteraf welke eis het was.
+
+  **(ii) Dezelfde wandeling met die eis ook overgeslagen (drie overgeslagen, alle drie werkelijk
+  niet gesteld op casus 1): 2172 s (36 min), 6 kandidaten, ÉÉN gekwalificeerd en GELADEN** —
+  `low→mid 466,7 LR4 · mid→high 1940,8 LR4`, RMS 1,18 dB, venster ±2,06 dB, M-K 16,3°, min |Z|
+  2,6 Ω, EPDR 1,36 Ω, dissipatie 11 %, heetste R 3,3 W, M-C −20,7 dB, BOM €173. Vijf geweigerd op
+  het LF-bult-budget (2,17–3,50 dB opslingering tegen de 1,4 die ik stelde), elk met zijn getal.
+  De relaxatieladder deed haar werk zichtbaar: *"meets the SPL window at ±2.25 dB — you asked for
+  ±1.50 dB. Relaxed in 2 visible step(s) … **No protection limit was touched.**"* De stappenbalk
+  leest dan `✓ ✓ ✓ ✓ ✓ 6`.
+
+  **Bijvangst die de sessie bewijst zonder dat een test het kan:** tussen de twee runs is de pagina
+  HERLADEN, en de twaalf gestelde antwoorden stonden er nog — omdat zij het PROJECT zijn en niet de
+  wandeling. De voortgangsstippen lazen `SS.SSSS.SSS.SS.` vóór en ná.
+
+---
+
+#### 10 — OPEN
+
+- **De schermvolgorde is de registervolgorde, en dat is niet noodzakelijk de volgorde waarin een
+  ontwerper de getallen bij de hand heeft.** Vier van de vijftien komen van het typeplaatje van de
+  versterker en staan verspreid over de wandeling. Een volgorde op BRON zou minder heen en weer
+  bladeren opleveren en zou de "in de I-1-volgorde"-eis breken; deze ronde heeft dat niet gemeten.
+- **De NICE TO HAVE-rijen worden in guided niet gevraagd**, ook niet als aanbod. De I-2-merge is er
+  één van en woont bij de upload, dus stap 1 wijst er wél naar; de andere (Bl, M_ms, X_max, de
+  spoelfamilie) verrijken M-C en M-D en blijven op de driverkaarten.
+- **De guided-tab is per browser en niet per project** (`ads-v2-req-ix`, zoals `ads-ui-tab`
+  ernaast). Twee projecten in één browser delen de cursor. Het zijn geen antwoorden, dus er gaat
+  niets verloren; het is wel een plek waar een lezer een geheugen kan verwachten dat er niet is.
+
+---
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

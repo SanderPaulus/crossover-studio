@@ -48,6 +48,13 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná I-3 (09-09-2026) gemeten op 457 s — 165 bestanden (164 geslaagd, 1 overgeslagen), 1982 tests
+    (1979 geslaagd, 3 overgeslagen), in één keer groen, gedraaid ná de twee browserruns met de
+    dev-server en de headless Chrome gestopt.** +1 BESTAND (`v2Guided.test.ts`, 38 claims) en +38 tests,
+    en die twee getallen zijn HETZELFDE getal: het corpus is niet geregenereerd, dus geen enkele
+    `it.each` over het levende corpus beweegt en de delta is precies de inhoud van het nieuwe bestand.
+    GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan, en 457 tegen I-2's 444 s is dezelfde
+    laag op dezelfde machine.
     **Ná I-2 (08-09-2026) gemeten op 444 s — 164 bestanden (163 geslaagd, 1 overgeslagen), 1944 tests
     (1941 geslaagd, 3 overgeslagen), gedraaid ná de browsercontrole met de dev-server en de headless
     Chrome gestopt.** +1 BESTAND (`nfMerge.test.ts`, 56 claims) en +56 tests, en die twee getallen zijn
@@ -2841,6 +2848,83 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   I-2 als zodanig gelabeld (`live preview, not a file: …`) en verder niet aangeraakt: hem intrekken
   verandert het gedrag van élk project met een nabij veld en raakt `sourceMeta`, `dataFloorOf` en de
   grafieken — eigen sessie, mét de toggle- en byte-regressies ernaast.
+
+### I-3-guards (guided is op de v2-route een wizard; alleen UI)
+- `src/lib/v2Guided.ts` + `v2Guided.test.ts` (36 claims, nieuw) — **de I-1-inventaris als ROUTE.** Het
+  register gaf élke invoer één zin gewone taal en zette die in het EXPERTPANEEL; guided vraagt ze sinds
+  I-3 ÉÉN VOOR ÉÉN, in de registervolgorde, met diezelfde zin eronder en een expliciete SLA OVER waarvan
+  het gevolg op de knop staat. Het lege veld en de ongewapende poort zijn in beide gevallen identiek — P4
+  is nergens versoepeld — maar alleen één van de twee is een besluit dat iemand genomen heeft.
+- **VIJFTIEN SCHERMEN EN VEERTIEN EISEN, en dat getal is GEDERIVEERD.** De opdracht vroeg "de veertien
+  I-1-zinnen"; de tweeëntwintig oordeelsrijen gegroepeerd naar wat SAMEN iets zegt leveren vijftien
+  schermen, waarvan er veertien "leeg = niets beoordeelt dit" zeggen. Het vijftiende is de VOICING, waar
+  leeg geen afwezigheid is: vlak is de neutrale referentie en wordt gesteld dóór hem te kiezen (V45,
+  A5e.2). `V2GuidedSkipKind` draagt die scheiding in het TYPE, en de test pint de neutrale als benoemde
+  VERZAMELING (`['voicing']`) en niet alleen als telling — de V47/V48-les, preventief.
+- **DRIE STATUSREGELS, ALLE DRIE DATA.** `all` = deze invoeren stellen alleen SAMEN iets (excursie,
+  weerstandstoelating); `any` = het zijn ALTERNATIEVEN en één is een antwoord (het ene M-C-getal of een
+  getal per weg; vlak of een plateau); `conditional` = een verfijning die stopt optioneel te zijn zodra
+  een ander veld een waarde heeft — er is er precies één, het niveauwerk-maximum, want `series-r-max`
+  zonder getal bindt niets en de hele regel leest als niet gesteld (V51b). Zonder die derde regel las een
+  scherm met de modus en zonder maximum als BEANTWOORD terwijl de engine niets ontving.
+- **DE ZINNEN ZIJN DIE VAN HET REGISTER, GELEZEN.** `skipMeansFor` levert `row.emptyMeans` verbatim en de
+  test vergelijkt élke zin met het register; de schermen noemen ROW IDS en nooit woorden. De ENE invoer
+  waarvan leeg DEFEREERT (`resistorThermalPowerW`, V50/V51) wordt uit
+  `JUDGEMENT_KEYS_WHERE_BLANK_DEFERS` gemarkeerd en apart getoond.
+- **GEEN ENKELE PLACEHOLDER IS EEN GETAL.** E-2 haalde de zes spookgetallen uit het paneel; een WIZARD is
+  de plek waar zo'n suggestie het meeste schade doet, want zij arriveert wanneer de lezer de minste reden
+  heeft om te twijfelen. De test scant de renderer en eist `UNSET_GHOST` op élk veld.
+- **ÉÉN PROJECTSTAAT, TWEE WEERGAVEN — en dat is de claim waar de sessie op draait.** Guided schrijft
+  `setV2Field`, `setAmpMinLoadOhm`, `setV2Meas` en de `targetCurve` van het ONTWERP: dezelfde setters als
+  het expertpaneel. Geen guided-opslag, geen kopie, geen default. Het enige wat de wandeling onthoudt is
+  een CURSOR (`ads-v2-req-ix`), bij naam in de test zodat er geen tweede `useState` bij kan komen. Drie
+  van de vijftien schermen dragen invoeren die GEEN v2-sleutel zijn (de versterkervloer is ouder dan het
+  v2-blok, het M-C-getal per weg staat op de driverkaarten, de voicing hangt aan het ONTWERP) — precies
+  waarom de schermen rijen noemen en geen sleutels.
+- **DE GRENZEN VAN TWEE WEERGAVEN MOGEN NIET VERSCHILLEN.** Twee inputs over één stuk staat kunnen het
+  oneens zijn over wat erin getypt mag worden, en een dissipatie die het paneel op 100 % kapt en de
+  wandeling niet is een waarde die maar één van de twee schermen bestaat. `REQUIREMENT_INPUT` is het ene
+  huis; de test LEEST de JSX van het paneel uit `App.tsx` en vergelijkt `min`/`max`/`step` per veld. Een
+  kopie in een commentaar zou de drift zijn die dit voorkomt; een test die de andere kopie leest kan niet
+  wegdrijven, alleen falen.
+- **OVERSLAAN WIST, en het etiket zegt het** ("Skip — clear this and leave it unjudged"). Langs een half
+  ingevuld scherm lopen laat een waarde staan die niets beoordeelt en er als een antwoord uitziet
+  (`partly`); de ene knop die "unjudged" belooft moet dat leveren.
+- **DE ROUTE HEEFT ÉÉN HUIS EN DRIE LEZERS.** `guidedStages(engineV2Enabled)` voedt de stappenbalk, het
+  commandopalet én de "Volgende"-knop onderaan — die laatste droeg tot I-3 een TWEEDE KOPIE van de route
+  inclusief haar vijf etiketten, precies waar het commentaar op `GUIDED_STEP_LABEL` voor waarschuwt, en de
+  nieuwe stap zou het eerste zijn geweest dat zo'n kopie kwijtraakte. Met de vlag UIT levert hij de vijf
+  stappen die guided altijd had, in dezelfde volgorde en met dezelfde etiketten (in de browser nagemeten
+  op verse localStorage); met de vlag AAN staat "What it must meet" op plaats 4, tussen de feiten en de
+  run — want daar kan de vraag pas gesteld worden.
+- **`V2_REQUIRED_BY_STAGE` — DE NOODZAKELIJKE INVOEREN STAAN OP DE STAP WAAR ZIJ INGEVULD WORDEN.**
+  I-1's zeven NOODZAKELIJK-rijen zijn metingen en geometrie, dus het paneel kon er alleen naar WIJZEN;
+  een route kan ze zetten waar zij ingevuld worden, met de zin van het register over wat hun
+  afwezigheid kost. De vereniging is EXACT `rowsOfClass('required')`, beide kanten op — een nieuwe
+  noodzakelijke invoer landt op een stap of de build breekt. `positions` staat op de DRIVERS-stap en
+  niet op de kaststap die het register noemt: het register zegt welk FORMULIER een veld draagt, en in
+  guided is "Your drivers" waar de posities ingevuld worden (zijn vinkje leest ze).
+- **`guidedEngineNote` IS NULL OP v1, en dat is de toggle-invariant en geen verzuim.** Met de vlag uit is
+  de app wat zij altijd was, en "exact" dekt de woorden op een tooltip net zo goed als de bytes in een
+  netlist (dezelfde reden als `designLevelNote` en `v1NoteFor`). **De prijs is echt:** een guided
+  gebruiker met de vlag uit hoort van hieruit niets over v2 en vindt hem waar hij altijd stond.
+- **DE VERKENNING IS DE STANDAARD, EN DE PRIJS IS GEMETEN MET HAAR HERKOMST.** `fieldModeOf('')` levert
+  hem sinds E-2 al; wat ontbrak was dat iemand het ZEI. Elk cijfer draagt de casus en de datum, zodat het
+  niet stil in een belofte veroudert: 2032 s / 6 kandidaten (casus 1, E-2), 496 s / 5 (casus 1b, E-3b),
+  17 884 s / 24 in de generator over acht processen (A5e.3c) voor het volle veld. De v1-zin op de guided
+  ontwerpstap ("nine complete designs") beschrijft een v1-scan en staat sinds I-3 achter `!engineV2Enabled`.
+- **`describeSkipped` — welke eisen onbeantwoord bleven, BIJ NAAM.** De poortkolom zei al `off` per rij en
+  de eisenlijst "— no requirement stated" (P4, bij I-1 per veld nagelopen); wat geen rij kon zeggen is
+  hoeveel van de gestelde vragen onbeantwoord bleven en welke. `null` zodra alles beantwoord is — "0
+  overgeslagen" is ruis. Drie plekken: het samenvattingsscherm, boven de knop (een half uur is lang om te
+  wachten op de mededeling dat niets het resultaat beoordeeld heeft) en naast de shortlist.
+- `src/lib/help.ts` — `helpSectionForTab` kent de nieuwe tab en landt op `filters`: dezelfde eisen zijn
+  daar de oordeelsgroep van het paneel, en een tweede handleidingssectie zou tweemaal geschreven moeten
+  worden.
+- **DE VOLLE RUN IS BIJ I-3 NIET GEDRAAID**, met de I-1/E-2/E-3b-afweging: geen engine-, poort-, budget-,
+  venster- of corpuswijziging, en de twee byte-baselines die dát bewaken (`f4cRegression`,
+  `workerRouteRegression`) draaien in de snelle laag en reproduceerden. De drie live ketenruns zouden een
+  corpus reproduceren dat deze sessie niet aangeraakt heeft.
 
 ### C-2-guards (de synthetische casus, en de drie besluiten van de laatste regeneratie)
 - `src/lib/engine2/goldenCasus2.test.ts` (14 claims, nieuw) — **de acceptatie-autoriteit van casus 2, en de enige

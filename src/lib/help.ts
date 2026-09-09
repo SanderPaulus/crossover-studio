@@ -525,11 +525,17 @@ export function searchHelp(query: string, sections: HelpSection[] = HELP_SECTION
 
 /** Which manual section belongs to a design-pane tab (contextual ❓ open). */
 export function helpSectionForTab(
-  tab: 'import' | 'drivers' | 'data' | 'filters' | 'network',
+  tab: 'import' | 'drivers' | 'data' | 'requirements' | 'filters' | 'network',
 ): string {
   switch (tab) {
     case 'import':
       return 'import';
+    /* I-3's guided requirements step. The same requirements are the Filters
+       panel's judgement group in expert, and that is what the manual
+       describes — so the help lands there rather than on a section that would
+       have to be written twice. */
+    case 'requirements':
+      return 'filters';
     // The per-driver facts split off into their own step; the import section
     // still describes loading those drivers, so it stays the right landing.
     case 'drivers':

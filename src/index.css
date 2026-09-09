@@ -4405,3 +4405,176 @@ details.cabinet-driver > .derived strong,
   text-transform: uppercase;
   color: var(--muted);
 }
+
+/* ---------------------------------------------------------------------
+ * I-3 — THE GUIDED REQUIREMENTS WALK.
+ *
+ * One question per screen, so the screen may be wide and calm: the panel it
+ * sits in is the guided `focus-form` column, and everything here is sized to
+ * be read once rather than scanned. The consequence block is the one element
+ * deliberately given weight — it is the sentence the route exists to put in
+ * front of someone before they skip.
+ * ------------------------------------------------------------------- */
+.v2-req h3 {
+  margin: 0.2rem 0 0.35rem;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+.v2-req-count {
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.v2-req-source {
+  margin: 0 0 0.7rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.v2-req-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.1rem;
+  align-items: flex-end;
+  margin-bottom: 0.7rem;
+}
+.v2-req-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.v2-req-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.v2-req-perway {
+  flex-basis: 100%;
+  flex-wrap: wrap;
+}
+.v2-req-perway-one {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.6rem;
+  font-size: 0.8rem;
+}
+.v2-req-blocked {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0.2rem 0 0.6rem;
+}
+/* The cost of skipping, in the register's own words. Bordered rather than
+   muted: it is the half of the screen that is easiest to skip past and the
+   half that stops a run being judged by nothing. */
+.v2-req-cost {
+  border-left: 3px solid var(--border);
+  padding: 0.35rem 0 0.35rem 0.7rem;
+  margin: 0.5rem 0 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.v2-req-cost ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+.v2-req-cost li {
+  margin: 0.15rem 0;
+  color: var(--muted);
+}
+.v2-req-cost li em {
+  color: var(--fg);
+  font-style: normal;
+  font-weight: 600;
+}
+.v2-req-cost li.v2-req-defers {
+  border-left: 2px solid var(--accent, #4d8df0);
+  padding-left: 0.45rem;
+  margin-left: -0.55rem;
+}
+.v2-req-nav {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
+.v2-req-nav .step-next {
+  margin-left: auto;
+}
+.v2-req-skip {
+  color: var(--muted);
+}
+/* The walk at a glance: a numbered dot per question, and a way back into any
+   of them. Filled = stated, half = half-stated (which judges nothing). */
+.v2-req-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0.5rem 0 0.9rem;
+  padding: 0;
+}
+.v2-req-dot {
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+.v2-req-dot.v2-req-stated {
+  background: var(--accent, #4d8df0);
+  color: #fff;
+  border-color: var(--accent, #4d8df0);
+}
+.v2-req-dot.v2-req-partly {
+  border-color: var(--warn, #d8a33a);
+  color: var(--warn, #d8a33a);
+}
+.v2-req-dot.active {
+  outline: 2px solid var(--accent, #4d8df0);
+  outline-offset: 1px;
+}
+.v2-req-list {
+  margin: 0.3rem 0 0.7rem;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.v2-req-list li.v2-req-blank,
+.v2-req-list li.v2-req-partly {
+  color: var(--muted);
+}
+/* What went unanswered, said before the run and again beside the shortlist. */
+.v2-req-skipped {
+  border-left: 3px solid var(--warn, #d8a33a);
+  padding-left: 0.7rem;
+}
+.v2-run-choice p {
+  margin: 0.3rem 0;
+}
+.v2-to-expert {
+  margin-top: 0.7rem;
+}
+
+/* I-3 — what Engine v2 needs from THIS step, on the step itself. Quiet by
+   design: it is a checklist for someone who wonders why a window is missing,
+   not the content of the step. */
+.v2-stage-need {
+  border-left: 3px solid var(--border);
+  padding: 0.35rem 0 0.35rem 0.7rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.76rem;
+}
+.v2-stage-need ul.v2-need {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  line-height: 1.5;
+}
+.v2-stage-need .v2-empty {
+  margin-left: 0;
+  color: var(--muted);
+}
