@@ -12607,10 +12607,27 @@ export default function App() {
                               : ` · ${t('enter the spacing for the array lobing ceiling')}`}
                           </span>
                         )}
+                          {/* ---- U-3c: THE DATASHEET NUMBERS, TOGETHER AND IN
+                            * THE DEFAULT VIEW ---------------------------------
+                            * All four are `source: 'datasheet'` in the register,
+                            * and that is now what keeps them here: a number the
+                            * designer is expected to copy off a spec sheet is
+                            * GENERIC data every project has, so hiding it behind
+                            * a fold is the one placement that costs a newcomer
+                            * something real. U-3b had put X_max, Bl and M_ms
+                            * behind the disclosure because the class says nice —
+                            * and the measured consequence was a two-way whose
+                            * window floor fell back to k·f_s with nothing to
+                            * reject a handover that under-protects the tweeter.
+                            *
+                            * They read as one row because a spec sheet reads as
+                            * one row. Bl and M_ms are v2 measurement fields, so
+                            * they arrive with the engine's own reporting flag;
+                            * S_d and X_max are project state and are always here. */}
                           <span className="cd-label">{t('Datasheet')}</span>
                           <span
                             className="cd-fields"
-                            title={t('Cone area from the datasheet, for ONE driver. Sd gives the effective piston diameter — the honest one for every beaming rule, since a nominal size includes a surround that does not radiate.')}
+                            title={t('The numbers a driver datasheet gives, for ONE driver. Sd gives the effective piston diameter — the honest one for every beaming rule, since a nominal size includes a surround that does not radiate. Sd and Xmax together give the level-aware excursion floor; Xmax with Bl and M_ms gives the allowed voltage on the resonance, and with it the DERIVED drive limit M-C judges against (V49).')}
                           >
                             <span className="cd-pre">Sd</span>
                             <input
@@ -12620,7 +12637,52 @@ export default function App() {
                               value={sdCm2[role]}
                               onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
                             />
-                            {' cm²'}
+                            {' cm² · Xmax '}
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.1}
+                              value={xmaxMm[role]}
+                              onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
+                            />
+                            {' mm'}
+                            {engineSelection.reporting && (
+                              <>
+                                {' · '}
+                                <span
+                                  className="inline-num"
+                                  title={t("Force factor Bl from the datasheet, T·m. With M_ms, the measured Z_max, f_s and Q_ms of the sweep this gives the cone displacement per volt on the resonance (M-C v2.0, electromechanical route). Blank = that route is off for this driver and the stated dB figure alone judges it.")}
+                                >
+                                  {t('Bl') + ' '}
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={0.1}
+                                    placeholder="—"
+                                    value={v2Meas[role].blTm}
+                                    onChange={(e) => setV2MeasField(role, 'blTm', e.target.value)}
+                                    style={{ width: '4rem' }}
+                                  />
+                                  {' T·m'}
+                                </span>{' · '}
+                                <span
+                                  className="inline-num"
+                                  title={t("Moving mass M_ms from the datasheet, g. See Bl. NB it is M_ms and not M_md: the first counts the air load, the second does not, and some sheets give only the second.")}
+                                >
+                                  {t('M_ms') + ' '}
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={0.01}
+                                    placeholder="—"
+                                    value={v2Meas[role].mmsG}
+                                    onChange={(e) => setV2MeasField(role, 'mmsG', e.target.value)}
+                                    style={{ width: '4rem' }}
+                                  />
+                                  {' g'}
+                                </span>
+                              </>
+                            )}
                           </span>
                         {dia && (
                           <span className="derived">
@@ -12965,21 +13027,6 @@ export default function App() {
                             {t('— worth a steeper electrical high-pass than a sealed box would need')}
                           </span>
                         )}
-                            <span className="cd-label">{t('X_max')}</span>
-                            <span
-                              className="cd-fields"
-                              title={t('Linear excursion from the datasheet, one way, for ONE driver. With Sd it gives the level-aware excursion floor, and with Bl and M_ms below the allowed voltage on the resonance (M-C v2.0). Blank = neither is judged.')}
-                            >
-                              <span className="cd-pre">Xmax</span>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.1}
-                                value={xmaxMm[role]}
-                                onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
-                              />
-                              {' mm'}
-                            </span>
                         {/* A5a — MEASUREMENT metadata for engine v2 (F3b).
                           *
                           * Behind the toggle, and that is a deliberate choice
@@ -13041,43 +13088,6 @@ export default function App() {
                                   style={{ width: '4.5rem' }}
                                 />
                                 {' Ω'}
-                              </span>{' '}
-                              {/* V49 — the two datasheet numbers M-C v2.0 needs
-                                  beside the Sd/Xmax above: with them, the measured
-                                  resonance (f_s, Z_max, Q_ms from the sweep) and the
-                                  amplifier peak, the drive limit on the resonance is
-                                  DERIVED from excursion instead of stated. */}
-                              <span
-                                className="inline-num"
-                                title={t("Force factor Bl from the datasheet, T·m. With M_ms, the measured Z_max, f_s and Q_ms of the sweep this gives the cone displacement per volt on the resonance (M-C v2.0, electromechanical route). Blank = that route is off for this driver and the stated dB figure alone judges it.")}
-                              >
-                                {t('Bl') + ' '}
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={0.1}
-                                  placeholder="—"
-                                  value={v2Meas[role].blTm}
-                                  onChange={(e) => setV2MeasField(role, 'blTm', e.target.value)}
-                                  style={{ width: '4rem' }}
-                                />
-                                {' T·m'}
-                              </span>{' '}
-                              <span
-                                className="inline-num"
-                                title={t("Moving mass M_ms from the datasheet, g. See Bl.")}
-                              >
-                                {t('M_ms') + ' '}
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  placeholder="—"
-                                  value={v2Meas[role].mmsG}
-                                  onChange={(e) => setV2MeasField(role, 'mmsG', e.target.value)}
-                                  style={{ width: '4rem' }}
-                                />
-                                {' g'}
                               </span>{' '}
                               <span
                                 className="inline-num"

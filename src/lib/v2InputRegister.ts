@@ -486,29 +486,50 @@ const NICE: readonly V2InputRow[] = [
   {
     id: 'blTm',
     label: 'Bl',
-    form: 'Drivers tab → Engine v2 — measurement',
+    form: 'Setup tab → driver card → Datasheet',
     travels: 'v2Meas[role].blTm → driverCard → driveExcursion route 1 (x/V on the resonance)',
     cls: 'nice',
     emptyMeans: 'no excursion ceiling for this way; M-C falls back to the stated dB figure, if any.',
     source: 'datasheet',
+    placement: 'always',
+    placementWhy:
+      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
+      'hiding it is the one placement that costs a newcomer something real: without these three the ' +
+      'excursion ceiling of M-C cannot be derived, A5d.3’s drive floor cannot arm, and the crossover ' +
+      'window falls back to k·f_s with nothing to reject a handover that under-protects the driver ' +
+      '(measured on casus 1b: floor 1647 → 1294 Hz).',
   },
   {
     id: 'mmsG',
     label: 'M_ms',
-    form: 'Drivers tab → Engine v2 — measurement',
+    form: 'Setup tab → driver card → Datasheet',
     travels: 'the other half of route 1 — Bl and M_ms are needed together',
     cls: 'nice',
     emptyMeans: 'no excursion ceiling for this way, exactly as above.',
     source: 'datasheet',
+    placement: 'always',
+    placementWhy:
+      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
+      'hiding it is the one placement that costs a newcomer something real: without these three the ' +
+      'excursion ceiling of M-C cannot be derived, A5d.3’s drive floor cannot arm, and the crossover ' +
+      'window falls back to k·f_s with nothing to reject a handover that under-protects the driver ' +
+      '(measured on casus 1b: floor 1647 → 1294 Hz).',
   },
   {
     id: 'xmaxMm',
     label: 'X_max',
-    form: 'Setup tab → driver card',
+    form: 'Setup tab → driver card → Datasheet',
     travels: 'xmaxMm → driverCard.xMaxMm → the allowed voltage on f_s',
     cls: 'nice',
     emptyMeans: 'no excursion ceiling; the excursion per volt is still derived and shown.',
     source: 'datasheet',
+    placement: 'always',
+    placementWhy:
+      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
+      'hiding it is the one placement that costs a newcomer something real: without these three the ' +
+      'excursion ceiling of M-C cannot be derived, A5d.3’s drive floor cannot arm, and the crossover ' +
+      'window falls back to k·f_s with nothing to reject a handover that under-protects the driver ' +
+      '(measured on casus 1b: floor 1647 → 1294 Hz).',
   },
   {
     id: 'driveVoltageV',

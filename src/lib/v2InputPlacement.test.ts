@@ -122,13 +122,52 @@ describe('U-3b — the placement rule', () => {
     }
   });
 
-  it('the four NICE rows that stay in the default view are named, with what each would cost', () => {
+  it('the NICE rows that stay in the default view are named, with what each would cost', () => {
     /* A named set rather than a count: a nice row added later takes the class
      * default and disappears behind the disclosure, which is the right answer;
-     * one that should stay visible has to be argued for HERE. */
+     * one that should stay visible has to be argued for HERE.
+     *
+     * U-3c added the three DATASHEET rows to it. That is a rule and not three
+     * exceptions: a number the designer copies off a spec sheet is generic data
+     * every project has, so it belongs where it is filled in. The second claim
+     * below states it as a rule, so a datasheet row added later inherits it
+     * instead of quietly landing behind the fold. */
     const shown = rowsOfClass('nice').filter((r) => placementOf(r) === 'always').map((r) => r.id);
-    expect(shown.sort()).toEqual(['baffleHeight', 'micDistance', 'refDriver', 'referencePoint', 'sourceCount'].sort());
+    expect(shown.sort()).toEqual(
+      ['baffleHeight', 'blTm', 'micDistance', 'mmsG', 'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm'].sort(),
+    );
     for (const id of shown) expect(rowById(id)!.placementWhy, id).toBeTruthy();
+  });
+
+  it('every DATASHEET row is in the default view, and they sit on the card they are filled in on', () => {
+    const sheet = V2_INPUT_REGISTER.filter((r) => r.source === 'datasheet');
+    expect(sheet.map((r) => r.id).sort()).toEqual(['blTm', 'mmsG', 'nominalSize', 'sd', 'xmaxMm'].sort());
+    /* The rule binds where the rule GOVERNS. `nominalSize` is the one datasheet
+     * row in a form this placement rule does not reach — it is the v1 fallback
+     * for a missing S_d and sits in Filters → Driver limits — so it is named
+     * here rather than given a placement nobody enforces. A datasheet row added
+     * later in an ungoverned form fails this line, which is when someone should
+     * look. */
+    const governed = new Set(V2_FORM_FIELDS.map((f) => f.row));
+    expect(sheet.filter((r) => !governed.has(r.id)).map((r) => r.id)).toEqual(['nominalSize']);
+    for (const r of sheet) {
+      if (!governed.has(r.id)) continue;
+      expect(placementOf(r), r.id).toBe('always');
+    }
+    /* The four that describe ONE driver read as one row, because a spec sheet
+     * reads as one row — S_d, X_max, Bl and M_ms on the driver card. The fifth
+     * (`nominalSize`) is a v1 fallback for a missing S_d and lives in Filters,
+     * which is why it is named above rather than moved. */
+    for (const id of ['sd', 'xmaxMm', 'blTm', 'mmsG']) {
+      expect(rowById(id)!.form, id).toContain('driver card');
+    }
+    const row = sliceOf('driver-card');
+    const at = row.indexOf("{t('Datasheet')}");
+    expect(at).toBeGreaterThan(-1);
+    const block = row.slice(at, at + 3500);
+    for (const c of ['value={sdCm2[role]}', 'value={xmaxMm[role]}', 'value={v2Meas[role].blTm}', 'value={v2Meas[role].mmsG}']) {
+      expect(block, c).toContain(c);
+    }
   });
 });
 

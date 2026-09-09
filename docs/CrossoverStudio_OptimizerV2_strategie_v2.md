@@ -9084,6 +9084,96 @@ dat deze sessie niet aangeraakt heeft.
 - **De v1-knoppen staan waar zij stonden**, met hun U-1-badge. Hun klasse geeft ze `more`, maar zij
   liggen alle vijf in ongereguleerde secties, dus de regel raakt ze vandaag niet.
 
+---
+
+### U-3c — de vier datasheetgetallen terug in het standaardbeeld van de driverkaart (09-09-2026, alleen UI; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding, en zij is een MEETRESULTAAT uit Sanders eigen sessie.** Direct na U-3b liep hij een
+tweeweg op de demobundel en zag de kandidaten beginnen bij 1372 Hz waar casus 1b's veld op 1735
+begint. De rekensom sluit exact: zonder de gestelde tweetereis kan de aandrijfvloer van A5d.3(ii)
+niet wapenen en valt de vensterbodem terug op k·f_s.
+
+| | venster | posities |
+| --- | --- | --- |
+| met de gestelde −20 dB | 1647–2304 Hz | 1735 · 1948 · 2187 |
+| zonder | 1294–2304 Hz | 1372 · 1540 · 1728 · 1940 · 2178 |
+
+De twee laagste posities geven op de LR4-ladder 13,7 en 17,7 dB op de tweeterresonantie van 924 Hz,
+tegen de 20 die de conventie vraagt — **en er is niets dat ze afwijst, want niemand stelde de grens.**
+Dat is P4 zoals hij hoort te werken en tegelijk een bescherming die de demo kwijt was.
+
+**Het besluit (Sander): de datasheetvelden horen in het standaardbeeld van de driverkaart.** Zijn
+argument is het argument dat telt: *"doorgaans moeten we van generieke data uit kunnen gaan."* Een
+getal dat de ontwerper van een spec sheet overtypt is data die ÉLK project heeft — anders dan een
+metersaflezing, een schakelkeuze of een spoelfamilie — dus het achter een vouw zetten is de ene
+plaatsing die een nieuwkomer werkelijk iets kost.
+
+**Wat er veranderd is.** `S_d`, `X_max`, `Bl` en `M_ms` staan sinds U-3c in ÉÉN rij "Datasheet" in
+het standaardbeeld van de kaart, omdat een spec sheet ook één rij is. U-3b had de laatste drie achter
+de uitklap gezet op grond van hun klasse (`nice`), en dat was formeel juist en praktisch verkeerd.
+De rest van het A5a-blok blijft achter de vouw: gemeten R_e, akoestisch centrum, rotatiesymmetrie,
+meetspanning, schakeling en spoelfamilie zijn géén datasheetgetallen.
+
+**De uitzondering is een REGEL geworden en geen drie uitzonderingen.**
+`v2InputPlacement.test.ts` assert sindsdien dat élke rij met `source: 'datasheet'` in een bestuurd
+formulier `placement: 'always'` heeft, dat de vier die één driver beschrijven op de driverkaart
+staan, en dat zij in dezelfde rij gerenderd worden. Een datasheetrij die later wordt toegevoegd erft
+de regel dus in plaats van stil achter de vouw te landen. `nominalSize` is de ENIGE datasheetrij in
+een ongereguleerd formulier (de v1-terugval voor een ontbrekende S_d, in Filters) en staat bij naam
+in de claim — een datasheetrij die later in een ongereguleerd formulier verschijnt laat die regel
+falen, en dat is precies het moment waarop iemand moet kijken.
+
+---
+
+#### WAT DIT NIET REPAREERT, EN DAT IS DE EIGENLIJKE BEVINDING
+
+**Op deze tweeter verplaatst het invullen van alle zes de invoeren het venster geen hertz.** Casus 1b
+heeft het afgeleide plafond opgeschreven staan:
+
+```
+afgeleid plafond tweeter   −8,58 dB  →  vloer 1185 Hz
+k·f_s (1,4 × 924 Hz)                    vloer 1294 Hz   ← bindt
+gestelde eis −20 dB                     vloer 1647 Hz   ← zou binden
+```
+
+De excursiegrens ligt onder de conventionele k·f_s-vloer, en dat is geen toeval: een dome met
+X_max 1 mm en f_s 924 Hz komt excursiematig nauwelijks in de problemen, terwijl de −20 dB-conventie
+een thermische en vervormingsregel is die veel verder van de resonantie wil blijven.
+
+**Er BESTAAT een generiek datasheetgetal dat dit wel zegt, en de app leest het nergens: de door de
+fabrikant aanbevolen minimale kruisfrequentie, mét de orde erbij.** Bijna elk tweeterblad draagt hem,
+en hij is de eigen samenvatting van de fabrikant van precies de grenzen die de −20 dB benadert. Wat
+de app in plaats daarvan heeft is de terugval k·f_s — orde-afhankelijk (3,0 / 2,0 / 1,6 / 1,4 voor
+orde 1–4) en dus een echte generieke regel, maar op orde 4 komt zij uit op ongeveer de LOSSTE
+aanbeveling die op een tweeterblad staat.
+
+Omgerekend naar de eenheid die de app wél kent (`dB = 6 · orde · log2(F_aanbevolen / f_s)`):
+
+| wat het blad zegt | dB op f_s | vloer bij orde 4 |
+| --- | --- | --- |
+| 1800 Hz @ 12 dB/oct | 11,5 | 1290 Hz |
+| 2000 Hz @ 12 dB/oct | 13,4 | 1360 Hz |
+| 2500 Hz @ 12 dB/oct | 17,2 | 1520 Hz |
+| **2000 Hz @ 18 dB/oct** | **20,0** | **1649 Hz** |
+
+Die laatste rij is de vondst: **de −20 dB-conventie ÍS een datasheet-aanbeveling van 2 kHz bij
+18 dB/oct**, alleen in een andere eenheid opgeschreven. In dB is zij bovendien orde-onafhankelijk,
+wat haar de juiste vorm geeft voor een engine die per orde een eigen venster afleidt.
+
+**De vorm van de reparatie, niet gedaan in deze sessie:** de spiegel van E-1's gestelde plafond. Er
+is een `statedCeilingHz` per paar (regel `'stated'`, kant `ceiling`) en er is GEEN gestelde
+ondergrens. Een `statedFloorHz` per paar, herkomst `datasheet`, gevoed door de aanbevolen
+kruisfrequentie plus haar orde, past er met dezelfde vorm naast, en P4 houdt hem afwezig zolang
+niemand hem stelt. Dat is wél een engine-wijziging — een nieuwe vensterregel is een ander
+kandidaatveld en dus een regeneratiebesluit — en hoort in een eigen sessie.
+
+#### ACCEPTATIE
+
+`npx tsc -b` groen. `npm run test:fast` groen. Geen engine-, poort-, budget-, venster- of
+corpuscode aangeraakt; de twee byte-baselines draaien in de snelle laag en reproduceren. Beide
+falsifieerbaarheidsproeven gemeten vóór het opschrijven: een datasheetrij terug achter de vouw geeft
+drie rode claims, en een datasheetveld uit de rij tillen vier.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

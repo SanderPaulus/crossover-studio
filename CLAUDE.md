@@ -48,6 +48,9 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-3c (09-09-2026) gemeten op 462 s — 169 bestanden (168 geslaagd, 1 overgeslagen), 2065 tests
+    (2062 geslaagd, 3 overgeslagen), groen.** Geen nieuw bestand; +1 test, de datasheetregel in
+    `v2InputPlacement.test.ts` (14 → 15). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná U-3b (09-09-2026) gemeten op 447 s — 169 bestanden (168 geslaagd, 1 overgeslagen), 2064 tests
     (2061 geslaagd, 3 overgeslagen), alleen gedraaid ná de browsercontrole met de dev-server en de
     headless Chrome gestopt.** +1 BESTAND (`lib/v2InputPlacement.test.ts`, 14 claims) en +23 tests, en die
@@ -3105,6 +3108,40 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-3c-guards (de datasheetgetallen horen in het standaardbeeld; alleen UI)
+- **AANLEIDING, EN ZIJ IS EEN MEETRESULTAAT.** Direct na U-3b liep Sander een tweeweg op de demobundel
+  en zag de kandidaten beginnen bij 1372 Hz waar casus 1b's veld op 1735 begint. De rekensom sluit
+  exact: zonder gestelde tweetereis kan de aandrijfvloer van A5d.3(ii) niet wapenen en valt de
+  vensterbodem terug op k·f_s (1647 → 1294 Hz). De twee laagste posities geven 13,7 en 17,7 dB op de
+  tweeterresonantie tegen de 20 die de conventie vraagt — **en niets wijst ze af, want niemand stelde
+  de grens.** P4 zoals hij hoort te werken, en tegelijk een bescherming die de demo kwijt was.
+- **`S_d`, `X_max`, `Bl` en `M_ms` staan sinds U-3c in ÉÉN rij "Datasheet" in het standaardbeeld van
+  de driverkaart.** U-3b had de laatste drie achter de uitklap gezet op grond van hun klasse (`nice`);
+  dat was formeel juist en praktisch verkeerd. Sanders regel: *"doorgaans moeten we van generieke data
+  uit kunnen gaan"* — een getal dat de ontwerper van een spec sheet overtypt is data die ÉLK project
+  heeft, anders dan een metersaflezing, een schakelkeuze of een spoelfamilie, dus het achter een vouw
+  zetten is de ene plaatsing die een nieuwkomer werkelijk iets kost. Zij lezen als één rij omdat een
+  spec sheet één rij is; de rest van het A5a-blok blijft achter de vouw.
+- **HET IS EEN REGEL GEWORDEN EN GEEN DRIE UITZONDERINGEN.** `v2InputPlacement.test.ts` assert dat
+  élke rij met `source: 'datasheet'` in een BESTUURD formulier `placement: 'always'` heeft, dat de
+  vier die één driver beschrijven op de driverkaart staan, en dat zij in dezelfde rij gerenderd
+  worden. `nominalSize` is de ENIGE datasheetrij in een ongereguleerd formulier (de v1-terugval voor
+  een ontbrekende S_d) en staat bij naam in de claim — een datasheetrij die later in een ongereguleerd
+  formulier verschijnt laat die regel falen, en dat is het moment waarop iemand moet kijken.
+  Nagemeten dat hij kan falen: een datasheetrij terug achter de vouw geeft drie rode claims, een
+  datasheetveld uit de rij tillen vier.
+- **WAT DIT NIET REPAREERT, EN DAT IS DE EIGENLIJKE BEVINDING.** Op deze tweeter verplaatst het
+  invullen van alle zes de excursie-invoeren het venster geen hertz: het afgeleide plafond (−8,58 dB)
+  levert vloer 1185 Hz, ónder de k·f_s-vloer van 1294. Een dome met X_max 1 mm en f_s 924 Hz komt
+  excursiematig nauwelijks in de problemen, terwijl de −20 dB-conventie een thermische en
+  vervormingsregel is. **Er BESTAAT een generiek datasheetgetal dat dit wel zegt — de aanbevolen
+  minimale kruisfrequentie mét haar orde — en de app leest hem nergens.** Omgerekend
+  (`dB = 6·orde·log2(F/f_s)`) is "2000 Hz @ 18 dB/oct" exact 20,0 dB: **de −20 dB-conventie ÍS een
+  datasheet-aanbeveling, alleen in een andere eenheid.** De vorm van de reparatie is de spiegel van
+  E-1's gestelde plafond: een `statedFloorHz` per paar, herkomst `datasheet`, naast de bestaande
+  `'stated'`-regel die alleen een BOVENgrens kent. Dat is een engine-wijziging (nieuwe vensterregel =
+  ander kandidaatveld = regeneratiebesluit) en hoort in een eigen sessie.
 
 ### U-3b-guards (de demo's kaal, en de invoer-UI achter de I-1-plaatsingsregel; alleen bundel/UI)
 - **BEIDE DEMOBUNDELS DRAGEN SINDS U-3b ALLEEN METINGEN EN GEOMETRIE**, en de regel staat als DATA:
