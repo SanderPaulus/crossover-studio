@@ -77,50 +77,79 @@ export const KOAN_3WAY_DEMO = {
     ],
     impedance: f('tweeter.zma', zTweeter),
   } satisfies DemoBranch,
-  /** The cabinet and rig as Sander entered them (his project of 16 Aug 2026):
-   *  front 260 × 1124 mm, reference point (mic aim) 244 mm below the top and
-   *  900 mm above the floor, mic at 1 m, gate 4.5 ms; tweeter 74 mm above the
-   *  reference, mid 66 mm below, the woofer pair centred 448 mm below with
-   *  276 mm between the two cones; ported box tuned at 31 Hz, sealed mid
-   *  chamber at 89 Hz; mounting depths tweeter 0 and mid 17 as the app itself
-   *  derives them from the measured excess delays ("Your 17.0 mm agrees").
-   *  Woofers 50 mm (Sander: measured, the acoustic centre of an 8" cone) —
-   *  the delay-derived value on THIS set reads ~0 mm behind the tweeter, so
-   *  the woofer card opens on the honest cross-check "one of the two is
-   *  wrong". That is a real open question about the pair (two cones 276 mm
-   *  apart, summed by ARTA), not something a demo should paper over. Listening position 3.4 m / ear 980 mm — his
-   *  room, kept because he entered it. */
+  /* U-3b — THE CABINET AND RIG, STRIPPED TO WHAT A FILTER IS BUILT FROM.
+   *
+   * A demo is generic practice material, so it ships the MEASUREMENTS and the
+   * GEOMETRY and nothing else (Sander, 09-09-2026). What was here until U-3b
+   * and is not any more, with what each one cost:
+   *
+   *  · `gateMs: '4.5'` — a GLOBAL window override. Every file of this bundle
+   *    states its own window in its own header, and A3h forbids a typed field
+   *    standing in for a file's own property; that substitution once put an
+   *    evaluation band 53 Hz too high. It also read as "the gate you typed
+   *    here" in the honesty line, over files that state a 5.021 ms window.
+   *  · `micElevationDeg: '0'` — a stated zero that behaves exactly like blank
+   *    (`Number(...) || 0`), so it stated nothing and looked like a decision.
+   *  · `listenDistanceM` / `listenEarHeightMm` — Sander's own room. A demo
+   *    cannot know where anyone sits, and no filter is built from it.
+   *  · `depthMm` per driver (50 / 17 / 0) — the acoustic centre behind the
+   *    baffle. It never reaches the engine's geometry (the adapter reads
+   *    `v2Meas[role].zMm` or the baffle position), and on the woofer pair the
+   *    app's own cross-check disagreed with the 50 mm — an open question about
+   *    a pair of cones 276 mm apart, and not one a demo should answer.
+   *  · `enclosure` / `fbHz` (ported 31 Hz, sealed 89 Hz) — box facts, not
+   *    geometry. The impedance sweep in this very bundle carries the corner,
+   *    and the app offers it with an "use it" button beside the field.
+   *
+   * WHAT STAYS, and why each is geometry a filter is built from: the mic
+   * distance (the far-field check and the honest-down-to line), the front
+   * panel (the baffle step, and the drawing), the reference point (the origin
+   * every driver position is measured from — without it the app draws the
+   * drivers off the panel), and per driver its position, how many there are
+   * and how far apart. The positions are Sander's own entry for this cabinet,
+   * which is the SOURCE casus 1's manifest cites for the baffle block; they
+   * are deliberately not replaced by the manifest's own z-offsets, which
+   * disagree by up to 15 mm and whose difference is a recorded finding of the
+   * E-2 replay (382.4 mm against 261 mm). */
   cabinet: {
     micDistanceMm: '1000',
-    micElevationDeg: '0',
-    gateMs: '4.5',
+    micElevationDeg: '',
+    gateMs: '',
     baffleWidthMm: '260',
     baffleHeightMm: '1124',
     cabinetDepthMm: '',
     refFromTopMm: '244',
     refHeightMm: '900',
-    listenDistanceM: '3.4',
-    listenEarHeightMm: '980',
+    listenDistanceM: '',
+    listenEarHeightMm: '',
     refDriver: '',
     drivers: {
-      low: { xMm: '0', yMm: '-448.4', enclosure: 'ported', fbHz: '31', count: '2', spacingMm: '275.75', depthMm: '50', facing: 'front', tiltDeg: '0', opposed: false },
-      mid: { xMm: '0', yMm: '-66', enclosure: 'sealed', fbHz: '89', count: '', spacingMm: '', depthMm: '17', facing: 'front', tiltDeg: '0', opposed: false },
-      high: { xMm: '0', yMm: '74', enclosure: 'unknown', fbHz: '', count: '', spacingMm: '', depthMm: '0', facing: 'front', tiltDeg: '0', opposed: false },
+      low: { xMm: '0', yMm: '-448.4', enclosure: 'unknown', fbHz: '', count: '2', spacingMm: '275.75', depthMm: '', facing: 'front', tiltDeg: '0', opposed: false },
+      mid: { xMm: '0', yMm: '-66', enclosure: 'unknown', fbHz: '', count: '', spacingMm: '', depthMm: '', facing: 'front', tiltDeg: '0', opposed: false },
+      high: { xMm: '0', yMm: '74', enclosure: 'unknown', fbHz: '', count: '', spacingMm: '', depthMm: '', facing: 'front', tiltDeg: '0', opposed: false },
     },
   },
-  /** Datasheet: Sd per SINGLE driver (the pair is `count: 2`), Xmax one-way. */
+  /** Datasheet cone area per SINGLE driver (the pair is `count: 2`). It is the
+   *  one datasheet number a bundle keeps: S_d is what gives the effective
+   *  piston diameter, and without it the beaming ceiling of every window falls
+   *  back to a nominal size this bundle does not state either. X_max left with
+   *  it until U-3b and is gone — it judges (the excursion floor), and a demo
+   *  judges nothing. */
   sdCm2: { low: '255', mid: '69', high: '5.6' },
-  xmaxMm: { low: '8.5', mid: '5', high: '1' },
 } as const;
 
 /**
  * U-3 — THE SAME BUNDLE IN THE SHARED SHAPE, so one loader and two guards can
- * read both demos. Nothing is added and nothing is dropped: the blocks a demo
- * bundle can carry but this one does not (the stated requirements, the A5a
- * measurement facts, the amplifier floor, the voicing) are EMPTY here, which is
- * exactly what the three-way demo has always put in the app — and saying it
- * with an empty block rather than a missing one is what lets the loader assign
- * them and stop a previously loaded demo owning them.
+ * read both demos. Every block a bundle can carry beyond the measurements and
+ * the geometry is EMPTY here — the stated requirements, the A5a measurement
+ * facts, the amplifier floor, the voicing, X_max, the nominal size — and
+ * saying it with an empty block rather than a missing one is what lets the
+ * loader assign them and stop a previously loaded demo owning them.
+ *
+ * U-3b made that emptiness the RULE rather than an accident of this bundle's
+ * age: a demo is practice material, so it may state measurements and geometry
+ * and nothing that judges. `BUNDLE_CARRIED_ROWS` in `demoBundle.ts` is that
+ * rule as data, and the guard reads it for BOTH bundles.
  */
 export const KOAN_3WAY_BUNDLE: DemoBundle = {
   id: 'koan-3way',
@@ -136,7 +165,7 @@ export const KOAN_3WAY_BUNDLE: DemoBundle = {
   },
   cabinet: KOAN_3WAY_DEMO.cabinet,
   sdCm2: KOAN_3WAY_DEMO.sdCm2,
-  xmaxMm: KOAN_3WAY_DEMO.xmaxMm,
+  xmaxMm: {},
   sizeInch: {},
   engineV2: {},
   v2Measurement: {},

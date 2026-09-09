@@ -48,6 +48,16 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-3b (09-09-2026) gemeten op 447 s — 169 bestanden (168 geslaagd, 1 overgeslagen), 2064 tests
+    (2061 geslaagd, 3 overgeslagen), alleen gedraaid ná de browsercontrole met de dev-server en de
+    headless Chrome gestopt.** +1 BESTAND (`lib/v2InputPlacement.test.ts`, 14 claims) en +23 tests, en die
+    twee getallen sluiten exact: die veertien plus NEGEN in `demoBundle.test.ts`, dat van 21 naar 30 ging
+    toen guard 2 verbreed werd naar de hele projectstaat en de kale-bundelrun erbij kwam. Het corpus is
+    niet geregenereerd, dus geen enkele `it.each` over het levende corpus beweegt; `nfMerge.test.ts` blijft
+    op 56 (de I-2-bronscan op de nabij-veldslot veranderde van VORM en niet van aantal — hij ging rood
+    omdat het slot een `<details>` werd en zijn anker `className="nf-slot"` de aanhalingsteken verloor,
+    precies wat een bronscan hoort te doen, en is vóór de volle laag bijgewerkt). GEEN nieuwe referentie:
+    de V43-waarde van 289 s blijft staan, en 447 tegen U-3's 453 s is dezelfde laag op dezelfde machine.
     **Ná U-3 (09-09-2026) gemeten op 453 s — 168 bestanden (167 geslaagd, 1 overgeslagen), 2041 tests
     (2038 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`lib/demoBundle.test.ts`) en +21 tests, en
@@ -3095,6 +3105,103 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-3b-guards (de demo's kaal, en de invoer-UI achter de I-1-plaatsingsregel; alleen bundel/UI)
+- **BEIDE DEMOBUNDELS DRAGEN SINDS U-3b ALLEEN METINGEN EN GEOMETRIE**, en de regel staat als DATA:
+  `BUNDLE_CARRIED_ROWS` in `demoBundle.ts`, elf rijen — de zeven NOODZAKELIJKE plus vier die zelf een
+  meetbestand of het blok van een gemerged bestand zijn (`nearFieldCone`, `nearFieldPort`, `spliceBand`,
+  `mergeValidFrom`). Waar `BUNDLE_BEARABLE_ROWS` zegt wat de VORM kan houden, zegt deze wat een demo MAG
+  houden, en de guard leest beide: de gedragen verzameling van elke bundel moet een deelverzameling zijn,
+  élke NOODZAKELIJKE rij moet erin zitten, GEEN enkele oordeelsrij mag erop staan, en de exacte
+  verzameling per bundel staat BIJ NAAM (tweeweg 10, drieweg 9 van de 36). De tweeweg droeg tot U-3b
+  casus 1b's hele eisenblad — tien van de vijftien oordeelsrijen — dus **wie hem laadde had acht poorten
+  scherp met de getallen van iemand anders, en het paneel rapporteerde oordelen die de kijker nooit
+  geveld had**: P4 stuk op het scherm in plaats van in de engine, dezelfde fout die E-2 uit de
+  placeholders haalde.
+- `src/lib/demoBundle.test.ts` — **guard 2 is verbreed van blok-voor-blok naar de HELE projectstaat.**
+  `stateFields(s)` somt élke scalar van `DemoBundleState` plat op, en de twee dragende claims gaan over
+  al die velden en niet over een met de hand geschreven lijst: (1) LOSSLESS — wat de bundel stelt komt
+  verbatim in de staat, afgelezen van de BUNDEL zodat een veld dat aan een bundel wordt toegevoegd en in
+  `demoBundleState` vergeten wordt hier faalt; (2) NIETS VERZONNEN — élk gevuld staatsveld moet een veld
+  zijn dat de bundel werkelijk stelt, en de terugvertaling van pad naar bundel is mechanisch. Een derde
+  claim zegt dat een bundel NIETS OORDEELT (elke settingssleutel leeg, geen vloer, geen voicing, geen
+  X_max, geen `gateMs`). Nagemeten dat alle drie kunnen falen: één eis terug in `demo2way.ts` geeft drie
+  rode claims met de rij erbij, een `?? '8'` in `demoBundleState` zeven met het PAD erbij, en een
+  `gateMs: '4.5'` alleen precies één.
+- **`applyDemoBundle` heeft zijn `stated`-argument verloren.** U-3 gaf het mee zodat de acht eisen van
+  een demo met de NAAM van de demo gemarkeerd konden worden in plaats van met "stated by you". Met geen
+  enkele bundel die nog iets stelt kon het alleen nog `null` zijn, **en een parameter met één bereikbare
+  waarde is een route die niet bestaat** — dezelfde redenering waarmee U-1 het motorvinkje weghaalde en
+  niet uitzette. Beide attributiekaarten worden nu onvoorwaardelijk leeggemaakt. **`V2StatedBy` zelf is
+  NIET aangeraakt**: het draagt de attributie van een project van vóór U-3b en `v2Settings.test.ts` pint
+  het onveranderd.
+- **HET REFERENTIEPUNT VAN DE TWEEWEG IS DE REPARATIE WAAR "de posities kloppen niet" OVER GING.** Casus
+  1b stelt er geen, dus de bundel stelde er geen, dus `refFromTopMm` was `''` — en de tekening valt terug
+  op `Number(cabinet.refFromTopMm) || 0`, wat een driver op y +64,6 vijfenzestig millimeter BOVEN de
+  bovenkant van een 1124 mm-front zet. De posities zelf klopten (±64,6 uit het manifest) en waren
+  onleesbaar. Sinds U-3b staat het referentiepunt van dezelfde kast erin (244/900) en assert de guard dat
+  élke weg van BEIDE bundels binnen het paneel landt. **Een verschil dat blijft staan en niet is
+  gladgestreken:** met 244 mm landt de tweeter op 179,4 mm onder de bovenkant waar de drieweg-demo hem op
+  170 zet — casus 1's manifest (±64,6, c-t-c 129,2) en Sanders getypte kast (−66/+74, c-t-c 140)
+  verschillen tot 15 mm over dezelfde luidspreker. Elke bundel houdt zijn eigen record; het manifest noemt
+  `src/demo3way.ts` zélf als de herkomst van zijn baffle-blok, dus voor die kast is de demo de bron.
+- `src/lib/v2InputRegister.ts` — **DE PLAATSINGSREGEL, ALS DATA NAAST DE KLASSE.** `placementOf(row)` =
+  `row.placement ?? PLACEMENT_BY_CLASS[row.cls]`, met `required → always`, `judgement → always`,
+  `nice → more`, `v1-legacy → more`. Een rij mag de klasse overrulen **maar alleen met een reden**
+  (`placementWhy`; de guard weigert een override zonder). Vijf nice-rijen blijven zichtbaar en alle vijf
+  om dezelfde soort reden — zij maken de NOODZAKELIJKE getallen ernaast invoerbaar of leesbaar:
+  `micDistance`, `baffleHeight`, `referencePoint`, `refDriver`, `sourceCount`. Drie rijen zijn
+  CONDITIONEEL, als benoemde verzameling: `gateOverride`, `manualWindow`, `cabinetDepth` — alle drie een
+  stand-in voor iets dat een bestand of een kast al weet, en **een permanent zichtbare stand-in nodigt uit
+  om hem in te vullen over het ding heen waarvoor hij instaat** (A3h; beide demobundels droegen 4,5 ms
+  `gateMs` over bestanden die 5,021 ms zeggen).
+- **TWAALF ZICHTBARE BESTURINGSELEMENTEN HADDEN GEEN REGISTERRIJ**, en dat was het gat dat de U-3b-meting
+  vond: mic distance, mic elevation, gate used, mic-aimed-at, front panel height, cabinet depth, het
+  referentiepunt, de luisterpositie, aantal + tussenafstand, mounting, chamber en het handmatige venster.
+  Alle twaalf zijn NICE (een run gebeurt zonder alle twaalf) en hebben nu een rij met wat leeg betekent.
+  **Twee correcties die de tabel afdwong:** de rij `validity` beloofde twee dingen tegelijk (de header van
+  het bestand én het handmatige veld) en is gesplitst — `validity` is de header, NOODZAKELIJK en niets te
+  typen; `manualWindow` is de terugval, nice, want de header wint er altijd van (A5b.1(i)). En de ENIGE
+  oordeelsrij op de driverkaart, het M-C-getal per weg, zat middenin het A5a-blok en staat sinds U-3b als
+  eigen regel in het standaardbeeld.
+- `src/lib/v2InputPlacement.test.ts` (14 claims, nieuw) — **de drift-guard.** `V2_FORM_FIELDS`
+  inventariseert élk besturingselement van de drie BESTUURDE formulieren (kast, driverkaart, v2-paneel)
+  met de bronregel die het identificeert, en de scan werkt twee kanten op: elk token moet in `App.tsx`
+  staan, én **elke `<input>`/`<select>` in een bestuurde regio moet precies één inventaristoken raken** —
+  een veld dat aan een van deze formulieren wordt toegevoegd zonder registerrij en zonder
+  plaatsingsbesluit breekt de build (de I-1-vorm van `p6Lint`, één laag hoger). Daarnaast: een
+  `more`-veld staat achter een uitklap en een `always`-veld nooit achter die van het formulier, en een
+  conditioneel veld staat binnen zijn eigen guard — **alle drie per VOORKOMEN getoetst**, en dat is
+  aangescherpt nadat de eerste versie het niet zag: **het kastformulier rendert TWEE KEER** (kaarten in
+  guided, ledger in expert), dus een guard of een uitklap op één van de twee is een veld dat op de andere
+  permanent staat. In guided is elke kaart zélf een `<details>` maar worden de velden als ARGUMENT aan de
+  helper `kaart(...)` gegeven, dus tekstueel liggen zij niet binnen een tag; de scan telt een
+  `kaart(`-aanroep mee als uitklap **met de premisse ernaast geassert** (`kaart` moet een
+  `<details className="cab-card">` ZONDER `open` renderen), want anders past het hele kastformulier in
+  dat gat. **Wat de regel NIET bestuurt
+  staat BIJ NAAM** (`V2_UNGOVERNED_ROWS`, zestien rijen): de bestandsslots van de Import-tab, de drie
+  v2-rijen in Filters-secties die ouder zijn dan het v2-paneel, de vijf v1-knoppen met hun U-1-badge, en
+  `ampMinLoadOhm` — **die laatste is een bevinding: de versterkervloer is de ENE oordeelsinvoer van de
+  minimale set en staat als enige niet naast de poorten die zij scherpstelt.**
+- **Bijvangst, E-2's eigen regel één veld verder:** "Bass plateau depth dB" droeg `placeholder="2.5"` —
+  een numeriek spookgetal op een OORDEELSveld. E-2 haalde de zes uit het v2-settingsblok; deze ontsnapte
+  omdat de voicing op het ONTWERP leeft en geen `V2SettingKey` is, dus E-2's guard keek er nooit naar.
+- **`test-fixtures/casus1_u3b_kale_demo_run.json` — DE VERKENNING OP EEN KALE BUNDEL.** Een verse browser,
+  niets getypt, drieweg-demo: 900 s, zes van vijftien afgeleide kandidaten, zes gekwalificeerd, en het
+  exportblok draagt `gates: {}`, `budgets: {}`, `requirements: null` — P4 over de hele app. De E-2-export
+  ernaast blijft precies waar hij is (dezelfde bundel, mét met de hand ingetypte eisen), dus er staan nu
+  **twee gedateerde records van dezelfde demo, één beoordeeld en één niet**. Wat het strippen kostte is
+  gemeten met de tweede als tegenproef: de W-M-overname staat waar hij stond (415,8 / 466,7 Hz, zijn
+  venstervloer is de eigen poort van de woofer) en de M-T-overname beweegt (1729/1940,8/2178,5 →
+  1532,6/1720,3/1931 Hz), want zonder X_max, Bl en M_ms heeft de tweeter geen afgeleid excursieplafond en
+  geen gesteld dB-getal, dus de aandrijfvloer van A5d.3 kan niet wapenen en het venster valt terug op
+  k·f_s. **Een bundel die niets stelt krijgt het venster dat niets stelt.**
+  `replay-app-run.ts --set demo` zegt SAME op beide lagen voor BEIDE exports.
+- **DE VOLLE RUN IS BIJ U-3b NIET GEDRAAID**, met de I-1/I-3/B-1/U-3-afweging: geen engine-, poort-,
+  budget-, venster- of corpuswijziging, en de twee byte-baselines die dát bewaken (`f4cRegression`,
+  `workerRouteRegression`) draaien in de snelle laag en reproduceerden. Wat er WEL nagemeten is:
+  `replay-app-run.ts --set demo` op de bewaarde E-2-run zegt nog steeds SAME op beide lagen, dus het
+  strippen van kast- en driverkaartvelden heeft geen enkele kandidaat verplaatst.
 
 ### I-3-guards (guided is op de v2-route een wizard; alleen UI)
 - `src/lib/v2Guided.ts` + `v2Guided.test.ts` (36 claims, nieuw) — **de I-1-inventaris als ROUTE.** Het

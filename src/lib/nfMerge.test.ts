@@ -754,7 +754,17 @@ describe('I-2 — the app wiring', () => {
   const APP = readFileSync(join(HERE, '..', 'App.tsx'), 'utf8');
 
   it('puts the merge with the measurement upload, not in the Filters panel', () => {
-    const slot = APP.slice(APP.indexOf('className="nf-slot"'), APP.indexOf('drop-anywhere-hint'));
+    /* U-3b — the slot became a `<details>` (`className="nf-slot v2-more"`), so
+     * the landmark lost its closing quote. The scan is anchored on the class
+     * NAME rather than on the whole attribute, and the two claims below say
+     * what U-3b changed about it: it is a disclosure, and it is OPEN whenever
+     * this branch already holds a near field — a collapsed block over a loaded
+     * file reads as data loss (the Filter-bands lesson). */
+    const at = APP.indexOf('className="nf-slot');
+    expect(at, 'the near-field slot').toBeGreaterThan(-1);
+    const slot = APP.slice(at, APP.indexOf('drop-anywhere-hint'));
+    expect(APP.slice(at - 60, at)).toContain('<details');
+    expect(slot).toContain('open={slot.cone !== null || slot.port !== null}');
     expect(slot).toContain('runNearFieldMerge(role)');
     expect(slot).toContain('acceptNearFieldMerge(role)');
     expect(slot).toContain('undoNearFieldMerge(role)');

@@ -169,7 +169,6 @@ import {
   V2_GHOSTS,
   designLevelNote,
   restoreV2Settings,
-  V2_SETTING_KEYS,
   clearStatedBy,
   stampStated,
   statedMark,
@@ -189,6 +188,7 @@ import { DEMO_ROLES, demoBundleState, type DemoBundle, type DemoFile } from './l
 import {
   V2_CLASS_HEADING,
   V2_INPUT_REGISTER,
+  V2_MORE_HEADING,
   emptyHelpFor,
   rowsOfClass,
   v1NoteFor,
@@ -3274,7 +3274,7 @@ export default function App() {
    * every key precisely so this function can assign all of it, and what a
    * bundle does not state arrives as '' or null rather than as nothing at all.
    */
-  function applyDemoBundle(bundle: DemoBundle, stated: { on: string; by: string } | null): void {
+  function applyDemoBundle(bundle: DemoBundle): void {
     const s = demoBundleState(bundle);
     const loaded = (f: DemoFile | null): Loaded | null =>
       f === null ? null : { name: `${f.name} (demo)`, raw: f.raw, frd: parseFrd(f.raw) };
@@ -3326,21 +3326,22 @@ export default function App() {
     setWooferSizeInch(s.sizeInch.low);
     setMidSizeInch(s.sizeInch.mid);
 
-    /* The stated requirements and the A5a facts. Both blocks are complete, so
-     * a field this bundle says nothing about is EMPTIED rather than inherited —
-     * a stray gate from a previous demo would judge this one. */
+    /* The requirement block and the A5a facts. Both are complete, so a field
+     * this bundle says nothing about is EMPTIED rather than inherited — a
+     * stray gate from a previous demo would judge this one.
+     *
+     * U-3b — AND SINCE U-3b A BUNDLE SAYS NOTHING ABOUT ANY OF THEM. A demo is
+     * practice material, so it states no requirement, no amplifier floor and
+     * no voicing; the attribution maps are therefore cleared outright rather
+     * than filled with a bundle's name. `V2StatedBy` itself stays where it is:
+     * it still carries the attribution of a project written before U-3b, and
+     * `v2Settings.test.ts` still pins it. What went is the `stated` argument
+     * this function took — with no bundle stating anything it could only ever
+     * be null, and a parameter with one reachable value is a route that does
+     * not exist. */
     setEngineV2Settings({ ...s.engineV2 });
-    const at: V2StatedAt = {};
-    const by: V2StatedBy = {};
-    if (stated) {
-      for (const k of V2_SETTING_KEYS) {
-        if (s.engineV2[k].trim() === '') continue;
-        at[k] = stated.on;
-        by[k] = stated.by;
-      }
-    }
-    setEngineV2StatedAt(at);
-    setEngineV2StatedBy(by);
+    setEngineV2StatedAt({});
+    setEngineV2StatedBy({});
     setV2Meas({ ...s.v2Measurement });
 
     /* The amplifier floor is the OWNER'S preference and survives Reset, so a
@@ -3377,11 +3378,11 @@ export default function App() {
 
   /**
    * The 2-WAY demo — casus 1b: KOAN 2951's midrange and tweeter, measured
-   * 22 Aug 2026, with the requirements that casebook states. It replaced the
+   * 22 Aug 2026 — measurements and geometry, and nothing that judges. It replaced the
    * 2023 prototype at U-3 because that one's twelve exports carried no header,
    * so the app refused to optimise on its own demo (`demo2way.ts` says the
-   * whole of it). The measurement module is a dynamic import so its text only
-   * downloads on click.
+   * whole of it), and lost its requirement sheet at U-3b. The measurement
+   * module is a dynamic import so its text only downloads on click.
    */
   async function loadDemo2Way() {
     setError(null);
@@ -3393,9 +3394,9 @@ export default function App() {
       setError(e instanceof Error ? e.message : String(e));
       return;
     }
-    applyDemoBundle(mod.KOAN_2WAY_DEMO, mod.KOAN_2WAY_STATED);
+    applyDemoBundle(mod.KOAN_2WAY_DEMO);
     setPersistNote(
-      t('2-way demo loaded — {label}: midrange (merged near/far field) + tweeter, the measured cabinet and the requirements casus 1b states', {
+      t('2-way demo loaded — {label}: midrange (merged near/far field) + tweeter and the measured cabinet. It states no requirement: every gate is blank until you state one.', {
         label: mod.KOAN_2WAY_DEMO.label,
       }),
     );
@@ -3418,7 +3419,7 @@ export default function App() {
       setError(e instanceof Error ? e.message : String(e));
       return;
     }
-    applyDemoBundle(mod.KOAN_3WAY_BUNDLE, null);
+    applyDemoBundle(mod.KOAN_3WAY_BUNDLE);
     setPersistNote(
       t('3-way demo loaded — {label}: woofer pair, mid, tweeter, 0–60°, near fields and the measured cabinet', {
         label: mod.KOAN_3WAY_BUNDLE.label,
@@ -4553,6 +4554,22 @@ export default function App() {
     const offBaffle = (['low', 'mid', 'high'] as BranchRole[]).filter(
       (r) => (place[r]?.facing ?? 'front') !== 'front',
     );
+    /* U-3b — WHICH LOADED RESPONSES STATE NO WINDOW A READER CAN FIND. The
+     * two window FALLBACKS — the global "Gate used" field here and the
+     * per-branch "Window (no header)" block on the driver card — answer a case
+     * that mostly does not exist, and a permanently visible fallback invites
+     * someone to type a window over a file that already states one (A3h; the
+     * demo bundles carried 4.5 ms over files stating 5.021 ms until U-3b). So
+     * both are rendered only while this list is non-empty.
+     *
+     * The decision is `sourceMeta`'s own, in its own order: a declared merge
+     * block first (P-1), then the ARTA window. */
+    const windowless = (['low', 'mid', 'high'] as BranchRole[]).filter((r) => {
+      const l = r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter;
+      if (!l) return false;
+      if (readMergeBlock(l.raw)) return false;
+      return readGateHeader(l.raw).kind !== 'parsed';
+    });
     return {
       place,
       trueAngles,
@@ -4577,6 +4594,9 @@ export default function App() {
       reliable,
       baffleStep: baffleStepHz(baffleW),
       offBaffle,
+      /** U-3b — the branches whose own file states no readable window; the two
+       *  window fallbacks are shown only while this is non-empty. */
+      windowless,
       /** Baffle step for the panel THIS driver radiates from. A side-firing
        *  woofer's baffle is the side panel, so its width is the cabinet depth
        *  — on the narrow cabinets that use side woofers that is a factor of
@@ -12587,6 +12607,126 @@ export default function App() {
                               : ` · ${t('enter the spacing for the array lobing ceiling')}`}
                           </span>
                         )}
+                          <span className="cd-label">{t('Datasheet')}</span>
+                          <span
+                            className="cd-fields"
+                            title={t('Cone area from the datasheet, for ONE driver. Sd gives the effective piston diameter — the honest one for every beaming rule, since a nominal size includes a surround that does not radiate.')}
+                          >
+                            <span className="cd-pre">Sd</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={sdCm2[role]}
+                              onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
+                            />
+                            {' cm²'}
+                          </span>
+                        {dia && (
+                          <span className="derived">
+                            {t('effective Ø {mm} mm', { mm: Math.round(dia) })}
+                          </span>
+                        )}
+                        {uit.length > 0 && (
+                          <span className="derived">
+                            {t('leaving these blank is fine — it switches off:') + ' '}
+                            {uit.join(' · ')}
+                          </span>
+                        )}
+                        {/* U-3b — THE ONE JUDGEMENT FIELD ON THIS CARD, so it
+                          * stays in the default view while the rest of the A5a
+                          * block moves behind the disclosure below. V50: the
+                          * 18-dB convention is a dome rule (thermal, distortion);
+                          * a cone's limit on its resonance is excursion, which
+                          * V49 derives — so state the convention for the way it
+                          * belongs to and leave the others to the derived
+                          * ceiling. */}
+                        {engineSelection.reporting && (
+                          <>
+                            <span className="cd-label">{t('Max drive on f_s')}</span>
+                            <span
+                              className="cd-fields"
+                              title={t("Max drive on f_s for THIS way, dB relative to its passband (M-C, V50). Overrides the single 'Max drive on f_s dB' field for this way. Blank here AND blank there = no stated figure: the excursion-derived ceiling alone judges this way (or nothing, when no ceiling could be derived).")}
+                            >
+                              <span className="cd-pre" />
+                              <input
+                                type="number"
+                                max={0}
+                                placeholder="—"
+                                value={v2Meas[role].driveOnFsMaxDb}
+                                onChange={(e) => setV2MeasField(role, 'driveOnFsMaxDb', e.target.value)}
+                                style={{ width: '4.5rem' }}
+                              />
+                              {' dB'}
+                            </span>
+                          </>
+                        )}
+                        {/* U-3b — A FALLBACK, SHOWN ONLY WHEN THE CASE EXISTS.
+                          * It answers "this file's header states no window", and
+                          * a permanently visible fallback invites someone to type
+                          * a window over a file that already states one — which
+                          * A5b.1(i) then has to refuse. `cabinetInfo.windowless`
+                          * is `sourceMeta`'s own decision, in its own order: a
+                          * declared merge block first (P-1), then the ARTA
+                          * window. */}
+                        {engineSelection.reporting && cabinetInfo.windowless.includes(role) && (
+                          <>
+                            <span className="cd-label">{t('Window (no header)')}</span>
+                            <span
+                              className="cd-fields"
+                              title={t("Window metadata for this branch's GATED far-field files, for measurements whose headers carry none. A FALLBACK, never an override: a file that has the fields in its header uses those, and nothing you type here can relax a measured gate floor (spec A5b.1(i)). Give the two times and the app derives the effective window exactly as it does from a header, or give the validity floor itself. The panel shows which of the two spoke.")}
+                            >
+                              <span className="cd-pre" />
+                              {t('reference time') + ' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.1}
+                                placeholder="—"
+                                value={v2Meas[role].refTimeMs}
+                                onChange={(e) => setV2MeasField(role, 'refTimeMs', e.target.value)}
+                                style={{ width: '4.5rem' }}
+                              />
+                              {' ms · ' + t('right window') + ' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.1}
+                                placeholder="—"
+                                value={v2Meas[role].rightWindowMs}
+                                onChange={(e) => setV2MeasField(role, 'rightWindowMs', e.target.value)}
+                                style={{ width: '4.5rem' }}
+                              />
+                              {' ms · ' + t('or floor') + ' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={10}
+                                placeholder="—"
+                                value={v2Meas[role].floorHz}
+                                onChange={(e) => setV2MeasField(role, 'floorHz', e.target.value)}
+                                style={{ width: '5rem' }}
+                              />
+                              {' Hz '}
+                              <input
+                                type="text"
+                                placeholder={t('where these came from')}
+                                value={v2Meas[role].windowNote}
+                                onChange={(e) => setV2MeasField(role, 'windowNote', e.target.value)}
+                                style={{ width: '10rem' }}
+                              />
+                            </span>
+                          </>
+                        )}
+                        {/* ---- U-3b: BEHIND ONE DISCLOSURE --------------------
+                          * Everything below enriches a judgement and none of it
+                          * is needed to build a filter, which is the register's
+                          * `nice` class and Sander's rule of 09-09-2026. Not one
+                          * field moved form, not one changed what it feeds, and
+                          * blank still means exactly what its help says. */}
+                        <details className="v2-more cd-more">
+                          <summary>{t(V2_MORE_HEADING)}</summary>
+                          <div className="cd-grid">
                           <span className="cd-label">{t('Mounting')}</span>
                           <span
                             className="cd-fields"
@@ -12733,6 +12873,113 @@ export default function App() {
                             .
                           </span>
                         )}
+                          {role === 'high' ? (
+                            <>
+                              <span className="cd-label">{t('Chamber')}</span>
+                              <span className="cd-fields">
+                                <span className="cd-pre" />
+                                <em>
+                                  {t('a dome is its own sealed rear chamber — nothing to choose')}
+                                  {boxTuneFromZ.high
+                                    ? `; ${t('resonance ≈ {hz} Hz from your impedance (the 2×Fs crossover floor reads this)', { hz: Math.round(boxTuneFromZ.high.hz) })}`
+                                    : ''}
+                                </em>
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                          <span className="cd-label">{t('Chamber')}</span>
+                          <span className="cd-fields">
+                            <span className="cd-pre" />
+                            <select
+                              value={d.enclosure}
+                              onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
+                              title={t('The volume behind THIS driver — per driver on purpose: a 3-way routinely runs a sealed mid chamber inside a ported cabinet, so one answer for the whole box would be wrong. A sealed chamber is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.')}
+                            >
+                              <option value="unknown">{t('unknown')}</option>
+                              <option value="sealed">{t('sealed')}</option>
+                              <option value="ported">{t('ported')}</option>
+                              <option value="open">{t('open / dipole')}</option>
+                            </select>
+                            {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
+                              <>
+                                {d.enclosure === 'ported' ? ' Fb ' : ' Fc '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={d.fbHz}
+                                  onChange={(e) => set({ fbHz: e.target.value })}
+                                />
+                                {' Hz'}
+                              </>
+                            )}
+                            <span className="cd-hint">
+                              {t('the volume behind THIS driver — one cabinet can hold different chambers')}
+                            </span>
+                          </span>
+                          {(() => {
+                            // The measurement already carries the corner: an in-box
+                            // ZMA's resonance IS Fc (sealed) and the saddle between
+                            // its twin peaks IS Fb (ported). Offer it, never apply it
+                            // silently — and with a value typed it turns into the
+                            // cross-check role this panel prefers.
+                            const bt = boxTuneFromZ[role];
+                            if (!bt) return null;
+                            const typed = d.fbHz.trim() !== '' ? Number(d.fbHz) : null;
+                            const off =
+                              typed !== null && typed > 0
+                                ? Math.abs(typed - bt.hz) / Math.max(typed, bt.hz)
+                                : null;
+                            return (
+                              <span className="derived">
+                                {t('your impedance measurement suggests {kind} ≈ {hz} Hz (valid if the ZMA was taken in this box).', { kind: bt.kind, hz: Math.round(bt.hz) })}
+                                {off !== null && (
+                                  <>
+                                    {' '}
+                                    {off <= 0.15
+                                      ? t('Your {hz} Hz agrees.', { hz: typed! })
+                                      : t('You typed {hz} Hz — one of the two is wrong.', { hz: typed! })}
+                                  </>
+                                )}{' '}
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  onClick={() => set({ fbHz: String(Math.round(bt.hz)) })}
+                                >
+                                  {t('use it')}
+                                </button>
+                              </span>
+                            );
+                          })()}
+                            </>
+                          )}
+
+                        {role !== 'high' && box.note && (
+                          <span className="derived">{box.note}</span>
+                        )}
+                        {role !== 'high' && cabinetInfo.unloadOf(role) === 'high' && (
+                          <span className="derived alert">
+                            {t('ported: excursion runs away below Fb')}
+                            {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''}{' '}
+                            {t('— worth a steeper electrical high-pass than a sealed box would need')}
+                          </span>
+                        )}
+                            <span className="cd-label">{t('X_max')}</span>
+                            <span
+                              className="cd-fields"
+                              title={t('Linear excursion from the datasheet, one way, for ONE driver. With Sd it gives the level-aware excursion floor, and with Bl and M_ms below the allowed voltage on the resonance (M-C v2.0). Blank = neither is judged.')}
+                            >
+                              <span className="cd-pre">Xmax</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.1}
+                                value={xmaxMm[role]}
+                                onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
+                              />
+                              {' mm'}
+                            </span>
                         {/* A5a — MEASUREMENT metadata for engine v2 (F3b).
                           *
                           * Behind the toggle, and that is a deliberate choice
@@ -12848,27 +13095,6 @@ export default function App() {
                                 />
                                 {' V'}
                               </span>{' '}
-                              {/* V50 — the stated M-C figure PER WAY. The 18-dB
-                                  convention is a dome rule (thermal, distortion);
-                                  a cone's limit on its resonance is excursion,
-                                  which V49 derives — so state the convention for
-                                  the way it belongs to and leave the others to the
-                                  derived ceiling. */}
-                              <span
-                                className="inline-num"
-                                title={t("Max drive on f_s for THIS way, dB relative to its passband (M-C, V50). Overrides the single 'Max drive on f_s dB' field for this way. Blank here AND blank there = no stated figure: the excursion-derived ceiling alone judges this way (or nothing, when no ceiling could be derived).")}
-                              >
-                                {t('max drive on f_s') + ' '}
-                                <input
-                                  type="number"
-                                  max={0}
-                                  placeholder="—"
-                                  value={v2Meas[role].driveOnFsMaxDb}
-                                  onChange={(e) => setV2MeasField(role, 'driveOnFsMaxDb', e.target.value)}
-                                  style={{ width: '4.5rem' }}
-                                />
-                                {' dB'}
-                              </span>{' '}
                               {/* V51 — the WIRING of the way: how its N identical
                                   drivers (the count on the cabinet form) were
                                   connected when measured, and how the design
@@ -12930,179 +13156,10 @@ export default function App() {
                                 </select>
                               </span>
                             </span>
-                            <span className="cd-label">{t('Window (no header)')}</span>
-                            <span
-                              className="cd-fields"
-                              title={t("Window metadata for this branch's GATED far-field files, for measurements whose headers carry none. A FALLBACK, never an override: a file that has the fields in its header uses those, and nothing you type here can relax a measured gate floor (spec A5b.1(i)). Give the two times and the app derives the effective window exactly as it does from a header, or give the validity floor itself. The panel shows which of the two spoke.")}
-                            >
-                              <span className="cd-pre" />
-                              {t('reference time') + ' '}
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.1}
-                                placeholder="—"
-                                value={v2Meas[role].refTimeMs}
-                                onChange={(e) => setV2MeasField(role, 'refTimeMs', e.target.value)}
-                                style={{ width: '4.5rem' }}
-                              />
-                              {' ms · ' + t('right window') + ' '}
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.1}
-                                placeholder="—"
-                                value={v2Meas[role].rightWindowMs}
-                                onChange={(e) => setV2MeasField(role, 'rightWindowMs', e.target.value)}
-                                style={{ width: '4.5rem' }}
-                              />
-                              {' ms · ' + t('or floor') + ' '}
-                              <input
-                                type="number"
-                                min={0}
-                                step={10}
-                                placeholder="—"
-                                value={v2Meas[role].floorHz}
-                                onChange={(e) => setV2MeasField(role, 'floorHz', e.target.value)}
-                                style={{ width: '5rem' }}
-                              />
-                              {' Hz '}
-                              <input
-                                type="text"
-                                placeholder={t('where these came from')}
-                                value={v2Meas[role].windowNote}
-                                onChange={(e) => setV2MeasField(role, 'windowNote', e.target.value)}
-                                style={{ width: '10rem' }}
-                              />
-                            </span>
                           </>
                         )}
-                          {role === 'high' ? (
-                            <>
-                              <span className="cd-label">{t('Chamber')}</span>
-                              <span className="cd-fields">
-                                <span className="cd-pre" />
-                                <em>
-                                  {t('a dome is its own sealed rear chamber — nothing to choose')}
-                                  {boxTuneFromZ.high
-                                    ? `; ${t('resonance ≈ {hz} Hz from your impedance (the 2×Fs crossover floor reads this)', { hz: Math.round(boxTuneFromZ.high.hz) })}`
-                                    : ''}
-                                </em>
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                          <span className="cd-label">{t('Chamber')}</span>
-                          <span className="cd-fields">
-                            <span className="cd-pre" />
-                            <select
-                              value={d.enclosure}
-                              onChange={(e) => set({ enclosure: e.target.value as Enclosure })}
-                              title={t('The volume behind THIS driver — per driver on purpose: a 3-way routinely runs a sealed mid chamber inside a ported cabinet, so one answer for the whole box would be wrong. A sealed chamber is already a 2nd-order acoustic high-pass at its corner, so a 2nd-order electrical filter yields a 4th-order acoustic slope — on a low crossover that is the difference between one ~30 µF capacitor and a pair adding to ~90 µF. A port also means the box can radiate its own midrange through a pipe resonance.')}
-                            >
-                              <option value="unknown">{t('unknown')}</option>
-                              <option value="sealed">{t('sealed')}</option>
-                              <option value="ported">{t('ported')}</option>
-                              <option value="open">{t('open / dipole')}</option>
-                            </select>
-                            {d.enclosure !== 'unknown' && d.enclosure !== 'open' && (
-                              <>
-                                {d.enclosure === 'ported' ? ' Fb ' : ' Fc '}
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  value={d.fbHz}
-                                  onChange={(e) => set({ fbHz: e.target.value })}
-                                />
-                                {' Hz'}
-                              </>
-                            )}
-                            <span className="cd-hint">
-                              {t('the volume behind THIS driver — one cabinet can hold different chambers')}
-                            </span>
-                          </span>
-                          {(() => {
-                            // The measurement already carries the corner: an in-box
-                            // ZMA's resonance IS Fc (sealed) and the saddle between
-                            // its twin peaks IS Fb (ported). Offer it, never apply it
-                            // silently — and with a value typed it turns into the
-                            // cross-check role this panel prefers.
-                            const bt = boxTuneFromZ[role];
-                            if (!bt) return null;
-                            const typed = d.fbHz.trim() !== '' ? Number(d.fbHz) : null;
-                            const off =
-                              typed !== null && typed > 0
-                                ? Math.abs(typed - bt.hz) / Math.max(typed, bt.hz)
-                                : null;
-                            return (
-                              <span className="derived">
-                                {t('your impedance measurement suggests {kind} ≈ {hz} Hz (valid if the ZMA was taken in this box).', { kind: bt.kind, hz: Math.round(bt.hz) })}
-                                {off !== null && (
-                                  <>
-                                    {' '}
-                                    {off <= 0.15
-                                      ? t('Your {hz} Hz agrees.', { hz: typed! })
-                                      : t('You typed {hz} Hz — one of the two is wrong.', { hz: typed! })}
-                                  </>
-                                )}{' '}
-                                <button
-                                  type="button"
-                                  className="link-btn"
-                                  onClick={() => set({ fbHz: String(Math.round(bt.hz)) })}
-                                >
-                                  {t('use it')}
-                                </button>
-                              </span>
-                            );
-                          })()}
-                            </>
-                          )}
-
-                        {role !== 'high' && box.note && (
-                          <span className="derived">{box.note}</span>
-                        )}
-                        {role !== 'high' && cabinetInfo.unloadOf(role) === 'high' && (
-                          <span className="derived alert">
-                            {t('ported: excursion runs away below Fb')}
-                            {Number(d.fbHz) > 0 ? ` ≈ ${Math.round(Number(d.fbHz))} Hz` : ''}{' '}
-                            {t('— worth a steeper electrical high-pass than a sealed box would need')}
-                          </span>
-                        )}
-                          <span className="cd-label">{t('Datasheet')}</span>
-                          <span
-                            className="cd-fields"
-                            title={t('Cone area and linear excursion from the datasheet, for ONE driver. Sd gives the effective piston diameter (the honest one for every beaming rule — nominal size includes a surround that does not radiate); Sd and Xmax together give the level-aware excursion floor.')}
-                          >
-                            <span className="cd-pre">Sd</span>
-                            <input
-                              type="number"
-                              min={0}
-                              step={1}
-                              value={sdCm2[role]}
-                              onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
-                            />
-                            {' cm² · Xmax '}
-                            <input
-                              type="number"
-                              min={0}
-                              step={0.1}
-                              value={xmaxMm[role]}
-                              onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
-                            />
-                            {' mm'}
-                          </span>
-                        {dia && (
-                          <span className="derived">
-                            {t('effective Ø {mm} mm', { mm: Math.round(dia) })}
-                          </span>
-                        )}
-                        {uit.length > 0 && (
-                          <span className="derived">
-                            {t('leaving these blank is fine — it switches off:') + ' '}
-                            {uit.join(' · ')}
-                          </span>
-                        )}
+                          </div>
+                        </details>
                         </div>
                       </details>
                     );
@@ -15521,12 +15578,18 @@ export default function App() {
                             );
                           };
                           return (
-                            <div className="nf-slot">
-                              <strong>{t('Near field — the low end the gate cannot reach')}</strong>
-                              {/* I-1's label, in the app's own voice: this is
-                                  NICE TO HAVE. Everything works without it —
-                                  with a narrower window, and the app says by
-                                  how much. */}
+                            /* U-3b — NICE TO HAVE, so it opens on request. The
+                               I-1 label was already in the app's own voice here
+                               ("Optional…"); what changed is that a sentence
+                               saying a block is optional now also behaves that
+                               way. It stays OPEN once a near field is loaded —
+                               a collapsed block over a loaded file reads as
+                               data loss (the Filter-bands lesson). */
+                            <details className="nf-slot v2-more" open={slot.cone !== null || slot.port !== null}>
+                              <summary>
+                                <strong>{t('Near field — the low end the gate cannot reach')}</strong>{' '}
+                                <span className="derived">{t(V2_MORE_HEADING)}</span>
+                              </summary>
                               <span className="derived">
                                 {t('Optional. Without a merge this branch is honest only above its gate; with one it reaches down to the near field, and the crossover window opens with it.')}
                               </span>
@@ -15765,7 +15828,7 @@ export default function App() {
                           )}
                         </>
                       )}
-                            </div>
+                            </details>
                           );
                         })()}
                     </div>
@@ -16417,13 +16480,25 @@ export default function App() {
                           <span className="cd-fields">
                             {veld(cabinet.micDistanceMm, cab('micDistanceMm'))} mm
                           </span>
+                          {/* U-3b — the gate field is a GLOBAL stand-in for a
+                              per-file property, so it appears only while a
+                              loaded response really states no window (A3h). */}
+                          {cabinetInfo.windowless.length > 0 && (
+                            <>
+                              <span className="cd-label">{t('Gate used')}</span>
+                              <span className="cd-fields">
+                                {veld(cabinet.gateMs, cab('gateMs'), 0.1, t('predict'))} ms
+                              </span>
+                            </>
+                          )}
+                          {/* U-3b — NICE TO HAVE. In guided every card is a
+                              disclosure of its own, so this field is already
+                              behind an expand; the note says which kind it is
+                              rather than repeating the heading as a label. */}
                           <span className="cd-label">{t('Elevation')}</span>
                           <span className="cd-fields">
                             {veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °
-                          </span>
-                          <span className="cd-label">{t('Gate used')}</span>
-                          <span className="cd-fields">
-                            {veld(cabinet.gateMs, cab('gateMs'), 0.1, t('predict'))} ms
+                            <span className="cd-hint">{t(V2_MORE_HEADING)}</span>
                           </span>
                         </>,
                       )}
@@ -16472,6 +16547,15 @@ export default function App() {
                             {refTopVeld()} {t('mm below the top')} ·{' '}
                             {veld(cabinet.refHeightMm, cab('refHeightMm'))} {t('mm above the floor')}
                           </span>
+                          {cabinetInfo.offBaffle.length > 0 && (
+                            <>
+                              <span className="cd-label">{t('Cabinet depth')}</span>
+                              <span className="cd-fields">
+                                {veld(cabinet.cabinetDepthMm, cab('cabinetDepthMm'))}{' mm · '}
+                                {t('the panel a side-firing driver radiates from')}
+                              </span>
+                            </>
+                          )}
                           {mis && (
                             <span className="derived alert" style={{ gridColumn: '1 / -1' }}>
                               {t('the reference point cannot sit {ref} mm below the top of a {h} mm front panel — one of the two is the other field', { ref: cabinet.refFromTopMm, h: cabinet.baffleHeightMm })}
@@ -16479,6 +16563,11 @@ export default function App() {
                           )}
                         </>,
                       )}
+                      {/* U-3b — NICE TO HAVE. In guided every card is its own
+                          disclosure, so this one is already behind an expand;
+                          in the expert ledger the same two fields sit behind
+                          the form's one "more". No filter is built from where
+                          anyone sits. */}
                       {kaart(
                         '🪑',
                         t('Where you listen'),
@@ -16506,6 +16595,15 @@ export default function App() {
                     <span className="lg-o">{o}</span>
                   </div>
                 );
+                /* ---- U-3b: THE DEFAULT VIEW HOLDS WHAT A FILTER IS BUILT
+                  * FROM ---------------------------------------------------
+                  * Three placements, from the register (`placementOf`): the
+                  * rig and the panel a window is derived from stay; what only
+                  * enriches a judgement moves behind one disclosure; and the
+                  * two FALLBACKS appear only while the case they answer
+                  * exists. The gate field is the sharpest of the three — it is
+                  * a GLOBAL stand-in for a per-file property, so once a file
+                  * states its own window it can only mislead (A3h). */
                 return (
                   <div className="lg">
                     <div className="lg-sec">{t('How you measured')}</div>
@@ -16516,17 +16614,15 @@ export default function App() {
                         ? t('{ratio}× the source — {verdict}', { ratio: cabinetInfo.farField.ratio.toFixed(1), verdict: cabinetInfo.farField.ok ? t('far field') : t('close') })
                         : '',
                     )}
-                    {rij(
-                      t('Mic elevation'),
-                      <>{veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °</>,
-                    )}
-                    {rij(
-                      t('Gate used'),
-                      <>{veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms</>,
-                      <>
-                        {micUit} {teLaag && knop}
-                      </>,
-                    )}
+                    {rij(t('How low it is honest'), <em>{micUit}</em>, teLaag ? knop : '')}
+                    {cabinetInfo.windowless.length > 0 &&
+                      rij(
+                        t('Gate used'),
+                        <>{veld(cabinet.gateMs, cab('gateMs'), 0.1, 'predict')} ms</>,
+                        <>
+                          {micUit} {teLaag && knop}
+                        </>,
+                      )}
                     <div className="lg-sec">{t('The cabinet')}</div>
                     {rij(
                       t('Mic was aimed at'),
@@ -16552,13 +16648,12 @@ export default function App() {
                       t('Front panel height'),
                       <>{veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm</>,
                     )}
-                    {rij(
-                      t('Cabinet depth'),
-                      <>{veld(cabinet.cabinetDepthMm, cab('cabinetDepthMm'))} mm</>,
-                      cabinetInfo.offBaffle.length > 0
-                        ? t('the panel a side-firing driver radiates from')
-                        : t('only needed for side-firing drivers'),
-                    )}
+                    {cabinetInfo.offBaffle.length > 0 &&
+                      rij(
+                        t('Cabinet depth'),
+                        <>{veld(cabinet.cabinetDepthMm, cab('cabinetDepthMm'))} mm</>,
+                        t('the panel a side-firing driver radiates from'),
+                      )}
                     {rij(
                       t('Reference point, below top'),
                       <>{refTopVeld()} mm</>,
@@ -16572,16 +16667,24 @@ export default function App() {
                       t('Reference point, above floor'),
                       <>{veld(cabinet.refHeightMm, cab('refHeightMm'))} mm</>,
                     )}
-                    <div className="lg-sec">{t('Where you listen')}</div>
-                    {rij(
-                      t('Distance'),
-                      <>{veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m</>,
-                      zitUit,
-                    )}
-                    {rij(
-                      t('Ear height'),
-                      <>{veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm</>,
-                    )}
+                    <details className="v2-more">
+                      <summary>{t(V2_MORE_HEADING)}</summary>
+                      <div className="lg">
+                        {rij(
+                          t('Mic elevation'),
+                          <>{veld(cabinet.micElevationDeg, cab('micElevationDeg'), 1, '0')} °</>,
+                        )}
+                        {rij(
+                          t('Where you listen — distance'),
+                          <>{veld(cabinet.listenDistanceM, cab('listenDistanceM'), 0.1)} m</>,
+                          zitUit,
+                        )}
+                        {rij(
+                          t('Where you listen — ear height'),
+                          <>{veld(cabinet.listenEarHeightMm, cab('listenEarHeightMm'))} mm</>,
+                        )}
+                      </div>
+                    </details>
                   </div>
                 );
               })()}
@@ -18309,7 +18412,13 @@ export default function App() {
                               ? ''
                               : String(activeTargetCurve.plateauDepthDb)
                           }
-                          placeholder="2.5"
+                          /* U-3b — a JUDGEMENT field, so its placeholder is the
+                             unset mark and not a number. E-2 took the six
+                             numeric ghosts out of the v2 settings block; this
+                             one survived because the voicing lives on the
+                             DESIGN and is not a `V2SettingKey`, so E-2's guard
+                             never looked at it. */
+                          placeholder={UNSET_GHOST}
                           onChange={(e) => {
                             if (!activeDesign) return;
                             const raw = e.target.value;
@@ -18340,7 +18449,18 @@ export default function App() {
                       {!activeDesign && ` — ${t('open a design tab to state one')}`}
                     </span>
 
-                    <span className="opt-group-cap">{V2_CLASS_HEADING.nice}</span>
+                    {/* ---- U-3b: NICE TO HAVE, BEHIND ONE DISCLOSURE ------
+                      * Sander's rule of 09-09-2026: the default view holds what
+                      * a filter is built from. Everything under this heading
+                      * enriches a judgement or runs a published default and
+                      * reports it, so none of it belongs in the first screen a
+                      * designer reads. Nothing about what these fields feed
+                      * changed; only whether they are open when the panel is. */}
+                    <details className="v2-more" style={{ flexBasis: '100%' }}>
+                      <summary className="opt-group-cap">
+                        {V2_CLASS_HEADING.nice} — {t(V2_MORE_HEADING)}
+                      </summary>
+                      <div className="opt-more-body">
                     <span className="derived" style={{ flexBasis: '100%' }}>
                       {t('Blank here never stops a run: the metric that needs it stays off with a reason, or a published default runs and is reported.')}
                     </span>
@@ -18418,6 +18538,8 @@ export default function App() {
                         <option value="full">{t('full — every window edge to edge, every admitted order')}</option>
                       </select>
                     </label>
+                      </div>
+                    </details>
                     {/* U-1 — THE v1 DRAWER IS GONE FROM THE PANEL, and its work moved
                       * one step closer to the question. I-1 put the five v1 controls in a
                       * collapsed list here so a designer who wondered why a knob did

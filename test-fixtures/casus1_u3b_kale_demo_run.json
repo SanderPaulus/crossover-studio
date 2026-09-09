@@ -1,0 +1,1124 @@
+{
+  "format": "crossover-studio-run/1",
+  "exportedAt": "2026-09-09T16:52:19.332Z",
+  "engine": {
+    "version": "2.0.0-F1",
+    "label": "Engine v2"
+  },
+  "session": "none",
+  "drivers": {
+    "idsByRole": {
+      "low": "low",
+      "mid": "mid",
+      "high": "high"
+    },
+    "files": [
+      {
+        "driver": "low",
+        "kind": "Z",
+        "file": "woofers-parallel.zma"
+      },
+      {
+        "driver": "low",
+        "kind": "FF",
+        "file": "woofer-pair-hor0.frd (demo)",
+        "angleDeg": 0
+      },
+      {
+        "driver": "low",
+        "kind": "FF",
+        "file": "woofer-pair-hor15.frd (demo)",
+        "angleDeg": 15
+      },
+      {
+        "driver": "low",
+        "kind": "FF",
+        "file": "woofer-pair-hor30.frd (demo)",
+        "angleDeg": 30
+      },
+      {
+        "driver": "low",
+        "kind": "FF",
+        "file": "woofer-pair-hor45.frd (demo)",
+        "angleDeg": 45
+      },
+      {
+        "driver": "low",
+        "kind": "FF",
+        "file": "woofer-pair-hor60.frd (demo)",
+        "angleDeg": 60
+      },
+      {
+        "driver": "low",
+        "kind": "NF",
+        "file": "woofer-near.txt"
+      },
+      {
+        "driver": "mid",
+        "kind": "Z",
+        "file": "mid.zma"
+      },
+      {
+        "driver": "mid",
+        "kind": "FF",
+        "file": "mid-hor0.txt (demo)",
+        "angleDeg": 0
+      },
+      {
+        "driver": "mid",
+        "kind": "FF",
+        "file": "mid-hor15.txt (demo)",
+        "angleDeg": 15
+      },
+      {
+        "driver": "mid",
+        "kind": "FF",
+        "file": "mid-hor30.txt (demo)",
+        "angleDeg": 30
+      },
+      {
+        "driver": "mid",
+        "kind": "FF",
+        "file": "mid-hor45.txt (demo)",
+        "angleDeg": 45
+      },
+      {
+        "driver": "mid",
+        "kind": "FF",
+        "file": "mid-hor60.txt (demo)",
+        "angleDeg": 60
+      },
+      {
+        "driver": "mid",
+        "kind": "NF",
+        "file": "mid-near.txt"
+      },
+      {
+        "driver": "high",
+        "kind": "Z",
+        "file": "tweeter.zma"
+      },
+      {
+        "driver": "high",
+        "kind": "FF",
+        "file": "tweeter-hor0.txt (demo)",
+        "angleDeg": 0
+      },
+      {
+        "driver": "high",
+        "kind": "FF",
+        "file": "tweeter-hor15.txt (demo)",
+        "angleDeg": 15
+      },
+      {
+        "driver": "high",
+        "kind": "FF",
+        "file": "tweeter-hor30.txt (demo)",
+        "angleDeg": 30
+      },
+      {
+        "driver": "high",
+        "kind": "FF",
+        "file": "tweeter-hor45.txt (demo)",
+        "angleDeg": 45
+      },
+      {
+        "driver": "high",
+        "kind": "FF",
+        "file": "tweeter-hor60.txt (demo)",
+        "angleDeg": 60
+      }
+    ]
+  },
+  "reportSettings": {
+    "verticalWindowDeg": [
+      0
+    ],
+    "orderByPair": {
+      "low|mid": 4,
+      "mid|high": 4
+    },
+    "targetCurve": {
+      "type": "flat"
+    },
+    "coilDcrFits": [
+      {
+        "family": "jantzen|air core wire coil|0.7",
+        "label": "Jantzen Air Core Wire Coil 0.70 mm",
+        "brand": "Jantzen",
+        "series": "Air Core Wire Coil",
+        "wireMm": 0.7,
+        "k": 0.6514012993305978,
+        "ohmAt1mH": 0.9399335209362472,
+        "rangeH": [
+          0.00005,
+          0.0022
+        ],
+        "n": 9,
+        "rmsPct": 5.702946088789898,
+        "maxPct": 10.68935121331327
+      },
+      {
+        "family": "jantzen|air core wire coil|1",
+        "label": "Jantzen Air Core Wire Coil 1.0 mm",
+        "brand": "Jantzen",
+        "series": "Air Core Wire Coil",
+        "wireMm": 1,
+        "k": 0.6086131993412448,
+        "ohmAt1mH": 0.5294630670912399,
+        "rangeH": [
+          0.0001,
+          0.0047
+        ],
+        "n": 10,
+        "rmsPct": 3.8621133030032953,
+        "maxPct": 8.298798908826743
+      },
+      {
+        "family": "jantzen|air core wire coil|1.4",
+        "label": "Jantzen Air Core Wire Coil 1.40 mm",
+        "brand": "Jantzen",
+        "series": "Air Core Wire Coil",
+        "wireMm": 1.4,
+        "k": 0.5920160839472934,
+        "ohmAt1mH": 0.26907846223241905,
+        "rangeH": [
+          0.00033,
+          0.0047
+        ],
+        "n": 8,
+        "rmsPct": 2.4511289018893243,
+        "maxPct": 4.493934629368845
+      },
+      {
+        "family": "jantzen|cross coil|1.4",
+        "label": "Jantzen Cross Coil 1.40 mm",
+        "brand": "Jantzen",
+        "series": "Cross Coil",
+        "wireMm": 1.4,
+        "k": 0.6501606172218214,
+        "ohmAt1mH": 0.29001471551444113,
+        "rangeH": [
+          0.00033,
+          0.008199999999999999
+        ],
+        "n": 18,
+        "rmsPct": 0.10611688114210954,
+        "maxPct": 0.2737834856330723
+      },
+      {
+        "family": "jantzen|cross coil|2",
+        "label": "Jantzen Cross Coil 2.0 mm",
+        "brand": "Jantzen",
+        "series": "Cross Coil",
+        "wireMm": 2,
+        "k": 0.6497573937529164,
+        "ohmAt1mH": 0.1421426483047963,
+        "rangeH": [
+          0.00033,
+          0.008199999999999999
+        ],
+        "n": 18,
+        "rmsPct": 0.1022791885022734,
+        "maxPct": 0.32861308233016473
+      },
+      {
+        "family": "jantzen|p-core iron coil|1",
+        "label": "Jantzen P-Core Iron Coil 1.0 mm",
+        "brand": "Jantzen",
+        "series": "P-Core Iron Coil",
+        "wireMm": 1,
+        "k": 0.688800009694113,
+        "ohmAt1mH": 0.10565992565583354,
+        "rangeH": [
+          0.0033,
+          0.022
+        ],
+        "n": 6,
+        "rmsPct": 0.8098631692079216,
+        "maxPct": 1.4455262849152883
+      },
+      {
+        "family": "jantzen|wax coil (foil)|1.6",
+        "label": "Jantzen Wax Coil (Foil) 1.60 mm",
+        "brand": "Jantzen",
+        "series": "Wax Coil (Foil)",
+        "wireMm": 1.6,
+        "k": 0.5730185251000091,
+        "ohmAt1mH": 0.25104577028835084,
+        "rangeH": [
+          0.00015,
+          0.0027
+        ],
+        "n": 9,
+        "rmsPct": 3.614115105962417,
+        "maxPct": 6.12592917531809
+      },
+      {
+        "family": "mundorf|mcoil air l|0.71",
+        "label": "Mundorf MCoil Air L 0.71 mm",
+        "brand": "Mundorf",
+        "series": "MCoil Air L",
+        "wireMm": 0.71,
+        "k": 0.650069288415464,
+        "ohmAt1mH": 1.12750339845298,
+        "rangeH": [
+          0.000047000000000000004,
+          0.008199999999999999
+        ],
+        "n": 28,
+        "rmsPct": 0.11869752648515966,
+        "maxPct": 0.33208784158909044
+      },
+      {
+        "family": "mundorf|mcoil air l|1",
+        "label": "Mundorf MCoil Air L 1.0 mm",
+        "brand": "Mundorf",
+        "series": "MCoil Air L",
+        "wireMm": 1,
+        "k": 0.6501142603174253,
+        "ohmAt1mH": 0.5683167775176876,
+        "rangeH": [
+          0.000047000000000000004,
+          0.008199999999999999
+        ],
+        "n": 28,
+        "rmsPct": 0.16741909628262105,
+        "maxPct": 0.40016659739759985
+      },
+      {
+        "family": "mundorf|mcoil air l|1.4",
+        "label": "Mundorf MCoil Air L 1.40 mm",
+        "brand": "Mundorf",
+        "series": "MCoil Air L",
+        "wireMm": 1.4,
+        "k": 0.6501967685446235,
+        "ohmAt1mH": 0.29000402117038887,
+        "rangeH": [
+          0.000047000000000000004,
+          0.008199999999999999
+        ],
+        "n": 28,
+        "rmsPct": 0.11321647063528412,
+        "maxPct": 0.3282602945278157
+      },
+      {
+        "family": "mundorf|mcoil aronit|1.4",
+        "label": "Mundorf MCoil Aronit 1.40 mm",
+        "brand": "Mundorf",
+        "series": "MCoil Aronit",
+        "wireMm": 1.4,
+        "k": 0.6190963877215124,
+        "ohmAt1mH": 0.13550900171335,
+        "rangeH": [
+          0.001,
+          0.01
+        ],
+        "n": 7,
+        "rmsPct": 2.0364329968297388,
+        "maxPct": 3.2604351187287106
+      },
+      {
+        "family": "mundorf|mcoil zero-ohm n270|1.8",
+        "label": "Mundorf MCoil Zero-Ohm N270 1.80 mm",
+        "brand": "Mundorf",
+        "series": "MCoil Zero-Ohm N270",
+        "wireMm": 1.8,
+        "k": 0.6582781805757757,
+        "ohmAt1mH": 0.051623535443349515,
+        "rangeH": [
+          0.001,
+          0.01
+        ],
+        "n": 7,
+        "rmsPct": 2.854531124303324,
+        "maxPct": 3.7608726654258184
+      }
+    ],
+    "driverCardByDriver": {
+      "low": {
+        "sdCm2": 255,
+        "parallelCount": 2,
+        "source": "Setup tab (Sd, Xmax) and the Engine v2 measurement block (Bl, M_ms)"
+      },
+      "mid": {
+        "sdCm2": 69,
+        "source": "Setup tab (Sd, Xmax) and the Engine v2 measurement block (Bl, M_ms)"
+      },
+      "high": {
+        "sdCm2": 5.6,
+        "source": "Setup tab (Sd, Xmax) and the Engine v2 measurement block (Bl, M_ms)"
+      }
+    }
+  },
+  "geometry": {
+    "verticalMm": {
+      "low": -448.4,
+      "mid": -66,
+      "high": 74
+    },
+    "rotationallySymmetric": {},
+    "arraySpacingMm": {
+      "low": 275.75
+    },
+    "sourceCount": {
+      "low": 2
+    },
+    "baffleWidthMm": 260
+  },
+  "field": {
+    "mode": "exploration",
+    "settings": {
+      "chainBudget": 8,
+      "minSpacingOctaves": 0.16666666666666666,
+      "positionPolicy": "centre-first",
+      "alignmentPolicy": "one",
+      "alignments": [
+        {
+          "kind": "LR",
+          "order": 2
+        },
+        {
+          "kind": "LR",
+          "order": 4
+        },
+        {
+          "kind": "BW",
+          "order": 3
+        },
+        {
+          "kind": "BS",
+          "order": 4
+        }
+      ],
+      "stepsPerAxis": 2
+    },
+    "perPair": [
+      {
+        "pair": "low→mid",
+        "statedOrder": 4,
+        "maxDriveOnFsDb": null,
+        "breakupSuppressionDb": null,
+        "lowerTargetSlopeDbPerOct": 24,
+        "upperTargetSlopeDbPerOct": 24,
+        "lowerCurveGiven": true,
+        "upperCurveGiven": true
+      },
+      {
+        "pair": "mid→high",
+        "statedOrder": 4,
+        "maxDriveOnFsDb": null,
+        "breakupSuppressionDb": null,
+        "lowerTargetSlopeDbPerOct": 24,
+        "upperTargetSlopeDbPerOct": 12,
+        "lowerCurveGiven": true,
+        "upperCurveGiven": true
+      }
+    ],
+    "windowInputs": [
+      {
+        "lower": "low",
+        "upper": "mid",
+        "order": 4,
+        "validityFloorHz": 396.66798889329635,
+        "validityFloorSource": "low far field",
+        "upperFsHz": 88.80615234375,
+        "upperDriveCeilingDb": null,
+        "upperDriveCeilingSource": "driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; the ceiling the M-C gate judges the way against",
+        "upperStatedDriveLimitDb": null,
+        "upperStatedDriveLimitSource": "the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads",
+        "statedCeilingHz": null,
+        "statedCeilingSource": "the stated maximum handover for this pair (gestelde_eisen.max_kruispunt_hz_per_paar, E-1), through ReportSettings.maxCrossingHzByPair",
+        "lowerBreakups": [
+          {
+            "fHz": 1050.7906463854738,
+            "dB": 1.8313949243450907
+          },
+          {
+            "fHz": 1394.2751958378262,
+            "dB": 3.237584887706177
+          },
+          {
+            "fHz": 1792.8038276025552,
+            "dB": 0.8997963583364736
+          },
+          {
+            "fHz": 2147.874808447594,
+            "dB": 1.227524771680038
+          },
+          {
+            "fHz": 3441.3549527384434,
+            "dB": 1.4949753005666935
+          },
+          {
+            "fHz": 5218.743064873415,
+            "dB": 3.4098424309204773
+          },
+          {
+            "fHz": 7316.144552877582,
+            "dB": 8.494579387219446
+          },
+          {
+            "fHz": 7914.115094547864,
+            "dB": 2.2890829947092897
+          },
+          {
+            "fHz": 8296.108291894581,
+            "dB": 4.896518749701116
+          },
+          {
+            "fHz": 9631.691689503106,
+            "dB": 4.744836599098022
+          },
+          {
+            "fHz": 9939.18114964213,
+            "dB": 3.19793712681043
+          },
+          {
+            "fHz": 10418.918876602353,
+            "dB": 2.657413635695889
+          },
+          {
+            "fHz": 11007.956773465465,
+            "dB": 5.106117613226118
+          },
+          {
+            "fHz": 11907.67025328226,
+            "dB": 0.9926592255113462
+          },
+          {
+            "fHz": 12680.10550244734,
+            "dB": 1.8913308390360157
+          },
+          {
+            "fHz": 13084.914846552763,
+            "dB": 3.8182166409076643
+          },
+          {
+            "fHz": 13396.980522363,
+            "dB": 0.949334847526643
+          },
+          {
+            "fHz": 14154.38436864212,
+            "dB": 3.5586789417767477
+          },
+          {
+            "fHz": 16562.70067529265,
+            "dB": 0.936889777371249
+          },
+          {
+            "fHz": 17362.13799861517,
+            "dB": 10.119848166873112
+          },
+          {
+            "fHz": 18929.332350221302,
+            "dB": 1.9430654236650753
+          },
+          {
+            "fHz": 19843.00066331939,
+            "dB": 2.0370694515018215
+          }
+        ],
+        "lowerMinus6Hz": null,
+        "lowerMinus6AngleDeg": 15,
+        "spacingMm": 382.4,
+        "spacingSource": "cabinet layout (vertical driver positions)"
+      },
+      {
+        "lower": "mid",
+        "upper": "high",
+        "order": 4,
+        "validityFloorHz": 396.66798889329635,
+        "validityFloorSource": "mid far field",
+        "upperFsHz": 924.31640625,
+        "upperDriveCeilingDb": null,
+        "upperDriveCeilingSource": "driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; the ceiling the M-C gate judges the way against",
+        "upperStatedDriveLimitDb": null,
+        "upperStatedDriveLimitSource": "the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads",
+        "statedCeilingHz": null,
+        "statedCeilingSource": "the stated maximum handover for this pair (gestelde_eisen.max_kruispunt_hz_per_paar, E-1), through ReportSettings.maxCrossingHzByPair",
+        "lowerBreakups": [
+          {
+            "fHz": 1002.4071315334583,
+            "dB": 0.8293733653585207
+          },
+          {
+            "fHz": 5689.813197734105,
+            "dB": 2.9265686489753193
+          },
+          {
+            "fHz": 9116.29800357453,
+            "dB": 3.8901398896181547
+          },
+          {
+            "fHz": 11359.383168186494,
+            "dB": 1.975744463273827
+          },
+          {
+            "fHz": 12287.819786275062,
+            "dB": 2.9291186953458066
+          },
+          {
+            "fHz": 14378.547012111185,
+            "dB": 2.6835917941606624
+          },
+          {
+            "fHz": 14954.608355280545,
+            "dB": 3.0824610766641456
+          },
+          {
+            "fHz": 15311.264857641929,
+            "dB": 2.2151105992299733
+          },
+          {
+            "fHz": 15800.073336660507,
+            "dB": 1.7398160780838623
+          },
+          {
+            "fHz": 16176.893562201005,
+            "dB": 2.0714873026048792
+          },
+          {
+            "fHz": 16693.337031170082,
+            "dB": 1.7303098184702321
+          },
+          {
+            "fHz": 17637.101758866484,
+            "dB": 3.8629757289618283
+          },
+          {
+            "fHz": 19843.00066331939,
+            "dB": 3.136727364477622
+          }
+        ],
+        "lowerMinus6Hz": 10914.869436962788,
+        "lowerMinus6AngleDeg": 15,
+        "spacingMm": 140,
+        "spacingSource": "cabinet layout (vertical driver positions)"
+      }
+    ],
+    "orders": [
+      {
+        "pairLabel": "low→mid",
+        "flanks": [
+          {
+            "pairLabel": "low→mid",
+            "side": "lower-lp",
+            "driver": "low",
+            "demands": [
+              {
+                "rule": "target-slope",
+                "side": "lower-lp",
+                "exactOrder": 4,
+                "minOrder": 4,
+                "source": "acoustic target 24 dB/oct minus low's own measured 0.0 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+              }
+            ],
+            "demandedOrder": 4,
+            "binding": {
+              "rule": "target-slope",
+              "side": "lower-lp",
+              "exactOrder": 4,
+              "minOrder": 4,
+              "source": "acoustic target 24 dB/oct minus low's own measured 0.0 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+            },
+            "notes": [
+              "A5d.3(iii) is not armed: the project has stated no suppression budget for the breakup. There is no default, on purpose — the severity weighting under the breakup ceiling is itself uncalibrated (V6/V9), and a default here would stack a second guess on it."
+            ]
+          },
+          {
+            "pairLabel": "low→mid",
+            "side": "upper-hp",
+            "driver": "mid",
+            "demands": [
+              {
+                "rule": "target-slope",
+                "side": "upper-hp",
+                "exactOrder": 3.9038774194375923,
+                "minOrder": 4,
+                "source": "acoustic target 24 dB/oct minus mid's own measured 0.6 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+              }
+            ],
+            "demandedOrder": 4,
+            "binding": {
+              "rule": "target-slope",
+              "side": "upper-hp",
+              "exactOrder": 3.9038774194375923,
+              "minOrder": 4,
+              "source": "acoustic target 24 dB/oct minus mid's own measured 0.6 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+            },
+            "notes": [
+              "A5d.3(ii) is not armed: the project has stated no M-C limit, and absent is absent (P4). Nothing here invents one."
+            ]
+          }
+        ],
+        "orders": [
+          4
+        ],
+        "why": [
+          "order 4: demanded by target-slope — acoustic target 24 dB/oct minus mid's own measured 0.6 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+        ],
+        "notes": [
+          "A5d.3(iii) is not armed: the project has stated no suppression budget for the breakup. There is no default, on purpose — the severity weighting under the breakup ceiling is itself uncalibrated (V6/V9), and a default here would stack a second guess on it.",
+          "A5d.3(ii) is not armed: the project has stated no M-C limit, and absent is absent (P4). Nothing here invents one.",
+          "A5d.3(iv) — order asymmetry from the phase-slope mismatch — is NOT derived: A5d.2 has no implementation, and a mismatch divided by 90°/oct that nobody measured is a number with nothing under it. A5d.3(v), the cost side per order, is not pre-design: it needs a network, and the dissipation column answers it one stage later.",
+          "The order demands for low→mid were read at 467 Hz — the geometric centre of the feasible window, which is the handover a pre-design analysis assumes before one has been chosen (the same convention A5d.4 averages its levels between). A candidate placed elsewhere in the window carries an order derived at this frequency, and that is stated rather than hidden."
+        ]
+      },
+      {
+        "pairLabel": "mid→high",
+        "flanks": [
+          {
+            "pairLabel": "mid→high",
+            "side": "lower-lp",
+            "driver": "mid",
+            "demands": [
+              {
+                "rule": "target-slope",
+                "side": "lower-lp",
+                "exactOrder": 3.4867539906420926,
+                "minOrder": 4,
+                "source": "acoustic target 24 dB/oct minus mid's own measured 3.1 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+              }
+            ],
+            "demandedOrder": 4,
+            "binding": {
+              "rule": "target-slope",
+              "side": "lower-lp",
+              "exactOrder": 3.4867539906420926,
+              "minOrder": 4,
+              "source": "acoustic target 24 dB/oct minus mid's own measured 3.1 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+            },
+            "notes": [
+              "A5d.3(iii) is not armed: the project has stated no suppression budget for the breakup. There is no default, on purpose — the severity weighting under the breakup ceiling is itself uncalibrated (V6/V9), and a default here would stack a second guess on it."
+            ]
+          },
+          {
+            "pairLabel": "mid→high",
+            "side": "upper-hp",
+            "driver": "high",
+            "demands": [
+              {
+                "rule": "target-slope",
+                "side": "upper-hp",
+                "exactOrder": 1.665399148737371,
+                "minOrder": 2,
+                "source": "acoustic target 12 dB/oct minus high's own measured 2.0 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+              }
+            ],
+            "demandedOrder": 2,
+            "binding": {
+              "rule": "target-slope",
+              "side": "upper-hp",
+              "exactOrder": 1.665399148737371,
+              "minOrder": 2,
+              "source": "acoustic target 12 dB/oct minus high's own measured 2.0 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+            },
+            "notes": [
+              "A5d.3(ii) is not armed: the project has stated no M-C limit, and absent is absent (P4). Nothing here invents one."
+            ]
+          }
+        ],
+        "orders": [
+          4
+        ],
+        "why": [
+          "order 4: demanded by target-slope — acoustic target 24 dB/oct minus mid's own measured 3.1 dB/oct beside the handover (A5d.3(i) — the acoustic slope counts, not the electrical order)"
+        ],
+        "notes": [
+          "A5d.3(iii) is not armed: the project has stated no suppression budget for the breakup. There is no default, on purpose — the severity weighting under the breakup ceiling is itself uncalibrated (V6/V9), and a default here would stack a second guess on it.",
+          "A5d.3(ii) is not armed: the project has stated no M-C limit, and absent is absent (P4). Nothing here invents one.",
+          "The two flanks of mid→high demand different orders — mid's low pass 4, high's high pass 2. The design step enumerates SYMMETRIC alignments (one per handover), so the candidate is built at the higher of the two and the asymmetry A5d.3(iv) asks for cannot be expressed. Recorded rather than resolved: it is a limitation of the alignment library, and averaging the two would satisfy neither flank.",
+          "A5d.3(iv) — order asymmetry from the phase-slope mismatch — is NOT derived: A5d.2 has no implementation, and a mismatch divided by 90°/oct that nobody measured is a number with nothing under it. A5d.3(v), the cost side per order, is not pre-design: it needs a network, and the dissipation column answers it one stage later.",
+          "The order demands for mid→high were read at 1720 Hz — the geometric centre of the feasible window, which is the handover a pre-design analysis assumes before one has been chosen (the same convention A5d.4 averages its levels between). A candidate placed elsewhere in the window carries an order derived at this frequency, and that is stated rather than hidden."
+        ]
+      }
+    ],
+    "referenceCrossingHz": [
+      466.66516557118877,
+      1720.3586152910093
+    ],
+    "candidates": [
+      {
+        "label": "low→mid 415.8 LR4 · mid→high 1532.6 LR4",
+        "crossings": [
+          {
+            "pair": "low→mid",
+            "lower": "low",
+            "upper": "mid",
+            "hz": 415.8,
+            "cage": [
+              396.7,
+              440.5
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              396.7,
+              549
+            ]
+          },
+          {
+            "pair": "mid→high",
+            "lower": "mid",
+            "upper": "high",
+            "hz": 1532.6,
+            "cage": [
+              1446.6,
+              1623.8
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              1294,
+              2287.1
+            ]
+          }
+        ]
+      },
+      {
+        "label": "low→mid 415.8 LR4 · mid→high 1720.3 LR4",
+        "crossings": [
+          {
+            "pair": "low→mid",
+            "lower": "low",
+            "upper": "mid",
+            "hz": 415.8,
+            "cage": [
+              396.7,
+              440.5
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              396.7,
+              549
+            ]
+          },
+          {
+            "pair": "mid→high",
+            "lower": "mid",
+            "upper": "high",
+            "hz": 1720.3,
+            "cage": [
+              1623.8,
+              1822.6
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              1294,
+              2287.1
+            ]
+          }
+        ]
+      },
+      {
+        "label": "low→mid 415.8 LR4 · mid→high 1931 LR4",
+        "crossings": [
+          {
+            "pair": "low→mid",
+            "lower": "low",
+            "upper": "mid",
+            "hz": 415.8,
+            "cage": [
+              396.7,
+              440.5
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              396.7,
+              549
+            ]
+          },
+          {
+            "pair": "mid→high",
+            "lower": "mid",
+            "upper": "high",
+            "hz": 1931,
+            "cage": [
+              1822.6,
+              2045.8
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              1294,
+              2287.1
+            ]
+          }
+        ]
+      },
+      {
+        "label": "low→mid 466.7 LR4 · mid→high 1532.6 LR4",
+        "crossings": [
+          {
+            "pair": "low→mid",
+            "lower": "low",
+            "upper": "mid",
+            "hz": 466.7,
+            "cage": [
+              440.5,
+              494.4
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              396.7,
+              549
+            ]
+          },
+          {
+            "pair": "mid→high",
+            "lower": "mid",
+            "upper": "high",
+            "hz": 1532.6,
+            "cage": [
+              1446.6,
+              1623.8
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              1294,
+              2287.1
+            ]
+          }
+        ]
+      },
+      {
+        "label": "low→mid 466.7 LR4 · mid→high 1720.3 LR4",
+        "crossings": [
+          {
+            "pair": "low→mid",
+            "lower": "low",
+            "upper": "mid",
+            "hz": 466.7,
+            "cage": [
+              440.5,
+              494.4
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              396.7,
+              549
+            ]
+          },
+          {
+            "pair": "mid→high",
+            "lower": "mid",
+            "upper": "high",
+            "hz": 1720.3,
+            "cage": [
+              1623.8,
+              1822.6
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              1294,
+              2287.1
+            ]
+          }
+        ]
+      },
+      {
+        "label": "low→mid 466.7 LR4 · mid→high 1931 LR4",
+        "crossings": [
+          {
+            "pair": "low→mid",
+            "lower": "low",
+            "upper": "mid",
+            "hz": 466.7,
+            "cage": [
+              440.5,
+              494.4
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              396.7,
+              549
+            ]
+          },
+          {
+            "pair": "mid→high",
+            "lower": "mid",
+            "upper": "high",
+            "hz": 1931,
+            "cage": [
+              1822.6,
+              2045.8
+            ],
+            "order": 4,
+            "alignment": "LR4",
+            "window": [
+              1294,
+              2287.1
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "minSpacingOctaves": 0.16666666666666666,
+      "chainBudget": 8,
+      "derivedSize": 15,
+      "deliveredSize": 6,
+      "positionPolicy": "centre-first",
+      "alignmentPolicy": "one"
+    },
+    "refusals": [],
+    "key": "{\"candidates\":[{\"crossings\":[{\"alignment\":\"LR4\",\"cage\":[396.7,440.5],\"hz\":415.8,\"order\":4,\"pair\":\"low→mid\",\"window\":[396.7,549]},{\"alignment\":\"LR4\",\"cage\":[1446.6,1623.8],\"hz\":1532.6,\"order\":4,\"pair\":\"mid→high\",\"window\":[1294,2287.1]}],\"label\":\"low→mid 415.8 LR4 · mid→high 1532.6 LR4\"},{\"crossings\":[{\"alignment\":\"LR4\",\"cage\":[396.7,440.5],\"hz\":415.8,\"order\":4,\"pair\":\"low→mid\",\"window\":[396.7,549]},{\"alignment\":\"LR4\",\"cage\":[1623.8,1822.6],\"hz\":1720.3,\"order\":4,\"pair\":\"mid→high\",\"window\":[1294,2287.1]}],\"label\":\"low→mid 415.8 LR4 · mid→high 1720.3 LR4\"},{\"crossings\":[{\"alignment\":\"LR4\",\"cage\":[396.7,440.5],\"hz\":415.8,\"order\":4,\"pair\":\"low→mid\",\"window\":[396.7,549]},{\"alignment\":\"LR4\",\"cage\":[1822.6,2045.8],\"hz\":1931,\"order\":4,\"pair\":\"mid→high\",\"window\":[1294,2287.1]}],\"label\":\"low→mid 415.8 LR4 · mid→high 1931 LR4\"},{\"crossings\":[{\"alignment\":\"LR4\",\"cage\":[440.5,494.4],\"hz\":466.7,\"order\":4,\"pair\":\"low→mid\",\"window\":[396.7,549]},{\"alignment\":\"LR4\",\"cage\":[1446.6,1623.8],\"hz\":1532.6,\"order\":4,\"pair\":\"mid→high\",\"window\":[1294,2287.1]}],\"label\":\"low→mid 466.7 LR4 · mid→high 1532.6 LR4\"},{\"crossings\":[{\"alignment\":\"LR4\",\"cage\":[440.5,494.4],\"hz\":466.7,\"order\":4,\"pair\":\"low→mid\",\"window\":[396.7,549]},{\"alignment\":\"LR4\",\"cage\":[1623.8,1822.6],\"hz\":1720.3,\"order\":4,\"pair\":\"mid→high\",\"window\":[1294,2287.1]}],\"label\":\"low→mid 466.7 LR4 · mid→high 1720.3 LR4\"},{\"crossings\":[{\"alignment\":\"LR4\",\"cage\":[440.5,494.4],\"hz\":466.7,\"order\":4,\"pair\":\"low→mid\",\"window\":[396.7,549]},{\"alignment\":\"LR4\",\"cage\":[1822.6,2045.8],\"hz\":1931,\"order\":4,\"pair\":\"mid→high\",\"window\":[1294,2287.1]}],\"label\":\"low→mid 466.7 LR4 · mid→high 1931 LR4\"}],\"parameters\":{\"alignmentPolicy\":\"one\",\"chainBudget\":8,\"deliveredSize\":6,\"derivedSize\":15,\"minSpacingOctaves\":0.16666666666666666,\"positionPolicy\":\"centre-first\"},\"refusals\":0}"
+  },
+  "run": {
+    "gates": {},
+    "budgets": {},
+    "determinism": {},
+    "targetCurve": {
+      "type": "flat"
+    },
+    "judgeBandHz": [
+      455.2308874157112,
+      19999.51
+    ],
+    "chainDeclaration": {
+      "stated": {
+        "eqBands": 2,
+        "leanTargetDb": 0.5,
+        "synthesisGrid": "alive"
+      },
+      "absent": [
+        {
+          "key": "lowestWayLevelWork",
+          "why": "this project states no requirement about level work on its lowest way, so the design and synthesis steps keep their own behaviour — the lowest way is trimmed down to the quietest way and padded to realise it. Absent rather than a stated 'allowed' (P4): naming it here would claim somebody decided the lowest way may be padded, and with nothing stated nobody decided anything"
+        },
+        {
+          "key": "lowestWayCoilMaxHenry",
+          "why": "this project states no coil family for its lowest way (A5e.3), so there is no catalogue span to cap the coils with — the design and synthesis steps keep their own behaviour and every coil value is free (P4)"
+        }
+      ]
+    },
+    "tuning": {
+      "phasePriority": 0.5,
+      "targets": {
+        "rippleDb": 2.5,
+        "phaseDeg": 15
+      },
+      "band": [
+        455.2308874157112,
+        19999.51
+      ],
+      "catalogSnap": true,
+      "acousticSlopes": {
+        "mid": 24,
+        "tweeter": 12,
+        "low": {
+          "lower": 24,
+          "upper": 24
+        }
+      }
+    },
+    "keys": {
+      "design": "be20002b",
+      "measurement": "b6253632",
+      "tuning": "31da4987",
+      "candidateField": "650ef5ae"
+    }
+  },
+  "stamp": {
+    "status": "completed",
+    "fingerprint": "engine=2.0.0-F1 estimators=7411245d seed=20260826 budget=tuner starts=1 status=completed design=be20002b measurements=b6253632 gates=5465b825 bounds=5465b825 tuning=31da4987 facts=358300cf choices=650ef5ae",
+    "components": [
+      {
+        "name": "engine",
+        "value": "2.0.0-F1",
+        "describe": "the engine-v2 module version"
+      },
+      {
+        "name": "estimators",
+        "value": "7411245d",
+        "describe": "every extractor version, hashed — a bump anywhere lands here"
+      },
+      {
+        "name": "seed",
+        "value": "20260826",
+        "describe": "run seed (default)"
+      },
+      {
+        "name": "budget",
+        "value": "tuner",
+        "describe": "evaluations per start (the tuner's own policy)"
+      },
+      {
+        "name": "starts",
+        "value": "1",
+        "describe": "starting points (default)"
+      },
+      {
+        "name": "status",
+        "value": "completed",
+        "describe": "how the run ended — an aborted run never matches a completed one"
+      },
+      {
+        "name": "design",
+        "value": "be20002b",
+        "describe": "the seed network"
+      },
+      {
+        "name": "measurements",
+        "value": "b6253632",
+        "describe": "the measurement set"
+      },
+      {
+        "name": "gates",
+        "value": "5465b825",
+        "describe": "the active gates and their limits"
+      },
+      {
+        "name": "bounds",
+        "value": "5465b825",
+        "describe": "the active budgets and their inversions"
+      },
+      {
+        "name": "tuning",
+        "value": "31da4987",
+        "describe": "the tuner options that steer the search"
+      },
+      {
+        "name": "facts",
+        "value": "358300cf",
+        "describe": "the resolved R_e per driver with its source, and the A5b.1 validity per driver"
+      },
+      {
+        "name": "choices",
+        "value": "650ef5ae",
+        "describe": "what was searched (the candidate) and the weights it was judged on"
+      }
+    ],
+    "determinism": {
+      "seed": 20260826,
+      "seedSource": "default",
+      "budgetEvaluations": null,
+      "budgetSource": "the tuner's own policy",
+      "starts": 1,
+      "startsSource": "default"
+    }
+  },
+  "shortlist": {
+    "fingerprint": "run=f62b1256 selection=shortlist/1.1 target=5d7b21e8 requirements=5465b825 relaxation=eeed3a2f size=10",
+    "feasibleCount": 6,
+    "consideredCount": 6,
+    "rows": [
+      "low→mid 466.7 LR4 · mid→high 1931 LR4",
+      "low→mid 415.8 LR4 · mid→high 1720.3 LR4",
+      "low→mid 415.8 LR4 · mid→high 1931 LR4",
+      "low→mid 415.8 LR4 · mid→high 1532.6 LR4",
+      "low→mid 466.7 LR4 · mid→high 1532.6 LR4",
+      "low→mid 466.7 LR4 · mid→high 1720.3 LR4"
+    ],
+    "rejected": []
+  }
+}

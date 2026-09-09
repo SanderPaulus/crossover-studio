@@ -67,6 +67,24 @@ export type V2InputSource =
   /** A decision only the designer can make. No measurement produces it. */
   | 'choice';
 
+/**
+ * U-3b — WHERE A FIELD IS SHOWN, as data beside what it does.
+ *
+ *   'always'      — in the default view of its form.
+ *   'more'        — behind that form's one "more" disclosure.
+ *   'conditional' — rendered only while its own condition holds, and not at
+ *                   all otherwise. A fallback or an edge case: showing it
+ *                   permanently invites someone to fill it in when the case
+ *                   it answers does not exist.
+ *
+ * The class gives the default (required and judgement are shown, nice and v1
+ * are not), and a row may OVERRIDE it — but only with a reason, which the
+ * guard requires. Two things this deliberately does not do: it does not touch
+ * the class, and it does not decide anything about the run. A field behind a
+ * disclosure feeds exactly what it fed before.
+ */
+export type V2InputPlacement = 'always' | 'more' | 'conditional';
+
 /** One input, with everything a reader needs to act on it. */
 export interface V2InputRow {
   /** Stable id, used by the panel and by the tests. Never shown. */
@@ -91,6 +109,18 @@ export interface V2InputRow {
    * beside the field on the v2 route, so the field can stay where it is.
    */
   v1Note?: string;
+  /**
+   * U-3b: where the field is shown, when that is NOT what its class implies.
+   * Every override carries `placementWhy`; the guard refuses one without.
+   */
+  placement?: V2InputPlacement;
+  /** Why this row overrides its class's default placement. One sentence. */
+  placementWhy?: string;
+  /**
+   * `placement: 'conditional'` only: the condition under which the field is
+   * rendered at all, in the app's own terms.
+   */
+  condition?: string;
 }
 
 /* ==================================================================== *
@@ -112,8 +142,8 @@ const REQUIRED: readonly V2InputRow[] = [
   },
   {
     id: 'validity',
-    label: 'Measurement window in the file header (or the A5a window fields)',
-    form: 'the FRD header itself; Drivers tab → Engine v2 — measurement → “Window (no header)”',
+    label: 'Measurement window in the file header',
+    form: 'the FRD header itself — nothing to type',
     travels:
       'parseArtaHeader / mergeBlock → validity.ts → the judged band and every window floor (A5b.1)',
     cls: 'required',
@@ -666,6 +696,179 @@ const NICE: readonly V2InputRow[] = [
       'shortlist says which mode made it.',
     source: 'choice',
   },
+  /* ---- U-3b: THE RIG AND THE CABINET FORM -----------------------------
+   * These were the gap the U-3b measurement found: twelve controls on the
+   * cabinet form and the driver card that no row named at all, so nothing
+   * could say what they do, and the placement rule had nothing to file them
+   * under. Every one is NICE — a run happens without all of them — and five
+   * carry a placement override, because a run happening is not the same as a
+   * number being enterable. */
+  {
+    id: 'micDistance',
+    label: 'Mic distance',
+    form: 'Setup tab → Cabinet & measurement',
+    travels:
+      'cabinet.micDistanceMm → the far-field ratio and the honest-down-to line; the near-field ' +
+      'merge’s far-field limit; and, with a stated drive voltage, responseDrive → M-C route 2',
+    cls: 'nice',
+    emptyMeans:
+      'no far-field check and no honest-down-to line; the merge cannot say where its far-field ' +
+      'half stops being believable; M-C’s acoustic counter-proof stays off.',
+    source: 'measurement',
+    placement: 'always',
+    placementWhy:
+      'the sentence beside it — how low these sweeps are honest — is computed FROM it, so hiding ' +
+      'the field hides the answer next to it.',
+  },
+  {
+    id: 'gateOverride',
+    label: 'Gate used',
+    form: 'Setup tab → Cabinet & measurement',
+    travels:
+      'cabinet.gateMs → the honest-down-to line, and the data floor of a response whose own file ' +
+      'states no window',
+    cls: 'nice',
+    emptyMeans:
+      'each file’s own window decides, and where none states one the floor is predicted from the ' +
+      'geometry and says so.',
+    source: 'measurement',
+    placement: 'conditional',
+    condition: 'no loaded response states a window a reader can find',
+    placementWhy:
+      'it is a GLOBAL stand-in for a per-file property, and A3h forbids that substitution wherever ' +
+      'the property exists: once a file states a window this field can only mislead. Both demo ' +
+      'bundles carried 4.5 ms here over files stating 5.021 ms, until U-3b took it out of them.',
+  },
+  {
+    id: 'micElevation',
+    label: 'Mic elevation',
+    form: 'Setup tab → Cabinet & measurement',
+    travels: 'cabinet.micElevationDeg → the true off-axis angle per driver and the listening angle',
+    cls: 'nice',
+    emptyMeans: 'the mic is taken to have stood level with the reference point, which is 0°.',
+    source: 'measurement',
+  },
+  {
+    id: 'baffleHeight',
+    label: 'Front panel height',
+    form: 'Setup tab → Cabinet & measurement',
+    travels: 'cabinet.baffleHeightMm → the front-panel drawing and the reference-point sanity check',
+    cls: 'nice',
+    emptyMeans: 'the panel is not drawn to scale and a reference point deeper than the box is not caught.',
+    source: 'measurement',
+    placement: 'always',
+    placementWhy:
+      'it is the other half of the front panel: the width beside it is REQUIRED, and a form that ' +
+      'asks for one and hides the other reads as an omission.',
+  },
+  {
+    id: 'referencePoint',
+    label: 'Reference point (below the top, above the floor)',
+    form: 'Setup tab → Cabinet & measurement',
+    travels:
+      'cabinet.refFromTopMm → the origin every driver position is typed against; ' +
+      'cabinet.refHeightMm → the floor-bounce prediction and the listening angle',
+    cls: 'nice',
+    emptyMeans:
+      'driver positions are typed from the reference point instead of from the top of the panel, ' +
+      'and the drawing places every driver against an origin of zero.',
+    source: 'measurement',
+    placement: 'always',
+    placementWhy:
+      'every driver position is entered as a distance below the top, and this is what that is ' +
+      'measured from — without it the REQUIRED numbers beside it mean something else.',
+  },
+  {
+    id: 'refDriver',
+    label: 'Mic was aimed at',
+    form: 'Setup tab → Cabinet & measurement',
+    travels: 'cabinet.refDriver → which driver is the origin, and therefore whose offset is not typed',
+    cls: 'nice',
+    emptyMeans: 'the reference point is a spot on the baffle and every driver states its own offset.',
+    source: 'measurement',
+    placement: 'always',
+    placementWhy: 'it decides WHICH driver positions are typed at all, so it belongs beside them.',
+  },
+  {
+    id: 'cabinetDepth',
+    label: 'Cabinet depth',
+    form: 'Setup tab → Cabinet & measurement',
+    travels: 'cabinet.cabinetDepthMm → the baffle width a driver on a side panel radiates from',
+    cls: 'nice',
+    emptyMeans: 'a side-firing driver has no panel width of its own and keeps the front baffle’s step.',
+    source: 'measurement',
+    placement: 'conditional',
+    condition: 'a driver on this project fires off the front baffle',
+    placementWhy:
+      'the form’s own note already said “only needed for side-firing drivers”; a field that says ' +
+      'when it is needed can say it by being there then.',
+  },
+  {
+    id: 'listeningPosition',
+    label: 'Where you listen (distance, ear height)',
+    form: 'Setup tab → Cabinet & measurement',
+    travels: 'cabinet.listenDistanceM / listenEarHeightMm → the seat angle off the reference axis',
+    cls: 'nice',
+    emptyMeans: 'the vertical spacing rules are stated in degrees rather than about your seat.',
+    source: 'measurement',
+  },
+  {
+    id: 'sourceCount',
+    label: 'How many drivers, and how far apart',
+    form: 'Setup tab → driver card header',
+    travels:
+      'cabinet.drivers[role].count / spacingMm → geometry.sourceCount + arraySpacingMm → the four ' +
+      'lobing fractions and the array’s own lobing ceiling; the count also carries the wiring',
+    cls: 'nice',
+    emptyMeans:
+      'the branch is read as one radiator: no array lobing ceiling, and the lobing fractions fall ' +
+      'back to a single source per way. Never a default of one — unknown is unknown (P4).',
+    source: 'measurement',
+    placement: 'always',
+    placementWhy:
+      'it is part of the branch’s identity and it changes what the position beside it MEANS — one ' +
+      'cone at y, or two cones straddling it.',
+  },
+  {
+    id: 'mounting',
+    label: 'Mounting (panel, depth behind the baffle, tilt)',
+    form: 'Setup tab → driver card',
+    travels:
+      'cabinet.drivers[role].facing / depthMm / tiltDeg / opposed → the true off-axis angle, the ' +
+      'panel a driver radiates from, and the app’s own measured-depth cross-check',
+    cls: 'nice',
+    emptyMeans:
+      'the driver is taken to fire forward from the front baffle with its acoustic centre in the ' +
+      'baffle plane. The engine’s geometry reads the acoustic centre from the A5a block, not here.',
+    source: 'measurement',
+  },
+  {
+    id: 'chamber',
+    label: 'Chamber (sealed / ported, and its corner)',
+    form: 'Setup tab → driver card',
+    travels: 'cabinet.drivers[role].enclosure / fbHz → what the box itself already filters, and the excursion warning',
+    cls: 'nice',
+    emptyMeans:
+      'the box behind this driver is unknown and nothing is assumed; the impedance sweep still ' +
+      'proposes the corner it measures, with a button to take it.',
+    source: 'measurement',
+  },
+  {
+    id: 'manualWindow',
+    label: 'Window (no header)',
+    form: 'Drivers tab → Engine v2 — measurement',
+    travels: 'v2Meas[role].refTimeMs / rightWindowMs / floorHz → AdapterBranch.manualWindow → validity.ts',
+    cls: 'nice',
+    emptyMeans:
+      'the file’s own header decides, which is what it is for. A FALLBACK and never an override: ' +
+      'nothing typed here can relax a window a file states (A5b.1(i)).',
+    source: 'measurement',
+    placement: 'conditional',
+    condition: 'a loaded response on this branch states no window a reader can find',
+    placementWhy:
+      'it answers a case that mostly does not exist, and a permanently visible fallback invites ' +
+      'someone to type a window over a file that already states one.',
+  },
   {
     id: 'xo3Steps',
     label: 'Points per axis / handover candidates',
@@ -870,3 +1073,147 @@ export const JUDGEMENT_KEYS_WHERE_BLANK_DEFERS: readonly V2SettingKey[] = [
 /** Every settings key of the form that has no row here. Should be empty. */
 export const settingKeysWithoutRow = (keys: readonly V2SettingKey[]): V2SettingKey[] =>
   keys.filter((k) => rowForKey(k) === undefined);
+
+/* ==================================================================== *
+ * U-3b — WHERE EACH FIELD IS SHOWN, AND WHICH FORMS THIS RULE GOVERNS
+ * ==================================================================== */
+
+/**
+ * The placement a row's CLASS implies. Required and judgement are shown
+ * because a run cannot start without the first and nothing judges without the
+ * second; nice and v1-legacy are not, because neither is needed to build a
+ * filter — which is the whole of Sander's rule (09-09-2026).
+ */
+export const PLACEMENT_BY_CLASS: Readonly<Record<V2InputClass, V2InputPlacement>> = Object.freeze({
+  required: 'always',
+  judgement: 'always',
+  nice: 'more',
+  'v1-legacy': 'more',
+});
+
+/** Where a row is shown: its own decision if it made one, else its class's. */
+export const placementOf = (row: V2InputRow): V2InputPlacement =>
+  row.placement ?? PLACEMENT_BY_CLASS[row.cls];
+
+/** The heading of the one "more" disclosure each governed form carries. */
+export const V2_MORE_HEADING = 'more — enriches the judgement, not needed to build a filter';
+
+/** The forms this placement rule governs. */
+export type V2GovernedForm = 'cabinet' | 'driver-card' | 'v2-panel';
+export const V2_GOVERNED_FORMS: readonly V2GovernedForm[] = ['cabinet', 'driver-card', 'v2-panel'];
+
+/** One control in a governed form: which row it belongs to, and the token that
+ *  identifies it in `App.tsx`. The guard scans for exactly these. */
+export interface V2FormField {
+  row: string;
+  form: V2GovernedForm;
+  /** A source fragment unique to this control, e.g. `value={d.count}`. */
+  control: string;
+}
+
+/**
+ * EVERY CONTROL OF THE GOVERNED FORMS, filed under the row it serves.
+ *
+ * This is the drift guard Sander asked for, and it works in BOTH directions:
+ * every token here must occur in `App.tsx`, and every `<input>`/`<select>` in
+ * a governed region must be one of these tokens. A field added to one of these
+ * forms without a register row and a placement decision therefore fails the
+ * build rather than quietly joining the default view — the I-1 shape of
+ * `p6Lint`, one layer up.
+ *
+ * The cabinet form's inputs are produced by one helper (`veld`), so its tokens
+ * are the CALL SITES (`cab('micDistanceMm')`) rather than the `<input>` tags.
+ */
+export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
+  // ---- Setup tab → Cabinet & measurement ----
+  { row: 'micDistance', form: 'cabinet', control: "cab('micDistanceMm')" },
+  { row: 'micElevation', form: 'cabinet', control: "cab('micElevationDeg')" },
+  { row: 'gateOverride', form: 'cabinet', control: "cab('gateMs')" },
+  { row: 'refDriver', form: 'cabinet', control: 'value={cabinet.refDriver}' },
+  { row: 'baffle-width', form: 'cabinet', control: "cab('baffleWidthMm')" },
+  { row: 'baffleHeight', form: 'cabinet', control: "cab('baffleHeightMm')" },
+  { row: 'cabinetDepth', form: 'cabinet', control: "cab('cabinetDepthMm')" },
+  { row: 'referencePoint', form: 'cabinet', control: 'refTopVeld()' },
+  { row: 'referencePoint', form: 'cabinet', control: "cab('refHeightMm')" },
+  { row: 'listeningPosition', form: 'cabinet', control: "cab('listenDistanceM')" },
+  { row: 'listeningPosition', form: 'cabinet', control: "cab('listenEarHeightMm')" },
+  // ---- Setup tab → driver card ----
+  { row: 'sourceCount', form: 'driver-card', control: 'value={d.count}' },
+  { row: 'sourceCount', form: 'driver-card', control: 'value={d.spacingMm}' },
+  { row: 'positions', form: 'driver-card', control: 'value={d.xMm}' },
+  { row: 'positions', form: 'driver-card', control: 'yMm: String(Math.round(' },
+  { row: 'mounting', form: 'driver-card', control: 'value={d.facing}' },
+  { row: 'mounting', form: 'driver-card', control: 'value={d.depthMm}' },
+  { row: 'mounting', form: 'driver-card', control: 'value={d.tiltDeg}' },
+  { row: 'mounting', form: 'driver-card', control: 'checked={d.opposed}' },
+  { row: 'chamber', form: 'driver-card', control: 'value={d.enclosure}' },
+  { row: 'chamber', form: 'driver-card', control: 'value={d.fbHz}' },
+  { row: 'sd', form: 'driver-card', control: 'value={sdCm2[role]}' },
+  { row: 'xmaxMm', form: 'driver-card', control: 'value={xmaxMm[role]}' },
+  { row: 'acousticCentre', form: 'driver-card', control: 'value={v2Meas[role].zMm}' },
+  { row: 'rotSym', form: 'driver-card', control: 'value={v2Meas[role].rotSym}' },
+  { row: 'measuredRe', form: 'driver-card', control: 'value={v2Meas[role].reOhm}' },
+  { row: 'blTm', form: 'driver-card', control: 'value={v2Meas[role].blTm}' },
+  { row: 'mmsG', form: 'driver-card', control: 'value={v2Meas[role].mmsG}' },
+  { row: 'driveVoltageV', form: 'driver-card', control: 'value={v2Meas[role].driveVoltageV}' },
+  { row: 'driveOnFsMaxDb-per-way', form: 'driver-card', control: 'value={v2Meas[role].driveOnFsMaxDb}' },
+  { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringMeasured}' },
+  { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringDesired}' },
+  { row: 'coilFamily', form: 'driver-card', control: 'value={v2Meas[role].coilFamily}' },
+  { row: 'manualWindow', form: 'driver-card', control: 'value={v2Meas[role].refTimeMs}' },
+  { row: 'manualWindow', form: 'driver-card', control: 'value={v2Meas[role].rightWindowMs}' },
+  { row: 'manualWindow', form: 'driver-card', control: 'value={v2Meas[role].floorHz}' },
+  { row: 'manualWindow', form: 'driver-card', control: 'value={v2Meas[role].windowNote}' },
+  // ---- Filters → ⚙ Settings → the Engine v2 block ----
+  { row: 'minEpdrOhm', form: 'v2-panel', control: 'value={engineV2Settings.minEpdrOhm}' },
+  { row: 'maxDissipationPct', form: 'v2-panel', control: 'value={engineV2Settings.maxDissipationPct}' },
+  { row: 'maxDriveOnFsDb', form: 'v2-panel', control: 'value={engineV2Settings.maxDriveOnFsDb}' },
+  { row: 'amplifierPeakPowerW', form: 'v2-panel', control: 'value={engineV2Settings.amplifierPeakPowerW}' },
+  { row: 'amplifierNominalLoadOhm', form: 'v2-panel', control: 'value={engineV2Settings.amplifierNominalLoadOhm}' },
+  { row: 'xmaxMarginFraction', form: 'v2-panel', control: 'value={engineV2Settings.xmaxMarginFraction}' },
+  { row: 'amplifierPowerW', form: 'v2-panel', control: 'value={engineV2Settings.amplifierPowerW}' },
+  { row: 'resistorClassW', form: 'v2-panel', control: 'value={engineV2Settings.resistorClassW}' },
+  { row: 'resistorPowerMargin', form: 'v2-panel', control: 'value={engineV2Settings.resistorPowerMargin}' },
+  { row: 'coilClassA', form: 'v2-panel', control: 'value={engineV2Settings.coilClassA}' },
+  { row: 'resistorThermalPowerW', form: 'v2-panel', control: 'value={engineV2Settings.resistorThermalPowerW}' },
+  { row: 'lowestWayLevelWork', form: 'v2-panel', control: 'value={engineV2Settings.lowestWayLevelWork}' },
+  { row: 'lowestWaySeriesRMaxOhm', form: 'v2-panel', control: 'value={engineV2Settings.lowestWaySeriesRMaxOhm}' },
+  { row: 'lfBumpBudgetDb', form: 'v2-panel', control: 'value={engineV2Settings.lfBumpBudgetDb}' },
+  { row: 'qesMultiplierMax', form: 'v2-panel', control: 'value={engineV2Settings.qesMultiplierMax}' },
+  { row: 'dampingMarginDb', form: 'v2-panel', control: 'value={engineV2Settings.dampingMarginDb}' },
+  { row: 'splWindowPlusMinusDb', form: 'v2-panel', control: 'value={engineV2Settings.splWindowPlusMinusDb}' },
+  { row: 'maxPhaseTrackingDeg', form: 'v2-panel', control: 'value={engineV2Settings.maxPhaseTrackingDeg}' },
+  { row: 'targetCurve', form: 'v2-panel', control: 'value={activeTargetCurve.type}' },
+  { row: 'plateauDepthDb', form: 'v2-panel', control: 'String(activeTargetCurve.plateauDepthDb)' },
+  { row: 'verticalWindowDeg', form: 'v2-panel', control: 'value={engineV2Settings.verticalWindowDeg}' },
+  { row: 'shortlistSize', form: 'v2-panel', control: 'value={engineV2Settings.shortlistSize}' },
+  { row: 'runSeed', form: 'v2-panel', control: 'value={engineV2Settings.runSeed}' },
+  { row: 'runBudgetEvals', form: 'v2-panel', control: 'value={engineV2Settings.runBudgetEvals}' },
+  { row: 'fieldMode', form: 'v2-panel', control: 'value={fieldModeOf(engineV2Settings.fieldMode)}' },
+]);
+
+/**
+ * The v2-reachable rows whose FORM this rule does not govern yet, by name.
+ *
+ * Not an oversight and not a loophole: each of these lives outside the three
+ * governed forms — in the Import tab's own file slots, or in a Filters section
+ * that predates the v2 panel and holds v1 controls beside it — so moving them
+ * is a form redesign rather than a placement decision. They keep their
+ * register row, their empty-field help and (where they have one) their v1
+ * badge. A NAME rather than a count, for the V47/V48 reason: a complement
+ * grows with the register and stops being a claim.
+ */
+export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
+  // measurements and files, not settings: the Import tab's own slots
+  'responses', 'validity', 'impedance', 'ways',
+  'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom',
+  // Filters sections older than the v2 panel
+  'nominalSize', 'catalogSnap', 'xo3Steps',
+  /* The amplifier floor is a JUDGEMENT row and it IS shown — but it lives in
+   * "Goals & weighting", above the v2 block, because it predates it. Worth
+   * noting rather than moving: it is the one judgement input of the minimal
+   * set, and the only one not beside the gates it arms. */
+  'ampMinLoadOhm',
+  // the five v1 controls, each already badged where it stands (U-1)
+  'errorSmoothOct', 'hpLpPref', 'scan3Mode', 'bomCapEur', 'excursionSpl',
+]);

@@ -200,6 +200,43 @@ export const BUNDLE_BEARABLE_ROWS: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * U-3b — WHAT A DEMO BUNDLE MAY CARRY, AS DATA.
+ *
+ * A demo is GENERIC PRACTICE MATERIAL (Sander, 09-09-2026): measurements and
+ * geometry that have to work, and nothing that judges. Until U-3b the two-way
+ * bundle carried casus 1b's whole requirement sheet — ten of the fifteen
+ * judgement rows — so loading it pre-armed eight gates with somebody else's
+ * numbers about somebody else's amplifier, and the panel reported judgements
+ * the viewer never made. That is P4 broken at the screen rather than in the
+ * engine, the same failure E-2 removed from the placeholders.
+ *
+ * So the list below is the rule: it is what a demo bundle is ALLOWED to carry,
+ * where `BUNDLE_BEARABLE_ROWS` above says what the SHAPE can hold. The two are
+ * deliberately different, and the guard reads both — every bundle's carried
+ * set must be a subset of this one, every REQUIRED row must be in it, and each
+ * bundle's exact set is pinned BY NAME beside it so a field that ever sneaks
+ * back in is a red test. Which of the optional four a given bundle carries is
+ * a fact about its loudspeaker (a closed pod has no port; only a merged
+ * response declares a splice band), not about this rule.
+ *
+ * WHAT IS ON IT AND WHY, one line each:
+ *  · responses / validity / impedance / ways — the measurement session itself.
+ *  · nearFieldCone / nearFieldPort — also measurement files, with their own
+ *    stated validity; they are ingredients, not statements about a design.
+ *  · spliceBand / mergeValidFrom — the merged file's own declared block. It
+ *    travels INSIDE the file, so a merged response cannot be shipped without
+ *    it, and reading it back is how the branch gets its floor at all.
+ *  · positions / baffle-width — the geometry a window is derived from.
+ *  · sd — the one datasheet number kept: it gives the effective piston
+ *    diameter, and with it the beaming ceiling. X_max is off the list because
+ *    it JUDGES (the excursion floor, M-C's allowed voltage on f_s).
+ */
+export const BUNDLE_CARRIED_ROWS: readonly string[] = Object.freeze([
+  'responses', 'validity', 'impedance', 'ways', 'positions', 'sd', 'baffle-width',
+  'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom',
+]);
+
+/**
  * Which bearable rows a bundle actually states, and — for the ones it does not
  * — that the state it produces holds an EMPTY value there rather than no value
  * at all. The second half is the claim that matters: an absent key is a key the
@@ -278,3 +315,74 @@ export function readableValidity(raw: string): boolean {
   if (merged) return /^\s*[*;#]*\s*Valid from\s*=\s*[\d.,]+/im.test(head);
   return /^\s*[*;#]*\s*Right window\s*=\s*[\d.,]+/im.test(head);
 }
+
+/* ==================================================================== *
+ * U-3b — every scalar the state holds, as one flat list
+ * ==================================================================== */
+
+/** One field of the project state a bundle produces: where it is, and what
+ *  it holds. `null` is a slot with no file; '' is a stated-nothing. */
+export interface DemoStateField {
+  /** Dotted path, e.g. `cabinet.drivers.low.yMm` or `engineV2.minEpdrOhm`. */
+  path: string;
+  value: string | number | boolean | null;
+  /** True where the value is a file slot rather than a typed field. */
+  slot?: boolean;
+}
+
+/**
+ * EVERY SCALAR OF THE STATE, FLAT — the shape the widened U-3b guard walks.
+ *
+ * The U-3 guard checked the state key by key with a hand-written list per
+ * block, which proves what the list happens to name. This enumerates the whole
+ * thing instead, so the two claims it has to carry are claims about ALL of it:
+ * what the bundle states arrives (lossless), and what it does not state is ''
+ * or `null` rather than a value nobody typed. A block added to `DemoBundleState`
+ * without a line here fails the completeness check beside it.
+ */
+export function stateFields(s: DemoBundleState): DemoStateField[] {
+  const out: DemoStateField[] = [];
+  const put = (path: string, value: string | number | boolean | null, slot = false) =>
+    out.push(slot ? { path, value, slot } : { path, value });
+
+  for (const r of DEMO_ROLES) {
+    put(`onAxis.${r}`, s.onAxis[r]?.name ?? null, true);
+    put(`angles.${r}`, s.angles[r].length === 0 ? null : s.angles[r].map((a) => a.hor).join(','), true);
+    put(`impedance.${r}`, s.impedance[r]?.name ?? null, true);
+    put(`nearField.${r}.cone`, s.nearField[r].cone?.name ?? null, true);
+    put(`nearField.${r}.port`, s.nearField[r].port?.name ?? null, true);
+    put(`sdCm2.${r}`, s.sdCm2[r]);
+    put(`xmaxMm.${r}`, s.xmaxMm[r]);
+    put(`sizeInch.${r}`, s.sizeInch[r]);
+    for (const k of Object.keys(s.v2Measurement[r]).sort()) {
+      put(`v2Measurement.${r}.${k}`, s.v2Measurement[r][k as keyof V2MeasurementMeta]);
+    }
+  }
+  const cab = s.cabinet as Record<string, unknown>;
+  for (const k of Object.keys(cab).sort()) {
+    if (k === 'drivers') continue;
+    put(`cabinet.${k}`, (cab[k] as string | undefined) ?? '');
+  }
+  for (const r of DEMO_ROLES) {
+    const d = (s.cabinet.drivers?.[r] ?? {}) as Record<string, unknown>;
+    for (const k of ['xMm', 'yMm', 'enclosure', 'fbHz', 'count', 'spacingMm', 'depthMm', 'facing', 'tiltDeg', 'opposed']) {
+      const v = d[k];
+      put(`cabinet.drivers.${r}.${k}`, v === undefined ? '' : (v as string | boolean));
+    }
+  }
+  for (const k of Object.keys(s.engineV2).sort()) put(`engineV2.${k}`, s.engineV2[k as V2SettingKey]);
+  put('ampMinLoadOhm', s.ampMinLoadOhm);
+  put('targetCurve', s.targetCurve === null ? null : s.targetCurve.type);
+  put('ways', s.ways);
+  return out;
+}
+
+/**
+ * A state field that holds SOMETHING. The three ways a bundle can be silent —
+ * `null` (no file, no floor, no voicing), '' (nothing typed) and `false` (an
+ * unticked box) — all read as silence, and nothing else does. `0` does NOT:
+ * a typed zero is a statement, which is exactly what U-3b removed from the
+ * three-way demo's mic elevation.
+ */
+export const stateFieldFilled = (f: DemoStateField): boolean =>
+  f.value !== null && f.value !== '' && f.value !== false;
