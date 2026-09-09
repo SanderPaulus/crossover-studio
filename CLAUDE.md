@@ -249,6 +249,9 @@
     `frozenNetlistGates` en vier metriekbestanden): rekenwerk op vaste netwerken, zonder zoektocht,
     en dus portable. **CI bewaakt de natuurkunde, de lokale suite bewaakt de bytes.**
     `ciLayer.test.ts` bewaakt die taakverdeling zelf.
+    **Gemeten 09-09-2026 (B-1), lokaal op arm64/Node 26: 166 bestanden (165 geslaagd,
+    1 overgeslagen), 1992 geslaagd, 12 overgeslagen, 459 s** — die twaalf zijn 3 `[live]` +
+    11 `[bytes]` − 2 die beide dragen, precies wat `ciLayer.test.ts` sinds E-3 bewaakt.
     **Gemeten 01-09-2026 (ná de splitsing), lokaal op arm64/Node 26: 136 bestanden (135 geslaagd,
     1 overgeslagen), 1488 geslaagd, 9 overgeslagen, 283 s.** (V46 mat 134 / 1475 / 9 / 286 s.)
     Die negen zijn precies 2 `[live]` + 8 `[bytes]` − 1 die beide tags
@@ -2908,6 +2911,17 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
 - `src/lib/engine2/versionAndCapability.test.ts` — de z-re-versie wordt sindsdien uit de REGISTRY gelezen in
   plaats van uit een met de hand bijgehouden kopie. Die stond bij B-1 op 1.1 terwijl de tabel al 1.2 zei;
   een pin op "de versie die de app nu draagt" hoort die versie niet zelf over te typen.
+- **CI VING DE V46-PRECISERING VOOR DE DERDE KEER, en dit is de derde keer dat hij op dezelfde vorm valt:
+  een EXACTE float-vergelijking op een AFGELEID getal.** De reproductieclaim van `motionalModel.test.ts`
+  legde de verse fit op negen decimalen naast het opgenomen bestand; linux/x64 leest 25,489439719233413
+  waar darwin/arm64 onder Node 26 25,48943973418001 opschreef — 1,49e-8 absoluut, **6e-10 relatief**, op
+  de bandspreiding van de casus-1-woofer. Lokaal groen, CI rood, precies zoals bij V49. De drift zelf is
+  KLEIN (V46 zag op een vast netwerk het vijfde significante cijfer bewegen; deze iteratieve fit blijft tot
+  in het negende gelijk), maar negen decimalen op 25,49 vraagt elf significante cijfers en zoveel geeft
+  geen LM-fit over twee runtimes. Sindsdien leest de claim de TOLERANTIEKLASSEN van de casus zelf — R_e in
+  `ohm`, residu en lekfractie in `fit_kwaliteit_pct`, exponent en spreiding in `exponent_pct` — en het
+  model en het exponentoordeel exact, want een string en een boolean driften niet. **Regel: wie een gefit
+  getal in een test zet die in CI draait, leest het in zijn klasse en niet op decimalen.**
 - **De VOLLE RUN is bij B-1 niet gedraaid**, met de I-1/I-3/E-2-afweging: geen engine-, poort-, budget-,
   venster- of corpuswijziging, model (b) is byte-identiek aan wat er vóór B-1 draaide, en de twee
   byte-baselines die dat bewaken (`f4cRegression`, `workerRouteRegression`) draaien in de snelle laag en

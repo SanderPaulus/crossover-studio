@@ -8431,6 +8431,20 @@ met de hand bijgehouden kopie — die stond bij B-1 op 1.1 terwijl de tabel al 1
 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 bestand en +22 tests, en die twee sluiten
 exact: de twintig van `motionalModel.test.ts`, +1 in `goldenCasus2` en +1 in `goldenClassification`.
 
+**EN CI VING DE V46-PRECISERING VOOR DE DERDE KEER, op de reproductieclaim van dit bestand.** Zij
+legde de verse fit op NEGEN DECIMALEN naast het opgenomen bestand, en dat is over platforms heen
+geen claim maar geluk: linux/x64 leest `25,489439719233413` waar darwin/arm64 onder Node 26
+`25,48943973418001` opschreef — de bandspreiding van de casus-1-woofer, **1,49e-8 absoluut, 6e-10
+relatief.** Lokaal groen, CI rood, precies zoals bij V49. Twee dingen zijn daaraan te meten. (i) De
+DRIFT ZELF is klein: waar V46 op een vast netwerk het vijfde significante cijfer zag bewegen, blijft
+deze iteratieve fit tot in het negende gelijk — de multi-start met vaste startpunten en de
+log-parametrisatie doen wat zij horen te doen. (ii) Negen decimalen op een getal van 25,49 vraagt elf
+significante cijfers, en zoveel geeft geen enkele LM-fit over twee runtimes. De rijen worden sindsdien
+tegen de TOLERANTIEKLASSEN van de casus zelf gelezen — R_e in `ohm`, residu en lekfractie in
+`fit_kwaliteit_pct`, exponent en spreiding in `exponent_pct` — en het MODEL en het
+exponent-OORDEEL exact, want een string en een boolean driften niet. De V49-regel, één schatter
+verderop: een gesteld getal is exact, een gefit getal is dat niet.
+
 ---
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)

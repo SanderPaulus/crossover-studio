@@ -113,6 +113,14 @@ function fitOf(curve: ImpedanceCurve): MotionalReFit {
  * ------------------------------------------------------------------ */
 
 const g1 = loadGolden();
+/* The classes the casebook publishes, read and never typed here. Each quantity
+ * takes the class the casebook gives it: R_e in ohms, the fit's own residual
+ * and the leak fraction in `fit_kwaliteit_pct`, the exponent and its spread in
+ * `exponent_pct`. */
+const TOL = g1.toleranties as unknown as Record<string, number>;
+const OHM_TOL = TOL.ohm;
+const FIT_TOL_PCT = TOL.fit_kwaliteit_pct;
+const EXPONENT_TOL_PCT = TOL.exponent_pct;
 function casus1(set: Casus1MeasurementSet): EngineV2Report {
   const manifest = casus1Manifest(g1, set);
   return buildReport({
@@ -489,24 +497,40 @@ describe('B-1 — the half-power leak term, tested instead of assumed', () => {
       expect(`${row.casus}/${row.weg}: ${row.gekozen}`).toBe(
         `${row.casus}/${row.weg}: ${fit.model}`,
       );
-      expect(row.armen.plus_lek.R_e_ohm).toBeCloseTo(fit.arms.plusLeak.reOhm, 9);
-      expect(row.armen.tweede_orde.R_e_ohm).toBeCloseTo(fit.arms.secondOrder.reOhm, 9);
-      expect(row.armen.plus_lek.residu).toBeCloseTo(fit.arms.plusLeak.relativeResidual, 9);
-      expect(row.armen.tweede_orde.residu).toBeCloseTo(fit.arms.secondOrder.relativeResidual, 9);
-      expect(row.armen.plus_lek.lek_fractie_bandtop).toBeCloseTo(
-        fit.arms.plusLeak.leakFractionAtBandTop,
-        9,
+      /* AGAINST THE CASUS'S OWN TOLERANCE CLASSES, not against nine decimals.
+       * V46 measured that a float result is reproducible per (machine,
+       * runtime) and not across them, and this is an iterative fit read on a
+       * second platform in CI. The verdicts below are exact — a boolean and a
+       * string do not drift — and the numbers are held to the class the
+       * casebook publishes for them. */
+      expect(Math.abs(row.armen.plus_lek.R_e_ohm - fit.arms.plusLeak.reOhm)).toBeLessThanOrEqual(
+        OHM_TOL,
       );
+      expect(
+        Math.abs(row.armen.tweede_orde.R_e_ohm - fit.arms.secondOrder.reOhm),
+      ).toBeLessThanOrEqual(OHM_TOL);
+      const near = (a: number, b: number): number =>
+        b === 0 ? Math.abs(a) : Math.abs(a / b - 1) * 100;
+      expect(near(row.armen.plus_lek.residu, fit.arms.plusLeak.relativeResidual)).toBeLessThanOrEqual(
+        FIT_TOL_PCT,
+      );
+      expect(
+        near(row.armen.tweede_orde.residu, fit.arms.secondOrder.relativeResidual),
+      ).toBeLessThanOrEqual(FIT_TOL_PCT);
+      expect(
+        near(row.armen.plus_lek.lek_fractie_bandtop, fit.arms.plusLeak.leakFractionAtBandTop),
+      ).toBeLessThanOrEqual(FIT_TOL_PCT);
       /* The exponent verdict is the field this file exists for; a recorded
        * value nothing checks is decoration (V19). */
       expect(`${row.casus}/${row.weg}: ${row.exponent_geidentificeerd}`).toBe(
         `${row.casus}/${row.weg}: ${fit.exponent.identified}`,
       );
-      expect(row.exponent_bandspreiding_pct).toBeCloseTo(
-        fit.exponent.bandSpreadFraction * 100,
-        9,
-      );
-      expect(row.exponent_op_primaire_band).toBeCloseTo(fit.exponent.onPrimaryBand, 9);
+      expect(
+        near(row.exponent_bandspreiding_pct, fit.exponent.bandSpreadFraction * 100),
+      ).toBeLessThanOrEqual(EXPONENT_TOL_PCT);
+      expect(
+        near(row.exponent_op_primaire_band, fit.exponent.onPrimaryBand),
+      ).toBeLessThanOrEqual(EXPONENT_TOL_PCT);
     }
     /* Casus 1 twice (two measurement sets) and casus 2 once. */
     expect(seen).toBe(9);
