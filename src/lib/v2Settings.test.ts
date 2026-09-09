@@ -40,11 +40,12 @@ describe('a fresh browser: every v2 field empty', () => {
     expect(restoreV2Settings(undefined, undefined).settings).toEqual(EMPTY_V2_SETTINGS);
     expect(restoreV2Settings({}, {}).settings).toEqual(EMPTY_V2_SETTINGS);
     expect(restoreV2Settings(undefined, undefined).statedAt).toEqual({});
+    expect(restoreV2Settings(undefined, undefined).statedBy).toEqual({});
   });
 
   it('the app seeds its state from the one empty definition and restores through the one restore', () => {
     expect(APP).toMatch(/useState<V2Settings>\(\{ \.\.\.EMPTY_V2_SETTINGS \}\)/);
-    expect(APP).toMatch(/restoreV2Settings\(d\.engineV2, d\.engineV2StatedAt\)/);
+    expect(APP).toMatch(/restoreV2Settings\(d\.engineV2, d\.engineV2StatedAt, d\.engineV2StatedBy\)/);
   });
 });
 
@@ -111,7 +112,11 @@ describe('a value says who stated it and when', () => {
   it('the app writes the dates beside the block, edits every field through the one setter, and marks every judgement field', () => {
     expect(APP).toMatch(/engineV2StatedAt: \{ \.\.\.engineV2StatedAt \}/);
     // The mark is rendered by one helper that reads `statedMark`; every judgement key calls it.
-    expect(APP).toMatch(/statedMark\(engineV2Settings, engineV2StatedAt, key\)/);
+    expect(APP).toMatch(/statedMark\(engineV2Settings, engineV2StatedAt, key, engineV2StatedBy\)/);
+    /* U-3 — the other half of the stamp: an edited field is the viewer's own,
+     * whatever a demo bundle said before, so the setter clears the name too. */
+    expect(APP).toMatch(/engineV2StatedBy: \{ \.\.\.engineV2StatedBy \}/);
+    expect(APP).toMatch(/setEngineV2StatedBy\(\(prev\) => clearStatedBy\(prev, key\)\)/);
     for (const k of V2_JUDGEMENT_KEYS) expect(APP).toContain(`{v2Stated('${k}')}`);
     // …and no field is edited past the setter that stamps the date.
     expect(APP).not.toMatch(/setEngineV2Settings\(\(v\) => \(\{ \.\.\.v, \w+: e\.target\.value \}\)\)/);

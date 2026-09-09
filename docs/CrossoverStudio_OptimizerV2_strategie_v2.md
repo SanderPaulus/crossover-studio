@@ -8606,6 +8606,198 @@ sessie, niemand die een vlag aanraakt, en aan het eind een v2-shortlist.
 
 ---
 
+### U-3 — de tweewegdemo blokkeerde zijn eigen route: herbouwd uit casus 1b, met twee guards die dat blijvend vangen (09-09-2026, alleen demobundel/laadpad; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding.** De tweewegdemo droeg nog de twaalf `*_mettape.txt`-exports van het KOAN-prototype
+van 2023. Die bestanden hebben GEEN header — geen venster, geen mergeblok, niets — dus
+`readGateHeader` antwoordde `absent` op alle twaalf, dus `refuseIfUnverified` weigerde de run met de
+eigen eerlijke melding van de app: *"states no measurement window, so there is no way to know how low
+it is honest."* De app had gelijk en er faalde niets: **geen enkele test heeft ooit aan een
+demobundel gevraagd wat zijn bestanden zeggen.** Daarnaast miste de bundel élke eis die de v2-route
+sinds E-3 kan lezen.
+
+**Wat er gebouwd is.** Drie nieuwe bronbestanden (`src/lib/demoBundle.ts`, `src/lib/v2Measurement.ts`,
+`src/demo2way.ts`), één nieuw testbestand (21 claims), twee scripts
+(`scripts/measure-u3-demo-bundles.ts`, `scripts/build-demo2way.ts`), zes nieuwe fixturebestanden en
+één applier die beide demo's laadt. **Geen engine-, poort-, budget-, venster- of corpuscode
+aangeraakt; geen enkel getal in een golden-refs-bestand verplaatst.** De twee byte-baselines
+(`f4cRegression`, `workerRouteRegression`) en `toggleRegression` staan.
+
+---
+
+#### 1 — STAP 1, TABEL 1: WAT ELK MEETBESTAND OVER ZIJN EIGEN GELDIGHEID ZEGT
+
+Gemeten met beide lezers die de app werkelijk raadpleegt — `readGateHeader` + `readMergeBlock` (de
+v1-laag, die `sourceMeta` en dus `refuseIfUnverified` voedt) en `parseArtaHeader` (engine2, op
+veldnaam). `scripts/measure-u3-demo-bundles.ts`, uitkomst in `test-fixtures/demo_u3_bundels.json`.
+
+| bundel | bestanden | v1-venster | vloer | herkomst |
+| --- | --- | --- | --- | --- |
+| tweeweg VÓÓR U-3 (KOAN-prototype 2023) | 12 | **`absent` op alle twaalf** | — | **geen** |
+| tweeweg NÁ U-3 (casus 1b) | 4 | 3 × `parsed`, 1 × mergeblok | 455,2 / 60,0 / 2,7 Hz | gate / merge-block |
+| drieweg | 18 | 18 × `parsed` | 455,2 en 2,7 Hz | gate |
+| casus 1b (de bron) | 5 | 4 × `parsed`, 1 × mergeblok | idem | idem |
+
+**De drieweg-demo was al in orde en is dat sinds UI-1**, toen de wooferbestanden hun weggeschreven
+ARTA-vensterregels terugkregen. De tweeweg is de enige die achterbleef, en zij bleef achter omdat
+haar bronbestanden uit een sessie komen waarvan de gepoorte originelen niet meer bestaan. **Een
+venster terugschrijven in een bestand dat er nooit een droeg is een meting verzinnen (A3h)**, dus de
+reparatie is een ándere sessie en niet een andere header.
+
+---
+
+#### 2 — STAP 1, TABEL 2: WELKE I-1-REGISTERVELDEN EEN BUNDEL DRAAGT
+
+Zesendertig van de registerrijen zijn *draagbaar* door een bundel; de rest is de voorkeur van de
+kijker, een runknop met een gepubliceerde standaard, of een v1-knop.
+
+| klasse | tweeweg vóór U-3 | tweeweg ná U-3 | drieweg |
+| --- | --- | --- | --- |
+| NOODZAKELIJK | 7 / 7 | 7 / 7 | 7 / 7 |
+| OORDEEL-WAPENEND | **0 / 15** | 10 / 15 | **0 / 15** |
+| NICE TO HAVE | 2 / 14 | 9 / 14 | 4 / 14 |
+| **totaal draagbaar** | **9 / 36** | **26 / 36** | **11 / 36** |
+
+**De correctie op de verwachting in de opdracht: dit is niet eigen aan de tweewegbundel.** De
+drieweg-demo draagt de velden van ná E-3 evenmin — nul van vijftien oordeelsrijen, geen Bl, geen
+M_ms, geen spoelfamilie, geen wiring, geen rotatiesymmetrie. De tweeweg was armer op twee punten
+(geen nabij veld, geen driverkaartvelden) en dat is alles. **U-3 repareert de tweeweg en laat de
+drieweg zoals hij is** — de acceptatie eist dat expliciet — maar het gat staat nu geteld in een
+guard die beide bundels leest, dus het kan niet nog eens stil groeien.
+
+---
+
+#### 3 — DE TWEEDE OORZAAK: WAT DE N=2-LADING LIET VALLEN
+
+De twee laders waren een jaar uit elkaar geschreven en deden verschillend veel werk. Geteld met een
+setter-vergelijking over beide functiebodies (`fd12db1`):
+
+| setter | tweeweglader | driewegladers |
+| --- | --- | --- |
+| `setNearField` | **ontbreekt** | `App.tsx:3458` |
+| `setZStandalone` | **ontbreekt** | `App.tsx:3449` |
+| `setVerifyList` | **ontbreekt** | `App.tsx:3481` |
+| `setVerifyIx` | **ontbreekt** | `App.tsx:3482` |
+| `setFileNotes` | **ontbreekt** | `App.tsx:3483` |
+
+Gevolg: **de drieweg-demo laden en dáárna de tweeweg liet de nabije velden van de drieweg aan de
+wegen van de tweeweg hangen, zijn drie losse impedanties naast de twee van de tweeweg, en zijn
+verificatielijst en bestandsnotities op het scherm.** Een toestand die geen enkele knop met opzet kan
+maken. Sinds U-3 is er één applier (`applyDemoBundle`) en levert `demoBundleState` een VOLLEDIGE
+toestand: elke rol, elke settingssleutel, elk meetveld, met `''` of `null` waar een bundel zwijgt —
+zodat de lader alles kan toewijzen en niets van een vorige demo kan blijven staan.
+
+---
+
+#### 4 — DE BESTANDEN: DEZELFDE SESSIE, HUN EIGEN HEADERS
+
+`scripts/build-demo2way.ts` leest casus 1's eigen bestanden, herbemonstert ze op het rooster van de
+drieweg-demo (500 punten ver veld, 250 nabij veld) en schrijft de ORIGINELE headers woordelijk terug
+met één regel erbij die zegt waar het bestand vandaan komt. Eén commentaarregel wordt gedropt: de
+KOLOM-header, die ARTA als commentaar schrijft en dit bestand als echte header — beide houden zou het
+bestand zijn kolommen twee keer laten noemen.
+
+| bestand | bron | punten | wat het over zichzelf zegt |
+| --- | --- | --- | --- |
+| `mid-merged-hor0.frd` | `Koan_M_merged.frd` (M-1) | 500 | `Merge = NF/FF`, `Valid from = 60 Hz`, splice 500–800 Hz |
+| `mid-hor30.txt` | `mid_hor_30.txt` | 500 | `Reference time = 2,5 ms`, `Right window = 5,021 ms` |
+| `tweeter-hor0.txt` | `tweeter_hor_0.txt` | 500 | idem → vloer 455,2 Hz |
+| `mid-near.txt` | `mid_near.txt` | 250 | `Right window = 1000 ms` |
+| `mid.zma`, `tweeter.zma` | `mid.lim`, `tweeter.lim` | 241 / 161 | via `limToZmaText`, de eigen omzetter van de app |
+
+**Vier van de zes zijn byte-identiek aan de bestanden van de drieweg-demo, en dat is gemeten en niet
+aangenomen** (`mid-hor30.txt`, `tweeter-hor0.txt`, `mid-near.txt` in hun datarijen; beide ZMA's als
+heel bestand). Dat moet ook: het is dezelfde luidspreker uit dezelfde sessie. Zij zijn KOPIEËN —
+elke bundel is zijn eigen chunk en geen van beide hoort de andere mee te trekken — en een kopie van
+een meting is een bestand dat kan wegdrijven, dus de kopie is gepind.
+
+---
+
+#### 5 — WAT DE BUNDEL STELT, EN WIENS GETALLEN HET ZIJN
+
+`src/demo2way.ts` draagt élke eis die `golden_refs_casus1b.json` stelt, en de guard leest ze uit dát
+bestand in plaats van ze over te typen. Wat casus 1b NIET stelt staat leeg, met de reden:
+`spoelklasse_A` is null met casus 1's bevinding (de C-Coil-documentatie noemt geen
+verzadigingsstroom), en de drie wooferregels staan onder `niet_overgenomen`.
+
+**Een demo stelt daarmee acht eisen over een echte luidspreker, en het paneel zei tot U-3 bij élke
+gestelde waarde "stated by you".** Dat zou zeven getallen van Sander in de mond van de kijker leggen.
+`V2StatedBy` is het kleinste antwoord: een sleutel-naar-naam-blok naast het bestaande datumblok, op
+de draad additief (een project zonder blok leest precies als vroeger), en de EERSTE bewerking van een
+veld wist de naam — dan is het getal wél van de kijker. Gemeten in de draaiende app: zeven velden
+lezen *"stated by the KOAN 2951 demo (Sander Somers, casus 1b) on 2026-09-06"*.
+
+---
+
+#### 6 — WAT DE HERBOUW KOST, EN DAT WORDT NIET WEGGEPOETST
+
+De tweewegdemo van 2023 had drie dingen die casus 1b niet heeft, en er is niets verzonnen om ze te
+vervangen:
+
+- **De directiviteitsset 0–75°** voor beide wegen. Casus 1 mat de mid op 0° en 30° en de tweeter
+  alleen op de as; hoeken bijmaken om de oude vorm te halen zou metingen verzinnen.
+- **Het VituixCAD-project** met zijn varianten. De impedanties staan nu op zichzelf, zoals bij de
+  drieweg-demo.
+- **De montagediepte** (17,3 mm op de mid), die het prototype uit zijn eigen meting afleidde en die
+  de kruiscontrole op de kaart liet slagen. Casus 1b stelt er geen, dus het veld blijft leeg — en
+  `acousticCentre` is daarmee de enige registerrij die de bundel VERLOOR.
+
+Daar staat tegenover: een leesbare geldigheid op élk bestand, een gemergde mid die 60 Hz haalt in
+plaats van 397, een nabij veld om die merge mee over te doen, en zeventien registervelden erbij.
+
+---
+
+#### 7 — DE TWEE GUARDS
+
+`src/lib/demoBundle.test.ts`, 21 claims, en zij lezen **élke** bundel — een derde demo doet mee door
+in de lijst te staan.
+
+**Guard 1 — een demo mag zijn eigen route niet blokkeren.** Elk meetbestand van elke bundle moet een
+geldigheid stellen die de app kan lezen, en de test reproduceert daarvoor de ECHTE beslissingsboom van
+`sourceMeta` (mergeblok eerst, ARTA-venster tweede). Met de TEGENPROEF ernaast: de twaalf
+prototype-exports staan nog in de repo als parser-fixtures en falen hem alle twaalf — zonder die claim
+is "alles groen" niet te onderscheiden van een controle die niet kan vuren. Plus: de drie lezers van
+één conventie (v1, engine2, en de drie regels die `demoBundle.ts` zelf draagt omdat bundelcode
+`engine2/` niet mag importeren) moeten het per bestand eens zijn.
+
+**Guard 2 — wat de bundel draagt landt, wat hij niet draagt toont leeg.** De toestand is VOLLEDIG
+(elke rol, elke settingssleutel, elk meetveld), een gedragen rij heeft een waarde en een niet-gedragen
+rij een `''` en nooit `undefined`. De tien rijen die de tweewegbundel niet draagt staan **bij naam en
+niet als telling** — de V47/V48-les, preventief: een complement groeit mee met het register, dus een
+exacte verzameling faalt zodra er een rij bijkomt, en dát is het moment waarop iemand moet kijken.
+
+Daarnaast een BRONSCAN op `App.tsx` (het UI-1-idioom: een functietest kan niet zeggen of de app haar
+AANROEPT — precies wat hier misging), die pint dat beide laders door `applyDemoBundle` gaan, dat die
+de vijf setters bevat die de oude tweeweglader oversloeg, en dat het woord `mettape` nergens in
+`App.tsx` meer voorkomt.
+
+**Nagemeten dat zij kunnen falen**, met drie opzettelijke breuken: de gemergde mid vervangen door een
+headerloos bestand → 4 rood; `setNearField` uit de applier → 1 rood; `resistorClassW` uit de bundel →
+2 rood.
+
+---
+
+#### 8 — BROWSERCONTROLE (headless Chrome op de dev-server, 09-09-2026)
+
+Verse localStorage, welkomstkaart weg, Expert → Project → "Load 2-way demo (KOAN mid + tweeter)".
+
+- **De projectstaat is die van de bundel**, uit de autosave gelezen: `engineV2` met de zeven gestelde
+  getallen, `v2Measurement` met rotatiesymmetrie, Bl, M_ms, wiring en spoelfamilie per weg, de kast
+  260 × 1124 met de twee wegen op ∓64,6 mm, `ads-amp-min-load` op 2,6.
+- **De Filter-sectie weigert niet**: nul `src-unverified`-badges, geen "Cannot optimise yet", en de
+  knop "Optimize — design for me" staat er.
+- **Het kruisvenster is dat van casus 1b**: `low → high: 1646,9–2308,5 Hz · floor: 1646,9 Hz —
+  drive-stated · ceiling: 2308,5 Hz — breakup`. De gestelde −20 dB van de tweeter bereikt dus de
+  vensterafleiding: de demo IS casus 1b en niet een bundel die erop lijkt.
+- **De verkenning loopt en is uitgedraaid.** Optimize → "Start anyway" → **614 s (10 min 14), DRIE
+  van drie kandidaten**, met de veldregel eronder: "Exploration field — 3 of 3 derived candidates:
+  chain budget 8, positions centre-first …" en een Pareto-front van twee niet-gedomineerde ontwerpen.
+  Drie en niet zes, want een tweeweg heeft ÉÉN overname: het venstercentrum en zijn twee buren.
+- **De drieweg-demo is onveranderd**: gate 4,5 ms, wooferpaar op −448,4 mm met spacing 275,75, Sd
+  255/69/5,6, X_max 8,5/5/1 — dezelfde getallen als vóór U-3, en zijn `engineV2`-blok is leeg.
+
+---
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

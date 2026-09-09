@@ -261,6 +261,15 @@ export interface ProjectDesign {
    */
   engineV2StatedAt?: Partial<Record<string, string>>;
   /**
+   * U-3 — WHO stated each `engineV2` field, when it was not the person at the
+   * keyboard. Absent = the viewer, which is what every value meant until a demo
+   * bundle could state requirements; a demo writes its own name here so the
+   * panel does not attribute Sanders numbers to whoever opened them. Additive:
+   * a project without the block reads exactly as it always did, and the first
+   * edit of a field drops its entry.
+   */
+  engineV2StatedBy?: Partial<Record<string, string>>;
+  /**
    * The project settings the v2 layer reads. Strings like every other numeric
    * field here; EMPTY MEANS THE SETTING IS ABSENT (P4), which is why none of
    * them has a default anywhere in the code.

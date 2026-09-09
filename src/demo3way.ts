@@ -34,18 +34,11 @@ import portNear from './lib/parsers/fixtures/koan-3way/port-near.txt?raw';
 import zWoofers from './lib/parsers/fixtures/koan-3way/woofers-parallel.zma?raw';
 import zMid from './lib/parsers/fixtures/koan-3way/mid.zma?raw';
 import zTweeter from './lib/parsers/fixtures/koan-3way/tweeter.zma?raw';
+import type { DemoBranch, DemoBundle, DemoFile } from './lib/demoBundle.ts';
 
-export interface DemoFile {
-  name: string;
-  raw: string;
-}
-export interface DemoBranch {
-  /** 0° file first; `hor` in degrees. */
-  angles: { hor: number; file: DemoFile }[];
-  impedance: DemoFile;
-  nearCone?: DemoFile;
-  nearPort?: DemoFile;
-}
+/* U-3 — the two shapes have one home now (`lib/demoBundle.ts`); these two
+ * aliases keep the names this module has always exported. */
+export type { DemoFile, DemoBranch } from './lib/demoBundle.ts';
 
 const f = (name: string, raw: string): DemoFile => ({ name, raw });
 
@@ -119,3 +112,34 @@ export const KOAN_3WAY_DEMO = {
   sdCm2: { low: '255', mid: '69', high: '5.6' },
   xmaxMm: { low: '8.5', mid: '5', high: '1' },
 } as const;
+
+/**
+ * U-3 — THE SAME BUNDLE IN THE SHARED SHAPE, so one loader and two guards can
+ * read both demos. Nothing is added and nothing is dropped: the blocks a demo
+ * bundle can carry but this one does not (the stated requirements, the A5a
+ * measurement facts, the amplifier floor, the voicing) are EMPTY here, which is
+ * exactly what the three-way demo has always put in the app — and saying it
+ * with an empty block rather than a missing one is what lets the loader assign
+ * them and stop a previously loaded demo owning them.
+ */
+export const KOAN_3WAY_BUNDLE: DemoBundle = {
+  id: 'koan-3way',
+  label: KOAN_3WAY_DEMO.label,
+  provenance: {
+    source: 'Sander Somers — KOAN 2951, the finished cabinet',
+    measured: '15 Aug 2026, 0–60° at 1 m, near fields and LIMP impedances',
+  },
+  branches: {
+    low: KOAN_3WAY_DEMO.low,
+    mid: KOAN_3WAY_DEMO.mid,
+    high: KOAN_3WAY_DEMO.high,
+  },
+  cabinet: KOAN_3WAY_DEMO.cabinet,
+  sdCm2: KOAN_3WAY_DEMO.sdCm2,
+  xmaxMm: KOAN_3WAY_DEMO.xmaxMm,
+  sizeInch: {},
+  engineV2: {},
+  v2Measurement: {},
+  ampMinLoadOhm: null,
+  targetCurve: null,
+};

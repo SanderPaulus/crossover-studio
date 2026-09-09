@@ -48,6 +48,17 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-3 (09-09-2026) gemeten op 453 s — 168 bestanden (167 geslaagd, 1 overgeslagen), 2041 tests
+    (2038 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
+    dev-server en de headless Chrome gestopt.** +1 BESTAND (`lib/demoBundle.test.ts`) en +21 tests, en
+    die twee getallen sluiten exact: het bestand telt ZESTIEN `it`-declaraties, waarvan er vijf een
+    `it.each` over de TWEE demobundels zijn, dus 16 + 5 = 21. `v2Settings.test.ts` staat op dertien
+    zoals op HEAD — de U-3-claims daar zitten binnen bestaande `it`s (de twee bronscans die de vorm van
+    `statedMark` en `restoreV2Settings` pinnen, en die bij U-3 rood gingen omdat die vorm een argument
+    kreeg: zij deden precies wat zij moeten doen en zijn vóór de volle laag bijgewerkt). Het corpus is
+    niet geregenereerd, dus geen enkele `it.each` over het levende corpus beweegt. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 453 tegen U-1's 452 s is dezelfde laag op
+    dezelfde machine.
     **Ná U-1 (09-09-2026) gemeten op 452 s — 167 bestanden (166 geslaagd, 1 overgeslagen), 2020 tests
     (2017 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`v1Carryover.test.ts`, 16 claims) en
@@ -1235,7 +1246,30 @@
   (`casus1bManifest`, `HUIDIG_MT` als geladen filter, casus 1b's geometrie) en `--run` gaat door `v2ChainOne` met
   `casus1bChainInputFor` en `casus1bV2Declaration`, precies zoals de casus-1b-generator. **`tsconfig.scripts.json` kent sinds E-2 ook `vite/client`
   als type** (`types: ["node", "vite/client"]`), omdat het replay-script `demo3way.ts` importeert en die module
-  Vite's `?raw`-imports draagt — zonder die declaratie 21 TS2307-fouten in `tsc -b`.
+  Vite's `?raw`-imports draagt — zonder die declaratie 21 TS2307-fouten in `tsc -b`. **`tsconfig.test.json`
+  kent hem sinds U-3 óók**, om precies dezelfde reden één project verder: `demoBundle.test.ts` importeert
+  beide demobundels.
+- **DE TWEE DEMOBUNDELS (U-3, 09-09-2026)** — twee scripts, en de eerste is de diagnose:
+  - `npx vite-node scripts/measure-u3-demo-bundles.ts` — seconden, geen ketenrun en geen tune. Tabel 1: wat
+    élk meetbestand van élke demobundel over zijn eigen geldigheid zegt, door BEIDE lezers van de app
+    (`readGateHeader`/`readMergeBlock` van de v1-laag — die `sourceMeta` en dus `refuseIfUnverified` voedt —
+    en `parseArtaHeader` van engine2, op veldnaam). Tabel 2: welke I-1-registervelden een bundel kan dragen
+    (zesendertig) en welke elke bundel draagt. Schrijft `test-fixtures/demo_u3_bundels.json`; de kolom
+    "tweeweg vóór U-3" is een GEDATEERD record, want die lader bestond uit `setState`-regels in `App.tsx`
+    en is vervangen. **Gemeten 09-09-2026: de tweewegdemo droeg twaalf headerloze exports van het
+    KOAN-prototype van 2023 — `absent` op alle twaalf, dus de Filter-sectie weigerde de run met de eigen
+    eerlijke melding van de app — en negen van de zesendertig registervelden, waarvan NUL van de vijftien
+    oordeelsvelden. De driewegdemo staat op 18 van 18 leesbaar maar draagt de oordeelsvelden evenmin
+    (0/15): het gat is niet eigen aan de tweeweg.**
+  - `npx vite-node scripts/build-demo2way.ts` — seconden. Bouwt de tweewegbundel uit casus 1b: leest casus 1's
+    eigen bestanden, herbemonstert ze op het rooster van de driewegdemo (500 punten ver veld, 250 nabij veld)
+    en schrijft de ORIGINELE headers WOORDELIJK terug met één provenance-regel erbij. Dat verbatim is het hele
+    punt: een venster terugschrijven in een bestand dat er nooit een droeg is een meting verzinnen (A3h), dus
+    de reparatie is een ándere sessie en niet een andere header. Eén commentaarregel wordt gedropt, de
+    KOLOM-header die ARTA als commentaar schrijft. De impedanties gaan door `limToZmaText`, de eigen omzetter
+    van de app. **Vier van de zes bestanden zijn byte-identiek in hun datarijen aan die van de driewegdemo —
+    dezelfde luidspreker, dezelfde sessie — en `demoBundle.test.ts` pint dat, want een kopie van een meting is
+    een bestand dat kan wegdrijven.**
 - **De barrière-resolutie op smalle dips, gemeten vóór er gekozen is (E-1, 06-09-2026)**:
   `npx vite-node scripts/measure-e1-barrier-resolution.ts` — seconden, geen ketenrun en geen tune. Over ÉLKE bevroren
   netlist (161): min |Z| op de poortsweep (1600 punten) tegen het verlengde barrièreraster (394, wat `'safety-extended'`
@@ -2830,6 +2864,58 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   door de v2-route en is uitgedraaid: zes kandidaten (2 × 3, het E-2-veld), 902 s, ZES VAN ZES
   gekwalificeerd, met de veldregel "Exploration field — 6 of 15 derived candidates" onder de
   shortlist.
+
+### U-3-guards (een demo mag zijn eigen route niet blokkeren; alleen demobundel/laadpad)
+- `src/lib/demoBundle.ts` + `demoBundle.test.ts` (21 claims, nieuw) — **een demobundel is DATA, in één
+  vorm, en `demoBundleState` is wat beide laders toewijzen.** De driewegdemo was al een datamodule; de
+  tweeweg was twaalf `?raw`-imports en veertig regels `setState` in `App.tsx`, en wat een test niet kon
+  lezen was tweemaal weggedreven. (1) **Zijn twaalf bestanden droegen geen enkele header**, dus
+  `readGateHeader` antwoordde `absent` en `refuseIfUnverified` weigerde de run — een demo die zijn eigen
+  route blokkeert, met de eigen eerlijke melding van de app. (2) Hij stelde geen enkele eis die de
+  v2-route sinds E-3 leest, en de driewegdemo evenmin: samen 9 en 11 van de 36 draagbare registerrijen
+  en NUL van de vijftien oordeelsrijen.
+- **GUARD 1 — élk meetbestand van élke bundel stelt een geldigheid die de app kan lezen.** De test
+  reproduceert de ECHTE beslissingsboom van `sourceMeta` (mergeblok eerst — P-1 —, ARTA-venster tweede —
+  A3h) en niet een lossere of strengere. Met de TEGENPROEF ernaast: de twaalf prototype-exports staan nog
+  in de repo als parser-fixtures en falen hem alle twaalf; zonder die claim is "alles groen" niet te
+  onderscheiden van een controle die niet kan vuren. Plus: de DRIE lezers van één conventie moeten het per
+  bestand eens zijn — v1, engine2, en de drie regels die `demoBundle.ts` zelf draagt omdat bundelcode
+  `engine2/` niet mag importeren (de dependency-pijl van de toggle-invariant; dezelfde vorm als P-1).
+- **GUARD 2 — wat de bundel draagt landt, wat hij niet draagt toont LEEG en niet afwezig.** De toestand die
+  `demoBundleState` teruggeeft is VOLLEDIG: elke rol, elke `V2_SETTING_KEYS`-sleutel, elk
+  `V2_MEASUREMENT_KEYS`-veld, met `''` of `null` waar de bundel zwijgt. Dat is de helft die telt: een
+  ONTBREKENDE sleutel is een sleutel die niemand wist, en precies zo hield de oude tweeweglader de nabije
+  velden, de losse impedanties, de verificatielijst en de bestandsnotities van de vorige demo vast (vijf
+  setters die hij nooit aanriep — `setNearField`, `setZStandalone`, `setVerifyList`, `setVerifyIx`,
+  `setFileNotes`). De tien rijen die de tweewegbundel NIET draagt staan **bij naam en niet als telling** —
+  de V47/V48-les, preventief.
+- **De getallen van de bundel zijn die van het casusboek, gelezen en niet overgetypt.** De guard opent
+  `golden_refs_casus1b.json` en vergelijkt élke eis, élk driverkaartveld en élk geometriegetal ermee, dus
+  een eis die dáár beweegt faalt hier in plaats van de demo stil een versie achter te laten (de V33-les).
+- **Een BRONSCAN op `App.tsx`** (het UI-1-idioom: een functietest kan niet zeggen of de app haar AANROEPT,
+  en dat is precies wat hier misging) pint dat beide laders door `applyDemoBundle` gaan, dat die de vijf
+  overgeslagen setters bevat, dat de versterkervloer alleen geschreven wordt als de kijker er geen heeft
+  (een voorkeur, geen projectdata), en dat het woord `mettape` nergens meer in `App.tsx` voorkomt.
+- **Nagemeten dat zij kunnen falen**: de gemergde mid vervangen door een headerloos bestand → 4 rood;
+  `setNearField` uit de applier → 1 rood; `resistorClassW` uit de bundel → 2 rood.
+- `src/lib/v2Settings.ts` — **`V2StatedBy`: WIE een veld stelde, als het niet de kijker was.** Een demo stelt
+  sinds U-3 zeven eisen over een echte luidspreker, en het paneel schreef élke gestelde waarde toe met
+  "stated by you". Additief op de draad (een project zonder blok leest precies als vroeger), en de EERSTE
+  bewerking van een veld wist de naam — dan is het getal wél van de kijker. **De twee bestaande E-2-bronscans
+  gingen hierop rood** (zij pinnen de vorm van `statedMark` en `restoreV2Settings`, die er een argument bij
+  kregen) en zijn bijgewerkt zonder van claim te veranderen.
+- `src/lib/v2Measurement.ts` — het A5a-meetblok heeft sinds U-3 een eigen huis buiten `App.tsx`, omdat de
+  guard de HELE vorm moet kennen: welke velden een bundel zwijgt is de helft van wat hij beweert.
+- **Wat de herbouw KOST, en dat wordt niet weggepoetst:** de directiviteitsset 0–75°, het VituixCAD-project
+  en de montagediepte van 17,3 mm. Casus 1b mat de mid op 0° en 30° en de tweeter alleen op de as; hoeken
+  bijmaken om de oude vorm te halen zou metingen verzinnen. `acousticCentre` is de enige registerrij die de
+  bundel verloor.
+- **DE VOLLE RUN IS BIJ U-3 NIET GEDRAAID**, met de I-1/I-3/B-1-afweging: geen engine-, poort-, budget-,
+  venster- of corpuswijziging, en de twee byte-baselines die dát bewaken (`f4cRegression`,
+  `workerRouteRegression`) draaien in de snelle laag en reproduceerden. De drie live ketenruns zouden een
+  corpus reproduceren dat deze sessie niet aangeraakt heeft. **Wat er WEL nagemeten is:**
+  `replay-app-run.ts --set demo` op `casus1_e2_verkenning_run.json` zegt nog steeds SAME op BEIDE lagen, dus
+  de driewegbundel leidt tot op het laatste cijfer hetzelfde veld af als vóór U-3.
 
 ### I-1-guards (elke invoer gelabeld; het paneel geordend op die labels; alleen UI/ordening)
 - `src/lib/v2InputRegister.ts` — **het REGISTER: élke invoer die de v2-route kan bereiken, gefiled onder EXACT

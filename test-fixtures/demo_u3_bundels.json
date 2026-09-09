@@ -1,0 +1,843 @@
+{
+  "_": "U-3 — geschreven door scripts/measure-u3-demo-bundles.ts. Tabel 1: wat elk meetbestand van elke demobundel over zijn eigen geldigheid zegt, door beide lezers van de app. Tabel 2: welke I-1-registervelden een bundel kan dragen en welke elke bundel draagt. De kolom \"tweeweg vóór U-3\" is een GEDATEERD record (09-09-2026): die loader bestond uit setState-regels in App.tsx en is bij U-3 vervangen, dus zij is niet opnieuw te meten.",
+  "gemeten_op": "2026-09-09",
+  "tabel_1_bestanden": {
+    "tweeweg_demo_voor_U3": [
+      {
+        "file": "mid_hor0_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "mid_hor15_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "mid_hor30_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "mid_hor45_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "mid_hor60_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "mid_hor75_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "tweet_hor0_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "tweet_hor15_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "tweet_hor30_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "tweet_hor45_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "tweet_hor60_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      },
+      {
+        "file": "tweet_hor75_mettape.txt",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": null,
+        "floorFrom": "none",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 585,
+        "rangeHz": [
+          5,
+          22988
+        ]
+      }
+    ],
+    "tweeweg_demo_na_U3": [
+      {
+        "file": "mid-merged-hor0.frd",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": "NF/FF",
+        "v1ValidFromHz": 60,
+        "floorHz": 60,
+        "floorFrom": "merge-block",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": "NF/FF",
+        "e2ValidFromHz": 60,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid-hor30.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "tweeter-hor0.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid-near.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 1000,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 2.6666666666666665,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 6.313,
+        "e2RightWindowMs": 1000,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 250,
+        "rangeHz": [
+          10,
+          2000
+        ]
+      }
+    ],
+    "drieweg_demo": [
+      {
+        "file": "woofer-pair-hor0.frd",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "woofer-pair-hor15.frd",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "woofer-pair-hor30.frd",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "woofer-pair-hor45.frd",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "woofer-pair-hor60.frd",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid-hor0.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid-hor15.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid-hor30.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid-hor45.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid-hor60.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "tweeter-hor0.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "tweeter-hor15.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "tweeter-hor30.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "tweeter-hor45.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "tweeter-hor60.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 500,
+        "rangeHz": [
+          20.508,
+          19999.51
+        ]
+      },
+      {
+        "file": "woofer-near.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 1000,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 2.6666666666666665,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 6.313,
+        "e2RightWindowMs": 1000,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 250,
+        "rangeHz": [
+          10,
+          2000
+        ]
+      },
+      {
+        "file": "mid-near.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 1000,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 2.6666666666666665,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 6.313,
+        "e2RightWindowMs": 1000,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 250,
+        "rangeHz": [
+          10,
+          2000
+        ]
+      },
+      {
+        "file": "port-near.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 1000,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 2.6666666666666665,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 6.313,
+        "e2RightWindowMs": 1000,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 250,
+        "rangeHz": [
+          10,
+          2000
+        ]
+      }
+    ],
+    "casus1b": [
+      {
+        "file": "Koan_M_merged.frd",
+        "v1Gate": "absent",
+        "v1GateMs": null,
+        "v1Merge": "NF/FF",
+        "v1ValidFromHz": 60,
+        "floorHz": 60,
+        "floorFrom": "merge-block",
+        "e2RefTimeMs": null,
+        "e2RightWindowMs": null,
+        "e2Merge": "NF/FF",
+        "e2ValidFromHz": 60,
+        "points": 13640,
+        "rangeHz": [
+          20.5078,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid_hor_30.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 13640,
+        "rangeHz": [
+          20.50781,
+          19999.51
+        ]
+      },
+      {
+        "file": "tweeter_hor_0.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 13640,
+        "rangeHz": [
+          20.50781,
+          19999.51
+        ]
+      },
+      {
+        "file": "mid_near.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 1000,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 2.6666666666666665,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 6.313,
+        "e2RightWindowMs": 1000,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 31396,
+        "rangeHz": [
+          5.126953,
+          22999.51
+        ]
+      },
+      {
+        "file": "mid_hor_0.txt",
+        "v1Gate": "parsed",
+        "v1GateMs": 5.021,
+        "v1Merge": null,
+        "v1ValidFromHz": null,
+        "floorHz": 455.23088741571115,
+        "floorFrom": "gate",
+        "e2RefTimeMs": 2.5,
+        "e2RightWindowMs": 5.021,
+        "e2Merge": null,
+        "e2ValidFromHz": null,
+        "points": 13640,
+        "rangeHz": [
+          20.50781,
+          19999.51
+        ]
+      }
+    ]
+  },
+  "tabel_2_registervelden": {
+    "draagbaar": [
+      "responses",
+      "validity",
+      "impedance",
+      "ways",
+      "positions",
+      "sd",
+      "baffle-width",
+      "blTm",
+      "mmsG",
+      "xmaxMm",
+      "driveVoltageV",
+      "coilFamily",
+      "nearFieldCone",
+      "nearFieldPort",
+      "spliceBand",
+      "mergeValidFrom",
+      "measuredRe",
+      "rotSym",
+      "acousticCentre",
+      "wiring",
+      "nominalSize",
+      "ampMinLoadOhm",
+      "maxDriveOnFsDb",
+      "driveOnFsMaxDb-per-way",
+      "amplifierPeakPowerW",
+      "amplifierNominalLoadOhm",
+      "xmaxMarginFraction",
+      "amplifierPowerW",
+      "resistorClassW",
+      "resistorPowerMargin",
+      "coilClassA",
+      "resistorThermalPowerW",
+      "lowestWayLevelWork",
+      "lowestWaySeriesRMaxOhm",
+      "targetCurve",
+      "plateauDepthDb"
+    ],
+    "tweeweg_voor_U3": {
+      "responses": "12 files, 2 ways",
+      "validity": "NONE — no header on any file",
+      "impedance": "2 ZMA (through a vxp project)",
+      "ways": "2",
+      "positions": "yes",
+      "sd": "2/3",
+      "baffle-width": "260 mm",
+      "xmaxMm": "2/3",
+      "acousticCentre": "depthMm on the cabinet form"
+    },
+    "tweeweg_na_U3": {
+      "responses": true,
+      "validity": true,
+      "impedance": true,
+      "ways": true,
+      "positions": true,
+      "sd": true,
+      "baffle-width": true,
+      "blTm": true,
+      "mmsG": true,
+      "xmaxMm": true,
+      "driveVoltageV": false,
+      "coilFamily": true,
+      "nearFieldCone": true,
+      "nearFieldPort": false,
+      "spliceBand": true,
+      "mergeValidFrom": true,
+      "measuredRe": false,
+      "rotSym": true,
+      "acousticCentre": false,
+      "wiring": true,
+      "nominalSize": false,
+      "ampMinLoadOhm": true,
+      "maxDriveOnFsDb": false,
+      "driveOnFsMaxDb-per-way": true,
+      "amplifierPeakPowerW": true,
+      "amplifierNominalLoadOhm": true,
+      "xmaxMarginFraction": true,
+      "amplifierPowerW": true,
+      "resistorClassW": true,
+      "resistorPowerMargin": true,
+      "coilClassA": false,
+      "resistorThermalPowerW": true,
+      "lowestWayLevelWork": false,
+      "lowestWaySeriesRMaxOhm": false,
+      "targetCurve": true,
+      "plateauDepthDb": false
+    },
+    "drieweg": {
+      "responses": true,
+      "validity": true,
+      "impedance": true,
+      "ways": true,
+      "positions": true,
+      "sd": true,
+      "baffle-width": true,
+      "blTm": false,
+      "mmsG": false,
+      "xmaxMm": true,
+      "driveVoltageV": false,
+      "coilFamily": false,
+      "nearFieldCone": true,
+      "nearFieldPort": true,
+      "spliceBand": false,
+      "mergeValidFrom": false,
+      "measuredRe": false,
+      "rotSym": false,
+      "acousticCentre": true,
+      "wiring": false,
+      "nominalSize": false,
+      "ampMinLoadOhm": false,
+      "maxDriveOnFsDb": false,
+      "driveOnFsMaxDb-per-way": false,
+      "amplifierPeakPowerW": false,
+      "amplifierNominalLoadOhm": false,
+      "xmaxMarginFraction": false,
+      "amplifierPowerW": false,
+      "resistorClassW": false,
+      "resistorPowerMargin": false,
+      "coilClassA": false,
+      "resistorThermalPowerW": false,
+      "lowestWayLevelWork": false,
+      "lowestWaySeriesRMaxOhm": false,
+      "targetCurve": false,
+      "plateauDepthDb": false
+    }
+  }
+}

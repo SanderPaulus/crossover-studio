@@ -169,12 +169,19 @@ import {
   V2_GHOSTS,
   designLevelNote,
   restoreV2Settings,
+  V2_SETTING_KEYS,
+  clearStatedBy,
   stampStated,
   statedMark,
   type V2SettingKey,
   type V2Settings,
   type V2StatedAt,
+  type V2StatedBy,
 } from './lib/v2Settings.ts';
+/* U-3 — a demo bundle and the project state it produces. One shape, two demos,
+ * and `demoBundleState` is what `applyDemoBundle` below assigns
+ * (`lib/demoBundle.ts`). */
+import { DEMO_ROLES, demoBundleState, type DemoBundle, type DemoFile } from './lib/demoBundle.ts';
 /* I-1 — the input register: what every field does, filed under four labels.
  * The panel reads it for its group headings, for the help beside an EMPTY
  * field and for the "v1 (not read by Engine v2)" drawer; nothing here decides
@@ -186,6 +193,10 @@ import {
   rowsOfClass,
   v1NoteFor,
 } from './lib/v2InputRegister.ts';
+/* A5a — the per-branch measurement block. Its own module since U-3: a demo
+ * bundle states some of these facts, and the guard that checks a bundle
+ * against the register has to know the whole shape (`v2Measurement.ts`). */
+import { emptyV2Meas, type V2MeasurementMeta } from './lib/v2Measurement.ts';
 import {
   V1_FIELD_DEFAULTS,
   describeV1Carryover,
@@ -348,27 +359,12 @@ import { bridgeDelaysUs, excessDelayMsOf } from './lib/vituixBridge.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import DriverFilterControls from './components/FilterControls.tsx';
 import { LogoMark, LogoWord } from './components/Logo.tsx';
-import demoMid from './lib/parsers/fixtures/mid_hor0_mettape.txt?raw';
-import demoTweet from './lib/parsers/fixtures/tweet_hor0_mettape.txt?raw';
 import { beamingCeilingHz, computeDirectivity, computeDirectivityN, type AngleResponse, diMatchHz } from './lib/directivity.ts';
 import { reachesLevelHz, powerShape } from './lib/bandMetrics.ts';
 import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
 import Sonogram from './components/Sonogram.tsx';
 import { angleFromFilename } from './lib/angles.ts';
-import demoMidZma from './lib/parsers/fixtures/mid_Backwavecone_sheep75gram.ZMA?raw';
-import demoTweetZma from './lib/parsers/fixtures/tweeter.ZMA?raw';
-import demoVxp from './lib/parsers/fixtures/KOAN 2951 Prototype 140826.vxp?raw';
 import demoCatalog from './lib/parsers/fixtures/gemini-catalog-v6.json?raw';
-import demoMid15 from './lib/parsers/fixtures/mid_hor15_mettape.txt?raw';
-import demoMid30 from './lib/parsers/fixtures/mid_hor30_mettape.txt?raw';
-import demoMid45 from './lib/parsers/fixtures/mid_hor45_mettape.txt?raw';
-import demoMid60 from './lib/parsers/fixtures/mid_hor60_mettape.txt?raw';
-import demoMid75 from './lib/parsers/fixtures/mid_hor75_mettape.txt?raw';
-import demoTweet15 from './lib/parsers/fixtures/tweet_hor15_mettape.txt?raw';
-import demoTweet30 from './lib/parsers/fixtures/tweet_hor30_mettape.txt?raw';
-import demoTweet45 from './lib/parsers/fixtures/tweet_hor45_mettape.txt?raw';
-import demoTweet60 from './lib/parsers/fixtures/tweet_hor60_mettape.txt?raw';
-import demoTweet75 from './lib/parsers/fixtures/tweet_hor75_mettape.txt?raw';
 
 type Parsed = ReturnType<typeof parseFrd>;
 type ParsedZma = ReturnType<typeof parseZma>;
@@ -1102,67 +1098,6 @@ const emptyNearField = (): NearFieldSlot => ({
   validFromHz: '',
   far: null,
   mergedName: null,
-});
-
-/**
- * Per-branch measurement metadata for engine v2 (A5a, F3b).
- *
- * Strings throughout and '' means ABSENT, exactly like the cabinet form beside
- * it: these feed a layer whose whole discipline is that a missing input turns
- * a metric off with a reason rather than substituting a default (P4).
- */
-interface V2MeasurementMeta {
-  /** Acoustic centre on the vertical axis, mm. '' = use the cabinet position. */
-  zMm: string;
-  /** '', 'yes' or 'no' — three states, because "not stated" is one of them. */
-  rotSym: string;
-  /** DC resistance measured with a meter, Ω. Outranks both sweep derivations. */
-  reOhm: string;
-  /** Manual window: the impulse's t=0 reference, ms. */
-  refTimeMs: string;
-  /** Manual window: the right window edge, ms. */
-  rightWindowMs: string;
-  /** Or the hard validity floor itself, Hz — for a window known by its result. */
-  floorHz: string;
-  /** Where the designer got these numbers. Travels with the provenance. */
-  windowNote: string;
-  /** V49 — force factor Bl, T·m, from the datasheet. '' = absent. */
-  blTm: string;
-  /** V49 — moving mass M_ms, g, from the datasheet. '' = absent. */
-  mmsG: string;
-  /** V49 — the drive voltage (V rms) the on-axis far field was taken at. '' = not documented. */
-  driveVoltageV: string;
-  /** V50 — the stated M-C figure for THIS way, dB re its passband. '' = none
-   *  per way; the single field decides, and blank there = the derived ceiling
-   *  alone (or nothing). */
-  driveOnFsMaxDb: string;
-  /** V51 — how the way's N identical drivers (count on the cabinet form) were
-   *  wired when MEASURED: '', 'parallel' or 'series'. '' = not stated. */
-  wiringMeasured: string;
-  /** V51 — how the design intends to wire them. '' = not stated. */
-  wiringDesired: string;
-  /** A5e.3 — the COIL FAMILY this way is wound with (brand|series|gauge, the
-   *  id `coilDcr.ts` fits per family on the loaded catalogue). '' = not
-   *  stated: the way's coils are lossless in every judgement, and the report
-   *  says so as a deviation from any build. Never a default (P6). */
-  coilFamily: string;
-}
-
-const emptyV2Meas = (): V2MeasurementMeta => ({
-  zMm: '',
-  rotSym: '',
-  reOhm: '',
-  refTimeMs: '',
-  rightWindowMs: '',
-  floorHz: '',
-  windowNote: '',
-  blTm: '',
-  mmsG: '',
-  driveVoltageV: '',
-  driveOnFsMaxDb: '',
-  wiringMeasured: '',
-  wiringDesired: '',
-  coilFamily: '',
 });
 
 /** Cabinet geometry + measurement context, as typed (strings so a field can be
@@ -1990,6 +1925,15 @@ export default function App() {
    */
   const [engineV2StatedAt, setEngineV2StatedAt] = useState<V2StatedAt>({});
   /**
+   * U-3 — WHO stated each v2 field, when it was not the person at the keyboard.
+   * Empty for everything the viewer typed (which is every field until a demo
+   * bundle could state requirements) and filled by `applyDemoBundle` for the
+   * ones a demo brings, so the panel says "stated by the KOAN 2951 demo" rather
+   * than putting eight of Sanders requirements in the viewer's mouth. The first
+   * edit of a field clears its entry: then it IS theirs.
+   */
+  const [engineV2StatedBy, setEngineV2StatedBy] = useState<V2StatedBy>({});
+  /**
    * I-3 — WHERE THE GUIDED REQUIREMENTS WALK HAS GOT TO.
    *
    * A CURSOR AND NOT AN ANSWER, which is why it may be persisted at all. The
@@ -2027,10 +1971,12 @@ export default function App() {
   const setV2Field = (key: V2SettingKey, value: string) => {
     setEngineV2Settings((v) => ({ ...v, [key]: value }));
     setEngineV2StatedAt((prev) => stampStated(prev, key, value));
+    /* U-3 — an edited field is the viewer's own, whatever a demo said before. */
+    setEngineV2StatedBy((prev) => clearStatedBy(prev, key));
   };
   /** E-2 — the mark beside a stated field; null while the field is empty. */
   const v2Stated = (key: V2SettingKey) => {
-    const m = statedMark(engineV2Settings, engineV2StatedAt, key);
+    const m = statedMark(engineV2Settings, engineV2StatedAt, key, engineV2StatedBy);
     return m ? (
       <span
         className="v2-stated"
@@ -3314,105 +3260,145 @@ export default function App() {
     };
   }
 
-  /** The classic 2-way demo: the 2023 KOAN prototype (mid + tweeter, vxp variants). */
-  function loadDemo2Way() {
-    setError(null);
-    setWoofer({ name: 'mid_hor0_mettape.txt (demo)', raw: demoMid, frd: parseFrd(demoMid) });
-    // The demo is the 2-way KOAN set — a leftover mid branch would turn it
-    // into an accidental 3-way.
-    setMidDrv(null);
-    setTweeter({ name: 'tweet_hor0_mettape.txt (demo)', raw: demoTweet, frd: parseFrd(demoTweet) });
-    const entry = (hor: number, raw: string): AngleEntry => ({
-      hor,
-      name: `hor${hor} (demo)`,
-      raw,
-      frd: parseFrd(raw),
-    });
-    setAngleSets({
-      woofer: [
-        entry(0, demoMid), entry(15, demoMid15), entry(30, demoMid30),
-        entry(45, demoMid45), entry(60, demoMid60), entry(75, demoMid75),
-      ],
-      tweeter: [
-        entry(0, demoTweet), entry(15, demoTweet15), entry(30, demoTweet30),
-        entry(45, demoTweet45), entry(60, demoTweet60), entry(75, demoTweet75),
-      ],
-    });
-    setProject({
-      vxp: parseVxp(demoVxp),
-      vxpFile: { name: 'KOAN 2951 Prototype 140826.vxp', raw: demoVxp },
-      impedances: { mid: parseZma(demoMidZma), tweeter: parseZma(demoTweetZma) },
-      impedanceFiles: {
-        mid: { name: 'mid_Backwavecone_sheep75gram.ZMA', raw: demoMidZma },
-        tweeter: { name: 'tweeter.ZMA', raw: demoTweetZma },
-      },
-    });
-    /* The demo is a whole MEASUREMENT SESSION, not just two curves: the
-       cabinet it was measured on and how the mic stood belong to it. Without
-       them half the app has nothing to reason with — the true sweep angles,
-       the honest low limit, the baffle step, the lobing ceiling and the
-       rig/driver split of the delay all need these numbers, and a new user
-       cannot invent them. Facts only: everything here is the real KOAN
-       prototype.
+  /**
+   * U-3 — LOAD A DEMO BUNDLE. One applier, both demos.
+   *
+   * WHY IT IS ONE FUNCTION. The two loaders were written a year apart and had
+   * drifted into doing different amounts of work: the three-way one cleared the
+   * verify list, the file notes, the near fields and the standalone impedances;
+   * the two-way one cleared none of the four. So loading the three-way demo and
+   * then the two-way one left the three-way's near fields attached to the
+   * two-way's ways, its three standalone impedances beside the two-way's, and
+   * its verify list and file notes on screen — a state no button could produce
+   * on purpose. `demoBundleState` returns a COMPLETE state for every role and
+   * every key precisely so this function can assign all of it, and what a
+   * bundle does not state arrives as '' or null rather than as nothing at all.
+   */
+  function applyDemoBundle(bundle: DemoBundle, stated: { on: string; by: string } | null): void {
+    const s = demoBundleState(bundle);
+    const loaded = (f: DemoFile | null): Loaded | null =>
+      f === null ? null : { name: `${f.name} (demo)`, raw: f.raw, frd: parseFrd(f.raw) };
+    const entries = (r: BranchRole): AngleEntry[] =>
+      s.angles[r].map((a) => ({
+        hor: a.hor,
+        name: `${a.file.name} (demo)`,
+        raw: a.file.raw,
+        frd: parseFrd(a.file.raw),
+      }));
 
-       The mounting depths ARE filled in (Sanders call, and the better one):
-       leaving them blank to "protect the cross-check" only showed a gap,
-       while filling them makes the card demonstrate the check passing —
-       "measured depth 17.3 mm … Your 17.3 mm agrees" says more about how
-       this app thinks than an empty field ever could. The listening
-       position stays blank: that is Sanders room, not the loudspeaker. */
-    setCabinet({
-      ...emptyCabinet(),
-      micDistanceMm: '500',
-      baffleWidthMm: '260',
-      baffleHeightMm: '1150',
-      // The mic was aimed midway between the two drivers, so neither is the
-      // reference: they sit symmetrically at ±65 mm, and the rig's share of
-      // the inter-driver delay cancels exactly.
-      refDriver: '',
-      refFromTopMm: '238',
-      refHeightMm: '980',
-      drivers: {
-        ...emptyCabinet().drivers,
-        // Depth 0 is not "unknown" here: the tweeter is the shallowest of
-        // the two, so it is the zero the other is measured from.
-        high: { ...emptyCabinetDriver(), xMm: '0', yMm: '65', depthMm: '0' },
-        low: {
-          ...emptyCabinetDriver(),
-          xMm: '0',
-          yMm: '-65',
-          // What the measurement itself derives once the rig's share is
-          // removed — a 5" cone's acoustic centre sits at its voice coil,
-          // well behind the flange, so the mid is the deeper of the two.
-          depthMm: '17.3',
-          // Its own sealed chamber; 89 Hz is what its measured impedance says,
-          // and the app proposes exactly that from the ZMA.
-          enclosure: 'sealed',
-          fbHz: '89',
-        },
-      },
+    setWoofer(loaded(s.onAxis.low));
+    setMidDrv(loaded(s.onAxis.mid));
+    setTweeter(loaded(s.onAxis.high));
+    setAngleSets({
+      woofer: entries('low'),
+      tweeter: entries('high'),
+      ...(s.angles.mid.length > 0 ? { mid: entries('mid') } : {}),
     });
-    // Datasheet numbers: BlieSMa T25T-6 and SB Acoustics Satori MW13TX-4.
-    // Xmax is the ONE-WAY figure — both datasheets quote peak-to-peak (2 mm
-    // and 10 mm), and entering those would make the excursion floor read a
-    // factor √2 too optimistic.
-    setSdCm2({ low: '70', mid: '', high: '5.7' });
-    setXmaxMm({ low: '5', mid: '', high: '1' });
-    // The demo playground ships the priced Jantzen/Mundorf catalog too, so
-    // Snap to catalog and the BOM work out of the box — but NEVER overwrite
-    // a catalog the user imported or edited themselves.
+
+    /* No VituixCAD project in either bundle — the impedances stand on their
+     * own, by role. Clearing `project` matters as much as setting the sweeps:
+     * a vxp left over from a previous load would keep supplying impedances
+     * under model names this bundle never mentions. */
+    setProject(null);
+    const zs: Partial<Record<BranchRole, { file: StoredFile; zma: ParsedZma }>> = {};
+    for (const r of DEMO_ROLES) {
+      const z = s.impedance[r];
+      if (z) zs[r] = { file: { name: z.name, raw: z.raw }, zma: parseZma(z.raw) };
+    }
+    setZStandalone(zs);
+
+    /* Near fields, every role assigned. The port DIAMETER and how many drivers
+     * share it stay blank on purpose where a bundle ships a port: neither demo
+     * has that measurement, and a guessed number would silently shape the low
+     * end (I-2 — `portWeight` has no default and says which field is missing). */
+    setNearField({
+      low: { ...emptyNearField(), cone: s.nearField.low.cone, port: s.nearField.low.port },
+      mid: { ...emptyNearField(), cone: s.nearField.mid.cone, port: s.nearField.mid.port },
+      high: { ...emptyNearField(), cone: s.nearField.high.cone, port: s.nearField.high.port },
+    });
+
+    /* Through the SAME narrowing a project file goes through (`mergeCabinet`),
+     * so a bundle cannot state a facing or an enclosure the form cannot hold,
+     * and every field a bundle leaves out arrives as "not entered". */
+    setCabinet(mergeCabinet(s.cabinet));
+    setSdCm2({ ...s.sdCm2 });
+    setXmaxMm({ ...s.xmaxMm });
+    setWooferSizeInch(s.sizeInch.low);
+    setMidSizeInch(s.sizeInch.mid);
+
+    /* The stated requirements and the A5a facts. Both blocks are complete, so
+     * a field this bundle says nothing about is EMPTIED rather than inherited —
+     * a stray gate from a previous demo would judge this one. */
+    setEngineV2Settings({ ...s.engineV2 });
+    const at: V2StatedAt = {};
+    const by: V2StatedBy = {};
+    if (stated) {
+      for (const k of V2_SETTING_KEYS) {
+        if (s.engineV2[k].trim() === '') continue;
+        at[k] = stated.on;
+        by[k] = stated.by;
+      }
+    }
+    setEngineV2StatedAt(at);
+    setEngineV2StatedBy(by);
+    setV2Meas({ ...s.v2Measurement });
+
+    /* The amplifier floor is the OWNER'S preference and survives Reset, so a
+     * demo may not overwrite one the viewer already has — the same rule the
+     * demo catalogue below has always followed. */
+    if (s.ampMinLoadOhm !== null && localStorage.getItem('ads-amp-min-load') === null) {
+      setAmpMinLoadOhm(s.ampMinLoadOhm);
+      localStorage.setItem('ads-amp-min-load', String(s.ampMinLoadOhm));
+    }
+
+    /* The voicing lives on the DESIGN, not in the settings block (A5e.2). */
+    if (s.targetCurve) {
+      const tc = s.targetCurve;
+      setDesigns((ds) => ds.map((d) => (d.id === activeDesignId ? { ...d, targetCurve: { ...tc } } : d)));
+    }
+
+    setVerifyList([]);
+    setVerifyIx(0);
+    setFileNotes({});
+
+    /* The demo playground ships the priced Jantzen/Mundorf catalog too, so Snap
+     * to catalog, the BOM and the coil-DCR fit work out of the box — but NEVER
+     * overwrite a catalog the user imported or edited themselves. */
     if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) {
       try {
         const imp = deserializeCatalog(demoCatalog);
         applyCatalogSeries(imp.series, imp.parts);
         void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
-        setPersistNote(
-          t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
-        );
       } catch {
         // Demo catalog fixture unreadable: run with built-ins.
       }
     }
+  }
+
+  /**
+   * The 2-WAY demo — casus 1b: KOAN 2951's midrange and tweeter, measured
+   * 22 Aug 2026, with the requirements that casebook states. It replaced the
+   * 2023 prototype at U-3 because that one's twelve exports carried no header,
+   * so the app refused to optimise on its own demo (`demo2way.ts` says the
+   * whole of it). The measurement module is a dynamic import so its text only
+   * downloads on click.
+   */
+  async function loadDemo2Way() {
+    setError(null);
+    setPersistNote(t('Loading the 2-way demo…'));
+    let mod: typeof import('./demo2way.ts');
+    try {
+      mod = await import('./demo2way.ts');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    applyDemoBundle(mod.KOAN_2WAY_DEMO, mod.KOAN_2WAY_STATED);
+    setPersistNote(
+      t('2-way demo loaded — {label}: midrange (merged near/far field) + tweeter, the measured cabinet and the requirements casus 1b states', {
+        label: mod.KOAN_2WAY_DEMO.label,
+      }),
+    );
   }
 
   /**
@@ -3432,69 +3418,16 @@ export default function App() {
       setError(e instanceof Error ? e.message : String(e));
       return;
     }
-    const D = mod.KOAN_3WAY_DEMO;
-    const loaded = (f: { name: string; raw: string }): Loaded => ({
-      name: `${f.name} (demo)`,
-      raw: f.raw,
-      frd: parseFrd(f.raw),
-    });
-    const entries = (b: { angles: readonly { hor: number; file: { name: string; raw: string } }[] }): AngleEntry[] =>
-      b.angles.map((a) => ({ hor: a.hor, name: `${a.file.name} (demo)`, raw: a.file.raw, frd: parseFrd(a.file.raw) }));
-    setWoofer(loaded(D.low.angles[0].file));
-    setMidDrv(loaded(D.mid.angles[0].file));
-    setTweeter(loaded(D.high.angles[0].file));
-    setAngleSets({ woofer: entries(D.low), tweeter: entries(D.high), mid: entries(D.mid) });
-    // No VituixCAD project here — the impedances are standalone, by role.
-    setProject(null);
-    setZStandalone({
-      low: { file: { name: D.low.impedance.name, raw: D.low.impedance.raw }, zma: parseZma(D.low.impedance.raw) },
-      mid: { file: { name: D.mid.impedance.name, raw: D.mid.impedance.raw }, zma: parseZma(D.mid.impedance.raw) },
-      high: { file: { name: D.high.impedance.name, raw: D.high.impedance.raw }, zma: parseZma(D.high.impedance.raw) },
-    });
-    // Near fields: cones on the two low branches, the port next to the
-    // woofers. The port DIAMETER is deliberately left blank — Sander has not
-    // entered it, and a guessed number would silently shape the low end;
-    // without it the cone alone is spliced and the port file simply waits.
-    setNearField({
-      low: {
-        ...emptyNearField(),
-        cone: D.low.nearCone ? { name: D.low.nearCone.name, raw: D.low.nearCone.raw } : null,
-        port: D.low.nearPort ? { name: D.low.nearPort.name, raw: D.low.nearPort.raw } : null,
-      },
-      mid: {
-        ...emptyNearField(),
-        cone: D.mid.nearCone ? { name: D.mid.nearCone.name, raw: D.mid.nearCone.raw } : null,
-      },
-      high: emptyNearField(),
-    });
-    setCabinet({
-      ...emptyCabinet(),
-      ...D.cabinet,
-      drivers: {
-        low: { ...emptyCabinetDriver(), ...D.cabinet.drivers.low },
-        mid: { ...emptyCabinetDriver(), ...D.cabinet.drivers.mid },
-        high: { ...emptyCabinetDriver(), ...D.cabinet.drivers.high },
-      },
-    });
-    setSdCm2({ ...D.sdCm2 });
-    setXmaxMm({ ...D.xmaxMm });
-    setVerifyList([]);
-    setVerifyIx(0);
-    setFileNotes({});
-    if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) {
-      try {
-        const imp = deserializeCatalog(demoCatalog);
-        applyCatalogSeries(imp.series, imp.parts);
-        void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
-      } catch {
-        // Demo catalog fixture unreadable: run with built-ins.
-      }
-    }
-    setPersistNote(t('3-way demo loaded — {label}: woofer pair, mid, tweeter, 0–60°, near fields and the measured cabinet', { label: D.label }));
+    applyDemoBundle(mod.KOAN_3WAY_BUNDLE, null);
+    setPersistNote(
+      t('3-way demo loaded — {label}: woofer pair, mid, tweeter, 0–60°, near fields and the measured cabinet', {
+        label: mod.KOAN_3WAY_BUNDLE.label,
+      }),
+    );
   }
 
-  /** "The demo" = the 3-way (Sanders' finished KOAN, Aug 2026). The 2023
-   *  2-way prototype stays reachable as its own button. */
+  /** "The demo" = the 3-way (Sanders' finished KOAN, Aug 2026). The two-way
+   *  (its mid and tweeter, casus 1b) stays reachable as its own button. */
   function loadDemo() {
     void loadDemo3Way();
   }
@@ -7335,6 +7268,7 @@ export default function App() {
         engineV2Enabled,
         engineV2: { ...engineV2Settings },
         engineV2StatedAt: { ...engineV2StatedAt },
+        engineV2StatedBy: { ...engineV2StatedBy },
         v2Measurement: {
           low: { ...v2Meas.low },
           mid: { ...v2Meas.mid },
@@ -7511,9 +7445,10 @@ export default function App() {
      * which is what "not stated" means (P4) — and the dates the file carried
      * beside the values it carried. */
     {
-      const restored = restoreV2Settings(d.engineV2, d.engineV2StatedAt);
+      const restored = restoreV2Settings(d.engineV2, d.engineV2StatedAt, d.engineV2StatedBy);
       setEngineV2Settings(restored.settings);
       setEngineV2StatedAt(restored.statedAt);
+      setEngineV2StatedBy(restored.statedBy);
     }
     // A5a metadata (F3b). Additive: a project from before F3b has no block and
     // every field falls back to '', which is what "not stated" means (P4).
@@ -7664,7 +7599,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, engineV2StatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, engineV2StatedAt, engineV2StatedBy, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -13267,7 +13202,7 @@ export default function App() {
     { id: 'targets', label: t('Show design targets'), hint: t('what the last build was fitted against'), run: () => setShowTargets(true) },
     { id: 'catalog', label: t('Open the catalog manager'), hint: t('SKUs, prices, series'), run: () => setCatalogMgrOpen(true) },
     { id: 'demo', label: t('Load the KOAN demo measurements'), hint: t('3-way, Aug 2026: woofer pair + mid + tweeter, angles, near fields, cabinet'), run: () => loadDemo() },
-    { id: 'demo2', label: t('Load the 2-way demo (KOAN prototype 2023)'), hint: t('mid + tweeter, angles, VituixCAD variants'), run: () => loadDemo2Way() },
+    { id: 'demo2', label: t('Load the 2-way demo (KOAN mid + tweeter)'), hint: t('casus 1b: merged near/far field, gated tweeter, stated requirements'), run: () => loadDemo2Way() },
     {
       id: 'hold',
       label: heldTrace ? t('Clear the held reference curve') : t('Hold the combined curve as reference'),
@@ -13795,9 +13730,9 @@ export default function App() {
                   type="button"
                   className="primary"
                   onClick={loadDemo2Way}
-                  title={t('Load the bundled 2023 KOAN prototype measurements (mid + tweeter, all angles + impedances + vxp variants) — instant playground')}
+                  title={t('Load the bundled KOAN 2951 mid + tweeter as a two-way (casus 1b, Aug 2026): the merged midrange, the gated tweeter, both impedances, the measured cabinet and the requirements that casebook states')}
                 >
-                  🎧 {t('Load 2-way demo (KOAN prototype 2023)')}
+                  🎧 {t('Load 2-way demo (KOAN mid + tweeter)')}
                 </button>
               )}
               <p className="sub" style={{ marginBottom: '0.2rem' }}>
@@ -15916,9 +15851,9 @@ export default function App() {
               <button
                 type="button"
                 onClick={loadDemo2Way}
-                title={t('Load the bundled 2023 KOAN prototype measurements (mid + tweeter, all angles + impedances + vxp variants) — instant playground')}
+                title={t('Load the bundled KOAN 2951 mid + tweeter as a two-way (casus 1b, Aug 2026): the merged midrange, the gated tweeter, both impedances, the measured cabinet and the requirements that casebook states')}
               >
-                {t('Load 2-way demo (KOAN prototype 2023)')}
+                {t('Load 2-way demo (KOAN mid + tweeter)')}
               </button>
             </div>
           </div>

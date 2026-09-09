@@ -23,7 +23,10 @@
  *      by you on <date>" beside it; the date is stamped when the field is
  *      edited (`stampStated`) and travels with the project (`V2StatedAt`). A
  *      value restored from a project written before E-2 has no date and says
- *      so — it is still the designer's, never the app's.
+ *      so — it is still the designer's, never the app's. Since U-3 a value can
+ *      also name someone ELSE: a demo bundle states real requirements about a
+ *      real loudspeaker, and "stated by you" would be a lie about eight of
+ *      them (`V2StatedBy`; the first edit of a field clears it).
  *
  * No engine import here on purpose: this is the form's own vocabulary, and the
  * toggle-regression scan lets only the UI entry points reach into `engine2/`.
@@ -127,6 +130,17 @@ export const V2_DEFAULT_GHOST_KEYS: readonly V2SettingKey[] = ['runSeed', 'short
 /** When each field was last stated, ISO date (`YYYY-MM-DD`). Absent = never, or before E-2. */
 export type V2StatedAt = Partial<Record<V2SettingKey, string>>;
 
+/**
+ * U-3 — WHO stated each field, when it was not the person at the keyboard.
+ * Absent = the viewer, which is what every value meant until a demo bundle
+ * could state requirements. A demo carries Sander's own numbers for a real
+ * loudspeaker; marking them "stated by you" would put eight requirements in
+ * the viewer's mouth, and this block is the smallest way to stop that. It is
+ * additive on the wire: a project without it reads exactly as before, and the
+ * first edit of a field clears its entry, because then it IS yours.
+ */
+export type V2StatedBy = Partial<Record<V2SettingKey, string>>;
+
 /** Today's date in the form `V2StatedAt` records. */
 export const isoDay = (now: Date = new Date()): string => now.toISOString().slice(0, 10);
 
@@ -139,16 +153,20 @@ export const isoDay = (now: Date = new Date()): string => now.toISOString().slic
 export function restoreV2Settings(
   stored: Partial<Record<string, string | undefined>> | undefined,
   storedAt: Partial<Record<string, string | undefined>> | undefined,
-): { settings: V2Settings; statedAt: V2StatedAt } {
+  storedBy: Partial<Record<string, string | undefined>> | undefined = undefined,
+): { settings: V2Settings; statedAt: V2StatedAt; statedBy: V2StatedBy } {
   const settings = { ...EMPTY_V2_SETTINGS } as V2Settings;
   const statedAt: V2StatedAt = {};
+  const statedBy: V2StatedBy = {};
   for (const k of V2_SETTING_KEYS) {
     const v = stored?.[k];
     if (typeof v === 'string') settings[k] = v;
     const d = storedAt?.[k];
     if (typeof d === 'string' && d !== '' && settings[k] !== '') statedAt[k] = d;
+    const by = storedBy?.[k];
+    if (typeof by === 'string' && by !== '' && settings[k] !== '') statedBy[k] = by;
   }
-  return { settings, statedAt };
+  return { settings, statedAt, statedBy };
 }
 
 /** The provenance stamp after an edit: a value gets today's date, a cleared field loses its date. */
@@ -160,14 +178,34 @@ export function stampStated(prev: V2StatedAt, key: V2SettingKey, value: string, 
 }
 
 /**
+ * The other half of that stamp: an EDITED field is the viewer's own, whatever
+ * it was before. Clearing the entry rather than rewriting it is what makes
+ * "absent = the viewer" true, so a demo value the designer then changes stops
+ * carrying the demo's name.
+ */
+export function clearStatedBy(prev: V2StatedBy, key: V2SettingKey): V2StatedBy {
+  if (prev[key] === undefined) return prev;
+  const next = { ...prev };
+  delete next[key];
+  return next;
+}
+
+/**
  * The mark beside a field: null when the field is empty, otherwise who stated
  * it and when. A value without a date is still the designer's — it came out
  * of a project file — and the mark says the date is not recorded rather than
  * inventing one.
  */
-export function statedMark(settings: V2Settings, statedAt: V2StatedAt, key: V2SettingKey): string | null {
+export function statedMark(
+  settings: V2Settings,
+  statedAt: V2StatedAt,
+  key: V2SettingKey,
+  statedBy: V2StatedBy = {},
+): string | null {
   if (settings[key].trim() === '') return null;
   const d = statedAt[key];
+  const who = statedBy[key];
+  if (who) return d ? `stated by ${who} on ${d}` : `stated by ${who}`;
   return d ? `stated by you on ${d}` : 'stated by you (date not recorded)';
 }
 
