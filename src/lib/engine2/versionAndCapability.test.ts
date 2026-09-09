@@ -128,7 +128,10 @@ describe('estimator versioning (A5e.5)', () => {
       // What the pre-F3b pass would have produced for R_e: the direct reading.
       const beforeBump = {
         ...fresh,
-        fingerprint: estimatorFingerprint().replace('z-re@1.1', 'z-re@1.0'),
+        fingerprint: estimatorFingerprint().replace(
+          `${EXTRACTOR_RE}@${ESTIMATOR_VERSIONS[EXTRACTOR_RE]}`,
+          `${EXTRACTOR_RE}@1.0`,
+        ),
         drivers: [{ ...woofer, re: { ...woofer.re!, ohm: woofer.re!.directOhm } }],
       };
       expect(beforeBump.fingerprint).not.toBe(estimatorFingerprint());
@@ -149,7 +152,11 @@ describe('estimator versioning (A5e.5)', () => {
       const after = c.get('casus1', 'files-v1')!.drivers.find((d) => d.driver === 'woofer')!;
       expect(after.re!.source).toBe('motional-fit');
       expect(after.re!.ohm).not.toBeCloseTo(beforeBump.drivers[0].re!.ohm, 2);
-      expect(after.re!.estimator.version).toBe('1.1');
+      /* Read from the registry rather than typed here: the version this test
+       * pins is "the one the app carries now", and a hand-kept copy of it is a
+       * second source that goes stale on the next bump (B-1 found it at 1.1
+       * while the table already said 1.2). */
+      expect(after.re!.estimator.version).toBe(ESTIMATOR_VERSIONS[EXTRACTOR_RE]);
     });
 
     it('leaves current entries alone when stale ones are evicted', () => {

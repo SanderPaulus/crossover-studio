@@ -7149,6 +7149,16 @@ acceptatierijen halen hun tolerantie**, de meeste met ordes marge:
 GELIJKHEID en geen deelverzameling — een nieuwe afwijking valt om door er niet op te staan, een verdwenen
 afwijking door er nog op te staan):
 
+> **BIJGEWERKT BIJ B-1 (09-09-2026), en de tabel hieronder blijft staan zoals C-2 hem mat.** B2 is
+> GEREPAREERD: de motionele fit publiceert haar exponent sinds `z-re` 1.2 alleen waar de sweep er een kan
+> identificeren, en op deze woofer kan zij dat niet — die rij staat sindsdien onder `onthoudingen` met het
+> getal er nog in, plus een gedateerde errata-regel. De REDEN die C-2 erbij schreef is ook onjuist gebleken
+> (de spoelbijdrage is op de bandtop 0,83 Ω en niet honderdsten; wat er misgaat is dat een reflexkast een
+> gekoppeld vierde-orde systeem is en dit model een som van onafhankelijke takken). Bij B1 staat de
+> AFWIJKING maar is de reden herzien: `z-semi-inductance` trekt R_e wél af — wat er ook in zijn band zit is
+> de motionele staart. De tabel telt sindsdien 43 vergelijkingen, 39 acceptatierijen en VIER
+> acceptatie-bevindingen. Zie casusboek B-1.
+
 | # | bevinding | verschil | wat het is |
 | --- | --- | --- | --- |
 | **C-2/B1** | `semi-inductantie n (HF-fit)` op alle drie de wegen | +12,6 / +9,6 / +44,2 % | `z-semi-inductance` fit log\|Z\| tegen log f bóven de resonantie zonder R_e af te trekken, dus hij leest de kromming van de SOM en komt systematisch TE HOOG uit. De motionele fit (`z-re`, die R_e als vrije parameter draagt) leest n op de twee gesloten wegen tot in het zevende cijfer goed. **Twee schatters voor één grootheid, en de grondwaarheid zegt welke gelijk heeft** — dat is precies wat een echte casus niet kan. |
@@ -8236,6 +8246,190 @@ De casus-1-demobundel, verse localStorage, van upload tot shortlist.
 - **De guided-tab is per browser en niet per project** (`ads-v2-req-ix`, zoals `ads-ui-tab`
   ernaast). Twee projecten in één browser delen de cursor. Het zijn geen antwoorden, dus er gaat
   niets verloren; het is wel een plek waar een lezer een geheugen kan verwachten dat er niet is.
+
+---
+
+### B-1 — de half-machts lekterm getoetst in plaats van aangenomen, en de exponent die geen meting was (09-09-2026, alleen v2-route; **geen regeneratie, geen eis-, poort-, budget-, venster- of corpuswijziging**)
+
+*De opdracht was: laat de Q-extractie haar model op de gemeten piekvorm kiezen, en geef beide
+casussen hun grondwaarheid terug. Wat er gemeten is, zegt iets anders dan wat er verwacht werd, en
+dit is de entry die dat verschil draagt.*
+
+**EERST DE CORRECTIE OP DE AANLEIDING, want zij bepaalt de rest.** De startprompt schrijft C-2's
+bevinding B1 toe aan de Q-EXTRACTIE: een √(f/f_s)-lekterm die op casus 1 past en op casus 2's zuivere
+tweede-orde-piek 8–9 % naast de grondwaarheid zit. Nagemeten klopt daar drie dingen niet van. (i) De
+Q-extractie (`z-resonance`, Small's halfvermogensbreedte) fit NIETS — zij leest twee kruisingen af —
+en zij haalt op casus 2 haar tolerantie ruim: Q_mc mid −0,56 %, Q_ec mid −2,64 %, Q_ms tweeter
++0,34 %, Q_es tweeter −2,87 %, tegen een klasse van 7 %. (ii) C-2/B1 gaat over de
+SEMI-INDUCTANTIE-EXPONENT van de HF-fit (+12,6 / +9,6 / +44,2 %), niet over Q. (iii) De ½-machts
+lekterm bestaat wél, maar in de MOTIONELE FIT (`z-re`), waar hij `K·(jω)^n` heet.
+
+**En de 8–9 % is echt — met de armen omgedraaid.** Zij is precies wat het model ZONDER lekterm
+verkeerd leest op casus 2's zuivere tweede-orde-piek: de tweeter-tak leest Q = 1,4690 tegen een
+grondwaarheid van 1,600 (−8,19 %), de mid −3,31 %. MET de lekterm zijn beide exact. De verwachte
+richting was dus omgekeerd, en dat is de eerste dragende meting van deze sessie.
+
+**DE INVENTARIS (stap 1), letterlijk.**
+
+| waar | wat | leest wie |
+| --- | --- | --- |
+| `ingest/impedance.ts` `classifyImpedance` | Small's Q_ms/Q_es per motionele piek op `√r0·R_e`; géén fit | M-C route 1 (V49) → x/V → plafond → M-C-poort en de `drive-series-c`-voorbound; de A5d.3(ii)-aandrijfvloer van het kruisvenster |
+| `ingest/impedance.ts` `classifyImpedance` | `ZPeak.q`, halfhoogte — generieke piekscherpte | rapportage |
+| `ingest/impedance.ts` sealed-tak | `Q_mc/Q_ec/Q_tc` (Small op het fundamenteel) | rapportage; casus-2-acceptatie |
+| `ingest/motionalFit.ts` | `Z = R_e + K·(jω)^n + Σ takken` — de ½-machts lekterm zit HIER | R_e (A5c.1-hiërarchie); takken en exponent zijn rapportage |
+| `ingest/impedance.ts` `fitSemiInductance` | `\|Z − R_e\| = K·ω^n` boven de resonantie — de TWEEDE schatter van dezelfde exponent | rapportage: het paneel en `semi_inductantie_n` in beide casusboeken |
+
+**DE TOLERANTIEKLASSEN waarin dit alles geoordeeld wordt** (identiek in beide casusboeken, en
+ONGEWIJZIGD gelaten — zij zijn voor gemeten data met ruis gekozen, dus een synthetische casus hoort ze
+met marge te halen): `Q_pct` 7 %, `exponent_pct` 5 %, `ohm` 0,03 Ω, `frequenties_pct` 2 %,
+`fit_kwaliteit_pct` 5 % (residu en bandgevoeligheid van de fit zelf). De V15-parameterblokken die de
+Q- en R_e-referenties dragen zijn `_re_direct_parameters` (de directe aflezing), `_re_fit_parameters`
+(NIEUW bij B-1 — welk model), `_semi_inductantie_parameters` (de HF-fit) en `_excursie_parameters`
+(V49).
+
+**Wat er stroomafwaarts aan hangt, en wat niet.** De motionele fit heeft precies ÉÉN gedragsuitvoer:
+R_e. Zijn takken worden gerapporteerd en door niemand geoordeeld — M-C leest Small's Q_ms van de
+GEMETEN kromme, niet van de fit. Maar R_e is geen inert getal: Small's halfvermogensniveau is
+√(Z_max·R_e), dus de keten is modelkeuze → R_e → Q_ms → x/V → M-C-plafond → M-C-poort én
+vensteraandrijfvloer. **De exponent van beide schatters bereikt geen poort, geen grens, geen venster
+en geen metriek** — nagegaan en niet aangenomen: twee lezers, `EngineV2Panel.tsx` en de recorders.
+
+**DE MODELKEUZE ALS MÉTING (stap 2), en zij is TWEE KEER WEERLEGD.** Beide modellen worden sinds B-1
+op élke sweep gefit — (a) `R_e + Σ takken`, (b) idem plus de lekterm — en beide staan in het
+resultaat. De keuze zelf is geprobeerd op de twee criteria die de opdracht noemt en allebei zijn
+gemeten fout, op een synthetische sweep met een kleine spoel ÉN een resonantie onder de
+classificatiedrempel (dus ongeseed, dus door geen enkele arm te absorberen):
+
+| criterium | wat het zegt | waarom het fout is |
+| --- | --- | --- |
+| termgrootte tegen residu | "de term is 8,95 % van \|Z\|, dus identificeerbaar" | de echte spoel is daar 0,10 % — de term is 93× opgeblazen door de ongemodelleerde mode |
+| residuverhouding | "de term koopt 1,434× residu, dus verdiend" | dezelfde mode, van de andere kant gelezen |
+
+**De lekterm is een SPONS: hij absorbeert wat de takken niet verklaren.** Termgrootte en residu zijn
+daarmee bewijs van ONTBREKENDE STRUCTUUR en niet van een spoel, en geen van beide kan de keuze
+dragen.
+
+**DE KEUZE IS DAAROM NIET GEMAAKT, EN DAT IS ZELF EEN MÉTING.** Casus 2 is de enige plek die haar
+kan beslechten, want haar model kent R_e:
+
+| weg | grondwaarheid | (b) mét lekterm | (a) zónder | klasse |
+| --- | --- | --- | --- | --- |
+| woofer | 6,2 Ω | 6,1852 | 6,4164 (+0,23) | 0,03 Ω |
+| mid | 5,4 Ω | 5,4000000 | 5,5726 (+0,17) | 0,03 Ω |
+| tweeter | 4,1 Ω | 4,0999999 | 4,1786 (+0,08) | 0,03 Ω |
+
+Een regel die de term ooit laat vallen zou dus fout zijn. Hij wordt op élke sweep gehouden — als
+GEMETEN besluit met de tegenfeitelijke ernaast, niet meer als onbesproken aanname. De kale arm staat
+sindsdien in het resultaat, in het paneel en in beide casusboeken.
+
+**WAT DE SWEEP WÉL KAN BESLISSEN, en het is exact wat C-2/B2 vroeg.** Niet of de term erin hoort,
+maar of zijn EXPONENT een meting is. Deze fit refit al op vergelijkingsbanden om te vragen of R_e van
+de band afhangt; dezelfde vraag over `n`, op dezelfde refits en dus gratis, scheidt schoon — en waar
+een grondwaarheid bestaat, geeft zij hem gelijk:
+
+| sweep | n op de banden 2× / 3× / 4× | spreiding | grondwaarheid |
+| --- | --- | --- | --- |
+| casus 2 mid | 0,6600 / 0,6600 / 0,6600 | **0,0 %** | 0,66 — exact |
+| casus 2 tweeter | 0,6200 / 0,6200 / 0,6200 | **0,0 %** | 0,62 — exact |
+| casus 2 woofer | 0,7003 / 0,5947 / 0,6263 | **8,9 %** | 0,70 — 15 % ernaast |
+| casus 1 woofer | 1,2000 / 0,8791 / 0,7519 | 25,5 % | — |
+| casus 1 mid | 0,3000 / 0,9634 / 0,8856 | 34,4 % | — |
+| casus 1 tweeter | 0,5561 / 0,6491 / 0,7190 | 12,6 % | — |
+
+**Sinds B-1 publiceert de fit `exponentN` en `coefficientK` alleen als die spreiding binnen de
+limiet valt die hij al voor R_e publiceert** (6 %) — geen nieuwe constante, geen nieuwe berekening.
+Anders zijn zij `null`, nooit nul, en de fit zegt hoeveel de band ze verschoof. **Dat is B2
+gerepareerd:** de rij die 15 % ernaast stond is geen bevinding meer maar een ONTHOUDING, met het
+getal er nog gewoon in (`exponent_op_primaire_band` 0,5947) en met een gedateerde errata-regel
+eronder. Casus 1 haalt de toets op geen enkele weg, dus daar was `n` uit de motionele fit nooit een
+meting — `semi_inductantie_n` in dat casusboek is en blijft die van de HF-fit.
+
+**B2's OPGESCHREVEN REDEN WAS OOK FOUT, en de vervanging is gemeten.** C-2 schreef dat de fitband van
+de woofer (5–177 Hz) de spoelbijdrage tot "enkele honderdsten van een ohm" beperkt. Zij is op de
+bandtop 0,83 Ω, 10,3 % van \|Z\| — de term is ruim zichtbaar. Wat er wél gebeurt: een REFLEXKAST is
+een gekoppeld vierde-orde systeem en dit model is een som van ONAFHANKELIJKE tweede-orde takken. Het
+residu is 2,455 % op de vented weg tegen 0,000 % op de twee gesloten, en de exponent absorbeert het
+verschil. Dezelfde wortel als C-2/B3.
+
+**B1's OPGESCHREVEN REDEN WAS FOUT EN IS HERZIEN.** C-2 schreef dat `z-semi-inductance` R_e niet
+aftrekt vóór de log-log-fit. De bron doet dat wel (`Math.hypot(re - reOhm, im)`). Wat er WEL in
+\|Z − R_e\| zit binnen die band is de MOTIONELE STAART, en die is niet klein:
+
+| weg | HF-band | staart/lek onderaan | staart/lek bovenaan | n-afwijking |
+| --- | --- | --- | --- | --- |
+| casus 2 woofer | 591–20 000 Hz | 59,2 % | 0,21 % | +12,6 % |
+| casus 2 mid | 4579–20 000 Hz | 12,9 % | 1,10 % | +9,6 % |
+| casus 2 tweeter | 14 943–20 000 Hz | 26,7 % | **16,6 %** | +44,2 % |
+| casus 1 tweeter | 9243–20 317 Hz | 136,6 % | 37,0 % | (fit weigert, V8e) |
+
+Een bijdrage die sneller krimpt dan de spoel groeit kantelt de log-log-helling OMHOOG — de richting
+en de orde van alle drie de afwijkingen, en op de tweeter is één decade boven een Q = 1,6-tak
+zichtbaar te weinig. **NIET gerepareerd** (stap 4 van `casus-toevoegen`, en de exponent bereikt geen
+oordeel); de bevinding staat, met de juiste reden.
+
+**STAP 3 — DE HERMETING VAN CASUS 1, OUD → NIEUW PER DRIVER.** De verwachting was "casus 1 kiest
+model (b) en beweegt weinig". Hij kiest (b) en beweegt NIETS — de gepubliceerde arm is dezelfde
+oplossing die er vóór B-1 stond, dus de klasse-A-referenties in `golden_refs_casus1.json` staan
+onaangeraakt. Wat erbij komt is de kolom die er niet was: wat de kale arm zou hebben gezegd.
+
+| weg | R_e nieuw = oud | residu (b) = oud | R_e als (a) | residu (a) | verhouding |
+| --- | --- | --- | --- | --- | --- |
+| woofer | 2,8962 Ω | 0,0301 | 3,0616 Ω | 0,0518 | 1,725 |
+| mid | 3,3580 Ω | 0,0128 | 3,3793 Ω | 0,0279 | 2,174 |
+| tweeter | 5,2274 Ω | 0,0180 | 5,2980 Ω | 0,0208 | 1,153 |
+
+De R_e-referenties, `Re_fit_residu`, `Re_fit_bandgevoeligheid_ohm` en `Re_fit_band_hz` zijn dus
+onveranderd — niet omdat er niet gekeken is, maar omdat de meting dat zegt. Wat WEL nieuw in dat
+bestand staat is het V15-blok `_re_fit_parameters`: welk model, waarom altijd (b), waarom de keuze
+niet uit de sweep te maken is, en dat de exponent op alle drie de wegen wordt onthouden.
+
+**STAP 4 — WAT DE MODELKEUZE STROOMAFWAARTS KOST.** Gemeten door de R_e van elke arm als lezing in te
+voeren en de hele keten opnieuw te bouwen. Dit is een TEGENFEITELIJKE: (b) wordt overal gekozen, dus
+er is niets bewogen. De tabel is de prijslijst voor een toekomstige sweep die wél (a) zou kiezen.
+
+| casus | weg | ΔQ_ms | Δ M-C-plafond | vensteraandrijfvloer (b) → (a) |
+| --- | --- | --- | --- | --- |
+| casus 1 | woofer | +1,33 % | −0,115 dB | — |
+| casus 1 | mid | +0,09 % | −0,008 dB | 147,9 → 148,0 Hz (`drive`) |
+| casus 1 | tweeter | +0,68 % | −0,059 dB | 1646,9 → 1646,9 Hz (`drive-stated`) |
+| casus 2 | woofer | +0,67 % | −0,058 dB | — |
+| casus 2 | mid | +0,81 % | −0,070 dB | 641,0 → 641,0 Hz (`fs`) |
+| casus 2 | tweeter | +0,65 % | −0,056 dB | 2820,9 → 2820,9 Hz (`drive-stated`) |
+
+**HET REGENERATIE-OORDEEL: NIET NODIG, en dat is gemeten en niet aangenomen.** Model (b) is de
+gekozen arm op élke sweep en (b) is byte-identiek aan wat er vóór B-1 draaide — de golden refs van
+casus 1, 1b en 2 reproduceren onveranderd, de twee byte-baselines (`f4cRegression`,
+`workerRouteRegression`) ook. Er is geen eis, poort, budget, venster of corpus geraakt. Wat wél
+beweegt is de VINGERAFDRUK (`estimators=` met z-re 1.2, want de vorm groeide en de exponent kan
+onthouden); `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met
+deze entry als de reden — de V49-precedent.
+
+**Wat er NIET gedaan is.**
+- **De HF-fit is niet gerepareerd** (C-2/B1). De reden is herzien, het getal niet. Een fit die de
+  gemodelleerde takken aftrekt vóór hij de spoel fit, of een band die niet op één decade staat, is
+  een schatterwijziging met een eigen sessie — en de exponent bereikt geen oordeel.
+- **De reflexbenadering is niet gerepareerd** (C-2/B2, C-2/B3, dezelfde wortel). Een gekoppeld
+  vierde-orde model in de motionele fit en een reflex-eigen excursieroute in M-C zijn allebei
+  metriekwijzigingen.
+- **Geen modelkiezer.** Hij is gebouwd, gemeten en weer uit elkaar gehaald; wat er staat is de
+  vergelijking plus de exponenttoets. Een schakelaar met één bereikbaar antwoord is erger dan geen
+  schakelaar (V23), en dit is de meting die dat vaststelt in plaats van het te vermoeden.
+
+**Guards.** `ingest/motionalModel.test.ts` (20 claims) draagt het paar dat het bestand draagt: een
+schone spoelsweep IDENTIFICEERT de exponent en leest 0,7, en dezelfde sweep met ÉÉN ongeseede mode
+erbij onthoudt zich — zonder dat paar zijn "de exponent wordt gepubliceerd waar hij klopt" en "de
+toets vuurt nooit" hetzelfde groen. Verder: de spons als meting, de lek-arm als lagere R_e op élke
+sweep, de geneste residuverhouding ≥ 1, de casus-2-grondwaarheid beide kanten op, A5e.4 op de keuze,
+en de reproductie van `casus1_b1_modelkeuze.json`. `goldenCasus2.test.ts` telt sindsdien VIJF
+semi-inductantierijen in plaats van zes en eist de onthouding, het getal én de errata-regel ernaast;
+`goldenClassification.test.ts` houdt het nieuwe V15-blok `_re_fit_parameters` tegen de engine
+(model, primaire band, vergelijkingsbanden, en dat casus 1 zich op alle drie de wegen onthoudt).
+`versionAndCapability.test.ts` leest de z-re-versie sindsdien uit de registry in plaats van uit een
+met de hand bijgehouden kopie — die stond bij B-1 op 1.1 terwijl de tabel al 1.2 zei.
+
+**Snelle laag 461 s — 166 bestanden (165 geslaagd, 1 overgeslagen), 2004 tests (2001 geslaagd,
+3 overgeslagen), in één keer groen, alleen gedraaid.** +1 bestand en +22 tests, en die twee sluiten
+exact: de twintig van `motionalModel.test.ts`, +1 in `goldenCasus2` en +1 in `goldenClassification`.
 
 ---
 

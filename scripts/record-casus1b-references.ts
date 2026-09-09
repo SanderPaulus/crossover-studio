@@ -94,6 +94,13 @@ for (const name of ['mid', 'tweeter'] as const) {
     Re_fit_residu: re?.fit ? r4(re.fit.relativeResidual) : null,
     Re_fit_bandgevoeligheid_ohm: re?.fit ? r4(re.fit.bandSensitivityOhm) : null,
     Re_fit_band_hz: re?.fit ? [r1(re.fit.bandHz[0]), r1(re.fit.bandHz[1])] : null,
+    /* B-1 — WHICH model that R_e is the DC term of, and what the bare
+     * second-order arm would have said instead. A reference that does not name
+     * its model cannot be re-measured against a later engine. */
+    Re_fit_model: re?.fit?.model ?? null,
+    Re_fit_zonder_lekterm_ohm: re?.fit ? r4(re.fit.arms.secondOrder.reOhm) : null,
+    Re_fit_residu_verhouding: re?.fit ? r4(re.fit.residualRatio) : null,
+    Re_fit_exponent_geidentificeerd: re?.fit?.exponent.identified ?? null,
     Re_toelichting:
       'A5c.1-hiërarchie: ingevoerde DC-lezing > motionele fit > directe aflezing. Casus 1b voert ' +
       'niets in (casus 1 voert alleen het wooferpaar in, dat hier niet bestaat), dus mid en tweeter ' +

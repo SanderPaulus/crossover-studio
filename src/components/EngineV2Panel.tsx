@@ -407,11 +407,35 @@ export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = n
                         )}
                       </div>
                     )}
+                    {/* B-1 — WHICH model produced that R_e, and what the other
+                        one would have said. The counterfactual is the whole
+                        point: a fit that only ever shows its own answer cannot
+                        be questioned by the person reading it. */}
+                    {d.re?.fit && (
+                      <div className="v2-muted" title={d.re.fit.modelReason}>
+                        model {d.re.fit.model} · without the leak term R_e ={' '}
+                        {ohm(d.re.fit.arms.secondOrder.reOhm)} (residual ×
+                        {d.re.fit.residualRatio.toFixed(2)})
+                      </div>
+                    )}
                   </td>
                   <td title={d.impedance?.reason}>{d.impedance?.type ?? '—'}</td>
                   <td>{hz(d.impedance?.fundamentalHz)}</td>
                   <td title={d.semiInductance?.reason}>
                     {d.semiInductance?.valid ? `n = ${num(d.semiInductance.n)}` : 'not determinable'}
+                    {/* B-1 — the SECOND estimator of the same exponent, and
+                        whether the sweep could identify it. Shown beside the
+                        HF fit rather than instead of it: casus 2 is where the
+                        two were measured against a known answer, and neither
+                        wins everywhere. */}
+                    {d.re?.fit && (
+                      <div className="v2-muted" title={d.re.fit.exponent.reason}>
+                        motional fit:{' '}
+                        {d.re.fit.exponentN !== null
+                          ? `n = ${num(d.re.fit.exponentN)}`
+                          : 'not identified in this band'}
+                      </div>
+                    )}
                   </td>
                   <td title={d.onAxis?.bandReason.low}>
                     {d.onAxis ? `${hz(d.onAxis.bandHz[0])} – ${hz(d.onAxis.bandHz[1])}` : '—'}

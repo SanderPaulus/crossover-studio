@@ -66,6 +66,17 @@ const TABLE = derived.extractie_tegen_grondwaarheid as unknown as {
   controlerijen: number;
   bevindingen: { sleutel: string; reden: string; verschil: number; toegestaan: number }[];
   controle_afwijkingen: string[];
+  /** B-1 — quantities the extractor declined to answer, with its own reason. */
+  onthoudingen: {
+    grootheid: string;
+    weg: string;
+    grondwaarheid: number;
+    schatter: string;
+    eenheid: string;
+    reden: string;
+  }[];
+  /** B-1 — what this table used to say, and why it no longer says it. */
+  errata: { datum: string; sleutel: string; was: string; is: string }[];
 };
 const NETLISTS = golden.manifest_en_geometrie.netlists ?? {};
 
@@ -133,18 +144,66 @@ describe('C-2 — casus 2: de extractoren tegen de grondwaarheid', () => {
     /* De dragende bevinding van deze casus, en zij is alleen op grondwaarheid
      * te maken: twee schatters van dezelfde grootheid, en het model zegt welke
      * de goede is. De HF-fit leest op alle drie de wegen TE HOOG; de motionele
-     * fit leest exact op de twee gesloten wegen en te LAAG op de woofer, waar
-     * zijn fitband de spoel niet bevat. */
+     * fit leest exact op de twee gesloten wegen.
+     *
+     * SINDS B-1 (09-09-2026) zijn het VIJF rijen en geen zes. De motionele fit
+     * publiceert haar exponent alleen waar de sweep er een kan identificeren,
+     * en op de woofer kan zij dat niet — die rij staat sindsdien onder
+     * `onthoudingen`, met het getal er nog gewoon in. Dat is de reparatie van
+     * bevinding B2 en niet het verdwijnen ervan, en de tweede helft van deze
+     * test is wat dat onderscheid vasthoudt. */
     const rows = TABLE.rijen.filter((r) => r.grootheid.startsWith('semi-inductantie n'));
-    expect(rows.length).toBe(6);
+    expect(rows.length).toBe(5);
     for (const r of rows.filter((x) => x.grootheid.includes('HF-fit'))) {
       expect(r.verschil, `${r.weg}: de HF-fit leest te hoog`).toBeGreaterThan(0);
     }
     const sealed = rows.filter((x) => x.grootheid.includes('motionele') && x.weg !== 'woofer');
     expect(sealed.length).toBe(2);
     for (const r of sealed) expect(Math.abs(r.verschil), `${r.weg}: de motionele fit is exact`).toBeLessThan(1e-3);
-    const wooferFit = rows.find((x) => x.grootheid.includes('motionele') && x.weg === 'woofer')!;
-    expect(wooferFit.verschil, 'de motionele fit leest op de woofer te laag').toBeLessThan(0);
+    /* De woofer is er niet meer als vergelijking, en staat er wel als
+     * ONTHOUDING — met de grondwaarheid erbij, zodat de rij terugkomt zodra
+     * een latere schatter haar wél kan identificeren. */
+    expect(rows.some((x) => x.grootheid.includes('motionele') && x.weg === 'woofer')).toBe(false);
+    const held = TABLE.onthoudingen.find(
+      (o) => o.grootheid === 'semi-inductantie n (motionele fit)' && o.weg === 'woofer',
+    );
+    expect(held).toBeDefined();
+    expect(held!.grondwaarheid).toBe(0.7);
+    expect(held!.reden).toContain('NUISANCE');
+    /* En het GETAL is niet weggegooid: het driverblok draagt wat de primaire
+     * band produceerde, met de bandspreiding die het afwees. */
+    const fit = derived.woofer.motionele_fit as Record<string, unknown>;
+    expect(fit.n).toBeNull();
+    expect(fit.exponent_geidentificeerd).toBe(false);
+    expect(Number(fit.exponent_op_primaire_band)).toBeCloseTo(0.5947, 3);
+    /* De errata-regel die zegt dat B2 gerepareerd is en niet verdampt. */
+    const err = TABLE.errata.find((e) => e.sleutel.includes('motionele fit'));
+    expect(err).toBeDefined();
+    expect(err!.datum).toBe('2026-09-09');
+  });
+
+  it('B-1: de lekterm is op ELKE weg gehouden, en deze casus is waarom', () => {
+    /* De keuze tussen de twee impedantiemodellen is een MÉTING, en dit is de
+     * enige plek in het boek waar zij te maken is. De lek-arm levert de
+     * model-R_e terug; de kale arm zit er op alle drie de wegen naast, en op
+     * de woofer met 0,23 Ω tegen een tolerantieklasse van 0,03. */
+    const OHM_TOL = (golden.toleranties as unknown as Record<string, number>).ohm;
+    const truthRe: Record<string, number> = {
+      woofer: (truth.drivers.woofer as Record<string, number>).R_e_ohm,
+      mid: (truth.drivers.mid as Record<string, number>).R_e_ohm,
+      tweeter: (truth.drivers.tweeter as Record<string, number>).R_e_ohm,
+    };
+    for (const way of ['woofer', 'mid', 'tweeter']) {
+      const fit = (derived[way] as { motionele_fit: Record<string, unknown> }).motionele_fit;
+      expect(`${way}: ${fit.model}`).toBe(`${way}: second-order-plus-leak`);
+      const bare = fit.arm_tweede_orde as { R_e: number; residu: number };
+      const leakErr = Math.abs(Number(fit.R_e) - truthRe[way]);
+      const bareErr = Math.abs(bare.R_e - truthRe[way]);
+      expect(leakErr, `${way}: de lek-arm vindt de model-R_e terug`).toBeLessThan(OHM_TOL);
+      expect(bareErr, `${way}: de kale arm doet dat niet`).toBeGreaterThan(OHM_TOL);
+      /* Genest model, dus het residu kan niet slechter zijn. */
+      expect(Number(fit.residu_verhouding)).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it('M-C route 1 leest de reflexwoofer CONSERVATIEF, en de twee gesloten wegen exact', () => {

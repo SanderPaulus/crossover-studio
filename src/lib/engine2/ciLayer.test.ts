@@ -104,6 +104,11 @@ const CI_LOAD_BEARING = [
   'src/lib/engine2/metrics/phaseIntegration.test.ts',
   'src/lib/engine2/optimizer/boundInversions.test.ts',
   'src/lib/engine2/optimizer/lfBumpBorder.test.ts',
+  /* B-1 — which impedance model each sweep supports, and whether its exponent
+   * is a measurement. Fits on fixed files plus synthetic sweeps, no search and
+   * no tune, and casus 2's ground truth is what decides it — as portable as
+   * the reference it leans on. */
+  'src/lib/engine2/ingest/motionalModel.test.ts',
 ];
 
 /** De testnamen die een tag dragen, met de tag erbij. */

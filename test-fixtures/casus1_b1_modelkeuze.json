@@ -1,0 +1,755 @@
+{
+  "_": "B-1 — de twee impedantiemodellen per sweep, geschreven door scripts/measure-b1-motional-model.ts. Beide armen staan er altijd in; de lekterm wordt op élke sweep GEHOUDEN en casus 2 is wat dat vaststelt (haar lek-arm levert de model-R_e terug, haar kale arm zit er 0,08–0,23 Ω naast tegen een klasse van 0,03 Ω).",
+  "geen_modelkiezer": "Model (b) NEST model (a), dus de residuverhouding is nooit onder 1 en zou de term altijd houden; en de lekterm ABSORBEERT wat de takken niet verklaren, dus zijn eigen grootte is even misleidend — gemeten op een sweep met één ongeseede mode: een spoel van 0,10 % van |Z| gefit op 8,95 %, 93× te groot, met een residuverhouding van 1,434. Beide getallen staan er wél in, want ze zien is hoe een lezer dit narekent.",
+  "exponent_criterium": "De EXPONENT wordt alleen gepubliceerd als hij niet van de fitband afhangt: de spreiding van n over de vergelijkingsbanden, tegen dezelfde limiet die deze fit al voor R_e publiceert. Geen nieuwe constante en geen extra solve. De grondwaarheid van casus 2 geeft die toets gelijk op alle drie haar wegen.",
+  "rijen": [
+    {
+      "casus": "casus 1 (merged)",
+      "weg": "woofer",
+      "band_hz": [
+        10.07080078125,
+        157.1044921875
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 1.725 (5.18 % against 3.01 %) and moves R_e to 3.062 Ω from 2.896 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 25.489439719233413,
+      "exponent_op_primaire_band": 0.8790668319669752,
+      "exponent_reden": "the exponent moves ±0.2241 (25.49 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 1.2000, 4x 0.7519, primary 0.8791.",
+      "residu_verhouding": 1.7251262344263203,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 3.061578224776377,
+          "residu": 0.05184957034981067,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 51.784321928883486,
+          "fundamenteel_Q": 8.138794627757514
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 2.896182237323469,
+          "residu": 0.030055522497490113,
+          "lek_fractie_bandtop": 0.19199355260795362,
+          "lek_ohm_bandtop": 0.6076643014876913,
+          "n": 0.8790668319669752,
+          "k": 0.001417143135548159,
+          "fundamenteel_hz": 51.93002628278124,
+          "fundamenteel_Q": 7.538604071510049
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.16539598745290807,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 1 (merged)",
+      "weg": "mid",
+      "band_hz": [
+        19.95849609375,
+        266.41845703125
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 2.174 (2.79 % against 1.28 %) and moves R_e to 3.379 Ω from 3.358 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 34.42942202501352,
+      "exponent_op_primaire_band": 0.9633553760240063,
+      "exponent_reden": "the exponent moves ±0.3317 (34.43 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.3000, 4x 0.8856, primary 0.9634.",
+      "residu_verhouding": 2.1743386538942513,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 3.3792985060065437,
+          "residu": 0.027892743075302005,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 89.64128048373092,
+          "fundamenteel_Q": 7.581239704812301
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 3.3580322797040267,
+          "residu": 0.012828150309219754,
+          "lek_fractie_bandtop": 0.10945420939958672,
+          "lek_ohm_bandtop": 0.427544119629499,
+          "n": 0.9633553760240063,
+          "k": 0.000335250669377992,
+          "fundamenteel_hz": 89.82987751596787,
+          "fundamenteel_Q": 7.442073164164058
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.021266226302516955,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 1 (merged)",
+      "weg": "tweeter",
+      "band_hz": [
+        199.951171875,
+        2772.94921875
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 1.153 (2.08 % against 1.80 %) and moves R_e to 5.298 Ω from 5.227 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 12.553021093057279,
+      "exponent_op_primaire_band": 0.6491042194455398,
+      "exponent_reden": "the exponent moves ±0.0815 (12.55 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.5561, 4x 0.7190, primary 0.6491.",
+      "residu_verhouding": 1.152982213298675,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 5.29802028687122,
+          "residu": 0.020783647062107394,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 938.7020654961618,
+          "fundamenteel_Q": 1.4508869989362667
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 5.22742507784319,
+          "residu": 0.018025991053795626,
+          "lek_fractie_bandtop": 0.04043825311664222,
+          "lek_ohm_bandtop": 0.2671199626697388,
+          "n": 0.6491042194455398,
+          "k": 0.0004718199494047265,
+          "fundamenteel_hz": 939.5466573251568,
+          "fundamenteel_Q": 1.4509371421462975
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.0705952090280304,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 1 (gated)",
+      "weg": "woofer",
+      "band_hz": [
+        10.07080078125,
+        157.1044921875
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 1.725 (5.18 % against 3.01 %) and moves R_e to 3.062 Ω from 2.896 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 25.489439719233413,
+      "exponent_op_primaire_band": 0.8790668319669752,
+      "exponent_reden": "the exponent moves ±0.2241 (25.49 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 1.2000, 4x 0.7519, primary 0.8791.",
+      "residu_verhouding": 1.7251262344263203,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 3.061578224776377,
+          "residu": 0.05184957034981067,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 51.784321928883486,
+          "fundamenteel_Q": 8.138794627757514
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 2.896182237323469,
+          "residu": 0.030055522497490113,
+          "lek_fractie_bandtop": 0.19199355260795362,
+          "lek_ohm_bandtop": 0.6076643014876913,
+          "n": 0.8790668319669752,
+          "k": 0.001417143135548159,
+          "fundamenteel_hz": 51.93002628278124,
+          "fundamenteel_Q": 7.538604071510049
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.16539598745290807,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 1 (gated)",
+      "weg": "mid",
+      "band_hz": [
+        19.95849609375,
+        266.41845703125
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 2.174 (2.79 % against 1.28 %) and moves R_e to 3.379 Ω from 3.358 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 34.42942202501352,
+      "exponent_op_primaire_band": 0.9633553760240063,
+      "exponent_reden": "the exponent moves ±0.3317 (34.43 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.3000, 4x 0.8856, primary 0.9634.",
+      "residu_verhouding": 2.1743386538942513,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 3.3792985060065437,
+          "residu": 0.027892743075302005,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 89.64128048373092,
+          "fundamenteel_Q": 7.581239704812301
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 3.3580322797040267,
+          "residu": 0.012828150309219754,
+          "lek_fractie_bandtop": 0.10945420939958672,
+          "lek_ohm_bandtop": 0.427544119629499,
+          "n": 0.9633553760240063,
+          "k": 0.000335250669377992,
+          "fundamenteel_hz": 89.82987751596787,
+          "fundamenteel_Q": 7.442073164164058
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.021266226302516955,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 1 (gated)",
+      "weg": "tweeter",
+      "band_hz": [
+        199.951171875,
+        2772.94921875
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 1.153 (2.08 % against 1.80 %) and moves R_e to 5.298 Ω from 5.227 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 12.553021093057279,
+      "exponent_op_primaire_band": 0.6491042194455398,
+      "exponent_reden": "the exponent moves ±0.0815 (12.55 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.5561, 4x 0.7190, primary 0.6491.",
+      "residu_verhouding": 1.152982213298675,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 5.29802028687122,
+          "residu": 0.020783647062107394,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 938.7020654961618,
+          "fundamenteel_Q": 1.4508869989362667
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 5.22742507784319,
+          "residu": 0.018025991053795626,
+          "lek_fractie_bandtop": 0.04043825311664222,
+          "lek_ohm_bandtop": 0.2671199626697388,
+          "n": 0.6491042194455398,
+          "k": 0.0004718199494047265,
+          "fundamenteel_hz": 939.5466573251568,
+          "fundamenteel_Q": 1.4509371421462975
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.0705952090280304,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 1b",
+      "weg": "mid",
+      "band_hz": [
+        19.95849609375,
+        266.41845703125
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 2.174 (2.79 % against 1.28 %) and moves R_e to 3.379 Ω from 3.358 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 34.42942202501352,
+      "exponent_op_primaire_band": 0.9633553760240063,
+      "exponent_reden": "the exponent moves ±0.3317 (34.43 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.3000, 4x 0.8856, primary 0.9634.",
+      "residu_verhouding": 2.1743386538942513,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 3.3792985060065437,
+          "residu": 0.027892743075302005,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 89.64128048373092,
+          "fundamenteel_Q": 7.581239704812301
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 3.3580322797040267,
+          "residu": 0.012828150309219754,
+          "lek_fractie_bandtop": 0.10945420939958672,
+          "lek_ohm_bandtop": 0.427544119629499,
+          "n": 0.9633553760240063,
+          "k": 0.000335250669377992,
+          "fundamenteel_hz": 89.82987751596787,
+          "fundamenteel_Q": 7.442073164164058
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.021266226302516955,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 1b",
+      "weg": "tweeter",
+      "band_hz": [
+        199.951171875,
+        2772.94921875
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 1.153 (2.08 % against 1.80 %) and moves R_e to 5.298 Ω from 5.227 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 12.553021093057279,
+      "exponent_op_primaire_band": 0.6491042194455398,
+      "exponent_reden": "the exponent moves ±0.0815 (12.55 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.5561, 4x 0.7190, primary 0.6491.",
+      "residu_verhouding": 1.152982213298675,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 5.29802028687122,
+          "residu": 0.020783647062107394,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 938.7020654961618,
+          "fundamenteel_Q": 1.4508869989362667
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 5.22742507784319,
+          "residu": 0.018025991053795626,
+          "lek_fractie_bandtop": 0.04043825311664222,
+          "lek_ohm_bandtop": 0.2671199626697388,
+          "n": 0.6491042194455398,
+          "k": 0.0004718199494047265,
+          "fundamenteel_hz": 939.5466573251568,
+          "fundamenteel_Q": 1.4509371421462975
+        }
+      },
+      "grondwaarheid_n": null,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": null
+      },
+      "R_e_verschil_ohm": 0.0705952090280304,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 2",
+      "weg": "woofer",
+      "band_hz": [
+        5,
+        177.25469999999999
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 1.321 (3.24 % against 2.45 %) and moves R_e to 6.416 Ω from 6.185 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": false,
+      "exponent_bandspreiding_pct": 8.878467084087573,
+      "exponent_op_primaire_band": 0.5946602982245566,
+      "exponent_reden": "the exponent moves ±0.0528 (8.88 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.7003, 4x 0.6263, primary 0.5947.",
+      "residu_verhouding": 1.3207252107240093,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 6.416362694116244,
+          "residu": 0.03242370174581995,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 59.120067041415446,
+          "fundamenteel_Q": 6.8944501471585555
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 6.185226012506608,
+          "residu": 0.024549922635341816,
+          "lek_fractie_bandtop": 0.10276725874865113,
+          "lek_ohm_bandtop": 0.7543658725007126,
+          "n": 0.5946602982245566,
+          "k": 0.011635480960816184,
+          "fundamenteel_hz": 59.242924262944705,
+          "fundamenteel_Q": 6.811555757443069
+        }
+      },
+      "grondwaarheid_n": 0.7,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": -15.048528825063343
+      },
+      "R_e_verschil_ohm": 0.23113668160963563,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 2",
+      "weg": "mid",
+      "band_hz": [
+        5,
+        1373.5581000000002
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 111164.303 (5.56 % against 0.00 %) and moves R_e to 5.573 Ω from 5.400 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": true,
+      "exponent_bandspreiding_pct": 0.000015100973780882247,
+      "exponent_op_primaire_band": 0.660000170874236,
+      "exponent_reden": "the exponent moves ±0.0000 (0.00 %) across the comparison bands, inside the 6.00 % this fit allows R_e, so it is a property of the sweep rather than of the band it was asked on",
+      "residu_verhouding": 111164.30284015916,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 5.572601467701655,
+          "residu": 0.055566437602969816,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 455.17303586405933,
+          "fundamenteel_Q": 4.103349807604162
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 5.400000026097191,
+          "residu": 4.998586433170695e-7,
+          "lek_fractie_bandtop": 0.27022242005863917,
+          "lek_ohm_bandtop": 1.753445953011115,
+          "n": 0.660000170874236,
+          "k": 0.004427045195550039,
+          "fundamenteel_hz": 459.7362144324885,
+          "fundamenteel_Q": 4.243718703829299
+        }
+      },
+      "grondwaarheid_n": 0.66,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": 0.000025890035754991352
+      },
+      "R_e_verschil_ohm": 0.17260144160446345,
+      "aanvaard": true,
+      "weigering": null
+    },
+    {
+      "casus": "casus 2",
+      "weg": "tweeter",
+      "band_hz": [
+        5,
+        4482.9993
+      ],
+      "gekozen": "second-order-plus-leak",
+      "reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 73072.050 (4.04 % against 0.00 %) and moves R_e to 4.179 Ω from 4.100 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+      "exponent_geidentificeerd": true,
+      "exponent_bandspreiding_pct": 0.00004159949801867693,
+      "exponent_op_primaire_band": 0.6200000322078405,
+      "exponent_reden": "the exponent moves ±0.0000 (0.00 %) across the comparison bands, inside the 6.00 % this fit allows R_e, so it is a property of the sweep rather than of the band it was asked on",
+      "residu_verhouding": 73072.04973561985,
+      "identificeerbaar": true,
+      "armen": {
+        "tweede_orde": {
+          "model": "second-order",
+          "R_e_ohm": 4.178639081576498,
+          "residu": 0.040374719891443464,
+          "lek_fractie_bandtop": 0,
+          "lek_ohm_bandtop": 0,
+          "n": null,
+          "k": null,
+          "fundamenteel_hz": 1488.0055227634916,
+          "fundamenteel_Q": 1.4689639991782484
+        },
+        "plus_lek": {
+          "model": "second-order-plus-leak",
+          "R_e_ohm": 4.0999999423275755,
+          "residu": 5.525330141623538e-7,
+          "lek_fractie_bandtop": 0.23362661803941584,
+          "lek_ohm_bandtop": 1.337813700083015,
+          "n": 0.6200000322078405,
+          "k": 0.002331048992528531,
+          "fundamenteel_hz": 1500.000024539476,
+          "fundamenteel_Q": 1.6000001580276368
+        }
+      },
+      "grondwaarheid_n": 0.62,
+      "n_afwijking_pct": {
+        "tweede_orde": null,
+        "plus_lek": 0.0000051948129847946595
+      },
+      "R_e_verschil_ohm": 0.07863913924892252,
+      "aanvaard": true,
+      "weigering": null
+    }
+  ],
+  "hf_exponent": {
+    "_": "De TWEEDE schatter van dezelfde exponent (z-semi-inductance, casus 2 B1). Wat er naast de spoel in |Z − R_e| zit binnen zijn fitband: de motionele staart, die met de frequentie sneller krimpt dan de spoel groeit en de log-log-helling dus omhoog kantelt. Gemeten, NIET gerepareerd — de exponent bereikt geen poort, grens, venster of metriek.",
+    "rijen": [
+      {
+        "casus": "casus 1",
+        "weg": "woofer",
+        "band_hz": [
+          523.681640625,
+          20140.869140625
+        ],
+        "geldig": true,
+        "n_hf": 0.8304291666614018,
+        "n_motioneel": null,
+        "grondwaarheid_n": null,
+        "lek_ohm": 1.7510924908920324,
+        "motionele_staart_ohm": 0.32104275642169705,
+        "staart_fractie": 0.18333854898672605,
+        "lek_ohm_top": 43.31512383126763,
+        "motionele_staart_ohm_top": 0.008287854981192621,
+        "staart_fractie_top": 0.00019133859604044157
+      },
+      {
+        "casus": "casus 1",
+        "weg": "mid",
+        "band_hz": [
+          888.0615234375,
+          20281.310546875
+        ],
+        "geldig": true,
+        "n_hf": 0.6030048558049481,
+        "n_motioneel": null,
+        "grondwaarheid_n": null,
+        "lek_ohm": 1.3636376634708118,
+        "motionele_staart_ohm": 0.5632595639763175,
+        "staart_fractie": 0.41305661985213554,
+        "lek_ohm_top": 27.7692801562169,
+        "motionele_staart_ohm_top": 0.024413973201136245,
+        "staart_fractie_top": 0.0008791719865907478
+      },
+      {
+        "casus": "casus 1",
+        "weg": "tweeter",
+        "band_hz": [
+          9243.1640625,
+          20317.19921875
+        ],
+        "geldig": false,
+        "n_hf": 1.2175773081706522,
+        "n_motioneel": null,
+        "grondwaarheid_n": null,
+        "lek_ohm": 0.5835917518185949,
+        "motionele_staart_ohm": 0.7969898001521157,
+        "staart_fractie": 1.3656632357611764,
+        "lek_ohm_top": 0.9730402713756995,
+        "motionele_staart_ohm_top": 0.36032360462727253,
+        "staart_fractie_top": 0.3703069803245054
+      },
+      {
+        "casus": "casus 2",
+        "weg": "woofer",
+        "band_hz": [
+          590.8489999999999,
+          20000
+        ],
+        "geldig": true,
+        "n_hf": 0.7883820912500713,
+        "n_motioneel": null,
+        "grondwaarheid_n": 0.7,
+        "lek_ohm": 1.5435377780755073,
+        "motionele_staart_ohm": 0.914045826411973,
+        "staart_fractie": 0.5921758698718803,
+        "lek_ohm_top": 12.533778004708985,
+        "motionele_staart_ohm_top": 0.026809112799701034,
+        "staart_fractie_top": 0.0021389490694369052
+      },
+      {
+        "casus": "casus 2",
+        "weg": "mid",
+        "band_hz": [
+          4578.527,
+          20000
+        ],
+        "geldig": true,
+        "n_hf": 0.7234971098273724,
+        "n_motioneel": 0.660000170874236,
+        "grondwaarheid_n": 0.66,
+        "lek_ohm": 3.881436140121658,
+        "motionele_staart_ohm": 0.4994898040700291,
+        "staart_fractie": 0.12868685353519002,
+        "lek_ohm_top": 10.270541393677464,
+        "motionele_staart_ohm_top": 0.11328401226851184,
+        "staart_fractie_top": 0.011029994225839874
+      },
+      {
+        "casus": "casus 2",
+        "weg": "tweeter",
+        "band_hz": [
+          14943.331,
+          20000
+        ],
+        "geldig": true,
+        "n_hf": 0.8940272499346666,
+        "n_motioneel": 0.6200000322078405,
+        "grondwaarheid_n": 0.62,
+        "lek_ohm": 2.8221525005819648,
+        "motionele_staart_ohm": 0.7543844524372263,
+        "staart_fractie": 0.26730818135506934,
+        "lek_ohm_top": 3.3811285374158775,
+        "motionele_staart_ohm_top": 0.5616298996978936,
+        "staart_fractie_top": 0.16610723120486126
+      }
+    ]
+  },
+  "stroomafwaarts": {
+    "_": "STAP 4 — wat model (a) downstream zou kosten. De fit heeft één gedragsuitvoer: R_e. Small leest het halfvermogensniveau op √(Z_max·R_e), dus de modelkeuze bereikt Q_ms, x/V, het M-C-plafond en de A5d.3(ii)-aandrijfvloer van het kruisvenster. Gemeten door de R_e van elke arm als lezing in te voeren.",
+    "rijen": [
+      {
+        "casus": "casus 1",
+        "weg": "woofer",
+        "R_e_b_ohm": 2.896182237323469,
+        "R_e_a_ohm": 3.061578224776377,
+        "Q_ms_b": 7.539362918004178,
+        "Q_ms_a": 7.639483172027529,
+        "Q_ms_verschil_pct": 1.3279670326555268,
+        "xV_b": 0.4141023673504646,
+        "xV_a": 0.41960151027032483,
+        "plafond_b_dB": -9.723431884610372,
+        "plafond_a_dB": -9.838018472296618,
+        "plafond_verschil_dB": -0.11458658768624552,
+        "venstervloer_b_hz": null,
+        "venstervloer_a_hz": null,
+        "venstervloer_regel": null
+      },
+      {
+        "casus": "casus 1",
+        "weg": "mid",
+        "R_e_b_ohm": 3.3580322797040267,
+        "R_e_a_ohm": 3.3792985060065437,
+        "Q_ms_b": 7.340721179041205,
+        "Q_ms_a": 7.347389179092014,
+        "Q_ms_verschil_pct": 0.09083576242953714,
+        "xV_b": 0.3628233229965833,
+        "xV_a": 0.3631528963282995,
+        "plafond_b_dB": -17.67207875065817,
+        "plafond_a_dB": -17.679965063480516,
+        "plafond_verschil_dB": -0.007886312822346753,
+        "venstervloer_b_hz": 147.94573914023417,
+        "venstervloer_a_hz": 147.97943993484023,
+        "venstervloer_regel": "drive"
+      },
+      {
+        "casus": "casus 1",
+        "weg": "tweeter",
+        "R_e_b_ohm": 5.22742507784319,
+        "R_e_a_ohm": 5.29802028687122,
+        "Q_ms_b": 1.3740024616512034,
+        "Q_ms_a": 1.3833326784189903,
+        "Q_ms_verschil_pct": 0.6790538611244066,
+        "xV_b": 0.04244821890770526,
+        "xV_a": 0.04273646517717657,
+        "plafond_b_dB": -8.577789359751495,
+        "plafond_a_dB": -8.636571871369473,
+        "plafond_verschil_dB": -0.05878251161797721,
+        "venstervloer_b_hz": 1646.9446029684202,
+        "venstervloer_a_hz": 1646.9446029684202,
+        "venstervloer_regel": "drive-stated"
+      },
+      {
+        "casus": "casus 2",
+        "weg": "woofer",
+        "R_e_b_ohm": 6.185226012506608,
+        "R_e_a_ohm": 6.416362694116244,
+        "Q_ms_b": 6.253494953186811,
+        "Q_ms_a": 6.29544569953886,
+        "Q_ms_verschil_pct": 0.6708368147106322,
+        "xV_b": 0.4386349667100222,
+        "xV_a": 0.44157749154890685,
+        "plafond_b_dB": -11.361439633858513,
+        "plafond_a_dB": -11.41951320684135,
+        "plafond_verschil_dB": -0.05807357298283655,
+        "venstervloer_b_hz": null,
+        "venstervloer_a_hz": null,
+        "venstervloer_regel": null
+      },
+      {
+        "casus": "casus 2",
+        "weg": "mid",
+        "R_e_b_ohm": 5.400000026097191,
+        "R_e_a_ohm": 5.572601467701655,
+        "Q_ms_b": 4.220081722451123,
+        "Q_ms_a": 4.2543902658759025,
+        "Q_ms_verschil_pct": 0.8129829155263838,
+        "xV_b": 0.0535955174820272,
+        "xV_a": 0.054031239882644036,
+        "plafond_b_dB": -2.644369110475285,
+        "plafond_a_dB": -2.714698412485508,
+        "plafond_verschil_dB": -0.0703293020102227,
+        "venstervloer_b_hz": 640.99378,
+        "venstervloer_a_hz": 640.99378,
+        "venstervloer_regel": "fs"
+      },
+      {
+        "casus": "casus 2",
+        "weg": "tweeter",
+        "R_e_b_ohm": 4.0999999423275755,
+        "R_e_a_ohm": 4.178639081576498,
+        "Q_ms_b": 1.6054177281733644,
+        "Q_ms_a": 1.615885902652992,
+        "Q_ms_verschil_pct": 0.6520530012794981,
+        "xV_b": 0.017566966942815725,
+        "xV_a": 0.017681512878000127,
+        "plafond_b_dB": -3.4133103264532445,
+        "plafond_a_dB": -3.4697630789613925,
+        "plafond_verschil_dB": -0.05645275250814796,
+        "venstervloer_b_hz": 2820.9252553600086,
+        "venstervloer_a_hz": 2820.9252553600086,
+        "venstervloer_regel": "drive-stated"
+      }
+    ]
+  }
+}

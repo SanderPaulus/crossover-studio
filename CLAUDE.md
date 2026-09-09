@@ -48,6 +48,14 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná B-1 (09-09-2026) gemeten op 461 s — 166 bestanden (165 geslaagd, 1 overgeslagen), 2004 tests
+    (2001 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 BESTAND
+    (`ingest/motionalModel.test.ts`, 20 claims) en +22 tests, en die twee getallen sluiten exact: die
+    twintig, +1 in `goldenCasus2` (het B-1-blok over de gehouden lekterm) en +1 in
+    `goldenClassification` (de engine-toets op het nieuwe V15-blok `_re_fit_parameters`). Het corpus is
+    niet geregenereerd, dus geen enkele `it.each` over het levende corpus beweegt. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 461 tegen I-3's 457 s is dezelfde laag op
+    dezelfde machine.
     **Ná I-3 (09-09-2026) gemeten op 457 s — 165 bestanden (164 geslaagd, 1 overgeslagen), 1982 tests
     (1979 geslaagd, 3 overgeslagen), in één keer groen, gedraaid ná de twee browserruns met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`v2Guided.test.ts`, 38 claims) en +38 tests,
@@ -1245,6 +1253,21 @@
   150–500, 0,4–0,5 in de fitband, 0,00 boven 800 Hz. **De poort is NIET verwaarloosbaar in de
   fitband** — de niveaufit verschuift 1,36 en 0,99 dB, want een 600 mm neerwaartse poort resoneert
   als orgelpijp bij 500–800 Hz. Dat corrigeert de lezing die "without the port ~80 Hz" uitlokt.
+- **Welk impedantiemodel elke gemeten sweep draagt, en of zijn exponent een meting is (B-1, 09-09-2026)**:
+  `npx vite-node scripts/measure-b1-motional-model.ts` — seconden, geen ketenrun en geen tune. Per sweep van
+  élke casus in het boek BEIDE armen van de motionele fit naast elkaar: (a) `R_e + Σ takken` en (b) idem plus
+  de half-machts lekterm `K·(jω)^n`, met R_e, residu, de lekfractie op de bandtop, de exponent, en wat de
+  keuze met f en Q van de fundamentele tak doet — plus de grondwaarheid ernaast waar die bestaat (casus 2).
+  Daarnaast twee tabellen: wat er BINNEN de HF-fitband van `z-semi-inductance` zit naast de spoel (de
+  motionele staart — de gecorrigeerde oorzaak van C-2/B1), en de STROOMAFWAARTSE tegenfeitelijke: wat model
+  (a) zou kosten aan Q_ms, x/V, M-C-plafond en vensteraandrijfvloer, gemeten door de R_e van elke arm als
+  lezing in te voeren. Schrijft `test-fixtures/casus1_b1_modelkeuze.json`; `motionalModel.test.ts` reproduceert
+  hem uit een verse meting. **Gemeten 09-09-2026: de lekterm wordt op alle elf de sweeps GEHOUDEN — casus 2
+  beslecht dat (lek-arm 6,185/5,400/4,100 tegen een grondwaarheid van 6,2/5,4/4,1; kale arm 0,08–0,23 Ω
+  ernaast, tegen een klasse van 0,03 Ω) — en de EXPONENT wordt alleen op casus 2's twee gesloten wegen
+  gepubliceerd, waar hij exact is; op de vented weg en op alle drie de casus-1-wegen verschuift hij 8,9–34,4 %
+  over de vergelijkingsbanden en onthoudt de fit zich. De stroomafwaartse prijs van model (a) is hoogstens
+  0,115 dB op een M-C-plafond en 0,1 Hz op een vensteraandrijfvloer.**
 - **Is de A5d.6-inversie de inverse van de M-D-metriek? (E-4, 07-09-2026)**:
   `npx vite-node scripts/measure-e4-inversion.ts [SLEUTEL ...]` — seconden, geen ketenrun en geen
   tune. Per bevroren netlist: de totale seriespoel van de laagste weg, de padweerstand die de
@@ -2848,6 +2871,49 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   I-2 als zodanig gelabeld (`live preview, not a file: …`) en verder niet aangeraakt: hem intrekken
   verandert het gedrag van élk project met een nabij veld en raakt `sourceMeta`, `dataFloorOf` en de
   grafieken — eigen sessie, mét de toggle- en byte-regressies ernaast.
+
+### B-1-guards (welk impedantiemodel een sweep draagt, en wanneer zijn exponent een meting is)
+- `src/lib/engine2/ingest/motionalFit.ts` — **de half-machts lekterm `K·(jω)^n` wordt sinds B-1 GETOETST in
+  plaats van aangenomen.** Beide modellen worden op élke sweep gefit en beide staan in het resultaat
+  (`arms`, `residualRatio`, `modelReason`); de term wordt overal GEHOUDEN, en casus 2 is waarom — haar
+  lek-arm levert de model-R_e terug en de kale arm zit er 0,08–0,23 Ω naast tegen een klasse van 0,03 Ω.
+  **Er is met opzet GEEN modelkiezer:** hij is gebouwd, gemeten en weer weggehaald omdat de lekterm een
+  SPONS is (hij absorbeert wat de takken niet verklaren, en fit op een sweep met één ongeseede mode een
+  spoel van 0,10 % van |Z| op 8,95 %, 93× te groot, met een residuverhouding van 1,434 die dat als verdiend
+  leest). Termgrootte en residu zijn dus bewijs van ontbrekende structuur en niet van een spoel — een schakelaar met
+  één bereikbaar antwoord is erger dan geen schakelaar (V23), en dit is de meting die dat vaststelt.
+- **De EXPONENT is alleen een meting als de fitband hem niet verzet.** `coefficientK` en `exponentN` zijn
+  `null` — nooit nul (F0) — tenzij de spreiding van `n` over de vergelijkingsbanden binnen dezelfde limiet
+  valt die deze fit al voor R_e publiceert (`RE_FIT_MAX_BAND_SENSITIVITY_FRACTION`). Geen nieuwe constante en
+  geen extra solve: die refits liepen al voor de bandgevoeligheid van R_e. **De grondwaarheid geeft de toets
+  gelijk:** casus 2's twee gesloten wegen bewegen 0,0 % en lezen exact, de vented weg beweegt 8,9 % en leest
+  15 % ernaast, casus 1 beweegt 12,6–34,4 % op alle drie de wegen. **Dat is C-2/B2 gerepareerd** — de rij
+  staat sindsdien onder `onthoudingen` met het getal er nog in, en met een gedateerde errata-regel eronder.
+  `z-re` ging 1.1 → 1.2: de vorm groeide en de exponent kan zich onthouden, maar geen enkel getal bewoog.
+- `src/lib/engine2/ingest/motionalModel.test.ts` — 20 claims, en het PAAR draagt het bestand: een schone
+  spoelsweep identificeert de exponent en leest 0,7, en dezelfde sweep met ÉÉN mode erbij (2 Ω op een 6 Ω
+  R_e, dus onder de 1,6·R_e-classificatiedrempel, dus ongeseed) onthoudt zich. Zonder dat paar zijn "de
+  exponent wordt gepubliceerd waar hij klopt" en "de toets vuurt nooit" hetzelfde groen. Verder: de spons
+  als meting, de lek-arm als LAGERE R_e op élke sweep van het boek (de lekterm draagt positieve
+  weerstand, dus de kale arm is een bovengrens en het verschil is een grootheid), de geneste
+  residuverhouding ≥ 1, casus 2's grondwaarheid beide kanten op (de lek-arm exact, de kale arm 8,19 % naast
+  Q_ms op de tweeter), A5e.4 op de keuze, en de reproductie van `casus1_b1_modelkeuze.json`.
+- `src/lib/engine2/goldenCasus2.test.ts` — VIJF semi-inductantierijen in plaats van zes, met de onthouding,
+  het bewaarde getal (`exponent_op_primaire_band` 0,5947) en de errata-regel ernaast; plus een blok dat
+  vastlegt dat de lekterm op élke weg gehouden is en waarom (lek-arm binnen de ohm-klasse, kale arm erbuiten).
+- `src/lib/engine2/goldenClassification.test.ts` — het nieuwe V15-blok `afgeleide_parameters._re_fit_parameters`
+  wordt tegen de engine gehouden (V19: een parameterblok dat niemand toetst is decoratie): model, primaire
+  band als multiple van het fundamenteel, de vergelijkingsbanden, en dat casus 1 zich op alle drie de wegen
+  onthoudt — wat de reden is dat `semi_inductantie_n` daar die van de HF-fit is en blijft.
+- `src/lib/engine2/versionAndCapability.test.ts` — de z-re-versie wordt sindsdien uit de REGISTRY gelezen in
+  plaats van uit een met de hand bijgehouden kopie. Die stond bij B-1 op 1.1 terwijl de tabel al 1.2 zei;
+  een pin op "de versie die de app nu draagt" hoort die versie niet zelf over te typen.
+- **De VOLLE RUN is bij B-1 niet gedraaid**, met de I-1/I-3/E-2-afweging: geen engine-, poort-, budget-,
+  venster- of corpuswijziging, model (b) is byte-identiek aan wat er vóór B-1 draaide, en de twee
+  byte-baselines die dat bewaken (`f4cRegression`, `workerRouteRegression`) draaien in de snelle laag en
+  reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
+  `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
+  de reden (de V49-precedent).
 
 ### I-3-guards (guided is op de v2-route een wizard; alleen UI)
 - `src/lib/v2Guided.ts` + `v2Guided.test.ts` (36 claims, nieuw) — **de I-1-inventaris als ROUTE.** Het

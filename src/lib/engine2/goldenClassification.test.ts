@@ -53,6 +53,8 @@ import {
 } from './casus1.fixture.ts';
 import { buildReport } from './report.ts';
 import { ctcKey } from './metrics/types.ts';
+import { ESTIMATOR_VERSIONS } from './version.ts';
+import { EXTRACTOR_RE } from './ingest/impedance.ts';
 
 const LIB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(LIB, '..');
@@ -85,6 +87,9 @@ const DEPENDENCY_OF_CLASS: Readonly<Record<string, string>> = {
  */
 const CLASSED_PATHS: readonly string[] = [
   'afgeleide_parameters._re_direct_parameters',
+  /* B-1 — WHICH impedance model the motional fit ran on. Until B-1 there was
+   * one model and the file did not have to say; there are two now. */
+  'afgeleide_parameters._re_fit_parameters',
   'afgeleide_parameters._spl_scan_parameters',
   'afgeleide_parameters._semi_inductantie_parameters',
   /* V49 — the excursion inputs M-C v2.0's class-A values stand on. */
@@ -343,6 +348,37 @@ describe('F4a — the recorded parameters are the ones the engine used (V15)', (
       // the clipping is the measurement, not a tidy-up afterwards.
       expect(d.breakups!.bandHz[0]).toBeCloseTo(d.onAxis!.bandHz[0], 6);
       expect(d.breakups!.bandHz[1]).toBeCloseTo(d.onAxis!.bandHz[1], 6);
+    }
+  });
+
+  it('B-1: the motional fit ran the model the file records, on the bands it records', () => {
+    /* V19 — a parameter block nothing holds against the engine is decoration.
+     * This one names two models, says which one produced every R_e below, and
+     * names the bands the choice was measured on; all four are checkable. */
+    const fitBlock = at('afgeleide_parameters._re_fit_parameters');
+    expect(fitBlock.schatter).toBe(`${EXTRACTOR_RE}@${ESTIMATOR_VERSIONS[EXTRACTOR_RE]}`);
+    expect(fitBlock.beide_gefit).toBe(true);
+    for (const name of ['woofer', 'mid', 'tweeter']) {
+      const f = driver(name).re!.fit!;
+      expect(f.model, `${name}: the model the block records`).toBe('second-order-plus-leak');
+      /* Both arms present, so "model (b) was chosen" is a comparison and not a
+       * label. */
+      expect(f.arms.secondOrder.branches.length).toBeGreaterThan(0);
+      expect(f.arms.plusLeak.branches.length).toBeGreaterThan(0);
+      /* The primary band top IS the recorded multiple of the fundamental. The
+       * multiple is a NUMBER in the block and not a number inside a sentence:
+       * a prose edit must not be able to change what this asserts. */
+      const multiple = fitBlock.primaire_band_multiple as number;
+      expect(typeof multiple).toBe('number');
+      expect(f.bandHz[1]).toBeCloseTo(driver(name).impedance!.fundamentalHz! * multiple, 6);
+      /* The comparison bands the block names are the ones the fit reports. */
+      expect(f.bandSensitivitySamples.map((x) => x.multiple)).toEqual(
+        fitBlock.vergelijkingsbanden as number[],
+      );
+      /* And the exponent is withheld on this casus, which is what the block
+       * says and why `semi_inductantie_n` below is the HF fit's. */
+      expect(f.exponent.identified, `${name}: exponent identified?`).toBe(false);
+      expect(f.exponentN).toBeNull();
     }
   });
 

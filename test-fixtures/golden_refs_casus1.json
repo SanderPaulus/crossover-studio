@@ -65,12 +65,31 @@
  "afgeleide_parameters": {
   "_re_direct_parameters": {
    "_": "V15-PROCESREGEL op de DIRECTE aflezing (Re_naief bij de woofer, Re_direct bij mid en tweeter). Dat getal is geen fit maar een venstermiddeling, en het venster stond tot F4a alleen in proza - bij de mid stond het er zelfs helemaal niet. Een middeling zonder haar venster is niet reproduceerbaar en dus geen referentie.",
-   "schatter": "z-re@1.1",
+   "schatter": "z-re@1.2",
    "grootheid": "mediaan van Re(Z) over de LAAGSTE fractie van de gemeten punten",
    "fractie_van_de_punten": 0.025,
    "waarom_een_fractie": "een fractie van het puntental en geen frequentie: een frequentie zou een P6-overtreding zijn, en hoeveel punten je hoort te middelen is een eigenschap van de sweep en niet van de driver",
    "middeling": "mediaan en niet gemiddelde - een enkele bin netbrom onderin een impedantiesweep is gewoon en mag de schatting niet meetrekken",
    "raster": "de punten van het .lim-bestand zelf; er wordt niet geherbemonsterd",
+   "klasse": "A",
+   "afhankelijkheid": "meting"
+  },
+  "_re_fit_parameters": {
+   "_": "V15-PROCESREGEL op de MOTIONELE FIT (A5c.1 / V8d), toegevoegd bij B-1 (09-09-2026). De R_e van elke driver hieronder is de DC-term van een model, en tot B-1 stond nergens WELK model. Sinds z-re 1.2 zijn het er twee en wordt er per sweep gemeten welke; dit blok legt de VRAAG vast; het antwoord per sweep staat in test-fixtures/casus1_b1_modelkeuze.json, geschreven door scripts/measure-b1-motional-model.ts en gereproduceerd door src/lib/engine2/ingest/motionalModel.test.ts.",
+   "schatter": "z-re@1.2",
+   "model_a": "Z = R_e + Som_k R_k / (1 + j*Q_k*(f/f_k - f_k/f))",
+   "model_b": "model (a) plus de half-machts LEKTERM K*(j*omega)^n - het verliesdeel van de spreekspoel",
+   "beide_gefit": true,
+   "gekozen_model": "model (b), op elke sweep van dit casusboek",
+   "waarom_altijd_b": "GEMETEN en niet aangenomen, op casus 2 - de enige casus met een grondwaarheid voor R_e. Daar levert de lek-arm de model-R_e terug (6,185 / 5,400 / 4,100 tegen 6,2 / 5,4 / 4,1) en zit de kale arm er 0,08-0,23 ohm naast, een orde boven de 0,03 ohm-klasse. Een regel die de term ooit laat vallen zou dus fout zijn; de kale arm staat er als TEGENFEITELIJKE en niet als alternatief.",
+   "waarom_geen_keuze_uit_de_sweep": "Twee criteria zijn geprobeerd en allebei gemeten fout: de lekterm ABSORBEERT wat de takken niet verklaren. Op een synthetische sweep met een spoel van 0,10 % van |Z| op de bandtop en een resonantie ONDER de classificatiedrempel fit hij de term op 8,95 % - 93x te groot - en koopt hij een residuverhouding van 1,434; termgrootte en residu zijn dus bewijs van ONTBREKENDE STRUCTUUR en niet van een spoel.",
+   "exponent_is_geen_meting_tenzij": "De exponent en K worden alleen gepubliceerd als zij niet van de fitband afhangen: dezelfde vergelijkingsbanden waarop deze fit de bandgevoeligheid van R_e meet, tegen dezelfde limiet. Op casus 1 haalt geen enkele weg die toets (spreiding 25,5 / 34,4 / 12,6 % voor woofer / mid / tweeter tegen 6 %), dus `semi_inductantie_n` hieronder is en blijft die van de HF-fit (`z-semi-inductance`) en nooit die van de motionele fit.",
+   "primaire_band_multiple": 3,
+   "primaire_band": "primaire_band_multiple x de fundamentele resonantie van de driver",
+   "vergelijkingsbanden": [
+    2,
+    4
+   ],
    "klasse": "A",
    "afhankelijkheid": "meting"
   },

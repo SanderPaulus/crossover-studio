@@ -37,7 +37,13 @@
     "fijnstructuur_hz": 500
    },
    "orde_per_overname": 4,
-   "doelcurve": "{\"type\":\"bass-plateau\",\"plateauDepthDb\":2,\"stepHz\":547.6190476190476}"
+   "doelcurve": "{\"type\":\"bass-plateau\",\"plateauDepthDb\":2,\"stepHz\":547.6190476190476}",
+   "motioneel_model": "z-re 1.2: Z = R_e + K·(jω)^n + Σ takken. Beide modellen (mét en zónder de half-machts lekterm) worden op elke sweep gefit en beide staan in het driverblok; de lekterm wordt ALTIJD gehouden, en deze casus is waarom — haar lek-arm levert de model-R_e terug en de kale arm zit er 0,08–0,23 Ω naast, tegen een tolerantieklasse van 0,03 Ω. De EXPONENT wordt alleen gepubliceerd waar zij niet van de fitband afhangt (dezelfde limiet die deze fit voor R_e publiceert).",
+   "motioneel_model_primaire_band": 3,
+   "motioneel_model_vergelijkingsbanden": [
+    2,
+    4
+   ]
   },
   "extractie_tegen_grondwaarheid": {
    "klasse": "A",
@@ -132,19 +138,6 @@
      "eenheid": "—",
      "klasse": "exponent_pct",
      "verschil": 12.63,
-     "toegestaan": 5,
-     "binnen": false
-    },
-    {
-     "grootheid": "semi-inductantie n (motionele fit)",
-     "weg": "woofer",
-     "soort": "acceptatie",
-     "grondwaarheid": 0.7,
-     "extractie": 0.594660298,
-     "schatter": "z-re motional fit",
-     "eenheid": "—",
-     "klasse": "exponent_pct",
-     "verschil": -15.05,
      "toegestaan": 5,
      "binnen": false
     },
@@ -617,16 +610,15 @@
      "binnen": true
     }
    ],
-   "totaal": 44,
-   "acceptatierijen": 40,
+   "totaal": 43,
+   "acceptatierijen": 39,
    "controlerijen": 4,
    "binnen_tolerantie": 37,
-   "buiten_tolerantie": 7,
+   "buiten_tolerantie": 6,
    "buiten": [
     "CONTROLE — R_e (directe aflezing) (woofer, z-re direct low-frequency median): 6.46111506 tegen 6.2 Ω, 0.2611 tegen 0.03 toegestaan",
     "CONTROLE — f_b (√(f_L·f_H)-controle) (woofer, z-resonance √ check): 35.7825028 tegen 38 Hz, -5.836 tegen 2 toegestaan",
     "ACCEPTATIE — semi-inductantie n (HF-fit) (woofer, z-semi-inductance): 0.788382091 tegen 0.7 —, 12.63 tegen 5 toegestaan",
-    "ACCEPTATIE — semi-inductantie n (motionele fit) (woofer, z-re motional fit): 0.594660298 tegen 0.7 —, -15.05 tegen 5 toegestaan",
     "ACCEPTATIE — x/V op de resonantie (woofer, drive-excursion route 1 (electromechanical)): 0.438634967 tegen 0.307470932 mm/V, 42.66 tegen 7 toegestaan",
     "ACCEPTATIE — semi-inductantie n (HF-fit) (mid, z-semi-inductance): 0.72349711 tegen 0.66 —, 9.621 tegen 5 toegestaan",
     "ACCEPTATIE — semi-inductantie n (HF-fit) (tweeter, z-semi-inductance): 0.89402725 tegen 0.62 —, 44.2 tegen 5 toegestaan"
@@ -640,17 +632,7 @@
      "klasse": "exponent_pct",
      "toegestaan": 5,
      "schatter": "z-semi-inductance",
-     "reden": "C-2/B1 — TWEE SCHATTERS VOOR EEN GROOTHEID, EN DE GRONDWAARHEID ZEGT WELKE. `z-semi-inductance` fit log|Z| tegen log f boven de resonantie; daar is |Z| = R_e + K·(jω)^n, en R_e wordt niet afgetrokken, dus de fit leest de kromming van de SOM en komt systematisch te hoog uit. De motionele fit (`z-re`, die R_e wél als vrije parameter draagt) leest n op de twee gesloten wegen tot in het zevende cijfer goed. Niet gerepareerd: welke van de twee de rapportagewaarde hoort te zijn is een besluit over de schatter en niet over deze casus."
-    },
-    {
-     "sleutel": "semi-inductantie n (motionele fit) · woofer",
-     "grondwaarheid": 0.7,
-     "extractie": 0.594660298,
-     "verschil": -15.05,
-     "klasse": "exponent_pct",
-     "toegestaan": 5,
-     "schatter": "z-re motional fit",
-     "reden": "C-2/B2 — DE SPIEGEL, EN EEN IDENTIFICEERBAARHEIDSGRENS. De motionele fit leest n exact op de mid en de tweeter en 15 % te laag op de woofer, en het verschil is de FITBAND: die loopt hier van 5 tot 177 Hz, waar de spoelbijdrage aan |Z| enkele honderdsten van een ohm is. De parameter is daar niet identificeerbaar, en de fit zegt dat niet — hij levert een getal. Niet gerepareerd: een fit die zijn eigen identificeerbaarheid rapporteert is een schatterwijziging."
+     "reden": "C-2/B1, HERZIEN BIJ B-1 (09-09-2026) — TWEE SCHATTERS VOOR EEN GROOTHEID, EN DE GRONDWAARHEID ZEGT WELKE. De afwijking staat; de VERKLARING die C-2 erbij schreef is gemeten en onjuist gebleken. Zij zei dat `z-semi-inductance` R_e niet aftrekt — de bron doet dat wel (`Math.hypot(re - reOhm, im)`). Wat er WEL in |Z − R_e| zit binnen zijn fitband is de MOTIONELE STAART, en die is er niet klein: gemeten op deze weg 59 % van de spoelbijdrage aan de onderkant van de band en 0,2 % aan de bovenkant (scripts/measure-b1-motional-model.ts). Een bijdrage die met de frequentie sneller krimpt dan de spoel groeit kantelt de log-log-helling omhoog, en dat is de richting en de orde van alle drie de afwijkingen. De motionele fit, die de takken expliciet meemodelleert, leest n op de twee gesloten wegen tot in het zevende cijfer goed. Niet gerepareerd: welke van de twee de rapportagewaarde hoort te zijn is een besluit over de schatter en niet over deze casus, en de exponent bereikt geen poort, grens, venster of metriek — nagegaan bij B-1, twee lezers en beide zijn rapportage."
     },
     {
      "sleutel": "x/V op de resonantie · woofer",
@@ -670,7 +652,7 @@
      "klasse": "exponent_pct",
      "toegestaan": 5,
      "schatter": "z-semi-inductance",
-     "reden": "C-2/B1 — dezelfde schatter en dezelfde richting als op de woofer: `z-semi-inductance` trekt R_e niet af vóór hij log|Z| tegen log f fit, dus hij leest de kromming van de SOM en komt te hoog uit. De motionele fit leest n op deze weg tot in het zevende cijfer goed."
+     "reden": "C-2/B1, HERZIEN BIJ B-1 — dezelfde schatter en dezelfde richting als op de woofer, en dezelfde gecorrigeerde oorzaak: de motionele staart binnen de HF-fitband, hier 13 % van de spoelbijdrage aan de onderkant. De motionele fit leest n op deze weg tot in het zevende cijfer goed."
     },
     {
      "sleutel": "semi-inductantie n (HF-fit) · tweeter",
@@ -680,12 +662,31 @@
      "klasse": "exponent_pct",
      "toegestaan": 5,
      "schatter": "z-semi-inductance",
-     "reden": "C-2/B1 — dezelfde schatter, dezelfde richting, en dit is het uiterste van de drie: +44 %. Hoe zwaarder R_e weegt tegen de spoelbijdrage in de fitband, hoe meer de niet-afgetrokken R_e de exponent optilt — en op een 4 Ω-tweeter met 2,2 Ω spoel op 10 kHz weegt hij het zwaarst van het stel."
+     "reden": "C-2/B1, HERZIEN BIJ B-1 — dezelfde schatter, dezelfde richting, en dit is het uiterste van de drie: +44 %. Het is ook de weg waar de gecorrigeerde oorzaak het scherpst te zien is: de fitband begint een decade boven f_s = 1500 Hz, dus 15–20 kHz, en de motionele staart is dáár nog 27 % van de spoelbijdrage aan de onderkant en 17 % aan de bovenkant — waar zij op de andere twee wegen bovenaan onder de procent is. Eén decade is voor een Q = 1,6 tak niet genoeg."
     }
    ],
    "controle_afwijkingen": [
     "R_e (directe aflezing) · woofer: 0.2611 — met opzet een andere vraag, zie de rij zelf",
     "f_b (√(f_L·f_H)-controle) · woofer: -5.836 — met opzet een andere vraag, zie de rij zelf"
+   ],
+   "onthoudingen": [
+    {
+     "grootheid": "semi-inductantie n (motionele fit)",
+     "weg": "woofer",
+     "grondwaarheid": 0.7,
+     "schatter": "z-re motional fit",
+     "eenheid": "—",
+     "reden": "the exponent moves ±0.0528 (8.88 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.7003, 4x 0.6263, primary 0.5947."
+    }
+   ],
+   "onthoudingen_toelichting": "Grootheden waarvan het model het antwoord kent en waarop de schatter zich ONTHOUDT. Geen oordeel en geen afwijking — er valt niets te vergelijken. `reden` is de zin die de schatter zelf meegeeft, niet een samenvatting ervan.",
+   "errata": [
+    {
+     "datum": "2026-09-09",
+     "sleutel": "semi-inductantie n (motionele fit) · woofer",
+     "was": "C-2 (08-09-2026) noteerde deze rij als ACCEPTATIE-bevinding B2: grondwaarheid 0,7, extractie 0,594660298, −15,05 % tegen 5 % toegestaan, met als reden dat de fitband (5–177 Hz) de spoelbijdrage tot \"enkele honderdsten van een ohm\" beperkt en de parameter daar niet identificeerbaar is.",
+     "is": "B-1 (09-09-2026) heeft beide helften nagemeten. De REDEN was onjuist: de spoelbijdrage is op de bandtop 10,3 % van |Z| (0,83 Ω), niet honderdsten — de term is groot genoeg om gezien te worden en wordt ook gekozen. Wat er wél gebeurt is dat een REFLEXKAST een gekoppeld vierde-orde systeem is en dit model een som van onafhankelijke tweede-orde takken: het residu op deze weg is 2,455 % tegen 0,000 % op de twee gesloten wegen, en de exponent absorbeert het verschil. De CONCLUSIE stond en is nu gewapend: de exponent is op deze weg geen meting, en de fit zegt dat sinds z-re 1.2 zelf — zij verschuift 8,9 % over de vergelijkingsbanden tegen een limiet van 6 %, dus zij wordt niet meer gepubliceerd. De rij staat daarom onder `onthoudingen` en niet meer onder `bevindingen`. Het GETAL is niet bewogen: 0,5947 op de primaire band, te lezen in `motionele_fit.exponent_op_primaire_band`."
+    }
    ]
   },
   "woofer": {
@@ -709,8 +710,8 @@
    "gesloten": null,
    "motionele_fit": {
     "R_e": 6.185226012506608,
-    "n": 0.5946602982245566,
-    "k": 0.011635480960816184,
+    "n": null,
+    "k": null,
     "band_hz": [
      5,
      177.25469999999999
@@ -727,7 +728,30 @@
       "fHz": 59.242924262944705,
       "q": 6.811555757443069
      }
-    ]
+    ],
+    "model": "second-order-plus-leak",
+    "model_reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 1.321 (3.24 % against 2.45 %) and moves R_e to 6.416 Ω from 6.185 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+    "residu_verhouding": 1.3207252107240093,
+    "arm_tweede_orde": {
+     "R_e": 6.416362694116244,
+     "residu": 0.03242370174581995
+    },
+    "exponent_geidentificeerd": false,
+    "exponent_op_primaire_band": 0.5946602982245566,
+    "exponent_bandspreiding_fractie": 0.08878467084087573,
+    "exponent_banden": [
+     {
+      "multiple": 2,
+      "topHz": 118.1698,
+      "exponentN": 0.7002537359045651
+     },
+     {
+      "multiple": 4,
+      "topHz": 236.3396,
+      "exponentN": 0.6262667996186271
+     }
+    ],
+    "exponent_reden": "the exponent moves ±0.0528 (8.88 %) across the comparison bands against a limit of 6.00 % — it is a NUISANCE parameter carrying whatever the branches leave behind, not a measurement of the voice coil. Values on the bands fitted: 2x 0.7003, 4x 0.6263, primary 0.5947."
    },
    "semi_inductantie_n": 0.7883820912500713,
    "semi_inductantie_band_hz": [
@@ -817,7 +841,30 @@
       "fHz": 459.7362144324885,
       "q": 4.243718703829299
      }
-    ]
+    ],
+    "model": "second-order-plus-leak",
+    "model_reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 111164.303 (5.56 % against 0.00 %) and moves R_e to 5.573 Ω from 5.400 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+    "residu_verhouding": 111164.30284015916,
+    "arm_tweede_orde": {
+     "R_e": 5.572601467701655,
+     "residu": 0.055566437602969816
+    },
+    "exponent_geidentificeerd": true,
+    "exponent_op_primaire_band": 0.660000170874236,
+    "exponent_bandspreiding_fractie": 1.5100973780882247e-7,
+    "exponent_banden": [
+     {
+      "multiple": 2,
+      "topHz": 915.7054,
+      "exponentN": 0.660000318814576
+     },
+     {
+      "multiple": 4,
+      "topHz": 1831.4108,
+      "exponentN": 0.6600001194816705
+     }
+    ],
+    "exponent_reden": "the exponent moves ±0.0000 (0.00 %) across the comparison bands, inside the 6.00 % this fit allows R_e, so it is a property of the sweep rather than of the band it was asked on"
    },
    "semi_inductantie_n": 0.7234971098273724,
    "semi_inductantie_band_hz": [
@@ -907,7 +954,30 @@
       "fHz": 1500.000024539476,
       "q": 1.6000001580276368
      }
-    ]
+    ],
+    "model": "second-order-plus-leak",
+    "model_reden": "second order plus the half-power leak term. Dropping it multiplies the relative RMS residual by 73072.050 (4.04 % against 0.00 %) and moves R_e to 4.179 Ω from 4.100 Ω. Both arms are reported; the bare one is the counterfactual, not an alternative — see the model note at the top of motionalFit.ts.",
+    "residu_verhouding": 73072.04973561985,
+    "arm_tweede_orde": {
+     "R_e": 4.178639081576498,
+     "residu": 0.040374719891443464
+    },
+    "exponent_geidentificeerd": true,
+    "exponent_op_primaire_band": 0.6200000322078405,
+    "exponent_bandspreiding_fractie": 4.159949801867693e-7,
+    "exponent_banden": [
+     {
+      "multiple": 2,
+      "topHz": 2988.6662,
+      "exponentN": 0.6200002170753756
+     },
+     {
+      "multiple": 4,
+      "topHz": 5977.3324,
+      "exponentN": 0.6199997012415733
+     }
+    ],
+    "exponent_reden": "the exponent moves ±0.0000 (0.00 %) across the comparison bands, inside the 6.00 % this fit allows R_e, so it is a property of the sweep rather than of the band it was asked on"
    },
    "semi_inductantie_n": 0.8940272499346666,
    "semi_inductantie_band_hz": [

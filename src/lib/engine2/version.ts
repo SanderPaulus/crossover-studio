@@ -66,8 +66,18 @@ export const ESTIMATOR_VERSIONS = {
    *      contamination warning is computed from the fitted resonance in ohms
    *      instead of from an octave count (V8d). MINOR: the numbers move, the
    *      shape of the result grew but nothing was removed from it.
+   * 1.2: B-1 — the half-power leak term K·(jω)^n is no longer ASSUMED. Both
+   *      models are fitted on every sweep and both are reported; the term is
+   *      kept everywhere, and casus 2's ground truth is what establishes that
+   *      rather than habit. The EXPONENT is published only where it does not
+   *      depend on the fit band, judged against the limit this fit already
+   *      publishes for R_e. MINOR: no number moved — the arm that is published
+   *      is the one that ran before. What grew is the shape (`model`, `arms`,
+   *      `residualRatio`, `modelReason`, `exponent`), and
+   *      `coefficientK`/`exponentN` became nullable, because an exponent the
+   *      sweep cannot identify must be an abstention and not a coin toss.
    */
-  'z-re': '1.1',
+  'z-re': '1.2',
   /**
    * Resonance classification by phase zero crossing — A5c.2/3 (V8b).
    *

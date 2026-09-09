@@ -36,6 +36,10 @@ import {
   type GoldenRefs2,
 } from '../src/lib/engine2/casus2.fixture.ts';
 import type { EngineV2Report } from '../src/lib/engine2/report.ts';
+import {
+  RE_FIT_BAND_MULTIPLE_OF_FUNDAMENTAL,
+  RE_FIT_SENSITIVITY_BAND_MULTIPLES,
+} from '../src/lib/engine2/constants.ts';
 
 const goldenOnDisk = loadGolden2();
 
@@ -83,6 +87,43 @@ const ALLOWED: Record<ToleranceClass, number> = {
   dB: T.dB,
 };
 const ABSOLUTE: ReadonlySet<ToleranceClass> = new Set<ToleranceClass>(['ohm', 'dB']);
+
+/**
+ * B-1 — AN EXTRACTOR THAT DECLINES TO ANSWER.
+ *
+ * A row whose ground truth exists but whose extractor abstained is neither
+ * inside nor outside a tolerance: there is nothing to compare. Dropping it
+ * would make the table shorter and quieter, which is the one thing this file
+ * must not do — the abstention IS the result, and it has to be as visible as
+ * a deviation was. So it gets its own list, with the reason the estimator
+ * gave, in the estimator's own words.
+ */
+interface Abstention {
+  grootheid: string;
+  weg: string;
+  grondwaarheid: number;
+  schatter: string;
+  eenheid: string;
+  reden: string;
+}
+const onthoudingen: Abstention[] = [];
+function abstain(
+  grootheid: string,
+  weg: string,
+  grondwaarheid: number,
+  schatter: string,
+  eenheid: string,
+  reden: string,
+): void {
+  onthoudingen.push({
+    grootheid,
+    weg,
+    grondwaarheid: Number(grondwaarheid.toPrecision(9)),
+    schatter,
+    eenheid,
+    reden,
+  });
+}
 
 const rows: Row[] = [];
 function compare(
@@ -185,7 +226,14 @@ for (const d of report.ingest.drivers) {
     compare('semi-inductantie n (HF-fit)', d.driver, gt.semi_inductantie_n as number, d.semiInductance.n, 'z-semi-inductance', '—', 'exponent_pct');
   }
   if (fit) {
-    compare('semi-inductantie n (motionele fit)', d.driver, gt.semi_inductantie_n as number, fit.exponentN, 'z-re motional fit', '—', 'exponent_pct');
+    /* B-1 — the fit publishes this exponent only where the sweep can identify
+     * one. Where it cannot, the row is an ABSTENTION and not a deviation: the
+     * estimator declined, and that is the answer. */
+    if (fit.exponentN !== null) {
+      compare('semi-inductantie n (motionele fit)', d.driver, gt.semi_inductantie_n as number, fit.exponentN, 'z-re motional fit', '—', 'exponent_pct');
+    } else {
+      abstain('semi-inductantie n (motionele fit)', d.driver, gt.semi_inductantie_n as number, 'z-re motional fit', '—', fit.exponent.reason);
+    }
   }
 
   /* ---- breakups: each stated resonance against its nearest peak -------- */
@@ -224,7 +272,29 @@ for (const d of report.ingest.drivers) {
     reflex: imp?.reflex ?? null,
     gesloten: imp?.sealed ?? null,
     motionele_fit: fit
-      ? { R_e: fit.reOhm, n: fit.exponentN, k: fit.coefficientK, band_hz: fit.bandHz, residu: fit.relativeResidual, takken: fit.branches }
+      ? {
+          R_e: fit.reOhm,
+          n: fit.exponentN,
+          k: fit.coefficientK,
+          band_hz: fit.bandHz,
+          residu: fit.relativeResidual,
+          takken: fit.branches,
+          /* B-1 (V15) — the model this fit ran on, and the arm it did not
+           * publish. A reference that does not say which model produced it
+           * cannot be re-measured against a later engine. */
+          model: fit.model,
+          model_reden: fit.modelReason,
+          residu_verhouding: fit.residualRatio,
+          arm_tweede_orde: {
+            R_e: fit.arms.secondOrder.reOhm,
+            residu: fit.arms.secondOrder.relativeResidual,
+          },
+          exponent_geidentificeerd: fit.exponent.identified,
+          exponent_op_primaire_band: fit.exponent.onPrimaryBand,
+          exponent_bandspreiding_fractie: fit.exponent.bandSpreadFraction,
+          exponent_banden: fit.exponent.samples,
+          exponent_reden: fit.exponent.reason,
+        }
       : null,
     semi_inductantie_n: d.semiInductance?.n ?? null,
     semi_inductantie_band_hz: d.semiInductance?.fitBandHz ?? null,
@@ -388,28 +458,61 @@ const key = (r: Row) => `${r.grootheid} · ${r.weg}`;
  * that, perhaps, a repair. Nothing here is corrected. The set is pinned exactly
  * by `goldenCasus2.test.ts`, so it can neither grow nor shrink in silence.
  */
+/**
+ * B-1 — WAT DEZE TABEL VROEGER ZEI, EN WAAROM ZIJ HET NIET MEER ZEGT.
+ *
+ * Een bevinding die verdwijnt omdat zij gerepareerd is, moet net zo zichtbaar
+ * zijn als toen zij er stond: anders leest een latere lezer een tabel die
+ * altijd al klopte. Deze regels worden nooit herschreven en nooit gewist; er
+ * komt er hoogstens één bij.
+ */
+const ERRATA: { datum: string; sleutel: string; was: string; is: string }[] = [
+  {
+    datum: '2026-09-09',
+    sleutel: 'semi-inductantie n (motionele fit) · woofer',
+    was:
+      'C-2 (08-09-2026) noteerde deze rij als ACCEPTATIE-bevinding B2: grondwaarheid 0,7, extractie ' +
+      '0,594660298, −15,05 % tegen 5 % toegestaan, met als reden dat de fitband (5–177 Hz) de ' +
+      'spoelbijdrage tot "enkele honderdsten van een ohm" beperkt en de parameter daar niet ' +
+      'identificeerbaar is.',
+    is:
+      'B-1 (09-09-2026) heeft beide helften nagemeten. De REDEN was onjuist: de spoelbijdrage is op de ' +
+      'bandtop 10,3 % van |Z| (0,83 Ω), niet honderdsten — de term is groot genoeg om gezien te worden ' +
+      'en wordt ook gekozen. Wat er wél gebeurt is dat een REFLEXKAST een gekoppeld vierde-orde systeem ' +
+      'is en dit model een som van onafhankelijke tweede-orde takken: het residu op deze weg is 2,455 % ' +
+      'tegen 0,000 % op de twee gesloten wegen, en de exponent absorbeert het verschil. De CONCLUSIE ' +
+      'stond en is nu gewapend: de exponent is op deze weg geen meting, en de fit zegt dat sinds ' +
+      'z-re 1.2 zelf — zij verschuift 8,9 % over de vergelijkingsbanden tegen een limiet van 6 %, dus ' +
+      'zij wordt niet meer gepubliceerd. De rij staat daarom onder `onthoudingen` en niet meer onder ' +
+      '`bevindingen`. Het GETAL is niet bewogen: 0,5947 op de primaire band, te lezen in ' +
+      '`motionele_fit.exponent_op_primaire_band`.',
+  },
+];
+
 const BEVINDING_REDEN: Record<string, string> = {
   'semi-inductantie n (HF-fit) · woofer':
-    'C-2/B1 — TWEE SCHATTERS VOOR EEN GROOTHEID, EN DE GRONDWAARHEID ZEGT WELKE. `z-semi-inductance` fit ' +
-    'log|Z| tegen log f boven de resonantie; daar is |Z| = R_e + K·(jω)^n, en R_e wordt niet afgetrokken, ' +
-    'dus de fit leest de kromming van de SOM en komt systematisch te hoog uit. De motionele fit ' +
-    '(`z-re`, die R_e wél als vrije parameter draagt) leest n op de twee gesloten wegen tot in het ' +
-    'zevende cijfer goed. Niet gerepareerd: welke van de twee de rapportagewaarde hoort te zijn is een ' +
-    'besluit over de schatter en niet over deze casus.',
+    'C-2/B1, HERZIEN BIJ B-1 (09-09-2026) — TWEE SCHATTERS VOOR EEN GROOTHEID, EN DE GRONDWAARHEID ZEGT ' +
+    'WELKE. De afwijking staat; de VERKLARING die C-2 erbij schreef is gemeten en onjuist gebleken. Zij ' +
+    'zei dat `z-semi-inductance` R_e niet aftrekt — de bron doet dat wel (`Math.hypot(re - reOhm, im)`). ' +
+    'Wat er WEL in |Z − R_e| zit binnen zijn fitband is de MOTIONELE STAART, en die is er niet klein: ' +
+    'gemeten op deze weg 59 % van de spoelbijdrage aan de onderkant van de band en 0,2 % aan de ' +
+    'bovenkant (scripts/measure-b1-motional-model.ts). Een bijdrage die met de frequentie sneller krimpt ' +
+    'dan de spoel groeit kantelt de log-log-helling omhoog, en dat is de richting en de orde van alle ' +
+    'drie de afwijkingen. De motionele fit, die de takken expliciet meemodelleert, leest n op de twee ' +
+    'gesloten wegen tot in het zevende cijfer goed. Niet gerepareerd: welke van de twee de ' +
+    'rapportagewaarde hoort te zijn is een besluit over de schatter en niet over deze casus, en de ' +
+    'exponent bereikt geen poort, grens, venster of metriek — nagegaan bij B-1, twee lezers en beide ' +
+    'zijn rapportage.',
   'semi-inductantie n (HF-fit) · mid':
-    'C-2/B1 — dezelfde schatter en dezelfde richting als op de woofer: `z-semi-inductance` trekt R_e niet af ' +
-    'vóór hij log|Z| tegen log f fit, dus hij leest de kromming van de SOM en komt te hoog uit. De motionele ' +
-    'fit leest n op deze weg tot in het zevende cijfer goed.',
+    'C-2/B1, HERZIEN BIJ B-1 — dezelfde schatter en dezelfde richting als op de woofer, en dezelfde ' +
+    'gecorrigeerde oorzaak: de motionele staart binnen de HF-fitband, hier 13 % van de spoelbijdrage aan ' +
+    'de onderkant. De motionele fit leest n op deze weg tot in het zevende cijfer goed.',
   'semi-inductantie n (HF-fit) · tweeter':
-    'C-2/B1 — dezelfde schatter, dezelfde richting, en dit is het uiterste van de drie: +44 %. Hoe zwaarder ' +
-    'R_e weegt tegen de spoelbijdrage in de fitband, hoe meer de niet-afgetrokken R_e de exponent optilt — ' +
-    'en op een 4 Ω-tweeter met 2,2 Ω spoel op 10 kHz weegt hij het zwaarst van het stel.',
-  'semi-inductantie n (motionele fit) · woofer':
-    'C-2/B2 — DE SPIEGEL, EN EEN IDENTIFICEERBAARHEIDSGRENS. De motionele fit leest n exact op de mid en ' +
-    'de tweeter en 15 % te laag op de woofer, en het verschil is de FITBAND: die loopt hier van 5 tot ' +
-    '177 Hz, waar de spoelbijdrage aan |Z| enkele honderdsten van een ohm is. De parameter is daar niet ' +
-    'identificeerbaar, en de fit zegt dat niet — hij levert een getal. Niet gerepareerd: een fit die ' +
-    'zijn eigen identificeerbaarheid rapporteert is een schatterwijziging.',
+    'C-2/B1, HERZIEN BIJ B-1 — dezelfde schatter, dezelfde richting, en dit is het uiterste van de drie: ' +
+    '+44 %. Het is ook de weg waar de gecorrigeerde oorzaak het scherpst te zien is: de fitband begint ' +
+    'een decade boven f_s = 1500 Hz, dus 15–20 kHz, en de motionele staart is dáár nog 27 % van de ' +
+    'spoelbijdrage aan de onderkant en 17 % aan de bovenkant — waar zij op de andere twee wegen ' +
+    'bovenaan onder de procent is. Eén decade is voor een Q = 1,6 tak niet genoeg.',
   'x/V op de resonantie · woofer':
     'C-2/B3 — DE MAAT VAN EEN BENADERING DIE DE ENGINE ZELF BENOEMT. M-C route 1 leest Small\'s Q_ms op de ' +
     'BOVENSTE piek van het reflexpaar en behandelt een tweegradensysteem als één — de engine schrijft dat ' +
@@ -433,6 +536,20 @@ const out: GoldenRefs2 = {
       poort_ms: truth.poort,
       orde_per_overname: CASUS2_STATED_ORDER,
       doelcurve: JSON.stringify(CASUS2_REPORT_SETTINGS.targetCurve ?? null),
+      /* B-1 — the impedance model every Q, R_e and exponent row below rests
+       * on, and how it was chosen. Named here rather than assumed, because
+       * "the fit" stopped being one model on 09-09-2026. */
+      motioneel_model:
+        'z-re 1.2: Z = R_e + K·(jω)^n + Σ takken. Beide modellen (mét en zónder de half-machts ' +
+        'lekterm) worden op elke sweep gefit en beide staan in het driverblok; de lekterm wordt ' +
+        'ALTIJD gehouden, en deze casus is waarom — haar lek-arm levert de model-R_e terug en de kale ' +
+        'arm zit er 0,08–0,23 Ω naast, tegen een tolerantieklasse van 0,03 Ω. De EXPONENT wordt alleen ' +
+        'gepubliceerd waar zij niet van de fitband afhangt (dezelfde limiet die deze fit voor R_e ' +
+        'publiceert).',
+      /* Read from the constants, never typed: a band multiple written out here
+       * is a second copy that goes stale on the next change (P6/V15). */
+      motioneel_model_primaire_band: RE_FIT_BAND_MULTIPLE_OF_FUNDAMENTAL,
+      motioneel_model_vergelijkingsbanden: [...RE_FIT_SENSITIVITY_BAND_MULTIPLES],
     },
     extractie_tegen_grondwaarheid: {
       klasse: 'A',
@@ -458,6 +575,14 @@ const out: GoldenRefs2 = {
       controle_afwijkingen: buiten
         .filter((r) => r.soort === 'controle')
         .map((r) => `${key(r)}: ${r.verschil} — met opzet een andere vraag, zie de rij zelf`),
+      /* B-1 — where the extractor declined. Not inside a tolerance and not
+       * outside one: there is nothing to compare, and that is the result. */
+      onthoudingen,
+      onthoudingen_toelichting:
+        'Grootheden waarvan het model het antwoord kent en waarop de schatter zich ONTHOUDT. Geen ' +
+        'oordeel en geen afwijking — er valt niets te vergelijken. `reden` is de zin die de schatter ' +
+        'zelf meegeeft, niet een samenvatting ervan.',
+      errata: ERRATA,
     },
     ...perDriver,
   } as unknown as GoldenRefs2['afgeleide_parameters']),
@@ -470,8 +595,12 @@ writeFileSync(GOLDEN2_PATH, `${JSON.stringify(out, null, 1)}\n`);
 console.log(
   `casus 2: ${rows.length} vergelijkingen (${rows.filter((r) => r.soort === 'acceptatie').length} acceptatie, ` +
     `${rows.filter((r) => r.soort === 'controle').length} controle), ${rows.length - buiten.length} binnen tolerantie, ` +
-    `${buitenAcceptatie.length} ACCEPTATIE-bevindingen, ${buiten.length - buitenAcceptatie.length} controle-afwijkingen.`,
+    `${buitenAcceptatie.length} ACCEPTATIE-bevindingen, ${buiten.length - buitenAcceptatie.length} controle-afwijkingen, ` +
+    `${onthoudingen.length} onthouding${onthoudingen.length === 1 ? '' : 'en'}.`,
 );
+for (const o of onthoudingen) {
+  console.log(`ONTHOUDING — ${o.grootheid} (${o.weg}): grondwaarheid ${o.grondwaarheid} ${o.eenheid}; ${o.reden}`);
+}
 console.log('| grootheid | weg | grondwaarheid | extractie | verschil | klasse | binnen |');
 console.log('| --- | --- | --- | --- | --- | --- | --- |');
 for (const r of rows) {

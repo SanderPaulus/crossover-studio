@@ -38,6 +38,10 @@
     20,
     266.4
    ],
+   "Re_fit_model": "second-order-plus-leak",
+   "Re_fit_zonder_lekterm_ohm": 3.3793,
+   "Re_fit_residu_verhouding": 2.1743,
+   "Re_fit_exponent_geidentificeerd": false,
    "Re_toelichting": "A5c.1-hiërarchie: ingevoerde DC-lezing > motionele fit > directe aflezing. Casus 1b voert niets in (casus 1 voert alleen het wooferpaar in, dat hier niet bestaat), dus mid en tweeter lezen de FIT — dezelfde R_e als casus 1 afgeleide_parameters.mid/tweeter, want dezelfde bestanden. fit_kwaliteit_pct is de tolerantieklasse van residu en bandgevoeligheid.",
    "fc": 88.8,
    "Zmax": 44.22,
@@ -110,6 +114,10 @@
     200,
     2772.9
    ],
+   "Re_fit_model": "second-order-plus-leak",
+   "Re_fit_zonder_lekterm_ohm": 5.298,
+   "Re_fit_residu_verhouding": 1.153,
+   "Re_fit_exponent_geidentificeerd": false,
    "Re_toelichting": "A5c.1-hiërarchie: ingevoerde DC-lezing > motionele fit > directe aflezing. Casus 1b voert niets in (casus 1 voert alleen het wooferpaar in, dat hier niet bestaat), dus mid en tweeter lezen de FIT — dezelfde R_e als casus 1 afgeleide_parameters.mid/tweeter, want dezelfde bestanden. fit_kwaliteit_pct is de tolerantieklasse van residu en bandgevoeligheid.",
    "fs": 924.3,
    "Zmax": 16.63,
@@ -715,7 +723,7 @@
     "provenance": "merge-block"
    },
    "gestelde_orde": 4,
-   "gerecordeerd_op_commit": "08f4fb805930b4402ffab35b33be773ae02efb48"
+   "gerecordeerd_op_commit": "8105d7309fdb6bd25cb235b1924f6985a8accf35"
   }
  }
 }
