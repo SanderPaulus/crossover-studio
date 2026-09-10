@@ -48,6 +48,13 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-5 (10-09-2026) gemeten op 452 s — 176 bestanden (175 geslaagd, 1 overgeslagen), 2194 tests
+    (2191 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid met de dev-server en de
+    headless Chrome gestopt.** +2 BESTANDEN (`predesign/statedCrossings.test.ts` 36 claims,
+    `optimizer/statedVerdicts.test.ts` 19) en +55 tests, en die twee getallen zijn HETZELFDE getal:
+    36 + 19 = 55, het corpus is niet geregenereerd, dus geen enkele `it.each` over het levende corpus
+    beweegt en geen bestaand bestand veranderde van telling. GEEN nieuwe referentie: de V43-waarde
+    van 289 s blijft staan.
     **Ná U-4 (10-09-2026) gemeten op 459 s — 174 bestanden (173 geslaagd, 1 overgeslagen), 2139 tests
     (2136 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid
     met de dev-server en de headless Chrome gestopt.** +1 BESTAND
@@ -380,7 +387,18 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 10-09-2026 (U-4): 174 bestanden, 2139 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 10-09-2026 (U-5): 176 bestanden, 2194 tests,
+  1539 s (25 min 39), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
+  browsercontrole (dev-server en headless Chrome gestopt) en ná de snelle laag.** +2 bestanden
+  (`predesign/statedCrossings.test.ts` 36 claims, `optimizer/statedVerdicts.test.ts` 19) en +55
+  tests — hetzelfde getal, want het corpus is niet geregenereerd. **DEZE RUN IS GEDRAAID OMDAT U-5
+  `runCandidate` AANRAAKT**, ook al is elke ingreep daar door `network.stated` bewaakt, en wat hij
+  bewijst is precies dat die bewaking sluit: de byte-reproductie van casus 1 (1527 s) levert de
+  bevroren netlist byte voor byte, de VERWERPINGSRUN (881 s) komt terug als verwerping ZONDER
+  netwerk — de V31-blankering staat dus onaangeroerd voor elke niet-gestelde kandidaat — casus 1b's
+  live ketenrun reproduceert, en beide byte-baselines (`f4cRegression`, `workerRouteRegression`)
+  reproduceren. De wandkloktijd IS de byte-reproductie; al het andere draait ernaast.
+  (De stand ervoor: **GEMETEN 10-09-2026 (U-4): 174 bestanden, 2139 tests,
   1542 s (25 min 42), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
   browsercontrole (dev-server en headless Chrome gestopt) en ná de snelle laag.** +1 bestand
   (`engine2/predesign/statedMaxCrossover.test.ts`, 26 claims) en +26 tests — hetzelfde getal, want
@@ -389,7 +407,7 @@
   byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren, en de golden-suites van
   casus 1, 1b en 2 staan. De enige ingevoerde U-4-waarde op casus 1 is de bovengrens van de
   TWEETER (30 kHz), en de tweeter is van geen enkel paar de onderste weg — dus zij bereikt geen
-  enkel plafond, en dat is gemeten in plaats van beredeneerd.
+  enkel plafond, en dat is gemeten in plaats van beredeneerd.)
   (De stand ervoor: **GEMETEN 09-09-2026 (U-1): 167 bestanden, 2020 tests,
   1525 s (25 min 25), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle
   laag en ná de browsercontrole (dev-server en headless Chrome gestopt).** +1 bestand
@@ -1307,6 +1325,26 @@
   Vite's `?raw`-imports draagt — zonder die declaratie 21 TS2307-fouten in `tsc -b`. **`tsconfig.test.json`
   kent hem sinds U-3 óók**, om precies dezelfde reden één project verder: `demoBundle.test.ts` importeert
   beide demobundels.
+- **Drie GESTELDE kruispunten op casus 1b, getuned en volledig geoordeeld (U-5, 10-09-2026)**:
+  `U5_JOBS=<n> npx vite-node scripts/measure-u5-stated-crossings.ts` — DRIE KETENRUNS (~400 s per
+  stuk, standaard alle drie tegelijk als kindprocessen); `U5_ONLY=<hz>` draait er één en schrijft
+  zijn shard in `test-fixtures/.casus1b-u5-shards/`. Drukt eerst het venster af (mid→tweeter bij
+  orde 4: **1646,9–2304,0 Hz**, vloer `drive-stated`, plafond `breakup` UNCALIBRATED) en per
+  gestelde positie of zij erbinnen valt en wat zij voorbij is; daarna per ketenrun het geleverde
+  netwerk, elk actief poortoordeel, en per overschreden grens wat die grens VRAAGT tegen wat het
+  netwerk LEVERT in dezelfde eenheid. Schrijft `test-fixtures/casus1b_u5_stated.json`. **Dit is de
+  handmatige acceptatie van U-5 en zij is een SCRIPT en geen sessieverslag**, om de reden die
+  `casus1_e2_verkenning_run.json` al draagt: een controle die alleen in een log bestaat is een
+  controle die niemand kan herhalen. Een bestaande shard wordt HERGEBRUIKT (`U5_REDO=1` draait hem
+  opnieuw), want een ketenrun is minuten en A5e.4 zegt dat een herhaling op deze machine hem
+  byte-identiek reproduceert. **GEMETEN 10-09-2026 (122 / 314 / 251 s): alle drie GELEVERD, alle
+  drie halen élke gewapende poort, en de twee BUITEN het venster LEVEREN wat het plafond
+  beschermde — 40,32 en 39,36 dB onderdrukking op de breakup tegen de 31,29 dB die de deler vraagt,
+  acht tot negen dB over, op een positie die het plafond verbiedt.** Het plafond is niet fout: het
+  is een VOOR-ONTWERPgrens op de kale ladder met de doorlaatband op de ingang, en een vierde-orde
+  netwerk met een val heeft meer gereedschap. Dat het hier om de ONGEKALIBREERDE ramp gaat maakt het
+  scherper (U-4 vroeg wat meten waard is); drie ontwerpen op één casus herijken de deler NIET en
+  deze sessie verplaatst geen enkele grens.
 - **DE TWEE DEMOBUNDELS (U-3, 09-09-2026)** — twee scripts, en de eerste is de diagnose:
   - `npx vite-node scripts/measure-u3-demo-bundles.ts` — seconden, geen ketenrun en geen tune. Tabel 1: wat
     élk meetbestand van élke demobundel over zijn eigen geldigheid zegt, door BEIDE lezers van de app
@@ -3153,6 +3191,103 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-5-guards (gestelde kruispunten: de volle tune, het volle oordeel, en de rekening ernaast)
+- **`src/lib/engine2/predesign/statedCrossings.ts` — DE TWEEDE AUTEUR VAN EEN KANDIDAAT.**
+  `candidates.ts`-regel 4 blijft absoluut ("a candidate outside the window is not something this
+  module declines to emit — it is something it cannot express") en is niet aangeraakt: de
+  GENERATOR kan het nog steeds niet uitdrukken. Wat U-5 toevoegt is een ontwerper die een positie
+  NOEMT. Vijf regels, elk een besluit: (1) binnen het venster is een gestelde positie een gewone
+  shortlistrij; (2) buiten het venster loopt de tune gewoon en komt er een OORDEEL PER GRENS naast,
+  in de eigen eenheid van die grens; (3) dat oordeel wordt gemeten waar de grens is afgeleid —
+  `bindingBreakup` (bij U-5 uit `crossoverWindow` gelicht, één implementatie, twee lezers) en
+  `XO_FS_FACTOR_BY_ORDER`, nooit een tweede afleiding; (4) een GESTELDE eis blijft een eis (de
+  kandidaat wordt bij naam als MISSEND gemarkeerd) en een AFGELEIDE grens rapporteert zonder te
+  weigeren; (5) de ORDE komt uit de afleiding onder hetzelfde beleid als het gegenereerde veld
+  (`orderPolicyChoice`, bij U-5 uit `generateCandidates` gelicht).
+- **VAN NEGEN VENSTERREGELS VRAAGT ER PRECIES ÉÉN EEN NIEUWE METING**, en dat is de reductie die
+  de sessie klein hield. `breakup` → de onderdrukking die het geleverde laagdoorlaat op de breakup
+  legt; `fs`/`drive`/`drive-stated` → M-C op f_s, dezelfde grootheid die de poort al leest;
+  `validity`/`directivity`/`stated`/`stated-min`/`stated-max` → HERTZ, en dat is een antwoord en
+  geen gat (een frequentiegrens heeft geen aflezing op een netwerk).
+  `passbandRelativeLevelDb` is daarvoor uit `driveVoltageOnResonance` gelicht: dezelfde conventie
+  (dB-gemiddelde over de BEVROREN doorlaatband), met de frequentie open — één implementatie, twee
+  lezers, en een tweede aflezing van "hoe ver onder zijn doorlaatband zit deze weg op f" zou hier
+  het slechtst denkbare A3g-geval zijn.
+- **WAT DE DELER VRAAGT, VOORUIT GELEZEN:** het plafond is `f_breakup / deler`, dus wat het
+  plafond STOND VOOR is `6 · orde · log2(deler)` dB. Op casus 1b `24 · log2(2,4689) = 31,29 dB` op
+  5688 Hz. Dezelfde inversie als `xoWindow.ts`, andere kant op.
+- `src/lib/engine2/optimizer/statedVerdicts.ts` + `statedVerdicts.test.ts` (18 claims) — de meting
+  op het geleverde netwerk, in de worker omdat dat de enige plek is die een OPGELOST netwerk
+  vasthoudt. Handberekening: één resistieve driver achter één seriespoel, afgelezen precies waar de
+  reactantie gelijk is aan de weerstand — |H| = 1/√2, dus −3,0103 dB onder een doorlaatband twee
+  decaden lager, en de test vergelijkt met algebra die in het testbestand zelf staat. **Het
+  RESTVERSCHIL IS BENOEMD en niet in een ruime tolerantie weggewerkt** (5e-5 dB, de doorlaatband-
+  bijdrage van de spoel). `readAtHz` staat naast `atHz` omdat het twee feiten zijn: waar de GRENS
+  woont en waar de METING kon worden gedaan — die twee scheelden op het 1600-punts raster tot een
+  vijfde procent, en de eerste versie van de test dacht dat het één veld was.
+- **DE ENE UITZONDERING OP V31, EN ZIJ IS SMAL.** Een GESTELDE kandidaat wiens tune geweigerd
+  wordt houdt `rejectedParts` — de GEWEIGERDE TUNE, een echt getuned ontwerp, nooit het zaad, en
+  V31 gaat over het zaad. Hij blijft een weigering (`rejection` staat, de reden reist mee, hij is
+  geen rij) en wordt nog steeds VOLLEDIG GEOORDEELD: poorten én metingen draaien erop, want een
+  netwerk zonder oordelen ernaast is het zaadprobleem in een andere vorm. Zonder geweigerde
+  onderdelen blankt hij zoals altijd (F0). **Een BRONSCAN pint alle drie de regels**, want deze
+  tak is zonder een live ketenrun onbereikbaar en een claim achter twintig minuten tunen is een
+  claim die niemand controleert; nagemeten dat hij kán falen.
+- **DE SHORTLIST KRIJGT EEN VIERDE SOORT INGANG.** Er waren drie manieren om buiten de rijen te
+  vallen — een EIS (ladder mag verruimen), een POORT (nooit) en een WEIGERING (geen oordeel over
+  een ontwerp, want er ís geen ontwerp). Deze is óók geen oordeel: een ontwerp dat de METINGEN niet
+  toelaten en dat een PERSOON gevraagd heeft. Tussen de rijen zetten zou zeggen dat het
+  toelaatbaar gebied hem bevat; weglaten zou de stilte zijn die U-5 opheft. Een gestelde kandidaat
+  staat NOOIT in `rejected` — zijn weigering staat bij hem, want één kandidaat in twee banen die
+  verschillende dingen betekenen is een lezer die hetzelfde tweemaal gelooft. En hij is
+  KLIKBAAR (`selection.ts`: `row` is `null`, `stated` staat ernaast), want "geleverd als netwerk om
+  te bekijken" is precies waar een gestelde positie voor is.
+- **`windowFloorsFor` — DE VENSTERVLOER DIE DE TUNE STUURT, één regel, twee lezers** (de
+  verklaring en de keteninvoer). Voor een gegenereerde kandidaat zijn eigen A5d.3-vensterbodem
+  (audit §6.3, ongewijzigd); voor een GESTELDE positie ONDER die bodem de onderkant van zijn eigen
+  kooi — een vensterbodem die blijft staan zou de run een gesteld kruispunt STIL terug het venster
+  in trekken. Hij verlaagt en verhoogt nooit.
+- **DE KOOI van een gestelde positie is één spacing breed, gecentreerd, en NIET tegen het venster
+  geknipt.** Knippen zou de tune terugtrekken naar een rand waar de ontwerper bewust overheen
+  stapte; binnen het venster is het exact de vorm van een tweezijdige gegenereerde kooi (C-2).
+- **EEN PARSER-VAL DIE DE TEST VING.** De eerste parse trok de CIJFERS uit een token: `-5` werd 5
+  en `2400Hz` werd 2400 — het juiste soort getal, verzonnen uit iets dat de ontwerper niet
+  geschreven had (A3h). Sindsdien splitst hij op scheidingstekens en valideert het HELE token; wat
+  geen positieve frequentie is wordt GEMELD en nergens voor gebruikt. En een DEELVERZAMELING is
+  geen verzameling: een drieweg met waarden op één as levert niets en noemt de lege as.
+- **GEEN NIEUWE KEUZE-SLEUTEL, GEEN POORT, GEEN REGENERATIE.** `choiceKeyGuard` blijft op 54: een
+  gestelde positie is een KANDIDAAT en `candidateFieldKey` hasht kandidaten al, dus de vingerafdruk
+  beweegt mee (F4d) en een veld ZONDER gestelde kruispunten stempelt byte-identiek aan wat het
+  vóór U-5 stempelde — `parameters.statedSize` staat er alleen als er iets gesteld is (de
+  E-2-regel, één veld verder). Casus 1, 1b en 2 stellen geen kruispunt.
+- `src/lib/engine2/predesign/statedCrossings.test.ts` (34 claims) — zes groepen: de handberekening
+  op een bank waar elke grens een rond getal is (gemeten deler 2 over een breakup op 8 kHz is een
+  plafond op exact 4 kHz, en één octaaf erboven vraagt exact `6 · orde` dB); de parse; P2/P4
+  (niets gesteld = een byte-identieke `candidateFieldKey`, en een SUPERSEDED limiet kan niet
+  geschonden worden want hij bindt niet); casus 1b's 2200/2400/2600; de shortlist-routering; en de
+  app-helft als BRONSCAN. **Nagemeten dat de scans kunnen falen:** de vensterbodem terugzetten op
+  het veldveld, de laadknop weghalen en de vierde uitgang uit `buildShortlist` halen geven samen
+  vijf rode claims met naam.
+- **BROWSERCONTROLE (dev-server, headless Chrome, 10-09-2026), en zij ving TWEE zinnen die geen
+  test had gevangen.** De tweewegdemo, kaal, met `2200, 2400, 2600` in het run-veld getypt: de
+  vóórstart-melding zegt *"2 of 8 candidates lie outside the feasible window"* (het kale
+  demovenster is 1294–2308,5 Hz, vloer `fs` — U-3b's bevinding, want zonder gestelde M-C is er geen
+  aandrijfvloer), de acht ketenruns lopen in 4 min, en de shortlist toont drie rijen onder
+  **"Stated by you — 3 of 8 candidates · 2 outside a feasible window"**: 2200 als gewone rij, 2400
+  en 2600 apart, klikbaar, met het oordeel per grens eronder (**vraagt 31,2 dB, levert 41,5 dB**).
+  Klikken laadt het netwerk in Working met de eerlijke zin ernaast. **De twee vangsten:** (i) de
+  veldregel drukte *"8 of 5 derived candidates"* af — een zin die niet waar kán zijn — omdat de
+  gestelde kandidaten in de teller zaten en niet in de noemer; `describeFieldMode` telt sindsdien
+  de DERIVED helft en noemt de gestelde in een eigen zinsdeel. (ii) De ene driver had TWEE NAMEN in
+  één alinea: de voor-ontwerphelft noemde de driver van het RAPPORT (`low`) en de gemeten helft het
+  MODEL van de worker (`mid`), één zin uit elkaar. `subjectLabel` wordt nooit hersleuteld en beide
+  helften drukken hem af.
+- **GUIDED NOEMT HET VELD NIET** — het is een expertfunctie. De guided wandeling loopt de
+  OORDEELS-rijen van het register af en `statedCrossings` is een `nice`-rij, dus zij kan er per
+  constructie niet in verschijnen; dat staat als CLAIM, want herclassificeren zou een
+  kandidaatgeneratie-besturing stil in een eisenwizard zetten. De U-3b-plaatsingsregel doet de
+  rest: `nice` → achter de uitklap van het v2-paneel, waar de andere run-instellingen staan.
 
 ### U-4-guards (de fabrikantsbovengrens, de eerste gestelde overrule, de deler meetbaar)
 - **`src/lib/engine2/predesign/xoWindow.ts` — de regel `'stated-max'`, de spiegel van U-3g's

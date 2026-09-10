@@ -252,8 +252,13 @@ import {
   measurementFactsFor,
   pairDerivationInputs,
   reportingPowerW,
+  statedMarkForWorker,
   v2RunSettingsFor,
+  windowFloorsFor,
 } from './lib/engine2/optimizer/scanRequest.ts';
+/* U-5 — the crossings the DESIGNER states, read out of the run field and built
+ * into candidates beside the derived ones. */
+import { parseStatedCrossings } from './lib/engine2/predesign/statedCrossings.ts';
 import { seriesRMaxOhmOf, type LowestWayLevelWork } from './lib/levelWork.ts';
 import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
@@ -4369,6 +4374,23 @@ export default function App() {
     return out;
   }, [engineV2Report, driveOnFsMaxDbByRole]);
 
+  /**
+   * U-5 — the report's driver id to the worker's MODEL name, in one place.
+   *
+   * The same bridge `v2DriveLimitDbByDriverId` takes in the other direction,
+   * and for the same reason: a stated crossing's breach names the driver it is
+   * read on in the REPORT's vocabulary, and the worker's `driverZ` is keyed by
+   * model. Once, here, so a two-way and a three-way run cannot disagree.
+   */
+  const v2ModelByDriverId = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const id = engineV2Report?.driverIds?.[role];
+      if (id !== undefined) out[id] = canonicalModelForRole(role, threeWay);
+    }
+    return out;
+  }, [engineV2Report, threeWay]);
+
   /* F4b — THE MEASURED FACTS THAT CROSS THE BORDER (audit §4, leaks 1 and 2).
    *
    * `reOhmByModel` existed in the payload since F2 and was read by the worker
@@ -6292,6 +6314,22 @@ export default function App() {
     return side === 'low' ? 'W-M' : threeWay ? 'M-T' : 'crossover';
   };
 
+  /**
+   * U-5 — the handovers a stated crossing is typed for, low to high.
+   *
+   * Read off the report's own window inputs — one per ADJACENT PAIR — so the
+   * field beside the run counts handovers and never ways, exactly as the parse
+   * it feeds does. Empty when no report exists yet, and then the field says
+   * nothing about which line is which rather than guessing.
+   */
+  const v2StatedAxisLabels = useMemo(
+    () =>
+      (engineV2Report?.report?.predesign.windowInputs ?? []).map(
+        (wi) => `${wi.lower}\u2192${wi.upper}`,
+      ),
+    [engineV2Report],
+  );
+
   /** One handover's verdict against its window. Null with the toggle off. */
   const v2Advice = (side: 'low' | 'high'): RangeAdvice | null => {
     const w = v2Windows?.[side];
@@ -8089,7 +8127,26 @@ export default function App() {
             : {}),
           curveOfDriverId: curveOfDriver,
         });
-        return { windowInputs: wis, perPair, fieldSettings };
+        /* U-5 — THE CROSSINGS THE DESIGNER STATED, read out of the run field.
+         *
+         * One list per handover, in the order the report derives them, so the
+         * parse counts handovers and never ways. Everything it could not use is
+         * said out loud in the run notes rather than dropped: a frequency typed
+         * into a field and silently ignored is the worst possible outcome for a
+         * setting whose whole purpose is that nothing is silent. */
+        const statedParse = parseStatedCrossings(
+          engineV2Settings.statedCrossings,
+          wis.map((wi) => `${wi.lower}\u2192${wi.upper}`),
+        );
+        if (engineV2Settings.statedCrossings.trim() !== '' && statedParse.problems.length > 0) {
+          setV2RunNotes((prev) => [...prev, ...statedParse.problems]);
+        }
+        return {
+          windowInputs: wis,
+          perPair,
+          fieldSettings,
+          ...(statedParse.complete ? { statedPerAxisHz: statedParse.perAxisHz } : {}),
+        };
       })();
       const v2Generated = v2FieldRequest
         ? buildCandidateField({
@@ -8097,6 +8154,12 @@ export default function App() {
             alignments: AUTO_STRUCTS,
             ...v2FieldRequest.fieldSettings,
             perPair: v2FieldRequest.perPair,
+            ...(v2FieldRequest.statedPerAxisHz
+              ? {
+                  statedPerAxisHz: v2FieldRequest.statedPerAxisHz,
+                  statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
+                }
+              : {}),
           })
         : null;
       if (useV2) {
@@ -8272,7 +8335,13 @@ export default function App() {
           ? {
               structureLow: alignmentOf(0) ?? settings.structureLow,
               structureHigh: alignmentOf(cand.crossings.length - 1) ?? settings.structureHigh,
-              xoFloorPairs: cand.crossings.map((x) => x.windowHz[0]),
+              /* U-5 — the floor the tune is held to per handover. For a
+               * generated candidate it is its own A5d.3 window floor, exactly
+               * as since F4d; for a STATED position below that floor it is the
+               * bottom of its own cage, so the run cannot quietly pull a
+               * crossing back inside a window the designer stepped out of
+               * (`windowFloorsFor`, one implementation, two readers). */
+              xoFloorPairs: windowFloorsFor(cand),
             }
           : {};
         return {
@@ -8342,6 +8411,12 @@ export default function App() {
         }),
         chainDeclaration: chainDecl,
         provenance: cand.provenance,
+        /* U-5 — the designer's own mark, with its reading subjects re-keyed
+         * from the report's driver ids to the worker's model names. Absent on
+         * a generated candidate (P2). */
+        ...(cand.stated
+          ? { stated: statedMarkForWorker(cand.stated, (id) => v2ModelByDriverId[id]) }
+          : {}),
         // V26 row 39: the HP flank of each way, keyed by model. The mid's high
         // pass belongs to the low handover and the tweeter's to the high one —
         // the convention `parseHpLpPref` documents.
@@ -8516,6 +8591,16 @@ export default function App() {
                     : {}),
                   ...(v2FieldRequest.fieldSettings.alignmentPolicy !== undefined
                     ? { alignmentPolicy: v2FieldRequest.fieldSettings.alignmentPolicy }
+                    : {}),
+                  /* U-5 — the stated crossings travel in the block, because
+                   * layer 1 of the replay rebuilds the field FROM THE BLOCK
+                   * ALONE and a field it cannot rebuild is a block that does
+                   * not carry what the field depended on. */
+                  ...(v2FieldRequest.statedPerAxisHz
+                    ? {
+                        statedPerAxisHz: v2FieldRequest.statedPerAxisHz.map((a) => [...a]),
+                        statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
+                      }
                     : {}),
                   alignments: AUTO_STRUCTS,
                   stepsPerAxis: scanSteps3,
@@ -9342,7 +9427,26 @@ export default function App() {
               : {}),
             curveOfDriverId: curveOfDriver,
           });
-          return { windowInputs: wis, perPair, fieldSettings };
+        /* U-5 — THE CROSSINGS THE DESIGNER STATED, read out of the run field.
+           *
+           * One list per handover, in the order the report derives them, so the
+           * parse counts handovers and never ways. Everything it could not use is
+           * said out loud in the run notes rather than dropped: a frequency typed
+           * into a field and silently ignored is the worst possible outcome for a
+           * setting whose whole purpose is that nothing is silent. */
+          const statedParse = parseStatedCrossings(
+            engineV2Settings.statedCrossings,
+            wis.map((wi) => `${wi.lower}\u2192${wi.upper}`),
+          );
+          if (engineV2Settings.statedCrossings.trim() !== '' && statedParse.problems.length > 0) {
+            setV2RunNotes((prev) => [...prev, ...statedParse.problems]);
+          }
+          return {
+            windowInputs: wis,
+            perPair,
+            fieldSettings,
+            ...(statedParse.complete ? { statedPerAxisHz: statedParse.perAxisHz } : {}),
+          };
         })();
         const v2Generated = v2FieldRequest
           ? buildCandidateField({
@@ -9350,6 +9454,12 @@ export default function App() {
               alignments: AUTO_STRUCTS,
               ...v2FieldRequest.fieldSettings,
               perPair: v2FieldRequest.perPair,
+              ...(v2FieldRequest.statedPerAxisHz
+                ? {
+                    statedPerAxisHz: v2FieldRequest.statedPerAxisHz,
+                    statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
+                  }
+                : {}),
             })
           : null;
         {
@@ -9485,6 +9595,11 @@ export default function App() {
                     }),
                     chainDeclaration: chainDecl,
                     provenance: cand.provenance,
+                    /* U-5 — see the three-way route: the designer's mark, with
+                     * its subjects re-keyed to the worker's model names. */
+                    ...(cand.stated
+                      ? { stated: statedMarkForWorker(cand.stated, (id) => v2ModelByDriverId[id]) }
+                      : {}),
                     /* The HP flank of the tweeter belongs to the one handover;
                      * the lowest way of a two-way has no high-pass flank of its
                      * own (the three-way convention `parseHpLpPref` documents,
@@ -9568,6 +9683,16 @@ export default function App() {
                         : {}),
                       ...(v2FieldRequest.fieldSettings.alignmentPolicy !== undefined
                         ? { alignmentPolicy: v2FieldRequest.fieldSettings.alignmentPolicy }
+                        : {}),
+                  /* U-5 — the stated crossings travel in the block, because
+                       * layer 1 of the replay rebuilds the field FROM THE BLOCK
+                       * ALONE and a field it cannot rebuild is a block that does
+                       * not carry what the field depended on. */
+                      ...(v2FieldRequest.statedPerAxisHz
+                        ? {
+                            statedPerAxisHz: v2FieldRequest.statedPerAxisHz.map((a) => [...a]),
+                            statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
+                          }
                         : {}),
                       alignments: AUTO_STRUCTS,
                       stepsPerAxis: scanSteps2,
@@ -18951,6 +19076,32 @@ export default function App() {
                         <option value="full">{t('full — every window edge to edge, every admitted order')}</option>
                       </select>
                     </label>
+                    {/* U-5 — THE CROSSINGS YOU STATE, beside the derived field.
+                      * The generated positions stay exactly as they are; every
+                      * frequency typed here becomes ONE MORE candidate, tuned
+                      * and judged in full. Inside a feasible window it is
+                      * treated as a generated one; outside it, it still runs,
+                      * and every limit it is past is answered in that limit's
+                      * own unit beside it — never a silent refusal. */}
+                    <label title={t('One line per handover, low to high (a semicolon does the same as a newline); separate the frequencies on a line with commas. Every stated position becomes an extra candidate: inside a feasible window it is judged exactly as a derived one, outside it the tune still runs and the shortlist lists it separately with what each limit it is past asks for, measured on the network it delivered. Requirements stay requirements — a stated crossing that misses one is marked as missing it, and its network is still handed over so you can look at it.')}>
+                      {t('Crossings you state (Hz, per handover)')}
+                      <textarea
+                        rows={v2StatedAxisLabels.length > 1 ? 2 : 1}
+                        value={engineV2Settings.statedCrossings}
+                        placeholder={UNSET_GHOST}
+                        onChange={(e) => setV2Field('statedCrossings', e.target.value)}
+                        style={{ width: '14rem', fontFamily: 'inherit' }}
+                      />
+                      {v2StatedAxisLabels.length > 0 && (
+                        <span className="derived">
+                          {t('one line per handover, low to high: {labels}', {
+                            labels: v2StatedAxisLabels.join(', '),
+                          })}
+                        </span>
+                      )}
+                      {v2Stated('statedCrossings')}
+                      {v2Empty('statedCrossings')}
+                    </label>
                       </div>
                     </details>
                     {/* U-1 — THE v1 DRAWER IS GONE FROM THE PANEL, and its work moved
@@ -20656,6 +20807,72 @@ export default function App() {
                     was the only place that knew it. Listed with the rule that
                     refused each of them, and deliberately NOT clickable —
                     there is no network to load. */}
+                {/* U-5 — THE CROSSINGS YOU STATED, in their own section.
+                    Never mixed in with the qualified rows: a stated crossing
+                    outside a feasible window is a design the MEASUREMENTS do
+                    not admit and a person asked for anyway, and putting it
+                    among the rows would say the feasible region contains it.
+                    Each one carries every limit it is past, answered in that
+                    limit's own unit on the network it delivered — and it is
+                    CLICKABLE, because "delivered as a network to look at" is
+                    the whole point of stating one. */}
+                {v2Shortlist.stated.length > 0 && (
+                  <div className="shortlist-stated">
+                    <h5>
+                      {t('Stated by you')}{' '}
+                      <span className="derived">
+                        {t('{n} of {m} candidates · {k} outside a feasible window', {
+                          n: String(v2Shortlist.stated.length),
+                          m: String(v2Shortlist.consideredCount),
+                          k: String(v2Shortlist.stated.filter((e) => e.outsideWindow).length),
+                        })}
+                      </span>
+                    </h5>
+                    <p className="sub">
+                      {t('You stated these handovers; this app did not derive them. Each got the full tune and the full judgement. The ones inside every feasible window are ordinary shortlist rows above. The ones outside are here: they are not near-misses and not refusals, they are answers — every limit each of them is past is quoted below in that limit’s own unit, measured on the network it delivered.')}
+                    </p>
+                    <ul>
+                      {v2Shortlist.stated.map((e) => (
+                        <li key={e.label}>
+                          {e.parts.length > 0 && !e.isRow ? (
+                            <button
+                              type="button"
+                              className="linkish"
+                              onClick={() => loadShortlistRow(e.label)}
+                              title={t('Load this stated design into the Working tab. It is here to be looked at; nothing about loading it says it meets what the measurements ask for.')}
+                            >
+                              {e.label}
+                            </button>
+                          ) : (
+                            <strong>{e.label}</strong>
+                          )}{' '}
+                          <span className="derived">
+                            [{e.isRow ? t('a shortlist row above') : e.outsideWindow ? t('outside the window') : t('inside the window, not a row')}]
+                          </span>{' '}
+                          {e.describe}
+                          {e.report.perCrossing.some((c) => c.breaches.length > 0) && (
+                            <ul>
+                              {e.report.perCrossing.flatMap((c) =>
+                                c.breaches.map((b, i) => (
+                                  <li key={`${c.pairLabel}-${i}`} className={b.meets === false ? 'nl-warning' : undefined}>
+                                    <span className="derived">
+                                      {b.stated ? t('STATED') : t('derived')}
+                                      {b.uncalibrated ? ` · ${t('UNCALIBRATED')}` : ''}
+                                      {b.measuredDb !== null
+                                        ? ` · ${b.measuredDb.toFixed(1)} dB ${t('vs')} ${(-(b.demandDb ?? 0)).toFixed(1)} dB`
+                                        : ''}
+                                    </span>{' '}
+                                    {b.verdict}
+                                  </li>
+                                )),
+                              )}
+                            </ul>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {v2Shortlist.rejected.length > 0 && (
                   <div className="shortlist-refused">
                     <h5>

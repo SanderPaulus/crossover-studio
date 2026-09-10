@@ -58,7 +58,7 @@
  */
 
 import type { VxpPart } from '../../parsers/vxp.ts';
-import type { Shortlist, ShortlistRow } from './shortlist.ts';
+import type { Shortlist, ShortlistRow, ShortlistStated } from './shortlist.ts';
 
 /** Why nothing is loaded. Typed, because the four cases read differently. */
 export type NoSelectionCause =
@@ -79,8 +79,14 @@ export type Selection<T> =
       label: string;
       parts: readonly VxpPart[];
       result: T;
-      /** The row itself, so a caller can show what it loaded. */
-      row: ShortlistRow<T>;
+      /**
+       * The row itself, so a caller can show what it loaded. NULL for a U-5
+       * stated crossing outside the window: it is deliberately not a row, and
+       * `stated` beside this is what it is instead.
+       */
+      row: ShortlistRow<T> | null;
+      /** U-5 — the stated entry, when what was loaded is one. */
+      stated: ShortlistStated<T> | null;
       /** Whether this is the default pick or one the designer asked for. */
       how: 'default' | 'requested';
       /** One line for the screen. */
@@ -110,6 +116,43 @@ export function selectFromShortlist<T>(
       describe:
         'No v2 run has delivered a shortlist, so there is nothing to load. Whatever is in the ' +
         'Working tab is what was there before.',
+    };
+  }
+
+  /* U-5 — A STATED CROSSING IS LOADABLE, and that is the whole session in one
+   * branch. It is asked for BEFORE the rejected list and before the rows: a
+   * stated candidate is never in `rejected` (its refusal travels with it), and
+   * one outside the window is never a row. Loading it is the point — "delivered
+   * as a network to look at" — and what it costs is in `describe`, so the same
+   * sentence reaches the screen whether it is loaded or merely listed.
+   *
+   * With no parts there is nothing to load and the reason says which of the two
+   * empty states it is: a refusal that left nothing, or a design that never
+   * solved. */
+  const statedPick = requested
+    ? shortlist.stated.find((e) => e.label === requested && !e.isRow)
+    : undefined;
+  if (statedPick) {
+    if (statedPick.parts.length === 0) {
+      return {
+        kind: 'none',
+        cause: 'empty-network',
+        describe:
+          `${statedPick.label} was stated by you and delivered no network at all. ${statedPick.describe}`,
+      };
+    }
+    return {
+      kind: 'design',
+      label: statedPick.label,
+      parts: statedPick.parts,
+      result: statedPick.result,
+      row: null,
+      stated: statedPick,
+      how: 'requested',
+      describe:
+        `Loaded ${statedPick.label} — a crossing YOU stated, not one this app derived. ` +
+        `${statedPick.describe} It is on screen so you can look at it; it is not on the shortlist, ` +
+        'and nothing here says it meets what the measurements ask for.',
     };
   }
 
@@ -171,6 +214,10 @@ export function selectFromShortlist<T>(
     parts: row.parts,
     result: row.result,
     row,
+    /* U-5 — a stated candidate INSIDE its window is an ordinary row (rule 1),
+     * and its entry is carried here so the screen can still say who wrote it
+     * down. Null for a generated row. */
+    stated: shortlist.stated.find((e) => e.label === row.label) ?? null,
     how,
     describe:
       how === 'default'

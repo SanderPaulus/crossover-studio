@@ -115,6 +115,11 @@ import {
   type LowestWayLevelWork,
 } from '../../levelWork.ts';
 import type { CandidateMeasurements } from '../requirements/requirements.ts';
+import type {
+  StatedCrossingMark,
+  StatedCrossingReport,
+} from '../predesign/statedCrossings.ts';
+import { statedBreachVerdicts } from './statedVerdicts.ts';
 import type { TopologyDescriptor } from './diversity.ts';
 
 /* ================================================================== *
@@ -222,6 +227,18 @@ export interface V2CandidatePayload {
    * always knows its order per flank, so it always states it.
    */
   orderByModel?: Record<string, number>;
+  /**
+   * U-5 — set when the DESIGNER stated this candidate's handovers rather than
+   * the generator deriving them: what it is past, and what each of those limits
+   * asks for in its own unit.
+   *
+   * Its `subject` fields are the worker's MODEL names — `scanRequest.ts`
+   * re-keys them from the report's driver ids before the payload crosses, the
+   * same bridge the M-C figures and the coil families take. Absent = a
+   * generated candidate, and then nothing in `runCandidate` behaves any
+   * differently at all (P2).
+   */
+  stated?: StatedCrossingMark;
 }
 
 export interface V2Chain3Payload {
@@ -363,6 +380,12 @@ export interface V2CandidateResult<R> {
    * that family covers the value. Null only when there is no network at all.
    */
   coilDcr: V2CoilDcrColumn | null;
+  /**
+   * U-5 — for a STATED candidate: every limit it is past, answered on the
+   * network it delivered, plus what it misses that somebody stated. Null for a
+   * generated candidate, which is past nothing by construction.
+   */
+  stated: StatedCrossingReport | null;
   notes: string[];
 }
 
@@ -707,6 +730,8 @@ interface NetworkFacts {
   declaration?: ChoiceDeclaration;
   /** V41 — the chain-level half of the same declaration, when there is one. */
   chainDeclaration?: ChainChoiceDeclaration;
+  /** U-5 — the designer's own mark, when they stated this candidate's handovers. */
+  stated?: StatedCrossingMark;
 }
 
 /** Drop keys whose value is undefined — absent is a state, not a zero. */
@@ -2570,6 +2595,10 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
 
   let rejection: CandidateRejection | null = null;
   let result = delivered;
+  /** U-5 — the designer's own mark, when they stated this candidate's handovers. */
+  const statedMark = network.stated ?? null;
+  /** U-5 — set when a refusal kept its network because the position was stated. */
+  let statedKeptNetwork = false;
   if (refused) {
     const rt = refused.fields.rejectedTune;
     const parts = refused.fields.rejectedParts;
@@ -2642,11 +2671,40 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
      * run, and it is the whole reason that test serialises the ENTIRE result
      * and looks for a part list rather than checking the field it expects to
      * find one in. Nothing a caller can serialise into a netlist may leave
-     * here for a candidate that delivered nothing. */
+     * here for a candidate that delivered nothing.
+     *
+     * ── U-5: THE ONE EXCEPTION, AND IT IS NARROW ────────────────────────────
+     *
+     * A candidate whose handovers the DESIGNER STATED keeps the network the
+     * tune reached before a rule refused it. This is not a softening of V31 and
+     * it does not touch a single generated candidate: V31 refuses to publish a
+     * SEED as a proposal, and what is kept here is `rejectedParts` — the
+     * REFUSED TUNE, a real tuned design, never the seed. It is kept because the
+     * designer asked for this exact position and "we refused it, and we will
+     * not show you what it cost" is precisely the silence U-5 removes. It stays
+     * a refusal: `rejection` is set, its reason travels, the shortlist keeps it
+     * out of the qualified rows and names what it misses, and nothing about it
+     * competes with a design that met the requirements.
+     *
+     * With no refused parts to keep there is nothing to hand over and the
+     * blanking is the ordinary one — an empty field is not a judgement, and a
+     * seed is not empty either (F0). */
+    const keep = statedMark ? (refused.fields.rejectedParts ?? []) : [];
+    if (keep.length > 0) {
+      statedKeptNetwork = true;
+      collect.notes.push(
+        'STATED (U-5): this candidate\'s tune was refused, and the network it had reached is handed ' +
+          'over anyway because you stated its handovers. It is a REFUSED design, not a proposal: it ' +
+          'is not a shortlist row, it is listed under the stated crossings with the rule that ' +
+          'refused it, and it is there to be looked at. The blanking V31 applies to a generated ' +
+          'candidate withholds a SEED nobody judged; what is kept here is the tuned network the ' +
+          'rule threw away.',
+      );
+    }
     result = {
       ...delivered,
-      parts: [],
-      net: { ...(delivered.net as object), parts: [], rejectedParts: undefined },
+      parts: [...keep],
+      net: { ...(delivered.net as object), parts: [...keep], rejectedParts: undefined },
     } as R;
   }
 
@@ -2654,7 +2712,11 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   let gatesDerived: GateVerdict[] = [];
   let violation: string | null = null;
   let dissipation: DissipationColumn | null = null;
-  if (!rejection && collect.reference) {
+  /* U-5 — a stated candidate that kept its refused network is still JUDGED IN
+   * FULL. "The full tune and the full judgement, also outside the window" is
+   * the whole session: a network handed over with no verdicts beside it would
+   * be the seed problem in another shape. */
+  if ((!rejection || statedKeptNetwork) && collect.reference) {
     try {
       const netlist = netlistOf(result.parts);
       const ratings = ratingsFor(result.parts, network);
@@ -2691,9 +2753,10 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   /* A rejected candidate is not measured: every number would be the seed's,
    * wearing this candidate's label. That is the same claim the withdrawn
    * netlist would have made, in a column instead of a file. */
-  const judged = rejection
-    ? { measurements: { response: null, phaseTracking: [] }, topology: judge(delivered).topology }
-    : judge(result);
+  const judged =
+    rejection && !statedKeptNetwork
+      ? { measurements: { response: null, phaseTracking: [] }, topology: judge(delivered).topology }
+      : judge(result);
   if (rejection) collect.notes.push(rejection.note, `Refusing rule: ${rejection.reason}`);
 
   /* ---- A5e.3: the coil DCR column, on the network this candidate produced --
@@ -2712,6 +2775,30 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     );
   }
 
+  /* ---- U-5: what a STATED position delivered against what it is past ------
+   * Read on the network this candidate hands over — including a refused one it
+   * kept — and never on a second solve of it (`statedVerdicts.ts`). */
+  const stated = statedMark
+    ? statedBreachVerdicts(
+        result.parts.length > 0 ? netlistOf(result.parts) : null,
+        collect.reference,
+        statedMark,
+        gates,
+      )
+    : null;
+  if (stated) {
+    collect.notes.push(statedMark!.provenance);
+    for (const c of stated.perCrossing) for (const b of c.breaches) collect.notes.push(b.verdict);
+    if (stated.missedStated.length > 0) {
+      collect.notes.push(
+        `STATED (U-5): this candidate MISSES ${stated.missedStated.join(', ')} — every one of those ` +
+          'was stated by somebody, and stating a crossing does not relax them. The network is ' +
+          'delivered so it can be looked at; it is not offered as a design that meets your ' +
+          'requirements.',
+      );
+    }
+  }
+
   return {
     result,
     gates,
@@ -2725,6 +2812,7 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
     rejection,
     levelWork,
     coilDcr,
+    stated,
     notes: collect.notes,
   };
 }
@@ -2812,6 +2900,10 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             ? {
                 declaration: candidate.declaration,
                 chainDeclaration: candidate.chainDeclaration,
+                /* U-5 — the designer's own mark, when they stated the handovers.
+                 * Absent on every generated candidate, and then nothing in
+                 * `runCandidate` behaves differently (P2). */
+                ...(candidate.stated ? { stated: candidate.stated } : {}),
               }
             : {}),
         };
@@ -2967,6 +3059,9 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
                  * V51 refusal, the stated series-R maximum and the coil-span
                  * box all key off `network.chainDeclaration`. */
                 chainDeclaration: candidate.chainDeclaration,
+                /* U-5 — see the three-way branch: absent on a generated
+                 * candidate, and then nothing behaves differently (P2). */
+                ...(candidate.stated ? { stated: candidate.stated } : {}),
               }
             : {}),
         };

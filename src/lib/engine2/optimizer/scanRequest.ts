@@ -31,6 +31,7 @@
 
 import type { BranchCurve, PairDerivationInput } from '../predesign/candidateField.ts';
 import type { GeneratedCandidate } from '../predesign/candidates.ts';
+import type { StatedCrossingMark } from '../predesign/statedCrossings.ts';
 import type { XoWindowInput } from '../predesign/xoWindow.ts';
 import type { EngineV2Report } from '../report.ts';
 import type { TargetCurve } from '../requirements/targetCurve.ts';
@@ -302,6 +303,58 @@ export type DeclarableChainSettings = Omit<StatedByDesigner, 'staged' | 'zFloorS
  * to which handover is the chain's vocabulary and not this module's — and the
  * `multiWay` flag.
  */
+/**
+ * U-5 — THE HANDOVER FLOOR ONE CANDIDATE IS TUNED UNDER, per handover.
+ *
+ * For a generated candidate it is its own A5d.3 window floor and nothing else,
+ * exactly as it has been since F4d — that is audit §6.3 in one line: the floor
+ * that steers is the stated one.
+ *
+ * For a STATED candidate BELOW that floor it is the bottom of its own cage. A
+ * window floor handed to the chain becomes a penalty the tune is pushed off,
+ * so leaving it in place would let the run quietly drag a stated crossing back
+ * inside a window the designer deliberately stepped out of — a second opinion
+ * about a position they already gave, and a silent one. It is lowered and never
+ * raised: a stated position INSIDE the window keeps the window's own floor,
+ * byte for byte.
+ *
+ * ONE IMPLEMENTATION, TWO READERS: the declaration below and the chain input
+ * the app builds. Two of them would be two answers to "how low may this tune
+ * go", which is precisely the kind of split F4d closed.
+ */
+export function windowFloorsFor(candidate: GeneratedCandidate): number[] {
+  return candidate.crossings.map((x) =>
+    candidate.stated ? Math.min(x.windowHz[0], x.cageHz[0]) : x.windowHz[0],
+  );
+}
+
+/**
+ * U-5 — the stated mark as the WORKER wants it: the reading subjects re-keyed
+ * from the report's driver ids to the worker's model names.
+ *
+ * The same bridge the M-C figures and the coil families take
+ * (`canonicalModelForRole`), applied to the one field of a breach that names a
+ * driver. A subject the caller cannot map is left as it is: the worker then
+ * finds no branch under that name, reports the reading as unknown and says why
+ * — which is a truthful answer, where a silently dropped subject would turn a
+ * breached limit into one that was never checked.
+ */
+export function statedMarkForWorker(
+  mark: StatedCrossingMark,
+  modelOfDriverId: (driverId: string) => string | undefined,
+): StatedCrossingMark {
+  return {
+    ...mark,
+    perCrossing: mark.perCrossing.map((c) => ({
+      ...c,
+      breaches: c.breaches.map((b) => ({
+        ...b,
+        subject: b.subject === null ? null : (modelOfDriverId(b.subject) ?? b.subject),
+      })),
+    })),
+  };
+}
+
 export function candidateDeclarationFor(args: {
   candidate: GeneratedCandidate;
   settings: DeclarableChainSettings;
@@ -322,7 +375,7 @@ export function candidateDeclarationFor(args: {
   const fams = args.coilFamilyByModel ?? {};
   return declareCandidateChoices({
     cages: args.candidate.crossings.map((x) => x.cageHz),
-    windowFloorsHz: args.candidate.crossings.map((x) => x.windowHz[0]),
+    windowFloorsHz: windowFloorsFor(args.candidate),
     multiWay: args.multiWay,
     stated: {
       band: s.band,
@@ -441,6 +494,10 @@ export function collectV2Scan<
       dissipation: c.dissipation,
       disqualified: c.result.disqualified,
       ...(c.rejection ? { rejection: c.rejection } : {}),
+      /* U-5 — the stated report, when the designer stated this candidate's
+       * handovers. Absent on a generated one, so the shortlist behaves exactly
+       * as it did before U-5 for every field without a stated crossing in it. */
+      ...(c.stated ? { stated: c.stated } : {}),
     });
   }
   return { gatesByLabel, field, notes: [...notes] };

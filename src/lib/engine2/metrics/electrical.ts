@@ -282,16 +282,33 @@ export interface DriveVoltageResult {
  * same P6 mistake as a hard-coded frequency in the engine — one level up. See
  * V15 in the casebook.
  */
-export function driveVoltageOnResonance(
+/**
+ * U-5 — ONE WAY'S ELECTRICAL LEVEL AT ONE FREQUENCY, RELATIVE TO ITS OWN
+ * PASSBAND. The quantity M-C is, with the frequency left open.
+ *
+ * Extracted so that the ONE convention (a dB mean over the passband, read on
+ * the branch transfer) has one implementation and more than one reader. M-C
+ * reads it at f_s; U-5 reads it at a BREAKUP, to say what a stated crossing
+ * above the breakup ceiling actually delivers there against what the divisor
+ * asks. Two readings of "how far under its passband does this way sit at f"
+ * computed in two places is precisely the shape of bug A3g names, and here it
+ * would be the worst kind: the verdict on a breached limit measured by
+ * something other than what the limit was derived from.
+ *
+ * Null when the model has no branch in this network, or when the passband
+ * holds no grid point — never zero, which would read as "measured, and it is
+ * flat" (F0).
+ */
+export function passbandRelativeLevelDb(
   analysis: NetworkAnalysis,
   driverModel: string,
-  fsHz: number,
+  atHz: number,
   passbandHz: [number, number],
-): DriveVoltageResult | null {
+): { atHz: number; levelDb: number; passbandMeanDb: number; relativeDb: number } | null {
   const h = analysis.transferByModel[driverModel];
   if (!h) return null;
   const { grid } = analysis;
-  const iFs = nearestIndex(grid, fsHz);
+  const iAt = nearestIndex(grid, atHz);
   // The passband average is taken in DECIBELS. That is not a detail: the
   // reference this metric compares against is a LEVEL a listener would call
   // "the passband", and a linear mean of |V| is pulled up by whatever peak the
@@ -306,15 +323,27 @@ export function driveVoltageOnResonance(
     n++;
   }
   if (n === 0) return null;
-  const meanDb = sumDb / n;
-  const fsDb = dbAmp(cabs(h[iFs]));
+  const passbandMeanDb = sumDb / n;
+  const levelDb = dbAmp(cabs(h[iAt]));
+  return { atHz: grid[iAt], levelDb, passbandMeanDb, relativeDb: levelDb - passbandMeanDb };
+}
+
+export function driveVoltageOnResonance(
+  analysis: NetworkAnalysis,
+  driverModel: string,
+  fsHz: number,
+  passbandHz: [number, number],
+): DriveVoltageResult | null {
+  const r = passbandRelativeLevelDb(analysis, driverModel, fsHz, passbandHz);
+  if (!r) return null;
+  const { grid } = analysis;
   return {
     driver: driverModel,
-    fsHz: grid[iFs],
-    db: fsDb - meanDb,
+    fsHz: r.atHz,
+    db: r.relativeDb,
     passbandHz,
-    fsDb,
-    passbandMeanDb: meanDb,
+    fsDb: r.levelDb,
+    passbandMeanDb: r.passbandMeanDb,
     coverage: coverageOf(passbandHz, {
       fromHz: Math.max(passbandHz[0], grid[0]),
       toHz: Math.min(passbandHz[1], grid[grid.length - 1]),

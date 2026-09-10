@@ -82,12 +82,23 @@ export function fieldModeOfParameters(p: CandidateField['parameters']): FieldMod
 export function describeFieldMode(field: CandidateField): string {
   const p = field.parameters;
   const mode = fieldModeOfParameters(p);
-  const n = field.candidates.length;
+  /* U-5 — the DERIVED half, because that is what `derivedSize` counts. A
+   * stated crossing is not a candidate the derivation offered and the mode did
+   * not thin it, so counting it here produced "8 of 5 derived candidates" —
+   * measured in the running app before it was written down. It is named in its
+   * own clause instead. */
+  const stated = p.statedSize ?? 0;
+  const n = field.candidates.length - stated;
+  const plus =
+    stated > 0
+      ? ` Plus ${stated} crossing${stated === 1 ? '' : 's'} you stated, which the budget does not thin.`
+      : '';
   if (mode === 'exploration') {
     return (
       `Exploration field — ${n} of ${p.derivedSize} derived candidate${p.derivedSize === 1 ? '' : 's'}: ` +
       `chain budget ${p.chainBudget ?? 'none'}, positions centre-first (the window centre and its ` +
-      'nearest neighbours), one alignment per handover, the same requirements as the full field.'
+      'nearest neighbours), one alignment per handover, the same requirements as the full field.' +
+      plus
     );
   }
   return (
@@ -97,6 +108,7 @@ export function describeFieldMode(field: CandidateField): string {
       : p.chainBudget !== null
         ? ` (chain budget ${p.chainBudget}, not reached)`
         : '') +
-    ': positions spread over every window, every admitted order.'
+    ': positions spread over every window, every admitted order.' +
+    plus
   );
 }

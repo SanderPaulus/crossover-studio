@@ -440,8 +440,49 @@ const LOBING_WORST_HIGH = 0.7;
 const LOBING_SECOND_GOOD_LOW = 1.0;
 const LOBING_SECOND_GOOD_HIGH = 1.4;
 
-export function crossoverWindow(input: XoWindowInput): XoWindowResult {
+/**
+ * U-5 — THE BREAKUP THAT SETS THIS PAIR'S CEILING, and the divisor it is
+ * divided by.
+ *
+ * ONE IMPLEMENTATION, TWO READERS. `crossoverWindow` below builds its breakup
+ * ceiling out of this, and `statedCrossings.ts` reads it to say what a stated
+ * position ABOVE that ceiling is asked to deliver: the ceiling is
+ * `f_breakup / divisor`, so what the derivation demands there is the
+ * attenuation a flank of this order holds over `log2(divisor)` octaves. A
+ * second "which breakup binds, and at what divisor" in the stated layer would
+ * be the family of bug this codebase has paid for repeatedly (A3g), and it
+ * would be the worst possible place for it: the verdict on a breached ceiling
+ * would then be measured against a ceiling other than the one that was
+ * breached.
+ *
+ * Null when no breakup of the lower driver clears the significance threshold —
+ * then there is no breakup ceiling either, and nothing to be past.
+ */
+export function bindingBreakup(input: XoWindowInput): {
+  /** The breakup's own frequency, Hz. */
+  fHz: number;
+  /** How far it stands over the local trend, dB. */
+  dB: number;
+  /** The divisor in force: measured when the designer measured one (U-4). */
+  divisor: number;
+  measured: boolean;
+} | null {
   const significant = input.significantBreakupDb ?? DEFAULT_SIGNIFICANT_BREAKUP_DB;
+  const first = input.lowerBreakups
+    .filter((b) => b.dB >= significant)
+    .sort((a, b) => a.fHz - b.fHz)[0];
+  if (!first) return null;
+  const measuredDiv = input.lowerBreakupDivisor ?? null;
+  const measured = measuredDiv !== null && Number.isFinite(measuredDiv) && measuredDiv > 0;
+  return {
+    fHz: first.fHz,
+    dB: first.dB,
+    divisor: measured ? (measuredDiv as number) : breakupDivisor(first.dB),
+    measured,
+  };
+}
+
+export function crossoverWindow(input: XoWindowInput): XoWindowResult {
   const limits: XoLimit[] = [];
 
   if (input.validityFloorHz !== null) {
@@ -593,14 +634,19 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
   // "First" because a crossing has to clear the lowest resonance that matters;
   // "significant" because every response has ripple and a ceiling derived from
   // 1 dB of it would forbid designs for no physical reason.
-  const first = input.lowerBreakups.filter((b) => b.dB >= significant).sort((a, b) => a.fHz - b.fHz)[0];
-  /* U-4 — the divisor the ceiling is actually built on: the designer's measured
+  /* U-5 — the breakup and the divisor come from `bindingBreakup` above, so the
+   * ceiling here and the verdict a stated position past it is given cannot
+   * disagree about which breakup binds or what it is divided by (A3g).
+   *
+   * U-4 — the divisor the ceiling is actually built on: the designer's measured
    * value when there is one, the interpolation otherwise. A measured divisor is
    * a fact about this driver and the ramp is a placeholder, so the measurement
    * wins outright rather than being averaged with it. */
+  const bindingBu = bindingBreakup(input);
+  const first = bindingBu ? { fHz: bindingBu.fHz, dB: bindingBu.dB } : undefined;
   const measuredDiv = input.lowerBreakupDivisor ?? null;
-  const divIsMeasured = measuredDiv !== null && Number.isFinite(measuredDiv) && measuredDiv > 0;
-  const divUsed = first ? (divIsMeasured ? (measuredDiv as number) : breakupDivisor(first.dB)) : null;
+  const divIsMeasured = bindingBu?.measured ?? false;
+  const divUsed = bindingBu ? bindingBu.divisor : null;
   if (first && divUsed !== null) {
     limits.push({
       side: 'ceiling',

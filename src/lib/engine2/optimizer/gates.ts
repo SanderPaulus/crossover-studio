@@ -995,7 +995,13 @@ export function freezeGateReference(args: {
 }
 
 /** Solve, or null — the caller has its own opinion about an unsolvable network. */
-function buildAnalysisOrNull(
+/**
+ * U-5 — exported, because the stated-crossing verdicts read the SAME electrical
+ * analysis this file's gates read (`statedVerdicts.ts`). One try/catch around
+ * one solve, in one place: two of them would be two answers to "is this network
+ * solvable on the measured sweep".
+ */
+export function buildAnalysisOrNull(
   netlist: Netlist,
   grid: readonly number[],
   driverZ: Record<string, readonly Complex[]>,

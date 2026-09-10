@@ -455,6 +455,9 @@ const candidate = (
     rejection,
     levelWork: {} as V2CandidateResult<TwoWayish>['levelWork'],
     coilDcr: null,
+    /* U-5 — a generated candidate is past nothing, so it carries no stated
+     * report. Null and not an empty object: the two say different things. */
+    stated: null,
     notes: ['the measurement set has no near field for the low way', 'the measurement set has no near field for the low way'],
   }) as V2CandidateResult<TwoWayish>;
 

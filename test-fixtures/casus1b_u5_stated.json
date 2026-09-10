@@ -1,0 +1,265 @@
+{
+  "gemeten_op": "2026-09-10",
+  "casus": "casus 1b (casus 1’s mid and tweeter as a two-way)",
+  "gestelde_tekst": "2200, 2400, 2600",
+  "gesteld_op": "2026-09-10",
+  "venster": {
+    "orde": 4,
+    "vloer_hz": 1646.9446029684202,
+    "plafond_hz": 2304.026472037768,
+    "vloer_regel": "drive-stated",
+    "plafond_regel": "breakup",
+    "limieten": [
+      {
+        "zijde": "floor",
+        "regel": "validity",
+        "hz": 396.66798889329635,
+        "ongekalibreerd": false,
+        "bron": "measurement validity (tweeter far field)"
+      },
+      {
+        "zijde": "floor",
+        "regel": "fs",
+        "hz": 1294.04296875,
+        "ongekalibreerd": false,
+        "bron": "1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance"
+      },
+      {
+        "zijde": "floor",
+        "regel": "drive",
+        "hz": 1184.1621005111801,
+        "ongekalibreerd": false,
+        "bron": "8.6 dB of attenuation at tweeter's resonance (924 Hz) takes 0.36 octaves at order 4 (6 dB/oct per order) - the excursion ceiling of M-C v2.0 (driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; the ceiling the M-C gate judges the way against), read as A5d.3(ii) inverted, with the passband at the input"
+      },
+      {
+        "zijde": "floor",
+        "regel": "drive-stated",
+        "hz": 1646.9446029684202,
+        "ongekalibreerd": false,
+        "bron": "20.0 dB of attenuation at tweeter's resonance (924 Hz) takes 0.83 octaves at order 4 (6 dB/oct per order) - the STATED M-C figure (the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads), read as A5d.3(ii) inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated figure below this floor, and the floor assumes no pad (A5e.3b)"
+      },
+      {
+        "zijde": "ceiling",
+        "regel": "breakup",
+        "hz": 2304.026472037768,
+        "ongekalibreerd": true,
+        "bron": "first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47"
+      },
+      {
+        "zijde": "ceiling",
+        "regel": "directivity",
+        "hz": 5387.645646031087,
+        "ongekalibreerd": false,
+        "bron": "-6 dB at 30 deg of mid (5388 Hz)"
+      }
+    ]
+  },
+  "rijen": [
+    {
+      "hz": 2200,
+      "label": "mid→tweeter 2200 LR4 · stated",
+      "runtime_s": 122.147,
+      "outside_window": false,
+      "delivered": true,
+      "refusal": null,
+      "parts": 30,
+      "rms_db": 0.5254915839008242,
+      "window_pm_db": 69.94151757235224,
+      "min_z_ohm": 4.474250557509007,
+      "gates": [
+        {
+          "gate": "M-A",
+          "active": false,
+          "pass": true,
+          "value": 0.5481375016675023,
+          "limit": null
+        },
+        {
+          "gate": "M-B/EPDR",
+          "active": false,
+          "pass": true,
+          "value": 2.2371809871539825,
+          "limit": null
+        },
+        {
+          "gate": "M-B/|Z|",
+          "active": true,
+          "pass": true,
+          "value": 4.474243154732271,
+          "limit": 2.6
+        },
+        {
+          "gate": "M-C",
+          "active": true,
+          "pass": true,
+          "value": -44.600731741418514,
+          "limit": -20
+        },
+        {
+          "gate": "M-A/part",
+          "active": true,
+          "pass": true,
+          "value": 3.2212145534806593,
+          "limit": 5
+        },
+        {
+          "gate": "M-L",
+          "active": false,
+          "pass": true,
+          "value": 11.407682658386351,
+          "limit": null
+        }
+      ],
+      "missed_stated": [],
+      "breaches": []
+    },
+    {
+      "hz": 2400,
+      "label": "mid→tweeter 2400 LR4 · stated",
+      "runtime_s": 314.409,
+      "outside_window": true,
+      "delivered": true,
+      "refusal": null,
+      "parts": 37,
+      "rms_db": 0.5057262636410131,
+      "window_pm_db": 69.79066648939511,
+      "min_z_ohm": 4.569700038281519,
+      "gates": [
+        {
+          "gate": "M-A",
+          "active": false,
+          "pass": true,
+          "value": 0.6476223114139857,
+          "limit": null
+        },
+        {
+          "gate": "M-B/EPDR",
+          "active": false,
+          "pass": true,
+          "value": 2.2873904095798454,
+          "limit": null
+        },
+        {
+          "gate": "M-B/|Z|",
+          "active": true,
+          "pass": true,
+          "value": 4.569612114193775,
+          "limit": 2.6
+        },
+        {
+          "gate": "M-C",
+          "active": true,
+          "pass": true,
+          "value": -47.82861541287127,
+          "limit": -20
+        },
+        {
+          "gate": "M-A/part",
+          "active": true,
+          "pass": true,
+          "value": 3.247740467131223,
+          "limit": 5
+        },
+        {
+          "gate": "M-L",
+          "active": false,
+          "pass": true,
+          "value": 11.429898802675389,
+          "limit": null
+        }
+      ],
+      "missed_stated": [],
+      "breaches": [
+        {
+          "rule": "breakup",
+          "side": "ceiling",
+          "limit_hz": 2304.026472037768,
+          "octaves": 0.058877113160247393,
+          "stated": false,
+          "uncalibrated": true,
+          "demand_db": 31.292587920126397,
+          "subject": "mid",
+          "at_hz": 5688.369268900884,
+          "measured_db": -40.318512132789394,
+          "read_at_hz": 5686.521802939818,
+          "meets": true,
+          "verdict": "mid→tweeter at 2400 Hz sits 0.059 oct above the breakup ceiling of 2304.0 Hz (derived, UNCALIBRATED) — first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47. What that limit stands for is mid to sit 31.3 dB under its own passband at the breakup (5688.4 Hz); the delivered network is measured against exactly that, and the measurement is what decides — the limit is derived on the bare ladder with the passband at the input, which assumes no pad and no trap. MEASURED on the delivered network: mid sits -40.3 dB under its own passband at 5687 Hz, against the 31.3 dB that limit stands for — it DELIVERS what the limit was protecting, at a position the limit forbids. The limit is derived on the bare ladder with the passband at the input; this network has more than a bare ladder."
+        }
+      ]
+    },
+    {
+      "hz": 2600,
+      "label": "mid→tweeter 2600 LR4 · stated",
+      "runtime_s": 251.283,
+      "outside_window": true,
+      "delivered": true,
+      "refusal": null,
+      "parts": 36,
+      "rms_db": 0.49838587855211897,
+      "window_pm_db": 70.26408012878584,
+      "min_z_ohm": 4.683225500755192,
+      "gates": [
+        {
+          "gate": "M-A",
+          "active": false,
+          "pass": true,
+          "value": 0.22015543050785633,
+          "limit": null
+        },
+        {
+          "gate": "M-B/EPDR",
+          "active": false,
+          "pass": true,
+          "value": 2.376504941781147,
+          "limit": null
+        },
+        {
+          "gate": "M-B/|Z|",
+          "active": true,
+          "pass": true,
+          "value": 4.683258296108371,
+          "limit": 2.6
+        },
+        {
+          "gate": "M-C",
+          "active": true,
+          "pass": true,
+          "value": -50.60618282536224,
+          "limit": -20
+        },
+        {
+          "gate": "M-A/part",
+          "active": true,
+          "pass": true,
+          "value": 2.0475654695730268,
+          "limit": 5
+        },
+        {
+          "gate": "M-L",
+          "active": false,
+          "pass": true,
+          "value": 10.765728005491122,
+          "limit": null
+        }
+      ],
+      "missed_stated": [],
+      "breaches": [
+        {
+          "rule": "breakup",
+          "side": "ceiling",
+          "limit_hz": 2304.026472037768,
+          "octaves": 0.17435433058018332,
+          "stated": false,
+          "uncalibrated": true,
+          "demand_db": 31.292587920126397,
+          "subject": "mid",
+          "at_hz": 5688.369268900884,
+          "measured_db": -39.360230616636365,
+          "read_at_hz": 5686.521802939818,
+          "meets": true,
+          "verdict": "mid→tweeter at 2600 Hz sits 0.174 oct above the breakup ceiling of 2304.0 Hz (derived, UNCALIBRATED) — first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47. What that limit stands for is mid to sit 31.3 dB under its own passband at the breakup (5688.4 Hz); the delivered network is measured against exactly that, and the measurement is what decides — the limit is derived on the bare ladder with the passband at the input, which assumes no pad and no trap. MEASURED on the delivered network: mid sits -39.4 dB under its own passband at 5687 Hz, against the 31.3 dB that limit stands for — it DELIVERS what the limit was protecting, at a position the limit forbids. The limit is derived on the bare ladder with the passband at the input; this network has more than a bare ladder."
+        }
+      ]
+    }
+  ]
+}

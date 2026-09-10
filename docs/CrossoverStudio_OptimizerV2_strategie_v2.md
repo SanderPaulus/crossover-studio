@@ -9664,6 +9664,167 @@ onderste weg is. Elk kruisvenster reproduceert onveranderd, en de golden-suites 
   bij, dus M-M zou hem weigeren; hij staat als lezing in het manifestblok en niet als
   `vermogensopgave`, waar hij zou lezen als een grens die hij niet is.
 
+### U-5 — gestelde kruispunten: de ontwerper mag zelf een positie noemen, en krijgt de volle tune, het volle oordeel en de rekening (10-09-2026, alleen de v2-route; **additief: niets gesteld = het veld van altijd, geen regeneratie**)
+
+**WAT ER TOT U-5 NIET KON.** `candidates.ts` draagt sinds F4d vier regels, en regel 4 is absoluut:
+*"NOTHING LEAVES THE WINDOW. Ever. […] a candidate outside the window is not something this module
+declines to emit — it is something it cannot express."* Die regel is goed en zij blijft precies
+zoals zij is. Wat zij niet regelt is de vraag die een ontwerper wél stelt: *ik wil op 2600 Hz
+kruisen, wat kost dat?* Tot U-5 was het antwoord op die vraag onbereikbaar. Het venster is wat de
+METINGEN toelaten; een ontwerper die erbuiten kruist overruled geen meting, hij stelt een vraag die
+de metingen slecht beantwoorden — en het eerlijke antwoord is het ontwerp plus de prijs, niet een
+weigering.
+
+**WAT ER SINDS U-5 STAAT.** Een run-veld *"Crossings you state (Hz, per handover)"*, één regel per
+overname, laag naar hoog. Elke gestelde frequentie wordt een KANDIDAAT náást het afgeleide veld
+(dat onaangeraakt blijft), met de volle tune, dezelfde poorten, dezelfde eisen en dezelfde seed. De
+herkomst zegt wie hem opschreef en wanneer.
+
+#### DE VIJF REGELS, en elk van hen is een besluit
+
+1. **EEN GESTELDE POSITIE IS EEN KANDIDAAT.** Binnen het venster is er geen enkel verschil met een
+   gegenereerde, behalve wie hem opschreef — zij is een gewone shortlistrij. Dat is één regel code
+   (`statedOutside` in `shortlist.ts`) en het is de helft van de sessie.
+2. **NIETS WORDT STIL GEWEIGERD.** Buiten het venster loopt de tune gewoon. Wat ernaast komt is een
+   OORDEEL PER OVERSCHREDEN GRENS, in de EIGEN EENHEID van die grens.
+3. **HET OORDEEL WORDT GEMETEN WAAR DE GRENS IS AFGELEID.** Een overschreden breakup-plafond wordt
+   beantwoord door de onderdrukking die het geleverde laagdoorlaat op diezelfde breakup legt, tegen
+   wat diezelfde deler vraagt; een overschreden drive-vloer door M-C op diezelfde resonantie. Beide
+   komen uit de ÉNE afleiding waaruit het plafond zelf gebouwd is (`bindingBreakup`,
+   `XO_FS_FACTOR_BY_ORDER`) — een oordeel over een geschonden grens dat tegen iets ánders is
+   afgemeten dan de geschonden grens is erger dan geen oordeel.
+4. **GESTELDE EISEN BLIJVEN EISEN.** Een poort die de ontwerper wapende en een grens die een persoon
+   of een fabrikant stelde worden niet zachter doordat iemand er bewust op afstuurt: de kandidaat
+   wordt bij NAAM als MISSEND gemarkeerd (`missedStated`). Wat verandert is alleen dat het netwerk
+   alsnog wordt overhandigd om naar te kijken. Een AFGELEIDE grens — de ongekalibreerde breakup-ramp
+   voorop — rapporteert haar oordeel en weigert niets (V9, U-4).
+5. **DE ORDE WORDT HIER NIET GESTELD.** Een gestelde positie krijgt de uitlijning die de eigen
+   afleiding van haar overname toelaat, onder hetzelfde beleid als het gegenereerde veld
+   (`orderPolicyChoice`, bij U-5 uit `generateCandidates` gelicht). Een frequentie noemen is geen
+   filter noemen, en twee antwoorden op "welke orde krijgt deze overname" zouden een gestelde en een
+   gegenereerde kandidaat op dezelfde frequentie in verschillende ontwerpen zetten (A3g).
+
+#### DE EENHEID PER GRENS, en waarom er maar één nieuwe meting nodig was
+
+| regel | eenheid | gemeten op het geleverde netwerk |
+|---|---|---|
+| `breakup` (plafond) | dB onderdrukking op de breakup | de tak van de ONDERSTE weg, passband-relatief |
+| `drive`, `drive-stated`, `fs` (vloer) | dB op f_s | M-C op de BOVENSTE weg — dezelfde grootheid die de poort al leest |
+| `validity`, `directivity`, `stated`, `stated-min`, `stated-max` | hertz | niets: een frequentiegrens heeft geen aflezing op een netwerk, en dat is een antwoord en geen gat |
+
+Dat is de reductie die de sessie klein hield: van de negen vensterregels vraagt er precies ÉÉN een
+meting die nog niet bestond. `passbandRelativeLevelDb` is daarvoor uit `driveVoltageOnResonance`
+gelicht — dezelfde conventie (dB-gemiddelde over de BEVROREN doorlaatband van die weg), met de
+frequentie open. Eén implementatie, twee lezers; een tweede aflezing van "hoe ver onder zijn
+doorlaatband zit deze weg op f" zou hier het slechtst denkbare A3g-geval zijn.
+
+**WAT DE DELER VRAAGT, VOORUIT GELEZEN.** Het plafond is `f_breakup / deler`, dus wat het plafond
+STOND VOOR is de verzwakking die een flank van deze orde over `log2(deler)` octaven houdt:
+`6 · orde · log2(deler)` dB. Op casus 1b is dat `24 · log2(2,4689) = 31,29 dB` op 5688 Hz. Diezelfde
+inversie, andere kant op, als `xoWindow.ts` maakt van een verzwakking een frequentie.
+
+#### DE MEting — 2200 / 2400 / 2600 Hz op casus 1b
+
+Casus 1b's mid→tweeter-venster bij orde 4 loopt **1646,9–2304,0 Hz** (vloer `drive-stated`, de
+gestelde −20 dB geïnverteerd; plafond `breakup`, de eerste significante breakup van de mid op
+5688,4 Hz met +2,81 dB over de trend, gedeeld door de INTERPOLEERDE 2,4689 — UNCALIBRATED).
+
+Alle drie zijn GELEVERD, en alle drie halen élke gewapende poort (`npx vite-node
+scripts/measure-u5-stated-crossings.ts`, 10-09-2026; 122 / 314 / 251 s):
+
+| gesteld | venster | voorbij | octaven | vraagt | levert | oordeel | RMS | min \|Z\| | M-C |
+|---|---|---|---|---|---|---|---|---|---|
+| 2200 Hz | binnen | niets | — | — | — | gewone shortlistrij | 0,53 dB | 4,47 Ω | −44,60 dB |
+| 2400 Hz | buiten | `breakup` 2304 Hz | 0,059 | 31,29 dB @ 5688 Hz | **40,32 dB** | **LEVERT** | 0,51 dB | 4,57 Ω | −47,83 dB |
+| 2600 Hz | buiten | `breakup` 2304 Hz | 0,174 | 31,29 dB @ 5688 Hz | **39,36 dB** | **LEVERT** | 0,50 dB | 4,68 Ω | −50,61 dB |
+
+**EN DAT IS DE BEVINDING WAARVOOR U-5 GEBOUWD IS.** Beide gestelde posities buiten het venster
+LEVEREN wat het plafond beschermde, met acht tot negen decibel over — op een positie die het
+plafond verbiedt, en zonder ook maar één gestelde eis te missen. Het plafond is niet fout: het is
+een VOOR-ONTWERPGRENS, afgeleid op de kale ladder met de doorlaatband op de ingang, en een echt
+vierde-orde netwerk met een val heeft meer gereedschap dan een kale ladder. Wat U-5 toevoegt is
+precies de meting die het plafond zelf niet kon doen. Dat het hier om de ONGEKALIBREERDE
+breakup-ramp gaat maakt het scherper: U-4 vroeg zich af wat het meten van die deler waard is, en dit
+zijn twee ontwerpen die zeggen dat de ramp op deze driver conservatief is.
+
+**Wat het NIET zegt.** Drie ontwerpen op één casus zijn geen herijking van de deler, en de sessie
+verplaatst niets: het plafond staat waar het stond, `stated-max` en de gemeten deler (U-4) blijven
+de twee manieren om het te verzetten, en dit is het derde: hem overschrijden en de rekening lezen.
+De RMS-kolom staat er zonder oordeel — 0,50 tegen 0,53 dB is binnen de ruis van dit veld en niemand
+mag hier "hoger is beter" uit lezen (A5e.1).
+
+#### DE ENE UITZONDERING OP V31, EN ZIJ IS SMAL
+
+V31 weigert een SEED te publiceren als voorstel: *"een netwerk dat niemand tegen iets van deze
+kandidaat heeft geoordeeld"*. Een gestelde kandidaat wiens tune geweigerd wordt houdt sinds U-5
+`rejectedParts` — de GEWEIGERDE TUNE, een echt getuned ontwerp, nooit het zaad. Hij blijft een
+weigering: `rejection` staat, de reden reist mee, de shortlist houdt hem uit de gekwalificeerde
+rijen en noemt wat hij mist. Wat vervalt is uitsluitend de stilte, en dat is de kop van deze sessie.
+Zonder geweigerde onderdelen is er niets te overhandigen en blankt hij zoals altijd (F0). Geen
+enkele gegenereerde kandidaat wordt geraakt.
+
+#### DE SHORTLIST: EEN VIERDE SOORT INGANG
+
+Er waren drie manieren om buiten de rijen te vallen: een EIS (die de ladder mag verruimen), een
+POORT (die hij nooit mag verruimen) en een WEIGERING (die geen oordeel over een ontwerp is, want er
+ís geen ontwerp). U-5 voegt de vierde toe, en zij is óók geen oordeel: een ontwerp dat de METINGEN
+niet toelaten en dat een PERSOON toch gevraagd heeft. Er tussen de rijen zetten zou zeggen dat het
+toelaatbaar gebied hem bevat; hem weglaten zou de stilte zijn die U-5 opheft. Dus een eigen sectie,
+met per kandidaat elke overschreden grens in haar eigen eenheid — en KLIKBAAR, want "geleverd als
+netwerk om te bekijken" is precies waar een gestelde positie voor is. Een gestelde kandidaat staat
+nooit in `rejected`: zijn weigering staat bij hem.
+
+#### DE VENSTERVLOER DIE DE TUNE STUURT
+
+`xoFloorPairs` is de vloer waaronder de keten niet mag zakken, en voor een gegenereerde kandidaat
+is dat zijn eigen A5d.3-vensterbodem (audit §6.3). Voor een GESTELDE positie ONDER die bodem is het
+de onderkant van zijn eigen kooi: een vensterbodem die blijft staan zou de run een gesteld kruispunt
+stil terug het venster in laten trekken — een tweede mening over een positie die de ontwerper al
+gegeven had, en een stille. `windowFloorsFor` is die ene regel, met twee lezers (de verklaring en de
+keteninvoer); hij verlaagt en verhoogt nooit, dus een gestelde positie BINNEN het venster houdt de
+vensterbodem byte voor byte.
+
+#### GEEN POORT, GEEN NIEUWE KEUZE-SLEUTEL, GEEN REGENERATIE
+
+`NetOptimizeOptions` groeit niet (`choiceKeyGuard` blijft op 54): een gestelde positie is een
+KANDIDAAT, en `candidateFieldKey` hasht kandidaten al. De vingerafdruk beweegt dus mee — twee runs
+over twee verschillende velden mogen niet gelijk stempelen (F4d) — en een veld ZONDER gestelde
+kruispunten stempelt byte-identiek aan wat het vóór U-5 stempelde. `parameters.statedSize` staat er
+alleen als er iets gesteld is (de E-2-regel, één veld verder). Casus 1, 1b en 2 stellen geen
+kruispunt, dus geen corpus beweegt.
+
+#### DE KOOI VAN EEN GESTELDE POSITIE
+
+Eén spacing breed, gecentreerd op de gestelde frequentie, en NIET tegen het venster geknipt. Knippen
+zou de tune terugtrekken naar een rand waar de ontwerper bewust overheen stapte; binnen het venster
+is het exact de vorm die een tweezijdige gegenereerde kooi heeft (C-2). `twoSided` is per
+constructie waar.
+
+#### EEN PARSER-VAL DIE DE TEST VING
+
+De eerste parse trok de cijfers uit een token: `-5` werd 5 en `2400Hz` werd 2400. Het juiste soort
+getal, verzonnen uit iets dat de ontwerper niet geschreven had — precies de A3h-val. Sindsdien
+splitst hij op scheidingstekens en valideert het HELE token; wat geen positieve frequentie is wordt
+GEMELD en nergens voor gebruikt. Een deelverzameling is evenmin een verzameling: een drieweg met
+waarden op één as levert niets en noemt de lege as, want een kandidaat is een complete toewijzing
+van élke overname.
+
+#### WAT NIET GEDAAN IS
+
+- **Geen gestelde ORDE per positie.** De orde komt uit de afleiding; wie een andere orde wil, stelt
+  hem waar orden gesteld worden.
+- **Geen begrenzing van hoeveel gestelde posities.** Het chain-budget dunt POSITIES die de afleiding
+  aanbood; een gestelde positie is niet aangeboden maar gevraagd, en hem dunnen zou een vraag
+  beantwoorden die gesteld is om beantwoord te worden. Wat het kost is één ketenrun per stuk, en het
+  veld zegt hoeveel.
+- **Geen `EngineV2Report`-oppervlak.** Het oordeel per overschreden grens reist met de KANDIDAAT
+  (worker → shortlist → paneel), niet met het rapport van een geladen netwerk: het rapport kent geen
+  gestelde positie, alleen een netlist.
+- **Guided noemt het veld niet.** Het is een expertfunctie; de guided wandeling loopt de
+  OORDEELS-rijen van het register af en dit is een `nice`-rij, dus zij kan er per constructie niet
+  in verschijnen — en dat staat als claim, want herclassificeren zou een
+  kandidaatgeneratie-besturing stil in een eisenwizard zetten.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

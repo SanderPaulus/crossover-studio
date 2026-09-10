@@ -56,6 +56,7 @@ import {
   type PositionPolicy,
 } from '../predesign/candidates.ts';
 import { candidateFieldKey, type CandidateFieldResult, type PairDerivationInput } from '../predesign/candidateField.ts';
+import { statedCandidates } from '../predesign/statedCrossings.ts';
 import { fieldModeOfParameters, type FieldMode } from '../predesign/fieldMode.ts';
 import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from '../version.ts';
 
@@ -101,6 +102,19 @@ export interface RunExportField {
     alignments: Alignment[];
     /** The designer's "steps per axis", which the full mode raises to the number of pairs. */
     stepsPerAxis: number;
+    /**
+     * U-5 — the crossings the DESIGNER stated, one list per handover.
+     *
+     * PRESENT ONLY WHEN ANY WERE STATED, so a run without them exports exactly
+     * as it did before U-5 and every recorded block still replays. It has to be
+     * in the block for the same reason the two E-2 policies are: layer 1 of the
+     * replay rebuilds the field FROM THE BLOCK ALONE, and a field it cannot
+     * rebuild is a block that does not carry what the field depended on — which
+     * is the one thing layer 1 exists to prove.
+     */
+    statedPerAxisHz?: number[][];
+    /** U-5 — when they stated them; the attribution each stated candidate carries. */
+    statedOn?: string;
   };
   perPair: ExportedPerPair[];
   /** The window inputs the field stood on — the report's `predesign.windowInputs`. */
@@ -217,6 +231,10 @@ export function buildFieldExport(
       ...(settings.alignmentPolicy !== undefined ? { alignmentPolicy: settings.alignmentPolicy } : {}),
       alignments: settings.alignments.map((a) => ({ kind: a.kind, order: a.order })),
       stepsPerAxis: settings.stepsPerAxis,
+      ...(settings.statedPerAxisHz !== undefined
+        ? { statedPerAxisHz: settings.statedPerAxisHz.map((a) => [...a]) }
+        : {}),
+      ...(settings.statedOn !== undefined ? { statedOn: settings.statedOn } : {}),
     },
     perPair: exportedPerPair(windowInputs, perPair),
     windowInputs: windowInputs.map((w) => ({ ...w })),
@@ -250,13 +268,36 @@ export function replayField(exp: RunExport): CandidateField {
     orders: f.orders[i],
     statedOrder: f.perPair[i]?.statedOrder ?? null,
   }));
-  return generateCandidates(pairs, {
+  const derived = generateCandidates(pairs, {
     alignments: f.settings.alignments,
     ...(f.settings.chainBudget !== null ? { chainBudget: f.settings.chainBudget } : {}),
     minSpacingOctaves: f.settings.minSpacingOctaves,
     ...(f.settings.positionPolicy !== undefined ? { positionPolicy: f.settings.positionPolicy } : {}),
     ...(f.settings.alignmentPolicy !== undefined ? { alignmentPolicy: f.settings.alignmentPolicy } : {}),
   });
+  /* U-5 — and the STATED half, appended exactly as `buildCandidateField` does.
+   * Not a second implementation of the merge: both call `statedCandidates` on
+   * the same pairs with the same spacing, and the block carries the positions
+   * and the date so the replay can reach the same candidates. Absent = the
+   * derived field, byte for byte. */
+  const statedIn = f.settings.statedPerAxisHz;
+  if (!statedIn || statedIn.length !== pairs.length || statedIn.some((a) => a.length === 0)) {
+    return derived;
+  }
+  const stated = statedCandidates(pairs, statedIn, {
+    alignments: f.settings.alignments,
+    ...(f.settings.alignmentPolicy !== undefined ? { alignmentPolicy: f.settings.alignmentPolicy } : {}),
+    spacingOctaves: f.settings.minSpacingOctaves,
+    statedOn: f.settings.statedOn ?? 'date not recorded',
+  });
+  if (stated.candidates.length === 0) return derived;
+  return {
+    ...derived,
+    candidates: [...derived.candidates, ...stated.candidates],
+    refusals: [...derived.refusals, ...stated.refusals],
+    notes: [...derived.notes, ...stated.notes],
+    parameters: { ...derived.parameters, statedSize: stated.candidates.length },
+  };
 }
 
 /** The stamp's `choices` component value for a field — `digest` of the field key, as the stamp computes it. */

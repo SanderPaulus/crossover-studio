@@ -1117,6 +1117,42 @@ svg.legend-key-dash {
   margin-bottom: 0.25rem;
 }
 
+/* U-5 — the crossings the DESIGNER stated. Solid border rather than the
+   refusals' dashed one, because there IS a design in each of these and it can
+   be loaded; kept out of the row table, because it is not in the feasible
+   region and a table would put it there. */
+.shortlist-stated {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.6rem 0;
+}
+.shortlist-stated h5 {
+  margin: 0 0 0.2rem;
+}
+.shortlist-stated ul {
+  margin: 0.3rem 0 0 1.1rem;
+  padding: 0;
+}
+.shortlist-stated li {
+  margin-bottom: 0.25rem;
+}
+.shortlist-stated ul ul {
+  font-size: 0.92em;
+  opacity: 0.9;
+}
+/* A label that loads a design, styled as the link it behaves like. */
+.linkish {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent, inherit);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* UI-1 — the v1 ranking, kept and demoted on the v2 route. Muted because it is
    a second reading and not the run's verdict; visible because a second reading
    of your own field is worth having. */

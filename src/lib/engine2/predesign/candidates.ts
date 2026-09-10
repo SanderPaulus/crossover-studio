@@ -71,6 +71,7 @@ import { derivedPositionCount } from './positionCount.ts';
 import { recommendedBand, type RecommendedBandResult } from './recommendedBand.ts';
 import { formatEdge, roundEdge, takeoverFor } from './xoRangeAdvice.ts';
 import type { PairOrderResult } from './flankOrder.ts';
+import type { StatedCrossingMark } from './statedCrossings.ts';
 
 /**
  * One entry of the alignment library the design step will enumerate.
@@ -286,6 +287,19 @@ export interface GeneratedCandidate {
   label: string;
   crossings: CandidateCrossing[];
   provenance: string;
+  /**
+   * U-5 — set when the DESIGNER stated these handovers rather than this module
+   * deriving them.
+   *
+   * A TYPE-ONLY REFERENCE, and the direction of the dependency is the point:
+   * this module still cannot EXPRESS a candidate outside a window (rule 4 in
+   * the header is untouched, and `generateCandidates` never sets this field).
+   * What U-5 adds is a second AUTHOR — `statedCrossings.ts`, which builds
+   * candidates from positions a person typed and attaches what each of them is
+   * past. A candidate carries the mark because everything downstream reads
+   * candidates; who wrote it is what the mark says.
+   */
+  stated?: StatedCrossingMark;
 }
 
 /** What one axis contributed, and what it had to give up. */
@@ -325,6 +339,13 @@ export interface CandidateField {
      */
     positionPolicy?: PositionPolicy;
     alignmentPolicy?: AlignmentPolicy;
+    /**
+     * U-5 — how many STATED candidates were appended beside the derived ones.
+     * PRESENT ONLY WHEN THE DESIGNER STATED ANY, so a field without them
+     * serialises exactly as it did before U-5 and every recorded run
+     * fingerprint still reproduces (the E-2 rule, one field further).
+     */
+    statedSize?: number;
   };
 }
 
@@ -596,7 +617,7 @@ function positionsFor(
  * a silent one: the alternatives are said out loud, and generating both would
  * double the field on a preference the measurements have no opinion about.
  */
-function alignmentFor(
+export function alignmentFor(
   library: readonly Alignment[],
   order: number,
 ): { chosen: Alignment | null; alternatives: Alignment[] } {
@@ -604,6 +625,37 @@ function alignmentFor(
   if (at.length === 0) return { chosen: null, alternatives: [] };
   const preferred = at.find((a) => a.kind === PREFERRED_ALIGNMENT_KIND) ?? at[0];
   return { chosen: preferred, alternatives: at.filter((a) => a !== preferred) };
+}
+
+/**
+ * E-2 — WHICH ORDERS ONE HANDOVER IS BUILT AT, under the alignment policy.
+ *
+ * Exported since U-5, because a STATED position is a position and not a
+ * different kind of design: the order it is built at comes from the same
+ * derivation and the same policy a generated position's does. Two answers to
+ * "which orders does this handover get" would put a stated crossing and a
+ * generated one at the same frequency into different filters (A3g).
+ */
+export function orderPolicyChoice(
+  label: string,
+  admitted: readonly number[],
+  policy: AlignmentPolicy,
+  statedOrder: number | null,
+): { orders: number[]; notes: string[] } {
+  if (policy !== 'one' || admitted.length <= 1) return { orders: [...admitted], notes: [] };
+  const chosen =
+    statedOrder !== null && admitted.includes(statedOrder) ? statedOrder : Math.max(...admitted);
+  return {
+    orders: [chosen],
+    notes: [
+      `${label}: the exploration builds ONE alignment per handover — order ${chosen}` +
+        (statedOrder !== null && chosen === statedOrder
+          ? ' (the order you stated)'
+          : ' (the steepest the derivation admits, which meets every demand it raised)') +
+        `; the full field would also build order${admitted.length > 2 ? 's' : ''} ` +
+        `${admitted.filter((o) => o !== chosen).join(', ')}.`,
+    ],
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -654,23 +706,14 @@ export function generateCandidates(
      * order (it satisfies every demand the derivation raised). The orders
      * that are NOT built are named, so the reader of a shortlist knows the
      * full field would have built them. */
-    const admitted = pair.orders.orders;
-    const oneOrder = (): number[] => {
-      if (alignmentPolicy !== 'one' || admitted.length <= 1) return admitted;
-      const stated = pair.statedOrder ?? null;
-      const chosen =
-        stated !== null && admitted.includes(stated) ? stated : Math.max(...admitted);
-      slot.notes.push(
-        `${label}: the exploration builds ONE alignment per handover — order ${chosen}` +
-          (stated !== null && chosen === stated
-            ? ' (the order you stated)'
-            : ' (the steepest the derivation admits, which meets every demand it raised)') +
-          `; the full field would also build order${admitted.length > 2 ? 's' : ''} ` +
-          `${admitted.filter((o) => o !== chosen).join(', ')}.`,
-      );
-      return [chosen];
-    };
-    for (const order of oneOrder()) {
+    const chosenOrders = orderPolicyChoice(
+      label,
+      pair.orders.orders,
+      alignmentPolicy,
+      pair.statedOrder ?? null,
+    );
+    slot.notes.push(...chosenOrders.notes);
+    for (const order of chosenOrders.orders) {
       const { chosen, alternatives } = alignmentFor(settings.alignments, order);
       if (!chosen) {
         slot.notes.push(

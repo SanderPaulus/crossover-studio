@@ -42,6 +42,8 @@ import {
   type CandidatePairInput,
   type PositionPolicy,
 } from './candidates.ts';
+import { statedCandidates, statedOverlapNotes } from './statedCrossings.ts';
+import { WINDOW_SMOOTHING_OCTAVES } from '../constants.ts';
 
 /** A measured branch response, as the slope fit wants it. */
 export interface BranchCurve {
@@ -80,6 +82,20 @@ export interface CandidateFieldRequest {
   positionPolicy?: PositionPolicy;
   /** E-2 — how many alignments per handover. Absent = every admitted order. */
   alignmentPolicy?: AlignmentPolicy;
+  /**
+   * U-5 — THE CROSSINGS THE DESIGNER STATED, one list per adjacent pair, in the
+   * same order and of the same length as `windowInputs`.
+   *
+   * Absent, empty, or short of one axis and the field is exactly the derived
+   * one, candidate for candidate and byte for byte (P2): every recorded run
+   * fingerprint still reproduces, and nothing about the generated field moves.
+   * With a value on every axis the product of those values is APPENDED to the
+   * generated candidates — appended, so the generated field is unchanged and
+   * the stated positions sit beside it rather than in place of it.
+   */
+  statedPerAxisHz?: readonly (readonly number[])[];
+  /** U-5 — when the designer stated them; the attribution every stated candidate carries. */
+  statedOn?: string;
 }
 
 export interface CandidateFieldResult {
@@ -184,7 +200,48 @@ export function buildCandidateField(req: CandidateFieldRequest): CandidateFieldR
     ...(req.alignmentPolicy !== undefined ? { alignmentPolicy: req.alignmentPolicy } : {}),
   });
 
-  return { field, orders, referenceCrossingHz, notes: [...notes, ...field.notes] };
+  /* U-5 — THE STATED HALF, APPENDED.
+   *
+   * The budget is deliberately not applied to it: the chain budget thins
+   * POSITIONS the derivation offered, and a stated position was not offered by
+   * anything — it was asked for. Thinning one would answer a question the
+   * designer asked to have answered, which is the same argument rule 2 of
+   * `candidates.ts` makes about never thinning ORDERS. What the designer pays
+   * for it is one chain each, and the note below says how many.
+   *
+   * The stated candidates run on the same `pairs`, so their windows, their
+   * order derivations and their alignments are the generated field's. */
+  const statedIn = req.statedPerAxisHz;
+  const stated =
+    statedIn && statedIn.length === pairs.length && pairs.length > 0 && statedIn.every((a) => a.length > 0)
+      ? statedCandidates(pairs, statedIn, {
+          alignments: req.alignments,
+          ...(req.alignmentPolicy !== undefined ? { alignmentPolicy: req.alignmentPolicy } : {}),
+          spacingOctaves: req.minSpacingOctaves ?? WINDOW_SMOOTHING_OCTAVES,
+          statedOn: req.statedOn ?? 'date not recorded',
+        })
+      : null;
+  const merged: CandidateField =
+    stated && stated.candidates.length > 0
+      ? {
+          ...field,
+          candidates: [...field.candidates, ...stated.candidates],
+          refusals: [...field.refusals, ...stated.refusals],
+          notes: [
+            ...field.notes,
+            ...stated.notes,
+            ...statedOverlapNotes(stated.candidates, field.candidates),
+          ],
+          parameters: { ...field.parameters, statedSize: stated.candidates.length },
+        }
+      : field;
+
+  return {
+    field: merged,
+    orders,
+    referenceCrossingHz,
+    notes: [...notes, ...merged.notes, ...(stated && stated.candidates.length === 0 ? stated.refusals : [])],
+  };
 }
 
 /**

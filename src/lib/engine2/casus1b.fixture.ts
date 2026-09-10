@@ -48,6 +48,7 @@ import { buildReport, type EngineV2Report, type FilterInput, type ReportSettings
 import { ctcKey, type Geometry } from './metrics/types.ts';
 import { peakInputVolts } from './metrics/driveExcursion.ts';
 import { buildCandidateField, type CandidateFieldResult } from './predesign/candidateField.ts';
+import { windowFloorsFor } from './optimizer/scanRequest.ts';
 import { fieldModeSettings } from './predesign/fieldMode.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { declareCandidateChainChoices, declareCandidateChoices } from './optimizer/candidateDeclaration.ts';
@@ -409,7 +410,10 @@ export function casus1bV2Declaration(
   return {
     declaration: declareCandidateChoices({
       cages: c.crossings.map((x) => x.cageHz),
-      windowFloorsHz: c.crossings.map((x) => x.windowHz[0]),
+      /* U-5 — the one rule for the handover floor: its own window floor, or the
+       * bottom of its cage for a STATED position below that floor. The identity
+       * for every derived candidate (`windowFloorsFor`). */
+      windowFloorsHz: windowFloorsFor(c),
       multiWay: true,
       stated: {
         band: CASUS1B_V2_BAND_HZ,

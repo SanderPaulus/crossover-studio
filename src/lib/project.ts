@@ -319,6 +319,14 @@ export interface ProjectDesign {
      */
     fieldMode?: string;
     /**
+     * U-5 — the crossings the DESIGNER states, one line per handover, low to
+     * high; a semicolon does what a newline does. Every stated position becomes
+     * a candidate beside the derived field and is tuned and judged in full,
+     * inside a feasible window or outside one. Empty = the derived field alone,
+     * exactly as before U-5.
+     */
+    statedCrossings?: string;
+    /**
      * A5e.1 (F3) — the TASTE REQUIREMENTS. Acceptance limits on the outcome,
      * not weights and not gates: they filter the delivered field, they never
      * touch the search, and the relaxation ladder may widen them visibly.

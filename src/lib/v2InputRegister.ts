@@ -810,6 +810,22 @@ const NICE: readonly V2InputRow[] = [
       'shortlist says which mode made it.',
     source: 'choice',
   },
+  {
+    id: 'statedCrossings',
+    key: 'statedCrossings',
+    label: 'Crossings you state (Hz, per handover)',
+    form: 'Filters → Engine v2',
+    travels:
+      'parseStatedCrossings → buildCandidateField(statedPerAxisHz) → one extra candidate per ' +
+      'stated position, tuned and judged by the worker exactly as a derived one',
+    cls: 'nice',
+    emptyMeans:
+      'the derived field alone — the positions A5d.3 lays across each feasible window, and ' +
+      'nothing outside one. State a frequency here and it becomes an extra candidate: inside a ' +
+      'window it is judged exactly as a derived one, outside it the tune still runs and every ' +
+      'limit it is past is answered beside it in that limit’s own unit.',
+    source: 'choice',
+  },
   /* ---- U-3b: THE RIG AND THE CABINET FORM -----------------------------
    * These were the gap the U-3b measurement found: twelve controls on the
    * cabinet form and the driver card that no row named at all, so nothing
@@ -1317,6 +1333,7 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'runSeed', form: 'v2-panel', control: 'value={engineV2Settings.runSeed}' },
   { row: 'runBudgetEvals', form: 'v2-panel', control: 'value={engineV2Settings.runBudgetEvals}' },
   { row: 'fieldMode', form: 'v2-panel', control: 'value={fieldModeOf(engineV2Settings.fieldMode)}' },
+  { row: 'statedCrossings', form: 'v2-panel', control: 'value={engineV2Settings.statedCrossings}' },
 ]);
 
 /**

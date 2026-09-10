@@ -55,6 +55,7 @@ import {
   type TopologyDescriptor,
 } from './diversity.ts';
 import type { GateVerdict } from './gates.ts';
+import type { StatedCrossingReport } from '../predesign/statedCrossings.ts';
 import { relaxUntil, type RelaxationOptions, type RelaxationOutcome } from './relaxation.ts';
 
 /**
@@ -157,6 +158,20 @@ export interface ShortlistInput<T> {
     reason: string;
     rejectedTune?: Readonly<Record<string, number | null>> | null;
   } | null;
+  /**
+   * U-5 — set when the DESIGNER stated this candidate's handovers: what it is
+   * past, answered on the network it delivered, and what it misses that
+   * somebody stated.
+   *
+   * A FOURTH KIND OF ENTRY, and it is kept apart from the other three for the
+   * same reason they are kept apart from each other. A requirement the ladder
+   * may move; a gate it may never move; a refusal, which is not a judgement
+   * about a design at all — and this, which is not a judgement either: it is a
+   * design the MEASUREMENTS do not admit and a PERSON asked for anyway. Mixing
+   * one into the qualified rows would say the feasible region contains it;
+   * leaving it out entirely would be the silence U-5 exists to remove.
+   */
+  stated?: StatedCrossingReport | null;
 }
 
 /** One row of the delivered shortlist. */
@@ -201,13 +216,54 @@ export interface ShortlistRejection {
   rejectedTune?: Readonly<Record<string, number | null>> | null;
 }
 
+/**
+ * U-5 — ONE STATED CROSSING, AND WHAT IT COST.
+ *
+ * It carries its NETWORK, unlike a `ShortlistRejection`, because there is one:
+ * the designer asked for this position and the answer is the design plus the
+ * price. Whether it may be loaded is `selection.ts`'s decision and it says yes
+ * when there are parts — looking at a design nobody would ship is exactly what
+ * a stated crossing is for.
+ */
+export interface ShortlistStated<T> {
+  label: string;
+  statedOn: string;
+  /** True when any handover of it is past a binding limit of its own window. */
+  outsideWindow: boolean;
+  /** True when it ALSO appears among the rows — inside the window and feasible. */
+  isRow: boolean;
+  /** The network it delivered. Empty only when a refusal left nothing at all. */
+  parts: readonly VxpPart[];
+  result: T;
+  measurements: CandidateMeasurements;
+  gates: readonly GateVerdict[];
+  /** Its own report: every breached limit, answered in that limit's own unit. */
+  report: StatedCrossingReport;
+  /** Set when a rule refused its tune: that rule's own sentence. */
+  refusal: { kinds: readonly string[]; reason: string } | null;
+  /** One line for a reader: where it sits, what it misses, what it delivers. */
+  describe: string;
+}
+
 export interface Shortlist<T> {
   rows: ShortlistRow<T>[];
   /**
    * V31 — the candidates that delivered no network at all, with the rule that
    * refused each of them. Never rows, and never counted as feasible.
+   *
+   * U-5 — a STATED candidate is never in here even when a rule refused it: its
+   * refusal is reported in its own entry, beside the network it kept, so that a
+   * reader is not told twice about one candidate in two lanes that mean
+   * different things.
    */
   rejected: ShortlistRejection[];
+  /**
+   * U-5 — every candidate whose handovers the designer STATED, with the verdict
+   * on each limit it is past. A complete inventory: one entry per stated
+   * candidate, whether it became a row or not, because "you asked for three and
+   * here is what each of them cost" is the answer and a list of two is not.
+   */
+  stated: ShortlistStated<T>[];
   /** Every candidate that was judged, feasible or not — the field's size. */
   consideredCount: number;
   /** How many met every requirement in force. */
@@ -267,12 +323,26 @@ export function buildShortlist<T>(
    * deliverable. */
   const wasRejected = candidates.map((c) => Boolean(c.rejection));
 
+  /* U-5 — THE FOURTH EXIT: a STATED candidate that is OUTSIDE its own window.
+   *
+   * Applied here, beside the gate and the refusal and outside the ladder's
+   * reach, and the reason is the instruction itself: a stated crossing outside
+   * the window is never mixed in with the qualified designs. There is no taste
+   * limit anyone could relax that would make the measurements admit it — the
+   * window is what they admit — and a design sitting among the rows would say
+   * they do. It is not thrown away either: it has its own section, its own
+   * verdicts and its own network.
+   *
+   * A stated candidate INSIDE its window takes no exit at all and is judged
+   * exactly as a generated one. That is U-5 rule 1, as one line of code. */
+  const statedOutside = candidates.map((c) => Boolean(c.stated?.outsideWindow));
+
   const evaluateAll = (inForce: RequirementSettings): RequirementEvaluation[] =>
     candidates.map((c, i) => {
       const e = evaluateRequirements(c.measurements, inForce, requirements);
       // A gate failure is not a requirement failure, but it is still an exit.
       // Recorded here so that `feasible` means "may be delivered" everywhere.
-      return gateFailed[i] || wasRejected[i] ? { ...e, feasible: false } : e;
+      return gateFailed[i] || wasRejected[i] || statedOutside[i] ? { ...e, feasible: false } : e;
     });
 
   const relaxation = relaxUntil(requirements, size, evaluateAll, settings.relaxation);
@@ -325,14 +395,74 @@ export function buildShortlist<T>(
     );
   }
 
+  /* U-5 — a STATED candidate's refusal is reported in its own entry, beside the
+   * network it kept, and not here: one candidate in two lanes that mean
+   * different things is a reader being told the same thing twice and believing
+   * it twice. */
   const rejected: ShortlistRejection[] = candidates
-    .filter((c) => c.rejection)
+    .filter((c) => c.rejection && !c.stated)
     .map((c) => ({
       label: c.label,
       kinds: [...c.rejection!.kinds],
       reason: c.rejection!.reason,
       ...(c.rejection!.rejectedTune ? { rejectedTune: c.rejection!.rejectedTune } : {}),
     }));
+  /* ---- U-5: the stated inventory ---------------------------------------- */
+  const rowLabels = new Set(rows.map((r) => r.label));
+  const stated: ShortlistStated<T>[] = candidates
+    .filter((c) => c.stated)
+    .map((c) => {
+      const report = c.stated!;
+      const isRow = rowLabels.has(c.label);
+      const past = report.perCrossing.flatMap((x) => x.breaches);
+      return {
+        label: c.label,
+        statedOn: report.statedOn,
+        outsideWindow: report.outsideWindow,
+        isRow,
+        parts: c.parts,
+        result: c.result,
+        measurements: c.measurements,
+        gates: c.gates,
+        report,
+        refusal: c.rejection ? { kinds: [...c.rejection.kinds], reason: c.rejection.reason } : null,
+        describe:
+          `Stated by you (${report.statedOn}). ` +
+          (report.outsideWindow
+            ? `OUTSIDE the feasible window — past ${past.length} limit(s): ` +
+              past.map((b) => `${b.rule} ${b.side} ${b.limitHz.toFixed(0)} Hz`).join(', ') +
+              '. It is not a shortlist row and it is not a near miss: the measurements do not admit ' +
+              'this handover, and you asked for it anyway. '
+            : isRow
+              ? 'Inside every feasible window and it meets every requirement in force, so it is a ' +
+                'shortlist row like any other. '
+              : 'Inside every feasible window, and it is not a row: '),
+      };
+    });
+  /* The tail of the sentence, written after the head so the two halves cannot
+   * drift: what it misses, and whether there is a network to look at. */
+  for (const e of stated) {
+    e.describe +=
+      (e.refusal
+        ? `Its tune was REFUSED — ${e.refusal.reason} [${e.refusal.kinds.join(', ') || 'uncategorised'}]. `
+        : '') +
+      (e.report.missedStated.length > 0
+        ? `It MISSES ${e.report.missedStated.join(', ')} — stated requirements, which stating a ` +
+          'crossing does not relax. '
+        : 'It misses nothing anybody stated. ') +
+      (e.parts.length > 0
+        ? 'The network is here to be looked at.'
+        : 'No network at all came back, so there is nothing to look at (F0).');
+  }
+  if (stated.length > 0) {
+    notes.push(
+      `${stated.length} of ${candidates.length} candidates were STATED by you rather than derived. ` +
+        `${stated.filter((e) => e.outsideWindow).length} of them sit outside a feasible window and ` +
+        'are listed separately with what every limit they are past asks for, measured on the ' +
+        'network each of them delivered (U-5).',
+    );
+  }
+
   if (rejected.length > 0) {
     notes.push(
       `${rejected.length} of ${candidates.length} candidates delivered no network at all: their ` +
@@ -414,6 +544,7 @@ export function buildShortlist<T>(
   return {
     rows,
     rejected,
+    stated,
     consideredCount: candidates.length,
     feasibleCount: relaxation.feasibleCount,
     relaxation,

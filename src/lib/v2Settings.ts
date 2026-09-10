@@ -58,6 +58,18 @@ export const V2_SETTING_KEYS = [
   'lowestWaySeriesRMaxOhm',
   /** E-2 — the field mode: '' (exploration, the default), 'exploration' or 'full'. */
   'fieldMode',
+  /**
+   * U-5 — the crossings the DESIGNER states, one line per handover, low to
+   * high. Free text and not a number: it is a LIST per axis, and the parse
+   * (`statedCrossings.ts`) says what it could not use rather than dropping it.
+   *
+   * NOT A JUDGEMENT KEY. It does not judge, bound or filter anything: it ADDS
+   * candidates beside the derived field, and each of them is judged by exactly
+   * the requirements and gates already in force. What it can do is put a design
+   * outside a feasible window on the screen — which is a question, not a
+   * verdict, and the answer travels with it.
+   */
+  'statedCrossings',
 ] as const;
 
 export type V2SettingKey = (typeof V2_SETTING_KEYS)[number];
