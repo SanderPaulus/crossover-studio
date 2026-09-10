@@ -36,6 +36,7 @@ import {
   declareCandidateChoices,
 } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
+import type { DriverBreakupDivisor, DriverMaxCrossover } from './predesign/xoWindow.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
@@ -49,7 +50,9 @@ import {
   casus1LowestWayLevelWorkRule,
   casus1MaxDriveOnFsDb,
   casus1MaxDriveOnFsDbByDriver,
+  casus1BreakupDivisors,
   casus1MaxCrossingHzByPair,
+  casus1MaxCrossovers,
   casus1QesMultiplierMax,
   casus1TargetCurve,
   casus1ThermalDesignPowerW,
@@ -296,8 +299,39 @@ export const CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER: Record<string, number> = casus
  * floor, the pre-measurement is `measure-e1-mt-ceiling.ts`.
  */
 export const CASUS1_MAX_CROSSING_HZ_BY_PAIR: Record<string, number> = casus1MaxCrossingHzByPair();
-export const CASUS1_WINDOW_SETTINGS: { maxCrossingHzByPair?: Record<string, number> } =
-  Object.keys(CASUS1_MAX_CROSSING_HZ_BY_PAIR).length > 0 ? { maxCrossingHzByPair: { ...CASUS1_MAX_CROSSING_HZ_BY_PAIR } } : {};
+
+/**
+ * U-4 — the two driver-level window inputs the manifest now carries, on the
+ * same footing and in the same spread: the manufacturer's recommended MAXIMUM
+ * crossover per driver (a ceiling on the pair whose LOWER driver it is) and the
+ * MEASURED breakup divisor per driver (which replaces the interpolated ramp and
+ * takes its UNCALIBRATED marking with it).
+ *
+ * Both are read from the manifest and neither is written here (P6). On casus 1
+ * today the first holds one entry — the tweeter's 30 kHz, which binds nothing
+ * because the tweeter is nobody's lower driver — and the second is empty. So
+ * every window is byte-identical to what it was, which is what makes U-4 an
+ * additive session with no regeneration; the guard measures that rather than
+ * asserting it.
+ */
+export const CASUS1_MAX_CROSSOVER_BY_DRIVER = casus1MaxCrossovers();
+export const CASUS1_BREAKUP_DIVISOR_BY_DRIVER = casus1BreakupDivisors();
+
+export const CASUS1_WINDOW_SETTINGS: {
+  maxCrossingHzByPair?: Record<string, number>;
+  driverMaxCrossoverByDriver?: Record<string, DriverMaxCrossover>;
+  driverBreakupDivisorByDriver?: Record<string, DriverBreakupDivisor>;
+} = {
+  ...(Object.keys(CASUS1_MAX_CROSSING_HZ_BY_PAIR).length > 0
+    ? { maxCrossingHzByPair: { ...CASUS1_MAX_CROSSING_HZ_BY_PAIR } }
+    : {}),
+  ...(Object.keys(CASUS1_MAX_CROSSOVER_BY_DRIVER).length > 0
+    ? { driverMaxCrossoverByDriver: { ...CASUS1_MAX_CROSSOVER_BY_DRIVER } }
+    : {}),
+  ...(Object.keys(CASUS1_BREAKUP_DIVISOR_BY_DRIVER).length > 0
+    ? { driverBreakupDivisorByDriver: { ...CASUS1_BREAKUP_DIVISOR_BY_DRIVER } }
+    : {}),
+};
 
 /**
  * V50 — the CONTINUOUS amplifier power, from its one home in the manifest. It

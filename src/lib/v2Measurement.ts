@@ -74,6 +74,29 @@ export interface V2MeasurementMeta {
   minCrossoverHz: string;
   /** The order that recommendation is stated at. '' = none claimed. */
   minCrossoverOrder: string;
+  /* ---- U-4 (10-09-2026): the other end of the same line, and the ramp ----
+   * A recommended range has two ends. The top of it binds the window in which
+   * this driver is the LOWER of a pair, verbatim at every order — no sheet in
+   * this project states a slope beside its upper end, and inventing one would
+   * be the A3h trap the floor's own comment warns about. '' = no such ceiling
+   * and the window is what it always was (P4). */
+  /** The highest handover the datasheet recommends, Hz. */
+  maxCrossoverHz: string;
+  /**
+   * '' or 'yes' — let that stated ceiling stand IN PLACE OF the breakup
+   * derivation, even where the derivation would be stricter. The first stated
+   * overrule of a derived limit in this project, and never on unless the
+   * designer sets it: a stated ceiling on its own is simply read beside the
+   * derived ones and the strictest binds.
+   */
+  maxCrossoverOverride: string;
+  /**
+   * The MEASURED breakup divisor of this driver, replacing the uncalibrated
+   * ramp between the two published endpoints. '' = the ramp, marked.
+   */
+  breakupDivisor: string;
+  /** When and how that divisor was measured, in the designer's own words. */
+  breakupDivisorNote: string;
 }
 
 /** Every field of the block, in declaration order — the guards enumerate it. */
@@ -97,6 +120,10 @@ export const V2_MEASUREMENT_KEYS = [
   'testFilterHz',
   'minCrossoverHz',
   'minCrossoverOrder',
+  'maxCrossoverHz',
+  'maxCrossoverOverride',
+  'breakupDivisor',
+  'breakupDivisorNote',
 ] as const satisfies readonly (keyof V2MeasurementMeta)[];
 
 /** The fresh state of one branch: every field empty, nothing stated. */
@@ -120,4 +147,8 @@ export const emptyV2Meas = (): V2MeasurementMeta => ({
   testFilterHz: '',
   minCrossoverHz: '',
   minCrossoverOrder: '',
+  maxCrossoverHz: '',
+  maxCrossoverOverride: '',
+  breakupDivisor: '',
+  breakupDivisorNote: '',
 });

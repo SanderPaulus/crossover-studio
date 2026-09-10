@@ -25,7 +25,11 @@ import type { Netlist } from '../network.ts';
 import { parseArtaHeader, type Manifest, type ManifestEntry } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
 import type { DriverPowerRating } from './metrics/thermalLoad.ts';
-import type { DriverMinCrossover } from './predesign/xoWindow.ts';
+import type {
+  DriverBreakupDivisor,
+  DriverMaxCrossover,
+  DriverMinCrossover,
+} from './predesign/xoWindow.ts';
 import type { WayWiring } from './ingest/wiring.ts';
 import type { FilterInput, EngineV2ReportInput, ReportSettings } from './report.ts';
 import {
@@ -119,6 +123,19 @@ export interface AdapterBranch {
    * is. Absent = no such floor and the window is unchanged (P4).
    */
   minCrossover?: DriverMinCrossover;
+  /**
+   * U-4 — the manufacturer's recommended MAXIMUM CROSSOVER for this driver,
+   * and the designer's explicit overrule of the breakup derivation, if set.
+   * Re-keyed from role to driver id here, into
+   * `ReportSettings.driverMaxCrossoverByDriver`. Absent = no such ceiling and
+   * the window is unchanged (P4).
+   */
+  maxCrossover?: DriverMaxCrossover;
+  /**
+   * U-4 — the MEASURED breakup divisor of this driver, replacing the ramp.
+   * Re-keyed like the rest; absent = the interpolation, marked uncalibrated.
+   */
+  breakupDivisor?: DriverBreakupDivisor;
   /**
    * V51 — the WIRING of this way: how many identical drivers, as measured and
    * as intended (`ingest/wiring.ts`). Re-keyed from role to driver id into
@@ -393,6 +410,22 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     if (!b.minCrossover) continue;
     minXoByDriver[ids[b.role] ?? b.role] = b.minCrossover;
   }
+  /* U-4 — the recommended MAXIMUM crossover and the measured breakup divisor
+   * per way, re-keyed like the rest. */
+  const maxXoByDriver: Record<string, DriverMaxCrossover> = {
+    ...(args.settings.driverMaxCrossoverByDriver ?? {}),
+  };
+  for (const b of args.branches) {
+    if (!b.maxCrossover) continue;
+    maxXoByDriver[ids[b.role] ?? b.role] = b.maxCrossover;
+  }
+  const divisorByDriver: Record<string, DriverBreakupDivisor> = {
+    ...(args.settings.driverBreakupDivisorByDriver ?? {}),
+  };
+  for (const b of args.branches) {
+    if (!b.breakupDivisor) continue;
+    divisorByDriver[ids[b.role] ?? b.role] = b.breakupDivisor;
+  }
   /* V51 — the wiring per way, re-keyed like the rest. */
   const wiringByDriver: Record<string, WayWiring> = { ...(args.settings.wiringByDriver ?? {}) };
   for (const b of args.branches) {
@@ -412,6 +445,8 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     ...(Object.keys(driveByDriver).length > 0 ? { maxDriveOnFsDbByDriver: driveByDriver } : {}),
     ...(Object.keys(ratingByDriver).length > 0 ? { driverPowerRatingByDriver: ratingByDriver } : {}),
     ...(Object.keys(minXoByDriver).length > 0 ? { driverMinCrossoverByDriver: minXoByDriver } : {}),
+    ...(Object.keys(maxXoByDriver).length > 0 ? { driverMaxCrossoverByDriver: maxXoByDriver } : {}),
+    ...(Object.keys(divisorByDriver).length > 0 ? { driverBreakupDivisorByDriver: divisorByDriver } : {}),
     ...(Object.keys(reByDriver).length > 0 ? { reOhmByDriver: reByDriver } : {}),
     ...(Object.keys(cards).length > 0 ? { driverCardByDriver: cards } : {}),
     ...(Object.keys(drives).length > 0 ? { responseDriveByDriver: drives } : {}),

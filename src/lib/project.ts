@@ -435,6 +435,16 @@ export interface ProjectDesign {
          *  no such floor, and the window is what it always was (P4). */
         minCrossoverHz?: string;
         minCrossoverOrder?: string;
+        /** U-4 — the recommended MAXIMUM crossover, Hz, and the designer's
+         *  explicit decision to let it replace the (uncalibrated) breakup
+         *  derivation. Empty = no such ceiling, and the overrule is off. */
+        maxCrossoverHz?: string;
+        maxCrossoverOverride?: string;
+        /** U-4 — the MEASURED breakup divisor of this driver and the note
+         *  saying when and how, replacing the ramp between the two published
+         *  endpoints. Empty = the ramp, marked uncalibrated. */
+        breakupDivisor?: string;
+        breakupDivisorNote?: string;
       }
     >
   >;

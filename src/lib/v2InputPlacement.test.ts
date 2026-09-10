@@ -110,6 +110,12 @@ describe('U-3b — the placement rule', () => {
       'cabinetDepth',
       'gateOverride',
       'manualWindow',
+      /* U-4 — the fourth, and it is the same shape as the other three: a
+       * control that answers a case which may not exist. With no stated
+       * maximum crossover for this driver there is nothing to overrule, and a
+       * permanently visible switch that is usually inert is a switch someone
+       * reaches for. */
+      'maxCrossoverOverride',
     ]);
   });
 
@@ -128,7 +134,8 @@ describe('U-3b — the placement rule', () => {
      * one that should stay visible has to be argued for HERE.
      *
      * U-3c added the three DATASHEET rows to it, U-3f the fourth
-     * (`powerRating`, M-M) and U-3g the fifth (`minCrossover`) — each arrived
+     * (`powerRating`, M-M), U-3g the fifth (`minCrossover`) and U-4 the sixth
+     * (`maxCrossover`, the other end of the same line) — each arrived
      * by the rule rather than as a new exception, and this named set is where
      * the arrival is noticed. That is a rule and not three
      * exceptions: a number the designer copies off a spec sheet is generic data
@@ -137,8 +144,8 @@ describe('U-3b — the placement rule', () => {
      * instead of quietly landing behind the fold. */
     const shown = rowsOfClass('nice').filter((r) => placementOf(r) === 'always').map((r) => r.id);
     expect(shown.sort()).toEqual(
-      ['baffleHeight', 'blTm', 'micDistance', 'minCrossover', 'mmsG', 'powerRating', 'refDriver',
-        'referencePoint', 'sourceCount', 'xmaxMm'].sort(),
+      ['baffleHeight', 'blTm', 'maxCrossover', 'micDistance', 'minCrossover', 'mmsG', 'powerRating',
+        'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm'].sort(),
     );
     for (const id of shown) expect(rowById(id)!.placementWhy, id).toBeTruthy();
   });
@@ -146,7 +153,7 @@ describe('U-3b — the placement rule', () => {
   it('every DATASHEET row is in the default view, and they sit on the card they are filled in on', () => {
     const sheet = V2_INPUT_REGISTER.filter((r) => r.source === 'datasheet');
     expect(sheet.map((r) => r.id).sort()).toEqual(
-      ['blTm', 'minCrossover', 'mmsG', 'nominalSize', 'powerRating', 'sd', 'xmaxMm'].sort(),
+      ['blTm', 'maxCrossover', 'minCrossover', 'mmsG', 'nominalSize', 'powerRating', 'sd', 'xmaxMm'].sort(),
     );
     /* The rule binds where the rule GOVERNS. `nominalSize` is the one datasheet
      * row in a form this placement rule does not reach — it is the v1 fallback
@@ -393,6 +400,9 @@ describe('U-3b — the app puts each control where its placement says', () => {
       gateOverride: 'cabinetInfo.windowless.length > 0 &&',
       manualWindow: 'cabinetInfo.windowless.includes(role) &&',
       cabinetDepth: 'cabinetInfo.offBaffle.length > 0 &&',
+      /* U-4 — the condition IS the register's: "only while this driver states
+       * a maximum crossover". Without one there is nothing to overrule. */
+      maxCrossoverOverride: "v2Meas[role].maxCrossoverHz.trim() !== '' &&",
     };
     for (const f of V2_FORM_FIELDS) {
       const p = placementOf(rowById(f.row)!);

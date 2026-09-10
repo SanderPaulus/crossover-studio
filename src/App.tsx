@@ -197,9 +197,16 @@ import {
  * bundle states some of these facts, and the guard that checks a bundle
  * against the register has to know the whole shape (`v2Measurement.ts`). */
 import { emptyV2Meas, type V2MeasurementMeta } from './lib/v2Measurement.ts';
+/* U-4 — the two-tone recipe that replaces the uncalibrated divisor ramp, in
+ * its one home; the register row beside the field reads the same string. */
+import { BREAKUP_DIVISOR_PROTOCOL } from './lib/breakupDivisorProtocol.ts';
 /* M-M — the driver's own power rating, as the adapter and the metric take it. */
 import type { DriverPowerRating } from './lib/engine2/metrics/thermalLoad.ts';
-import type { DriverMinCrossover } from './lib/engine2/predesign/xoWindow.ts';
+import type {
+  DriverBreakupDivisor,
+  DriverMaxCrossover,
+  DriverMinCrossover,
+} from './lib/engine2/predesign/xoWindow.ts';
 import {
   V1_FIELD_DEFAULTS,
   describeV1Carryover,
@@ -3862,6 +3869,53 @@ export default function App() {
     return out;
   }, [v2Meas]);
 
+  /**
+   * U-4 — the manufacturer's recommended MAXIMUM crossover, per role, and the
+   * designer's explicit overrule of the breakup derivation beside it.
+   *
+   * The frequency travels alone, exactly as the minimum does: a sheet that
+   * prints a range has said how high the driver may be crossed whether or not
+   * it says anything else. The OVERRULE is a separate statement and is only
+   * ever read next to a stated ceiling — with no ceiling there is nothing to
+   * overrule, so it is not a half-stated anything, it is inert (P4).
+   */
+  const maxCrossoverByRole = useMemo(() => {
+    const out: Partial<Record<BranchRole, DriverMaxCrossover>> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const m = v2Meas[role];
+      if (m.maxCrossoverHz.trim() === '') continue;
+      const hz = Number(m.maxCrossoverHz);
+      if (!(hz > 0)) continue;
+      out[role] = {
+        hz,
+        ...(m.maxCrossoverOverride === 'yes' ? { overridesBreakup: true } : {}),
+        source: 'driver datasheet, entered on the driver card (U-4)',
+      };
+    }
+    return out;
+  }, [v2Meas]);
+
+  /**
+   * U-4 — the MEASURED breakup divisor, per role.
+   *
+   * The number alone is the statement; the note beside it is attribution, and
+   * it is free text rather than a date field because nothing in the app can
+   * know WHEN a measurement was made. A stamp of the moment it was typed would
+   * be a different fact under the same name (the A3h shape, one field over).
+   */
+  const breakupDivisorByRole = useMemo(() => {
+    const out: Partial<Record<BranchRole, DriverBreakupDivisor>> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const m = v2Meas[role];
+      if (m.breakupDivisor.trim() === '') continue;
+      const v = Number(m.breakupDivisor);
+      if (!(v > 0)) continue;
+      const note = m.breakupDivisorNote.trim();
+      out[role] = { value: v, ...(note !== '' ? { measuredOn: note } : {}) };
+    }
+    return out;
+  }, [v2Meas]);
+
   const driveOnFsMaxDbByRole = useMemo(() => {
     const out: Partial<Record<BranchRole, number>> = {};
     for (const role of ['low', 'mid', 'high'] as const) {
@@ -4069,6 +4123,11 @@ export default function App() {
           ...(powerRatingByRole[role] !== undefined ? { powerRating: powerRatingByRole[role] } : {}),
           /* U-3g — the recommended minimum crossover; the Hz alone is enough. */
           ...(minCrossoverByRole[role] !== undefined ? { minCrossover: minCrossoverByRole[role] } : {}),
+          /* U-4 — the other end of that line, and the measured divisor. */
+          ...(maxCrossoverByRole[role] !== undefined ? { maxCrossover: maxCrossoverByRole[role] } : {}),
+          ...(breakupDivisorByRole[role] !== undefined
+            ? { breakupDivisor: breakupDivisorByRole[role] }
+            : {}),
           /* V51 — the way's wiring: the count from the cabinet form, the two
            * wirings from the measurement block. Only complete statements
            * travel; a half-stated wiring is absent. */
@@ -12868,31 +12927,34 @@ export default function App() {
                               </span>
                             </>
                           )}
-                          {/* ---- U-3g: THE RECOMMENDED MINIMUM CROSSOVER --------
-                            * The one generic statement a datasheet makes about
-                            * how LOW this driver may be crossed, and the only
-                            * one that reaches the pre-design window as a floor.
+                          {/* ---- U-3g / U-4: THE RECOMMENDED RANGE --------------
+                            * ONE line off the datasheet with TWO ends, and the
+                            * app reads both. The BOTTOM binds the window in
+                            * which this driver is the upper of a pair (U-3g);
+                            * the TOP binds the window in which it is the lower
+                            * (U-4). Same statement, two windows, and putting
+                            * them in one row is what makes that legible.
                             *
-                            * The Hz travels ALONE — many sheets print a range
-                            * and no slope, and that is still a complete
-                            * statement. The order is the second half of the
-                            * condition when the sheet names one, and it only
-                            * ever RAISES the floor: a steeper flank never buys
-                            * a lower handover here, because a recommended range
-                            * bundles distortion and directivity with excursion
-                            * and only the last of those follows the slope at
-                            * f_s (see `xoWindow.ts`).
+                            * THE ASYMMETRY IS DELIBERATE. The bottom takes an
+                            * order, because the sheet's condition is a filter
+                            * condition and a shallower flank leaves more energy
+                            * at the resonance than the sheet certified. The top
+                            * takes none: a recommended top is about cone
+                            * breakup and beaming, no sheet prints a slope
+                            * beside it, and a field nobody can fill is
+                            * decoration (V19). Both are taken verbatim; only
+                            * the bottom is ever RAISED, never lowered.
                             *
                             * In the default view for the U-3c reason — every
                             * `source: 'datasheet'` row is. */}
                           {engineSelection.reporting && (
                             <>
-                              <span className="cd-label">{t('Minimum crossover')}</span>
+                              <span className="cd-label">{t('Recommended range')}</span>
                               <span
                                 className="cd-fields"
-                                title={t("The lowest crossover the manufacturer recommends for this driver, off its datasheet (e.g. \"Recommended frequency range 2.2kHz - 30kHz\"), with the slope it is stated at when the sheet names one. It becomes the FLOOR of this driver's crossover window, taken verbatim: a steeper flank does not buy a lower handover, because a recommended range bundles distortion and directivity with excursion and only excursion follows the slope at f_s. A flank SHALLOWER than the stated one raises the floor instead. Blank = the window falls back to a derived excursion ceiling, a stated dB figure, or the k*f_s convention - and on a dome that is usually the convention.")}
+                                title={t("The crossover range the manufacturer recommends for this driver, off its datasheet (e.g. \"Recommended frequency range 2.2kHz - 30kHz\"), with the slope the LOW end is stated at when the sheet names one. The low end becomes the FLOOR of the window where this driver is the upper of a pair; the high end becomes a CEILING of the window where it is the lower. Both verbatim: a steeper flank does not buy a lower handover, because a recommended range bundles distortion and directivity with excursion and only excursion follows the slope at f_s. A flank SHALLOWER than the stated one raises the floor instead. Blank = the window falls back to a derived excursion ceiling, a stated dB figure, or the k*f_s convention at the bottom, and to the breakup derivation at the top.")}
                               >
-                                <span className="cd-pre" />
+                                <span className="cd-pre">{t('from')}</span>
                                 <input
                                   type="number"
                                   min={0}
@@ -12913,8 +12975,58 @@ export default function App() {
                                   <option value="3">{t('3rd order (18 dB/oct)')}</option>
                                   <option value="4">{t('4th order (24 dB/oct)')}</option>
                                 </select>
+                                {' · ' + t('up to') + ' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={100}
+                                  placeholder="—"
+                                  value={v2Meas[role].maxCrossoverHz}
+                                  onChange={(e) => setV2MeasField(role, 'maxCrossoverHz', e.target.value)}
+                                  style={{ width: '5rem' }}
+                                />
+                                {' Hz'}
                                 <span className="cd-hint">
-                                  {t('the frequency alone is enough — the order only raises this floor, never lowers it')}
+                                  {t('either end alone is enough — the order only raises the floor, never lowers it')}
+                                </span>
+                              </span>
+                            </>
+                          )}
+                          {/* ---- U-4: THE OVERRULE ------------------------------
+                            * The first stated overrule of a DERIVED limit in
+                            * this project, and it exists because the limit it
+                            * replaces is the one that admits to being
+                            * uncalibrated: the breakup divisor interpolates
+                            * between two published endpoints on a ramp nobody
+                            * has measured (V9). A manufacturer who prints a
+                            * recommended top HAS measured the driver.
+                            *
+                            * CONDITIONAL, and the register says why: with no
+                            * stated ceiling there is nothing to overrule, and a
+                            * switch that is always visible and usually inert is
+                            * a switch someone reaches for. Never on by itself
+                            * (P4) — a stated ceiling on its own is simply read
+                            * beside the derived ones and the strictest binds. */}
+                          {engineSelection.reporting && v2Meas[role].maxCrossoverHz.trim() !== '' && (
+                            <>
+                              <span className="cd-label" />
+                              <span className="cd-fields">
+                                <span className="cd-pre" />
+                                <label
+                                  className="cd-inline-check"
+                                  title={t("Let the datasheet's maximum crossover stand IN PLACE OF the app's breakup derivation for this driver, even where that derivation is stricter. Off by default and never set for you: with it off the stated ceiling is simply one limit among the others and the strictest binds. With it on, the breakup limit is still detected, still measured and still reported — it just stops binding the window, and every candidate says so. Worth considering because the divisor the derivation uses is an interpolation nobody has calibrated; worth thinking about because the breakup is a real property of the cone and the manufacturer's range is a recommendation for a whole system.")}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={v2Meas[role].maxCrossoverOverride === 'yes'}
+                                    onChange={(e) =>
+                                      setV2MeasField(role, 'maxCrossoverOverride', e.target.checked ? 'yes' : '')
+                                    }
+                                  />{' '}
+                                  {t('this ceiling replaces the breakup derivation')}
+                                </label>
+                                <span className="cd-hint">
+                                  {t('off = the stated ceiling is read beside the derived ones and the strictest binds')}
                                 </span>
                               </span>
                             </>
@@ -13399,6 +13511,43 @@ export default function App() {
                                     <option value={v2Meas[role].coilFamily}>{`${v2Meas[role].coilFamily} (${t('not in the loaded catalogue')})`}</option>
                                   )}
                                 </select>
+                              </span>{' '}
+                              {/* U-4 — THE MEASURED BREAKUP DIVISOR of this
+                                  driver, and the note saying when and how.
+                                  Behind the disclosure and not in the default
+                                  view: it is a measurement of this particular
+                                  cone rather than a number off a sheet, so it
+                                  takes the `nice` class's own placement. What
+                                  makes it findable is the window's divisor
+                                  table, which prints what measuring it would
+                                  buy before anyone spends an afternoon on it.
+
+                                  The note is FREE TEXT and not a date field on
+                                  purpose: nothing in the app can know when a
+                                  measurement was made, and stamping the moment
+                                  it was typed would be a different fact under
+                                  the same name. */}
+                              <span
+                                className="inline-num"
+                                title={t(BREAKUP_DIVISOR_PROTOCOL)}
+                              >
+                                {t('breakup divisor') + ' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={0.1}
+                                  placeholder="—"
+                                  value={v2Meas[role].breakupDivisor}
+                                  onChange={(e) => setV2MeasField(role, 'breakupDivisor', e.target.value)}
+                                  style={{ width: '4rem' }}
+                                />{' '}
+                                <input
+                                  type="text"
+                                  placeholder={t('when and how it was measured')}
+                                  value={v2Meas[role].breakupDivisorNote}
+                                  onChange={(e) => setV2MeasField(role, 'breakupDivisorNote', e.target.value)}
+                                  style={{ width: '11rem' }}
+                                />
                               </span>
                             </span>
                           </>

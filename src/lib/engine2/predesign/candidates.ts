@@ -67,6 +67,7 @@
 
 import { WINDOW_SMOOTHING_OCTAVES } from '../constants.ts';
 import { crossoverWindow, type XoWindowInput, type XoWindowResult } from './xoWindow.ts';
+import { derivedPositionCount } from './positionCount.ts';
 import { recommendedBand, type RecommendedBandResult } from './recommendedBand.ts';
 import { formatEdge, roundEdge, takeoverFor } from './xoRangeAdvice.ts';
 import type { PairOrderResult } from './flankOrder.ts';
@@ -451,11 +452,10 @@ function excisionSentence(ex: readonly BandExcision[]): string {
     .join('');
 }
 
-/** How many positions the spacing rule admits over this span. */
-export function derivedPositionCount(spanOct: number, spacingOct: number): number {
-  if (!(spanOct > 0) || !(spacingOct > 0)) return 1;
-  return Math.max(1, 1 + Math.floor(spanOct / spacingOct + Number.EPSILON));
-}
+/* U-4 — `derivedPositionCount` now lives in `positionCount.ts`, because the
+ * window's divisor table counts positions too and one rule may have only one
+ * implementation (A3g). Re-exported here so every existing reader is unmoved. */
+export { derivedPositionCount };
 
 /**
  * E-2 — how many positions the centre-first layout admits over this span:
@@ -828,10 +828,24 @@ export function generateCandidates(
        * the directivity ceiling (5433 Hz) does not and nothing is stated. A
        * provenance that named only the binding rule read as if it were the
        * only rule. */
+      /* U-4 — a SUPERSEDED ceiling is named here too, and named as superseded.
+       * It is reported and does not bind (the designer's explicit overrule of
+       * the uncalibrated breakup derivation), and a provenance that silently
+       * dropped it would make the winning ceiling look like the only one there
+       * ever was — the very reading E-1 added this inventory to prevent. */
       const ceilings = o.window.limits.filter((l) => l.side === 'ceiling');
+      const overruled = ceilings.filter((l) => l.superseded !== undefined);
       const ceilingInventory = ceilings.length
-        ? `the strictest of ${ceilings.map((l) => `${l.rule} ${formatEdge(l.hz)} Hz`).join(', ')}` +
-          (ceilings.some((l) => l.rule === 'stated') ? '' : '; no stated ceiling')
+        ? `the strictest of ${ceilings
+            .filter((l) => l.superseded === undefined)
+            .map((l) => `${l.rule} ${formatEdge(l.hz)} Hz`)
+            .join(', ')}` +
+          (ceilings.some((l) => l.rule === 'stated' || l.rule === 'stated-max') ? '' : '; no stated ceiling') +
+          (overruled.length
+            ? `; SUPERSEDED and not binding: ${overruled
+                .map((l) => `${l.rule} ${formatEdge(l.hz)} Hz — ${l.superseded}`)
+                .join(', ')}`
+            : '')
         : 'no ceiling limit';
       pts.forEach((p, i) => {
         const seg: [number, number] = [roundEdge(p.segment[0]), roundEdge(p.segment[1])];

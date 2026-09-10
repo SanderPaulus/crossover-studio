@@ -48,6 +48,13 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-4 (10-09-2026) gemeten op 459 s — 174 bestanden (173 geslaagd, 1 overgeslagen), 2139 tests
+    (2136 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid
+    met de dev-server en de headless Chrome gestopt.** +1 BESTAND
+    (`engine2/predesign/statedMaxCrossover.test.ts`, 26 claims) en +26 tests, en die twee getallen
+    zijn HETZELFDE getal: het corpus is niet geregenereerd, dus geen enkele `it.each` over het levende
+    corpus beweegt, en de vier gewijzigde bestanden veranderden van INHOUD en niet van telling
+    (`v2InputPlacement` blijft op 15). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná U-3g (10-09-2026) gemeten op 456 s — 173 bestanden (172 geslaagd, 1 overgeslagen), 2113 tests
     (2110 geslaagd, 3 overgeslagen), groen, alleen gedraaid ná de browsercontrole met de dev-server
     gestopt.** +1 BESTAND (`engine2/predesign/statedMinCrossover.test.ts`, 14 claims) en +14 tests, en
@@ -373,7 +380,17 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 09-09-2026 (U-1): 167 bestanden, 2020 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 10-09-2026 (U-4): 174 bestanden, 2139 tests,
+  1542 s (25 min 42), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
+  browsercontrole (dev-server en headless Chrome gestopt) en ná de snelle laag.** +1 bestand
+  (`engine2/predesign/statedMaxCrossover.test.ts`, 26 claims) en +26 tests — hetzelfde getal, want
+  het corpus is niet geregenereerd. **Wat deze run bewijst is precies dat U-4 geen enkel venster
+  verplaatst:** de DRIE live ketenruns reproduceren op hun onveranderde corpora, beide
+  byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren, en de golden-suites van
+  casus 1, 1b en 2 staan. De enige ingevoerde U-4-waarde op casus 1 is de bovengrens van de
+  TWEETER (30 kHz), en de tweeter is van geen enkel paar de onderste weg — dus zij bereikt geen
+  enkel plafond, en dat is gemeten in plaats van beredeneerd.
+  (De stand ervoor: **GEMETEN 09-09-2026 (U-1): 167 bestanden, 2020 tests,
   1525 s (25 min 25), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle
   laag en ná de browsercontrole (dev-server en headless Chrome gestopt).** +1 bestand
   (`v1Carryover.test.ts`, 16 claims) en +16 tests — hetzelfde getal, want het corpus is niet
@@ -381,7 +398,7 @@
   live ketenruns reproduceren op hun onveranderde corpora (casus 1 in 1518 s, de verwerping 889 s,
   casus 1b 302 s), beide byte-baselines (`f4cRegression` 96 s, `workerRouteRegression` 99 s)
   reproduceren, en `toggleRegression` staat — die laatste rendert `App.tsx` niet, dus de invariant
-  is per constructie ongemoeid gebleven en dat is nagemeten in plaats van beredeneerd.
+  is per constructie ongemoeid gebleven en dat is nagemeten in plaats van beredeneerd.)
   (De stand ervoor: **GEMETEN 08-09-2026 (I-2): 164 bestanden, 1944 tests, 1557 s
   (25 min 57), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de browsercontrole
   (dev-server en headless Chrome gestopt) en ná de snelle laag.** +1 bestand (`nfMerge.test.ts`, 56 claims)
@@ -3136,6 +3153,76 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-4-guards (de fabrikantsbovengrens, de eerste gestelde overrule, de deler meetbaar)
+- **`src/lib/engine2/predesign/xoWindow.ts` — de regel `'stated-max'`, de spiegel van U-3g's
+  `'stated-min'`, en de ENE beslissing is dat de spiegel de STRUCTUUR betreft en niet de
+  correctie.** Eén limiet tussen de andere plafonds, LAAGSTE bindt, `ceilingBy` noemt de winnaar.
+  De vloer draagt een ORDE en wordt voor een ondiepere flank opgetild, omdat de conditie van het
+  blad daar een FILTERconditie is; de bovengrens draagt er geen en beweegt bij geen enkele orde.
+  Een aanbevolen bovenkant gaat over conusbreakup en bundeling, geen blad in dit project drukt er
+  een helling bij, en een veld dat niemand kan invullen is decoratie (V19) — er tóch een
+  hellingscorrectie op verzinnen is de A3h-val waarvoor U-3g's eigen commentaar waarschuwt. De
+  test pint dat op alle vier de orden én op de afwezigheid van het veld zelf.
+- **`XoLimit.superseded` — een limiet die WORDT GERAPPORTEERD EN NIET BINDT, en er is precies één
+  manier om er een te krijgen: de ontwerper zet hem met de hand.** Het selectievakje
+  *"this ceiling replaces the breakup derivation"* op de driverkaart van de onderste weg is de
+  EERSTE gestelde overrule van een AFGELEIDE grens in dit project, en hij bestaat omdat de grens
+  die hij vervangt de enige in deze module is die van zichzelf zegt dat hij ongekalibreerd is.
+  Drie beperkingen, alle drie gepind: (1) NOOIT afgeleid (P4) — een gesteld plafond alleen
+  overruled niets en de reductie doet wat zij altijd deed; (2) de breakup BLIJFT in `limits`,
+  want hij is een gemeten eigenschap van de conus en hem verbergen zou het ding verbergen dat
+  overruled wordt; (3) de kandidaatherkomst noemt hem als `SUPERSEDED and not binding` — de
+  E-1-plafondinventaris die er juist voor bestaat dat de winnende grens niet als de enige leest.
+- **`src/lib/breakupDivisorProtocol.ts` — het meetprotocol, één huis, drie lezers** (de
+  registerrij, de hulptekst bij het veld, en de UNCALIBRATED-zin van de limiet zelf, die het
+  protocol mét de eigen twee tonen van deze driver afdrukt). In `src/lib/` en niet in `engine2/`
+  om de reden die `impedanceFloor.ts` al draagt: het register mag `engine2/` niet importeren en
+  de engine mag `src/lib/` wél. **DE VONDST DIE DE SESSIE DRAAGT: de twee gepubliceerde
+  eindpunten zijn HARMONISCHE ORDES.** Deel door twee en alleen H2 van de doorlaatband landt op de
+  breakup; deel door drie en H3 ook. Welke geldt is dus geen smaakoordeel over hoe naar een piek
+  eruitziet maar een vraag over déze driver, en een tweetoonsmeting beantwoordt hem. Een gemeten
+  deler vervangt de interpolatie en NEEMT HET UNCALIBRATED-MERK MEE — ook uit de kandidaten, die
+  het van hun bindende limieten erven.
+- **`XoWindowResult.divisorTable` — wat de meting waard is, vóórdat iemand hem doet.** Per
+  kandidaatwaarde van de deler het plafond, de spanwijdte en het aantal POSITIES dat erin past,
+  geteld met de eigen regel van de generator. `derivedPositionCount` is daarvoor bij U-4 uit
+  `candidates.ts` gelicht naar `predesign/positionCount.ts` en daar geher-exporteerd: één
+  implementatie, twee lezers (A3g) — andersom kon niet, want `candidates.ts` importeert
+  `xoWindow.ts` al en de cyclus zou sluiten. De tabel staat STIL zodra de breakup superseded is:
+  een tabel over wat een deler zou opleveren beantwoordt niets meer als die deler het plafond niet
+  meer zet.
+- `src/lib/engine2/predesign/statedMaxCrossover.test.ts` (26 claims, nieuw) — zes groepen: de
+  spiegel op handberekeningen (breakup 6000 Hz bij +3 dB is deler 2,5 en plafond 2400 Hz, een
+  gesteld 2000 bindt en een gesteld 4000 niet); P4/P2 (afwezig, `null`, 0 en NaN geven een
+  byte-identiek venster, en de overrule zonder plafond is inert); de overrule; de deler; de
+  datasheets; en de app-koppeling als BRONSCAN (het UI-1-idioom). **Nagemeten dat hij kán falen**:
+  de reductie op álle plafonds laten lopen in plaats van op de bindende zet twee claims op rood,
+  en de gemeten deler niet lezen ook twee.
+- **DE SESSIE HEEFT DE DATASHEETS GELEZEN EN HET ANTWOORD WAS NIET WAT ZIJ VERWACHTTE.** De
+  opdracht rekende op een SB-bovengrens voor de MR13TX-4 bóven de 2304 Hz die de afleiding geeft.
+  **Het blad noemt helemaal geen aanbevolen frequentiebereik** (REV. 0, 09.02.2024, "Preliminary
+  Data"; wel *"Rated power handling\* 30 W"* met een voetnoot die geen filterconditie noemt, dus
+  M-M blijft daar UIT om de reden die `vermogensopgave: null` al gaf). Het mid→tweeter-plafond
+  blijft dus de breakupafleiding mét haar ongekalibreerde deler. De T25T-6 noemt beide einden; de
+  BOVENGRENS (30 kHz) is wél gevoed, want de tweeter is nergens de onderste weg en *"gelezen en
+  bindt niet"* is een meting waar een ontbrekende sleutel een afwezigheid zou zijn. De ONDERGRENS
+  (2200 Hz @ 2e orde) is GEREGISTREERD EN NIET GEVOED: zij zou de M-T-vloer van 1646,9 naar
+  2200 Hz tillen en dus een regeneratie vragen, en U-4 raakt de vloerkant niet aan. Het
+  WO24TX-8-blad is niet gelezen (CorelDRAW-export zonder tekstlaag) en dat staat er als *niet
+  gelezen* in plaats van als een stille `null`.
+- **GEEN POORT EN GEEN REGENERATIE.** Alle drie de toevoegingen zijn VENSTERregels of rapportage;
+  op casus 1 is de enige ingevoerde waarde het plafond van een driver die nergens de onderste weg
+  is, dus élk kruisvenster reproduceert onveranderd en de golden-suites van casus 1, 1b en 2 staan.
+- **BROWSERCONTROLE (dev-server, headless Chrome, 10-09-2026), en zij ving een zin die geen test
+  had gevangen.** Driewegdemo, Drivers-tab: alle drie de kaarten dragen "Recommended range" met
+  beide einden, het overrule-vakje verschijnt op de mid-kaart pas ná het typen van een bovengrens
+  en nergens anders, en de deler staat achter de uitklap. 2000 Hz op de mid geeft in de strip naast
+  de Optimize-knop `ceiling: stated-max 2000 Hz`; 4000 Hz plus het vakje geeft in het paneel
+  `▼ 2287 Hz … UNCALIBRATED SUPERSEDED — DOES NOT BIND` naast een bindend `▼ 4000 Hz`, en de
+  divisortabel valt weg. **De vangst:** met de overrule aan drukte de plaatsingszin nog
+  *"the strictest binds, and here that is stated-max"* af, terwijl strengheid daar juist niet meer
+  het werk doet. Gerepareerd en beide takken gepind.
 
 ### U-3g-guards (de aanbevolen minimale kruisfrequentie als vensterbodem; ÉÉN vensterregel, additief)
 

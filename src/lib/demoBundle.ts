@@ -189,6 +189,7 @@ export const BUNDLE_BEARABLE_ROWS: readonly string[] = Object.freeze([
   'responses', 'validity', 'impedance', 'ways', 'positions', 'sd', 'baffle-width',
   // nice
   'blTm', 'mmsG', 'xmaxMm', 'driveVoltageV', 'coilFamily', 'powerRating', 'minCrossover',
+  'maxCrossover', 'maxCrossoverOverride', 'breakupDivisor',
   'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom', 'measuredRe',
   'rotSym', 'acousticCentre', 'wiring', 'nominalSize',
   // judgement
@@ -289,6 +290,15 @@ export function bundleCarries(b: DemoBundle): Record<string, boolean> {
      * datasheet figure and not a measurement, so a demo may not state it, and
      * the subset guard is what says so if one ever does. */
     minCrossover: some((r) => filled(s.v2Measurement[r].minCrossoverHz)),
+    /* U-4 — the other end of the same line, and the two switches beside it.
+     * All three are on the BEARABLE list and none on the CARRIED one, for the
+     * same reason `minCrossover` is not: a demo is generic practice material
+     * and a datasheet figure, a stated overrule and a measurement of a
+     * particular driver are none of them things a demo may say on the
+     * viewer's behalf. The subset guard is what says so if one ever does. */
+    maxCrossover: some((r) => filled(s.v2Measurement[r].maxCrossoverHz)),
+    maxCrossoverOverride: some((r) => s.v2Measurement[r].maxCrossoverOverride === 'yes'),
+    breakupDivisor: some((r) => filled(s.v2Measurement[r].breakupDivisor)),
     nearFieldCone: some((r) => s.nearField[r].cone !== null),
     nearFieldPort: some((r) => s.nearField[r].port !== null),
     spliceBand: declares(/^\s*[*;#]*\s*Merge splice band\s*=/im),

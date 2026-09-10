@@ -9518,6 +9518,152 @@ minimum, en alle drie de golden-referentiesuites reproduceren onveranderd.
 - **Geen klasse-A-referentie op casus 1.** Casus 1 stelt geen aanbevolen minimum, dus er is niets te
   bevriezen; de handberekening en casus 1b's meting staan in `statedMinCrossover.test.ts`.
 
+### U-4 — het M-T-plafond: de fabrikantsbovengrens, de eerste gestelde overrule, en de deler meetbaar gemaakt (10-09-2026, één vensterregel plus twee schakelaars; **additief: absent = het venster van altijd, geen regeneratie**)
+
+**WAT U-3g OPENLIET.** U-3g las de ONDERKANT van één regel op een datasheet — *"Recommended
+frequency range 2.2kHz - 30kHz"* — en maakte er een vensterVLOER van. Die regel heeft een
+BOVENKANT, en het venster waar die bij hoort is het venster waarin de driver de ONDERSTE weg van
+een paar is. Sander: het aanbevolen bereik wordt op elke driverkaart een PAAR, en de bovengrens
+doet aan de plafondkant precies wat de ondergrens aan de vloerkant doet — één kandidaat erbij in
+de afweging, strengste wint, en de kandidaatherkomst zegt welke grens won.
+
+Daarnaast twee dingen die alleen op de plafondkant bestaan, en allebei omdat het plafond dat op
+casus 1 en 1b bindt de ÉNE grens in dit venster is die van zichzelf zegt dat hij ongekalibreerd is:
+de breakup van de onderste driver, gedeeld door een geïnterpoleerde deler waar V9 in 2026 het
+UNCALIBRATED-merk op zette en die sindsdien nooit gemeten is.
+
+#### DEEL 1 — DE SPIEGELREGEL, EN DE ASYMMETRIE DIE ER MET OPZET IN ZIT
+
+`stated-max` is de spiegel van U-3g's `stated-min`: één limiet tussen de andere plafonds, de
+LAAGSTE bindt, en `ceilingBy` noemt de winnaar — dezelfde vorm als E-1's plafond per paar.
+
+**Wat NIET gespiegeld is, en dat is het hele ontwerpbesluit: de bovengrens draagt geen ORDE.** De
+vloer draagt er wel een, en wordt voor een ondiepere flank OPGETILD, omdat de conditie van het blad
+daar een FILTERconditie is: een flank die ondieper is dan de gestelde laat de driver meer energie
+bij zijn resonantie dan het blad certificeerde. Aan de bovenkant bestaat zo'n conditie niet. Een
+aanbevolen bovengrens gaat over conusbreakup en bundeling, geen blad in dit project drukt er een
+helling bij, en een veld dat niemand kan invullen is decoratie (V19). Er tóch een hellingscorrectie
+op verzinnen is precies de A3h-val waarvoor U-3g's eigen commentaar waarschuwt. **Dus verbatim, bij
+elke orde**, en de test pint dat op alle vier de orden plus de afwezigheid van het veld zelf.
+
+#### DEEL 2 — DE EERSTE GESTELDE OVERRULE VAN EEN AFGELEIDE GRENS IN DIT PROJECT
+
+Eén selectievakje op de driverkaart van de onderste weg, standaard uit, alleen zichtbaar zodra die
+driver een bovengrens stelt: *"this ceiling replaces the breakup derivation"*. Aan = het gestelde
+plafond geldt óók waar de deler strenger zou zijn.
+
+**Waarom dit hier mag en elders niet.** Elke andere grens in dit venster is een meting of een
+gestelde eis; de breakupafleiding is een meting GEDEELD DOOR EEN AANNAME. Een fabrikant die een
+aanbevolen bovenkant drukt heeft de driver gemeten; een ontwerper die dat boven de helling van de
+app verkiest doet een verdedigbare uitspraak, en de taak van de app is die vastleggen, niet hem
+voor hem doen. Vandaar de drie beperkingen die de test pint:
+
+- **NOOIT afgeleid (P4).** Een gesteld plafond alleen overruled niets: het staat naast de
+  afgeleide plafonds en de strengste bindt. Het vakje moet gezet worden.
+- **De breakup BLIJFT in het rapport**, met `XoLimit.superseded` erop — hij is een gemeten
+  eigenschap van de conus, en hem verbergen zou juist het ding verbergen dat overruled wordt. Hij
+  valt uitsluitend uit de reductie die het bindende plafond kiest.
+- **De kandidaatherkomst zegt het.** De plafondinventaris die E-1 toevoegde noemt hem als
+  `SUPERSEDED and not binding`, met de zin die ernaast hoort:
+
+> stated ceiling (…) REPLACES the derived breakup limit (UNCALIBRATED) — the first stated overrule
+> of a derived limit in this project; the breakup at 6000 Hz stays in the report
+
+Breakupdetectie, M-H en het rapport zijn ONGEWIJZIGD. Alleen deze vensterrand leest het vakje.
+
+#### DEEL 3 — DE DELER IS EEN HARMONISCHE ORDE, EN DAARMEE MEETBAAR
+
+Dit is de vondst die de sessie draagt. De twee gepubliceerde eindpunten van A5d.3 — f/2 mild, f/3
+ernstig — zijn geen smaakoordelen over hoe naar een piek eruitziet. **Het zijn HARMONISCHE ORDES.**
+Deel door twee en de doorlaatband stopt een octaaf onder de breakup, dus alleen de TWEEDE
+harmonische van wat de driver nog moet spelen landt op de resonantie. Deel door drie en de DERDE
+landt er ook. Welke van de twee geldt is dus een vraag over déze driver, en een tweetoonsmeting
+beantwoordt hem:
+
+> Drijf de driver alleen aan op f_breakup/2 en meet H2 op f_breakup; dan op f_breakup/3 en meet H3
+> op dezelfde f_breakup. De LAAGSTE orde waarvan het product boven de ruisvloer uitkomt zet de
+> deler: H3 stil = 2,0, H3 hoorbaar = 3,0. Een tussenwaarde is alleen een meting als BEIDE ordes
+> gemeten zijn en de ontwerper zelf geïnterpoleerd heeft — dan is het zíjn getal.
+
+Het protocol heeft één huis (`src/lib/breakupDivisorProtocol.ts`) met drie lezers: de registerrij,
+de hulptekst bij het veld, en de UNCALIBRATED-zin van de limiet zelf, die het protocol met de eigen
+twee tonen van deze driver erin afdrukt. Een gemeten deler vervangt de interpolatie voor die driver
+en **neemt het UNCALIBRATED-merk mee** — ook uit de kandidaten, want die erven het van hun bindende
+limieten.
+
+##### DE VENSTERTABEL: WAT DE METING WAARD IS, VÓÓRDAT IEMAND HEM DOET
+
+Het rapport drukt per paar af wat elke kandidaatwaarde van de deler zou opleveren: het plafond, de
+spanwijdte, en het AANTAL POSITIES dat erin past — geteld met de eigen regel van de generator
+(`derivedPositionCount` op `WINDOW_SMOOTHING_OCTAVES`, bij U-4 in een eigen module gelicht zodat er
+één implementatie is en geen tweede antwoord op één vraag).
+
+Gemeten 10-09-2026, casus 1, orde 4 op beide assen:
+
+| paar | deler | plafond | spanwijdte | posities |
+| --- | --- | --- | --- | --- |
+| woofer→mid (vloer 147,9 Hz, `drive`) | 2,0 mild | 698,0 Hz | 2,238 oct | 14 |
+| | **2,5395 geïnterpoleerd** | **549,7 Hz** | **1,894 oct** | **12** |
+| | 3,0 ernstig | 465,4 Hz | 1,653 oct | 10 |
+| mid→tweeter (vloer 1646,9 Hz, `drive-stated`) | 2,0 mild | 2844,2 Hz | 0,788 oct | 5 |
+| | **2,4689 geïnterpoleerd** | **2304,0 Hz** | **0,484 oct** | **3** |
+| | 3,0 ernstig | 1896,1 Hz | 0,203 oct | 2 |
+
+**Op casus 1b is het scherper, en dat is de rij die de sessie samenvat.** Daar is de vloer de
+aanbevolen 2200 Hz van de tweeter (wat de app doet zodra de ontwerper hem op de kaart invult):
+
+| deler | plafond | spanwijdte | posities |
+| --- | --- | --- | --- |
+| 2,0 mild | 2844,0 Hz | 0,370 oct | **3** |
+| **2,4689 geïnterpoleerd** | **2304,0 Hz** | **0,067 oct** | **1** |
+| 3,0 ernstig | 1896,0 Hz | — | **0: het venster is LEEG** |
+
+Eén ongemeten helling is op dit driverpaar het verschil tussen drie kandidaten en geen enkele.
+
+#### WAT DE DATASHEETS ZEGGEN — GELEZEN, NIET GEGOKT
+
+De opdracht rekende erop dat SB voor de MR13TX-4 een bovengrens noemt bóven de 2304 Hz die de
+afleiding geeft, zodat de nieuwe regel geoefend zou worden en niets zou binden. **Het blad noemt
+helemaal geen aanbevolen frequentiebereik.** SB Acoustics, *5" SATORI MR13TX-4*, REV. 0
+(09.02.2024), "Preliminary Data": de gewone T/S-lijst (Fs 44 Hz, Re 3,4 Ω, Sd 69 cm², Bl 4,9 Tm,
+M_ms 7,2 g, Q_ms 4,98, Q_es 0,28) en één vermogensregel, *"Rated power handling\* 30 W"*, met als
+enige voetnoot *"\* IEC 268-5, T/S parameters measured on drive units that are broken in."* — geen
+filterconditie, dus M-M blijft op deze weg UIT om precies de reden die `vermogensopgave: null` al
+noemde.
+
+Gevolg: het mid→tweeter-plafond blijft de breakupafleiding, met haar ongekalibreerde deler. **Dat
+is het antwoord, en het is de reden dat het blad gelezen is in plaats van geschat.**
+
+De T25T-6 noemt beide einden. De BOVENGRENS (30 kHz) is WÉL ingevoerd, en dat is met opzet: de
+tweeter is op casus 1 en 1b van geen enkel paar de onderste weg, dus hij bindt niets — en *"het
+paar is gelezen en de bovenkant bindt niet"* is een meting, waar een ontbrekende sleutel alleen een
+afwezigheid zou zijn geweest. De ONDERGRENS (2200 Hz @ 2e orde) is GEREGISTREERD EN NIET GEVOED:
+zij zou de mid→tweeter-vloer van 1646,9 naar 2200 Hz tillen en dus het veld veranderen, en U-4
+raakt de vloerkant niet aan. Het manifest zegt dat met zoveel woorden.
+
+Het WO24TX-8-blad is niet gelezen: het PDF is een CorelDRAW-export met de tekst als curven en heeft
+geen tekstlaag. Dat staat in het manifest als *niet gelezen* in plaats van als een stille `null` —
+zou het een bovengrens onder 549,7 Hz noemen, dan zou die het woofer→mid-plafond wél verplaatsen.
+
+#### GEEN POORT, GEEN REGENERATIE
+
+`stated-max` is een VENSTERregel zoals `stated-min`: hij bepaalt waar kandidaten mogen liggen en
+verwerpt niets achteraf. Alle drie de toevoegingen zijn additief — absent is het venster van altijd
+(P4) — en op casus 1 is de enige ingevoerde waarde een bovengrens van een driver die nergens de
+onderste weg is. Elk kruisvenster reproduceert onveranderd, en de golden-suites van casus 1, 1b en
+2 staan.
+
+#### WAT NIET GEDAAN IS
+
+- **Geen orde op de bovengrens.** Zie deel 1: de spiegel gaat over de STRUCTUUR (een paar, beide
+  optioneel, beide met bron, strengste bindt), niet over een correctie die geen blad stelt.
+- **Geen gemeten deler.** Het protocol staat er, het veld staat er, de tabel zegt wat de meting
+  waard is. Meten is een middag met een generator en een microfoon, en dat is Sanders keuze.
+- **Geen overrule op casus 1.** Er is niets te overrulen zolang de mid geen bovengrens stelt.
+- **De vermogensopgave van de mid (30 W) is niet ingevoerd.** Het blad noemt er geen filterconditie
+  bij, dus M-M zou hem weigeren; hij staat als lezing in het manifestblok en niet als
+  `vermogensopgave`, waar hij zou lezen als een grens die hij niet is.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

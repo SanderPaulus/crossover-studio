@@ -43,6 +43,7 @@
  * toggle-regression scan lets only the UI entry points reach into `engine2/`.
  */
 
+import { BREAKUP_DIVISOR_PROTOCOL } from './breakupDivisorProtocol.ts';
 import { designLevelNote, type V2SettingKey } from './v2Settings.ts';
 
 /** The four labels, and there are exactly four. */
@@ -555,7 +556,7 @@ const NICE: readonly V2InputRow[] = [
   {
     id: 'minCrossover',
     label: 'Minimum crossover (Hz, at order)',
-    form: 'Setup tab → driver card → Minimum crossover',
+    form: 'Setup tab → driver card → Recommended range',
     travels:
       'v2Meas[role].minCrossoverHz / minCrossoverOrder → AdapterBranch.minCrossover → ' +
       "ReportSettings.driverMinCrossoverByDriver → the A5d.3 window floor (rule 'stated-min')",
@@ -571,6 +572,57 @@ const NICE: readonly V2InputRow[] = [
       'hiding it is the one placement that costs a newcomer something real: it is the only ' +
       'generic statement a sheet makes about how low the driver may go, and without it the ' +
       'window floor is a convention (measured on casus 1b: 1294 Hz against a recommended 2200).',
+  },
+  {
+    id: 'maxCrossover',
+    label: 'Maximum crossover (Hz)',
+    form: 'Setup tab → driver card → Recommended range',
+    travels:
+      'v2Meas[role].maxCrossoverHz → AdapterBranch.maxCrossover → ' +
+      "ReportSettings.driverMaxCrossoverByDriver → the A5d.3 window ceiling (rule 'stated-max')",
+    cls: 'nice',
+    emptyMeans:
+      'nothing the manufacturer said about how HIGH this driver may be crossed reaches the window; ' +
+      'its ceiling rests on whichever of the breakup derivation and the beaming limit is stricter — ' +
+      'and the breakup one divides by a ramp that has never been measured.',
+    source: 'datasheet',
+    placement: 'always',
+    placementWhy:
+      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
+      'hiding it is the one placement that costs a newcomer something real: it is the other end ' +
+      'of the line the minimum crossover is read off, and it sits in the same row.',
+  },
+  {
+    id: 'maxCrossoverOverride',
+    label: 'the datasheet ceiling replaces the breakup derivation',
+    form: 'Setup tab → driver card → Recommended range',
+    travels:
+      'v2Meas[role].maxCrossoverOverride → AdapterBranch.maxCrossover.overridesBreakup → ' +
+      'the breakup limit is REPORTED and does not bind (XoLimit.superseded)',
+    cls: 'nice',
+    emptyMeans:
+      'off, which is the only state nothing can put you in by accident: the stated ceiling is read ' +
+      'beside the derived ones and the strictest binds, exactly like every other limit.',
+    source: 'choice',
+    placement: 'conditional',
+    placementWhy:
+      'without a stated maximum crossover for this driver there is nothing to overrule, and a ' +
+      'permanently visible switch that does nothing invites someone to reach for it.',
+    condition: 'only while this driver states a maximum crossover',
+  },
+  {
+    id: 'breakupDivisor',
+    label: 'breakup divisor, measured (+ when and how)',
+    form: 'Drivers tab → driver card → more',
+    travels:
+      'v2Meas[role].breakupDivisor → AdapterBranch.breakupDivisor → ' +
+      'ReportSettings.driverBreakupDivisorByDriver → the breakup ceiling, and its UNCALIBRATED mark',
+    cls: 'nice',
+    emptyMeans:
+      'the ceiling divides the breakup by an interpolation between two published endpoints, and ' +
+      'says of itself that the ramp between them is uncalibrated (V9). ' +
+      BREAKUP_DIVISOR_PROTOCOL,
+    source: 'measurement',
   },
   {
     id: 'driveVoltageV',
@@ -1223,6 +1275,14 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].testFilterHz}' },
   { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverHz}' },
   { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverOrder}' },
+  { row: 'maxCrossover', form: 'driver-card', control: 'value={v2Meas[role].maxCrossoverHz}' },
+  {
+    row: 'maxCrossoverOverride',
+    form: 'driver-card',
+    control: "checked={v2Meas[role].maxCrossoverOverride === 'yes'}",
+  },
+  { row: 'breakupDivisor', form: 'driver-card', control: 'value={v2Meas[role].breakupDivisor}' },
+  { row: 'breakupDivisor', form: 'driver-card', control: 'value={v2Meas[role].breakupDivisorNote}' },
   { row: 'driveOnFsMaxDb-per-way', form: 'driver-card', control: 'value={v2Meas[role].driveOnFsMaxDb}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringMeasured}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringDesired}' },

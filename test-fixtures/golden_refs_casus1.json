@@ -4735,6 +4735,19 @@
     "M_ms_g": 0.15,
     "Re_datasheet_ohm": 5.2,
     "aanbevolen_ondergrens_hz": 2200,
+    "aanbevolen_kruisband": {
+     "_": "U-4 (10-09-2026) — DE AANBEVOLEN KRUISBAND ALS PAAR. Eén regel op het blad met TWEE einden, en de app leest ze allebei: de ONDERGRENS bindt het venster waarin deze driver de BOVENSTE van een paar is (U-3g), de BOVENGRENS het venster waarin hij de ONDERSTE is (U-4). Beide verbatim. Alleen de ondergrens wordt ooit OPGETILD, en alleen voor een flank die ondieper is dan die waarbij het blad haar stelt; op de bovengrens staat met opzet GEEN orde, want een aanbevolen bovenkant gaat over conusbreakup en bundeling, geen blad in dit project drukt er een helling bij, en er een verzinnen is precies de A3h-val (het juiste getal, van het juiste blad, over het verkeerde ding).",
+     "gelezen_door": "Claude (U-4, 10-09-2026)",
+     "bron": "BlieSMa, datasheet T25T-6, opgehaald 10-09-2026 van https://www.bliesma.de/Datasheet%20T25T-6.pdf",
+     "letterlijk": "Recommended frequency range 2.2kHz - 30kHz",
+     "ondergrens_hz": 2200,
+     "ondergrens_orde": 2,
+     "ondergrens_orde_herkomst": "NIET van de bereikregel maar van de voetnoot bij de vermogensopgave ('* IEC 268-5, 2nd order high-pass Butterworth filter'). Die twee regels samenlezen is een AANNAME en zij reist als zodanig mee (A3h).",
+     "ondergrens_wordt_NIET_ingevoerd": "GEREGISTREERD EN NIET GEVOED, en dat is een besluit van U-4 en geen verzuim. De ondergrens is een VLOER, en op casus 1 zou zij de mid→tweeter-vloer van 1646,9 Hz (drive-stated, A5e.3b) naar 2200 Hz tillen — een ander veld en dus een regeneratie. U-4 raakt de vloerkant niet aan: de fixture leest uitsluitend de bovengrens. Wie de ondergrens wil laten gelden voert hem in de app in op de driverkaart (U-3g) of voedt hem hier en regenereert.",
+     "bovengrens_hz": 30000,
+     "bovengrens_bindt_hier_niets": "De tweeter is op casus 1 van geen enkel paar de ONDERSTE weg, dus haar bovengrens bereikt geen enkel plafond. Gemeten en niet aangenomen: de fixture voert hem wél in (casus1MaxCrossovers) en elk kruisvenster reproduceert onveranderd.",
+     "overrule_breakup": false
+    },
     "context": "100 W gespecificeerd met 2e-orde BW op 2,5 kHz. De aanbevolen ondergrens en de Re van de datasheet zijn CONTEXT en geen engine-invoer: de engine leest R_e uit de A5c.1-hiërarchie en de ondergrens is een vervormingsgrens die M-C niet kan zien (V49, wat de grens NIET dekt).",
     "schakeling": {
      "aantal": 1,
@@ -4760,6 +4773,15 @@
     "M_ms_g": 7.2,
     "Re_datasheet_ohm": 3.4,
     "context": "Datasheet-Re als context; de engine leest R_e uit de sweep (motionele fit 3,358 Ω).",
+    "aanbevolen_kruisband": {
+     "_": "U-4 (10-09-2026) — hetzelfde blok als bij de tweeter, en het antwoord is NIETS. De mid is op casus 1 de ONDERSTE weg van het mid→tweeter-paar, dus dít is de driver wiens bovengrens het M-T-plafond zou kunnen binden. Het blad noemt er geen.",
+     "gelezen_door": "Claude (U-4, 10-09-2026)",
+     "bron": "SB Acoustics, datasheet 5\" SATORI MR13TX-4, REV. 0 (09.02.2024), 'Preliminary Data', opgehaald 10-09-2026 van https://sbacoustics.com/wp-content/uploads/2024/05/5in-SATORI-MR13TX-4.pdf",
+     "ondergrens_hz": null,
+     "bovengrens_hz": null,
+     "bevinding": "HET BLAD NOEMT GEEN AANBEVOLEN FREQUENTIEBEREIK — geen ondergrens, geen bovengrens, geen aanbevolen kruispunt. Wat er wél staat is de gewone T/S-lijst (Fs 44 Hz, Re 3,4 Ω, Sd 69 cm², Bl 4,9 Tm, M_ms 7,2 g, Q_ms 4,98, Q_es 0,28) plus één vermogensregel: 'Rated power handling* 30 W' met als enige voetnoot '* IEC 268-5, T/S parameters measured on drive units that are broken in.' — geen filterconditie, dus M-M blijft op deze weg UIT om precies de reden die vermogensopgave: null al noemt (een watt zonder de conditie waaronder hij geldt is geen grens op iets). DE VERWACHTING WAS ANDERS: de opdracht van U-4 rekende op een bovengrens boven de 2308 Hz die de breakup-afleiding oplevert, en dus op 'staat er, bindt niet'. Het antwoord is 'staat er niet', en dat is de reden dat hij gelezen is in plaats van gegokt. GEVOLG: het mid→tweeter-plafond blijft de breakup-afleiding — 5688 Hz gedeeld door een geïnterpoleerde 2,4689, dus 2304,0 Hz, en die deler draagt sinds V9 het UNCALIBRATED-merk. Er is niets te overrulen en er beweegt geen venster.",
+     "overrule_breakup": false
+    },
     "schakeling": {
      "aantal": 1,
      "gemeten": "parallel",
@@ -4775,6 +4797,15 @@
     "M_ms_g": 44.2,
     "Re_datasheet_ohm": 5.8,
     "parallel_aantal": 2,
+    "aanbevolen_kruisband": {
+     "_": "U-4 (10-09-2026) — zie de tweeter voor wat dit blok is.",
+     "gelezen_door": "NIET GELEZEN in deze sessie, en dat wordt hier gezegd in plaats van als leeg doorgegeven.",
+     "bron": "SB Acoustics, datasheet 9.5in SATORI WO24TX-8 (https://sbacoustics.com/wp-content/uploads/2024/11/9.5in-SATORI-WO24TX-8.pdf) — het PDF draagt geen tekstlaag (CorelDRAW-export met de tekst als curven), dus er viel niets uit te lezen zonder de pagina te renderen, en dat viel buiten U-4.",
+     "ondergrens_hz": null,
+     "bovengrens_hz": null,
+     "bevinding": "Onbekend, dus niet gevoed: het woofer→mid-plafond blijft de breakup-afleiding (549,7 Hz, deler 2,5395 geïnterpoleerd, UNCALIBRATED). Zou het blad een bovengrens noemen die daaronder ligt, dan zou zij dat plafond WEL verplaatsen en een regeneratie vragen — daarom staat hier wat er niet gelezen is en niet een stilzwijgende null.",
+     "overrule_breakup": false
+    },
     "context": "PER DRIVER; het paar telt dubbel in S_d en verplaatst volume, en de gemeten impedantie (woofers_parallel__1_.lim) is de PARALLELSCHAKELING, dus de spoelstroom per driver is V/(2·Z_gemeten). Alleen voor de zwakste-schakel-rapportage: de woofer draagt geen hoogdoorlaat en krijgt geen eis (V49).",
     "schakeling": {
      "_": "V51 - de SCHAKELING van de weg: aantal gelijke drivers, zoals GEMETEN en zoals GEWENST. De meting is de parallelschakeling als twee losse bestanden (woofer_up_hor_0, woofer_down_hor_0), complex gesommeerd door de opnamepas (V13); de impedantie (woofers_parallel__1_.lim) is de parallelschakeling. Gewenst: parallel, geen pad (Sanders besluit, V51). De afleiding parallel<->serie voor N gelijke drivers (SPL -/+20 log N, fase gelijk, Z x/: N^2) bestaat in ingest/wiring.ts en wordt op deze casus NIET toegepast: gemeten = gewenst.",
@@ -4788,6 +4819,17 @@
    "ff_meetspanning_V": null,
    "ff_mic_afstand_mm": 1000,
    "ff_meetspanning_toelichting": "NIET GEDOCUMENTEERD, en dat is een bevinding en geen vergissing. De ARTA-headers van de FF-bestanden dragen geen meetspanning ('Scale type = Pa', 'Scale = 0.0 dB', kalibratiebestand MM1CDU) en de dBSPL-kolom leest 135–141 dB in de doorlaatband — geen absolute SPL bij een bekende spanning. De ACOUSTISCHE route van M-C v2.0 (route 2) en de SPL-bij-P-regel hebben allebei een gedocumenteerde meetspanning EN micafstand nodig (nota A5d: 'absolute max-SPL/excursiegrenzen vereisen gedocumenteerde meetspanning en -afstand plus Sd/Xmax'). De micafstand is Sanders kastinvoer (1 m, src/demo3way.ts); de spanning ontbreekt, dus route 2 staat op casus 1 UIT met die reden, route 1 draagt de grens, en de route-1/route-2-tegenproef wacht op een hermeting met gedocumenteerde spanning. Leeg = geen afleiding (P4), nooit een aangenomen 2,83 V.",
+   "breakup_deler": {
+    "_": "U-4 (10-09-2026) — DE GEMETEN BREAKUPDELER PER WEG, en vandaag is hij op elke weg NIET gemeten. A5d.3's plafond is de eerste significante breakup van de ONDERSTE driver gedeeld door een getal tussen twee gepubliceerde eindpunten (f/2 mild, f/3 ernstig); de engine interpoleert daartussen op de piekhoogte boven de trend, en die helling draagt sinds V9 het UNCALIBRATED-merk omdat niets haar ooit gemeten heeft. Leeg = de helling, gemerkt (P4); een gemeten waarde vervangt haar voor die driver en neemt het merk mee.",
+    "gemeten_door": null,
+    "protocol": "De twee eindpunten zijn HARMONISCHE ORDES en daarmee meetbaar. Drijf de driver alleen aan met één toon op f_breakup/2 en meet H2 op f_breakup; dan op f_breakup/3 en meet H3 op dezelfde f_breakup. De LAAGSTE orde waarvan het product boven de ruisvloer uitkomt zet de deler: H3 stil = 2,0, H3 hoorbaar = 3,0. Een tussenwaarde is alleen een meting als BEIDE ordes gemeten zijn en de ontwerper zelf geïnterpoleerd heeft — dan is het zíjn getal en schrijft de app het aan hem toe.",
+    "wat_de_meting_waard_is": "Gemeten 10-09-2026 met de vensters van dit manifest (orde 4 op beide assen). WOOFER→MID: deler 2,0 geeft plafond 698,0 Hz (2,238 oct, 14 posities), de geïnterpoleerde 2,5395 geeft 549,7 Hz (1,894 oct, 12), deler 3,0 geeft 465,4 Hz (1,653 oct, 10). MID→TWEETER: 2,0 geeft 2844,2 Hz (0,788 oct, 5 posities), de geïnterpoleerde 2,4689 geeft 2304,0 Hz (0,484 oct, 3), 3,0 geeft 1896,1 Hz (0,203 oct, 2). Op casus 1B, waar de vloer de aanbevolen 2200 Hz van de tweeter is, is het verschil scherper: 2,0 laat 0,371 octaaf en DRIE posities over, de geïnterpoleerde 2,4689 laat 0,067 octaaf en ÉÉN, en 3,0 laat een LEEG venster. Het rapport drukt die tabel per paar af, zodat de waarde van de meting zichtbaar is vóór iemand hem doet.",
+    "per_weg": {
+     "woofer": null,
+     "mid": null,
+     "tweeter": null
+    }
+   },
    "spoelfamilie": {
     "_": "A5e.3 (04-09-2026) — DE SPOELFAMILIE PER WEG: welk koper elke weg gewikkeld wordt (merk, serie, draaddikte), de sleutel waarop coilDcr.ts per familie DCR = A·(L/mH)^k fit uit de catalogus. PROJECTINVOER van de ontwerper, dezelfde soort als de driverkaart zelf; geen meting, geen afleiding en NERGENS een default (P6): een weg zonder familie houdt verliesvrije spoelen en elke lezer meldt dat als afwijking van de bouw. De familie-id is de sleutel die fitCoilDcrFamilies() uit de catalogus maakt: '<merk>|<serie>|<draaddikte>' in kleine letters.",
     "status": "GESTELD (04-09-2026, A5e.3-veld). De v2-route van casus 1 leest dit blok: casus1V2Declaration wapent coilDcrModel op elke run, het veld is ermee opnieuw opgewekt (v2_herkomst.meetopstelling.spoel_dcr_model) en frozenNetlistGates oordeelt elke levende netlist met DCR als gemodelleerd. Tot 04-09-2026 stond hier VOORSTEL (gesteld_door null): de route verklaarde de sleutel ABSENT met de P4-reden en alleen de A5e.3-meetscripts en de arm m1+dcr lazen het voorstel expliciet.",

@@ -27,9 +27,12 @@ import {
   DB_PER_OCTAVE_PER_ORDER,
   MM_PER_M,
   SPEED_OF_SOUND_M_S,
+  WINDOW_SMOOTHING_OCTAVES,
   XO_FS_FACTOR_BY_ORDER,
 } from '../constants.ts';
 import { breakupDivisor } from '../metrics/acoustic.ts';
+import { derivedPositionCount } from './positionCount.ts';
+import { BREAKUP_DIVISOR_PROTOCOL, breakupDivisorProtocolFor } from '../../breakupDivisorProtocol.ts';
 
 /**
  * How tall a ripple has to be, in dB above the local trend, before it counts
@@ -49,11 +52,31 @@ export interface XoLimit {
   side: 'floor' | 'ceiling';
   hz: number;
   /** Short machine-readable tag, for tests and for the UI to group on. */
-  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive' | 'drive-stated' | 'stated' | 'stated-min';
+  rule:
+    | 'validity'
+    | 'fs'
+    | 'breakup'
+    | 'directivity'
+    | 'drive'
+    | 'drive-stated'
+    | 'stated'
+    | 'stated-min'
+    | 'stated-max';
   /** Human sentence — always shown next to the number. */
   source: string;
   /** Set when this limit carries an uncalibrated component. */
   uncalibrated?: string;
+  /**
+   * U-4 — set when this limit is REPORTED BUT DOES NOT BIND, and says by what.
+   *
+   * There is exactly one way to get one today and it has to be switched on by
+   * hand: a stated manufacturer's ceiling that the designer has told the app
+   * to put in place of the breakup derivation. The superseded limit stays in
+   * `limits` on purpose — the breakup is a measured property of the driver and
+   * removing it from the report would hide the thing the overrule overrules —
+   * but it is left out of the reduction that picks the binding ceiling.
+   */
+  superseded?: string;
 }
 
 /** A preference zone inside (or outside) the window. */
@@ -77,6 +100,41 @@ export interface XoZone {
    * verbod on this surface.
    */
   derivedFrom: string;
+}
+
+/**
+ * U-4 — ONE ROW OF THE DIVISOR TABLE: what this pair's ceiling, and the room
+ * under it, would be at one candidate value of the breakup divisor.
+ *
+ * Reporting, and the reason it is reporting rather than a knob is the whole
+ * point of it: the divisor between the two published endpoints has been
+ * uncalibrated since V9, and nobody could see what calibrating it was worth.
+ * On casus 1b's mid→tweeter axis the interpolated 2.47 leaves 0.07 octaves and
+ * ONE candidate position; the mild endpoint leaves 0.37 and three. A table that
+ * says so lets the designer decide whether the two-tone measurement is worth an
+ * afternoon BEFORE spending one.
+ *
+ * The count is the generator's own (`derivedPositionCount` at
+ * `WINDOW_SMOOTHING_OCTAVES`), so the table cannot promise room the field
+ * generator would not lay a position in.
+ */
+export interface XoDivisorRow {
+  /** The divisor this row assumes. */
+  divisor: number;
+  /** Where it comes from, in one phrase: published endpoint, ramp, measured. */
+  label: string;
+  /**
+   * The ceiling the window would have at this divisor: the breakup over it, or
+   * a stricter ceiling from another rule if there is one. What the WINDOW would
+   * read, not what the breakup alone would say.
+   */
+  ceilingHz: number;
+  /** Octaves between the window's floor and that ceiling; null with no floor. */
+  spanOctaves: number | null;
+  /** Positions the spacing rule admits there — 0 for an empty window. */
+  positions: number | null;
+  /** True for the row the window is actually using. */
+  inUse: boolean;
 }
 
 export interface XoWindowResult {
@@ -112,6 +170,13 @@ export interface XoWindowResult {
    */
   spacingMm: number | null;
   spacingSource: string | null;
+  /**
+   * U-4 — what each candidate breakup divisor would buy, when this pair has a
+   * significant breakup and that breakup still binds. Empty otherwise: with the
+   * derivation superseded by a stated ceiling the table answers nothing, and
+   * with no breakup there is nothing to divide.
+   */
+  divisorTable: XoDivisorRow[];
   /** True when the limits leave no room at all. */
   empty: boolean;
   /** The tensions worth showing: conflicting zones, edge-of-window findings. */
@@ -129,6 +194,73 @@ export interface XoWindowResult {
  *
  * Nothing here is derived and nothing has a default (P4).
  */
+/**
+ * U-4 — THE OTHER END OF THE SAME LINE: the manufacturer's recommended MAXIMUM
+ * crossover, transcribed.
+ *
+ * The mirror of `DriverMinCrossover`, and the pair is the point: a datasheet's
+ * "Recommended frequency range 2.2 kHz - 30 kHz" is ONE statement with two
+ * ends. The lower end binds the window in which this driver is the UPPER of a
+ * pair; the upper end binds the window in which it is the LOWER, as one more
+ * candidate in the ceiling reduction, where — as everywhere on this side — the
+ * strictest, meaning the LOWEST, wins and `ceilingBy` names it.
+ *
+ * WHAT IS DELIBERATELY *NOT* MIRRORED, and it is the one asymmetry worth
+ * arguing for. The floor takes an optional ORDER, because the sheet's own
+ * condition is a filter condition and a flank shallower than the stated one
+ * leaves more energy at the driver's resonance than the sheet certified. There
+ * is no such condition on the upper end: a recommended top is a statement about
+ * cone breakup and beaming, and no sheet in this project prints a slope beside
+ * it. A field nobody can fill is decoration (V19), and inventing a slope
+ * correction that no manufacturer stated is exactly the A3h trap the floor's
+ * own comment warns about. So the ceiling is taken VERBATIM at every order.
+ * That is a decision and not an omission; if a sheet ever states one, it
+ * arrives here as an added field and a measurement, not as a guess.
+ */
+export interface DriverMaxCrossover {
+  /** The highest handover the sheet recommends for this driver, Hz. */
+  hz: number;
+  /** Where it came from - the sheet, and when it was read. */
+  source?: string;
+  /**
+   * U-4, part 2 — THE OVERRULE: let this stated ceiling stand IN PLACE OF the
+   * breakup derivation, even where that derivation would be stricter.
+   *
+   * The first stated overrule of a derived limit anywhere in this project, and
+   * it exists because the derivation it replaces is the one limit in the module
+   * that says of itself that it is uncalibrated: the breakup divisor
+   * interpolates between two published endpoints on a ramp no measurement has
+   * ever checked. A manufacturer who prints a recommended top has measured the
+   * driver; a designer who decides to believe that over the app's ramp is
+   * making a defensible call, and the app's job is to record it, not to make it
+   * for them.
+   *
+   * NEVER ON UNLESS THE DESIGNER SETS IT (P4), and never a consequence of
+   * merely stating a ceiling: a stated ceiling on its own is read beside the
+   * derived ones and the strictest binds, exactly like E-1's per-pair one. The
+   * breakup limit stays in the report either way, marked `superseded`, and the
+   * candidate provenance says the overrule fired.
+   */
+  overridesBreakup?: boolean;
+}
+
+/**
+ * U-4, part 3 — THE MEASURED BREAKUP DIVISOR of one driver.
+ *
+ * Replaces the interpolation for this driver and takes the uncalibrated
+ * marking off the ceiling with it. `breakupDivisorProtocolFor` is the two-tone
+ * measurement that produces it; `measuredOn` is the designer's own note about
+ * when and how, because nothing in the app can know when a measurement was
+ * made and a stamp of the moment it was TYPED would be a different fact under
+ * the same name.
+ */
+export interface DriverBreakupDivisor {
+  /** The measured divisor, between the two published endpoints. */
+  value: number;
+  /** When and how it was measured, in the designer's own words. */
+  measuredOn?: string;
+}
+
 export interface DriverMinCrossover {
   /** The lowest handover the sheet recommends for this driver, Hz. */
   hz: number;
@@ -252,6 +384,35 @@ export interface XoWindowInput {
   upperMinCrossoverOrder?: number | null;
   /** Where it came from — attribution, exactly as every limit has. */
   upperMinCrossoverSource?: string;
+  /**
+   * U-4 — THE MANUFACTURER'S RECOMMENDED MAXIMUM CROSSOVER for the LOWER
+   * driver, Hz. A datasheet transcription, so a property of the DRIVER and
+   * admissible as a window ceiling on exactly the footing `upperMinCrossoverHz`
+   * is admissible as a floor — the same statement, read at its other end.
+   *
+   * Taken VERBATIM at every order; see `DriverMaxCrossover` for why the order
+   * correction the floor makes has no counterpart here. Absent or null = no
+   * such ceiling (P4): a project that transcribes nothing gets exactly the
+   * window it always got, and no corpus moves.
+   */
+  lowerMaxCrossoverHz?: number | null;
+  /** Where it came from — attribution, exactly as every limit has. */
+  lowerMaxCrossoverSource?: string;
+  /**
+   * U-4 — the designer's EXPLICIT decision to let that stated ceiling stand in
+   * place of the breakup derivation. See `DriverMaxCrossover.overridesBreakup`.
+   * Absent or false = the stated ceiling is one limit among the others and the
+   * strictest binds.
+   */
+  lowerMaxCrossoverOverridesBreakup?: boolean;
+  /**
+   * U-4 — the MEASURED breakup divisor of the lower driver, replacing the
+   * interpolation between the two published endpoints for this pair. Absent or
+   * null = the ramp, with its uncalibrated marking (P4).
+   */
+  lowerBreakupDivisor?: number | null;
+  /** When and how it was measured, in the designer's own words. */
+  lowerBreakupDivisorSource?: string;
   /** Breakups of the LOWER driver, ascending, with their height over trend. */
   lowerBreakups: readonly { fHz: number; dB: number }[];
   /** -6 dB@theta point of the LOWER driver, when it was measured off axis. */
@@ -421,24 +582,58 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
     });
   }
 
+  /* U-4 — THE MANUFACTURER'S RECOMMENDED MAXIMUM, resolved before the breakup
+   * so the breakup block can see whether it has been told to stand aside. The
+   * limit itself is pushed further down, beside the other stated ceiling. */
+  const maxXo = input.lowerMaxCrossoverHz ?? null;
+  const hasStatedMax = maxXo !== null && Number.isFinite(maxXo) && maxXo > 0;
+  const overrulesBreakup = hasStatedMax && input.lowerMaxCrossoverOverridesBreakup === true;
+
   // The FIRST SIGNIFICANT breakup, not the tallest and not the first ripple.
   // "First" because a crossing has to clear the lowest resonance that matters;
   // "significant" because every response has ripple and a ceiling derived from
   // 1 dB of it would forbid designs for no physical reason.
   const first = input.lowerBreakups.filter((b) => b.dB >= significant).sort((a, b) => a.fHz - b.fHz)[0];
-  if (first) {
-    const div = breakupDivisor(first.dB);
+  /* U-4 — the divisor the ceiling is actually built on: the designer's measured
+   * value when there is one, the interpolation otherwise. A measured divisor is
+   * a fact about this driver and the ramp is a placeholder, so the measurement
+   * wins outright rather than being averaged with it. */
+  const measuredDiv = input.lowerBreakupDivisor ?? null;
+  const divIsMeasured = measuredDiv !== null && Number.isFinite(measuredDiv) && measuredDiv > 0;
+  const divUsed = first ? (divIsMeasured ? (measuredDiv as number) : breakupDivisor(first.dB)) : null;
+  if (first && divUsed !== null) {
     limits.push({
       side: 'ceiling',
-      hz: first.fHz / div,
+      hz: first.fHz / divUsed,
       rule: 'breakup',
       source:
         `first significant breakup of ${input.lower} at ${first.fHz.toFixed(0)} Hz ` +
-        `(+${first.dB.toFixed(1)} dB) divided by ${div.toFixed(2)}`,
-      uncalibrated:
-        `The divisor interpolates between the published endpoints (${BREAKUP_DIV_SEVERE} severe, ` +
-        `${BREAKUP_DIV_MILD} mild); the ramp between them is uncalibrated and needs HD data ` +
-        '(spec V6/V9). This ceiling moves if that curve does.',
+        `(+${first.dB.toFixed(1)} dB) divided by ${divUsed.toFixed(2)}` +
+        (divIsMeasured
+          ? ` - MEASURED (${input.lowerBreakupDivisorSource ?? 'when and how not stated'}), not the ` +
+            'interpolated ramp (U-4)'
+          : ''),
+      /* The marking goes with the RAMP and not with the rule: a measured
+       * divisor is a measurement of this driver, so the ceiling that stands on
+       * it is no more uncalibrated than any other measured limit here, and the
+       * candidates that inherit it stop being marked too. */
+      ...(divIsMeasured
+        ? {}
+        : {
+            uncalibrated:
+              `The divisor interpolates between the published endpoints (${BREAKUP_DIV_SEVERE} severe, ` +
+              `${BREAKUP_DIV_MILD} mild); the ramp between them is uncalibrated and needs HD data ` +
+              `(spec V6/V9). This ceiling moves if that curve does. To replace it with a measurement: ` +
+              breakupDivisorProtocolFor(first.fHz),
+          }),
+      ...(overrulesBreakup
+        ? {
+            superseded:
+              `stated ceiling (${input.lowerMaxCrossoverSource ?? 'source not stated'}) REPLACES the ` +
+              `derived breakup limit (UNCALIBRATED) - the first stated overrule of a derived limit in ` +
+              `this project; the breakup at ${first.fHz.toFixed(0)} Hz stays in the report`,
+          }
+        : {}),
     });
   }
 
@@ -450,6 +645,29 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
       source:
         `-6 dB at ${input.lowerMinus6AngleDeg ?? '?'} deg of ${input.lower} ` +
         `(${input.lowerMinus6Hz.toFixed(0)} Hz)`,
+    });
+  }
+
+  /* U-4 — THE MANUFACTURER'S CEILING, the mirror of U-3g's floor. One limit
+   * among the ceilings, verbatim at every order (see `DriverMaxCrossover`); the
+   * reduction below takes the LOWEST and `ceilingBy` names the winner. With the
+   * overrule on it additionally takes the breakup out of that reduction, and
+   * the sentence says so where the limit is read. */
+  if (hasStatedMax) {
+    limits.push({
+      side: 'ceiling',
+      hz: maxXo as number,
+      rule: 'stated-max',
+      source:
+        `the manufacturer's recommended maximum crossover for ${input.lower}, ` +
+        `${(maxXo as number).toFixed(0)} Hz (${input.lowerMaxCrossoverSource ?? 'source not stated'}) - ` +
+        'taken verbatim at every order: a recommended top is about cone breakup and beaming and no ' +
+        'sheet states a slope beside it (U-4)' +
+        (overrulesBreakup
+          ? '. OVERRULE SET BY THE DESIGNER: this ceiling REPLACES the derived breakup limit ' +
+            '(UNCALIBRATED) even where that would be stricter - the first stated overrule of a ' +
+            'derived limit in this project'
+          : ''),
     });
   }
 
@@ -472,8 +690,13 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
 
   const floors = limits.filter((l) => l.side === 'floor');
   const ceilings = limits.filter((l) => l.side === 'ceiling');
+  /* U-4 — a SUPERSEDED limit is reported and does not bind. The only way to get
+   * one is the designer's explicit overrule; every other limit reaches the
+   * reduction exactly as it always did, so a project that sets nothing here has
+   * a binding set identical to the whole set (P2). */
+  const binding = ceilings.filter((l) => l.superseded === undefined);
   const floorBy = floors.length ? floors.reduce((a, b) => (b.hz > a.hz ? b : a)) : null;
-  const ceilingBy = ceilings.length ? ceilings.reduce((a, b) => (b.hz < a.hz ? b : a)) : null;
+  const ceilingBy = binding.length ? binding.reduce((a, b) => (b.hz < a.hz ? b : a)) : null;
   const floorHz = floorBy?.hz ?? null;
   const ceilingHz = ceilingBy?.hz ?? null;
 
@@ -529,7 +752,7 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
    * reader of the window sees whether the designer's bound or the measurement's
    * is what shaped the field. */
   const statedC = ceilings.find((l) => l.rule === 'stated') ?? null;
-  const derivedC = ceilings.filter((l) => l.rule !== 'stated');
+  const derivedC = ceilings.filter((l) => l.rule !== 'stated' && l.rule !== 'stated-max');
   if (statedC && derivedC.length > 0) {
     const tightest = derivedC.reduce((a, b) => (b.hz < a.hz ? b : a));
     tensions.push(
@@ -563,6 +786,105 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
     );
   }
 
+  /* U-4 — the mirror of the U-3g sentence, on the ceiling side: where did the
+   * sheet's recommended top land against the ceilings the measurements derive?
+   * The one limit it is most interesting against is the breakup, because that
+   * is the limit that admits to being uncalibrated. */
+  const statedMaxL = ceilings.find((l) => l.rule === 'stated-max') ?? null;
+  const breakupL = ceilings.find((l) => l.rule === 'breakup') ?? null;
+  if (statedMaxL && derivedC.length > 0) {
+    const lowest = derivedC.reduce((a, b) => (b.hz < a.hz ? b : a));
+    tensions.push(
+      `The datasheet's maximum crossover (${statedMaxL.hz.toFixed(0)} Hz) ` +
+        (statedMaxL.hz < lowest.hz
+          ? 'is STRICTER than'
+          : statedMaxL.hz > lowest.hz
+            ? 'lies above'
+            : 'coincides with') +
+        ` every ceiling the measurements imply (lowest: ${lowest.hz.toFixed(0)} Hz, ${lowest.rule}` +
+        (lowest.rule === 'breakup' && lowest.uncalibrated !== undefined ? ' - UNCALIBRATED' : '') +
+        '); ' +
+        /* With the overrule set, "the strictest binds" is the wrong sentence
+         * and would read as if strictness were still doing the work — it is
+         * not, the designer is. Measured in the running app before it was
+         * written down: a stated 4000 Hz above a derived 2287 Hz printed
+         * "the strictest binds, and here that is stated-max". */
+        (overrulesBreakup
+          ? `the OVERRULE puts it in place of the breakup derivation, so ${ceilingBy?.rule ?? 'none'} binds ` +
+            'even though it is not the strictest (U-4).'
+          : `the strictest binds, and here that is ${ceilingBy?.rule ?? 'none'} (U-4).`),
+    );
+  }
+  if (overrulesBreakup && breakupL) {
+    tensions.push(
+      `OVERRULE: the stated ceiling ${statedMaxL ? `${statedMaxL.hz.toFixed(0)} Hz ` : ''}replaces the ` +
+        `derived breakup limit (${breakupL.hz.toFixed(0)} Hz, UNCALIBRATED), which is reported above ` +
+        'and does not bind. You set this; nothing derives it. The breakup itself is unchanged and so ' +
+        'is every metric that reads it - only this window edge does (U-4).',
+    );
+  }
+
+  /* U-4 — WHAT MEASURING THE DIVISOR WOULD BUY, per candidate value.
+   *
+   * Only while the breakup actually sets a ceiling: with it superseded the
+   * table would be an answer to a question the window is no longer asking, and
+   * with no significant breakup there is nothing to divide. The other ceilings
+   * are folded in, so each row is what the WINDOW would read rather than what
+   * the breakup alone would say. */
+  const divisorTable: XoDivisorRow[] = [];
+  if (first && divUsed !== null && !overrulesBreakup) {
+    const others = binding.filter((l) => l.rule !== 'breakup').map((l) => l.hz);
+    const interpolated = breakupDivisor(first.dB);
+    const rows: { divisor: number; label: string }[] = [
+      {
+        divisor: BREAKUP_DIV_MILD,
+        label: `published endpoint, mild: only H${BREAKUP_DIV_MILD} of the passband reaches the breakup`,
+      },
+      {
+        divisor: interpolated,
+        label:
+          `interpolated from +${first.dB.toFixed(1)} dB over trend - UNCALIBRATED, the ramp V9 flagged`,
+      },
+      {
+        divisor: BREAKUP_DIV_SEVERE,
+        label: `published endpoint, severe: H${BREAKUP_DIV_SEVERE} reaches it too`,
+      },
+    ];
+    if (divIsMeasured) {
+      rows.push({
+        divisor: measuredDiv as number,
+        label: `MEASURED (${input.lowerBreakupDivisorSource ?? 'when and how not stated'})`,
+      });
+    }
+    const seen = new Set<string>();
+    for (const r of rows.sort((a, b) => a.divisor - b.divisor)) {
+      const key = r.divisor.toFixed(6);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const eff = Math.min(first.fHz / r.divisor, ...others);
+      const room = floorHz !== null && eff > floorHz ? Math.log2(eff / floorHz) : null;
+      divisorTable.push({
+        divisor: r.divisor,
+        label: r.label,
+        ceilingHz: eff,
+        spanOctaves: floorHz === null ? null : (room ?? 0),
+        positions: floorHz === null ? null : room === null ? 0 : derivedPositionCount(room, WINDOW_SMOOTHING_OCTAVES),
+        inUse: Math.abs(r.divisor - divUsed) < 1e-9,
+      });
+    }
+    if (!divIsMeasured && divisorTable.some((r) => r.positions !== null)) {
+      const mild = divisorTable[0];
+      const now = divisorTable.find((r) => r.inUse);
+      if (mild && now && mild.positions !== now.positions) {
+        tensions.push(
+          `The breakup divisor is the ramp, not a measurement: at ${now.divisor.toFixed(2)} this window ` +
+            `holds ${now.positions} position(s), at the mild endpoint ${mild.divisor.toFixed(2)} it would ` +
+            `hold ${mild.positions}. ${BREAKUP_DIVISOR_PROTOCOL}`,
+        );
+      }
+    }
+  }
+
   const empty = floorHz !== null && ceilingHz !== null && ceilingHz <= floorHz;
   if (empty) {
     tensions.push(
@@ -585,6 +907,7 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
     upperFsHz: input.upperFsHz,
     spacingMm: input.spacingMm,
     spacingSource: input.spacingSource ?? null,
+    divisorTable,
     empty,
     tensions,
   };

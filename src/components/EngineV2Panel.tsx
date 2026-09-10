@@ -1108,9 +1108,39 @@ export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = n
                         uncalibrated
                       </span>
                     )}
+                    {/* U-4 — a limit the designer put aside is REPORTED and does
+                        not bind. It stays on the list because it is a measured
+                        property of the driver: hiding it would hide the thing
+                        the overrule overrules. */}
+                    {l.superseded && (
+                      <span className="v2-uncal" title={l.superseded}>
+                        superseded — does not bind
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
+              {/* U-4 — WHAT MEASURING THE BREAKUP DIVISOR WOULD BUY. The
+                  divisor between the two published endpoints has been
+                  uncalibrated since V9 and nobody could see what calibrating it
+                  was worth; this is that, in positions the generator would
+                  actually lay. */}
+              {w.divisorTable.length > 0 && (
+                <div className="v2-muted">
+                  Breakup divisor — what each value would leave:{' '}
+                  {w.divisorTable
+                    .map(
+                      (d) =>
+                        `${d.divisor.toFixed(2)} → ${hz(d.ceilingHz)}` +
+                        (d.spanOctaves === null
+                          ? ''
+                          : ` (${d.spanOctaves.toFixed(2)} oct, ${d.positions} position${d.positions === 1 ? '' : 's'})`) +
+                        (d.inUse ? ' ← in use' : '') +
+                        ` · ${d.label}`,
+                    )
+                    .join(' · ')}
+                </div>
+              )}
               {w.zones.length > 0 && (
                 <div className="v2-muted">
                   Preference zones:{' '}

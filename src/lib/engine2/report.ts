@@ -1072,6 +1072,24 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         upperMinCrossoverSource:
           input.settings.driverMinCrossoverByDriver?.[upper]?.source ??
           "the driver's datasheet, transcribed on its card - ReportSettings.driverMinCrossoverByDriver",
+        /* U-4 — the manufacturer's recommended MAXIMUM crossover for the
+         * LOWER driver, the mirror of U-3g's floor: read beside the derived
+         * ceilings, verbatim at every order, and the strictest binds. The
+         * OVERRULE beside it is the designer's explicit decision to put it in
+         * place of the uncalibrated breakup derivation; never derived, never
+         * a consequence of merely stating a ceiling (P4). */
+        lowerMaxCrossoverHz: input.settings.driverMaxCrossoverByDriver?.[lower]?.hz ?? null,
+        lowerMaxCrossoverSource:
+          input.settings.driverMaxCrossoverByDriver?.[lower]?.source ??
+          "the driver's datasheet, transcribed on its card - ReportSettings.driverMaxCrossoverByDriver",
+        lowerMaxCrossoverOverridesBreakup:
+          input.settings.driverMaxCrossoverByDriver?.[lower]?.overridesBreakup === true,
+        /* U-4 — the MEASURED breakup divisor of the lower driver, replacing
+         * the ramp for this pair. Absent = the ramp, marked uncalibrated. */
+        lowerBreakupDivisor: input.settings.driverBreakupDivisorByDriver?.[lower]?.value ?? null,
+        lowerBreakupDivisorSource:
+          input.settings.driverBreakupDivisorByDriver?.[lower]?.measuredOn ??
+          'measured on the driver card; when and how not stated',
         /* E-1 — a stated ceiling per pair, the mirror of the stated-figure
          * floor: read beside the derived ceilings, the strictest binds. Absent
          * = no such limit (P4). */

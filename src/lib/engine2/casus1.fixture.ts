@@ -14,6 +14,7 @@
 
 import { readFileSync } from 'node:fs';
 import type { DriverPowerRating } from './metrics/thermalLoad.ts';
+import type { DriverBreakupDivisor, DriverMaxCrossover } from './predesign/xoWindow.ts';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrd } from '../parsers/frd.ts';
@@ -731,6 +732,70 @@ export function casus1PowerRatings(golden: GoldenRefs = loadGolden()): Record<st
       ...(typeof g.testfilter_hz_herkomst === 'string' ? { testFilterHzSource: g.testfilter_hz_herkomst } : {}),
       ...(typeof g.gesteld_door === 'string' ? { source: g.gesteld_door } : {}),
     };
+  }
+  return out;
+}
+
+/**
+ * U-4 (10-09-2026) — the manufacturer's recommended MAXIMUM crossover per way,
+ * keyed by driver id, from `driverkaart.<way>.aanbevolen_kruisband`.
+ *
+ * ONLY THE UPPER END IS READ, and that is a decision this session took rather
+ * than an oversight. The lower end of the same block is recorded there too —
+ * the BlieSMa sheet states 2200 Hz — and feeding it would raise casus 1's
+ * mid→tweeter floor from 1646.9 Hz (drive-stated, A5e.3b) to 2200 and change
+ * the field, which is a regeneration. U-4 does not touch the floor side; the
+ * manifest block says so in its own words, and the app's driver card is where
+ * a designer states the lower end today (U-3g).
+ *
+ * WHAT THIS RETURNS ON CASUS 1 TODAY: one entry, the TWEETER's 30 kHz. The
+ * tweeter is nobody's lower driver here, so it binds nothing — which is the
+ * point of feeding it anyway: "the pair is read and the top does not bind" is
+ * a measurement, and an absent key would only have been an absence. The MID —
+ * the one driver whose ceiling could bind the mid→tweeter pair — states no
+ * recommended range at all on its sheet, so it contributes nothing and the
+ * breakup derivation still sets that ceiling.
+ */
+export function casus1MaxCrossovers(golden: GoldenRefs = loadGolden()): Record<string, DriverMaxCrossover> {
+  const kaart = (golden.manifest_en_geometrie as unknown as {
+    driverkaart?: Record<string, unknown>;
+  }).driverkaart;
+  const out: Record<string, DriverMaxCrossover> = {};
+  if (!kaart) return out;
+  for (const [way, v] of Object.entries(kaart)) {
+    if (!v || typeof v !== 'object') continue;
+    const b = (v as { aanbevolen_kruisband?: unknown }).aanbevolen_kruisband;
+    if (!b || typeof b !== 'object') continue;
+    const g = b as Record<string, unknown>;
+    const hz = g.bovengrens_hz;
+    if (typeof hz !== 'number' || !Number.isFinite(hz) || hz <= 0) continue;
+    out[way] = {
+      hz,
+      ...(typeof g.bron === 'string' ? { source: g.bron } : {}),
+      ...(g.overrule_breakup === true ? { overridesBreakup: true } : {}),
+    };
+  }
+  return out;
+}
+
+/**
+ * U-4 — the MEASURED breakup divisor per way, from `driverkaart.breakup_deler.
+ * per_weg`. Empty on casus 1 today: nothing has been measured, so every
+ * breakup ceiling still divides by the interpolated ramp and carries the
+ * UNCALIBRATED marking V9 put on it. The manifest block records the protocol
+ * and what the measurement would be worth on this casus; the reader exists so
+ * that a measured value arrives by being written there and nowhere else (P6).
+ */
+export function casus1BreakupDivisors(golden: GoldenRefs = loadGolden()): Record<string, DriverBreakupDivisor> {
+  const kaart = (golden.manifest_en_geometrie as unknown as {
+    driverkaart?: { breakup_deler?: { per_weg?: Record<string, unknown>; gemeten_door?: unknown } };
+  }).driverkaart;
+  const out: Record<string, DriverBreakupDivisor> = {};
+  const blok = kaart?.breakup_deler;
+  const who = typeof blok?.gemeten_door === 'string' ? blok.gemeten_door : null;
+  for (const [way, v] of Object.entries(blok?.per_weg ?? {})) {
+    if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) continue;
+    out[way] = { value: v, ...(who !== null ? { measuredOn: who } : {}) };
   }
   return out;
 }
