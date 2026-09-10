@@ -9437,6 +9437,87 @@ oordeelt niets, met het ontbrekende veld genoemd — nooit een nul (F0).
   uitspraak over vervorming die een blad doet.
 
 
+### U-3g — de aanbevolen minimale kruisfrequentie als vensterbodem (10-09-2026, één vensterregel; **additief: absent = het venster van altijd, geen regeneratie**)
+
+**DE VRAAG DIE OVERBLEEF NA U-3e EN U-3f.** U-3e stelde vast dat de vloer waar een tweeweg
+werkelijk op liep `k·f_s` was — een CONVENTIE van ongeveer 12 dB bij elke orde, losser dan de
+18 + 2 die dit casusboek voor zichzelf stelt — en dat X_max, Bl en M_ms invullen hem geen hertz
+verplaatste: een 25 mm koepel is bij zijn eigen resonantie niet excursiegebonden. U-3f mat
+vervolgens het thermische antwoord en vond 5,6× marge. Warmte is het dus evenmin. Wat overbleef is
+VERVORMING, en daar heeft de app geen data over — **maar de fabrikant wel, en die drukt zijn
+conclusie af als één regel:** *"Recommended frequency range 2.2kHz–30kHz"*.
+
+Sander: *"zet dat invoerveld er maar bij"*.
+
+#### DE ENE BESLISSING DIE ERTOE DOET: VERBATIM, EN ALLEEN OMHOOG GEÏNVERTEERD
+
+Elke andere gestelde vloer in `xoWindow.ts` is een VERZWAKKING op f_s (`drive`, `drive-stated`), en
+die inverteert door A5d.3(ii): een steilere flank levert diezelfde verzwakking aantoonbaar lager,
+dus de frequentie beweegt met de orde mee en de natuurkunde beweegt mee. **Een aanbevolen minimale
+kruisfrequentie is niet dat soort uitspraak.** Zij bundelt excursie, spoelwarmte, vervorming,
+directiviteit en breakup in één getal, en alleen de eerste daarvan volgt de helling op f_s.
+
+Hem tóch inverteren geeft op de T25T-6 dit:
+
+```
+f_s = 924,3 Hz;  2200 Hz @ 2e orde = 12 · log2(2200/924,3) = 15,0 dB op f_s
+15,0 dB bij LR4  ->  924,3 · 2^(15,0/24) = 1426 Hz
+```
+
+Het juiste getal, van het juiste blad, over het verkeerde ding — de A3h-val, en 774 Hz onder de
+aanbeveling. **Dus: de frequentie is een HARDE VLOER, woordelijk, bij elke orde.** Een steilere
+flank koopt hier geen lagere overname.
+
+De ORDE is de tweede helft van de conditie en werkt in ÉÉN richting. Een flank die ONDIEPER is dan
+die van het blad laat de driver méér energie bij zijn resonantie dan het blad certificeerde, dus
+dan wordt de vloer OPGETILD naar waar deze orde levert wat de gestelde conditie leverde — dezelfde
+A5d.3(ii)-inversie, uitsluitend opwaarts. Op de papieren handberekening in de test:
+4000 Hz @ 2e orde is exact 24 dB op een f_s van 1000 Hz, en 24 dB bij 1e orde is exact vier
+octaven, dus 16 000 Hz.
+
+**De frequentie reist ALLEEN**, anders dan de drie getallen van M-M: een blad dat een bereik drukt
+en geen helling heeft nog steeds gezegd hoe laag de driver mag. Geen orde = geen uitspraak over
+helling, en de vloer staat er gewoon.
+
+#### WAT HET OP DE ECHTE CASUS DOET — EN DE BEVINDING DIE ERUIT VALT
+
+Gemeten op casus 1b (mid → tweeter, LR4, 10-09-2026):
+
+| invoer | venster | vloer door | kandidaten (verkenning) |
+| --- | --- | --- | --- |
+| niets | 1647–2304 Hz | `drive-stated` (de gestelde −20 dB) | 3: 1735,4 / 1947,9 / 2186,5 |
+| 2200 Hz, geen orde | 2200–2304 Hz | `stated-min` | 1: 2251,4 |
+| 2200 Hz @ 2e orde | 2200–2304 Hz | `stated-min` | 1: 2251,4 |
+| 2000 Hz @ 2e orde | 2000–2304 Hz | `stated-min` | 1: 2146,6 |
+
+**DAT SMALLE VENSTER IS DE BEVINDING EN GEEN DEFECT.** Het plafond van dit paar is de eerste
+significante breakup van de mid (5688 Hz, +2,8 dB) gedeeld door zijn divisor: 2304 Hz. De
+aanbeveling van de tweeter en de breakup van de mid liggen 104 Hz uit elkaar — 0,07 octaaf. Dit
+driverpaar heeft, zodra je beide bladen serieus neemt, vrijwel geen legale overnameband. Dat is
+precies het soort spanning waarvoor dit venster gebouwd is (A5d.3: *"conflicterende voorkeurszones
+worden getoond in plaats van opgelost"*), en het venster drukt hem af:
+
+> The datasheet's minimum crossover (2200 Hz) is STRICTER than every floor the measurements imply
+> (highest: 1647 Hz, drive-stated); the strictest binds, and here that is stated-min (U-3g).
+
+#### DE POORT IS NIET GEWAPEND, EN HET CORPUS IS NIET GEREGENEREERD
+
+`stated-min` is een VENSTERregel, geen poort: hij bepaalt waar kandidaten mogen liggen en verwerpt
+niets achteraf. En hij is additief — absent is de vloer die er altijd was (P4) — dus geen enkele
+casus die niets transcribeert beweegt. Casus 1, casus 1b en casus 2 stellen geen aanbevolen
+minimum, en alle drie de golden-referentiesuites reproduceren onveranderd.
+
+#### WAT NIET GEDAAN IS
+
+- **Geen tweede huis voor 2200 Hz.** De M-M-rij draagt `testFilterHz` en die is op déze tweeter
+  toevallig ook 2200. Het zijn twee verschillende uitspraken van het blad (de conditie waaronder
+  100 W geldt, tegen het aanbevolen bereik) en op een ander blad vallen zij niet samen, dus zij
+  krijgen twee velden. Wie ze ooit koppelt moet eerst een blad vinden waar zij verschillen.
+- **Geen automatische overname uit M-M.** De app zou `testFilterHz` als voorstel kunnen invullen;
+  dat is een aanname over wat er getest is (A3h) en het veld is één getal typen.
+- **Geen klasse-A-referentie op casus 1.** Casus 1 stelt geen aanbevolen minimum, dus er is niets te
+  bevriezen; de handberekening en casus 1b's meting staan in `statedMinCrossover.test.ts`.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

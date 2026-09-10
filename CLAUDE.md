@@ -48,6 +48,21 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-3g (10-09-2026) gemeten op 456 s — 173 bestanden (172 geslaagd, 1 overgeslagen), 2113 tests
+    (2110 geslaagd, 3 overgeslagen), groen, alleen gedraaid ná de browsercontrole met de dev-server
+    gestopt.** +1 BESTAND (`engine2/predesign/statedMinCrossover.test.ts`, 14 claims) en +14 tests, en
+    die twee getallen zijn HETZELFDE getal: het corpus is niet geregenereerd, dus geen enkele `it.each`
+    over het levende corpus beweegt, en de twee gewijzigde bestanden veranderden van INHOUD en niet van
+    telling (`v2InputPlacement` blijft op 15, `demoBundle` op 30 — twee benoemde verzamelingen en één
+    verdict erbij). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
+    **DE VOLLE RUN IS BIJ U-3g NIET GEDRAAID**, en dit is de eerste sessie sinds de I-1-reeks die een
+    VENSTERregel toevoegt, dus de afweging staat er expliciet: `stated-min` is ADDITIEF en géén enkele
+    casus in dit boek stelt een aanbevolen minimum, dus `upperMinCrossoverHz` is overal `null` en
+    `crossoverWindow` levert per constructie hetzelfde object. Dat is NAGEMETEN en niet beredeneerd —
+    `casus1Field`, `goldenCasus1`, `goldenCasus1b` en `goldenCasus2` reproduceren onveranderd, en de
+    twee byte-baselines die de zoektocht bewaken (`f4cRegression` 94 s, `workerRouteRegression` 100 s)
+    draaien in de snelle laag en reproduceerden. De drie live ketenruns zouden een corpus reproduceren
+    dat deze sessie niet aangeraakt heeft.
     **Ná U-3f (10-09-2026) gemeten op 482 s — 172 bestanden (171 geslaagd, 1 overgeslagen), 2099 tests
     (2096 geslaagd, 3 overgeslagen), groen.** +1 BESTAND
     (`engine2/metrics/thermalLoad.test.ts`, 17 claims) en +22 tests: die zeventien plus vijf in
@@ -3121,6 +3136,67 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-3g-guards (de aanbevolen minimale kruisfrequentie als vensterbodem; ÉÉN vensterregel, additief)
+
+- **`src/lib/engine2/predesign/xoWindow.ts` — de regel `'stated-min'`, en de ENE beslissing die
+  ertoe doet is de RICHTING.** Elke andere gestelde vloer hier is een VERZWAKKING op f_s
+  (`drive`, `drive-stated`) en inverteert door A5d.3(ii): een steilere flank levert diezelfde
+  verzwakking aantoonbaar lager, dus de frequentie beweegt met de orde mee. Een aanbevolen
+  minimale kruisfrequentie is niet dat soort uitspraak — zij bundelt excursie, spoelwarmte,
+  vervorming, directiviteit en breakup, en alleen de eerste volgt de helling op f_s. Hem tóch
+  inverteren geeft op de T25T-6 **1426 Hz uit "2200 Hz @ 2e orde" bij LR4**: het juiste getal, van
+  het juiste blad, over het verkeerde ding (A3h). **Dus verbatim als vloer, bij elke orde**, en de
+  ORDE tilt hem alleen OP wanneer de flank ondieper is dan die van het blad. De tegenproef staat
+  als claim in de test: die 1426 Hz wordt uitgerekend en er wordt geëist dat het venster hem NIET
+  levert — zonder haar zijn "verbatim" en "geïnverteerd" hetzelfde groen op een driver waar zij
+  toevallig samenvallen.
+- **TWEE VOORWAARDEN VOOR ÉÉN REGEL, en het commentaar zegt waarom er twee zijn.** `shallower` IS
+  de regel (de inversie loopt alleen opwaarts); `raised` is de FLOAT-WACHT eronder — bij de
+  gestelde orde geeft de inversie `minXo` terug op afronding na, en dit project heeft driemaal
+  betaald voor een exacte vergelijking op een afgeleid getal (V46's precisering, V49 en B-1 in CI).
+  **Elk van de twee alleen weghalen verandert geen gedrag**, en dat is precies waarom de reden is
+  opgeschreven in plaats van herontdekt te moeten worden. Nagemeten dat de test kán falen: beide
+  tegelijk weghalen (de inversie in BEIDE richtingen laten winnen) zet drie claims op rood,
+  inclusief de tegenproef.
+- `src/lib/engine2/predesign/statedMinCrossover.test.ts` (14 claims, nieuw) — de vier soorten van
+  de metriek-skill. **HANDBEREKENING op ronde getallen**: f_s 1000 Hz met 4000 Hz @ 2e orde is
+  exact 24 dB, en 24 dB bij 1e orde is exact vier octaven, dus 16 000 Hz. **P2/P4**: afwezig,
+  `null`, 0, negatief en NaN geven alle vijf een byte-identiek venster, en een ORDE zonder
+  frequentie is géén uitspraak. **NIEUWE MÉTING** op casus 1b: de vloer gaat van `drive-stated`
+  1647 naar `stated-min` 2200 en `floorBy` zegt welke. **DE APP-HELFT als bronscan** (het
+  UI-1-idioom): `minCrossoverByRole` bestaat, leest het kaartveld en wordt aan de tak meegegeven —
+  nagemeten dat die scan rood gaat als de tak-regel verdwijnt.
+- **DE FREQUENTIE REIST ALLEEN, en dat is een claim.** M-M is alles-of-niets (een vermogensopgave
+  zonder haar filter begrenst niets); dit niet, want een blad dat een bereik drukt en geen helling
+  heeft nog steeds gezegd hoe laag de driver mag. De test pint dat de memo alleen op de Hz
+  weigert en niet op de orde.
+- **GEEN POORT, GEEN REGENERATIE.** `stated-min` is een VENSTERregel: hij bepaalt waar kandidaten
+  mogen liggen en verwerpt niets achteraf. Casus 1, 1b en 2 stellen geen aanbevolen minimum, dus
+  het is per constructie de identiteit op elk corpus; `goldenCasus1`, `goldenCasus1b`,
+  `goldenCasus2` en `goldenClassification` reproduceren onveranderd, en de twee byte-baselines
+  (`f4cRegression`, `workerRouteRegression`) raakt hij niet.
+- **DE BEVINDING DIE UIT DE METING VALT, en zij is geen defect.** Op casus 1b levert 2200 Hz een
+  venster van **2200–2304 Hz** en nog ÉÉN kandidaat (2251,4 Hz, tegen drie ervoor); op de
+  driewegdemo 2200–2287 Hz. Het plafond is de eerste significante breakup van de mid gedeeld door
+  haar divisor. **De aanbeveling van de tweeter en de breakup van de mid liggen 0,07 octaaf uit
+  elkaar** — dit driverpaar heeft, zodra beide bladen serieus genomen worden, vrijwel geen legale
+  overnameband. Dat is precies de spanning waarvoor A5d.3 gebouwd is ("conflicterende zones worden
+  getoond in plaats van opgelost"), en het venster drukt hem af.
+- **HET REGISTER: `minCrossover`, klasse `nice`, `placement: 'always'` via de U-3c-DATASHEETREGEL**
+  — elke rij met `source: 'datasheet'` staat in het standaardbeeld, en de twee benoemde
+  verzamelingen in `v2InputPlacement.test.ts` gingen erop rood tot zij hem noemden. Dat is de
+  bewaker die werkt zoals bedoeld: hij arriveerde door de REGEL en niet als uitzondering.
+- **BROWSERCONTROLE (dev-server, 10-09-2026), en zij is de reden dat dit als af geldt.** Verse
+  demo, Expert → Drivers: de rij staat op alle drie de kaarten in het standaardbeeld, direct onder
+  "Power rating". 2200 Hz + 2e orde op de TWEETER geeft in de strip naast de Optimize-knop
+  `mid→high 2200 Hz – 2287 Hz · floor: stated-min 2200 Hz`, en de U-3e-zin "a convention, not a
+  measurement" is weg omdat de vloer geen conventie meer is. Het paneel drukt de volle
+  attributie af, met `· binding`.
+- **LET OP BIJ HET HANDMATIG NAMETEN: de driverkaarten staan van HOOG naar LAAG.** De eerste kaart
+  is de tweeter en de derde de woofer (te herkennen aan S_d: 5,6 / 69 / 255 op de driewegdemo).
+  Dat kostte deze sessie drie meetrondes — 2200 Hz op de derde kaart verplaatst niets, en dat is
+  correct: de woofer is de bovenste driver van geen enkel paar.
 
 ### U-3f-guards (M-M: de vermogensopgave van de driver; RAPPORTAGE, geen poort)
 - **`src/lib/engine2/metrics/thermalLoad.ts` (`driver-thermal/1.0`) — de eerste metriek die uit een

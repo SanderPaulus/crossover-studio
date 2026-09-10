@@ -32,6 +32,7 @@ import type { DerivedDriver, IngestResult } from '../ingest/derive.ts';
 import type { EstimatorStamp } from '../version.ts';
 import type { DriverCard } from './driveExcursion.ts';
 import type { DriverPowerRating } from './thermalLoad.ts';
+import type { DriverMinCrossover } from '../predesign/xoWindow.ts';
 import type { WayWiring } from '../ingest/wiring.ts';
 import type { LowestWayLevelWork } from '../../levelWork.ts';
 import type { CoilDcrFit } from '../../coilDcr.ts';
@@ -223,6 +224,14 @@ export interface ProjectSettings {
    * range and which is therefore an ASSUMPTION that travels with the number
    * (A3h; `DriverPowerRating.testFilterHzSource`). */
   driverPowerRatingByDriver?: Record<string, DriverPowerRating>;
+  /* ---- U-3g: the recommended minimum crossover, per driver id ------------ *
+   * The one generic statement a datasheet makes about how low a driver may be
+   * crossed, transcribed with the order it is stated at. It reaches the
+   * PRE-DESIGN window as a floor on the pair whose UPPER driver it is - see
+   * `XoWindowInput.upperMinCrossoverHz` for why it is taken verbatim rather
+   * than inverted through the order the way the two dB floors are. Absent =
+   * no such floor (P4) and the window is exactly what it always was. */
+  driverMinCrossoverByDriver?: Record<string, DriverMinCrossover>;
   /* ---- V51: the wiring of each way, and the level-work requirement ------ */
   /**
    * How many IDENTICAL drivers each way has and how they are wired — as

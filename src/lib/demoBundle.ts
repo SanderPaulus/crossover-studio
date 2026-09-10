@@ -188,7 +188,7 @@ export const BUNDLE_BEARABLE_ROWS: readonly string[] = Object.freeze([
   // required
   'responses', 'validity', 'impedance', 'ways', 'positions', 'sd', 'baffle-width',
   // nice
-  'blTm', 'mmsG', 'xmaxMm', 'driveVoltageV', 'coilFamily', 'powerRating',
+  'blTm', 'mmsG', 'xmaxMm', 'driveVoltageV', 'coilFamily', 'powerRating', 'minCrossover',
   'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom', 'measuredRe',
   'rotSym', 'acousticCentre', 'wiring', 'nominalSize',
   // judgement
@@ -282,6 +282,13 @@ export function bundleCarries(b: DemoBundle): Record<string, boolean> {
         filled(s.v2Measurement[r].testFilterOrder) &&
         filled(s.v2Measurement[r].testFilterHz),
     ),
+    /* U-3g — the recommended minimum crossover. The FREQUENCY alone is a
+     * complete statement (a sheet may print a range and no slope), so unlike
+     * M-M above this is not all-or-nothing — the same rule the app's
+     * `minCrossoverByRole` uses. NOT on `BUNDLE_CARRIED_ROWS`: it is a
+     * datasheet figure and not a measurement, so a demo may not state it, and
+     * the subset guard is what says so if one ever does. */
+    minCrossover: some((r) => filled(s.v2Measurement[r].minCrossoverHz)),
     nearFieldCone: some((r) => s.nearField[r].cone !== null),
     nearFieldPort: some((r) => s.nearField[r].port !== null),
     spliceBand: declares(/^\s*[*;#]*\s*Merge splice band\s*=/im),

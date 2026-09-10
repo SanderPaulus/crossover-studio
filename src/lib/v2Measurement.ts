@@ -64,6 +64,16 @@ export interface V2MeasurementMeta {
   testFilterOrder: string;
   /** That filter's corner, Hz. Often not printed — see `v2InputRegister`. */
   testFilterHz: string;
+  /* ---- U-3g (10-09-2026): the recommended minimum crossover --------------
+   * The one generic statement a sheet makes about how LOW this driver may be
+   * crossed ("Recommended frequency range 2.2 kHz - 30 kHz"). It reaches the
+   * pre-design window as a floor, verbatim; the order is the second half of
+   * the condition and only ever raises it. '' = no such floor, and the window
+   * falls back to whatever it had (P4). */
+  /** The lowest handover the datasheet recommends, Hz. */
+  minCrossoverHz: string;
+  /** The order that recommendation is stated at. '' = none claimed. */
+  minCrossoverOrder: string;
 }
 
 /** Every field of the block, in declaration order — the guards enumerate it. */
@@ -85,6 +95,8 @@ export const V2_MEASUREMENT_KEYS = [
   'ratedPowerW',
   'testFilterOrder',
   'testFilterHz',
+  'minCrossoverHz',
+  'minCrossoverOrder',
 ] as const satisfies readonly (keyof V2MeasurementMeta)[];
 
 /** The fresh state of one branch: every field empty, nothing stated. */
@@ -106,4 +118,6 @@ export const emptyV2Meas = (): V2MeasurementMeta => ({
   ratedPowerW: '',
   testFilterOrder: '',
   testFilterHz: '',
+  minCrossoverHz: '',
+  minCrossoverOrder: '',
 });

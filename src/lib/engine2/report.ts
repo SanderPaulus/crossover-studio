@@ -1062,6 +1062,16 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         upperStatedDriveLimitSource:
           'the stated maximum drive on the driver\'s own resonance (gestelde_eisen, V47b/V50), ' +
           'passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads',
+        /* U-3g — the manufacturer's recommended MINIMUM CROSSOVER for the
+         * upper driver, transcribed off its datasheet. A driver property, so
+         * a window floor may stand on it; taken VERBATIM and raised only for
+         * a flank shallower than the one it is stated at (see xoWindow.ts).
+         * Absent = no such floor (P4). */
+        upperMinCrossoverHz: input.settings.driverMinCrossoverByDriver?.[upper]?.hz ?? null,
+        upperMinCrossoverOrder: input.settings.driverMinCrossoverByDriver?.[upper]?.order ?? null,
+        upperMinCrossoverSource:
+          input.settings.driverMinCrossoverByDriver?.[upper]?.source ??
+          "the driver's datasheet, transcribed on its card - ReportSettings.driverMinCrossoverByDriver",
         /* E-1 — a stated ceiling per pair, the mirror of the stated-figure
          * floor: read beside the derived ceilings, the strictest binds. Absent
          * = no such limit (P4). */

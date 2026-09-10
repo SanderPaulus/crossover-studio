@@ -553,6 +553,26 @@ const NICE: readonly V2InputRow[] = [
       'the driver (measured on casus 1b: floor 1647 → 1294 Hz).',
   },
   {
+    id: 'minCrossover',
+    label: 'Minimum crossover (Hz, at order)',
+    form: 'Setup tab → driver card → Minimum crossover',
+    travels:
+      'v2Meas[role].minCrossoverHz / minCrossoverOrder → AdapterBranch.minCrossover → ' +
+      "ReportSettings.driverMinCrossoverByDriver → the A5d.3 window floor (rule 'stated-min')",
+    cls: 'nice',
+    emptyMeans:
+      'nothing the manufacturer said about how low this driver may be crossed reaches the window; ' +
+      'its floor rests on whichever of the derived excursion ceiling, a stated dB figure and the ' +
+      'k·f_s CONVENTION demands most — and on a dome that is usually the convention.',
+    source: 'datasheet',
+    placement: 'always',
+    placementWhy:
+      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
+      'hiding it is the one placement that costs a newcomer something real: it is the only ' +
+      'generic statement a sheet makes about how low the driver may go, and without it the ' +
+      'window floor is a convention (measured on casus 1b: 1294 Hz against a recommended 2200).',
+  },
+  {
     id: 'driveVoltageV',
     label: 'measured at (V)',
     form: 'Drivers tab → Engine v2 — measurement',
@@ -1201,6 +1221,8 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].ratedPowerW}' },
   { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].testFilterOrder}' },
   { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].testFilterHz}' },
+  { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverHz}' },
+  { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverOrder}' },
   { row: 'driveOnFsMaxDb-per-way', form: 'driver-card', control: 'value={v2Meas[role].driveOnFsMaxDb}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringMeasured}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringDesired}' },

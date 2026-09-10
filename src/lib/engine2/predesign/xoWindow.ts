@@ -49,7 +49,7 @@ export interface XoLimit {
   side: 'floor' | 'ceiling';
   hz: number;
   /** Short machine-readable tag, for tests and for the UI to group on. */
-  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive' | 'drive-stated' | 'stated';
+  rule: 'validity' | 'fs' | 'breakup' | 'directivity' | 'drive' | 'drive-stated' | 'stated' | 'stated-min';
   /** Human sentence — always shown next to the number. */
   source: string;
   /** Set when this limit carries an uncalibrated component. */
@@ -116,6 +116,33 @@ export interface XoWindowResult {
   empty: boolean;
   /** The tensions worth showing: conflicting zones, edge-of-window findings. */
   tensions: string[];
+}
+
+/**
+ * U-3g — THE MANUFACTURER'S RECOMMENDED MINIMUM CROSSOVER, transcribed.
+ *
+ * The one generic statement a datasheet makes about how low a driver may be
+ * crossed. On the BlieSMa T25T-6 it is the line "Recommended frequency range
+ * 2.2 kHz - 30 kHz", and on that sheet it coincides with the condition the
+ * power rating was measured under ("* IEC 268-5, 2nd order high-pass
+ * Butterworth filter") - two lines saying 2200 Hz for two different reasons.
+ *
+ * Nothing here is derived and nothing has a default (P4).
+ */
+export interface DriverMinCrossover {
+  /** The lowest handover the sheet recommends for this driver, Hz. */
+  hz: number;
+  /**
+   * The ORDER that recommendation is stated at, when the sheet names one.
+   *
+   * Optional on purpose: many sheets print a recommended range and no slope,
+   * and a floor that invented one would be inventing the manufacturer's
+   * condition. Absent = the frequency is taken verbatim and no slope is
+   * claimed either way.
+   */
+  order?: number;
+  /** Where it came from - the sheet, and when it was read. */
+  source?: string;
 }
 
 export interface XoWindowInput {
@@ -188,6 +215,43 @@ export interface XoWindowInput {
   statedCeilingHz?: number | null;
   /** Where that ceiling came from — attribution, exactly as every limit has. */
   statedCeilingSource?: string;
+  /**
+   * U-3g — THE MANUFACTURER'S RECOMMENDED MINIMUM CROSSOVER for the UPPER
+   * driver, and the order it is stated at. A datasheet transcription, so a
+   * property of the DRIVER and admissible as a window floor on exactly the
+   * footing `upperDriveCeilingDb` already is.
+   *
+   * WHY IT IS NOT CONVERTED THROUGH THE ORDER THE WAY THE dB FIGURES ARE, and
+   * this is the whole design decision. `drive` and `drive-stated` invert
+   * A5d.3(ii) because their input IS an attenuation at f_s: a steeper flank
+   * genuinely delivers that attenuation lower down, so the frequency moves
+   * with the order and the physics moves with it. A recommended minimum
+   * crossover is a different KIND of statement. It bundles excursion, coil
+   * heat, distortion, directivity and breakup into one number, and only the
+   * first of those follows the flank's slope at f_s. Reading it as an
+   * f_s-attenuation and inverting it would let a fourth-order flank cross
+   * BELOW the recommendation on the strength of a model the sheet never
+   * stated - the right number, from the right sheet, about the wrong thing
+   * (A3h: a plausible wrong number is more dangerous than an absurd one).
+   * Measured on the T25T-6: that inversion turns 2200 Hz @ 2nd order into
+   * 1426 Hz at LR4, below both the recommendation and anything a designer
+   * would call protected.
+   *
+   * So the frequency is a HARD FLOOR, verbatim, at every order - a steeper
+   * flank never buys a lower handover here. The order is the second half of
+   * the condition and it works in ONE direction: a flank SHALLOWER than the
+   * sheet's leaves the driver more energy at its resonance than the sheet
+   * certified, so the floor is raised to where this order delivers what the
+   * stated condition delivered (the A5d.3(ii) inversion, used only upward).
+   *
+   * Absent or null = no such floor (P4): a project that transcribes nothing
+   * gets exactly the window it always got, and no corpus moves.
+   */
+  upperMinCrossoverHz?: number | null;
+  /** The order that recommendation is stated at; absent = none claimed. */
+  upperMinCrossoverOrder?: number | null;
+  /** Where it came from — attribution, exactly as every limit has. */
+  upperMinCrossoverSource?: string;
   /** Breakups of the LOWER driver, ascending, with their height over trend. */
   lowerBreakups: readonly { fHz: number; dB: number }[];
   /** -6 dB@theta point of the LOWER driver, when it was measured off axis. */
@@ -298,6 +362,62 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
         `the STATED M-C figure (${input.upperStatedDriveLimitSource ?? 'source not stated'}), read as A5d.3(ii) ` +
         'inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated ' +
         'figure below this floor, and the floor assumes no pad (A5e.3b)',
+    });
+  }
+
+  /* U-3g — THE RECOMMENDED MINIMUM CROSSOVER, verbatim, and raised only for a
+   * flank shallower than the one it was stated at. See `upperMinCrossoverHz`
+   * for why this floor is NOT inverted downward the way the two dB floors
+   * above are. The floor combination takes the HIGHEST floor, so this sits
+   * beside them and `floorBy` names whichever demands most. */
+  const minXo = input.upperMinCrossoverHz ?? null;
+  if (minXo !== null && Number.isFinite(minXo) && minXo > 0) {
+    const statedOrder = input.upperMinCrossoverOrder ?? null;
+    const where = input.upperMinCrossoverSource ?? 'source not stated';
+    const hasOrders =
+      statedOrder !== null &&
+      Number.isFinite(statedOrder) &&
+      statedOrder > 0 &&
+      Number.isFinite(input.order) &&
+      input.order > 0;
+    /* The attenuation at f_s that the stated condition itself delivers. Only
+     * meaningful when the recommendation sits ABOVE the resonance; a sheet
+     * that recommends crossing below f_s says nothing about attenuation and
+     * the verbatim floor is the whole answer. */
+    const demandedDb =
+      hasOrders && input.upperFsHz !== null && input.upperFsHz > 0 && minXo > input.upperFsHz
+        ? DB_PER_OCTAVE_PER_ORDER * (statedOrder as number) * Math.log2(minXo / input.upperFsHz)
+        : null;
+    /* TWO CONDITIONS FOR ONE RULE, and both earn their place. `shallower` IS
+     * the rule — the inversion runs upward only. `raised` is the FLOAT GUARD
+     * beneath it: at the stated order the inversion returns minXo up to
+     * rounding, and this project has paid three times for an exact comparison
+     * on a derived number (V46's precisering, V49 and B-1 in CI). Deleting
+     * either one alone changes no behaviour, which is why the reason is
+     * written down rather than left to be rediscovered. */
+    const shallower = hasOrders && input.order < (statedOrder as number);
+    const corrected =
+      shallower && demandedDb !== null && input.upperFsHz !== null
+        ? input.upperFsHz * 2 ** (demandedDb / (DB_PER_OCTAVE_PER_ORDER * input.order))
+        : null;
+    const raised = corrected !== null && corrected > minXo;
+    limits.push({
+      side: 'floor',
+      hz: raised ? (corrected as number) : minXo,
+      rule: 'stated-min',
+      source:
+        `the manufacturer's recommended minimum crossover for ${input.upper}, ` +
+        `${minXo.toFixed(0)} Hz` +
+        (hasOrders ? ` at order ${statedOrder}` : ' (no order stated)') +
+        ` (${where})` +
+        (raised
+          ? ` - RAISED to ${(corrected as number).toFixed(0)} Hz because this pair crosses at order ` +
+            `${input.order}, shallower than the ${statedOrder} the recommendation is stated at: at ` +
+            `${minXo.toFixed(0)} Hz the sheet's own condition holds ${(demandedDb as number).toFixed(1)} dB ` +
+            `at f_s (${(input.upperFsHz as number).toFixed(0)} Hz) and this order needs that much further up`
+          : ' - taken verbatim; a steeper flank does not buy a lower handover here, because a ' +
+            'recommended range bundles distortion and directivity with excursion and only the last ' +
+            'of those follows the slope at f_s (U-3g)'),
     });
   }
 
@@ -417,6 +537,29 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
         (statedC.hz < tightest.hz ? 'is stricter than' : statedC.hz > tightest.hz ? 'lies above' : 'coincides with') +
         ` the derived one (${tightest.hz.toFixed(0)} Hz, ${tightest.rule}); the strictest binds, and here that is ` +
         `${ceilingBy?.rule ?? 'none'} (E-1).`,
+    );
+  }
+
+  /* U-3g — the mirror of the E-1 sentence on the floor side: say where a
+   * transcribed minimum crossover landed against the floors the measurements
+   * derive, so a reader can see whether the sheet or the driver shaped the
+   * field. The convention (`fs`) is called one by name; that is the whole
+   * finding of U-3e, and a stated minimum is the first floor in this project
+   * that is neither a convention nor a derivation but a MANUFACTURER'S. */
+  const statedMin = floors.find((l) => l.rule === 'stated-min') ?? null;
+  const otherFloors = floors.filter((l) => l.rule !== 'stated-min');
+  if (statedMin && otherFloors.length > 0) {
+    const highest = otherFloors.reduce((a, b) => (b.hz > a.hz ? b : a));
+    tensions.push(
+      `The datasheet's minimum crossover (${statedMin.hz.toFixed(0)} Hz) ` +
+        (statedMin.hz > highest.hz
+          ? 'is STRICTER than'
+          : statedMin.hz < highest.hz
+            ? 'lies below'
+            : 'coincides with') +
+        ` every floor the measurements imply (highest: ${highest.hz.toFixed(0)} Hz, ${highest.rule}` +
+        (highest.rule === 'fs' ? ' - a convention, not a measurement' : '') +
+        `); the strictest binds, and here that is ${floorBy?.rule ?? 'none'} (U-3g).`,
     );
   }
 

@@ -199,6 +199,7 @@ import {
 import { emptyV2Meas, type V2MeasurementMeta } from './lib/v2Measurement.ts';
 /* M-M — the driver's own power rating, as the adapter and the metric take it. */
 import type { DriverPowerRating } from './lib/engine2/metrics/thermalLoad.ts';
+import type { DriverMinCrossover } from './lib/engine2/predesign/xoWindow.ts';
 import {
   V1_FIELD_DEFAULTS,
   describeV1Carryover,
@@ -3834,6 +3835,33 @@ export default function App() {
     return out;
   }, [v2Meas]);
 
+  /**
+   * U-3g — the manufacturer's recommended MINIMUM CROSSOVER, per role.
+   *
+   * The frequency ALONE is a complete statement and travels on its own: a
+   * sheet that prints "Recommended frequency range 2.2 kHz - 30 kHz" and no
+   * slope has still said how low the driver may be crossed. The order is the
+   * second half of the condition when the sheet names one, and it only ever
+   * RAISES the floor (see `xoWindow.ts`) — so unlike the power rating, which
+   * means nothing half-stated, this is not all-or-nothing.
+   */
+  const minCrossoverByRole = useMemo(() => {
+    const out: Partial<Record<BranchRole, DriverMinCrossover>> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const m = v2Meas[role];
+      if (m.minCrossoverHz.trim() === '') continue;
+      const hz = Number(m.minCrossoverHz);
+      if (!(hz > 0)) continue;
+      const n = m.minCrossoverOrder.trim() === '' ? null : Number(m.minCrossoverOrder);
+      out[role] = {
+        hz,
+        ...(n !== null && n > 0 ? { order: n } : {}),
+        source: 'driver datasheet, entered on the driver card (U-3g)',
+      };
+    }
+    return out;
+  }, [v2Meas]);
+
   const driveOnFsMaxDbByRole = useMemo(() => {
     const out: Partial<Record<BranchRole, number>> = {};
     for (const role of ['low', 'mid', 'high'] as const) {
@@ -4039,6 +4067,8 @@ export default function App() {
           ...(driveOnFsMaxDbByRole[role] !== undefined ? { driveOnFsMaxDb: driveOnFsMaxDbByRole[role] } : {}),
           /* M-M — the rating travels only complete (see `powerRatingByRole`). */
           ...(powerRatingByRole[role] !== undefined ? { powerRating: powerRatingByRole[role] } : {}),
+          /* U-3g — the recommended minimum crossover; the Hz alone is enough. */
+          ...(minCrossoverByRole[role] !== undefined ? { minCrossover: minCrossoverByRole[role] } : {}),
           /* V51 — the way's wiring: the count from the cabinet form, the two
            * wirings from the measurement block. Only complete statements
            * travel; a half-stated wiring is absent. */
@@ -12834,6 +12864,57 @@ export default function App() {
                                 {' Hz'}
                                 <span className="cd-hint">
                                   {t('all three or none — a rated power without its filter is not a limit on anything')}
+                                </span>
+                              </span>
+                            </>
+                          )}
+                          {/* ---- U-3g: THE RECOMMENDED MINIMUM CROSSOVER --------
+                            * The one generic statement a datasheet makes about
+                            * how LOW this driver may be crossed, and the only
+                            * one that reaches the pre-design window as a floor.
+                            *
+                            * The Hz travels ALONE — many sheets print a range
+                            * and no slope, and that is still a complete
+                            * statement. The order is the second half of the
+                            * condition when the sheet names one, and it only
+                            * ever RAISES the floor: a steeper flank never buys
+                            * a lower handover here, because a recommended range
+                            * bundles distortion and directivity with excursion
+                            * and only the last of those follows the slope at
+                            * f_s (see `xoWindow.ts`).
+                            *
+                            * In the default view for the U-3c reason — every
+                            * `source: 'datasheet'` row is. */}
+                          {engineSelection.reporting && (
+                            <>
+                              <span className="cd-label">{t('Minimum crossover')}</span>
+                              <span
+                                className="cd-fields"
+                                title={t("The lowest crossover the manufacturer recommends for this driver, off its datasheet (e.g. \"Recommended frequency range 2.2kHz - 30kHz\"), with the slope it is stated at when the sheet names one. It becomes the FLOOR of this driver's crossover window, taken verbatim: a steeper flank does not buy a lower handover, because a recommended range bundles distortion and directivity with excursion and only excursion follows the slope at f_s. A flank SHALLOWER than the stated one raises the floor instead. Blank = the window falls back to a derived excursion ceiling, a stated dB figure, or the k*f_s convention - and on a dome that is usually the convention.")}
+                              >
+                                <span className="cd-pre" />
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={100}
+                                  placeholder="—"
+                                  value={v2Meas[role].minCrossoverHz}
+                                  onChange={(e) => setV2MeasField(role, 'minCrossoverHz', e.target.value)}
+                                  style={{ width: '5rem' }}
+                                />
+                                {' Hz · ' + t('stated at') + ' '}
+                                <select
+                                  value={v2Meas[role].minCrossoverOrder}
+                                  onChange={(e) => setV2MeasField(role, 'minCrossoverOrder', e.target.value)}
+                                >
+                                  <option value="">{t('order — (none stated)')}</option>
+                                  <option value="1">{t('1st order (6 dB/oct)')}</option>
+                                  <option value="2">{t('2nd order (12 dB/oct)')}</option>
+                                  <option value="3">{t('3rd order (18 dB/oct)')}</option>
+                                  <option value="4">{t('4th order (24 dB/oct)')}</option>
+                                </select>
+                                <span className="cd-hint">
+                                  {t('the frequency alone is enough — the order only raises this floor, never lowers it')}
                                 </span>
                               </span>
                             </>

@@ -417,6 +417,24 @@ export interface ProjectDesign {
          *  with, the id the catalogue fit is keyed on. Empty = not stated:
          *  lossless coils, reported as a deviation from any build. */
         coilFamily?: string;
+        /* M-M (U-3f) — the driver's own power rating and the filter it was
+         * rated through, off one line of its datasheet and its footnote. All
+         * three or none: a rated power without its filter limits nothing.
+         *
+         * These three were written by `saveProject` from U-3f onward and only
+         * described here from U-3g; the save spreads the whole block, so files
+         * round-tripped correctly the whole time and nothing needs migrating.
+         * A type that does not list what the file holds is a record that
+         * quietly goes stale, which is why they are named now. */
+        ratedPowerW?: string;
+        testFilterOrder?: string;
+        testFilterHz?: string;
+        /** U-3g — the manufacturer's recommended MINIMUM CROSSOVER, Hz, and
+         *  the order it is stated at. The frequency alone is a complete
+         *  statement; the order only ever raises the window floor. Empty =
+         *  no such floor, and the window is what it always was (P4). */
+        minCrossoverHz?: string;
+        minCrossoverOrder?: string;
       }
     >
   >;
