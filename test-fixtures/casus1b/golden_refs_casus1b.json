@@ -603,6 +603,16 @@
      "aantal": 1,
      "gemeten": "parallel",
      "gewenst": "parallel"
+    },
+    "vermogensopgave": {
+     "_": "M-M (10-09-2026) — de eigen vermogensopgave van de driver EN de testconditie waaronder zij geldt, letterlijk van het datasheet. Zonder de conditie is een watt geen grens op iets: dezelfde 100 W betekent iets anders achter een 2e orde op 2200 Hz dan achter een 4e orde op 1400. De FREQUENTIE staat er niet expliciet - het blad noemt in zijn voetnoot alleen de orde - en is AFGELEID uit 'Recommended frequency range 2.2kHz-30kHz'; dat is een aanname over wat er getest is en zij reist als zodanig mee (A3h).",
+     "gesteld_door": "BlieSMa, datasheet T25T-6, opgehaald 10-09-2026 van https://www.bliesma.de/Datasheet%20T25T-6.pdf",
+     "rated_power_W": 100,
+     "testfilter_orde": 2,
+     "testfilter_hz": 2200,
+     "testfilter_hz_herkomst": "afgeleid uit de aanbevolen kruisband 2,2-30 kHz; het blad noemt de frequentie van het testfilter niet",
+     "voetnoot_letterlijk": "* IEC 268-5, 2nd order high-pass Butterworth filter",
+     "opmerking_fs": "Het blad geeft f_s 940 Hz; de gemeten sweep van dit exemplaar leest 924,3 Hz. Anderhalf procent, en precies de drift waarvoor de 18+2-conventie haar marge draagt."
     }
    },
    "mid": {
@@ -616,7 +626,8 @@
      "aantal": 1,
      "gemeten": "parallel",
      "gewenst": "parallel"
-    }
+    },
+    "vermogensopgave": null
    },
    "ff_meetspanning_V": null,
    "ff_mic_afstand_mm": 1000,
@@ -630,7 +641,8 @@
      "mid": "jantzen|air core wire coil|1",
      "tweeter": "jantzen|air core wire coil|1"
     }
-   }
+   },
+   "_vermogensopgave_toelichting": "M-M: alleen de tweeter draagt een opgave; mid en woofer stellen niets en M-M staat daar UIT met het veld genoemd (P4). Dat is de tweede helft van de validatiecasus."
   },
   "v2_herkomst": {
    "_": "De v2-tweewegrun waaruit de KAND-V2-bestanden komen: test-fixtures/casus1b_v2_herkomst.json (scripts/generate-casus1b-v2-candidates.ts). DOCUMENTATIE — de acceptatie zit in kandidaten.KAND_V2_*.",

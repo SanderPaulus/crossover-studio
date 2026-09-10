@@ -24,6 +24,7 @@ import { pickSlotsN, type BranchRole } from '../driverSlots.ts';
 import type { Netlist } from '../network.ts';
 import { parseArtaHeader, type Manifest, type ManifestEntry } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
+import type { DriverPowerRating } from './metrics/thermalLoad.ts';
 import type { WayWiring } from './ingest/wiring.ts';
 import type { FilterInput, EngineV2ReportInput, ReportSettings } from './report.ts';
 import {
@@ -104,6 +105,12 @@ export interface AdapterBranch {
    * exactly as R_e and the driver card are. Absent = none per way.
    */
   driveOnFsMaxDb?: number;
+  /**
+   * M-M — this driver's own power rating and the filter it was rated through,
+   * transcribed from the datasheet. Re-keyed from role to driver id here, into
+   * `ReportSettings.driverPowerRatingByDriver`, exactly as the card is.
+   */
+  powerRating?: DriverPowerRating;
   /**
    * V51 — the WIRING of this way: how many identical drivers, as measured and
    * as intended (`ingest/wiring.ts`). Re-keyed from role to driver id into
@@ -364,6 +371,12 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     if (b.driveOnFsMaxDb === undefined || !Number.isFinite(b.driveOnFsMaxDb)) continue;
     driveByDriver[ids[b.role] ?? b.role] = b.driveOnFsMaxDb;
   }
+  /* M-M — the power rating per way, re-keyed like the rest. */
+  const ratingByDriver: Record<string, DriverPowerRating> = { ...(args.settings.driverPowerRatingByDriver ?? {}) };
+  for (const b of args.branches) {
+    if (!b.powerRating) continue;
+    ratingByDriver[ids[b.role] ?? b.role] = b.powerRating;
+  }
   /* V51 — the wiring per way, re-keyed like the rest. */
   const wiringByDriver: Record<string, WayWiring> = { ...(args.settings.wiringByDriver ?? {}) };
   for (const b of args.branches) {
@@ -381,6 +394,7 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     ...(Object.keys(coilFamilyByDriver).length > 0 ? { coilDcrFamilyByDriver: coilFamilyByDriver } : {}),
     ...(Object.keys(wiringByDriver).length > 0 ? { wiringByDriver } : {}),
     ...(Object.keys(driveByDriver).length > 0 ? { maxDriveOnFsDbByDriver: driveByDriver } : {}),
+    ...(Object.keys(ratingByDriver).length > 0 ? { driverPowerRatingByDriver: ratingByDriver } : {}),
     ...(Object.keys(reByDriver).length > 0 ? { reOhmByDriver: reByDriver } : {}),
     ...(Object.keys(cards).length > 0 ? { driverCardByDriver: cards } : {}),
     ...(Object.keys(drives).length > 0 ? { responseDriveByDriver: drives } : {}),

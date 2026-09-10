@@ -197,6 +197,8 @@ import {
  * bundle states some of these facts, and the guard that checks a bundle
  * against the register has to know the whole shape (`v2Measurement.ts`). */
 import { emptyV2Meas, type V2MeasurementMeta } from './lib/v2Measurement.ts';
+/* M-M — the driver's own power rating, as the adapter and the metric take it. */
+import type { DriverPowerRating } from './lib/engine2/metrics/thermalLoad.ts';
 import {
   V1_FIELD_DEFAULTS,
   describeV1Carryover,
@@ -3804,6 +3806,34 @@ export default function App() {
    * by the adapter (report) and to models by the scan. Empty = none per way,
    * and the single `maxDriveOnFsDb` field then judges every protected way.
    */
+  /**
+   * M-M — the driver's own power rating, per role, from the three card fields.
+   *
+   * ALL THREE OR NOTHING. A rated power without the filter it was rated
+   * through is not a limit on anything — the metric refuses rather than
+   * assuming a condition, and this refuses to hand over a half-stated one.
+   * That is the same discipline `wiring` uses two blocks down: a half-stated
+   * statement is absent.
+   */
+  const powerRatingByRole = useMemo(() => {
+    const out: Partial<Record<BranchRole, DriverPowerRating>> = {};
+    for (const role of ['low', 'mid', 'high'] as const) {
+      const m = v2Meas[role];
+      const w = Number(m.ratedPowerW);
+      const n = Number(m.testFilterOrder);
+      const f = Number(m.testFilterHz);
+      if (m.ratedPowerW.trim() === '' || m.testFilterOrder.trim() === '' || m.testFilterHz.trim() === '') continue;
+      if (!(w > 0) || !(n > 0) || !(f > 0)) continue;
+      out[role] = {
+        ratedPowerW: w,
+        testFilterOrder: n,
+        testFilterHz: f,
+        source: 'driver datasheet, entered on the driver card (M-M)',
+      };
+    }
+    return out;
+  }, [v2Meas]);
+
   const driveOnFsMaxDbByRole = useMemo(() => {
     const out: Partial<Record<BranchRole, number>> = {};
     for (const role of ['low', 'mid', 'high'] as const) {
@@ -4007,6 +4037,8 @@ export default function App() {
           /* V50 — the stated M-C figure for this way, re-keyed to the driver
            * id by the adapter like R_e and the card. */
           ...(driveOnFsMaxDbByRole[role] !== undefined ? { driveOnFsMaxDb: driveOnFsMaxDbByRole[role] } : {}),
+          /* M-M — the rating travels only complete (see `powerRatingByRole`). */
+          ...(powerRatingByRole[role] !== undefined ? { powerRating: powerRatingByRole[role] } : {}),
           /* V51 — the way's wiring: the count from the cabinet form, the two
            * wirings from the measurement block. Only complete statements
            * travel; a half-stated wiring is absent. */
@@ -12751,6 +12783,61 @@ export default function App() {
                               </>
                             )}
                           </span>
+                          {/* ---- M-M: THE DRIVER'S OWN POWER RATING ------------
+                            * Three numbers off ONE line of the datasheet and its
+                            * footnote, and they only mean something together: a
+                            * rated power without the filter it was rated through
+                            * is not a limit on anything. So they sit on one row,
+                            * and a half-filled row hands over nothing.
+                            *
+                            * In the default view for the U-3c reason — every
+                            * `source: 'datasheet'` row is, because a number you
+                            * copy off a sheet is generic data every project has. */}
+                          {engineSelection.reporting && (
+                            <>
+                              <span className="cd-label">{t('Power rating')}</span>
+                              <span
+                                className="cd-fields"
+                                title={t("The driver's own rated power AND the high-pass it was rated through — all three off one line of the datasheet and its footnote (e.g. \"Rated power handling* 100 W\" with \"* IEC 268-5, 2nd order high-pass Butterworth filter\", and a recommended range starting at 2.2 kHz). Run through the same weighted integral M-A uses, that condition becomes a number of WATTS this driver is certified to survive, and any crossover can be held against it at any system power (M-M). Blank = the load is reported and nothing judges it. NB the corner is often not printed: reading it off the recommended crossover range is an assumption, and the report says so.")}
+                              >
+                                <span className="cd-pre" />
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  placeholder="—"
+                                  value={v2Meas[role].ratedPowerW}
+                                  onChange={(e) => setV2MeasField(role, 'ratedPowerW', e.target.value)}
+                                  style={{ width: '4.5rem' }}
+                                />
+                                {' W · ' + t('rated through') + ' '}
+                                <select
+                                  value={v2Meas[role].testFilterOrder}
+                                  onChange={(e) => setV2MeasField(role, 'testFilterOrder', e.target.value)}
+                                >
+                                  <option value="">{t('order —')}</option>
+                                  <option value="1">{t('1st order (6 dB/oct)')}</option>
+                                  <option value="2">{t('2nd order (12 dB/oct)')}</option>
+                                  <option value="3">{t('3rd order (18 dB/oct)')}</option>
+                                  <option value="4">{t('4th order (24 dB/oct)')}</option>
+                                </select>
+                                {' ' + t('at') + ' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={100}
+                                  placeholder="—"
+                                  value={v2Meas[role].testFilterHz}
+                                  onChange={(e) => setV2MeasField(role, 'testFilterHz', e.target.value)}
+                                  style={{ width: '5rem' }}
+                                />
+                                {' Hz'}
+                                <span className="cd-hint">
+                                  {t('all three or none — a rated power without its filter is not a limit on anything')}
+                                </span>
+                              </span>
+                            </>
+                          )}
                         {dia && (
                           <span className="derived">
                             {t('effective Ø {mm} mm', { mm: Math.round(dia) })}

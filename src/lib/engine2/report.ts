@@ -90,6 +90,9 @@ import {
   type WeakestLinkResult,
 } from './metrics/driveExcursion.ts';
 import { peakInputVolts } from './metrics/driveExcursion.ts';
+/* M-M — the driver's thermal load against its own rating (10-09-2026). A
+ * REPORTING metric: no gate id, no window floor, per the §A4 procedure. */
+import { driverThermalLoad, type ThermalLoadResult } from './metrics/thermalLoad.ts';
 import {
   coilLoads,
   resistorLoads,
@@ -395,6 +398,14 @@ export interface EngineV2Report {
     driveExcursion: DriveExcursionResult[];
     driveExcursionOff: string[];
     /**
+     * M-M — what each driver dissipates in the DELIVERED network, against the
+     * watts its own datasheet rating certifies. One entry per driver of the
+     * solved network; a driver with no stated rating is present with the
+     * delivered share and a reason (P4's visible half). Empty without a
+     * network: there is no branch to integrate.
+     */
+    thermalLoad: ThermalLoadResult[];
+    /**
      * V50 — BUILDABILITY: the watts in every discrete resistor and the peak
      * current through every coil, each beside what the chosen or stated part
      * may carry. Null without a solved network. The two gates `M-A/part` and
@@ -617,6 +628,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     epdr: null,
     driveVoltage: [],
     driveExcursion: [],
+    thermalLoad: [],
     driveExcursionOff: [],
     buildability: null,
     weakestLink: [],
@@ -639,6 +651,26 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
   }
   if (analysis && isActive(capability, 'M-B', 'system')) {
     metrics.epdr = epdr(analysis);
+  }
+  /* ---------------- M-M: the thermal load per driver ---------------------- *
+   * On the same solved network and the same weighting as M-A — not a second
+   * integral, the same one read on the DRIVER branch instead of on a resistor.
+   * Every driver of the network gets an entry, rating or not: a share with no
+   * rating beside it is still the honest half of P4, and the sentence says
+   * which field would make it judgeable. */
+  if (analysis) {
+    for (const driver of Object.keys(analysis.transferByModel)) {
+      metrics.thermalLoad.push(
+        driverThermalLoad(
+          analysis,
+          driver,
+          input.settings.driverPowerRatingByDriver?.[driver] ?? null,
+          input.settings.amplifierPowerW ?? null,
+          input.settings.programmeWeight,
+        ),
+      );
+    }
+    metrics.thermalLoad.sort((a, b) => (b.ratio ?? -1) - (a.ratio ?? -1));
   }
   /* ---------------- V50: buildability, on the same solved network --------- *
    * The resistor watts come from M-A's own elements (no second integral); the

@@ -532,6 +532,27 @@ const NICE: readonly V2InputRow[] = [
       '(measured on casus 1b: floor 1647 → 1294 Hz).',
   },
   {
+    id: 'powerRating',
+    label: 'Power rating (W, rated through order @ Hz)',
+    form: 'Setup tab → driver card → Power rating',
+    travels:
+      'v2Meas[role].ratedPowerW / testFilterOrder / testFilterHz → AdapterBranch.powerRating → ' +
+      'ReportSettings.driverPowerRatingByDriver → M-M (metrics/thermalLoad.ts)',
+    cls: 'nice',
+    emptyMeans:
+      'M-M reports what this driver dissipates and judges it against nothing; the crossover floor ' +
+      'then rests on the k·f_s convention or on a stated dB figure, neither of which is a ' +
+      'measurement of this driver.',
+    source: 'datasheet',
+    placement: 'always',
+    placementWhy:
+      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
+      'hiding it is the one placement that costs a newcomer something real: without these three ' +
+      'the excursion ceiling of M-C cannot be derived, A5d.3’s drive floor cannot arm, and the ' +
+      'crossover window falls back to k·f_s with nothing to reject a handover that under-protects ' +
+      'the driver (measured on casus 1b: floor 1647 → 1294 Hz).',
+  },
+  {
     id: 'driveVoltageV',
     label: 'measured at (V)',
     form: 'Drivers tab → Engine v2 — measurement',
@@ -1177,6 +1198,9 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'blTm', form: 'driver-card', control: 'value={v2Meas[role].blTm}' },
   { row: 'mmsG', form: 'driver-card', control: 'value={v2Meas[role].mmsG}' },
   { row: 'driveVoltageV', form: 'driver-card', control: 'value={v2Meas[role].driveVoltageV}' },
+  { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].ratedPowerW}' },
+  { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].testFilterOrder}' },
+  { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].testFilterHz}' },
   { row: 'driveOnFsMaxDb-per-way', form: 'driver-card', control: 'value={v2Meas[role].driveOnFsMaxDb}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringMeasured}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringDesired}' },

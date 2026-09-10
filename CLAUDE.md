@@ -48,6 +48,11 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-3f (10-09-2026) gemeten op 482 s — 172 bestanden (171 geslaagd, 1 overgeslagen), 2099 tests
+    (2096 geslaagd, 3 overgeslagen), groen.** +1 BESTAND
+    (`engine2/metrics/thermalLoad.test.ts`, 17 claims) en +22 tests: die zeventien plus vijf in
+    `goldenCasus1.test.ts` (52 → 57, de M-M-describe). Het corpus is niet geregenereerd. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan.
     **Ná U-3e (10-09-2026) gemeten op 453 s — 171 bestanden (170 geslaagd, 1 overgeslagen), 2077 tests
     (2074 geslaagd, 3 overgeslagen), groen.** +1 BESTAND
     (`engine2/predesign/windowReadout.test.ts`, 7 claims) en +7 tests — hetzelfde getal, want het corpus
@@ -3116,6 +3121,61 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-3f-guards (M-M: de vermogensopgave van de driver; RAPPORTAGE, geen poort)
+- **`src/lib/engine2/metrics/thermalLoad.ts` (`driver-thermal/1.0`) — de eerste metriek die uit een
+  DATASHEET-opgave een grens maakt in plaats van uit een conventie.** Een vermogensopgave mét haar
+  filterconditie ("Rated power handling* 100 W" / "* IEC 268-5, 2nd order high-pass Butterworth
+  filter") is een uitspraak over WATT IN DE DRIVER: draai die conditie door dezelfde gewogen integraal
+  die M-A sinds F1 gebruikt en er komt een gecertificeerd aantal watt uit, waar élk ander kruispunt
+  bij élk systeemvermogen tegen gehouden kan worden. A4-registerrij M-M (de blokkerende voorwaarde van
+  de metriek-procedure), gebouwd vóór er code was.
+- **ÉÉN NOEMER VOOR BEIDE KANTEN, en dat is de claim waar de metriek op rust.** De eerste versie
+  normeerde de geleverde kant op het door het SYSTEEM opgenomen vermogen en de gecertificeerde kant op
+  dat van de driver zelf — twee verschillende noemers, dus de verhouding betekende niets en las 0,14
+  waar zij ongeveer 1 hoorde te lezen. **De golden probe op casus 1 ving dat**, niet een review.
+  Sindsdien delen beide door wat DEZE driver ONGEFILTERD zou opnemen, en er staat een IDENTITEIT als
+  test: geef het netwerk dezelfde overdracht als het testfilter en de twee fracties zijn tot op het
+  laatste bit gelijk. **Het is met opzet NIET M-A's noemer** — M-A normeert op de hele luidspreker
+  omdat een dissipatiefractie een uitspraak over het systeem is; een aparte claim zegt dat de twee
+  verschillende grootheden zijn, zodat een latere lezer ze niet gelijkstelt.
+- **TWEE CODEFOUTEN GEVANGEN DOOR DE HANDBEREKENING**, allebei het opschrijven waard omdat ze
+  terugkomen: (1) `grid.map(weight)` in plaats van `grid.map((f) => weight(f))` — `Array.map` geeft
+  (waarde, index, array) door, dus `iecProgrammeWeight` kreeg de INDEX als hoogdoorlaathoek en élke
+  weging kwam als NaN terug; M-A wikkelt hem om precies die reden. (2) `transferByModel` is AL
+  V_driver/E_g — nog eens door E_g delen kostte een factor |E_g|² en de losse-driver-handberekening
+  las 0,125 in plaats van 1.
+- **DE METING WEERLEGT WAAR DE SESSIE OP AFSTEVENDE, en dat is de winst van hem bouwen in plaats van
+  hem aannemen.** Gecertificeerd 21,46 W (100 W door een 2e orde op 2200 Hz), HUIDIG levert 3,82 W in
+  de tweeter bij 100 W continu — **verhouding 0,18, een factor 5,6 marge.** Eerder in dezelfde sessie
+  had ik 1,01 W genoemd en daaruit geconcludeerd dat elk kruispunt onder 2000 Hz de opgave
+  overschreed; die som telde over een log-verdeeld raster zonder trapeziumbreedte en paste de roze 1/f
+  dus twee keer toe. **Thermisch is niet wat een laag kruispunt op deze tweeter onverstandig maakt**;
+  wat overblijft is vervorming, en daar heeft de app geen data over — dezelfde muur die de
+  breakup-weging al als ongekalibreerd markeert.
+- **GEEN POORT, en dat is de procedure.** Geen id in `GATE_IDS`, geen verwerping, geen vensterbodem:
+  koppeling aan de zoektocht is een apart besluit (§A4-procedure stap 6), en een grens hoort pas te
+  bijten nadat zij op het casusboek gemeten is. Nu zij dat is — 5,6× marge op het enige exemplaar met
+  een opgave — is er ook weinig reden hem te wapenen. En **"gecertificeerd" is niet "grens"**: de
+  opgave is een OVERLEEFD vermogen onder genormeerde ruis, dus erboven is ONBEWEZEN en niet
+  aantoonbaar fataal; een claim pint dat de zin boven de opgave "UNPROVEN" zegt en eronder niet.
+- **HET SPECTRUM IS EEN VEREENVOUDIGING, en het voorbehoud staat in het parameterblok.**
+  `iecProgrammeWeight` is roze met 1e-orde randen op 40 Hz en 5 kHz en niet bit-voor-bit IEC 268-5. De
+  ABSOLUTE watt erft dat; de verhouding tussen twee filters op hetzelfde spectrum veel minder, en dát
+  is waarom de verhouding de grootheid is en de watt de geschaalde lezing — de vorm van M-A.
+- **Klasse A is klasse A, en de recorder GOOIT als dat niet zo is.**
+  `scripts/record-casus1-mm-references.ts` leest de gecertificeerde watt van alle DRIE de
+  referentiefilters en werpt bij enige spreiding; `goldenCasus1.test.ts` pint beide kanten — identiek
+  gecertificeerd, aantoonbaar VERSCHILLEND geleverd (anders leest de metriek iets dat niet het netwerk
+  is, V23). De P4-helft: casus 1's mid en woofer stellen geen opgave, dus M-M rapporteert wat zij
+  opnemen en oordeelt niets, met het veld genoemd en nooit een nul (F0). A3h: de testFREQUENTIE staat
+  niet op het blad (de voetnoot noemt alleen de orde) en is afgeleid uit de aanbevolen band — die
+  herkomst reist mee en staat in de zin.
+- **NIET gedaan:** geen klasse-B-referenties per netlist (die horen in de corpusrecorder zodra M-M
+  daar een kolom krijgt), geen opgave voor mid en woofer (hun datasheets zijn niet opgehaald), en
+  `statedFloorHz` blijft openstaan — M-M maakt hem niet overbodig, want op een driver waar het
+  thermische antwoord ruim is, is de aanbevolen kruisfrequentie nog steeds de enige generieke
+  uitspraak die een blad over vervorming doet.
 
 ### U-3e-guards (het venster naast de knop die ernaar zoekt; alleen UI)
 - **HET VENSTER STOND ER AL, MAAR NIET WAAR DE VRAAG GESTELD WORDT.** `crossoverWindow` geeft élke

@@ -350,7 +350,10 @@
    "excursie_toegestane_spanning_V": 18.85,
    "excursie_plafond_re_ingang_dB": -8.58,
    "excursie_route_verhouding": null,
-   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 924.3 Hz, klasse A — dezelfde waarde op élke netlist van het casusboek. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) staat in manifest_en_geometrie.v49_excursie. Route 2: acoustic route off for tweeter: the drive voltage and mic distance of the on-axis response are not documented."
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 924.3 Hz, klasse A — dezelfde waarde op élke netlist van het casusboek. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) staat in manifest_en_geometrie.v49_excursie. Route 2: acoustic route off for tweeter: the drive voltage and mic distance of the on-axis response are not documented.",
+   "mm_gecertificeerde_fractie": 0.214581,
+   "mm_gecertificeerd_W": 21.4581,
+   "mm_toelichting": "M-M (driver-thermal/1.0), klasse A: het aandeel van wat deze driver ONGEFILTERD zou opnemen dat door zijn eigen testfilter komt (orde 2 op 2200 Hz), maal de opgegeven 100 W. Geen netlist en geen zoektocht: op alle drie de referentiefilters hetzelfde getal, en dit script gooit als dat niet zo is. De GELEVERDE belasting en de verhouding hangen wél aan een netwerk en zijn klasse B; die staan hier niet."
   },
   "_excursie_parameters": {
    "_": "V15-PROCESREGEL op M-C v2.0 (V49). x/V op de resonantie is een functie van de gemeten sweep (f0, Z_max en Small's Q_ms van de piek die de classificatie fundamenteel noemt) en van INVOER (de driverkaart, het versterkerpiekvermogen met zijn nominale last, de X_max-marge). Die invoer staat hier, zodat de klasse-A-waarden per driver reproduceerbaar zijn; de invoer zelf woont in manifest_en_geometrie.driverkaart en .gestelde_eisen en wordt hier alleen GENOEMD.",
@@ -369,6 +372,23 @@
    "route_2": "UIT op deze casus: de FF-meetspanning is niet gedocumenteerd (driverkaart.ff_meetspanning_V is null, met de bevinding erbij). De route-1/route-2-verhouding is daarom null en geen getal.",
    "klasse": "A",
    "afhankelijkheid": "meting"
+  },
+  "_M_M_parameters": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "V15 — de invoer waarop M-M rust. De weging is die van M-A (IEC 60268-1 zoals engine2 hem modelleert: roze met 1e-orde HP/LP op de normranden), het testfilter is een ideale Butterworth-hoogdoorlaat van de opgegeven orde en frequentie, en de noemer is DEZELFDE driver ongefilterd. Beide kanten van de vergelijking lezen die noemer, en dat maakt de verhouding robuust waar de absolute watt dat niet is.",
+   "weging": "iecProgrammeWeight (IEC_60268_1_HP_HZ 40, IEC_60268_1_LP_HZ 5000, roze)",
+   "weging_voorbehoud": "Het spectrum van de app is een VEREENVOUDIGING van IEC 268-5; de absolute watt erft dat voorbehoud, de verhouding tussen twee filters op hetzelfde spectrum veel minder.",
+   "versie": "driver-thermal/1.0",
+   "opgave_per_driver": {
+    "tweeter": {
+     "ratedPowerW": 100,
+     "testFilterOrder": 2,
+     "testFilterHz": 2200,
+     "testFilterHzSource": "afgeleid uit de aanbevolen kruisband 2,2-30 kHz; het blad noemt de frequentie van het testfilter niet",
+     "source": "BlieSMa, datasheet T25T-6, opgehaald 10-09-2026 van https://www.bliesma.de/Datasheet%20T25T-6.pdf"
+    }
+   }
   }
  },
  "verankerde_gaps_dB": {
@@ -4720,6 +4740,16 @@
      "aantal": 1,
      "gemeten": "parallel",
      "gewenst": "parallel"
+    },
+    "vermogensopgave": {
+     "_": "M-M (10-09-2026) — de eigen vermogensopgave van de driver EN de testconditie waaronder zij geldt, letterlijk van het datasheet. Zonder de conditie is een watt geen grens op iets: dezelfde 100 W betekent iets anders achter een 2e orde op 2200 Hz dan achter een 4e orde op 1400. De FREQUENTIE staat er niet expliciet - het blad noemt in zijn voetnoot alleen de orde - en is AFGELEID uit 'Recommended frequency range 2.2kHz-30kHz'; dat is een aanname over wat er getest is en zij reist als zodanig mee (A3h).",
+     "gesteld_door": "BlieSMa, datasheet T25T-6, opgehaald 10-09-2026 van https://www.bliesma.de/Datasheet%20T25T-6.pdf",
+     "rated_power_W": 100,
+     "testfilter_orde": 2,
+     "testfilter_hz": 2200,
+     "testfilter_hz_herkomst": "afgeleid uit de aanbevolen kruisband 2,2-30 kHz; het blad noemt de frequentie van het testfilter niet",
+     "voetnoot_letterlijk": "* IEC 268-5, 2nd order high-pass Butterworth filter",
+     "opmerking_fs": "Het blad geeft f_s 940 Hz; de gemeten sweep van dit exemplaar leest 924,3 Hz. Anderhalf procent, en precies de drift waarvoor de 18+2-conventie haar marge draagt."
     }
    },
    "mid": {
@@ -4734,7 +4764,8 @@
      "aantal": 1,
      "gemeten": "parallel",
      "gewenst": "parallel"
-    }
+    },
+    "vermogensopgave": null
    },
    "woofer": {
     "model": "SB Acoustics WO24TX-8 (paar, parallel)",
@@ -4751,7 +4782,8 @@
      "gemeten": "parallel",
      "gewenst": "parallel",
      "meetgeometrie": "woofer_down meet op deze mic-positie 4-5 dB zachter dan woofer_up (afstand en hoek: mic op tweeterhoogte op korte afstand); op luisterafstand telt hij vrijwel volledig mee, dus het gemeten paar onderschat het werkelijke paar vermoedelijk met 1-3 dB. NIET gecorrigeerd (geen meting); wel een onzekerheid op X en de reden voor een hermeting op afstand of groundplane."
-    }
+    },
+    "vermogensopgave": null
    },
    "ff_meetspanning_V": null,
    "ff_mic_afstand_mm": 1000,
@@ -4771,7 +4803,8 @@
      "tweeter": "jantzen|air core wire coil|1"
     },
     "per_weg_toelichting": "woofer: 1,4 mm lucht — 0,010–22 mH als enkel onderdeel, 170 SKU's, k 0,592, 0,306 Ω @ 1 mH, rms 6,2 %. mid en tweeter: 1,0 mm lucht — 0,016–34 mH, 250 SKU's, k 0,587, 0,523 Ω @ 1 mH, rms 6,8 %. Buiten het enkel-onderdeel-bereik wordt de machtswet voortgezet en GEVLAGD (geen enkel onderdeel dekt de waarde; een stapel van twee in serie wel) — nooit op nul gezet, want een DCR die aan de rand van het bereik wegvalt beloont de zoektocht voor het verlaten van de catalogus."
-   }
+   },
+   "_vermogensopgave_toelichting": "M-M: alleen de tweeter draagt een opgave; mid en woofer stellen niets en M-M staat daar UIT met het veld genoemd (P4). Dat is de tweede helft van de validatiecasus."
   },
   "v30_corpus": {
    "_": "V31/V32 — HET GEDATEERDE V30-CORPUS, met de kandidaat waar elke netlist vandaan kwam. Bewaard omdat de vóór/ná-vergelijking anders niet te maken is: de bestanden heten V30-KAND-n en de kandidaat heet naar zijn twee kruispunten, en die koppeling stond alleen in casus1_v2_herkomst.json — een bestand dat de volgende regeneratie overschrijft. DOCUMENTATIE, geen acceptatiewaarde.",

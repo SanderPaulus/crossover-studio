@@ -186,6 +186,28 @@ Formaat per metriek: *grootheid → formule → afgeleide parameters → databeh
 
 **Schakeling per weg en niveauwerk op de laagste weg** *(toegevoegd 03-09-2026, V51; algemeen geformuleerd).* Per weg is het aantal gelijke drivers en hun schakeling — zoals GEMETEN en zoals GEWENST — projectinvoer naast de driverkaart. Voor N gelijke drivers bestaat de afleiding parallel↔serie (SPL ∓20·log N, fase gelijk, Z ×N² / ÷N²) in de ingest, met de aanname "gelijke drivers" in de noot; zij wordt alleen toegepast waar gemeten en gewenst verschillen. De rapportregel die eruit volgt is generiek en oordeelt niets: *de laagste weg ligt X dB boven het anker in het overnamegebied (A5d.4, na de doelcurve); N gelijke drivers in serie zouden 20·log N daarvan zonder weerstand leveren; de baffle step (f_step uit de geometrie) levert onder f_step tot 6 dB vanzelf.* Daarnaast, als GESTELDE TOPOLOGIE-EIS en keuze-sleutel op ketenniveau (A3j): *geen niveauwerk op de laagste weg* — geen weerstand in haar serie-pad, geen weerstand die alleen van dat pad naar massa hangt; wat overblijft is spoel-DCR. De ontwerp- en synthesestap plaatsen daar dan geen niveauwerk; kan een kandidaat zijn rimpeldoel daardoor niet halen, dan komt hij terug als verwerping (V31-vorm) met X erbij: het getal is de uitkomst, ook als het veld leeg blijft. De vuistregel erachter: nooit een pad op de onderste weg (warmte, impedantie, demping), pad de bovenste wegen. Wat de eis níet doet: de pad-topologie van de overige wegen wijzigen, of een van de andere eisen verplaatsen. **Gestelde variant (V51b, 03-09-2026):** dezelfde sleutel kent een tweede toestand `{ kind: 'series-r-max', maxOhm }` — serieweerstand op de laagste weg toegestaan tot een gesteld maximum, als TOTAAL van discrete weerstanden en de DCR van alle seriespoelen in haar pad (een luchtspoel met 1 Ω DCR ís fysisch een serieweerstand van 1 Ω; welke van de twee de ohm draagt is een bouwkeuze van de ontwerper, geen engine-besluit); geen L-pad, geen shunt-pad, geen gebypasste pad. De ontwerpstap trimt zoals altijd maar stelt geen shelf-pad voor, de synthese stelt ÉÉN kale serie-R voor (gemaatvoerd op de trim, afgekapt op het maximum), de tuner houdt de som — DCR eerst — onder het maximum als somplafond in de `qes-series-r`-vorm, en de worker weigert wat eroverheen gaat (V31-vorm, `topology`). Bij elke vloerweigering wordt Y gemeld: hoeveel serieweerstand de gestelde vloer op de laagste weg VRAAGT (een weerstand direct voor de driver, gebisecteerd tot de M-B/|Z|-poort slaagt), tegen het maximum. De aanleiding is een meting (V51): de vuistregel gaat over verzwakking met weerstandsnetwerken (3–8 dB), niet over serieweerstand op DCR-schaal, en zonder die schaal deed op casus 1 het wooferpad óók het werk van de impedantiebodem.
 
+**M-M · Thermische belasting van een driver tegen zijn eigen opgave** *(toegevoegd 10-09-2026).*
+
+*Aanleiding, en zij is een meting.* Een tweewegontwerp op casus 1b stelde overnames voor vanaf 1372 Hz
+en niets wees ze af. M-C v2.0 oordeelt op EXCURSIE, en een 25 mm dome is bij zijn resonantie niet
+excursiegebonden: het afgeleide plafond leest −8,58 dB en laat 1294 Hz moeiteloos door. Wat een tweeter
+daar werkelijk bedreigt is spreekspoelwarmte en vervorming, en de registerrij van M-C zegt zelf al dat
+zij die twee niet dekt. De gebruikelijke reparatie is een CONVENTIE (18 dB op f_s, plus marge) —
+maar dat getal staat op geen enkel datasheet, en de terugval die de app zonder dat getal gebruikt
+(k·f_s) is óók een conventie, van ongeveer 12 dB. M-M vervangt beide door de opgave die er wél staat.
+
+| veld | inhoud |
+| --- | --- |
+| bron | Het datasheet van de driver, één regel plus zijn voetnoot: de **rated power** en de **testconditie** waaronder die geldt. Voorbeeld (BlieSMa T25T-6, opgehaald 10-09-2026): *"Rated power handling\* 100 W"* met *"\* IEC 268-5, 2nd order high-pass Butterworth filter"*. |
+| grootheid | Twee vermogensFRACTIES op dezelfde weging, en hun verhouding. (1) `deliveredFraction` — het aandeel van het door de luidspreker opgenomen vermogen dat IN DEZE DRIVER wordt opgenomen, in het geleverde netwerk. (2) `certifiedFraction` — hetzelfde aandeel in de TESTCONDITIE van de fabrikant: dezelfde driver, dezelfde weging, achter een ideaal Butterworth-hoogdoorlaatfilter van de opgegeven orde op de opgegeven frequentie. (3) `ratio = geleverd / gecertificeerd`, dimensieloos. |
+| formule | Beide op de programmaruis-weging van M-A (`iecProgrammeWeight`, IEC 60268-1: roze met 1e-orde HP/LP op de normranden). Geleverd: `P_drv = ∫ S(f)·\|H(f)\|²·Re(1/Z_drv(f)) df`, met `H = V_drv/E_g` uit de MNA-oplossing — dezelfde takoverdracht die M-C en de sommatie al lezen — genormeerd op het opgenomen vermogen `∫ S(f)·Re(1/Z_in(f)) df`, precies zoals M-A normeert. Gecertificeerd: dezelfde integraal met `H = B_n(f; f_t)` (Butterworth-magnitude van orde n) in plaats van de netwerkoverdracht, en `Z_in = Z_drv` — de driver alleen achter het testfilter. **Beide kanten lezen de GEMETEN impedantie van dezelfde driver**, en dát is wat de verhouding robuust maakt tegen het feit dat de weging van de app niet bit-voor-bit het spectrum van IEC 268-5 is: de modelfout staat in teller én noemer. |
+| afgeleide parameters | Per driver: `certifiedFraction`, `certifiedWatts = P_rated · certifiedFraction`, `deliveredFraction`, `deliveredWatts = P_continu · deliveredFraction`, `ratio`, en de testconditie zoals gelezen (P_rated, orde, f_t) met haar herkomst. De WATT is de geschaalde lezing en de FRACTIE de grootheid — dezelfde vorm die M-A al draagt, en om dezelfde reden: een fractie is schaalvrij, een watt hangt aan een gesteld vermogen. |
+| databehoefte | Een opgelost netwerk (als M-A), de gemeten impedantie van de driver, en drie getallen van het datasheet: rated power (W), de orde van het testfilter en de frequentie ervan. Plus een gesteld CONTINU versterkervermogen voor de wattkolom. Ontbreekt er één, dan staat M-M UIT met het veld genoemd (P4) — nooit een aanname over de testconditie. **De frequentie is de gevoelige:** een blad noemt vaak wel de orde in zijn voetnoot en niet de frequentie van het testfilter. Waar de ontwerper hem uit de aanbevolen kruisband afleidt is dat een AANNAME, en het veld draagt die herkomst mee zodat het rapport hem als aanname afdrukt (A3h). |
+| rol | **rapportage.** M-M heeft geen id in `GATE_IDS`, wijst niets af, en verplaatst geen vensterbodem. Dat is niet voorlopigheid maar de procedure: koppeling aan de zoektocht is een apart besluit (§A4-procedure, stap 6), en een grens hoort pas te bijten nadat zij op het casusboek gemeten is. Wat de metriek nu doet is het getal zichtbaar maken naast de conventies die vandaag het werk doen. |
+| wat M-M NIET dekt | Vervorming. De opgave is een OVERLEEFD vermogen onder een genormeerde ruis, geen uitspraak over hoorbaarheid: erboven is ONBEWEZEN, niet aantoonbaar fataal, en de rapportzin zegt dat zo. Evenmin piekgedrag — de weging is een gemiddelde, net als M-A; het piekgeval is M-C (excursie) en M-L (verzadiging). |
+| validatiecasus | casus 1 en casus 1b, tweeter (BlieSMa T25T-6): rated 100 W, testfilter 2e orde op 2200 Hz (frequentie AFGELEID uit *"Recommended frequency range 2.2kHz–30kHz"*, en als aanname gemarkeerd). Mid en woofer stellen niets en M-M staat daar uit met het veld genoemd — de P4-helft van de casus. Deel B U-3f. |
+| versie | `driver-thermal/1.0`. |
+
 ### Categorische catalogusregels (geen metriek)
 
 - Kernverzadiging: spoelfamilies dragen een vlag met stroomgrens; serie-elementen in hoogstroompaden vereisen lucht of gedocumenteerde verzadigingsstroom. (Getalsmatige onderbouwing: bij vol vermogen liggen RMS-stromen in het bereik waar ferrietkernen op bastransiënten niet-lineair worden.)
@@ -9313,6 +9335,106 @@ corpuscode aangeraakt. Drie falsifieerbaarheidsproeven vóór het opschrijven ge
 weghalen, de strip zijn eigen venster laten uitrekenen, en `XO_FS_FACTOR_BY_ORDER` op de 18 dB-regel
 zetten — alle drie rood, de laatste op de dB-tabel hierboven, wat precies de bedoeling is: wie die
 constante ooit verplaatst komt langs deze meting.
+
+---
+
+### U-3f — M-M: de vermogensopgave van de driver, en wat zij zegt over een laag kruispunt (10-09-2026, nieuwe metriek; **rapportage, geen poort — geen corpus- of vensterwijziging**)
+
+**Aanleiding.** U-3e liet zien dat de vensterbodem op een conventie rustte en niet op een meting.
+Sanders vraag daarna was de goede: *"is het niet uit de data te ontleden dat 1294 Hz niet ok is? Of dat
+ie met bepaald vermogen dat niet gaat trekken."* En op zijn eigen datasheet stond het antwoord —
+BlieSMa T25T-6: **"Rated power handling\* 100 W"** met de voetnoot **"\* IEC 268-5, 2nd order
+high-pass Butterworth filter"**, en een aanbevolen band vanaf 2,2 kHz.
+
+**Het idee in één zin.** Een vermogensopgave mét een filterconditie is een uitspraak over WATT IN DE
+DRIVER en niet over een frequentie: draai de eigen testconditie van de fabrikant door dezelfde
+gewogen integraal die M-A sinds F1 gebruikt, en er komt een aantal watt uit dat de driver
+gecertificeerd overleeft. Elk ander kruispunt kan daar dan tegen gehouden worden, bij elk
+systeemvermogen, zonder conventie en zonder omrekening per orde.
+
+#### WAT ER GEBOUWD IS
+
+`metrics/thermalLoad.ts` (`driver-thermal/1.0`), de A4-registerrij M-M, drie velden per driverkaart
+(rated power, testfilterorde, testfilterfrequentie), de hersleuteling door de adapter, een sectie in
+het v2-paneel, `record-casus1-mm-references.ts` en zeventien claims in `metrics/thermalLoad.test.ts`
+plus vijf in `goldenCasus1.test.ts`.
+
+**De procedure heeft twee fouten in mijn eigen formule gevangen, en dat is precies waarvoor stap 4
+bestaat.**
+
+1. **`grid.map(weight)`** in plaats van `grid.map((f) => weight(f))`. `Array.map` geeft
+   (waarde, index, array) door, dus `iecProgrammeWeight(f, hpHz, lpHz)` kreeg de INDEX als
+   hoogdoorlaathoek — nul op het eerste punt, en elke weging kwam als NaN terug. M-A wikkelt hem om
+   dezelfde reden; de handberekening ving hem hier.
+2. **De transfer was al genormeerd.** `transferByModel` is V_driver/E_g; nog eens door E_g delen
+   kostte een factor \|E_g\|² en de losse-driver-handberekening las 0,125 in plaats van 1.
+
+**En de golden probe ving een DERDE, die geen codefout was maar een ontwerpfout.** De eerste versie
+normeerde de geleverde kant op het door het SYSTEEM opgenomen vermogen en de gecertificeerde kant op
+het vermogen van de driver zelf. Twee verschillende noemers, dus hun verhouding betekende niets: zij
+las 0,14 waar zij ongeveer 1 hoorde te lezen. Sindsdien delen beide kanten door **hetzelfde**: wat
+DEZE driver ONGEFILTERD zou opnemen. De twee verschillen dan in precies één ding — het filter ervoor
+— en de verhouding is een vergelijking van twee filters in plaats van van twee modellen. Er staat een
+identiteit als claim: geef het netwerk dezelfde overdracht als het testfilter en de twee fracties zijn
+tot op het laatste bit gelijk.
+
+#### WAT DE METING ZEGT, EN ZIJ WEERLEGT WAT IK EERDER IN DE SESSIE BEWEERDE
+
+| | |
+| --- | --- |
+| gecertificeerd (100 W door 2e orde @ 2200 Hz) | **21,46 W** |
+| HUIDIG levert in de tweeter bij 100 W continu | **3,82 W** |
+| verhouding | **0,18 — een factor 5,6 marge** |
+
+**Eerder in deze sessie heb ik hem 1,01 W genoemd en daaruit geconcludeerd dat élk kruispunt onder
+2000 Hz de opgave overschreed. Dat was fout.** Die berekening somde over een log-verdeeld raster
+zonder de trapeziumbreedte, wat de roze 1/f een tweede keer toepast; de metriek integreert over f en
+komt twintig keer hoger uit. De conclusie draait daarmee om: **thermisch is niet wat een laag
+kruispunt op deze tweeter onverstandig maakt.** Wat overblijft is vervorming, en daar heeft de app
+geen data over — dezelfde muur die de breakup-weging al als ongekalibreerd markeert.
+
+**Dus M-M lost Sanders oorspronkelijke probleem NIET op**, en dat is de eerlijke uitkomst van hem
+bouwen in plaats van hem aannemen. Wat hij wél levert: een grens die uit het datasheet komt in plaats
+van uit een conventie, die met het vermogen meeschaalt, en die zegt hoeveel marge er is — hier ruim.
+
+#### WAT M-M NIET IS
+
+**Geen poort.** Geen id in `GATE_IDS`, geen verwerping, geen vensterbodem. Dat is de procedure en
+geen voorzichtigheid: koppeling aan de zoektocht is een apart besluit (§A4-procedure, stap 6), en een
+grens hoort pas te bijten nadat zij op het casusboek gemeten is. Nu zij dat is — met 5,6× marge op
+het enige exemplaar dat een opgave draagt — is er ook weinig reden hem te wapenen.
+
+**En "gecertificeerd" is niet "grens".** De opgave is een OVERLEEFD vermogen onder genormeerde ruis;
+erboven is ONBEWEZEN en niet aantoonbaar fataal, en de zin van de metriek zegt dat woordelijk. Een
+claim in de test pint dat die zin boven de opgave "UNPROVEN" zegt en eronder niet.
+
+**Het spectrum is een vereenvoudiging.** `iecProgrammeWeight` is roze met 1e-orde randen op 40 Hz en
+5 kHz, en dat is niet bit-voor-bit het spectrum van IEC 268-5. De ABSOLUTE watt erft dat voorbehoud;
+de verhouding tussen twee filters op hetzelfde spectrum veel minder, en dát is waarom de verhouding de
+grootheid is en de watt de geschaalde lezing — de vorm die M-A al draagt. Het voorbehoud staat in
+`_M_M_parameters.weging_voorbehoud`.
+
+#### DE VALIDATIECASUS, BEIDE HELFTEN
+
+Klasse A (`afgeleide_parameters.tweeter.mm_gecertificeerd_W` = 21,4581 W): een functie van de gemeten
+sweep en van de opgave, en de recorder GOOIT als de drie referentiefilters het niet eens zijn — want
+dat is wat klasse A betekent. De test pint beide kanten: de gecertificeerde watt identiek op alle
+drie, en de GELEVERDE watt aantoonbaar niet (anders zou de metriek iets lezen dat niet het netwerk is
+— V23).
+
+De P4-helft: casus 1's mid en woofer stellen geen opgave, dus M-M rapporteert wat zij opnemen en
+oordeelt niets, met het ontbrekende veld genoemd — nooit een nul (F0).
+
+#### WAT NIET GEDAAN IS
+
+- **Geen klasse-B-referenties per netlist.** De geleverde belasting en de verhouding hangen aan een
+  netwerk; die horen in de corpusrecorder zodra M-M daar een kolom krijgt, en dit script maakt er
+  geen. Benoemd in plaats van stil gelaten.
+- **Geen opgave voor mid en woofer.** Ik heb hun datasheets niet opgehaald; wat er niet gesteld is,
+  is niet gesteld.
+- **`statedFloorHz` staat er nog steeds**, en M-M maakt hem niet overbodig: op een driver waar het
+  thermische antwoord ruim is, is de aanbevolen kruisfrequentie nog steeds de enige generieke
+  uitspraak over vervorming die een blad doet.
 
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)

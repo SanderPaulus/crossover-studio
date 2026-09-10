@@ -188,7 +188,7 @@ export const BUNDLE_BEARABLE_ROWS: readonly string[] = Object.freeze([
   // required
   'responses', 'validity', 'impedance', 'ways', 'positions', 'sd', 'baffle-width',
   // nice
-  'blTm', 'mmsG', 'xmaxMm', 'driveVoltageV', 'coilFamily',
+  'blTm', 'mmsG', 'xmaxMm', 'driveVoltageV', 'coilFamily', 'powerRating',
   'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom', 'measuredRe',
   'rotSym', 'acousticCentre', 'wiring', 'nominalSize',
   // judgement
@@ -273,6 +273,15 @@ export function bundleCarries(b: DemoBundle): Record<string, boolean> {
     xmaxMm: some((r) => filled(s.xmaxMm[r])),
     driveVoltageV: meas('driveVoltageV'),
     coilFamily: meas('coilFamily'),
+    /* M-M — all three or nothing: a rated power without the filter it was
+     * rated through is not a limit on anything, so a half-stated rating is
+     * not a carried row (the same rule the app's `powerRatingByRole` uses). */
+    powerRating: some(
+      (r) =>
+        filled(s.v2Measurement[r].ratedPowerW) &&
+        filled(s.v2Measurement[r].testFilterOrder) &&
+        filled(s.v2Measurement[r].testFilterHz),
+    ),
     nearFieldCone: some((r) => s.nearField[r].cone !== null),
     nearFieldPort: some((r) => s.nearField[r].port !== null),
     spliceBand: declares(/^\s*[*;#]*\s*Merge splice band\s*=/im),

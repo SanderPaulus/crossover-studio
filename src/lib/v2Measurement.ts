@@ -52,6 +52,18 @@ export interface V2MeasurementMeta {
    *  stated: the way's coils are lossless in every judgement, and the report
    *  says so as a deviation from any build. Never a default (P6). */
   coilFamily: string;
+  /* ---- M-M (10-09-2026): the driver's own power rating -------------------
+   * Three numbers off ONE line of the datasheet and its footnote. They belong
+   * together: a rated power without the filter it was rated through is not a
+   * limit on anything, and the metric refuses rather than assuming a
+   * condition. '' throughout = M-M reports the delivered share and judges
+   * nothing, with the missing field named. */
+  /** "Rated power handling", W. */
+  ratedPowerW: string;
+  /** The ORDER of the high-pass the rating was measured through. */
+  testFilterOrder: string;
+  /** That filter's corner, Hz. Often not printed — see `v2InputRegister`. */
+  testFilterHz: string;
 }
 
 /** Every field of the block, in declaration order — the guards enumerate it. */
@@ -70,6 +82,9 @@ export const V2_MEASUREMENT_KEYS = [
   'wiringMeasured',
   'wiringDesired',
   'coilFamily',
+  'ratedPowerW',
+  'testFilterOrder',
+  'testFilterHz',
 ] as const satisfies readonly (keyof V2MeasurementMeta)[];
 
 /** The fresh state of one branch: every field empty, nothing stated. */
@@ -88,4 +103,7 @@ export const emptyV2Meas = (): V2MeasurementMeta => ({
   wiringMeasured: '',
   wiringDesired: '',
   coilFamily: '',
+  ratedPowerW: '',
+  testFilterOrder: '',
+  testFilterHz: '',
 });

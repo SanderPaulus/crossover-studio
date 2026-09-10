@@ -40,6 +40,7 @@ import {
   casus1TargetCurveAt,
   casus1BassPlateauDb,
   loadGolden,
+  casus1PowerRatings,
 } from './casus1.fixture.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { FLAT_TARGET } from './requirements/targetCurve.ts';
@@ -932,3 +933,84 @@ describe('V49 — the excursion-derived ceiling per driver (class A)', () => {
   });
 });
 
+
+
+/* ==================================================================== *
+ * M-M — the thermal load against the driver's own datasheet rating
+ * ==================================================================== */
+
+describe('M-M — the certified load is a CLASS A figure, and the off states name their field', () => {
+  const settings = { ...casus1ExcursionSettings(golden), amplifierPowerW: 100 };
+  const reportOn = (name: string) =>
+    buildReport({
+      manifest,
+      files,
+      filter: casus1Filter(name, manifest, files, golden),
+      geometry: casus1Geometry(golden),
+      settings,
+    });
+
+  it('the recorded certified watts reproduce, on the tolerance class the casebook states', () => {
+    const rows = reportOn('HUIDIG').metrics.thermalLoad;
+    const derived = golden.afgeleide_parameters as unknown as Record<string, Record<string, number>>;
+    for (const [driver, rating] of Object.entries(casus1PowerRatings(golden))) {
+      const r = rows.find((x) => x.driver === driver);
+      expect(r, driver).toBeDefined();
+      expect(r!.certifiedWatts, driver).not.toBeNull();
+      expect(r!.certifiedWatts!, driver).toBeCloseTo(derived[driver].mm_gecertificeerd_W, 3);
+      expect(r!.certifiedFraction!, driver).toBeCloseTo(derived[driver].mm_gecertificeerde_fractie, 5);
+      // …and the rating the metric read is the one the casebook records.
+      expect(r!.rating!.ratedPowerW, driver).toBe(rating.ratedPowerW);
+      expect(r!.rating!.testFilterOrder, driver).toBe(rating.testFilterOrder);
+      expect(r!.rating!.testFilterHz, driver).toBe(rating.testFilterHz);
+    }
+  });
+
+  /* CLASS A IS CLASS A: the certified figure is a function of the measured
+   * sweep and the datasheet, so it may not move when the netlist does. The
+   * DELIVERED figure must move — otherwise the metric would be reading
+   * something that is not the network (V23). */
+  it('the certified watts are identical on all three reference filters, and the delivered watts are not', () => {
+    const rows = ['HUIDIG', 'KAND_A', 'KAND_B'].map((n) => reportOn(n).metrics.thermalLoad.find((r) => r.driver === 'tweeter')!);
+    const certified = rows.map((r) => r.certifiedWatts!);
+    expect(Math.max(...certified) - Math.min(...certified)).toBeLessThan(1e-9);
+    const delivered = rows.map((r) => r.deliveredWatts!);
+    expect(Math.max(...delivered) - Math.min(...delivered)).toBeGreaterThan(0.1);
+  });
+
+  /* THE FINDING THIS METRIC WAS BUILT TO SETTLE, and it did not settle it the
+   * way the session expected. On casus 1's own reference filter the tweeter
+   * dissipates a small FRACTION of what its datasheet certifies — so thermal
+   * load is not what makes a low crossover unwise on this driver, and the
+   * 18 dB convention remains a DISTORTION rule that no measurement here
+   * supports. Pinned as a range rather than a point: the claim is "far under",
+   * and a later ingest change that moved it to "over" should fail here. */
+  it('HUIDIG’s tweeter sits far under its certified load — thermal is not the binding physics here', () => {
+    const r = reportOn('HUIDIG').metrics.thermalLoad.find((x) => x.driver === 'tweeter')!;
+    expect(r.ratio!).toBeGreaterThan(0.05);
+    expect(r.ratio!).toBeLessThan(0.5);
+    expect(r.note).not.toMatch(/UNPROVEN/);
+  });
+
+  /* P4, the second half of the validation case: casus 1's mid and woofer state
+   * no rating, so M-M reports what they take and judges nothing — with the
+   * missing field named rather than a zero (F0). */
+  it('a way with no stated rating is reported and unjudged, with the field named', () => {
+    const rows = reportOn('HUIDIG').metrics.thermalLoad;
+    for (const driver of ['mid', 'woofer']) {
+      const r = rows.find((x) => x.driver === driver)!;
+      expect(r.certifiedWatts, driver).toBeNull();
+      expect(r.ratio, driver).toBeNull();
+      expect(r.deliveredFraction, driver).toBeGreaterThan(0);
+      expect(r.reason, driver).toMatch(/no power rating stated/);
+    }
+  });
+
+  /* A3h — the test corner is an ASSUMPTION on this sheet (the footnote names
+   * the order and not the frequency), and it travels as one. */
+  it('the assumed test corner is carried, not promoted to a fact', () => {
+    const r = reportOn('HUIDIG').metrics.thermalLoad.find((x) => x.driver === 'tweeter')!;
+    expect(r.rating!.testFilterHzSource).toMatch(/afgeleid|aanbevolen/);
+    expect(r.note).toContain(r.rating!.testFilterHzSource!);
+  });
+});

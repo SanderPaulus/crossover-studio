@@ -127,21 +127,23 @@ describe('U-3b — the placement rule', () => {
      * default and disappears behind the disclosure, which is the right answer;
      * one that should stay visible has to be argued for HERE.
      *
-     * U-3c added the three DATASHEET rows to it. That is a rule and not three
+     * U-3c added the three DATASHEET rows to it and U-3f the fourth
+     * (`powerRating`, M-M) — which arrived by the rule rather than as a new
+     * exception, and this named set is where the arrival is noticed. That is a rule and not three
      * exceptions: a number the designer copies off a spec sheet is generic data
      * every project has, so it belongs where it is filled in. The second claim
      * below states it as a rule, so a datasheet row added later inherits it
      * instead of quietly landing behind the fold. */
     const shown = rowsOfClass('nice').filter((r) => placementOf(r) === 'always').map((r) => r.id);
     expect(shown.sort()).toEqual(
-      ['baffleHeight', 'blTm', 'micDistance', 'mmsG', 'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm'].sort(),
+      ['baffleHeight', 'blTm', 'micDistance', 'mmsG', 'powerRating', 'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm'].sort(),
     );
     for (const id of shown) expect(rowById(id)!.placementWhy, id).toBeTruthy();
   });
 
   it('every DATASHEET row is in the default view, and they sit on the card they are filled in on', () => {
     const sheet = V2_INPUT_REGISTER.filter((r) => r.source === 'datasheet');
-    expect(sheet.map((r) => r.id).sort()).toEqual(['blTm', 'mmsG', 'nominalSize', 'sd', 'xmaxMm'].sort());
+    expect(sheet.map((r) => r.id).sort()).toEqual(['blTm', 'mmsG', 'nominalSize', 'powerRating', 'sd', 'xmaxMm'].sort());
     /* The rule binds where the rule GOVERNS. `nominalSize` is the one datasheet
      * row in a form this placement rule does not reach — it is the v1 fallback
      * for a missing S_d and sits in Filters → Driver limits — so it is named

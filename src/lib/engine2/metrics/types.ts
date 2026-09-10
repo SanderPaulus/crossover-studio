@@ -31,6 +31,7 @@ import type { Coverage } from '../ingest/validity.ts';
 import type { DerivedDriver, IngestResult } from '../ingest/derive.ts';
 import type { EstimatorStamp } from '../version.ts';
 import type { DriverCard } from './driveExcursion.ts';
+import type { DriverPowerRating } from './thermalLoad.ts';
 import type { WayWiring } from '../ingest/wiring.ts';
 import type { LowestWayLevelWork } from '../../levelWork.ts';
 import type { CoilDcrFit } from '../../coilDcr.ts';
@@ -213,6 +214,15 @@ export interface ProjectSettings {
    * M-C v2.0 needs and what a header cannot say. Absent = that route is off.
    */
   responseDriveByDriver?: Record<string, { driveVoltageV: number; micDistanceMm: number; source?: string }>;
+  /* ---- M-M (10-09-2026): the driver's own power rating, per driver id ---- *
+   * Three numbers transcribed from one line of the datasheet and its
+   * footnote: the rated power, and the ORDER and CORNER of the high-pass it
+   * was rated through. Absent = M-M reports the delivered share and judges
+   * nothing, with the field named (P4). Nothing is defaulted — least of all
+   * the test corner, which many sheets leave to the recommended crossover
+   * range and which is therefore an ASSUMPTION that travels with the number
+   * (A3h; `DriverPowerRating.testFilterHzSource`). */
+  driverPowerRatingByDriver?: Record<string, DriverPowerRating>;
   /* ---- V51: the wiring of each way, and the level-work requirement ------ */
   /**
    * How many IDENTICAL drivers each way has and how they are wired — as

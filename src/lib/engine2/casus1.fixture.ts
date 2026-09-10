@@ -13,6 +13,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import type { DriverPowerRating } from './metrics/thermalLoad.ts';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrd } from '../parsers/frd.ts';
@@ -699,12 +700,48 @@ export function casus1ResponseDrive(
  * disagree about whether the ceiling was armed. An unstated half leaves its
  * KEY absent, which is what P4 asks for.
  */
+/**
+ * M-M (10-09-2026) — the datasheet POWER RATING per driver, keyed by driver id.
+ *
+ * Only a way whose card carries a COMPLETE rating contributes an entry: the
+ * rated power plus the order and corner of the filter it was rated through. A
+ * way with `vermogensopgave: null` — casus 1's mid and woofer — contributes
+ * nothing, and M-M is then off for it with the field named. That is the second
+ * half of the validation case and not an omission.
+ */
+export function casus1PowerRatings(golden: GoldenRefs = loadGolden()): Record<string, DriverPowerRating> {
+  const kaart = (golden.manifest_en_geometrie as unknown as {
+    driverkaart?: Record<string, unknown>;
+  }).driverkaart;
+  const out: Record<string, DriverPowerRating> = {};
+  if (!kaart) return out;
+  for (const [way, v] of Object.entries(kaart)) {
+    if (!v || typeof v !== 'object') continue;
+    const r = (v as { vermogensopgave?: unknown }).vermogensopgave;
+    if (!r || typeof r !== 'object') continue;
+    const g = r as Record<string, unknown>;
+    const w = g.rated_power_W;
+    const n = g.testfilter_orde;
+    const f = g.testfilter_hz;
+    if (typeof w !== 'number' || typeof n !== 'number' || typeof f !== 'number') continue;
+    out[way] = {
+      ratedPowerW: w,
+      testFilterOrder: n,
+      testFilterHz: f,
+      ...(typeof g.testfilter_hz_herkomst === 'string' ? { testFilterHzSource: g.testfilter_hz_herkomst } : {}),
+      ...(typeof g.gesteld_door === 'string' ? { source: g.gesteld_door } : {}),
+    };
+  }
+  return out;
+}
+
 export function casus1ExcursionSettings(golden: GoldenRefs = loadGolden()): {
   driverCardByDriver?: Record<string, DriverCard>;
   amplifierPeakPowerW?: number;
   amplifierNominalLoadOhm?: number;
   xmaxMarginFraction?: number;
   responseDriveByDriver?: Record<string, { driveVoltageV: number; micDistanceMm: number; source: string }>;
+  driverPowerRatingByDriver?: Record<string, DriverPowerRating>;
 } {
   const cards = casus1DriverCards(golden);
   const amp = casus1AmplifierPeak(golden);
@@ -715,6 +752,9 @@ export function casus1ExcursionSettings(golden: GoldenRefs = loadGolden()): {
     ...(amp ? { amplifierPeakPowerW: amp.peakPowerW, amplifierNominalLoadOhm: amp.nominalLoadOhm } : {}),
     ...(margin !== null ? { xmaxMarginFraction: margin } : {}),
     ...(Object.keys(drive).length > 0 ? { responseDriveByDriver: drive } : {}),
+    ...(Object.keys(casus1PowerRatings(golden)).length > 0
+      ? { driverPowerRatingByDriver: casus1PowerRatings(golden) }
+      : {}),
   };
 }
 

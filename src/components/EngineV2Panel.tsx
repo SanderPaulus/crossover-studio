@@ -1053,6 +1053,37 @@ export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = n
         </Section>
       )}
 
+      {metrics.thermalLoad.length > 0 && (
+        <Section title="M-M — thermal load per driver, against its own rating" spec="A4 M-M">
+          <p className="v2-muted">
+            The same weighted integral M-A uses, read on the DRIVER branch instead of on a resistor,
+            beside the watts the datasheet rating certifies. A REPORTING metric: it has no gate id and
+            it moves no window. Above the rating is UNPROVEN — the figure is a survived power under a
+            standardised noise, not a demonstrated failure point.
+          </p>
+          {metrics.thermalLoad.map((r) => (
+            <div className="v2-metric" key={r.driver}>
+              <div className="v2-metric-head">
+                {r.driver}
+                <b>
+                  {r.deliveredWatts === null
+                    ? '—'
+                    : r.certifiedWatts === null
+                      ? `${r.deliveredWatts.toFixed(2)} W`
+                      : `${r.deliveredWatts.toFixed(2)} / ${r.certifiedWatts.toFixed(2)} W · ${r.ratio!.toFixed(2)}×`}
+                </b>
+              </div>
+              <div className={r.ratio !== null && r.ratio > 1 ? 'v2-warn' : 'v2-muted'}>{r.note}</div>
+              {r.rating?.testFilterHzSource && (
+                <div className="v2-muted">
+                  Test corner: {Math.round(r.rating.testFilterHz)} Hz — {r.rating.testFilterHzSource}.
+                </div>
+              )}
+            </div>
+          ))}
+        </Section>
+      )}
+
       <Section title="Pre-design — feasible crossover windows" spec="A5d.3">
         {predesign.windows.length === 0 ? (
           <p className="v2-muted">Needs at least two branches.</p>
