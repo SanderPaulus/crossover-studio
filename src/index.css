@@ -4643,3 +4643,20 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
   padding-top: 0.5rem;
   margin: 0.55rem 0 0.3rem;
 }
+
+/* ====================================================================
+   U-3e — the crossover window beside the button that searches it.
+   A RENDERING of `report.predesign.windows`, not a second derivation: the
+   full list of limits with their sentences stays in the Engine v2 panel.
+   ==================================================================== */
+.v2-window-strip {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.2rem 0 0.1rem;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.v2-window-line b { color: var(--fg); font-weight: 600; }
+.v2-window-conv { font-style: italic; }

@@ -9234,6 +9234,86 @@ voeden zet de bronscan op rood, en de vouw uit de tweewegroute halen zet casus 1
 byte-reproductie op rood (236 s) — wat meteen bevestigt dat de vouw dragend is voor het bevroren
 bestand.
 
+---
+
+### U-3e — het venster stond er al, maar niet waar de vraag gesteld wordt (10-09-2026, alleen UI; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding.** Sander zag een tweeweg kandidaten voorstellen vanaf 1372 Hz en kon nergens zien
+waaróm. Het antwoord stond de hele tijd in de app — `crossoverWindow` geeft élke grens terug mét de
+regel die hem maakte en een zin die zegt waar hij vandaan komt, en `EngineV2Panel` drukt dat allemaal
+af onder "Pre-design — feasible crossover windows" — maar dat paneel staat onderaan de analysekolom
+en het besluit wordt bij de Optimize-knop genomen. **Het kostte twee dagen en een handberekening om
+vast te stellen dat de vloer k·f_s was.**
+
+**De meting die deze sessie het opschrijven waard maakt.** `XO_FS_FACTOR_BY_ORDER` leest als een
+meetkundige regel ("1,4 × f_s bij orde 4"). Uitgedrukt in de eenheid die de aandrijfvloeren gebruiken
+is het een vrijwel CONSTANTE verzwakking:
+
+| orde | k | in dB op f_s |
+| --- | --- | --- |
+| 1 | 3,0 | 9,5 |
+| 2 | 2,0 | 12,0 |
+| 3 | 1,6 | 12,2 |
+| 4 | 1,4 | 11,7 |
+
+**De app koos dus nooit tussen "niets aannemen" en "iets stellen" — hij koos stilzwijgend de losste
+van twee conventies.** Ongeveer 12 dB, waar het getal dat dit casusboek zelf stelt 18 + 2 is. Dat is
+de eigenlijke bevinding van de hele episode, en zij was onzichtbaar precies omdat de bindende regel
+nergens naast de knop stond.
+
+**Wat er gebouwd is: niets nieuws.** `v2WindowLines` is een RENDERING van
+`report.predesign.windows`, één regel per overname, met de bindende vloer en het bindende plafond en
+de regelnaam erbij. Geen tweede afleiding — de guard verbiedt de strip om `crossoverWindow` of
+`XO_FS_FACTOR_BY_ORDER` zelf aan te roepen, want twee antwoorden op "waar mag deze overname zitten"
+is de familie van bug A3g. De volledige lijst met alle grenzen en hun zinnen blijft waar hij stond,
+in het Engine v2-paneel: één huis, twee lezers.
+
+**De zin die de hele uitwisseling had bespaard.** Wanneer de bindende vloer de regel `fs` is, staat
+er sinds U-3e bij dat het een conventie is en geen meting, plus wat je eraan doet: stel
+"Max drive on f_s" op de kaart van die driver, of vul Bl, M_ms en X_max plus de versterkerpiek in en
+de vloer volgt de driver.
+
+---
+
+#### DE DRIE OPTIES DIE OP TAFEL LAGEN, EN WAAROM DEZE
+
+Sander liet de afweging aan mij (10-09-2026). Er lagen er drie.
+
+**(a) Het gestelde veld overbodig maken door het uit te rekenen.** Zijn eigen voorstel, en voor de
+EXCURSIEgrens klopt het: die wordt al afgeleid uit Bl, M_ms, X_max en de gemeten sweep, en op een
+conus is dat de grens die bindt. **Maar op deze tweeter niet.** De afgeleide grens leest −8,58 dB en
+de conventie −20; die 11,4 dB ertussen is spreekspoel en vervorming, en daar bestaat geen invoerveld
+voor dat de app heeft. Vermogen alleen helpt niet — je zou een vermogen-tegen-frequentiekromme
+nodig hebben en die drukt geen datasheet af. **Gepind als claim:** op deze driver blijft de
+`fs`-conventie binden ook mét de afgeleide grens, en de afgeleide vloer ligt eronder.
+
+**(b) `XO_FS_FACTOR_BY_ORDER` op de 18 dB-regel zetten** (k = 8,00 / 2,83 / 2,00 / 1,68). **NIET
+gedaan, en niet uit voorzichtigheid.** Drie redenen. Het is een Deel-A-regelfactor met een
+opgeschreven motivering, dus hem verplaatsen is de specificatie wijzigen en niet een fout
+repareren. Hij geldt voor ÉLKE overname, ook conus-naar-conus, waar de afgeleide excursiegrens de
+juiste autoriteit is — en omdat k·f_s alleen bindt wanneer de afgeleide vloer LAGER ligt, zou
+verhogen precies daar bijten waar de meting zegt dat de driver veilig is: **een conventie die een
+meting overrulet, de omgekeerde richting van V49.** En hij verplaatst elk venster in elke casus, dus
+drie corpora opnieuw opwekken.
+
+**(c) De aanbevolen kruisfrequentie als gestelde vloer lezen** (`statedFloorHz` per paar, de spiegel
+van E-1's gestelde plafond). Additief, dus afwezig verandert er niets en er hoeft niets
+geregenereerd te worden, en het is het generieke datasheetgetal waar Sander om vroeg. **Blijft
+staan als volgende sessie** — het is een enginewijziging met een eigen vorm-besluit (Hz + orde, of
+dB) dat aan hem is.
+
+**Waarom (c) niet nu, en dit wel.** (c) lost op wat je invult; dit lost op dat je niet kon ZIEN wat er
+gold. Het tweede is de klasse fout, het eerste één instantie ervan — en het tweede kostte hier twee
+dagen terwijl de data al berekend was.
+
+#### ACCEPTATIE
+
+`npx tsc -b` groen; `npm run test:fast` groen. Geen engine-, poort-, budget-, venster- of
+corpuscode aangeraakt. Drie falsifieerbaarheidsproeven vóór het opschrijven gemeten: de strip
+weghalen, de strip zijn eigen venster laten uitrekenen, en `XO_FS_FACTOR_BY_ORDER` op de 18 dB-regel
+zetten — alle drie rood, de laatste op de dB-tabel hierboven, wat precies de bedoeling is: wie die
+constante ooit verplaatst komt langs deze meting.
+
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

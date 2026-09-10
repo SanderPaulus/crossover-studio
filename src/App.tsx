@@ -6108,6 +6108,49 @@ export default function App() {
       : { low: null, high: ws[ws.length - 1] ?? null };
   }, [engineSelection.reporting, engineV2Report, threeWay]);
 
+  /**
+   * U-3e — WHERE THE SEARCH MAY PUT A HANDOVER, BESIDE THE BUTTON THAT SEARCHES.
+   *
+   * WHY THIS EXISTS AND WHY IT IS NOT A NEW COMPUTATION. `crossoverWindow`
+   * already returns every limit with the rule that made it and a sentence
+   * saying where it came from, `EngineV2Panel` already prints all of it under
+   * "Pre-design — feasible crossover windows", and the candidate field is
+   * generated from exactly those numbers. Nothing was missing except the
+   * PLACE: the panel sits at the bottom of the analysis pane and the decision
+   * is made at the Optimize button, so a designer watching candidates appear
+   * at 1372 Hz had no way to see that the floor was a convention rather than a
+   * measurement (Sander, 09/10-09-2026 — it took two days and a hand
+   * calculation to establish that).
+   *
+   * So this is a RENDERING of `report.predesign.windows` and it derives
+   * nothing: same objects, same sentences, one line per handover.
+   *
+   * The second half is the one that would have answered it immediately. When
+   * the floor is the k·f_s rule, NOTHING about this driver's drive limit has
+   * been stated or derived — k·f_s is itself a convention (about 12 dB at
+   * every order, where this casebook's own stated figure is 18 + 2) and it is
+   * the loosest thing the window knows. Saying which rule binds turns that
+   * from an invisible default into a visible one.
+   */
+  const v2WindowLines = useMemo((): { pair: string; text: string; convention: boolean }[] => {
+    if (!engineSelection.reporting) return [];
+    const ws = engineV2Report?.report?.predesign.windows ?? [];
+    return ws.map((w) => {
+      const hz = (v: number | null) => (v === null ? '—' : `${Math.round(v)} Hz`);
+      const pair = `${w.lower}→${w.upper}`;
+      if (w.empty) {
+        return { pair, text: t('EMPTY — no crossing frequency is allowed'), convention: false };
+      }
+      const by = (l: typeof w.floorBy) => (l ? `${t(l.rule)} ${hz(l.hz)}` : t('none'));
+      return {
+        pair,
+        text: `${hz(w.floorHz)} – ${hz(w.ceilingHz)} · ${t('floor')}: ${by(w.floorBy)} · ${t('ceiling')}: ${by(w.ceilingBy)}`,
+        /* The floor is the CONVENTION, and nothing measured or stated beat it. */
+        convention: w.floorBy?.rule === 'fs',
+      };
+    });
+  }, [engineSelection.reporting, engineV2Report, t]);
+
   /** The search range the designer stated for one handover, or null if unpinned. */
   const v2RangeFor = (side: 'low' | 'high'): [number, number] | null => {
     if (!xoRangeOn) return null;
@@ -17378,6 +17421,25 @@ export default function App() {
                         ? t('Optimize — flatten driver')
                         : t('Optimize — design for me')}
                   </button>
+                  {/* U-3e — the window the search may put a handover in, read
+                      off `report.predesign.windows` (see `v2WindowLines`). It
+                      belongs HERE because this is where the run is started;
+                      the full list of limits stays in the Engine v2 panel. */}
+                  {v2WindowLines.length > 0 && (
+                    <div className="v2-window-strip">
+                      {v2WindowLines.map((l) => (
+                        <span key={l.pair} className="v2-window-line">
+                          <b>{l.pair}</b> {l.text}
+                          {l.convention && (
+                            <em className="v2-window-conv">
+                              {' '}
+                              {t('— a convention, not a measurement: nothing is stated or derived about this driver’s drive limit, so the window falls back to k·f_s. State “Max drive on f_s” on its card, or fill Bl, M_ms and X_max plus the amplifier peak, and the floor follows the driver instead.')}
+                            </em>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => {

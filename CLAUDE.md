@@ -48,6 +48,10 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-3e (10-09-2026) gemeten op 453 s — 171 bestanden (170 geslaagd, 1 overgeslagen), 2077 tests
+    (2074 geslaagd, 3 overgeslagen), groen.** +1 BESTAND
+    (`engine2/predesign/windowReadout.test.ts`, 7 claims) en +7 tests — hetzelfde getal, want het corpus
+    is niet geregenereerd. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná U-3d (10-09-2026) gemeten op 456 s — 170 bestanden (169 geslaagd, 1 overgeslagen), 2070 tests
     (2067 geslaagd, 3 overgeslagen), groen.** +1 BESTAND
     (`engine2/optimizer/polarityFold.test.ts`, 5 claims) en +5 tests — hetzelfde getal, want het corpus
@@ -3112,6 +3116,41 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-3e-guards (het venster naast de knop die ernaar zoekt; alleen UI)
+- **HET VENSTER STOND ER AL, MAAR NIET WAAR DE VRAAG GESTELD WORDT.** `crossoverWindow` geeft élke
+  grens terug mét zijn regel en een zin, en `EngineV2Panel` drukt dat volledig af onder "Pre-design —
+  feasible crossover windows" — maar dat paneel staat onderaan de analysekolom en het besluit wordt bij
+  de Optimize-knop genomen. **Het kostte twee dagen en een handberekening om vast te stellen dat de
+  vloer k·f_s was.** `v2WindowLines` is een RENDERING van `report.predesign.windows`, één regel per
+  overname naast de knop; de volledige lijst blijft in het paneel (één huis, twee lezers). De guard
+  verbiedt de strip om `crossoverWindow` of `XO_FS_FACTOR_BY_ORDER` zelf aan te roepen — twee
+  antwoorden op "waar mag deze overname zitten" is de familie van bug A3g.
+- **DE MEting DIE DEZE SESSIE DRAAGT: `XO_FS_FACTOR_BY_ORDER` IS EEN dB-CONVENTIE, GEEN MEETKUNDE.**
+  Hij leest als "1,4 × f_s bij orde 4"; uitgedrukt in de eenheid die de aandrijfvloeren gebruiken is
+  het een vrijwel constante verzwakking van **9,5 / 12,0 / 12,2 / 11,7 dB** bij orde 1–4. Het getal dat
+  dit casusboek zelf stelt is 18 + 2. **De app koos dus nooit tussen "niets aannemen" en "iets
+  stellen" — hij koos stilzwijgend de losste van twee conventies**, en dat was onzichtbaar precies
+  omdat de bindende regel nergens naast de knop stond. Sinds U-3e zegt de strip het: bindt de regel
+  `fs`, dan staat erbij dat het een conventie is en geen meting, plus wat je eraan doet.
+- **DRIE OPTIES LAGEN OP TAFEL; Sander liet de afweging aan mij (10-09-2026).** (a) Het gestelde veld
+  overbodig maken door het af te leiden — klopt voor de EXCURSIEgrens en op een conus, maar niet op een
+  dome: afgeleid −8,58 dB tegen een conventie van −20, en die 11,4 dB is spreekspoel en vervorming
+  waarvoor geen invoerveld bestaat. **Gepind als claim: op deze driver blijft `fs` binden ook mét de
+  afgeleide grens.** (b) `XO_FS_FACTOR_BY_ORDER` op de 18 dB-regel zetten — **NIET gedaan**: het is een
+  Deel-A-regelfactor met opgeschreven motivering, hij geldt voor élke overname óók conus-naar-conus
+  waar de afgeleide grens de juiste autoriteit is (en omdat k·f_s alleen bindt wanneer de afgeleide
+  vloer LAGER ligt, zou verhogen precies daar bijten waar de meting zegt dat de driver veilig is — een
+  conventie die een meting overrulet, de omgekeerde richting van V49), en hij verplaatst elk venster in
+  elke casus. (c) `statedFloorHz` per paar uit de aanbevolen kruisfrequentie — additief, geen
+  regeneratie, **blijft staan als volgende sessie**; de vorm (Hz + orde, of dB) is een besluit voor
+  Sander.
+- `src/lib/engine2/predesign/windowReadout.test.ts` (7 claims) — de dB-tabel van k·f_s; met niets
+  gesteld of afgeleid bindt `fs`; een gesteld getal haalt de vloer eraf en `floorBy.rule` zegt welke;
+  **de afgeleide grens haalt hem op een dome NIET weg**; en de bronscans op de strip. **Nagemeten dat
+  alle drie kunnen falen:** de strip weghalen, de strip zijn eigen venster laten uitrekenen, en
+  `XO_FS_FACTOR_BY_ORDER` op de 18 dB-regel zetten — die laatste valt op de dB-tabel, wat de bedoeling
+  is: wie die constante ooit verplaatst komt langs deze meting.
 
 ### U-3d-guards (de polariteit zit in de netlist; niemand mag hem twee keer toepassen; alleen UI)
 - **EEN REGRESSIE VAN E-3, OP DE ENE LEZER DIE E-3 NIET AANRAAKTE.** E-3 vouwt de polariteit die de
