@@ -48,6 +48,10 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-3d (10-09-2026) gemeten op 456 s — 170 bestanden (169 geslaagd, 1 overgeslagen), 2070 tests
+    (2067 geslaagd, 3 overgeslagen), groen.** +1 BESTAND
+    (`engine2/optimizer/polarityFold.test.ts`, 5 claims) en +5 tests — hetzelfde getal, want het corpus
+    is niet geregenereerd. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná U-3c (09-09-2026) gemeten op 462 s — 169 bestanden (168 geslaagd, 1 overgeslagen), 2065 tests
     (2062 geslaagd, 3 overgeslagen), groen.** Geen nieuw bestand; +1 test, de datasheetregel in
     `v2InputPlacement.test.ts` (14 → 15). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
@@ -3108,6 +3112,42 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-3d-guards (de polariteit zit in de netlist; niemand mag hem twee keer toepassen; alleen UI)
+- **EEN REGRESSIE VAN E-3, OP DE ENE LEZER DIE E-3 NIET AANRAAKTE.** E-3 vouwt de polariteit die de
+  ontwerpstap kiest in het `Driver`-onderdeel zodat "everything downstream reads the netlist", en zijn
+  eigen notitie zegt dat de adjust van de keten de keten nooit verlaat. Hij verliet hem wél, via één
+  regel in `App.tsx`: `applyScanCandidate` zette het vinkje **Invert polarity** uit `r.vf.inverted`
+  (en de twee driewegvinkjes uit `r.midInverted` / `r.tweeterInverted`). De solver past
+  `Driver.inverted` toe op de takoverdracht (`network.ts:194`) en `combine` telt er via
+  `adjustPhaseDeg` nog eens 180° bij — **twee onafhankelijke vermenigvuldigingen met −1 op hetzelfde
+  netwerk.** Een geladen kandidaat waarvan de ontwerpstap een weg omkeerde werd gesimuleerd, getekend
+  en beoordeeld met 360°: de takken lazen tegenfase waar de tune een paar graden mat, en de som doofde
+  uit waar hij hoorde op te tellen. **Gemeten door Sander in de draaiende app (09-09-2026): shortlist
+  6,4°, fasegrafiek gemiddeld 173,6° met σ 170° op hetzelfde ontwerp.**
+- **Waarom het pas nu opviel, en E-3 voorspelde het letterlijk:** de vouw is op een LR4-veld de
+  identiteit, byte voor byte, en het casus-1-veld is LR4-only sinds A5e.3-veld. Casus 1b keert wél om
+  (`KAND-V2-1` draagt `inverted: true` op de tweeter) en daar viel het om.
+- **De reparatie is dat `applyScanCandidate` de twee vinkjes WIST in plaats van ze te voeden.** Sinds
+  U-1 bereikt geen enkele route in de interface de v1-scans, dus élk resultaat dat daar binnenkomt is
+  door `handleV2Request` gegaan en is gevouwen; de netlist is de drager, en het vinkje blijft over als
+  wat het altijd was — de knop van de ontwerper.
+- `src/lib/engine2/optimizer/polarityFold.test.ts` (5 claims) — het bevroren casus-1b-onderdeel draagt
+  zijn omkering (de premisse, een feit over een bestand op schijf); de vouw is een XOR, dus tweemaal
+  toepassen levert het niet-omgekeerde onderdeel terug; `applyScanCandidate` wist en voedt niet, met
+  **de drie verwijderde aanroepen BIJ NAAM** — een test die alleen op `setInverted(false)` let blijft
+  groen naast een tweede aanroep die het resultaat voedt, en precies zo kwam dit binnen; de twee
+  plaatsen die een polariteit MOGEN toepassen zijn er nog steeds twee. **De scan strippt commentaar
+  vóór hij zoekt**, want de notitie die deze fix achterlaat citeert de drie verwijderde aanroepen —
+  dezelfde discipline als `noWeights.test.ts`, de claim gaat over CODE.
+- **NIET OVER-GEREPAREERD, en dat staat als eigen claim.** Vier andere plekken voeden een polariteit in
+  de app-state en alle vier zijn goed omdat hun resultaat NIET gevouwen is: de twee v1-scans
+  (`runChainScan`, en de geen-shortlist-tak van de driewegrun), de virtuele-filteroptimizer (daar
+  bestaan geen onderdelen) en de vxp-import (die leest de polariteit van het bestand). De eerste twee
+  zijn sinds U-1 onbereikbaar en zijn met rust gelaten in plaats van verwijderd — de U-1-regel.
+- **Nagemeten dat de guard kan falen:** het vinkje weer uit het resultaat voeden zet de bronscan op
+  rood, en de vouw uit de tweewegroute halen zet casus 1b's live byte-reproductie op rood (236 s) —
+  wat meteen bevestigt dat de vouw dragend is voor het bevroren bestand.
 
 ### U-3c-guards (de datasheetgetallen horen in het standaardbeeld; alleen UI)
 - **AANLEIDING, EN ZIJ IS EEN MEETRESULTAAT.** Direct na U-3b liep Sander een tweeweg op de demobundel

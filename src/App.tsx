@@ -10376,20 +10376,44 @@ export default function App() {
    *  into Working — same application as the winner gets, undo-able. */
   function applyScanCandidate(row: { label: string; result: ChainResult | Chain3Result }) {
     const r = row.result;
+    /* ---- U-3d: THE POLARITY IS IN THE NETLIST, SO THE CHECKBOX MUST BE OFF --
+     *
+     * Until U-3d this function fed the app's polarity checkboxes from the
+     * result — `setInverted(r.vf.inverted)` and the two three-way ones — and
+     * that was right for as long as the parts carried `Driver.inverted: false`
+     * and the checkbox WAS the carrier.
+     *
+     * E-3 changed the carrier and not this line. It folds the polarity the
+     * design step chose into the driver part on both routes, precisely so that
+     * "everything downstream reads the netlist"; its own note says the chain's
+     * adjust never leaves the chain. It does leave it, here, and the two then
+     * COMPOSE: `network.ts` applies `Driver.inverted` to the branch transfer
+     * and `combine`/`combineN` applies the checkbox on top of that, so a
+     * loaded candidate whose design inverted a way is simulated, charted and
+     * scored 360° out — the branches read antiphase where the tune measured a
+     * few degrees, and the sum cancels where it should add.
+     *
+     * Casus 1 never showed it: its delivered field has been LR4-only since
+     * A5e.3-veld and its design step never inverts, so the fold is the
+     * identity. Casus 1b DOES invert, which is where Sander met it (09-09-2026:
+     * the shortlist reported 6.4° and the phase chart 173.6° for one design).
+     *
+     * So the checkboxes are CLEARED rather than fed. Every result that reaches
+     * this function comes through `handleV2Request` — since U-1 no route in the
+     * interface reaches the v1 scans — and is therefore folded. */
     if ('vf' in r) {
       // 2-way: the candidate carries a virtual-filter result.
       setVFilters((p) => ({ ...p, ...r.vf.specs }));
-      setInverted(r.vf.inverted);
+      setInverted(false);
       setVfOpt(r.vf);
       synthFresh.current = true;
       setSynth({ mode: synthMode, woofer: r.synthWoofer, tweeter: r.synthTweeter });
     } else {
-      // 3-way: specs per branch plus the polarity the structure search chose.
-      // Apply exactly what the winner gets — same fields, same order — or a
-      // loaded row would simulate something other than what was fitted.
+      // 3-way: specs per branch. The polarity the structure search chose is in
+      // the parts (E-3), so it is not applied a second time here.
       setVFilters((p) => ({ ...p, ...r.specs }));
-      setMidInverted(r.midInverted);
-      setInverted(r.tweeterInverted);
+      setMidInverted(false);
+      setInverted(false);
       synthFresh.current = true;
       setSynth({
         mode: synthMode,

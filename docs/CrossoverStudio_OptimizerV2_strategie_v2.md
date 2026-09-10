@@ -9173,6 +9173,67 @@ kandidaatveld en dus een regeneratiebesluit — en hoort in een eigen sessie.
 corpuscode aangeraakt; de twee byte-baselines draaien in de snelle laag en reproduceren. Beide
 falsifieerbaarheidsproeven gemeten vóór het opschrijven: een datasheetrij terug achter de vouw geeft
 drie rode claims, en een datasheetveld uit de rij tillen vier.
+---
+
+### U-3d — de polariteit zat in de netlist én in het vinkje, en werd dus twee keer toegepast (10-09-2026, alleen UI; **geen engine-, poort-, budget-, corpus- of vensterwijziging**)
+
+**Aanleiding: Sander zag twee getallen over hetzelfde ontwerp die niet konden kloppen.** De shortlist
+meldde 6,4° fasevolging; de grafiek "Tweeter phase relative to woofer" meldde gemiddeld 173,6° met
+σ 170° en score 0 — de vingerafdruk van twee takken in tegenfase. Hij vond de oorzaak zelf: het
+vinkje **Invert polarity** stond aan, en het ging elke keer weer aan als hij een ander netwerk koos.
+
+**Het is een regressie van E-3, op de ene lezer die E-3 niet aanraakte.** De keten van vier stappen:
+
+| plaats | wat er gebeurt |
+| --- | --- |
+| `worker.ts:3008` | E-3 vouwt de gekozen polariteit in het `Driver`-onderdeel (`foldDriverPolarity`) |
+| `network.ts:194` | de solver past `Driver.inverted` toe op de takoverdracht |
+| `App.tsx` `applyScanCandidate` | zette het vinkje uit `r.vf.inverted` — de adjust die de keten al gevouwen had |
+| `dsp.ts` `adjustPhaseDeg` | `combine` telt er nog eens 180° bij |
+
+Twee onafhankelijke vermenigvuldigingen met −1 op hetzelfde netwerk. **Het commentaar van E-3 zegt
+letterlijk "the chain's own adjust never leaves the chain" — en dat is precies wat er wél gebeurde**,
+via één regel in `App.tsx` die E-3 niet gelezen heeft.
+
+**Waarom het pas nu opviel.** E-3's eigen notitie voorspelt het: *"Op casus 1 never showed: the
+delivered field has been LR4-only since A5e.3-veld and its design step never inverted — but the M-1
+field carried LR2 on the W-M axis, and it would have."* De vouw is op een LR4-veld de identiteit,
+byte voor byte, en dat is ook waarom het casus-1-corpus reproduceert. Casus 1b keert wél om — het
+bevroren `KAND-V2-1` draagt `inverted: true` op de tweeter — en daar viel het om.
+
+**Wat het kostte.** Een geladen kandidaat waarvan de ontwerpstap een weg omkeerde werd gesimuleerd,
+getekend en beoordeeld met 360°: de takken lazen tegenfase waar de tune een paar graden mat, en de
+som doofde uit waar hij hoorde op te tellen. Dat is dezelfde grootteorde als wat E-3 zelf mat toen
+het de andere kant op stond (1,42 dB in de tune tegen ±70 dB in de shortlist).
+
+**De reparatie.** `applyScanCandidate` WIST de twee vinkjes in plaats van ze te voeden. Sinds U-1
+bereikt geen enkele route in de interface de v1-scans, dus élk resultaat dat hier binnenkomt is door
+`handleV2Request` gegaan en is gevouwen; de netlist is de drager en het vinkje blijft over als wat
+het altijd was — de knop van de ontwerper.
+
+**NIET over-gerepareerd, en dat staat als claim in de guard.** Vier andere plekken voeden een
+polariteit in de app-state en alle vier zijn goed, want hun resultaat is NIET gevouwen: de twee
+v1-scans (`runChainScan` en de geen-shortlist-tak van de driewegrun), de virtuele-filteroptimizer
+(daar bestaan helemaal geen onderdelen) en de vxp-import (die leest de polariteit van het
+geïmporteerde bestand). De eerste twee zijn sinds U-1 onbereikbaar en zijn daarom met rust gelaten in
+plaats van verwijderd — dezelfde regel die U-1 op de v1-engine zelf toepaste.
+
+`src/lib/engine2/optimizer/polarityFold.test.ts` (5 claims): het bevroren casus-1b-onderdeel draagt
+zijn omkering; de vouw is een XOR, dus tweemaal toepassen levert het niet-omgekeerde onderdeel terug;
+`applyScanCandidate` wist en voedt niet, met **de drie verwijderde aanroepen bij naam** (een test die
+alleen op `setInverted(false)` zou letten blijft groen naast een tweede aanroep die het resultaat
+voedt — precies hoe dit binnenkwam); de v1-voeders staan er nog; en de twee plaatsen die een
+polariteit MOGEN toepassen zijn er nog steeds twee.
+
+**De scan strippt commentaar vóórdat hij zoekt**, en dat is geen detail: de notitie die deze fix
+achterlaat CITEERT de drie verwijderde aanroepen, dus een scan over ruwe bron zou ze terugvinden in
+de uitleg waarom ze weg zijn. Dezelfde discipline als `noWeights.test.ts` — de claim gaat over CODE.
+
+Beide falsifieerbaarheidsproeven vóór het opschrijven gemeten: het vinkje weer uit het resultaat
+voeden zet de bronscan op rood, en de vouw uit de tweewegroute halen zet casus 1b's live
+byte-reproductie op rood (236 s) — wat meteen bevestigt dat de vouw dragend is voor het bevroren
+bestand.
+
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
