@@ -1,0 +1,66 @@
+{
+  "name": "KOAN 2951 demo-dataset (3-weg)",
+  "frame": "echte kast 67.7 L, fb 27.7 Hz, verwacht-scenario; meetas tussen T en M, mic 857 mm",
+  "drivers": [
+    {
+      "id": "T",
+      "model": "Bliesma T25T-6 in WG104-22-25",
+      "z_offset_mm": 64.6,
+      "frd": "tweeter.frd",
+      "zma": "tweeter.zma",
+      "status": "MEETDATA (M-1), geldig >400 Hz"
+    },
+    {
+      "id": "M",
+      "model": "SB MR13TX-4 in pod (5.0 L gesloten)",
+      "z_offset_mm": -64.6,
+      "frd": "mid.frd",
+      "zma": "mid.zma",
+      "status": "MEETDATA (M-1), NF/FF-merge, pod-shelf MODEL @520 Hz"
+    },
+    {
+      "id": "W1",
+      "model": "Satori WO24TX-8 boven",
+      "z_offset_mm": -325.9,
+      "frd": "woofer_up.frd",
+      "status": "MODEL-TRANSFORMED naar 67.7 L (basis M-1)"
+    },
+    {
+      "id": "W2",
+      "model": "Satori WO24TX-8 onder",
+      "z_offset_mm": -601.6,
+      "frd": "woofer_down.frd",
+      "status": "MODEL-TRANSFORMED naar 67.7 L (basis M-1)"
+    },
+    {
+      "id": "PORT",
+      "model": "Ultraflare, downfiring mond",
+      "z_offset_mm": -895,
+      "z_note": "VERIFY: mondvlak t.o.v. meetas",
+      "frd": "poort.frd",
+      "filter": "volgt W-way (zelfde bron)",
+      "status": "MODEL-TRANSFORMED naar 67.7 L (basis M-1)"
+    }
+  ],
+  "loads": {
+    "W_parallel_zma": "woofers_parallel.zma",
+    "accuracy": ">150 Hz meetkwaliteit; <40 Hz indicatief (zadel +/-2 Hz)"
+  },
+  "flags": {
+    "w_validity_ceiling_hz": 550,
+    "status": "MODEL-TRANSFORMED; vervangen door eerste Koan-meting",
+    "duct_modes_hz": [
+      130,
+      264
+    ],
+    "optimizer_rule": "buismode-rimpels zijn data, geen notch-doelen",
+    "drive_voltage": "ONBEKEND - documenteren bij her-meting (blokkeert V49 route 2)"
+  },
+  "measured_in": "testkast 53.2 L netto (M-1, augustus, beide woofers parallel aangedreven); frame-transformatie naar 67.7 L is model",
+  "verification": {
+    "loader_test_reference": "referentie_som.frd",
+    "rule": "som(woofer_up+woofer_down+poort) complex == referentie_som, <=0.1 dB over 20-500 Hz; toetst loader, niet de data"
+  },
+  "frame_note": "M/T zijn rig-onafhankelijk (pod/waveguide) en dus geldig in de Koan zonder transformatie; alleen W/PORT zijn model-getransformeerd",
+  "assumption": "relatieve niveaus T/M/W veronderstellen gelijke meetspanning binnen M-1 (spanning ONBEKEND)"
+}

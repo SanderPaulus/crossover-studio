@@ -48,6 +48,19 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná M-2 (12-09-2026) gemeten op 464 s — 179 bestanden (178 geslaagd, 1 overgeslagen), 2259 tests
+    (2256 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 BESTAND
+    (`engine2/koanDemo2026_09.test.ts`, 14 claims) en +14 tests, en die twee getallen zijn HETZELFDE
+    getal: het corpus is niet geregenereerd, dus geen enkele `it.each` over het levende corpus
+    beweegt, en de delta is precies de inhoud van het nieuwe bestand. GEEN nieuwe referentie: de
+    V43-waarde van 289 s blijft staan, en 464 tegen U-6's 455 s is dezelfde laag op dezelfde machine.
+    **DE VOLLE RUN IS BIJ M-2 NIET GEDRAAID**, met de U-6/U-5b/I-1-afweging, en zij is hier het
+    eenvoudigst van alle: M-2 is DATA-OPNAME. Er is geen engine-, poort-, budget-, venster-,
+    metriek- of corpuswijziging — er komt één map met meetbestanden bij, één fixture die haar leest
+    en één testbestand — en de twee byte-baselines die de zoektocht bewaken (`f4cRegression`,
+    `workerRouteRegression`) draaien in de snelle laag en reproduceerden, net als `toggleRegression`
+    en `p6Lint`. De drie live ketenruns zouden een corpus reproduceren dat deze sessie niet
+    aangeraakt heeft; `goldenClassification` en `demoBundle` zijn apart nagedraaid en groen.
     **Ná U-6 (11-09-2026) gemeten op 455 s — 178 bestanden (177 geslaagd, 1 overgeslagen), 2240 tests
     (2237 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`v2ResultLayout.test.ts`, 19 claims) en
@@ -3220,6 +3233,74 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### M-2-guards (de Koan-frame demo-set opgenomen NAAST de meetbasis; alleen data-opname)
+- **DE MEETBASIS IS NIET AANGERAAKT, en dat is de hele vorm van deze sessie.** Casus 1 leest nog
+  steeds M-1: de augustusmeting in de testkast van 53,2 L met BEIDE woofers parallel aangedreven.
+  Er is geen corpus geregenereerd, geen golden reference herleid of aangeraakt, en geen engine-,
+  poort-, venster- of metriekcode gewijzigd. Wat erbij komt is één map, één fixture en één test.
+- **`test-fixtures/koan_demo_2026-09_modeltransform/` — DE STATUS ZIT IN DE NAAM**, want een map die
+  `koan_demo` heet en model-getransformeerde data draagt is precies het bestand dat over een half
+  jaar voor een meting wordt aangezien. Tien bestanden, byte-identiek overgenomen uit Sanders
+  levering en nergens "verbeterd": de koppen, de vlaggen en de ONBEKEND-meetspanning staan er
+  exact zoals zij aankwamen.
+- **DE SCHEIDING MODEL/METING LOOPT DWARS DOOR DE SET EN STAAT DAAROM PER BRON.** De tweeter zit in
+  een waveguide en de mid in een bolvormige pod; die definiëren hun eigen diffractie, dus zij zijn
+  in de Koan geldig zonder enige transformatie en het manifest noemt ze MEETDATA (M-1). De twee
+  woofers en de poort zitten in de kast zelf en zijn per brontype vermenigvuldigd met een
+  modeldelta naar 67,7 L met f_b 27,7 Hz; het manifest noemt ze MODEL-TRANSFORMED. Een set die
+  zichzelf in zijn geheel model of in zijn geheel meting zou noemen liegt over de helft van haar
+  bronnen. `koanDemoStatusOf` leest de statuszin uit het manifest en GOOIT op een derde soort, en
+  de guard pint dat het er precies drie model en twee meting zijn.
+- **DE VERVANGREGEL, en zij is geen voornemen maar een geteste zin.** Deze set blijft NIET naast de
+  meetbasis bestaan. De eerste meetsessie aan de echte Koan met beide woofers parallel
+  aangedreven — drie nabije velden, de parallelle ZMA, en de meetspanning genoteerd — VERVANGT
+  haar. Het manifest zegt het zelf in `flags.status` ("vervangen door eerste Koan-meting") en
+  `koanDemo2026_09.test.ts` pint die zin samen met `measured_in`, zodat zij bij een volgende
+  levering niet stil kan verdwijnen.
+- **DE LOADER-TEST IS GESLAAGD EN ZIJ TOETST DE LOADER, NIET DE DATA.** De complexe som van de drie
+  wooferweg-bronnen door `combineN` — de eigen N-weg-sommatie van de app, geen tweede optelling
+  ernaast (A3g) — tegen `referentie_som.frd`: **grootste |Δ| 4,98 × 10⁻⁴ dB over 20–500 Hz,
+  328 punten, gemiddelde −4,4 × 10⁻⁶ dB, fase binnen 5,0 × 10⁻⁴°.** Dat is de afronding van de
+  bestanden zelf en niet een marge. Wat hij vaststelt is dat mapping, eenheden en tekens kloppen;
+  de data ís een voorspelling en kan langs deze weg per constructie niet gevalideerd worden — de
+  referentie zegt dat in haar eigen kop ("GEEN bron, GEEN meetdata"). **Met de TEGENPROEF ernaast**:
+  dezelfde som zonder de poort haalt de tolerantie aantoonbaar niet, want zonder haar is "de som
+  klopt" niet te onderscheiden van een test die alles goedkeurt.
+- **DE WOOFERWEG WORDT STRUCTUREEL AFGELEID EN NIET UIT PROZA.** Een bron met een EIGEN `zma` is een
+  eigen weg; de bronnen zonder eigen impedantie worden gevoed door de gedeelde last die het
+  manifest in `loads.W_parallel_zma` aanwijst, en dat zijn precies de twee woofers en de poort. Op
+  de zin in `verification.rule` zoeken zou dezelfde fout zijn die P-1 in de v1-vensterlezer vond.
+  Die zin wordt wél als KRUISCONTROLE gelezen, nooit als bron.
+- **DE BEVINDING DIE DE VORM BEPAALT: GEEN ENKEL BESTAND STELT EEN LEESBARE GELDIGHEID.** Gemeten met
+  de eigen lezers van de app: `readGateHeader` antwoordt `absent` op vijf van de zes bestanden en
+  `unparseable` op de tweeter, en `readMergeBlock` levert overal `null`. Daarom is dit een
+  FIXTURE-dataset met een loader en géén laadbare `DemoBundle`: een demo hiervan zou de U-3-fout
+  herhalen — `refuseIfUnverified` weigert dan te optimaliseren, dus een demo die zijn eigen route
+  blokkeert — en guard 1 van `demoBundle.test.ts` zou er terecht op vallen. **De koppen repareren is
+  geen optie en is niet gedaan:** een `Valid from` terugschrijven in een bestand dat er nooit een
+  droeg is een meting verzinnen (A3h), en op MODEL-getransformeerde data zou het een geldigheid
+  verzinnen voor iets dat geen meting is. De bevinding staat als MEETRESULTAAT in de suite en niet
+  als zin in deze entry: draagt een latere levering wél koppen, dan valt die claim om, en dat is
+  het moment waarop de set een demoknop kan krijgen.
+- **DE MEETSPANNING ONTBREEKT NOG en het manifest noemt het gevolg zelf** (`drive_voltage:
+  "ONBEKEND - documenteren bij her-meting (blokkeert V49 route 2)"`), naast de aanname dat de
+  relatieve niveaus van T, M en W gelijke meetspanning binnen M-1 veronderstellen. Beide zinnen
+  zijn gepind. Route 2 van M-C v2.0 blijft dus uit, op casus 1 en hier.
+- **WAT ER OP DE WEG HIERHEEN GEMETEN IS, en het is de reden dat er vier leveringen nodig waren.**
+  (i) De eerste set was de augustusmeting maal één modeldelta: de delta was voor `W_up` en `W_down`
+  identiek tot op drie decimalen in elke band, op een byte-identiek raster, en verdween boven
+  550 Hz. (ii) De losse `.lim`-sweeps en `close.txt`-nabijvelden van 11-09 zijn ECHTE metingen maar
+  in een toestand die de luidspreker nooit heeft: per keer één woofer aangedreven, de andere
+  passief in dezelfde kast. Drie impedantiepieken (15,6 / 28,6 / 52,4 Hz) waar een aangedreven paar
+  er twee heeft met het zadel op f_b; de parallelcombinatie van beide sweeps reproduceert de
+  augustusmeting boven 80 Hz binnen 0,3 dB en wijkt bij 28,6 Hz **15,8 dB** af. Zij zijn daarom
+  NIET opgenomen, en set 5 gebruikt ze terecht niet. (iii) Set 4 miste de verificatiereferentie
+  waar de loader-test op staat: de som van haar drie bronnen tegen de systeemcurve van set 1 gaf
+  **1,78 dB** bij 20,5 Hz, en set 1 haalde zijn eigen verificatieregel evenmin (gemiddeld 1,42 dB).
+  De oorzaak staat in de koppen: elk bestand droeg een eigen splice-fit (−7,92 / −10,42 / −10,77 dB),
+  en drie onafhankelijk gefitte niveaus tellen niet tot elkaar op. Set 5 levert een referentie die
+  per constructie de som van háár eigen bronnen is, en daarmee sluit de test.
 
 ### U-6-guards (het resultaatgebied geordend; alleen UI/ordening, geen enkele zin herschreven)
 - **`src/lib/v2ResultLayout.ts` — DE VOLGORDE VAN HET RESULTAATGEBIED, ALS DATA.** Vijfendertig
