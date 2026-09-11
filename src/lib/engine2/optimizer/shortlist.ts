@@ -241,6 +241,38 @@ export interface ShortlistStated<T> {
   report: StatedCrossingReport;
   /** Set when a rule refused its tune: that rule's own sentence. */
   refusal: { kinds: readonly string[]; reason: string } | null;
+  /**
+   * U-5b — the label of the earlier stated entry whose delivered network is
+   * IDENTICAL to this one's, part for part and value for value. Null when no
+   * earlier entry matches.
+   *
+   * A READING AND NEVER A THINNING (F0). Nine stated positions a quarter of a
+   * percent apart may well converge on one design, and a designer who asked
+   * for nine is owed nine answers plus the observation that four of them are
+   * the same answer — not four rows quietly removed. Every entry stays, keeps
+   * its own verdicts and stays loadable; this field only says which of them a
+   * reader may stop re-reading.
+   *
+   * EXACT, WITH NO TOLERANCE ANYWHERE IN IT. "Near enough to be the same
+   * design" would need a threshold, and a threshold that decides what counts
+   * as one answer is a project decision nobody has taken (P4, P6). The
+   * component distance in `diversity.ts` is deliberately NOT used: it is
+   * normalised against the spread of the set it is asked about, so on a set of
+   * near-identical designs it reports large distances between nearly equal
+   * networks — the right metric for spreading a shortlist and the wrong one
+   * for this question.
+   */
+  sameNetworkAs: string | null;
+  /**
+   * U-5b — the label of the earlier stated entry in the same TOPOLOGY CLASS
+   * (`topologyClassKey`: the orders per flank and the polarities). Null when
+   * no earlier entry shares it.
+   *
+   * The weaker of the two readings and the one that usually fires: the same
+   * shape of design built with different values. Exact for the same reason —
+   * a class key is a string and two strings are equal or they are not.
+   */
+  sameClassAs: string | null;
   /** One line for a reader: where it sits, what it misses, what it delivers. */
   describe: string;
 }
@@ -426,6 +458,8 @@ export function buildShortlist<T>(
         gates: c.gates,
         report,
         refusal: c.rejection ? { kinds: [...c.rejection.kinds], reason: c.rejection.reason } : null,
+        sameNetworkAs: null,
+        sameClassAs: null,
         describe:
           `Stated by you (${report.statedOn}). ` +
           (report.outsideWindow
@@ -439,6 +473,29 @@ export function buildShortlist<T>(
               : 'Inside every feasible window, and it is not a row: '),
       };
     });
+  /* ---- U-5b: which stated crossings gave the same answer ------------------
+   *
+   * A READING TAKEN AFTER THE FACT, over entries that all exist and all stay.
+   * The first entry to deliver a given network keeps it; every later one that
+   * delivers the SAME network points at it. Both keys are exact — a
+   * serialisation and a class string — so neither of them can quietly decide
+   * that two different designs are one. */
+  const statedByLabel = new Map(candidates.filter((c) => c.stated).map((c) => [c.label, c]));
+  const firstByNetwork = new Map<string, string>();
+  const firstByClass = new Map<string, string>();
+  for (const e of stated) {
+    if (e.parts.length === 0) continue; // nothing delivered is not an answer (F0)
+    const netKey = stableJson(e.parts);
+    const seenNet = firstByNetwork.get(netKey);
+    if (seenNet === undefined) firstByNetwork.set(netKey, e.label);
+    else e.sameNetworkAs = seenNet;
+    const topo = statedByLabel.get(e.label)?.topology;
+    if (!topo) continue;
+    const classKey = topologyClassKey(topo);
+    const seenClass = firstByClass.get(classKey);
+    if (seenClass === undefined) firstByClass.set(classKey, e.label);
+    else if (e.sameNetworkAs === null) e.sameClassAs = seenClass;
+  }
   /* The tail of the sentence, written after the head so the two halves cannot
    * drift: what it misses, and whether there is a network to look at. */
   for (const e of stated) {
@@ -452,7 +509,10 @@ export function buildShortlist<T>(
         : 'It misses nothing anybody stated. ') +
       (e.parts.length > 0
         ? 'The network is here to be looked at.'
-        : 'No network at all came back, so there is nothing to look at (F0).');
+        : 'No network at all came back, so there is nothing to look at (F0).') +
+      (e.sameNetworkAs !== null
+        ? ` It delivered the SAME network as ${e.sameNetworkAs}, part for part — two positions, one answer.`
+        : '');
   }
   if (stated.length > 0) {
     notes.push(
@@ -461,6 +521,30 @@ export function buildShortlist<T>(
         'are listed separately with what every limit they are past asks for, measured on the ' +
         'network each of them delivered (U-5).',
     );
+    const twins = stated.filter((e) => e.sameNetworkAs !== null).length;
+    if (twins > 0) {
+      notes.push(
+        `${twins} of the ${stated.length} stated crossings delivered a network IDENTICAL to ` +
+          'another one of them. All of them are listed and all of them ran — you asked for each ' +
+          'of these positions and each was answered; this only says which answers coincide, so ' +
+          'that a reader is not comparing a design with itself (U-5b).',
+      );
+    }
+    /* THE CLASS READING IS ONE NOTE AND NOT A SENTENCE PER ENTRY. On a band a
+     * few percent wide every stated position usually lands in the same
+     * topology class, so saying it on each of nine rows is nine times the same
+     * observation; said once it answers the question a designer actually has —
+     * did these positions give different SHAPES, or the same shape at
+     * different values? */
+    const delivered = stated.filter((e) => e.parts.length > 0);
+    const sameClass = delivered.filter((e) => e.sameClassAs !== null || e.sameNetworkAs !== null).length;
+    if (delivered.length > 1 && sameClass === delivered.length - 1) {
+      notes.push(
+        `All ${delivered.length} stated crossings that delivered a network are in ONE topology ` +
+          'class — the same orders per flank and the same polarities. They differ in component ' +
+          'values, not in the shape of the design (U-5b).',
+      );
+    }
   }
 
   if (rejected.length > 0) {

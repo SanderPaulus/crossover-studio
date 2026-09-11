@@ -1003,10 +1003,40 @@ const NICE: readonly V2InputRow[] = [
     id: 'xo3Steps',
     label: 'Points per axis / handover candidates',
     form: 'Filters → Crossover',
-    travels: 'scanSteps3 → fieldModeSettings(full) → chainBudget = steps^pairs',
+    travels:
+      'scanSteps3 → fieldModeSettings(full) → chainBudget = steps^pairs; and since U-5b, when the ' +
+      'crossover point is on, → expandStatedRange → statedPerAxisHz, where it is how many STATED ' +
+      'positions each pinned handover gets',
     cls: 'nice',
     emptyMeans:
-      'read by the FULL field only; an exploration uses its own chain budget and ignores this number.',
+      'read by the FULL field only; an exploration uses its own chain budget and ignores this ' +
+      'number — except as the step count of a pinned crossover point, which both modes read.',
+    source: 'choice',
+  },
+  {
+    id: 'crossoverPoint',
+    label: 'Crossover point (centre ± margin, per handover)',
+    form: 'Filters → Crossover',
+    travels:
+      'xoRangeOn + xoFreqHz/xoMarginHz (and xoLowFreqHz/xoLowMarginHz on a three-way) → ' +
+      'v2StatedRanges → expandStatedRange → statedPerAxisHz → buildCandidateField → one stated ' +
+      'candidate per position',
+    cls: 'nice',
+    emptyMeans:
+      'off = you state no crossing here and the derived A5d.3 field is the whole field. On it is ' +
+      'the short way of writing the "Crossings you state" list: N stated positions across the ' +
+      'band, each a full chain run past the window and past the chain budget (U-5b).',
+    source: 'choice',
+  },
+  {
+    id: 'xoScanSteps',
+    label: 'Steps across the pinned band (two-way)',
+    form: 'Filters → Crossover',
+    travels: 'scanSteps2 → v2StatedRanges → expandStatedRange; and fieldModeSettings(full) as stepsPerAxis',
+    cls: 'nice',
+    emptyMeans:
+      'it is a select and is never empty. With the crossover point OFF it states nothing at all; ' +
+      'with it on, this is how many positions you asked for and how many chain runs that costs.',
     source: 'choice',
   },
 ];
@@ -1352,7 +1382,7 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   'responses', 'validity', 'impedance', 'ways',
   'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom',
   // Filters sections older than the v2 panel
-  'nominalSize', 'catalogSnap', 'xo3Steps',
+  'nominalSize', 'catalogSnap', 'xo3Steps', 'crossoverPoint', 'xoScanSteps',
   /* The amplifier floor is a JUDGEMENT row and it IS shown — but it lives in
    * "Goals & weighting", above the v2 block, because it predates it. Worth
    * noting rather than moving: it is the one judgement input of the minimal

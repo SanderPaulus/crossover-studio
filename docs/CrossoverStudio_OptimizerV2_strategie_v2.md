@@ -9825,6 +9825,137 @@ van élke overname.
   in verschijnen — en dat staat als claim, want herclassificeren zou een
   kandidaatgeneratie-besturing stil in een eisenwizard zetten.
 
+### U-5b — de crossover-range-invoer is suikervorm voor de U-5-lijst, en zij bereikte tot nu toe niets (11-09-2026, alleen de v2-route; **additief: niets gepind = het veld van altijd, geen regeneratie**)
+
+**WAT SANDER ZAG.** Het formulier stond op *"Crossover point 2300 ± 100 Hz · 9 steps"*, en de run
+draaide er DRIE, op 1737 / 1950 / 2189 Hz — buiten het gestelde bereik en deels onder de gestelde
+vloer van zijn tweeter. Negen gevraagd, drie gedraaid, niets op het scherm dat het verschil noemde.
+
+**WAT DE METING VOND** (`scripts/measure-u5b-range.ts`, seconden, geen ketenrun): **de pin bereikte
+op de v2-route NIETS.** Drie onafhankelijke overschrijvingen, en elk van de drie alleen was al
+genoeg geweest.
+
+1. Elke kandidaat draagt zijn EIGEN kooi, en `ChainInput.xoRange` wint van `settings.xoRange`
+   (`designChain.ts` regel 232). De band die de ontwerper pinde werd per kandidaat overschreven.
+2. `candidateDeclaration.ts` STELT `xoRangePairs` uit diezelfde kooi (regel 193), dus wat de worker
+   als gestelde keuze binnenkreeg was de kooi en niet de pin.
+3. De stappenteller voedt `stepsPerAxis`, en `fieldModeSettings('exploration')` gooit die weg: een
+   verkenning draait op haar eigen budget van acht.
+
+De drie posities die Sander zag waren het AFGELEIDE veld — het venstermidden en zijn twee buren
+(E-2, centre-first) — en het toeval dat zij in dezelfde orde van grootte liggen als 2300 Hz is
+precies wat het onzichtbaar hield. Nagemeten op de kale tweewegdemo: venster 1294–2308,5 Hz, veld
+1371,8 / 1539,8 / 1728,4 / 1940,0 / 2177,6 Hz, en geen van de vijf ligt in de gepinde band.
+
+**DE REPARATIE, EN ZIJ IS EEN HERLEZING EN GEEN NIEUW MECHANISME.** `centre ± margin in N steps`
+zegt niets dat het U-5-lijstveld niet kan zeggen; het zegt het in minder toetsaanslagen. Dus is dat
+wat het sinds U-5b IS: `expandStatedRange` maakt er N GESTELDE POSITIES van, en die nemen exact het
+pad van de lijst — om het venster heen, om de spacing-regel van de generator heen, om het
+chain-budget heen, met de ontwerper als herkomst. Alles stroomafwaarts ziet N gestelde posities en
+kan niet zien welk formulier ze typte. Geen nieuwe keuze-sleutel, geen poort, geen regeneratie:
+`statedSize` bewoog al met de vingerafdruk mee (F4d).
+
+#### DE BESLUITEN, en elk van hen kon ook anders
+
+1. **DE POSITIES LIGGEN IN HERTZ EN NIET IN OCTAVEN.** Elke andere positie in deze engine ligt in
+   octaven, omdat een venster een verhouding is. Dit is geen venster. De ontwerper schreef
+   "2300 ± 100 Hz in 9 stappen", en de enige lezing van die zin waarin de twee randen de twee
+   randen zijn is de lineaire. Logaritmisch uitleggen zou posities opleveren die niemand vroeg —
+   precies het gebrek dat hier gerepareerd wordt.
+2. **N IS N.** `crossoverVariants` op de v1-route dwingt de stappenteller ONEVEN af zodat het
+   pincentrum altijd tussen de plakken zit; daar bezit elke kandidaat een PLAK van de band en een
+   plak heeft een midden nodig. Hier is elke positie een kruising op zichzelf. Negen vragen en tien
+   draaien is dezelfde soort fout als negen vragen en drie draaien. Bij een EVEN telling zit het
+   gestelde centrum er dus niet bij, en dat wordt GEZEGD in plaats van gecorrigeerd.
+3. **ALLEEN WAT HET EIGEN VELD VAN DE ONTWERPER DRAAGT.** De pinvelden dragen v1-erfenisdefaults —
+   een frequentie uit een ander project, audit §7 — en het vinkje is wat er een uitspraak van maakt:
+   uit, en er wordt niets gesteld, dus een project dat nooit pinde bouwt byte voor byte het veld dat
+   het altijd bouwde (P2, en dat is gemeten op de vingerafdruk). Een veld dat niets leesbaars draagt
+   wordt GEMELD en staat nergens voor in: geen centrum is geen positie, een marge die geen breedte
+   is wordt geweigerd, een telling die geen telling is ook.
+4. **EEN MARGE VAN NUL IS ÉÉN POSITIE.** De ±2 % zoekruimte die een PIN zichzelf laat
+   (`xoRangeValue`) wordt hier niet geleend: een gestelde positie is een positie en geen band.
+5. **DE TWEE FORMULIEREN ZIJN ÉÉN VERZAMELING PER OVERNAME.** Wie een lijst typte én pinde stelde
+   allebei; er één laten vallen omdat de ander bestaat is precies de stilte die deze sessie opheft.
+   De as is dus de UNIE, ontdubbeld en oplopend, en de notitie zegt hoeveel er waarvandaan kwamen.
+   Een frequentie die beide noemen is één positie, om dezelfde reden waarom twee identieke
+   frequenties in één lijst dat zijn.
+6. **N-WEG PER CONSTRUCTIE, EN EERLIJK OVER WAT HET FORMULIER NIET HEEFT.** De pin heeft een veld
+   voor de LAAGSTE overname en een voor de HOOGSTE — elke overname van een twee- of drieweg, en
+   niet elke overname van een vierweg. Een overname zonder eigen veld krijgt geen bereik en ZEGT
+   dat, in plaats van er een van een buurman te lenen.
+
+#### UITDUNNEN MAG EEN LEZING ZIJN, NOOIT EEN STILLE VOORBEWERKING (F0)
+
+Negen posities een kwart procent uit elkaar kunnen heel goed op één ontwerp uitkomen. Wie er negen
+vroeg is negen antwoorden waard, plus de waarneming dat er vier hetzelfde antwoord zijn — niet vier
+rijen die stil verdwijnen. De shortlist draagt daarom sinds U-5b twee EXACTE lezingen naast elke
+gestelde ingang: `sameNetworkAs` (het geleverde netwerk is onderdeel voor onderdeel gelijk aan dat
+van een eerdere ingang) en `sameClassAs` (dezelfde topologieklasse, andere waarden). Elke ingang
+blijft staan, houdt haar eigen oordelen en blijft laadbaar; het veld zegt alleen welke een lezer
+niet nog eens hoeft te lezen.
+
+**BEIDE SLEUTELS ZIJN EXACT EN DRAGEN GEEN ENKELE TOLERANTIE.** "Dicht genoeg om hetzelfde ontwerp
+te zijn" vraagt een drempel, en een drempel die bepaalt wat als één antwoord telt is een
+projectbesluit dat niemand genomen heeft (P4, P6). De componentafstand uit `diversity.ts` is met
+opzet NIET gebruikt: zij normeert op de spreiding van de verzameling waarover zij gevraagd wordt, dus
+op een verzameling bijna-identieke ontwerpen rapporteert zij juist GROTE afstanden tussen bijna
+gelijke netwerken — de goede maat om een shortlist te spreiden en de verkeerde voor deze vraag.
+
+`SHORTLIST_SELECTION_VERSION` beweegt NIET: er verschuift geen rij en er valt geen kandidaat af, dus
+dezelfde run levert dezelfde lijst. Wat erbij komt is wat er al was, gelezen.
+
+#### WAT DE ONTWERPER TE ZIEN KRIJGT
+
+- **Naast de velden zelf**, terwijl hij typt, uit dezelfde expansie die de run neemt (één
+  implementatie, twee lezers — de vorm die dit project overal gebruikt waar een aflezing en een run
+  het niet oneens mogen zijn): welke posities er gaan lopen, en dat het er één ketenrun per stuk is.
+  Dat het gebrek onzichtbaar was vanuit het formulier is de helft van waarom het zo lang stond.
+- **In de melding vóór de scan**, en die verschijnt sinds U-5b voor gestelde kruisingen ÓÓK als het
+  venster ze allemaal toelaat. Tot U-5b kwam zij alleen op als er iets buiten een venster lag, dus
+  een gepinde band ruim binnen het venster kostte uren zonder één woord.
+- **In de shortlist-sectie "Stated by you"**, ongewijzigd sinds U-5: één ingang per gestelde
+  kruising, geleverd of geweigerd-met-reden, met per overschreden grens wat die grens vraagt tegen
+  wat het netwerk levert.
+
+#### WAT NIET GEDAAN IS
+
+- **De v1-pin is niet aangeraakt.** `xoRangeValue()` en `xoPinsValue()` blijven wat zij zijn; op een
+  route zonder A5d.3-veld (de terugval die zichzelf al uitschreeuwt) doet de pin nog steeds wat hij
+  deed. Dit is een tweede LEZING van hetzelfde formulier, niet een vervanging.
+- **Geen bovengrens op hoeveel posities gepind mogen worden.** Een plafond zou een stille uitdunning
+  zijn, en dat is het ding dat hier gerepareerd wordt. Wat het kost staat in de melding en naast het
+  veld: één ketenrun per positie.
+- **Geen eigen datumstempel voor de pin.** `engineV2StatedAt` volgt de v2-sleutels en de pinvelden
+  zijn ouder; de herkomst per kandidaat noemt de frequentie en de expansie-notitie het bereik,
+  dus wat er gesteld is en door wie is leesbaar — wanneer precies is dat niet, en dat wordt niet
+  verzonnen.
+
+#### DE BROWSERCONTROLE, EN ZIJ BEANTWOORDT DE VRAAG DIE DE OPDRACHT OPENLIET
+
+Kale tweewegdemo, `2300 ± 100` met negen stappen, headless op de dev-server (11-09-2026).
+
+- **Naast de velden**, meteen bij het typen: *"de crossover point 2300 ± 100 Hz in 9 step(s) was
+  expanded into 9 STATED position(s) — 2200, 2225, 2250, 2275, 2300, 2325, 2350, 2375, 2400 Hz"*.
+- **De melding vóór de scan** noemt alle negen bij naam, telt het veld op **14 kandidaten** (vijf
+  afgeleid, negen gesteld) en zegt dat er vier buiten het venster van 1294–2308,5 Hz vallen.
+- **De run: 390 s, veertien ketenruns, negen rijen in "Stated by you — 9 of 14 candidates · 4 outside
+  a feasible window"**, elk met zijn eigen gestelde frequentie in het label, vijf ervan tegelijk
+  gewone shortlistrijen. De veldregel telt de twee helften apart: *"Exploration field — 5 of 5
+  derived candidates … Plus 9 crossings you stated, which the budget does not thin."*
+- **De vier buiten het venster dragen hun oordeel per grens**, in de eenheid van die grens: 2400 Hz
+  ligt 0,056 octaaf boven het breakup-plafond, dat plafond vraagt 31,2 dB onderdrukking op de
+  breakup, en het geleverde netwerk levert **−41,5 dB** — tien dB over, op een positie die het
+  plafond verbiedt. Dezelfde bevinding als U-5: het plafond is een VOOR-ONTWERPgrens op de kale
+  ladder, en een vierde-orde netwerk met een val heeft meer gereedschap.
+
+**EN HET ANTWOORD OP DE OPEN VRAAG: negen posities een kwart procent uit elkaar geven negen ECHT
+VERSCHILLENDE antwoorden** — 1,46 tot 1,99 dB en 4,9° tot 13,3° — dus de identieke-netwerk-lezing
+zwijgt, en dat is het eerlijke resultaat en geen kapotte bewaker. Wat zij wél alle negen delen is de
+TOPOLOGIEKLASSE (LR4), en dat staat als één notitie in plaats van als een zin op elke rij: negen keer
+dezelfde waarneming is ruis, één keer is het het antwoord op "andere vormen, of dezelfde vorm met
+andere waarden?".
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

@@ -1,0 +1,261 @@
+{
+  "_wat": "U-5b — de crossover-range-invoer gemeten: wat het formulier zegt en wat de run doet.",
+  "_bron": "scripts/measure-u5b-range.ts, op de tweewegdemo (src/demo2way.ts) door de adapter van de app",
+  "_gemeten_op": "2026-09-11",
+  "formulier": {
+    "centrum_hz": 2300,
+    "marge_hz": 100,
+    "stappen": 9
+  },
+  "overnames": [
+    "low→high"
+  ],
+  "venster_hz": [
+    [
+      1294.04296875,
+      2308.4500599747985
+    ]
+  ],
+  "v1_route_slices": [
+    {
+      "label": "2200 Hz",
+      "kooi": [
+        2200,
+        2212.5
+      ]
+    },
+    {
+      "label": "2225 Hz",
+      "kooi": [
+        2212.5,
+        2237.5
+      ]
+    },
+    {
+      "label": "2250 Hz",
+      "kooi": [
+        2237.5,
+        2262.5
+      ]
+    },
+    {
+      "label": "2275 Hz",
+      "kooi": [
+        2262.5,
+        2287.5
+      ]
+    },
+    {
+      "label": "2300 Hz",
+      "kooi": [
+        2287.5,
+        2312.5
+      ]
+    },
+    {
+      "label": "2325 Hz",
+      "kooi": [
+        2312.5,
+        2337.5
+      ]
+    },
+    {
+      "label": "2350 Hz",
+      "kooi": [
+        2337.5,
+        2362.5
+      ]
+    },
+    {
+      "label": "2375 Hz",
+      "kooi": [
+        2362.5,
+        2387.5
+      ]
+    },
+    {
+      "label": "2400 Hz",
+      "kooi": [
+        2387.5,
+        2400
+      ]
+    }
+  ],
+  "voor_u5b_afgeleid_veld": [
+    {
+      "label": "low→high 1371.8 LR4",
+      "stated": false,
+      "hz": [
+        1371.8
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 1539.8 LR4",
+      "stated": false,
+      "hz": [
+        1539.8
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 1728.4 LR4",
+      "stated": false,
+      "hz": [
+        1728.4
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 1940 LR4",
+      "stated": false,
+      "hz": [
+        1940
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2177.6 LR4",
+      "stated": false,
+      "hz": [
+        2177.6
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    }
+  ],
+  "expansie": {
+    "posities_hz": [
+      2200,
+      2225,
+      2250,
+      2275,
+      2300,
+      2325,
+      2350,
+      2375,
+      2400
+    ],
+    "notities": [
+      "low→high: the crossover point 2300 ± 100 Hz in 9 step(s) was expanded into 9 STATED position(s) — 2200, 2225, 2250, 2275, 2300, 2325, 2350, 2375, 2400 Hz. They take the same path as the ones typed into the list: each is a candidate of its own, none is measured against the window before it runs, and none is thinned by the chain budget. That is one chain each."
+    ],
+    "problemen": []
+  },
+  "na_u5b_gestelde_kandidaten": [
+    {
+      "label": "low→high 2200 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2200
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2225 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2225
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2250 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2250
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2275 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2275
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2300 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2300
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2325 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2325
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2350 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2350
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2375 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2375
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    },
+    {
+      "label": "low→high 2400 LR4 · stated",
+      "stated": true,
+      "hz": [
+        2400
+      ],
+      "alignment": [
+        "LR4"
+      ]
+    }
+  ],
+  "unie_met_de_lijst": [
+    [
+      2000,
+      2200,
+      2225,
+      2250,
+      2275,
+      2300,
+      2325,
+      2350,
+      2375,
+      2400
+    ]
+  ],
+  "p2_niets_gesteld_is_hetzelfde_veld": true,
+  "p2_wel_gesteld_is_een_ander_veld": true
+}

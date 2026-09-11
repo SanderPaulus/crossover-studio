@@ -48,6 +48,18 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-5b (11-09-2026) gemeten op 466 s — 177 bestanden (176 geslaagd, 1 overgeslagen), 2221 tests
+    (2218 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
+    dev-server en de headless Chrome gestopt.** +1 BESTAND (`predesign/statedRange.test.ts`, 27
+    claims) en +27 tests, en die twee getallen zijn HETZELFDE getal: het corpus is niet
+    geregenereerd, dus geen enkele `it.each` over het levende corpus beweegt, en de delta is precies
+    de inhoud van het nieuwe bestand. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan,
+    en 466 tegen U-5's 452 s is dezelfde laag op dezelfde machine. **DE VOLLE RUN IS BIJ U-5b NIET
+    GEDRAAID**, met de U-3/I-1-afweging: geen engine-, poort-, budget-, venster- of corpuswijziging —
+    U-5b raakt uitsluitend hoe een FORMULIER gelezen wordt — en de twee byte-baselines die de
+    zoektocht bewaken (`f4cRegression` 100 s, `workerRouteRegression` 102 s) draaien in de snelle laag en
+    reproduceerden. De drie live ketenruns zouden een corpus reproduceren dat deze sessie niet
+    aangeraakt heeft.
     **Ná U-5 (10-09-2026) gemeten op 452 s — 176 bestanden (175 geslaagd, 1 overgeslagen), 2194 tests
     (2191 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid met de dev-server en de
     headless Chrome gestopt.** +2 BESTANDEN (`predesign/statedCrossings.test.ts` 36 claims,
@@ -3191,6 +3203,69 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-5b-guards (de crossover-range-invoer is suikervorm voor de U-5-lijst; alleen de v2-route)
+- **DE METING EERST, EN ZIJ IS DE HELE BEVINDING** (`scripts/measure-u5b-range.ts`, seconden, geen
+  ketenrun en geen tune; schrijft `test-fixtures/demo_u5b_range.json`). Het formulier stond op
+  *"Crossover point 2300 ± 100 Hz · 9 steps"* en de run draaide er drie, op posities die niemand
+  gepind had. **Op de v2-route bereikte die pin NIETS, en er zijn DRIE onafhankelijke
+  overschrijvingen — elk ervan alleen was al genoeg geweest.** (1) Elke kandidaat draagt zijn eigen
+  kooi en `ChainInput.xoRange` wint van `settings.xoRange` (`designChain.ts` regel 232). (2)
+  `candidateDeclaration.ts` STELT `xoRangePairs` uit diezelfde kooi (regel 193), dus wat de worker
+  als gestelde keuze kreeg was de kooi. (3) De stappenteller voedt `stepsPerAxis`, en
+  `fieldModeSettings('exploration')` gooit die weg. Nagemeten op de kale tweewegdemo: venster
+  1294–2308,5 Hz, afgeleid veld 1371,8 / 1539,8 / 1728,4 / 1940,0 / 2177,6 Hz, en geen van de vijf
+  in de gepinde band.
+- `src/lib/engine2/predesign/statedCrossings.ts` — **`expandStatedRange` + `mergeStatedCrossings`:
+  de range-vorm zegt niets dat de U-5-lijst niet kan zeggen, dus is zij sindsdien dat.** N gestelde
+  posities, hetzelfde pad: om het venster heen, om de spacing-regel van de generator heen, om het
+  chain-budget heen, met de ontwerper als herkomst. **De posities liggen in HERTZ en niet in
+  octaven** — elke andere positie in deze engine ligt in octaven omdat een venster een verhouding
+  is, en dit is geen venster: de enige lezing van "2300 ± 100 Hz in 9 stappen" waarin de twee randen
+  de twee randen zijn is de lineaire. **N IS N:** `crossoverVariants` dwingt de telling op de
+  v1-route oneven af omdat elke kandidaat daar een PLAK bezit en een plak een midden nodig heeft;
+  hier is elke positie een kruising op zichzelf, en negen vragen en tien draaien is dezelfde soort
+  fout als negen vragen en drie draaien. Bij een even telling zit het gestelde centrum er niet bij
+  en dat wordt GEZEGD. Marge nul is ÉÉN positie (de ±2 % die een pin zichzelf laat wordt niet
+  geleend). De twee formulieren zijn per overname ÉÉN verzameling — de unie, ontdubbeld, met de
+  telling per herkomst erbij.
+- **ALLEEN WAT HET EIGEN VELD VAN DE ONTWERPER DRAAGT.** De pinvelden dragen v1-erfenisdefaults (een
+  frequentie uit een ander project, audit §7) en het vinkje is wat er een uitspraak van maakt: uit,
+  en `v2StatedRanges` levert niets, dus een project dat nooit pinde bouwt byte voor byte het veld
+  dat het altijd bouwde (P2, gemeten op `candidateFieldKey`). Een leeg of onleesbaar centrum, een
+  marge die geen breedte is en een telling die geen telling is worden GEMELD en staan nergens voor
+  in (P4/A3h). **N-weg per constructie:** het formulier heeft een veld voor de LAAGSTE en een voor
+  de HOOGSTE overname, en een overname zonder eigen veld krijgt geen bereik en zegt dat, in plaats
+  van er een van een buurman te lenen.
+- `src/lib/engine2/optimizer/shortlist.ts` — **`sameNetworkAs` en `sameClassAs`: uitdunnen mag een
+  LEZING zijn, nooit een stille voorbewerking (F0).** Negen posities een kwart procent uit elkaar
+  kunnen op één ontwerp uitkomen; wie er negen vroeg is negen antwoorden waard plus de waarneming
+  dat er vier hetzelfde zijn. Elke ingang blijft staan, houdt haar oordelen en blijft laadbaar.
+  **Beide sleutels zijn EXACT en dragen geen enkele tolerantie** — een serialisatie en een
+  klassestring — want een drempel die bepaalt wat als één antwoord telt is een projectbesluit dat
+  niemand genomen heeft (P4, P6). **De componentafstand uit `diversity.ts` is met opzet NIET
+  gebruikt:** zij normeert op de spreiding van de verzameling waarover zij gevraagd wordt, dus op
+  bijna-identieke ontwerpen rapporteert zij juist grote afstanden. `SHORTLIST_SELECTION_VERSION`
+  beweegt NIET: er verschuift geen rij en er valt geen kandidaat af.
+- `src/lib/engine2/predesign/statedRange.test.ts` (26 claims, nieuw) — vijf groepen: de expansie met
+  de hand op ronde getallen (negen stappen over ±100 Hz zijn 25 Hz uit elkaar, beide randen erin,
+  het centrum in het midden); wat zij weigert te verzinnen; P2 op de vingerafdruk mét de tegenproef
+  dat pinnen wél een ander veld is; **de dragende guard, die over BEIDE invoervormen loopt als
+  `it.each`** — élke gestelde positie bereikt het veld op haar eigen frequentie en komt uit de
+  shortlist terug, geleverd, geweigerd-met-reden of gegroepeerd-met-verwijzing, nooit stil minder;
+  en de app-helft als bronscan (het UI-1-idioom). **Nagemeten dat hij kán falen** met drie
+  opzettelijke breuken: de expansie stil uitdunnen (9 rood), de gestelde inventaris van de shortlist
+  afkappen (6 rood), en de pin niet aan het veld doorgeven (1 rood).
+- **DE MELDING VÓÓR DE SCAN VERSCHIJNT SINDS U-5b VOOR GESTELDE KRUISINGEN ÓÓK ALS HET VENSTER ZE
+  ALLEMAAL TOELAAT** (`describeStatedPositions`). Tot U-5b kwam zij alleen op als er iets buiten een
+  venster lag, dus een gepinde band ruim binnen het venster kostte uren zonder één woord. En naast
+  de velden zelf staat sindsdien wat er gaat lopen, uit dezelfde expansie die de run neemt (één
+  implementatie, twee lezers) — dat het gebrek onzichtbaar was vanuit het formulier is de helft van
+  waarom het zo lang stond.
+- **DE v1-PIN IS NIET AANGERAAKT.** `xoRangeValue()` en `xoPinsValue()` blijven wat zij zijn; op een
+  route zonder A5d.3-veld doet de pin nog steeds wat hij deed. Dit is een tweede LEZING van hetzelfde
+  formulier en geen vervanging. Drie registerrijen erbij (`crossoverPoint`, `xoScanSteps`, en
+  `xo3Steps` bijgewerkt), alle drie ONGEREGULEERD zoals elke rij van de Crossover-sectie.
 
 ### U-5-guards (gestelde kruispunten: de volle tune, het volle oordeel, en de rekening ernaast)
 - **`src/lib/engine2/predesign/statedCrossings.ts` — DE TWEEDE AUTEUR VAN EEN KANDIDAAT.**

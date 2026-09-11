@@ -307,6 +307,244 @@ export function parseStatedCrossings(
 }
 
 /* ------------------------------------------------------------------ *
+ * U-5b — the RANGE form, which is sugar for the list above
+ * ------------------------------------------------------------------ */
+
+/**
+ * The crossover-point form as the designer fills it in: a centre, a half-width
+ * and how many positions to lay across the band.
+ *
+ * `null` on either frequency means the field was left empty or holds something
+ * that is not a frequency. An empty field is not a zero (F0) and a zero margin
+ * is a real statement ("exactly there"), so the two cannot share a value.
+ */
+export interface StatedRangeInput {
+  centreHz: number | null;
+  marginHz: number | null;
+  /** How many positions the designer asked for across the band. */
+  steps: number;
+}
+
+export interface ExpandedStatedRange {
+  /** The positions, rounded and ascending. Empty = the range stated nothing. */
+  hz: number[];
+  /** What the expansion did, for a reader — never a silent difference. */
+  notes: string[];
+  /** What it could not use, each with the reason. */
+  problems: string[];
+}
+
+/**
+ * THE RANGE IS SUGAR FOR THE LIST, AND THAT IS THE WHOLE DESIGN.
+ *
+ * `centre ± margin in N steps` says nothing the list form cannot say; it says
+ * it in fewer keystrokes. So it is expanded here into N frequencies and handed
+ * to exactly the same path — past the window, past the generator's spacing
+ * rules, attributed to the designer — and everything downstream sees N stated
+ * positions and cannot tell which form typed them.
+ *
+ * WHY THE POSITIONS ARE SPACED IN HERTZ AND NOT IN OCTAVES. Every other
+ * position in this engine is laid out in octaves, because a window is a ratio
+ * and a spacing that is not is a spacing that means two different things at
+ * either end. This one is not a window. The designer wrote "2300 ± 100 Hz in
+ * 9 steps" and the only reading of that sentence in which the two edges are
+ * the two edges is the linear one; laying it out logarithmically would return
+ * positions nobody asked for, which is the whole defect being repaired.
+ *
+ * WHAT IS NOT DONE TO THE COUNT. `crossoverVariants` on the v1 route forces
+ * the step count odd so the pin centre is always among the slices, because
+ * there each candidate owns a SLICE of the band and a slice needs a centre.
+ * Here each position is a crossing in its own right and N means N: asking for
+ * nine and running ten would be the same class of defect as asking for nine
+ * and running three. When N is even the stated centre is therefore not among
+ * the positions, and that is SAID rather than corrected.
+ */
+export function expandStatedRange(r: StatedRangeInput, pairLabel: string): ExpandedStatedRange {
+  const notes: string[] = [];
+  const problems: string[] = [];
+  const centre = r.centreHz;
+  if (centre === null || !Number.isFinite(centre) || centre <= 0) {
+    problems.push(
+      `${pairLabel}: the crossover point is on, but its centre frequency is empty or is not a ` +
+        'positive frequency, so no position can be laid out from it. Nothing is assumed in its ' +
+        'place — a frequency from another project is not a statement about this one.',
+    );
+    return { hz: [], notes, problems };
+  }
+  if (r.marginHz !== null && (!Number.isFinite(r.marginHz) || r.marginHz < 0)) {
+    problems.push(
+      `${pairLabel}: the crossover point's margin is not a width (${String(r.marginHz)}), so the ` +
+        'band it names cannot be read and no position is laid out from it.',
+    );
+    return { hz: [], notes, problems };
+  }
+  const margin = r.marginHz ?? 0;
+  if (r.marginHz === null) {
+    notes.push(
+      `${pairLabel}: the crossover point states no margin, so it is read as exactly ` +
+        `${formatEdge(centre)} Hz — one position, not a band. The search room a pin leaves itself ` +
+        'is a different thing and is not borrowed here: a stated position is a position.',
+    );
+  }
+  const asked = Math.round(r.steps);
+  if (!Number.isFinite(asked) || asked < 1) {
+    problems.push(
+      `${pairLabel}: the crossover point asks for ${String(r.steps)} positions, which is not a ` +
+        'count, so nothing is laid out from it.',
+    );
+    return { hz: [], notes, problems };
+  }
+  const lo = Math.max(0, centre - margin);
+  const hi = centre + margin;
+  const raw: number[] = [];
+  if (asked === 1 || !(hi > lo)) {
+    raw.push(centre);
+    if (asked > 1) {
+      notes.push(
+        `${pairLabel}: ${asked} positions were asked for across ${formatEdge(centre)} ± ` +
+          `${formatEdge(margin)} Hz, but that band is a single point, so it is ONE position. ` +
+          'Widen the margin to get more.',
+      );
+    }
+  } else {
+    const spacing = (hi - lo) / (asked - 1);
+    for (let i = 0; i < asked; i++) raw.push(lo + spacing * i);
+    if (asked % 2 === 0) {
+      notes.push(
+        `${pairLabel}: ${asked} is an even count, so the stated centre ${formatEdge(centre)} Hz is ` +
+          'not itself among the positions — they straddle it. An odd count puts it in the middle.',
+      );
+    }
+  }
+  const hz = [...new Set(raw.map(roundEdge))].sort((a, b) => a - b);
+  if (hz.length < raw.length) {
+    notes.push(
+      `${pairLabel}: ${raw.length - hz.length} of the ${raw.length} positions fell on a frequency ` +
+        'another one already holds and are one position, not several. That is arithmetic and not ' +
+        'a thinning: two identical frequencies ARE one crossing.',
+    );
+  }
+  if (hz.length > 0) {
+    notes.push(
+      `${pairLabel}: the crossover point ${formatEdge(centre)} ± ${formatEdge(margin)} Hz in ` +
+        `${asked} step(s) was expanded into ${hz.length} STATED position(s) — ` +
+        `${hz.map(formatEdge).join(', ')} Hz. They take the same path as the ones typed into the ` +
+        'list: each is a candidate of its own, none is measured against the window before it runs, ' +
+        'and none is thinned by the chain budget. That is one chain each.',
+    );
+  }
+  return { hz, notes, problems };
+}
+
+/** One parse, the ranges beside it, and everything either of them said. */
+export interface MergedStatedCrossings extends ParsedStatedCrossings {
+  /** What the expansion and the merge did — additions to the run notes. */
+  notes: string[];
+}
+
+/**
+ * THE TWO FORMS ARE ONE SET, PER HANDOVER.
+ *
+ * A designer who typed a list AND pinned a crossover point stated both, and
+ * dropping either because the other exists would be the silence this session
+ * exists to remove. So the axis is the UNION, deduplicated and ascending, and
+ * the note says how many came from where. A frequency both forms name is one
+ * position, for the same reason two identical frequencies in one list are.
+ *
+ * `problems` carries the list parser's own complaints through unchanged: the
+ * list form's behaviour is not touched by any of this, which is what keeps a
+ * project that never pinned anything byte-identical to what it was (P2).
+ */
+export function mergeStatedCrossings(args: {
+  parsed: ParsedStatedCrossings;
+  /** One per adjacent pair, index-aligned with `pairLabels`; null = no range. */
+  ranges: readonly (StatedRangeInput | null)[];
+  pairLabels: readonly string[];
+}): MergedStatedCrossings {
+  const notes: string[] = [];
+  const problems = [...args.parsed.problems];
+  /* NOTHING PINNED IS NOTHING ADDED, and it is answered before anything else
+   * so that the list form takes literally the path it took before U-5b. */
+  if (!args.ranges.some((r) => r !== null)) {
+    return { ...args.parsed, notes };
+  }
+  const perAxisHz = args.pairLabels.map((label, i) => {
+    const list = args.parsed.perAxisHz[i] ?? [];
+    const range = args.ranges[i] ?? null;
+    if (range === null) {
+      if (list.length === 0) {
+        problems.push(
+          `${label}: the crossover point form has no field for this handover, so it states nothing ` +
+            'here. A candidate is a complete set of handovers — type a frequency for it in the ' +
+            'list field, on its own line.',
+        );
+      }
+      return [...list];
+    }
+    const ex = expandStatedRange(range, label);
+    notes.push(...ex.notes);
+    problems.push(...ex.problems);
+    const both = list.filter((f) => ex.hz.includes(f)).length;
+    const union = [...new Set([...list, ...ex.hz])].sort((a, b) => a - b);
+    if (list.length > 0 && ex.hz.length > 0) {
+      notes.push(
+        `${label}: ${union.length} stated position(s) in all — ${list.length} typed into the list, ` +
+          `${ex.hz.length} from the crossover point` +
+          (both > 0 ? `, ${both} named by both and counted once` : '') +
+          '. Both are yours, so neither replaces the other.',
+      );
+    }
+    return union;
+  });
+  /* The list parser's "this handover is empty" complaint is about the LIST,
+   * and a handover the range form filled is not empty. Drop exactly those and
+   * nothing else, so every other thing it could not use still arrives. */
+  const filled = new Set(
+    args.pairLabels.filter((_, i) => perAxisHz[i].length > 0 && (args.parsed.perAxisHz[i] ?? []).length === 0),
+  );
+  const kept = problems.filter((p) => ![...filled].some((l) => p.startsWith(`${l}: no crossing was stated`)));
+  return {
+    perAxisHz,
+    problems: kept,
+    notes,
+    complete: perAxisHz.every((a) => a.length > 0),
+  };
+}
+
+/**
+ * The stated positions in one sentence, for the notice that runs before the
+ * scan starts.
+ *
+ * It exists because the notice is the LAST place a designer can still change
+ * their mind, and until U-5b the only thing it said about stated crossings was
+ * how many of them the window forbids. A designer who asked for nine positions
+ * and is about to spend nine chain runs on them should read the nine
+ * frequencies, on the screen that asks whether to start.
+ *
+ * Null when nothing is stated, so the notice keeps exactly the shape it had.
+ */
+export function describeStatedPositions(
+  pairLabels: readonly string[],
+  perAxisHz: readonly (readonly number[])[] | null | undefined,
+): string | null {
+  if (!perAxisHz || perAxisHz.length === 0) return null;
+  const axes = pairLabels
+    .map((label, i) => ({ label, hz: perAxisHz[i] ?? [] }))
+    .filter((a) => a.hz.length > 0);
+  if (axes.length === 0) return null;
+  const total = axes.reduce((n, a) => n * a.hz.length, 1);
+  const per = axes
+    .map((a) => `${a.label}: ${a.hz.map(formatEdge).join(', ')} Hz`)
+    .join(' · ');
+  return (
+    `You stated ${axes.map((a) => a.hz.length).join(' × ')} crossing(s) — ${per}. ` +
+    `They become ${total} candidate(s) beside the derived field, one full chain run each: every ` +
+    'one of them is tuned and judged, none is dropped for being outside a window and none is ' +
+    'thinned by the chain budget.'
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * What one breached limit asks for
  * ------------------------------------------------------------------ */
 

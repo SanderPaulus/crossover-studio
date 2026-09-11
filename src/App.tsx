@@ -258,7 +258,13 @@ import {
 } from './lib/engine2/optimizer/scanRequest.ts';
 /* U-5 — the crossings the DESIGNER states, read out of the run field and built
  * into candidates beside the derived ones. */
-import { parseStatedCrossings } from './lib/engine2/predesign/statedCrossings.ts';
+import {
+  describeStatedPositions,
+  expandStatedRange,
+  mergeStatedCrossings,
+  parseStatedCrossings,
+  type StatedRangeInput,
+} from './lib/engine2/predesign/statedCrossings.ts';
 import { seriesRMaxOhmOf, type LowestWayLevelWork } from './lib/levelWork.ts';
 import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
@@ -4543,6 +4549,57 @@ export default function App() {
     return [f - m, f + m];
   };
 
+  /**
+   * U-5b — THE CROSSOVER POINT, READ AS STATED CROSSINGS, one entry per
+   * adjacent handover.
+   *
+   * MEASURED BEFORE IT WAS WRITTEN (`scripts/measure-u5b-range.ts`): on the v2
+   * route this form reached NOTHING. Every candidate carries its own cage and
+   * its own judge window, and `candidateDeclaration.ts` states `xoRangePairs`
+   * from that cage, so the pin was overwritten before the worker saw it; the
+   * step count fed `stepsPerAxis`, which an exploration discards outright. A
+   * designer who pinned 2300 ± 100 Hz in 9 steps got the derived field
+   * instead — the window centre and its neighbours, not one of them inside
+   * the pinned band — with nothing anywhere on the screen saying so.
+   *
+   * `centre ± margin in N steps` is the list field said in fewer keystrokes,
+   * so that is what it now is: N stated positions down the same path (U-5),
+   * past the window and past the generator's spacing, attributed to the
+   * designer. The expansion itself is a pure function and lives with the form
+   * it is sugar for (`statedCrossings.ts`).
+   *
+   * ONLY WHAT THE DESIGNER'S OWN FIELD HOLDS. The pin fields carry v1 legacy
+   * defaults — a frequency from another project, audit §7 — and the checkbox
+   * is what makes them a statement: off, and this returns nothing at all, so a
+   * project that never pinned anything builds exactly the field it always did
+   * (P2). A field that holds nothing readable is REPORTED and stands in for
+   * nothing (`expandStatedRange`).
+   *
+   * N-WAY BY CONSTRUCTION: the form has a field for the LOWEST handover and
+   * one for the HIGHEST, which is every handover of a two- or three-way and
+   * not every handover of a four-way. A handover with no field of its own gets
+   * no range and says so, rather than borrowing one from a neighbour.
+   */
+  const v2StatedRanges = (pairCount: number): (StatedRangeInput | null)[] => {
+    const none = Array.from({ length: Math.max(0, pairCount) }, () => null as StatedRangeInput | null);
+    if (!xoRangeOn || pairCount < 1) return none;
+    const numOrNull = (v: string): number | null => {
+      const n = Number(String(v).trim());
+      return String(v).trim() !== '' && Number.isFinite(n) ? n : null;
+    };
+    const steps = pairCount > 1 ? scanSteps3 : scanSteps2;
+    const out = [...none];
+    out[pairCount - 1] = {
+      centreHz: numOrNull(xoFreqHz),
+      marginHz: numOrNull(xoMarginHz),
+      steps,
+    };
+    if (pairCount > 1) {
+      out[0] = { centreHz: numOrNull(xoLowFreqHz), marginHz: numOrNull(xoLowMarginHz), steps };
+    }
+    return out;
+  };
+
 
   /** Single-driver mode: exactly one measurement loaded. The sim runs on that
    *  branch alone (silent ghost in the other slot); everything inherently
@@ -6329,6 +6386,42 @@ export default function App() {
       ),
     [engineV2Report],
   );
+
+  /**
+   * U-5b — WHAT THE CROSSOVER POINT WILL ACTUALLY RUN, beside the fields that
+   * set it.
+   *
+   * The same expansion the run takes (`expandStatedRange`), read a second time
+   * for the screen — one implementation, two readers, the shape this project
+   * uses wherever a readout and a run must not be able to disagree. It was
+   * added because the defect this repairs was invisible from the form: the
+   * fields said 2300 ± 100 in 9 steps and the run did something else entirely,
+   * with nothing on the page between the two.
+   */
+  const v2StatedRangeLines = useMemo(() => {
+    const n = v2StatedAxisLabels.length;
+    if (!engineV2Enabled || !xoRangeOn || n === 0) return [];
+    const ranges = v2StatedRanges(n);
+    return v2StatedAxisLabels.flatMap((label, i) => {
+      const r = ranges[i];
+      if (!r) return [];
+      const ex = expandStatedRange(r, label);
+      return [...ex.problems, ...ex.notes];
+    });
+    /* The dependency list names the STATE `v2StatedRanges` closes over rather
+     * than the helper itself: the helper is rebuilt on every render, so naming
+     * it would recompute this on every keystroke anywhere in the app. */
+  }, [
+    engineV2Enabled,
+    xoRangeOn,
+    v2StatedAxisLabels,
+    xoFreqHz,
+    xoMarginHz,
+    xoLowFreqHz,
+    xoLowMarginHz,
+    scanSteps2,
+    scanSteps3,
+  ]);
 
   /** One handover's verdict against its window. Null with the toggle off. */
   const v2Advice = (side: 'low' | 'high'): RangeAdvice | null => {
@@ -8134,18 +8227,28 @@ export default function App() {
          * said out loud in the run notes rather than dropped: a frequency typed
          * into a field and silently ignored is the worst possible outcome for a
          * setting whose whole purpose is that nothing is silent. */
-        const statedParse = parseStatedCrossings(
-          engineV2Settings.statedCrossings,
-          wis.map((wi) => `${wi.lower}\u2192${wi.upper}`),
-        );
-        if (engineV2Settings.statedCrossings.trim() !== '' && statedParse.problems.length > 0) {
-          setV2RunNotes((prev) => [...prev, ...statedParse.problems]);
+        const statedLabels = wis.map((wi) => `${wi.lower}\u2192${wi.upper}`);
+        const statedParse = parseStatedCrossings(engineV2Settings.statedCrossings, statedLabels);
+        /* U-5b — the crossover-point form is the same statement in fewer
+         * keystrokes, so it is expanded into stated positions and merged with
+         * the typed list. Nothing pinned = the parse, untouched. */
+        const stated = mergeStatedCrossings({
+          parsed: statedParse,
+          ranges: v2StatedRanges(wis.length),
+          pairLabels: statedLabels,
+        });
+        if (stated.notes.length > 0) setV2RunNotes((prev) => [...prev, ...stated.notes]);
+        if (
+          (engineV2Settings.statedCrossings.trim() !== '' || xoRangeOn) &&
+          stated.problems.length > 0
+        ) {
+          setV2RunNotes((prev) => [...prev, ...stated.problems]);
         }
         return {
           windowInputs: wis,
           perPair,
           fieldSettings,
-          ...(statedParse.complete ? { statedPerAxisHz: statedParse.perAxisHz } : {}),
+          ...(stated.complete ? { statedPerAxisHz: stated.perAxisHz } : {}),
         };
       })();
       const v2Generated = v2FieldRequest
@@ -8264,10 +8367,21 @@ export default function App() {
             },
           ],
         );
-        if (estimate.message) {
+        /* U-5b — THE STATED POSITIONS ARE READ OUT IN THE NOTICE, and the
+         * notice now appears for them even when the window admits every one.
+         * "Nine positions, nine chain runs, here they are" is the sentence a
+         * designer needs on the screen that asks whether to start; before
+         * U-5b it only appeared when something was outside a window, so a
+         * pinned band well inside one spent hours without a word. */
+        const statedLine = describeStatedPositions(
+          v2FieldRequest?.windowInputs.map((wi) => `${wi.lower}\u2192${wi.upper}`) ?? [],
+          v2FieldRequest?.statedPerAxisHz,
+        );
+        const notice = [statedLine, estimate.message].filter((x): x is string => !!x).join(' ');
+        if (notice !== '') {
           setVfBusy(false);
           setV2PreStart({
-            message: estimate.message,
+            message: notice,
             proceed: () => {
               setV2PreStart(null);
               void runVfOptimize({ ...runOpts, acknowledgedWindowNotice: true }).catch((e) => {
@@ -9434,18 +9548,27 @@ export default function App() {
            * said out loud in the run notes rather than dropped: a frequency typed
            * into a field and silently ignored is the worst possible outcome for a
            * setting whose whole purpose is that nothing is silent. */
-          const statedParse = parseStatedCrossings(
-            engineV2Settings.statedCrossings,
-            wis.map((wi) => `${wi.lower}\u2192${wi.upper}`),
-          );
-          if (engineV2Settings.statedCrossings.trim() !== '' && statedParse.problems.length > 0) {
-            setV2RunNotes((prev) => [...prev, ...statedParse.problems]);
+          const statedLabels = wis.map((wi) => `${wi.lower}\u2192${wi.upper}`);
+          const statedParse = parseStatedCrossings(engineV2Settings.statedCrossings, statedLabels);
+          /* U-5b — the crossover-point form expanded into stated positions and
+           * merged with the typed list; nothing pinned = the parse, untouched. */
+          const stated = mergeStatedCrossings({
+            parsed: statedParse,
+            ranges: v2StatedRanges(wis.length),
+            pairLabels: statedLabels,
+          });
+          if (stated.notes.length > 0) setV2RunNotes((prev) => [...prev, ...stated.notes]);
+          if (
+            (engineV2Settings.statedCrossings.trim() !== '' || xoRangeOn) &&
+            stated.problems.length > 0
+          ) {
+            setV2RunNotes((prev) => [...prev, ...stated.problems]);
           }
           return {
             windowInputs: wis,
             perPair,
             fieldSettings,
-            ...(statedParse.complete ? { statedPerAxisHz: statedParse.perAxisHz } : {}),
+            ...(stated.complete ? { statedPerAxisHz: stated.perAxisHz } : {}),
           };
         })();
         const v2Generated = v2FieldRequest
@@ -9497,10 +9620,17 @@ export default function App() {
               },
             ],
           );
-          if (estimate.message) {
+          /* U-5b — the stated positions are read out here too, and the notice
+           * appears for them even when every one is inside the window. */
+          const statedLine = describeStatedPositions(
+            v2FieldRequest?.windowInputs.map((wi) => `${wi.lower}\u2192${wi.upper}`) ?? [],
+            v2FieldRequest?.statedPerAxisHz,
+          );
+          const notice = [statedLine, estimate.message].filter((x): x is string => !!x).join(' ');
+          if (notice !== '') {
             setVfBusy(false);
             setV2PreStart({
-              message: estimate.message,
+              message: notice,
               proceed: () => {
                 setV2PreStart(null);
                 void runVfOptimize({ ...runOpts, acknowledgedWindowNotice: true }).catch((e) => {
@@ -19138,7 +19268,7 @@ export default function App() {
                   {t('Use real catalog parts')}{!hasImportedCatalog() && ` ${t('(needs import)')}`}
                 </label>
                 <span className="opt-group-cap">{t('Crossover')}</span>
-                <label title={t('Pin the ACOUSTIC crossover: the frequency where the filtered drivers actually cross must land within frequency ± margin — in the design optimizer AND the component tuner. Margin 0 = exactly there (±2% search room remains).')}>
+                <label title={t('Pin the ACOUSTIC crossover. On Engine v2 this is the short way of writing the "Crossings you state" list (U-5b): centre ± margin in N steps is expanded into N stated positions, each of which gets a full chain run, the full gate evaluation and the full requirement evaluation — past the feasible window and past the chain budget, exactly as a frequency typed into that list. The positions it will use are printed below. Off = nothing is stated and the derived field is the whole field.')}>
                   <input
                     type="checkbox"
                     checked={xoRangeOn}
@@ -19324,7 +19454,7 @@ export default function App() {
                         <select
                           value={xoScanSteps}
                           onChange={(e) => setXoScanSteps(Number(e.target.value))}
-                          title={t('How many crossover candidates the scan simulates across the pinned range (evenly spaced, your pin always included). Every candidate runs the FULL design chain, so compute grows about linearly — the worker pool runs several at once, but 9 steps still takes a multiple of 3. More steps = a finer sweep of the handover region.')}
+                          title={t('How many positions the scan lays across the pinned band, evenly spaced in hertz and including both edges. On Engine v2 each one becomes a crossing you STATED (U-5b): it is tuned and judged in full, it is not measured against the feasible window first, and the chain budget does not thin it — so N here is N full chain runs. An odd count puts your centre frequency among them; an even one straddles it.')}
                         >
                           {[3, 5, 7, 9].map((n) => (
                             <option key={n} value={n}>
@@ -19337,6 +19467,23 @@ export default function App() {
                         )}
                       </>
                     )}
+                  </span>
+                )}
+                {/* U-5b — WHAT THIS FORM WILL ACTUALLY RUN, beside the fields
+                  * that set it. Until U-5b the crossover point reached nothing
+                  * at all on the v2 route — every candidate carried its own
+                  * cage and its own judge window, and the step count fed a
+                  * number an exploration discards — so the form said one thing
+                  * and the run did another, with nothing on the page in
+                  * between. It is the same expansion the run takes, read a
+                  * second time (`expandStatedRange`). */}
+                {v2StatedRangeLines.length > 0 && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    {v2StatedRangeLines.map((l, i) => (
+                      <span key={i} style={{ display: 'block' }}>
+                        {l}
+                      </span>
+                    ))}
                   </span>
                 )}
                 {/* DELIVERABLES 1 + 2 — the A5d.3 window beside the fields
