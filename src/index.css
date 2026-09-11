@@ -1098,16 +1098,55 @@ svg.legend-key-dash {
   font-weight: 600;
 }
 
+/* U-6 — ONE STATUS WORD PER ROW, and never a sentence: the reason lives in the
+   cell's tooltip and, in full, under "About this run". */
+.v2-badge {
+  font-size: 0.78em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 0.28em;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+.v2-badge-stated {
+  border-color: var(--accent, currentColor);
+  color: var(--accent, inherit);
+  opacity: 0.9;
+}
+
+/* U-6 — everything that ACCOUNTS for the run, behind one collapsed line.
+   Nothing in it was rewritten or dropped; it is one click away instead of six
+   scroll-lengths above the answer. */
+.v2-about {
+  margin: 1rem 0 0.6rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+.v2-about > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--muted);
+}
+.v2-about > summary .derived {
+  font-weight: 400;
+}
+
 /* V31's refusals, on screen for the first time (UI-1). Not a table and not
-   clickable, on purpose: there is no design here to load or to compare. */
+   clickable, on purpose: there is no design here to load or to compare.
+   U-6 — and a fold since then, closed by default: the list of designs comes
+   first, the list of non-designs one click behind it. */
 .shortlist-refused {
   border: 1px dashed var(--border);
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   margin: 0.6rem 0;
 }
-.shortlist-refused h5 {
-  margin: 0 0 0.2rem;
+.shortlist-refused > summary {
+  margin: 0;
+  cursor: pointer;
+  font-weight: 600;
 }
 .shortlist-refused ul {
   margin: 0.3rem 0 0 1.1rem;

@@ -9956,6 +9956,177 @@ TOPOLOGIEKLASSE (LR4), en dat staat als één notitie in plaats van als een zin 
 dezelfde waarneming is ruis, één keer is het het antwoord op "andere vormen, of dezelfde vorm met
 andere waarden?".
 
+### U-6 — het resultaatgebied opgeschoond: de shortlist eerst, het netwerk eronder, de verantwoording achter één regel (11-09-2026, alleen UI/ordening; **geen engine-, oordeel- of tekstwijziging — wat er stond staat er nog, in dezelfde woorden**)
+
+**WAT SANDER ZAG.** Na een run landt de app op de Network-tab (`setDesignTab('network')`), en
+daar begon het paneel met de kop van de editor, twee alinea's over slepen en draden, een toolbar
+van 234 bronregels, vier tune-audits, een groene regel, een Pareto-plot en de v1-rangschikking met
+haar acht kolommen — **en dán pas de shortlist, met het schema nog vier blokken verder naar
+beneden.** De twee dingen waar een afgeronde run over gaat waren het zevende en het twaalfde ding
+op de pagina.
+
+Zo is dat ook ontstaan, en niet in één commit: élke sessie sinds F2b legde er één eerlijke alinea
+bij — een stempel (F2b), een veldmodus (E-2), een laddersentence (F3), een overgeslagen-eis-regel
+(I-3), een Pareto (B3), een tweede rangschikking met eigen kop (UI-1) — en elk van die alinea's had
+gelijk dat zij bestond. Wat niemand bezat was de VOLGORDE.
+
+#### Stap 1 — de inventaris: élk blok, wanneer het verschijnt, en waar het heen gaat
+
+De tabel is DATA en geen proza: zij staat in `src/lib/v2ResultLayout.ts` (`V2_RESULT_BLOCKS`,
+vijfendertig blokken) met per blok wat het is, wanneer het verschijnt, wélk bronfragment het
+identificeert, waar het hoort en **waarom**. De guard leest diezelfde lijst. De kolom
+`bronregels` hieronder is het aantal regels dat het blok vóór U-6 in `App.tsx` besloeg — een proxy
+voor hoeveel pagina het innam, geen gerenderde hoogte.
+
+| blok | wanneer | bronregels | waarheen |
+| --- | --- | --- | --- |
+| `rescued-offer` — kandidaten uit een afgebroken scan aanbieden | een scan stierf met afgeronde kandidaten, en er staat geen tabel | 45 | **bovenaan** (kan niet naast een shortlist staan: `!chainScan`) |
+| `v1-ready` — de groene regel van een run zonder shortlist | er is een scantabel en géén shortlist | 11 | **bovenaan** (`!v2Shortlist` in de guard zelf) |
+| `shortlist-heading` — Shortlist · n van m gekwalificeerd | altijd, met een shortlist | 10 | **de badge-rij** |
+| `nothing-qualified` — niets gekwalificeerd, en welke eis elke kandidaat miste | het toelaatbaar gebied is leeg | 10 | **blijft zichtbaar** (blokkade; als hij vuurt is er geen tabel en IS deze lijst het resultaat) |
+| `nothing-loaded` — er is niets geladen, de Working-tab is onaangeraakt | een run eindigde zonder rij in Working | 7 | **blijft zichtbaar** (blokkade) |
+| `shortlist-table` — de tabel zelf | minstens één ontwerp gekwalificeerd | 122 | **eerste** |
+| `refusals` — de tunes die in hun geheel geweigerd zijn | minstens één kandidaat leverde niets | 34 | eigen uitklap onder de tabel, **dicht** |
+| `to-expert` — de overgang guided → expert | guided | 8 | onder de tabel (een actie, geen verantwoording) |
+| `network-heading` · `sim-source` · `editor-hint` · `editor-tools` | altijd op de Network-tab | 1 · 6 · 3 · 234 | **het netwerk** (zij beschrijven de editor, dus zij reizen met de editor mee) |
+| `schematic` + `sim-status` + `bom` | er is een netwerk | 96 | **het netwerk, direct onder de tabel** — stond onder de audits, de vergelijktabel en de ontwerp-tabs |
+| `tune-note` · `tune-diff` · `minimize-report` · `part-audit` | een componenttune / minimalisatie / audit liep | 5 · 35 · 58 · 74 | het netwerk (zij antwoorden de ⚙-knop en niet de run) |
+| `tab-compare` · `design-tabs` | meer dan één ontwerp / minstens één | 67 · 76 | het netwerk |
+| `run-stamp` — seed, vingerafdruk, afgebroken-of-voltooid, Export run (JSON) | een v2-run maakte deze tabel | 27 | **Over deze run** |
+| `field-mode` — welk veld dit maakte, plus "Run the full field →" | de run droeg een veld | 24 | Over deze run |
+| `skipped-requirements` — welke vragen onbeantwoord bleven | guided vroeg ze en er bleven er over | 5 | Over deze run |
+| `ladder` — de zin die met deze rijen mee moet als de ladder versoepelde | de ladder bewoog | 3 | Over deze run |
+| `shortlist-ready` — wélk ontwerp in Working geladen is | er staat een rij in Working | 5 | Over deze run (de tabel markeert die rij zelf met ◂) |
+| `fingerprint-note` — de volgorde is een zicht en geen oordeel, plus de vingerafdruk | altijd, met een shortlist | 6 | Over deze run |
+| `shortlist-notes` | de shortlist droeg notities | 3 | Over deze run |
+| `stated` — elke gestelde kruising met wat elke overschreden grens vraagt | er is iets gesteld | 57 | Over deze run (mét zijn laadknoppen) |
+| `scan-reference-verdict` — niets versloeg het ontwerp dat je al had | er stond een referentie en niets versloeg haar | 31 | Over deze run |
+| `pareto` — kosten tegen kwaliteit | minstens twee kandidaten met een prijs | 83 | Over deze run |
+| `v1-reading-heading` + `v1-reading-table` — de v1-rangschikking over hetzelfde veld | er is een scantabel | 21 + 203 | Over deze run |
+| `v1-engine-note` — v2 staat aan maar deze scan liep op v1 | v2 gekozen, scantabel, geen v2-run | 6 | Over deze run |
+| `run-notes` — de notities die de run zelf schreef | de run schreef notities | 9 | Over deze run |
+
+#### DE REGEL, en zij is één zin
+
+> **VERANTWOORDING KLAPT IN, EEN BLOKKADE NOOIT.**
+
+Een blok dat de run UITLEGT, VERANTWOORDT of HERLEEST gaat achter één dichtgeklapte regel ("Over
+deze run"); een blok dat zegt dat er iets FOUT of GEBLOKKEERD is — niets gekwalificeerd, niets
+geladen, deze tekening kan niet gesimuleerd worden — blijft altijd staan, omdat een uitklap de plek
+is waar een probleem heen gaat om over het hoofd gezien te worden. **F0 overleeft allebei:** elke
+zin die de app vóór U-6 drukte drukt zij nog, in dezelfde woorden, hoogstens één klik verderop.
+
+#### DE BESLUITEN, en elk van hen kon ook anders
+
+1. **DE GROENE REGEL KLAPT IN, DE RODE NIET — en dat is dezelfde beslissing twee keer.** "Shortlist
+   ready — X is geladen" is een BEVESTIGING van iets dat de tabel zelf al met `◂` op de rij
+   markeert, dus hij gaat mee naar binnen. Zijn tweelingzus "No design was loaded: n van m" zegt dat
+   de app in een andere toestand staat dan de lezer denkt, en blijft. Tot U-6 waren het twee takken
+   van één ternary; sinds U-6 zijn het twee blokken die verschillende dingen zijn.
+2. **"NOTHING QUALIFIED" IS EEN BLOKKADE EN GEEN VERANTWOORDING.** De diagnose noemt per eis hoe
+   ver elke kandidaat eraf zat, en dat leest als verantwoording — maar als hij vuurt is er GEEN
+   tabel, dus deze lijst IS het resultaat. Inklappen zou een uitklap over een lege pagina zijn.
+3. **DE WEIGERINGEN KRIJGEN HUN EIGEN UITKLAP EN NIET DIE VAN "OVER DEZE RUN".** Zij horen bij de
+   lijst waar zij NIET in staan, en de vraag "wat is er met de rest gebeurd" wordt gesteld terwijl
+   je naar de tabel kijkt — niet drie schermen verder. Eén regel onder de tabel, dicht.
+4. **DE U-5b-TWEELINGEN WORDEN ÉÉN RIJ MET "×N identiek" — EN DAT IS EEN LEZING EN GEEN
+   UITDUNNING.** `groupShortlistRows` vouwt de gestelde posities die HET IDENTIEKE netwerk leverden
+   (exact, geen tolerantie, U-5b) in de eerste van hen en telt ze; élke gevouwen ingang houdt haar
+   volledige eigen ingang — oordelen, grenzen én laadknop — in de gestelde sectie onder "Over deze
+   run". Er verdwijnt niets; het wordt opgehouden negen keer te worden afgedrukt (F0). Een
+   AFGELEIDE rij wordt nooit ergens in gevouwen: `sameNetworkAs` is een veld dat alleen gestelde
+   ingangen dragen.
+5. **ÉÉN STATUSWOORD PER RIJ, EN DE REDEN IN DE TOOLTIP.** `geleverd` of `gesteld`, nooit een zin in
+   de rij. De volledige zin staat in de `title` van de ontwerp-cel en, uitgeschreven, in de gestelde
+   sectie. `geweigerd` is per constructie geen rij: een geweigerde kandidaat draagt geen netwerk en
+   staat in de weigeringen-uitklap (V31).
+6. **DE EDITOR-KOP REIST MEE NAAR BENEDEN IN PLAATS VAN HERSCHREVEN TE WORDEN.** "Network editor
+   (passive)" labelt de editor; boven een shortlist staat hij over het verkeerde ding. Hem
+   herschrijven zou een tekstwijziging zijn geweest — hem verplaatsen is er geen, en zonder run is
+   het paneel exact wat het was, want de shortlist rendert dan niet.
+7. **DE TUNE-AUDITS GAAN NAAR HET NETWERK EN NIET NAAR "OVER DEZE RUN".** Zij antwoorden de
+   ⚙-knop en beschrijven de TEKENING; zij weten niets van een run. De minimalisatie-uitklap opende
+   zichzelf (`<details open>`) — boven het resultaat van een run waar hij niets van weet — en is
+   sinds U-6 dicht zoals de andere drie.
+8. **DE KEUZE ONTHOUDT ZICH PER SESSIE EN NIET LANGER.** `sessionStorage`, niet `localStorage`: wie
+   "Over deze run" opent houdt hem open zolang hij bezig is, want een uitklap die zichzelf bij elke
+   re-render weer dichtdoet is er een waar je tegen vecht. Het is een keuze over DEZE run; hem
+   meenemen naar het project van volgende week zou een uitklap zijn die stilletjes stopte met
+   inklappen.
+
+#### DE GUARD — een nieuw resultaatblok zonder plaatsingsbesluit is een rode test
+
+`src/lib/v2ResultLayout.test.ts`, negentien claims in vijf groepen, en de vorm is die van U-3b
+(`v2InputPlacement.test.ts`) één laag stroomafwaarts: daar bewaakt hij het INVOERformulier, hier het
+UITVOERgebied.
+
+1. **De volgorde zelf.** Zes markers (`U-6 RESULT · SHORTLIST / TABLE / BELOW / NETWORK / ABOUT /
+   END`) bestaan elk precies één keer en staan in die volgorde; élk blok uit de inventaris staat in
+   de regio die zijn plaatsing noemt, precies één keer binnen het resultaatgebied; `<SchematicEditor`
+   staat ná de NETWORK-marker en vóór de ABOUT-marker.
+2. **Een blokkade nooit in een uitklap.** Élk blok met `blockade: true` staat vóór de ABOUT-marker.
+   De twee uitklappen dragen een BESTUURDE `open` en nooit een letterlijke, en `tune-audit` heeft er
+   geen meer.
+3. **De strook boven de tabel blijft schoon — en dit is de claim die drift vangt.** Het aantal
+   tekstdragende JSX-openingen (`<p`, `<ul`, `<li`, `<details`, `<h5`, `<h6`, commentaar eraf) in de
+   regio's `top` en `shortlist-head` moet EXACT gelijk zijn aan wat de inventaris daar declareert.
+   Wie er een alinea bij zet zonder rij in `V2_RESULT_BLOCKS` laat de som niet meer kloppen.
+4. **De uitklappen onthouden zich per sessie**, en de module gebruikt aantoonbaar geen
+   `localStorage`.
+5. **De groepering als zuivere functie**: niets gesteld = het veld van altijd; een tweeling vouwt in
+   haar gastheer met de telling en de labels; een tweeling wiens gastheer GEEN rij is blijft staan
+   (anders verdwijnt de enige plek waar zij gedrukt wordt); de gestelde sectie staat met haar
+   laadknop in de uitklap.
+
+**Nagemeten dat hij kán falen**, met drie opzettelijke breuken: een `<p className="sub">` boven de
+tabel (1 rood, met de zin "file it in V2_RESULT_BLOCKS with a reason"), `open` op de "Over deze
+run"-uitklap (1 rood), en de v1-motornotitie uit de uitklap terug naar boven de tabel (2 rood).
+
+#### WAT DEZE SESSIE NIET DOET, en waarom
+
+- **Geen enkele zin is herschreven of geschrapt.** Elke tekst die het resultaatgebied vóór U-6
+  drukte drukt het nog, woordelijk. Vijf STRINGS zijn erbij gekomen en alle vijf zijn LABELS van
+  een container of van een rijstatus: "About this run", de onderkop erachter, `delivered`, `stated`
+  en "×{n} identical".
+- **Geen engine-, poort-, venster-, budget- of corpuswijziging.** Geen keuze-sleutel erbij
+  (`choiceKeyGuard` staat op 54), geen vingerafdruk-ingrediënt, geen regeneratie.
+  `SHORTLIST_SELECTION_VERSION` beweegt niet: er verschuift geen rij en er valt geen kandidaat af —
+  de groepering gebeurt in de WEERGAVE en de shortlist levert onveranderd wat zij leverde.
+- **De `· stated`-achtervoeging op het LABEL blijft staan naast de badge, en dat is een bewuste
+  dubbeling.** Het label is de IDENTITEIT van de kandidaat — het reist naar de herkomst, de v1-tabel
+  en de gestelde sectie — en dit project heeft bij U-5 al betaald voor één driver met twee namen in
+  één alinea. Het label wordt dus verbatim afgedrukt; de badge geeft élke rij hetzelfde statuswoord
+  op dezelfde plek, ook de afgeleide.
+- **De v1-tak is niet aangeraakt.** Zonder shortlist rendert het shortlist-blok niet en is het
+  paneel exact wat het was, op de volgorde van de editor-chrome na.
+
+#### DE BROWSERCONTROLE — vóór en ná, op één machine, met dezelfde run
+
+Headless Chrome op de dev-server, 1600 × 900 @ DPR 2, kale tweewegdemo (casus 1b sinds U-3), met
+`2200, 2300, 2400` in het U-5-veld getypt zodat er gestelde kandidaten in het veld zitten. Acht
+kandidaten (vijf afgeleid + drie gesteld), **180 s**, zeven gekwalificeerd, één gestelde buiten het
+venster. Beide helften zijn dezelfde run op dezelfde machine; alleen `App.tsx` verschilt.
+
+| gemeten in de draaiende app | vóór U-6 | ná U-6 |
+| --- | --- | --- |
+| blokken bóven de shortlist | **11** | **0** |
+| tekens tekst bóven de shortlist | **25 964** | **0** |
+| bovenkant van de shortlist-TABEL | **7676 px** | **194 px** |
+| bovenkant van het SCHEMA | **9208 px** | **715 px** |
+| uitklappen dicht bij binnenkomst | — | BOM, part audit, **Over deze run** |
+
+De viewport is 900 px hoog. Vóór U-6 lag de tabel dus ruim acht schermen naar beneden en het schema
+tien; ná U-6 staat de shortlist volledig op het eerste scherm (194–673 px) en begint het netwerk er
+nog net op (715 px, dus de bovenste 185 px van de tekening). **Dat de tabel op 7676 px stond is geen tikfout en ook geen extreem geval:**
+het is dezelfde kale demo waarmee U-3b gemeten is, zonder één ingevulde eis, en die 26 000 tekens
+zijn de v1-tabel met haar acht kolommen, de Pareto, de audits en de toolbar — allemaal blokken die
+terecht bestaan.
+
+De rijen dragen sindsdien één statuswoord: `low→high 2300 LR4 · stated` leest `gesteld`,
+`low→high 2177,6 LR4` leest `geleverd`, en de geladen rij houdt haar `◂`. De gestelde sectie staat
+compleet in de uitklap, met haar laadknoppen. `sim-status` ("Simulated as drawn — every part has a
+path to the generator") staat onder het schema en aantoonbaar NIET in een uitklap.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

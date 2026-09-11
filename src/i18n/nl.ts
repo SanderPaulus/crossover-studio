@@ -1965,4 +1965,10 @@ export const nl: Record<string, string> = {
   "valid {lo}–{hi} Hz": "geldig {lo}–{hi} Hz",
   "Cannot tune yet": "Kan nog niet tunen",
   "unverified": "ongeverifieerd",
+  // ── U-6: het resultaatgebied ─────────────────────────────────────────
+  "About this run": "Over deze run",
+  "origin and fingerprint · what the ladder relaxed · what went unjudged · the crossings you stated · the v1 reading of the same field": "herkomst en vingerafdruk · wat de ladder versoepelde · wat niet beoordeeld is · de kruispunten die je zelf stelde · de v1-lezing van hetzelfde veld",
+  "delivered": "geleverd",
+  "stated": "gesteld",
+  "×{n} identical": "×{n} identiek",
 };

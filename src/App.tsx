@@ -376,6 +376,13 @@ import {
   type StoredFile,
 } from './lib/project.ts';
 import { minimumPhaseDeg } from './lib/minphase.ts';
+import {
+  groupShortlistRows,
+  readDisclosure,
+  statusTitle,
+  writeDisclosure,
+  V2_DISCLOSURE_KEYS,
+} from './lib/v2ResultLayout.ts';
 import { bridgeDelaysUs, excessDelayMsOf } from './lib/vituixBridge.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import DriverFilterControls from './components/FilterControls.tsx';
@@ -10508,6 +10515,19 @@ export default function App() {
    */
   const [shortlistPick, setShortlistPick] = useState<string | null>(null);
   /**
+   * U-6 — THE TWO FOLDS OF THE RESULT AREA, remembered per SESSION.
+   *
+   * "About this run" and the refusals open closed, because after a run the
+   * questions are "which design" and "what does it look like" and everything
+   * else is the answer to a later question. Whoever opens one keeps it open
+   * for the rest of the session — a fold that re-closes itself on every
+   * re-render is a fold you fight rather than use — and no longer than that:
+   * it is a choice about THIS run, and carrying it into next week's project
+   * would be a fold that quietly stopped folding.
+   */
+  const [aboutRunOpen, setAboutRunOpen] = useState(() => readDisclosure(V2_DISCLOSURE_KEYS.about));
+  const [refusedOpen, setRefusedOpen] = useState(() => readDisclosure(V2_DISCLOSURE_KEYS.refused));
+  /**
    * UI-1 — M-F-FINAL PER SHORTLIST ROW: the vertical lobing synthesis.
    *
    * The one lobing quantity that is allowed to carry a judgement (V20a). The
@@ -19896,7 +19916,444 @@ export default function App() {
             {designTab === 'network' && result && (
         <>
           <div className="panel">
+            {/* ================================================================
+                U-6 — THE RESULT AREA, IN THE ORDER A READER NEEDS IT.
+
+                Until U-6 this panel opened with the editor heading, two
+                paragraphs about dragging parts, a toolbar, four tune audits, a
+                green line, a Pareto plot and the v1 ranking with its eight
+                columns — and THEN the shortlist, with the schematic four blocks
+                further down again. The two things a finished run is about were
+                the seventh and the twelfth thing on the page.
+
+                The order is now: the shortlist, the network it chose, and one
+                collapsed line holding everything that accounts for the run.
+                Not one sentence has been rewritten or dropped — F0 survives a
+                fold — but a block that reports a FAILURE never folds: nothing
+                qualified, nothing was loaded, this drawing cannot be simulated.
+                `src/lib/v2ResultLayout.ts` is the inventory and the rule; its
+                test scans this file and fails on a block that arrives here
+                without a placement decision (the U-3b form, output side).
+               ================================================================ */}
+            {rescued && !chainScan && !vfBusy && (
+              /* A scan that died with finished candidates in it. Offered, not
+                 applied: the user did not ask for this table to come back, and
+                 quietly repopulating it would be a second surprise after the
+                 first one. */
+              <p className="result-good">
+                ⭯{' '}
+                {t('{n} candidates survived from a scan that was interrupted ({label}). They are complete designs — nothing was lost but the one still running.', {
+                  n: String(rescued.rows.length),
+                  label: rescued.label,
+                })}{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ranked = rankChain3Results(
+                      rescued.rows,
+                      stagedOn ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) } : undefined,
+                      phasePriority / 100,
+                      dirWeight / 100,
+                      rSourceLimitOhm,
+                      bomCapEur,
+                      ampMinLoadOhm ?? 0,
+                    );
+                    // No winner crown: this field is partial, and a crown on a
+                    // partial field is the "ranking is not approving" mistake
+                    // this session already wrote down twice.
+                    setScanSort(null);
+                    setChainScan({ rows: ranked.map((rr) => chain3ScanRow(rr, null)), active: '' });
+                    void dropScanRun(rescued.runId);
+                    setRescued(null);
+                  }}
+                >
+                  {t('Show them')}
+                </button>{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    void dropScanRun(rescued.runId);
+                    setRescued(null);
+                  }}
+                >
+                  {t('Discard')}
+                </button>
+              </p>
+            )}
+            {chainScan && !v2Shortlist && (
+              /* The success moment of a multi-minute run deserves its own
+                 visual register — one green line that says it worked, where
+                 the result lives, and that the table below is a MENU, before
+                 the eye hits eight columns of numbers. */
+              <p className="result-good">
+                ✓ {t('Design ready — the winner is loaded in the')} <strong>Working</strong>{' '}
+                {t('tab and every chart shows it. The rows below are the full candidates: click one to try it, 💾 Save keeps the one you trust.')}
+                {staleTag}
+              </p>
+            )}
+            {/* F3 — THE SHORTLIST (A5e.1).
+                The feasible region, spread over topology classes, ordered by
+                RMS flatness. Sorting is presentation: every column re-sorts
+                and none of them changes which designs are in the list. */}
+            {v2Shortlist && (
+              <div className="shortlist">
+                {/* U-6 RESULT · SHORTLIST */}
+                <h4>
+                  {t('Shortlist')}{' '}
+                  <span className="derived">
+                    {t('{n} of {m} candidates qualified', {
+                      n: String(v2Shortlist.feasibleCount),
+                      m: String(v2Shortlist.consideredCount),
+                    })}
+                  </span>
+                  {staleTag}
+                </h4>
+                {/* U-6 — A BLOCKADE NEVER FOLDS. Everything else that stood
+                    here now sits under "About this run"; these two stay,
+                    because a fold is where a problem goes to be missed. */}
+                {v2Shortlist.diagnosis.length > 0 && (
+                  <div className="sub">
+                    <strong>{t('Nothing qualified.')}</strong>
+                    <ul style={{ margin: '0.3rem 0 0 1rem' }}>
+                      {v2Shortlist.diagnosis.map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* UI-1 — ON THE v2 ROUTE THE SENTENCE IS ABOUT THE SHORTLIST.
+                The line above said "the winner is loaded in the Working tab"
+                over a run whose Working tab was empty, because the winner it
+                meant was the v1 ranking's and that candidate had been refused.
+                Two states now, and the second one is the whole point: a run
+                that qualified nothing says so, and says that nothing was
+                loaded — rather than quietly showing a design that failed. */}
+                {shortlistPick === null && (
+                  <p className="result-warn">
+                    ⚠{' '}
+                    {t('No design was loaded: {n} of {m} candidates meet the requirements you stated. The Working tab is untouched — the v1 ranking below has no knowledge of your gates or requirements, so its top row is not a stand-in for an empty shortlist.', {
+                      n: String(v2Shortlist.rows.length),
+                      m: String(v2Shortlist.consideredCount),
+                    })}
+                  </p>
+                )}
+                {/* U-6 RESULT · TABLE */}
+                {v2Shortlist.rows.length > 0 && (() => {
+                  const COLS = [
+                    ['rms', t('RMS'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.rmsDeviationDb ?? null, (v: number) => `${v.toFixed(2)} dB`],
+                    ['window', t('window'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.windowPlusMinusDb ?? null, (v: number) => `±${v.toFixed(2)} dB`],
+                    /* M-K since V44 — the WORST handover, on the admitted
+                     * points. This is the number the `phase-tracking`
+                     * requirement judges, so it comes first. */
+                    ['phase', t('phase'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.phaseTracking.reduce((a, b) => Math.max(a, b.meanAbsDeg), 0), (v: number) => `${v.toFixed(1)}°`],
+                    /* …and the CONTROL column behind it, with its own name:
+                     * what the historic overlap-window set read on that same
+                     * network. Null on any row that did not arm the admission,
+                     * so it is blank rather than misleading. It judges nothing;
+                     * it exists because every casebook entry from V30 to V43
+                     * quoted that measure, and a figure that MOVED should read
+                     * as a redefinition instead of a regression (V40/V44). */
+                    ['phase-ctl', t('phase (overlap window)'), (r: (typeof v2Shortlist.rows)[number]) => {
+                      const c = r.measurements.phaseTracking
+                        .map((p) => p.controlDeg)
+                        .filter((v): v is number => v !== undefined);
+                      return c.length > 0 ? Math.max(...c) : null;
+                    }, (v: number) => `${v.toFixed(1)}°`],
+                    ['zmin', 'Z min', (r: (typeof v2Shortlist.rows)[number]) => r.result.zMinOhm, (v: number) => `${v.toFixed(1)} Ω`],
+                    ['epdr', 'EPDR', (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-B/EPDR')?.value ?? null, (v: number) => `${v.toFixed(2)} Ω`],
+                    ['diss', t('dissipation'), (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-A')?.value ?? null, (v: number) => `${(v * 100).toFixed(0)} %`],
+                    /* V36 — the WATTS in the largest single resistor, beside
+                     * the fraction that has been here since F3. The fraction
+                     * says how much of the amplifier the filter eats; this says
+                     * whether the part exists. On casus 1 they read 23 % and
+                     * 17.9 W, and only the second is a number anybody can take
+                     * to a supplier. Blank when no amplifier power is stated —
+                     * a fraction is scale-free and a watt is not. */
+                    ['rmax', t('largest R'), (r: (typeof v2Shortlist.rows)[number]) => r.dissipation?.largestResistorWatts ?? null, (v: number) => `${v.toFixed(1)} W`],
+                    ['vfs', 'V@fs', (r: (typeof v2Shortlist.rows)[number]) => { const mc = r.gates.filter((g) => g.gate === 'M-C' && g.value !== null); return mc.length ? Math.max(...mc.map((g) => g.value!)) : null; }, (v: number) => `${v.toFixed(1)} dB`],
+                    ['peak', t('peak'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.narrowPeaks[0]?.db ?? null, (v: number) => `+${v.toFixed(1)} dB`],
+                    /* UI-1 — M-F-FINAL: the vertical lobing synthesis, per row.
+                       The only lobing quantity that may carry a judgement (V20a),
+                       and a COLUMN and not a criterion: nothing filters, sorts or
+                       gates on it. Empty when the row has no crossover region to
+                       synthesise over — never 0.0 dB, which is what a coplanar or
+                       single-source set reports and is the arithmetic of a missing
+                       input rather than a result. */
+                    ['lobing', t('vert. dip'), (r: (typeof v2Shortlist.rows)[number]) => shortlistLobing[r.label]?.dipDb ?? null, (v: number) => `${v.toFixed(1)} dB`],
+                    /* UI-1 — the price of THIS design. It was only ever on the
+                       v1 table, so on the v2 route the one list a designer picks
+                       from was the one list with no cost in it. Read from the
+                       row's own chain result — the same number the v1 table
+                       prints — and it sorts like every other column. */
+                    ['bom', 'BOM', (r: (typeof v2Shortlist.rows)[number]) => r.result.bomTotalEur, (v: number) => `€${Math.round(v)}`],
+                  ] as const;
+                  /* U-6 — ONE ROW PER ANSWER, AND THE STATUS WORD BESIDE IT.
+                     `groupShortlistRows` is a READING and never a thinning: it
+                     folds the stated positions that delivered the IDENTICAL
+                     network (U-5b, exact, no tolerance) into the first of them
+                     and counts them, and every folded entry keeps its own full
+                     entry — verdicts, limits and load button — under "About
+                     this run". Nothing is removed; it is stopped from being
+                     printed nine times (F0). */
+                  const view = groupShortlistRows(v2Shortlist.rows, v2Shortlist.stated);
+                  const sorted = [...view];
+                  if (shortlistSort) {
+                    const col = COLS.find((c) => c[0] === shortlistSort.key);
+                    if (col) {
+                      sorted.sort((a, b) => {
+                        const va = col[2](a.row) ?? Number.POSITIVE_INFINITY;
+                        const vb = col[2](b.row) ?? Number.POSITIVE_INFINITY;
+                        return (va - vb) * shortlistSort.dir;
+                      });
+                    }
+                  }
+                  return (
+                    <div className="v2-scroll">
+                      <table className="scan-table">
+                        <thead>
+                          <tr>
+                            <th>{t('design')}</th>
+                            <th title={t('Order per flank, with polarity — the class the spreading kept apart')}>{t('topology')}</th>
+                            {COLS.map(([key, caption]) => (
+                              <th
+                                key={key}
+                                className={shortlistSort?.key === key ? 'sorted' : ''}
+                                onClick={() =>
+                                  setShortlistSort((cur) =>
+                                    cur?.key === key
+                                      ? cur.dir === 1
+                                        ? { key, dir: -1 }
+                                        : null
+                                      : { key, dir: 1 },
+                                  )
+                                }
+                                title={t('Sort by this column. Sorting is presentation — it never changes which designs are on the shortlist.')}
+                              >
+                                {caption}
+                                {shortlistSort?.key === key ? (shortlistSort.dir === 1 ? ' ▲' : ' ▼') : ''}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sorted.map((g) => {
+                            /* UI-1 — A SHORTLIST ROW IS A DESIGN YOU CAN LOAD.
+                               It carries the tuned NETWORK (`parts`), not a seed
+                               and not a label: it has done since F3, and until
+                               UI-1 nothing on this table could reach it. Clicking
+                               loads that network into Working and every chart —
+                               the same application the scan table's rows get. */
+                            const r = g.row;
+                            return (
+                              <tr
+                                key={r.label}
+                                className={shortlistPick === r.label ? 'active' : ''}
+                                onClick={() => loadShortlistRow(r.label)}
+                                title={
+                                  shortlistPick === r.label
+                                    ? t('This design is loaded in the Working tab')
+                                    : t('Load this design into the Working tab and every chart')
+                                }
+                              >
+                                <td title={statusTitle(g)}>
+                                  {r.label}
+                                  {shortlistPick === r.label ? ' ◂' : ''}{' '}
+                                  <span className={`v2-badge v2-badge-${g.status}`}>
+                                    {g.status === 'stated' ? t('stated') : t('delivered')}
+                                  </span>
+                                  {g.sameCount > 1 && (
+                                    <span className="derived">
+                                      {' '}
+                                      {t('×{n} identical', { n: String(g.sameCount) })}
+                                    </span>
+                                  )}
+                                </td>
+                                <td title={r.topologyClass} className="derived">{r.orderSignature}</td>
+                                {COLS.map(([key, , read, fmt]) => {
+                                  const v = read(r);
+                                  return <td key={key}>{v === null ? '—' : fmt(v)}</td>;
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+                {/* U-6 RESULT · BELOW */}
+                {/* V31 — THE CANDIDATES THAT DELIVERED NOTHING.
+                    They have existed on the shortlist object since V31 and
+                    nothing has ever rendered them, which is one of the two
+                    reasons the empty Working tab was unexplainable: the
+                    candidate the v1 table crowned was one of THESE, and this
+                    was the only place that knew it. Listed with the rule that
+                    refused each of them, and deliberately NOT clickable —
+                    there is no network to load. */}
+                {v2Shortlist.rejected.length > 0 && (
+                  <details
+                    className="shortlist-refused"
+                    open={refusedOpen}
+                    onToggle={(e) => {
+                      const open = e.currentTarget.open;
+                      setRefusedOpen(open);
+                      writeDisclosure(V2_DISCLOSURE_KEYS.refused, open);
+                    }}
+                  >
+                    <summary>
+                      {t('Refused — no network at all')}{' '}
+                      <span className="derived">
+                        {t('{n} of {m} candidates', {
+                          n: String(v2Shortlist.rejected.length),
+                          m: String(v2Shortlist.consideredCount),
+                        })}
+                      </span>
+                    </summary>
+                    <p className="sub">
+                      {t('Their tune was refused wholesale, so what came back from the tuner is a seed nobody judged — not a proposal (V31). These rows cannot be loaded, and they are not near-misses: nobody looked at a design here.')}
+                    </p>
+                    <ul>
+                      {v2Shortlist.rejected.map((r) => (
+                        <li key={r.label}>
+                          <strong>{r.label}</strong>{' '}
+                          <span className="derived">[{r.kinds.join(', ') || t('uncategorised')}]</span>{' '}
+                          {r.reason}
+                          {r.rejectedTune && Object.keys(r.rejectedTune).length > 0 && (
+                            <span className="derived">
+                              {' '}
+                              — {t('the refused tune had reached')}{' '}
+                              {Object.entries(r.rejectedTune)
+                                .map(([k, v]) => `${k} ${v === null ? '—' : v}`)
+                                .join(' · ')}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                {/* I-3 — WHERE GUIDED ENDS AND EXPERT BEGINS.
+                    Nothing is handed over, and that is the point worth saying
+                    out loud on the button: guided and expert are two views of
+                    ONE project state, so everything stated on the way here is
+                    already stated over there. A route that ended by asking the
+                    designer to re-enter their requirements would have proved
+                    the opposite. */}
+                {uiMode === 'guided' && (
+                  <p className="sub v2-to-expert">
+                    <button type="button" onClick={() => setUiMode('expert')}>
+                      {t('Continue in Expert →')}
+                    </button>{' '}
+                    {t('Same project, same shortlist, everything you stated still stated — plus the network editor, the acoustic slopes and the full requirement list on one screen.')}
+                  </p>
+                )}
+              </div>
+            )}
+            {/* U-6 RESULT · NETWORK */}
             <h2>{t('Network editor (passive)')}</h2>
+            {schematic ? (
+              <>
+                <SchematicEditor
+                  parts={schematic.parts}
+                  models={zModels}
+                  onChange={commitSchematic}
+                  onUndo={undoSchematic}
+                  canUndo={schHistory.length > 0}
+                  onRedo={redoSchematic}
+                  canRedo={schFuture.length > 0}
+                />
+                {/* UI-2 — the simulation status of THIS drawing, right under
+                    the editor: solved as drawn (with every defect by name), or
+                    refused with the reason. This is the place where, until
+                    UI-2, a disconnected woofer and a wire that touched nothing
+                    both printed nothing at all. */}
+                {readiness && (
+                  <div
+                    className={`sim-status ${
+                      readiness.kind === 'refused' ? 'refused' : readiness.defects.length > 0 ? 'defects' : 'clean'
+                    }`}
+                  >
+                    <p className="sim-status-head">
+                      {readiness.kind === 'refused'
+                        ? readiness.describe
+                        : readiness.defects.length > 0
+                          ? readiness.describe
+                          : t('Simulated as drawn — every part has a path to the generator.')}
+                      {!networkActive ? ` ${t('(“Use in simulation” is off, so the charts show something else.)')}` : ''}
+                    </p>
+                    {readiness.defects.map((d) => (
+                      <p key={`${d.code}:${d.part}`}>{d.text}</p>
+                    ))}
+                    {simStale && (
+                      <p>
+                        {simStale.showing === 'previous'
+                          ? t('The charts keep the PREVIOUS simulated state, dimmed and tagged, until this is fixed.')
+                          : t('The charts show the raw drivers, dimmed and tagged, until this is fixed.')}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {(() => {
+                  const bom = bomFor(schematic.parts);
+                  if (bom.rows.length === 0) return null;
+                  return (
+                    <details className="bom">
+                      <summary>
+                        BOM — {t('{n} components', { n: bom.rows.length })} ·{' '}
+                        {bom.totalEur !== null
+                          ? // "≥" only when rows are missing a price — with
+                            // everything priced the total is exact, and a
+                            // hedge on an exact number reads as doubt.
+                            `${bom.pricedCount < bom.rows.length ? '≥ ' : ''}€${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} ${t('priced')})`
+                          : t('no prices in catalog yet')}
+                        {bom.unmatchedCount > 0 && ` · ${t('{n} without exact catalog match', { n: bom.unmatchedCount })}`}
+                      </summary>
+                      <table>
+                        <tbody>
+                          {bom.rows.map((row) => (
+                            <tr key={row.partId}>
+                              <td className="synth-role">{row.partId}</td>
+                              <td className="synth-value">
+                                {row.kind === 'L'
+                                  ? `${Number((row.value * 1e3).toPrecision(4))} mH`
+                                  : row.kind === 'C'
+                                    ? `${Number((row.value * 1e6).toPrecision(4))} µF`
+                                    : `${Number(row.value.toPrecision(4))} Ω`}
+                              </td>
+                              <td className="synth-role">
+                                {row.match
+                                  ? `${row.match.brand} ${row.match.series} — ${formatCatalogPart(row.match)}`
+                                  : row.stackMatch
+                                    ? row.stackMatch.label
+                                    : t('no exact catalog value')}
+                              </td>
+                              <td className="synth-value">
+                                {row.match?.priceEur !== undefined
+                                  ? `€${row.match.priceEur.toFixed(2)}`
+                                  : row.stackMatch?.priceEur !== undefined
+                                    ? `€${row.stackMatch.priceEur.toFixed(2)}`
+                                    : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </details>
+                  );
+                })()}
+              </>
+            ) : (
+              <p className="sub">
+                {t('No network yet — "Build passive filter" drops the synthesised design here as a tab, or import the selected variant / start from a template (generator + drivers, unfiltered).')}
+              </p>
+            )}
+            {/* U-6 — THE DRAWING FIRST, ITS CONTROLS UNDER IT. Measured in
+                the running app: with the 234-line toolbar above it the
+                schematic started 1395 px down a 900 px viewport, so "the
+                network, directly under the table" was true of the source and
+                false of the screen. Nothing here is folded — a control you
+                have to open is a control you stop using — it is below the
+                thing it controls instead of above it. */}
             <p
               className="sub sim-source"
               title={t("The sim's precedence: an active editor network wins over a vxp variant, which wins over the virtual filters, which win over raw drivers. Every chart on the right shows THIS.")}
@@ -20185,7 +20642,7 @@ export default function App() {
               const eur = (v: number | null) => (v === null ? t('[NO PRICE]') : `€${Math.round(v)}`);
               const saved = r.bomBeforeEur !== null && r.bomAfterEur !== null ? r.bomBeforeEur - r.bomAfterEur : null;
               return (
-                <details className="tune-audit" open>
+                <details className="tune-audit">
                   <summary>
                     ✂ {t('Minimal network for "{name}": BOM {b} → {a} ({s}) · peak {p0} → {p1} dB · phase {q0} → {q1}° · R src {r0} → {r1} Ω', {
                       name: minimizeReport.base,
@@ -20311,799 +20768,6 @@ export default function App() {
                   </tbody>
                 </table>
               </details>
-            )}
-            {rescued && !chainScan && !vfBusy && (
-              /* A scan that died with finished candidates in it. Offered, not
-                 applied: the user did not ask for this table to come back, and
-                 quietly repopulating it would be a second surprise after the
-                 first one. */
-              <p className="result-good">
-                ⭯{' '}
-                {t('{n} candidates survived from a scan that was interrupted ({label}). They are complete designs — nothing was lost but the one still running.', {
-                  n: String(rescued.rows.length),
-                  label: rescued.label,
-                })}{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const ranked = rankChain3Results(
-                      rescued.rows,
-                      stagedOn ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) } : undefined,
-                      phasePriority / 100,
-                      dirWeight / 100,
-                      rSourceLimitOhm,
-                      bomCapEur,
-                      ampMinLoadOhm ?? 0,
-                    );
-                    // No winner crown: this field is partial, and a crown on a
-                    // partial field is the "ranking is not approving" mistake
-                    // this session already wrote down twice.
-                    setScanSort(null);
-                    setChainScan({ rows: ranked.map((rr) => chain3ScanRow(rr, null)), active: '' });
-                    void dropScanRun(rescued.runId);
-                    setRescued(null);
-                  }}
-                >
-                  {t('Show them')}
-                </button>{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    void dropScanRun(rescued.runId);
-                    setRescued(null);
-                  }}
-                >
-                  {t('Discard')}
-                </button>
-              </p>
-            )}
-            {chainScan && !v2Shortlist && (
-              /* The success moment of a multi-minute run deserves its own
-                 visual register — one green line that says it worked, where
-                 the result lives, and that the table below is a MENU, before
-                 the eye hits eight columns of numbers. */
-              <p className="result-good">
-                ✓ {t('Design ready — the winner is loaded in the')} <strong>Working</strong>{' '}
-                {t('tab and every chart shows it. The rows below are the full candidates: click one to try it, 💾 Save keeps the one you trust.')}
-                {staleTag}
-              </p>
-            )}
-            {/* UI-1 — ON THE v2 ROUTE THE SENTENCE IS ABOUT THE SHORTLIST.
-                The line above said "the winner is loaded in the Working tab"
-                over a run whose Working tab was empty, because the winner it
-                meant was the v1 ranking's and that candidate had been refused.
-                Two states now, and the second one is the whole point: a run
-                that qualified nothing says so, and says that nothing was
-                loaded — rather than quietly showing a design that failed. */}
-            {v2Shortlist &&
-              (shortlistPick !== null ? (
-                <p className="result-good">
-                  ✓ {t('Shortlist ready —')} <strong>{shortlistPick}</strong>{' '}
-                  {t('is loaded in the')} <strong>Working</strong>{' '}
-                  {t('tab and every chart shows it. Click any shortlist row to load that design instead; 💾 Save keeps the one you trust.')}
-                </p>
-              ) : (
-                <p className="result-warn">
-                  ⚠{' '}
-                  {t('No design was loaded: {n} of {m} candidates meet the requirements you stated. The Working tab is untouched — the v1 ranking below has no knowledge of your gates or requirements, so its top row is not a stand-in for an empty shortlist.', {
-                    n: String(v2Shortlist.rows.length),
-                    m: String(v2Shortlist.consideredCount),
-                  })}
-                </p>
-              ))}
-            {chainScan && scanReference && (() => {
-              /* THE HONEST VERDICT. A scan always crowns one of its own rows —
-                 so it must also be able to say that none of them was worth the
-                 run. Judged on the axes a designer would not trade away: peak,
-                 worst-pair phase, and the source resistance the amplifier
-                 sees. Only candidates still in the race count. */
-              const live = chainScan.rows.filter((r) => r.disqualified.length === 0);
-              const beats = live.filter(
-                (r) =>
-                  r.rippleDb <= scanReference.peakDb + 0.05 &&
-                  r.phaseDeg <= scanReference.phaseDeg + 0.5 &&
-                  (r.rSourceOhm === null ||
-                    scanReference.rSourceOhm === null ||
-                    r.rSourceOhm <= scanReference.rSourceOhm + 0.1),
-              );
-              if (beats.length > 0) return null;
-              return (
-                <p className="result-warn">
-                  ⚠{' '}
-                  {t(
-                    'No candidate beat the design you already had ({name}: {peak} dB · {phase}° · R src {rs}). Keep it — or widen the search (crossover window, more steps, targets), because this run found nothing better.',
-                    {
-                      name: scanReference.name,
-                      peak: scanReference.peakDb.toFixed(2),
-                      phase: scanReference.phaseDeg.toFixed(1),
-                      rs: scanReference.rSourceOhm !== null ? `${scanReference.rSourceOhm.toFixed(2)} Ω` : '—',
-                    },
-                  )}
-                </p>
-              );
-            })()}
-            {(() => {
-              /* UI-1 — ON THE v2 ROUTE THE PARETO PLOTS THE SHORTLIST.
-               *
-               * "Cost vs quality — the knee is yours to pick" is a picture of a
-               * CHOICE, and on the v2 route the choice is the shortlist. It was
-               * plotting the v1 ranking's field instead: every candidate the
-               * scan produced, gates and requirements and refusals included, so
-               * the cheapest point on the knee was regularly a design the run
-               * had already thrown away. Same rows, same builder
-               * (`chain3ScanRow`), so a point and a shortlist row cannot print
-               * two different prices for one design. */
-              const paretoRows = v2Shortlist
-                ? v2Shortlist.rows.map((r) => scanRowOf(r.result, null))
-                : chainScan?.rows;
-              if (!paretoRows || paretoRows.filter((r) => r.bomEur !== null).length < 2) return null;
-              // B3 — Pareto scatter. y = chosen quality (lower is better), x = BOM.
-              const yOf = (r: (typeof paretoRows)[number]): number | null =>
-                paretoY === 'peak' ? r.rippleDb : paretoY === 'avg' ? r.avgDevDb : r.phaseDeg;
-              const pts = paretoRows
-                .map((r) => ({ r, x: r.bomEur!, y: yOf(r) }))
-                .filter((p): p is { r: (typeof paretoRows)[number]; x: number; y: number } => p.r.bomEur !== null && p.y !== null && Number.isFinite(p.y));
-              if (pts.length < 2) return null;
-              const dominated = (p: typeof pts[number]) =>
-                pts.some((q) => q !== p && q.x <= p.x && q.y <= p.y && (q.x < p.x || q.y < p.y));
-              const front = pts.filter((p) => !dominated(p) && !p.r.disqualified?.length);
-              const W = 520, H = 200, ml = 44, mr = 12, mt = 10, mb = 28;
-              const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
-              const x0 = Math.min(...xs) * 0.95, x1 = Math.max(...xs) * 1.05;
-              const y0 = Math.min(...ys) * 0.9, y1 = Math.max(...ys) * 1.08;
-              const X = (v: number) => ml + ((v - x0) / (x1 - x0 || 1)) * (W - ml - mr);
-              const Y = (v: number) => mt + (1 - (v - y0) / (y1 - y0 || 1)) * (H - mt - mb);
-              const frontSorted = [...front].sort((a, b) => a.x - b.x);
-              const yLabel = paretoY === 'peak' ? t('peak ±dB') : paretoY === 'avg' ? t('avg dev dB') : t('phase °');
-              return (
-                <div className="pareto" style={{ margin: '0.4rem 0' }}>
-                  <div className="row" style={{ alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
-                    <strong>{t('Cost vs quality — the knee is yours to pick')}</strong>
-                    <select value={paretoY} onChange={(e) => setParetoY(e.target.value as 'peak' | 'avg' | 'phase')} title={t('Quality measure on the vertical axis')}>
-                      <option value="peak">{t('peak ±dB')}</option>
-                      <option value="avg">{t('avg dev dB')}</option>
-                      <option value="phase">{t('phase °')}</option>
-                    </select>
-                    <span className="derived">{t('{n} non-dominated of {m} priced — filled = Pareto front, ◂ = loaded, ✗ = disqualified; click a point to load it', { n: front.length, m: pts.length })}</span>
-                  </div>
-                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: `${W}px`, height: 'auto', display: 'block' }} role="img" aria-label={t('Pareto scatter of BOM versus quality')}>
-                    <line x1={ml} y1={H - mb} x2={W - mr} y2={H - mb} stroke="var(--viz-axis, #888)" />
-                    <line x1={ml} y1={mt} x2={ml} y2={H - mb} stroke="var(--viz-axis, #888)" />
-                    <text x={W - mr} y={H - 8} textAnchor="end" fontSize="10" fill="var(--muted, #999)">BOM €</text>
-                    <text x={ml + 4} y={mt + 10} fontSize="10" fill="var(--muted, #999)">{yLabel}</text>
-                    {[0, 0.5, 1].map((f) => (
-                      <text key={`x${f}`} x={X(x0 + f * (x1 - x0))} y={H - 10} textAnchor="middle" fontSize="9" fill="var(--muted, #999)">{Math.round(x0 + f * (x1 - x0))}</text>
-                    ))}
-                    {[0, 0.5, 1].map((f) => (
-                      <text key={`y${f}`} x={ml - 4} y={Y(y0 + f * (y1 - y0)) + 3} textAnchor="end" fontSize="9" fill="var(--muted, #999)">{(y0 + f * (y1 - y0)).toFixed(paretoY === 'phase' ? 0 : 2)}</text>
-                    ))}
-                    {frontSorted.length > 1 && (
-                      <polyline points={frontSorted.map((p) => `${X(p.x)},${Y(p.y)}`).join(' ')} fill="none" stroke="var(--accent, #4d8df0)" strokeDasharray="3 3" />
-                    )}
-                    {pts.map((p) => {
-                      const onFront = front.includes(p);
-                      const dq = !!p.r.disqualified?.length;
-                      const active = v2Shortlist
-                        ? shortlistPick === p.r.label
-                        : chainScan?.active === p.r.label;
-                      return (
-                        <g
-                          key={p.r.label}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() =>
-                            v2Shortlist ? loadShortlistRow(p.r.label) : applyScanCandidate(p.r)
-                          }
-                        >
-                          <title>{`${p.r.delivered} · €${Math.round(p.x)} · ${yLabel} ${p.y.toFixed(2)}${dq ? ' · ✗' : ''}${onFront ? ' · Pareto' : ''}`}</title>
-                          <circle cx={X(p.x)} cy={Y(p.y)} r={onFront ? 6 : 4.5} fill={onFront ? 'var(--accent, #4d8df0)' : 'transparent'} stroke={dq ? 'var(--bad, #d55)' : 'var(--accent, #4d8df0)'} strokeWidth={active ? 2.5 : 1.2} />
-                          {dq && <text x={X(p.x)} y={Y(p.y) + 3.5} textAnchor="middle" fontSize="9" fill="var(--bad, #d55)">✗</text>}
-                          {active && <text x={X(p.x) + 8} y={Y(p.y) + 3.5} fontSize="10" fill="var(--fg, #ddd)">◂</text>}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                </div>
-              );
-            })()}
-            {chainScan && v2Shortlist && (
-              /* UI-1 — WHAT THIS TABLE IS ON THE v2 ROUTE, said above it.
-               *
-               * It is the v1 ranking over the same field: one weighted order,
-               * with no knowledge of a gate, a requirement or a refused tune.
-               * It stays — a second reading of one's own field is worth having
-               * — but it may not present itself as the run's verdict, and it
-               * did: it crowned a row with 🏆, called it "winner" in the note,
-               * and struck others through with ✗ on a source-resistance rule
-               * the v2 route withdrew at V34, marking as failures exactly the
-               * designs the shortlist above had passed. */
-              <div className="v1-reading">
-                <h4>
-                  {t('v1 reading — not the route that made this run')}
-                  {staleTag}
-                </h4>
-                <p className="sub">
-                  {t('The same candidates, ordered by the v1 ranking: one weighted score over flatness, phase, price and load. It knows nothing about your gates, your requirements or a candidate whose tune was refused, so it crowns nothing here and its disqualification marks are shown as v1 notes rather than as verdicts. The shortlist above is what this run decided.')}
-                </p>
-              </div>
-            )}
-            {chainScan && (
-              <table
-                className={`scan-table scan-table-pick${v2Shortlist ? ' scan-table-v1-reading' : ''}`}
-                title={t("Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort")}
-              >
-                <thead>
-                  <tr>
-                    {(
-                      [
-                        ['xo', t('crossover')],
-                        ['ripple', t('peak')],
-                        ['avg', t('avg')],
-                        ['phase', t('phase')],
-                        ['ovl', t('overlap')],
-                        ['zmin', 'Z min'],
-                        ['rs', 'R src'],
-                        ['bom', 'BOM'],
-                      ] as const
-                    ).map(([key, caption]) => (
-                      <th
-                        key={key}
-                        className={scanSort?.key === key ? 'sorted' : ''}
-                        onClick={() => toggleScanSort(key)}
-                        title={t('Sort by this column — ascending, descending, then back to the ranking order (🏆 first)')}
-                      >
-                        {caption}
-                        {scanSort?.key === key ? (scanSort.dir === 1 ? ' ▲' : ' ▼') : ''}
-                      </th>
-                    ))}
-                    {/* F2b — the gate column exists ONLY for a table an
-                        engine-v2 run produced. Not "empty when off": absent,
-                        so with the toggle off the table is the one the app
-                        always drew. Not sortable, on purpose — a hard gate is
-                        a pass/fail, and sorting on it would invite reading it
-                        as a ranking. */}
-                    {v2Run && (
-                      <th title={t('Hard gates (A4 M-A/M-B/M-C) on the delivered network of this candidate. Every candidate is judged, not only the winner.')}>
-                        {t('gate')}
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {scanReference && (
-                    <tr
-                      className="scan-reference"
-                      title={t('The design that was on screen when the scan started, measured through the same pipeline. It does not compete — it is the bar every candidate has to clear.')}
-                    >
-                      <td>
-                        {t('◆ your design before this run')}
-                        <span style={{ opacity: 0.6 }}> ({scanReference.name})</span>
-                      </td>
-                      <td>{scanReference.peakDb.toFixed(2)} dB</td>
-                      <td>{scanReference.avgDevDb !== null ? `${scanReference.avgDevDb.toFixed(2)} dB` : '—'}</td>
-                      <td>{scanReference.phaseDeg.toFixed(1)}°</td>
-                      <td>—</td>
-                      <td>{scanReference.zMinOhm !== null ? `${scanReference.zMinOhm.toFixed(1)} Ω` : '—'}</td>
-                      <td>{scanReference.rSourceOhm !== null ? `${scanReference.rSourceOhm.toFixed(2)} Ω` : '—'}</td>
-                      <td>{scanReference.bomEur !== null ? `€${Math.round(scanReference.bomEur)}` : '—'}</td>
-                      {v2Run && (
-                        <td title={t('The design from before this run — it did not go through the gates.')}>—</td>
-                      )}
-                    </tr>
-                  )}
-                  {[...chainScan.rows]
-                    .sort((a, b) => {
-                      if (!scanSort) return 0; // ranking order (stable sort)
-                      const v = (r: typeof a): number =>
-                        scanSort.key === 'xo'
-                          ? parseFloat(r.delivered.replace(/^[^\d]*/, ''))
-                          : scanSort.key === 'ripple'
-                            ? r.rippleDb
-                            : scanSort.key === 'avg'
-                              ? (r.avgDevDb ?? Number.POSITIVE_INFINITY)
-                              : scanSort.key === 'phase'
-                                ? r.phaseDeg
-                                : scanSort.key === 'ovl'
-                                  ? (r.pairOverlapOct
-                                      ? Math.max(...r.pairOverlapOct.map((o) => o ?? 0))
-                                      : Number.POSITIVE_INFINITY)
-                                  : scanSort.key === 'zmin'
-                                  ? -(r.zMinOhm ?? Number.NEGATIVE_INFINITY) // higher is better
-                                  : scanSort.key === 'rs'
-                                    ? (r.rSourceOhm ?? Number.POSITIVE_INFINITY)
-                                    : (r.bomEur ?? Number.POSITIVE_INFINITY);
-                      return (v(a) - v(b)) * scanSort.dir;
-                    })
-                    .map((r) => (
-                    <tr
-                      key={r.label}
-                      className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}${r.disqualified.length > 0 && !v2Shortlist ? ' disqualified' : ''}`}
-                      onClick={() => applyScanCandidate(r)}
-                      title={
-                        chainScan.active === r.label
-                          ? t('This candidate is loaded in Working')
-                          : t('Load the {label} design into Working (undo-able)', { label: r.label })
-                      }
-                    >
-                      <td
-                        className={r.unrealisable ? 'scan-z-low' : undefined}
-                        title={
-                          (r.unrealisable
-                            ? t('Target not realisable: the tuned network crosses more than ⅓ octave from the candidate it aimed at — the window or the topology binds. ')
-                            : '') +
-                          (r.disqualified.length > 0
-                            ? v2Shortlist
-                              ? /* UI-1 — the reason is kept and the VERDICT is
-                                   withdrawn. The v1 chain's rules are not this
-                                   run's rules; the source-resistance limit in
-                                   particular was withdrawn on the v2 route at
-                                   V34, and it struck out designs the shortlist
-                                   passed. */
-                                `${t('v1 note (not applied on this route)')}: ${r.disqualified.join('; ')}. `
-                              : `${t('DISQUALIFIED')}: ${r.disqualified.join('; ')}. `
-                            : '') +
-                          (r.xoFloorVerdict?.some((v) => v === 'warn') ? t('Delivered within 5 % under a physics floor (fs·K / excursion / reach). ') : '') +
-                          t('Named after the DELIVERED acoustic crossing; aimed at {target}', { target: r.target }) +
-                          (r.powerSlopeDbDec !== null
-                            ? ` · ${t('power slope {s} dB/dec', { s: (r.powerSlopeDbDec >= 0 ? '+' : '') + r.powerSlopeDbDec.toFixed(1) })}${r.powerSlopeDbDec > 1 ? ' ⚠' : ''}`
-                            : '')
-                        }
-                      >
-                        {r.winner ? '🏆 ' : ''}
-                        {r.disqualified.length > 0 && !v2Shortlist ? '✗ ' : r.unrealisable ? '⚠ ' : r.xoFloorVerdict?.some((v) => v === 'warn') ? '△ ' : ''}
-                        {r.delivered}
-                        <span style={{ opacity: 0.6 }}> {t('(aim')} {r.target.replace(/ Hz$/, '')})</span>
-                        {chainScan.active === r.label ? ' ◂' : ''}
-                      </td>
-                      <td
-                        title={
-                          r.peakSmoothedDb !== null && Math.abs(r.peakSmoothedDb - r.rippleDb) > 0.005
-                            ? t('Peak ±dB of the error-smoothed sum (what the search judged); raw peak {raw} dB — the worst single raw spot, what the staged targets gate on', { raw: r.rippleDb.toFixed(2) })
-                            : t('Peak ±dB — the worst single spot (what the staged targets gate on)')
-                        }
-                      >
-                        {(r.peakSmoothedDb ?? r.rippleDb).toFixed(2)} dB
-                      </td>
-                      <td title={t("Whole-range average |deviation| — the number the ranking judges on: one narrow dip doesn't decide the winner")}>
-                        {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
-                      </td>
-                      <td>{r.phaseDeg.toFixed(1)}°</td>
-                      <td
-                        className={r.xoWindowOk === false ? 'scan-z-low' : undefined}
-                        title={
-                          r.pairOverlapOct === null
-                            ? t('Delivered overlap width per pair (2-way rows do not carry it)')
-                            : r.xoWindowOk === false
-                              ? t('A delivered crossing sits OUTSIDE its physics window (pin or measured beaming/lobing bound) — off-axis this is a different loudspeaker, so it ranks below every candidate inside the window')
-                              : t('Delivered overlap width per pair, octaves (W-M / M-T) — how long both cones carry a region together; the phase-coherent integration bandwidth')
-                        }
-                      >
-                        {r.pairOverlapOct !== null
-                          ? `${r.xoWindowOk === false ? '⚠ ' : ''}${r.pairOverlapOct
-                              .map((o) => (o === null ? '—' : o.toFixed(1)))
-                              .join('/')} oct`
-                          : '—'}
-                      </td>
-                      <td
-                        className={
-                          ampMinLoadOhm !== null && r.zMinOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm)
-                            ? 'scan-z-low'
-                            : undefined
-                        }
-                        title={
-                          r.zMinOhm === null
-                            ? t('Minimum system impedance was not measured for this candidate')
-                            : ampMinLoadOhm === null
-                              ? t('Minimum system impedance the amplifier sees. No rating entered, so nothing is ranked on it — put your amplifier’s minimum load in ⚙ Settings to have candidates judged on it.')
-                              : !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm)
-                                ? t('The amplifier sees {z} Ω at its worst — below the {floor} Ω you entered for it, so this candidate ranks below every one with a load it can drive, however flat it is', { z: r.zMinOhm.toFixed(1), floor: ampMinLoadOhm.toFixed(1) })
-                                : t('Minimum system impedance the amplifier sees (you rated it to {floor} Ω)', { floor: ampMinLoadOhm.toFixed(1) })
-                        }
-                      >
-                        {r.zMinOhm !== null
-                          ? `${ampMinLoadOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm) ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
-                          : '—'}
-                      </td>
-                      <td
-                        className={r.rSourceOhm !== null && r.rSourceOhm >= rSourceLimitOhm ? 'scan-z-low' : undefined}
-                        title={
-                          r.rSourceOhm === null
-                            ? t('Source resistance at the low driver — not measured for this candidate')
-                            : t('Source resistance the low driver sees at its box tuning (real part, model estimate outside the measured band). Tiers: yellow ≥ {w} Ω, ranking class lost ≥ {l} Ω, disqualified ≥ {d} Ω', { w: (0.5 * rSourceLimitOhm).toFixed(1), l: rSourceLimitOhm.toFixed(1), d: rSourceDisqOhm.toFixed(1) })
-                        }
-                      >
-                        {r.rSourceOhm !== null
-                          ? `${r.rSourceOhm >= rSourceDisqOhm ? '✗ ' : r.rSourceOhm >= rSourceLimitOhm ? '⚠ ' : r.rSourceOhm >= 0.5 * rSourceLimitOhm ? '△ ' : ''}${r.rSourceOhm.toFixed(2)} Ω`
-                          : '—'}
-                      </td>
-                      <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
-                      {v2Run && (() => {
-                        const g = gateCell(v2Run.gatesByLabel[r.label]);
-                        return (
-                          <td className={g.bad ? 'scan-z-low' : undefined} title={g.title}>
-                            {g.text}
-                          </td>
-                        );
-                      })()}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {/* F2b — when the façade selects v2 but the table came from a v1
-                route, SAY SO. The two-way scan still runs on the v1 worker
-                (see TODO(F2c) below); a table with no gate column and no
-                stamp is already truthful, but silence about WHY invites the
-                reader to assume the gates ran and found nothing. */}
-            {engineSelection.optimizer === 'v2' && chainScan && !v2Run && (
-              <p className="sub">
-                {t('Engine v2 is on, but this scan ran on the v1 engine — so no gate judged these candidates.')}{' '}
-                {t('The gates run on the three-way scan; the two-way route is not wired to them yet.')}
-              </p>
-            )}
-            {v2RunNotes.length > 0 && (
-              <div className="sub">
-                {v2RunNotes.map((n, i) => (
-                  <p className="sub" key={i}>
-                    {n}
-                  </p>
-                ))}
-              </div>
-            )}
-            {/* F3 — THE SHORTLIST (A5e.1).
-                The feasible region, spread over topology classes, ordered by
-                RMS flatness. Sorting is presentation: every column re-sorts
-                and none of them changes which designs are in the list. */}
-            {v2Shortlist && (
-              <div className="shortlist">
-                <h4>
-                  {t('Shortlist')}{' '}
-                  <span className="derived">
-                    {t('{n} of {m} candidates qualified', {
-                      n: String(v2Shortlist.feasibleCount),
-                      m: String(v2Shortlist.consideredCount),
-                    })}
-                  </span>
-                  {staleTag}
-                </h4>
-                {/* E-2 — WHICH FIELD MADE THIS, said by the field itself, and
-                    the full field offered as the next step after an
-                    exploration. The mode is read off the field's parameters
-                    (`fieldModeOfParameters`), never off the select. */}
-                {v2Run?.field && (
-                  <p className="sub v2-field-mode">
-                    {v2Run.field.description}
-                    {v2Run.field.mode === 'exploration' && (
-                      <>
-                        {' '}
-                        <button
-                          type="button"
-                          disabled={vfBusy}
-                          title={t('Run the same requirements over the full field: every window edge to edge, every admitted order — hours rather than minutes.')}
-                          onClick={() => {
-                            setV2Field('fieldMode', 'full');
-                            void runVfOptimize({ fieldMode: 'full' }).catch((e) => {
-                              setVfBusy(false);
-                              setVfError(String((e as Error).message ?? e));
-                            });
-                          }}
-                        >
-                          {t('Run the full field →')}
-                        </button>
-                      </>
-                    )}
-                  </p>
-                )}
-                {/* I-3 — WHICH REQUIREMENTS WENT UNANSWERED, BY NAME.
-                    The gate column has always said `off` per row and the
-                    requirement list "— no requirement stated" (P4, checked per
-                    field at I-1). What no row could say is the thing a reader
-                    wants at this moment: how many of the questions they were
-                    asked went unanswered, and which. One line, and null when
-                    everything was answered — "0 skipped" is noise. */}
-                {engineV2Enabled &&
-                  (() => {
-                    const line = describeSkipped(v2GuidedValues);
-                    return line ? <p className="sub v2-req-skipped">{line}</p> : null;
-                  })()}
-                {v2Shortlist.label && (
-                  <p className="sub nl-warning">⚠ {v2Shortlist.label}</p>
-                )}
-                {v2Shortlist.diagnosis.length > 0 && (
-                  <div className="sub">
-                    <strong>{t('Nothing qualified.')}</strong>
-                    <ul style={{ margin: '0.3rem 0 0 1rem' }}>
-                      {v2Shortlist.diagnosis.map((d, i) => (
-                        <li key={i}>{d}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {v2Shortlist.rows.length > 0 && (() => {
-                  const COLS = [
-                    ['rms', t('RMS'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.rmsDeviationDb ?? null, (v: number) => `${v.toFixed(2)} dB`],
-                    ['window', t('window'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.windowPlusMinusDb ?? null, (v: number) => `±${v.toFixed(2)} dB`],
-                    /* M-K since V44 — the WORST handover, on the admitted
-                     * points. This is the number the `phase-tracking`
-                     * requirement judges, so it comes first. */
-                    ['phase', t('phase'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.phaseTracking.reduce((a, b) => Math.max(a, b.meanAbsDeg), 0), (v: number) => `${v.toFixed(1)}°`],
-                    /* …and the CONTROL column behind it, with its own name:
-                     * what the historic overlap-window set read on that same
-                     * network. Null on any row that did not arm the admission,
-                     * so it is blank rather than misleading. It judges nothing;
-                     * it exists because every casebook entry from V30 to V43
-                     * quoted that measure, and a figure that MOVED should read
-                     * as a redefinition instead of a regression (V40/V44). */
-                    ['phase-ctl', t('phase (overlap window)'), (r: (typeof v2Shortlist.rows)[number]) => {
-                      const c = r.measurements.phaseTracking
-                        .map((p) => p.controlDeg)
-                        .filter((v): v is number => v !== undefined);
-                      return c.length > 0 ? Math.max(...c) : null;
-                    }, (v: number) => `${v.toFixed(1)}°`],
-                    ['zmin', 'Z min', (r: (typeof v2Shortlist.rows)[number]) => r.result.zMinOhm, (v: number) => `${v.toFixed(1)} Ω`],
-                    ['epdr', 'EPDR', (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-B/EPDR')?.value ?? null, (v: number) => `${v.toFixed(2)} Ω`],
-                    ['diss', t('dissipation'), (r: (typeof v2Shortlist.rows)[number]) => r.gates.find((g) => g.gate === 'M-A')?.value ?? null, (v: number) => `${(v * 100).toFixed(0)} %`],
-                    /* V36 — the WATTS in the largest single resistor, beside
-                     * the fraction that has been here since F3. The fraction
-                     * says how much of the amplifier the filter eats; this says
-                     * whether the part exists. On casus 1 they read 23 % and
-                     * 17.9 W, and only the second is a number anybody can take
-                     * to a supplier. Blank when no amplifier power is stated —
-                     * a fraction is scale-free and a watt is not. */
-                    ['rmax', t('largest R'), (r: (typeof v2Shortlist.rows)[number]) => r.dissipation?.largestResistorWatts ?? null, (v: number) => `${v.toFixed(1)} W`],
-                    ['vfs', 'V@fs', (r: (typeof v2Shortlist.rows)[number]) => { const mc = r.gates.filter((g) => g.gate === 'M-C' && g.value !== null); return mc.length ? Math.max(...mc.map((g) => g.value!)) : null; }, (v: number) => `${v.toFixed(1)} dB`],
-                    ['peak', t('peak'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.narrowPeaks[0]?.db ?? null, (v: number) => `+${v.toFixed(1)} dB`],
-                    /* UI-1 — M-F-FINAL: the vertical lobing synthesis, per row.
-                       The only lobing quantity that may carry a judgement (V20a),
-                       and a COLUMN and not a criterion: nothing filters, sorts or
-                       gates on it. Empty when the row has no crossover region to
-                       synthesise over — never 0.0 dB, which is what a coplanar or
-                       single-source set reports and is the arithmetic of a missing
-                       input rather than a result. */
-                    ['lobing', t('vert. dip'), (r: (typeof v2Shortlist.rows)[number]) => shortlistLobing[r.label]?.dipDb ?? null, (v: number) => `${v.toFixed(1)} dB`],
-                    /* UI-1 — the price of THIS design. It was only ever on the
-                       v1 table, so on the v2 route the one list a designer picks
-                       from was the one list with no cost in it. Read from the
-                       row's own chain result — the same number the v1 table
-                       prints — and it sorts like every other column. */
-                    ['bom', 'BOM', (r: (typeof v2Shortlist.rows)[number]) => r.result.bomTotalEur, (v: number) => `€${Math.round(v)}`],
-                  ] as const;
-                  const sorted = [...v2Shortlist.rows];
-                  if (shortlistSort) {
-                    const col = COLS.find((c) => c[0] === shortlistSort.key);
-                    if (col) {
-                      sorted.sort((a, b) => {
-                        const va = col[2](a) ?? Number.POSITIVE_INFINITY;
-                        const vb = col[2](b) ?? Number.POSITIVE_INFINITY;
-                        return (va - vb) * shortlistSort.dir;
-                      });
-                    }
-                  }
-                  return (
-                    <div className="v2-scroll">
-                      <table className="scan-table">
-                        <thead>
-                          <tr>
-                            <th>{t('design')}</th>
-                            <th title={t('Order per flank, with polarity — the class the spreading kept apart')}>{t('topology')}</th>
-                            {COLS.map(([key, caption]) => (
-                              <th
-                                key={key}
-                                className={shortlistSort?.key === key ? 'sorted' : ''}
-                                onClick={() =>
-                                  setShortlistSort((cur) =>
-                                    cur?.key === key
-                                      ? cur.dir === 1
-                                        ? { key, dir: -1 }
-                                        : null
-                                      : { key, dir: 1 },
-                                  )
-                                }
-                                title={t('Sort by this column. Sorting is presentation — it never changes which designs are on the shortlist.')}
-                              >
-                                {caption}
-                                {shortlistSort?.key === key ? (shortlistSort.dir === 1 ? ' ▲' : ' ▼') : ''}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sorted.map((r) => (
-                            /* UI-1 — A SHORTLIST ROW IS A DESIGN YOU CAN LOAD.
-                               It carries the tuned NETWORK (`parts`), not a seed
-                               and not a label: it has done since F3, and until
-                               UI-1 nothing on this table could reach it. Clicking
-                               loads that network into Working and every chart —
-                               the same application the scan table's rows get. */
-                            <tr
-                              key={r.label}
-                              className={shortlistPick === r.label ? 'active' : ''}
-                              onClick={() => loadShortlistRow(r.label)}
-                              title={
-                                shortlistPick === r.label
-                                  ? t('This design is loaded in the Working tab')
-                                  : t('Load this design into the Working tab and every chart')
-                              }
-                            >
-                              <td>
-                                {r.label}
-                                {shortlistPick === r.label ? ' ◂' : ''}
-                              </td>
-                              <td title={r.topologyClass} className="derived">{r.orderSignature}</td>
-                              {COLS.map(([key, , read, fmt]) => {
-                                const v = read(r);
-                                return <td key={key}>{v === null ? '—' : fmt(v)}</td>;
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
-                <p className="sub">
-                  {t('Everything here meets every requirement and every gate you set. The order is RMS flatness against the target curve — a view, not a verdict. The choice is yours.')}{' '}
-                  <code title={v2Shortlist.stamp.components.map((c) => `${c.name}=${c.value} — ${c.describe}`).join('\n')}>
-                    {v2Shortlist.stamp.shortlistFingerprint}
-                  </code>
-                </p>
-                {/* V31 — THE CANDIDATES THAT DELIVERED NOTHING.
-                    They have existed on the shortlist object since V31 and
-                    nothing has ever rendered them, which is one of the two
-                    reasons the empty Working tab was unexplainable: the
-                    candidate the v1 table crowned was one of THESE, and this
-                    was the only place that knew it. Listed with the rule that
-                    refused each of them, and deliberately NOT clickable —
-                    there is no network to load. */}
-                {/* U-5 — THE CROSSINGS YOU STATED, in their own section.
-                    Never mixed in with the qualified rows: a stated crossing
-                    outside a feasible window is a design the MEASUREMENTS do
-                    not admit and a person asked for anyway, and putting it
-                    among the rows would say the feasible region contains it.
-                    Each one carries every limit it is past, answered in that
-                    limit's own unit on the network it delivered — and it is
-                    CLICKABLE, because "delivered as a network to look at" is
-                    the whole point of stating one. */}
-                {v2Shortlist.stated.length > 0 && (
-                  <div className="shortlist-stated">
-                    <h5>
-                      {t('Stated by you')}{' '}
-                      <span className="derived">
-                        {t('{n} of {m} candidates · {k} outside a feasible window', {
-                          n: String(v2Shortlist.stated.length),
-                          m: String(v2Shortlist.consideredCount),
-                          k: String(v2Shortlist.stated.filter((e) => e.outsideWindow).length),
-                        })}
-                      </span>
-                    </h5>
-                    <p className="sub">
-                      {t('You stated these handovers; this app did not derive them. Each got the full tune and the full judgement. The ones inside every feasible window are ordinary shortlist rows above. The ones outside are here: they are not near-misses and not refusals, they are answers — every limit each of them is past is quoted below in that limit’s own unit, measured on the network it delivered.')}
-                    </p>
-                    <ul>
-                      {v2Shortlist.stated.map((e) => (
-                        <li key={e.label}>
-                          {e.parts.length > 0 && !e.isRow ? (
-                            <button
-                              type="button"
-                              className="linkish"
-                              onClick={() => loadShortlistRow(e.label)}
-                              title={t('Load this stated design into the Working tab. It is here to be looked at; nothing about loading it says it meets what the measurements ask for.')}
-                            >
-                              {e.label}
-                            </button>
-                          ) : (
-                            <strong>{e.label}</strong>
-                          )}{' '}
-                          <span className="derived">
-                            [{e.isRow ? t('a shortlist row above') : e.outsideWindow ? t('outside the window') : t('inside the window, not a row')}]
-                          </span>{' '}
-                          {e.describe}
-                          {e.report.perCrossing.some((c) => c.breaches.length > 0) && (
-                            <ul>
-                              {e.report.perCrossing.flatMap((c) =>
-                                c.breaches.map((b, i) => (
-                                  <li key={`${c.pairLabel}-${i}`} className={b.meets === false ? 'nl-warning' : undefined}>
-                                    <span className="derived">
-                                      {b.stated ? t('STATED') : t('derived')}
-                                      {b.uncalibrated ? ` · ${t('UNCALIBRATED')}` : ''}
-                                      {b.measuredDb !== null
-                                        ? ` · ${b.measuredDb.toFixed(1)} dB ${t('vs')} ${(-(b.demandDb ?? 0)).toFixed(1)} dB`
-                                        : ''}
-                                    </span>{' '}
-                                    {b.verdict}
-                                  </li>
-                                )),
-                              )}
-                            </ul>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {v2Shortlist.rejected.length > 0 && (
-                  <div className="shortlist-refused">
-                    <h5>
-                      {t('Refused — no network at all')}{' '}
-                      <span className="derived">
-                        {t('{n} of {m} candidates', {
-                          n: String(v2Shortlist.rejected.length),
-                          m: String(v2Shortlist.consideredCount),
-                        })}
-                      </span>
-                    </h5>
-                    <p className="sub">
-                      {t('Their tune was refused wholesale, so what came back from the tuner is a seed nobody judged — not a proposal (V31). These rows cannot be loaded, and they are not near-misses: nobody looked at a design here.')}
-                    </p>
-                    <ul>
-                      {v2Shortlist.rejected.map((r) => (
-                        <li key={r.label}>
-                          <strong>{r.label}</strong>{' '}
-                          <span className="derived">[{r.kinds.join(', ') || t('uncategorised')}]</span>{' '}
-                          {r.reason}
-                          {r.rejectedTune && Object.keys(r.rejectedTune).length > 0 && (
-                            <span className="derived">
-                              {' '}
-                              — {t('the refused tune had reached')}{' '}
-                              {Object.entries(r.rejectedTune)
-                                .map(([k, v]) => `${k} ${v === null ? '—' : v}`)
-                                .join(' · ')}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {v2Shortlist.notes.map((n, i) => (
-                  <p className="v2-muted" key={i}>{n}</p>
-                ))}
-                {/* I-3 — WHERE GUIDED ENDS AND EXPERT BEGINS.
-                    Nothing is handed over, and that is the point worth saying
-                    out loud on the button: guided and expert are two views of
-                    ONE project state, so everything stated on the way here is
-                    already stated over there. A route that ended by asking the
-                    designer to re-enter their requirements would have proved
-                    the opposite. */}
-                {uiMode === 'guided' && (
-                  <p className="sub v2-to-expert">
-                    <button type="button" onClick={() => setUiMode('expert')}>
-                      {t('Continue in Expert →')}
-                    </button>{' '}
-                    {t('Same project, same shortlist, everything you stated still stated — plus the network editor, the acoustic slopes and the full requirement list on one screen.')}
-                  </p>
-                )}
-              </div>
-            )}
-            {/* F2b — the run stamp, under the table it belongs to.
-                A5e.4 asks for the seed and the fingerprint to be visible at
-                the result, and for an ABORTED run to say so rather than let a
-                partial field read as a whole one. */}
-            {v2Run && chainScan && (
-              <p className={`sub${v2Run.stamp.status === 'aborted' ? ' nl-warning' : ''}`}>
-                {v2Run.stamp.status === 'aborted'
-                  ? `⚠ ${t('ABORTED')} — ${v2Run.stamp.abortReason}`
-                  : t('Engine v2 run, completed.')}{' '}
-                {t('seed')} <code>{v2Run.stamp.determinism.seed}</code>
-                {v2Run.stamp.determinism.seedSource === 'default' && ` (${t('default')})`} ·{' '}
-                <code title={v2Run.stamp.components.map((c) => `${c.name}=${c.value} — ${c.describe}`).join('\n')}>
-                  {v2Run.stamp.fingerprint}
-                </code>
-                {/* E-2 — the run as a file: the fingerprint's ingredients,
-                    spelled out, so `scripts/replay-app-run.ts` can rebuild
-                    the field in the repository (the V48 gap). */}
-                {v2Run.export && (
-                  <>
-                    {' '}
-                    <button
-                      type="button"
-                      onClick={exportV2Run}
-                      title={t('Download this run as JSON: the stated requirements, the run settings, the field settings, the window inputs the field stood on and every candidate — enough for scripts/replay-app-run.ts to rebuild the same field in the repository.')}
-                    >
-                      {t('Export run (JSON)')}
-                    </button>
-                  </>
-                )}
-              </p>
             )}
             {tabCompare && tabCompare.length > 1 && (
               <details className="tab-compare">
@@ -21248,102 +20912,544 @@ export default function App() {
                 )}
               </div>
             )}
-            {schematic ? (
-              <>
-                <SchematicEditor
-                  parts={schematic.parts}
-                  models={zModels}
-                  onChange={commitSchematic}
-                  onUndo={undoSchematic}
-                  canUndo={schHistory.length > 0}
-                  onRedo={redoSchematic}
-                  canRedo={schFuture.length > 0}
-                />
-                {/* UI-2 — the simulation status of THIS drawing, right under
-                    the editor: solved as drawn (with every defect by name), or
-                    refused with the reason. This is the place where, until
-                    UI-2, a disconnected woofer and a wire that touched nothing
-                    both printed nothing at all. */}
-                {readiness && (
-                  <div
-                    className={`sim-status ${
-                      readiness.kind === 'refused' ? 'refused' : readiness.defects.length > 0 ? 'defects' : 'clean'
-                    }`}
-                  >
-                    <p className="sim-status-head">
-                      {readiness.kind === 'refused'
-                        ? readiness.describe
-                        : readiness.defects.length > 0
-                          ? readiness.describe
-                          : t('Simulated as drawn — every part has a path to the generator.')}
-                      {!networkActive ? ` ${t('(“Use in simulation” is off, so the charts show something else.)')}` : ''}
-                    </p>
-                    {readiness.defects.map((d) => (
-                      <p key={`${d.code}:${d.part}`}>{d.text}</p>
-                    ))}
-                    {simStale && (
-                      <p>
-                        {simStale.showing === 'previous'
-                          ? t('The charts keep the PREVIOUS simulated state, dimmed and tagged, until this is fixed.')
-                          : t('The charts show the raw drivers, dimmed and tagged, until this is fixed.')}
+            {/* U-6 RESULT · ABOUT */}
+            {(chainScan || v2Shortlist) && (
+              <details
+                className="v2-about"
+                open={aboutRunOpen}
+                onToggle={(e) => {
+                  const open = e.currentTarget.open;
+                  setAboutRunOpen(open);
+                  writeDisclosure(V2_DISCLOSURE_KEYS.about, open);
+                }}
+              >
+                <summary>
+                  {t('About this run')}{' '}
+                  <span className="derived">
+                    {t('origin and fingerprint · what the ladder relaxed · what went unjudged · the crossings you stated · the v1 reading of the same field')}
+                  </span>
+                </summary>
+                {/* F2b — the run stamp, under the table it belongs to.
+                    A5e.4 asks for the seed and the fingerprint to be visible at
+                    the result, and for an ABORTED run to say so rather than let a
+                    partial field read as a whole one. */}
+                {v2Run && chainScan && (
+                  <p className={`sub${v2Run.stamp.status === 'aborted' ? ' nl-warning' : ''}`}>
+                    {v2Run.stamp.status === 'aborted'
+                      ? `⚠ ${t('ABORTED')} — ${v2Run.stamp.abortReason}`
+                      : t('Engine v2 run, completed.')}{' '}
+                    {t('seed')} <code>{v2Run.stamp.determinism.seed}</code>
+                    {v2Run.stamp.determinism.seedSource === 'default' && ` (${t('default')})`} ·{' '}
+                    <code title={v2Run.stamp.components.map((c) => `${c.name}=${c.value} — ${c.describe}`).join('\n')}>
+                      {v2Run.stamp.fingerprint}
+                    </code>
+                    {/* E-2 — the run as a file: the fingerprint's ingredients,
+                        spelled out, so `scripts/replay-app-run.ts` can rebuild
+                        the field in the repository (the V48 gap). */}
+                    {v2Run.export && (
+                      <>
+                        {' '}
+                        <button
+                          type="button"
+                          onClick={exportV2Run}
+                          title={t('Download this run as JSON: the stated requirements, the run settings, the field settings, the window inputs the field stood on and every candidate — enough for scripts/replay-app-run.ts to rebuild the same field in the repository.')}
+                        >
+                          {t('Export run (JSON)')}
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
+                {v2Shortlist && (
+                  <>
+                    {/* E-2 — WHICH FIELD MADE THIS, said by the field itself, and
+                        the full field offered as the next step after an
+                        exploration. The mode is read off the field's parameters
+                        (`fieldModeOfParameters`), never off the select. */}
+                    {v2Run?.field && (
+                      <p className="sub v2-field-mode">
+                        {v2Run.field.description}
+                        {v2Run.field.mode === 'exploration' && (
+                          <>
+                            {' '}
+                            <button
+                              type="button"
+                              disabled={vfBusy}
+                              title={t('Run the same requirements over the full field: every window edge to edge, every admitted order — hours rather than minutes.')}
+                              onClick={() => {
+                                setV2Field('fieldMode', 'full');
+                                void runVfOptimize({ fieldMode: 'full' }).catch((e) => {
+                                  setVfBusy(false);
+                                  setVfError(String((e as Error).message ?? e));
+                                });
+                              }}
+                            >
+                              {t('Run the full field →')}
+                            </button>
+                          </>
+                        )}
                       </p>
                     )}
-                  </div>
-                )}
-                {(() => {
-                  const bom = bomFor(schematic.parts);
-                  if (bom.rows.length === 0) return null;
-                  return (
-                    <details className="bom">
-                      <summary>
-                        BOM — {t('{n} components', { n: bom.rows.length })} ·{' '}
-                        {bom.totalEur !== null
-                          ? // "≥" only when rows are missing a price — with
-                            // everything priced the total is exact, and a
-                            // hedge on an exact number reads as doubt.
-                            `${bom.pricedCount < bom.rows.length ? '≥ ' : ''}€${bom.totalEur.toFixed(2)} (${bom.pricedCount}/${bom.rows.length} ${t('priced')})`
-                          : t('no prices in catalog yet')}
-                        {bom.unmatchedCount > 0 && ` · ${t('{n} without exact catalog match', { n: bom.unmatchedCount })}`}
-                      </summary>
-                      <table>
-                        <tbody>
-                          {bom.rows.map((row) => (
-                            <tr key={row.partId}>
-                              <td className="synth-role">{row.partId}</td>
-                              <td className="synth-value">
-                                {row.kind === 'L'
-                                  ? `${Number((row.value * 1e3).toPrecision(4))} mH`
-                                  : row.kind === 'C'
-                                    ? `${Number((row.value * 1e6).toPrecision(4))} µF`
-                                    : `${Number(row.value.toPrecision(4))} Ω`}
-                              </td>
-                              <td className="synth-role">
-                                {row.match
-                                  ? `${row.match.brand} ${row.match.series} — ${formatCatalogPart(row.match)}`
-                                  : row.stackMatch
-                                    ? row.stackMatch.label
-                                    : t('no exact catalog value')}
-                              </td>
-                              <td className="synth-value">
-                                {row.match?.priceEur !== undefined
-                                  ? `€${row.match.priceEur.toFixed(2)}`
-                                  : row.stackMatch?.priceEur !== undefined
-                                    ? `€${row.stackMatch.priceEur.toFixed(2)}`
-                                    : '—'}
-                              </td>
-                            </tr>
+                    {/* I-3 — WHICH REQUIREMENTS WENT UNANSWERED, BY NAME.
+                        The gate column has always said `off` per row and the
+                        requirement list "— no requirement stated" (P4, checked per
+                        field at I-1). What no row could say is the thing a reader
+                        wants at this moment: how many of the questions they were
+                        asked went unanswered, and which. One line, and null when
+                        everything was answered — "0 skipped" is noise. */}
+                    {engineV2Enabled &&
+                      (() => {
+                        const line = describeSkipped(v2GuidedValues);
+                        return line ? <p className="sub v2-req-skipped">{line}</p> : null;
+                      })()}
+                    {v2Shortlist.label && (
+                      <p className="sub nl-warning">⚠ {v2Shortlist.label}</p>
+                    )}
+                    {shortlistPick !== null && (
+                      <p className="result-good">
+                        ✓ {t('Shortlist ready —')} <strong>{shortlistPick}</strong>{' '}
+                        {t('is loaded in the')} <strong>Working</strong>{' '}
+                        {t('tab and every chart shows it. Click any shortlist row to load that design instead; 💾 Save keeps the one you trust.')}
+                      </p>
+                    )}
+                    <p className="sub">
+                      {t('Everything here meets every requirement and every gate you set. The order is RMS flatness against the target curve — a view, not a verdict. The choice is yours.')}{' '}
+                      <code title={v2Shortlist.stamp.components.map((c) => `${c.name}=${c.value} — ${c.describe}`).join('\n')}>
+                        {v2Shortlist.stamp.shortlistFingerprint}
+                      </code>
+                    </p>
+                    {v2Shortlist.notes.map((n, i) => (
+                      <p className="v2-muted" key={i}>{n}</p>
+                    ))}
+                    {/* U-5 — THE CROSSINGS YOU STATED, in their own section.
+                        Never mixed in with the qualified rows: a stated crossing
+                        outside a feasible window is a design the MEASUREMENTS do
+                        not admit and a person asked for anyway, and putting it
+                        among the rows would say the feasible region contains it.
+                        Each one carries every limit it is past, answered in that
+                        limit's own unit on the network it delivered — and it is
+                        CLICKABLE, because "delivered as a network to look at" is
+                        the whole point of stating one. */}
+                    {v2Shortlist.stated.length > 0 && (
+                      <div className="shortlist-stated">
+                        <h5>
+                          {t('Stated by you')}{' '}
+                          <span className="derived">
+                            {t('{n} of {m} candidates · {k} outside a feasible window', {
+                              n: String(v2Shortlist.stated.length),
+                              m: String(v2Shortlist.consideredCount),
+                              k: String(v2Shortlist.stated.filter((e) => e.outsideWindow).length),
+                            })}
+                          </span>
+                        </h5>
+                        <p className="sub">
+                          {t('You stated these handovers; this app did not derive them. Each got the full tune and the full judgement. The ones inside every feasible window are ordinary shortlist rows above. The ones outside are here: they are not near-misses and not refusals, they are answers — every limit each of them is past is quoted below in that limit’s own unit, measured on the network it delivered.')}
+                        </p>
+                        <ul>
+                          {v2Shortlist.stated.map((e) => (
+                            <li key={e.label}>
+                              {e.parts.length > 0 && !e.isRow ? (
+                                <button
+                                  type="button"
+                                  className="linkish"
+                                  onClick={() => loadShortlistRow(e.label)}
+                                  title={t('Load this stated design into the Working tab. It is here to be looked at; nothing about loading it says it meets what the measurements ask for.')}
+                                >
+                                  {e.label}
+                                </button>
+                              ) : (
+                                <strong>{e.label}</strong>
+                              )}{' '}
+                              <span className="derived">
+                                [{e.isRow ? t('a shortlist row above') : e.outsideWindow ? t('outside the window') : t('inside the window, not a row')}]
+                              </span>{' '}
+                              {e.describe}
+                              {e.report.perCrossing.some((c) => c.breaches.length > 0) && (
+                                <ul>
+                                  {e.report.perCrossing.flatMap((c) =>
+                                    c.breaches.map((b, i) => (
+                                      <li key={`${c.pairLabel}-${i}`} className={b.meets === false ? 'nl-warning' : undefined}>
+                                        <span className="derived">
+                                          {b.stated ? t('STATED') : t('derived')}
+                                          {b.uncalibrated ? ` · ${t('UNCALIBRATED')}` : ''}
+                                          {b.measuredDb !== null
+                                            ? ` · ${b.measuredDb.toFixed(1)} dB ${t('vs')} ${(-(b.demandDb ?? 0)).toFixed(1)} dB`
+                                            : ''}
+                                        </span>{' '}
+                                        {b.verdict}
+                                      </li>
+                                    )),
+                                  )}
+                                </ul>
+                              )}
+                            </li>
                           ))}
-                        </tbody>
-                      </table>
-                    </details>
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                )}
+                {chainScan && scanReference && (() => {
+                  /* THE HONEST VERDICT. A scan always crowns one of its own rows —
+                     so it must also be able to say that none of them was worth the
+                     run. Judged on the axes a designer would not trade away: peak,
+                     worst-pair phase, and the source resistance the amplifier
+                     sees. Only candidates still in the race count. */
+                  const live = chainScan.rows.filter((r) => r.disqualified.length === 0);
+                  const beats = live.filter(
+                    (r) =>
+                      r.rippleDb <= scanReference.peakDb + 0.05 &&
+                      r.phaseDeg <= scanReference.phaseDeg + 0.5 &&
+                      (r.rSourceOhm === null ||
+                        scanReference.rSourceOhm === null ||
+                        r.rSourceOhm <= scanReference.rSourceOhm + 0.1),
+                  );
+                  if (beats.length > 0) return null;
+                  return (
+                    <p className="result-warn">
+                      ⚠{' '}
+                      {t(
+                        'No candidate beat the design you already had ({name}: {peak} dB · {phase}° · R src {rs}). Keep it — or widen the search (crossover window, more steps, targets), because this run found nothing better.',
+                        {
+                          name: scanReference.name,
+                          peak: scanReference.peakDb.toFixed(2),
+                          phase: scanReference.phaseDeg.toFixed(1),
+                          rs: scanReference.rSourceOhm !== null ? `${scanReference.rSourceOhm.toFixed(2)} Ω` : '—',
+                        },
+                      )}
+                    </p>
                   );
                 })()}
-              </>
-            ) : (
-              <p className="sub">
-                {t('No network yet — "Build passive filter" drops the synthesised design here as a tab, or import the selected variant / start from a template (generator + drivers, unfiltered).')}
-              </p>
+                {(() => {
+                  /* UI-1 — ON THE v2 ROUTE THE PARETO PLOTS THE SHORTLIST.
+                   *
+                   * "Cost vs quality — the knee is yours to pick" is a picture of a
+                   * CHOICE, and on the v2 route the choice is the shortlist. It was
+                   * plotting the v1 ranking's field instead: every candidate the
+                   * scan produced, gates and requirements and refusals included, so
+                   * the cheapest point on the knee was regularly a design the run
+                   * had already thrown away. Same rows, same builder
+                   * (`chain3ScanRow`), so a point and a shortlist row cannot print
+                   * two different prices for one design. */
+                  const paretoRows = v2Shortlist
+                    ? v2Shortlist.rows.map((r) => scanRowOf(r.result, null))
+                    : chainScan?.rows;
+                  if (!paretoRows || paretoRows.filter((r) => r.bomEur !== null).length < 2) return null;
+                  // B3 — Pareto scatter. y = chosen quality (lower is better), x = BOM.
+                  const yOf = (r: (typeof paretoRows)[number]): number | null =>
+                    paretoY === 'peak' ? r.rippleDb : paretoY === 'avg' ? r.avgDevDb : r.phaseDeg;
+                  const pts = paretoRows
+                    .map((r) => ({ r, x: r.bomEur!, y: yOf(r) }))
+                    .filter((p): p is { r: (typeof paretoRows)[number]; x: number; y: number } => p.r.bomEur !== null && p.y !== null && Number.isFinite(p.y));
+                  if (pts.length < 2) return null;
+                  const dominated = (p: typeof pts[number]) =>
+                    pts.some((q) => q !== p && q.x <= p.x && q.y <= p.y && (q.x < p.x || q.y < p.y));
+                  const front = pts.filter((p) => !dominated(p) && !p.r.disqualified?.length);
+                  const W = 520, H = 200, ml = 44, mr = 12, mt = 10, mb = 28;
+                  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+                  const x0 = Math.min(...xs) * 0.95, x1 = Math.max(...xs) * 1.05;
+                  const y0 = Math.min(...ys) * 0.9, y1 = Math.max(...ys) * 1.08;
+                  const X = (v: number) => ml + ((v - x0) / (x1 - x0 || 1)) * (W - ml - mr);
+                  const Y = (v: number) => mt + (1 - (v - y0) / (y1 - y0 || 1)) * (H - mt - mb);
+                  const frontSorted = [...front].sort((a, b) => a.x - b.x);
+                  const yLabel = paretoY === 'peak' ? t('peak ±dB') : paretoY === 'avg' ? t('avg dev dB') : t('phase °');
+                  return (
+                    <div className="pareto" style={{ margin: '0.4rem 0' }}>
+                      <div className="row" style={{ alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
+                        <strong>{t('Cost vs quality — the knee is yours to pick')}</strong>
+                        <select value={paretoY} onChange={(e) => setParetoY(e.target.value as 'peak' | 'avg' | 'phase')} title={t('Quality measure on the vertical axis')}>
+                          <option value="peak">{t('peak ±dB')}</option>
+                          <option value="avg">{t('avg dev dB')}</option>
+                          <option value="phase">{t('phase °')}</option>
+                        </select>
+                        <span className="derived">{t('{n} non-dominated of {m} priced — filled = Pareto front, ◂ = loaded, ✗ = disqualified; click a point to load it', { n: front.length, m: pts.length })}</span>
+                      </div>
+                      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: `${W}px`, height: 'auto', display: 'block' }} role="img" aria-label={t('Pareto scatter of BOM versus quality')}>
+                        <line x1={ml} y1={H - mb} x2={W - mr} y2={H - mb} stroke="var(--viz-axis, #888)" />
+                        <line x1={ml} y1={mt} x2={ml} y2={H - mb} stroke="var(--viz-axis, #888)" />
+                        <text x={W - mr} y={H - 8} textAnchor="end" fontSize="10" fill="var(--muted, #999)">BOM €</text>
+                        <text x={ml + 4} y={mt + 10} fontSize="10" fill="var(--muted, #999)">{yLabel}</text>
+                        {[0, 0.5, 1].map((f) => (
+                          <text key={`x${f}`} x={X(x0 + f * (x1 - x0))} y={H - 10} textAnchor="middle" fontSize="9" fill="var(--muted, #999)">{Math.round(x0 + f * (x1 - x0))}</text>
+                        ))}
+                        {[0, 0.5, 1].map((f) => (
+                          <text key={`y${f}`} x={ml - 4} y={Y(y0 + f * (y1 - y0)) + 3} textAnchor="end" fontSize="9" fill="var(--muted, #999)">{(y0 + f * (y1 - y0)).toFixed(paretoY === 'phase' ? 0 : 2)}</text>
+                        ))}
+                        {frontSorted.length > 1 && (
+                          <polyline points={frontSorted.map((p) => `${X(p.x)},${Y(p.y)}`).join(' ')} fill="none" stroke="var(--accent, #4d8df0)" strokeDasharray="3 3" />
+                        )}
+                        {pts.map((p) => {
+                          const onFront = front.includes(p);
+                          const dq = !!p.r.disqualified?.length;
+                          const active = v2Shortlist
+                            ? shortlistPick === p.r.label
+                            : chainScan?.active === p.r.label;
+                          return (
+                            <g
+                              key={p.r.label}
+                              style={{ cursor: 'pointer' }}
+                              onClick={() =>
+                                v2Shortlist ? loadShortlistRow(p.r.label) : applyScanCandidate(p.r)
+                              }
+                            >
+                              <title>{`${p.r.delivered} · €${Math.round(p.x)} · ${yLabel} ${p.y.toFixed(2)}${dq ? ' · ✗' : ''}${onFront ? ' · Pareto' : ''}`}</title>
+                              <circle cx={X(p.x)} cy={Y(p.y)} r={onFront ? 6 : 4.5} fill={onFront ? 'var(--accent, #4d8df0)' : 'transparent'} stroke={dq ? 'var(--bad, #d55)' : 'var(--accent, #4d8df0)'} strokeWidth={active ? 2.5 : 1.2} />
+                              {dq && <text x={X(p.x)} y={Y(p.y) + 3.5} textAnchor="middle" fontSize="9" fill="var(--bad, #d55)">✗</text>}
+                              {active && <text x={X(p.x) + 8} y={Y(p.y) + 3.5} fontSize="10" fill="var(--fg, #ddd)">◂</text>}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  );
+                })()}
+                {chainScan && v2Shortlist && (
+                  /* UI-1 — WHAT THIS TABLE IS ON THE v2 ROUTE, said above it.
+                   *
+                   * It is the v1 ranking over the same field: one weighted order,
+                   * with no knowledge of a gate, a requirement or a refused tune.
+                   * It stays — a second reading of one's own field is worth having
+                   * — but it may not present itself as the run's verdict, and it
+                   * did: it crowned a row with 🏆, called it "winner" in the note,
+                   * and struck others through with ✗ on a source-resistance rule
+                   * the v2 route withdrew at V34, marking as failures exactly the
+                   * designs the shortlist above had passed. */
+                  <div className="v1-reading">
+                    <h4>
+                      {t('v1 reading — not the route that made this run')}
+                      {staleTag}
+                    </h4>
+                    <p className="sub">
+                      {t('The same candidates, ordered by the v1 ranking: one weighted score over flatness, phase, price and load. It knows nothing about your gates, your requirements or a candidate whose tune was refused, so it crowns nothing here and its disqualification marks are shown as v1 notes rather than as verdicts. The shortlist above is what this run decided.')}
+                    </p>
+                  </div>
+                )}
+                {chainScan && (
+                  <table
+                    className={`scan-table scan-table-pick${v2Shortlist ? ' scan-table-v1-reading' : ''}`}
+                    title={t("Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort")}
+                  >
+                    <thead>
+                      <tr>
+                        {(
+                          [
+                            ['xo', t('crossover')],
+                            ['ripple', t('peak')],
+                            ['avg', t('avg')],
+                            ['phase', t('phase')],
+                            ['ovl', t('overlap')],
+                            ['zmin', 'Z min'],
+                            ['rs', 'R src'],
+                            ['bom', 'BOM'],
+                          ] as const
+                        ).map(([key, caption]) => (
+                          <th
+                            key={key}
+                            className={scanSort?.key === key ? 'sorted' : ''}
+                            onClick={() => toggleScanSort(key)}
+                            title={t('Sort by this column — ascending, descending, then back to the ranking order (🏆 first)')}
+                          >
+                            {caption}
+                            {scanSort?.key === key ? (scanSort.dir === 1 ? ' ▲' : ' ▼') : ''}
+                          </th>
+                        ))}
+                        {/* F2b — the gate column exists ONLY for a table an
+                            engine-v2 run produced. Not "empty when off": absent,
+                            so with the toggle off the table is the one the app
+                            always drew. Not sortable, on purpose — a hard gate is
+                            a pass/fail, and sorting on it would invite reading it
+                            as a ranking. */}
+                        {v2Run && (
+                          <th title={t('Hard gates (A4 M-A/M-B/M-C) on the delivered network of this candidate. Every candidate is judged, not only the winner.')}>
+                            {t('gate')}
+                          </th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scanReference && (
+                        <tr
+                          className="scan-reference"
+                          title={t('The design that was on screen when the scan started, measured through the same pipeline. It does not compete — it is the bar every candidate has to clear.')}
+                        >
+                          <td>
+                            {t('◆ your design before this run')}
+                            <span style={{ opacity: 0.6 }}> ({scanReference.name})</span>
+                          </td>
+                          <td>{scanReference.peakDb.toFixed(2)} dB</td>
+                          <td>{scanReference.avgDevDb !== null ? `${scanReference.avgDevDb.toFixed(2)} dB` : '—'}</td>
+                          <td>{scanReference.phaseDeg.toFixed(1)}°</td>
+                          <td>—</td>
+                          <td>{scanReference.zMinOhm !== null ? `${scanReference.zMinOhm.toFixed(1)} Ω` : '—'}</td>
+                          <td>{scanReference.rSourceOhm !== null ? `${scanReference.rSourceOhm.toFixed(2)} Ω` : '—'}</td>
+                          <td>{scanReference.bomEur !== null ? `€${Math.round(scanReference.bomEur)}` : '—'}</td>
+                          {v2Run && (
+                            <td title={t('The design from before this run — it did not go through the gates.')}>—</td>
+                          )}
+                        </tr>
+                      )}
+                      {[...chainScan.rows]
+                        .sort((a, b) => {
+                          if (!scanSort) return 0; // ranking order (stable sort)
+                          const v = (r: typeof a): number =>
+                            scanSort.key === 'xo'
+                              ? parseFloat(r.delivered.replace(/^[^\d]*/, ''))
+                              : scanSort.key === 'ripple'
+                                ? r.rippleDb
+                                : scanSort.key === 'avg'
+                                  ? (r.avgDevDb ?? Number.POSITIVE_INFINITY)
+                                  : scanSort.key === 'phase'
+                                    ? r.phaseDeg
+                                    : scanSort.key === 'ovl'
+                                      ? (r.pairOverlapOct
+                                          ? Math.max(...r.pairOverlapOct.map((o) => o ?? 0))
+                                          : Number.POSITIVE_INFINITY)
+                                      : scanSort.key === 'zmin'
+                                      ? -(r.zMinOhm ?? Number.NEGATIVE_INFINITY) // higher is better
+                                      : scanSort.key === 'rs'
+                                        ? (r.rSourceOhm ?? Number.POSITIVE_INFINITY)
+                                        : (r.bomEur ?? Number.POSITIVE_INFINITY);
+                          return (v(a) - v(b)) * scanSort.dir;
+                        })
+                        .map((r) => (
+                        <tr
+                          key={r.label}
+                          className={`${r.winner ? 'winner' : ''}${chainScan.active === r.label ? ' active' : ''}${r.disqualified.length > 0 && !v2Shortlist ? ' disqualified' : ''}`}
+                          onClick={() => applyScanCandidate(r)}
+                          title={
+                            chainScan.active === r.label
+                              ? t('This candidate is loaded in Working')
+                              : t('Load the {label} design into Working (undo-able)', { label: r.label })
+                          }
+                        >
+                          <td
+                            className={r.unrealisable ? 'scan-z-low' : undefined}
+                            title={
+                              (r.unrealisable
+                                ? t('Target not realisable: the tuned network crosses more than ⅓ octave from the candidate it aimed at — the window or the topology binds. ')
+                                : '') +
+                              (r.disqualified.length > 0
+                                ? v2Shortlist
+                                  ? /* UI-1 — the reason is kept and the VERDICT is
+                                       withdrawn. The v1 chain's rules are not this
+                                       run's rules; the source-resistance limit in
+                                       particular was withdrawn on the v2 route at
+                                       V34, and it struck out designs the shortlist
+                                       passed. */
+                                    `${t('v1 note (not applied on this route)')}: ${r.disqualified.join('; ')}. `
+                                  : `${t('DISQUALIFIED')}: ${r.disqualified.join('; ')}. `
+                                : '') +
+                              (r.xoFloorVerdict?.some((v) => v === 'warn') ? t('Delivered within 5 % under a physics floor (fs·K / excursion / reach). ') : '') +
+                              t('Named after the DELIVERED acoustic crossing; aimed at {target}', { target: r.target }) +
+                              (r.powerSlopeDbDec !== null
+                                ? ` · ${t('power slope {s} dB/dec', { s: (r.powerSlopeDbDec >= 0 ? '+' : '') + r.powerSlopeDbDec.toFixed(1) })}${r.powerSlopeDbDec > 1 ? ' ⚠' : ''}`
+                                : '')
+                            }
+                          >
+                            {r.winner ? '🏆 ' : ''}
+                            {r.disqualified.length > 0 && !v2Shortlist ? '✗ ' : r.unrealisable ? '⚠ ' : r.xoFloorVerdict?.some((v) => v === 'warn') ? '△ ' : ''}
+                            {r.delivered}
+                            <span style={{ opacity: 0.6 }}> {t('(aim')} {r.target.replace(/ Hz$/, '')})</span>
+                            {chainScan.active === r.label ? ' ◂' : ''}
+                          </td>
+                          <td
+                            title={
+                              r.peakSmoothedDb !== null && Math.abs(r.peakSmoothedDb - r.rippleDb) > 0.005
+                                ? t('Peak ±dB of the error-smoothed sum (what the search judged); raw peak {raw} dB — the worst single raw spot, what the staged targets gate on', { raw: r.rippleDb.toFixed(2) })
+                                : t('Peak ±dB — the worst single spot (what the staged targets gate on)')
+                            }
+                          >
+                            {(r.peakSmoothedDb ?? r.rippleDb).toFixed(2)} dB
+                          </td>
+                          <td title={t("Whole-range average |deviation| — the number the ranking judges on: one narrow dip doesn't decide the winner")}>
+                            {r.avgDevDb !== null ? `${r.avgDevDb.toFixed(2)} dB` : '—'}
+                          </td>
+                          <td>{r.phaseDeg.toFixed(1)}°</td>
+                          <td
+                            className={r.xoWindowOk === false ? 'scan-z-low' : undefined}
+                            title={
+                              r.pairOverlapOct === null
+                                ? t('Delivered overlap width per pair (2-way rows do not carry it)')
+                                : r.xoWindowOk === false
+                                  ? t('A delivered crossing sits OUTSIDE its physics window (pin or measured beaming/lobing bound) — off-axis this is a different loudspeaker, so it ranks below every candidate inside the window')
+                                  : t('Delivered overlap width per pair, octaves (W-M / M-T) — how long both cones carry a region together; the phase-coherent integration bandwidth')
+                            }
+                          >
+                            {r.pairOverlapOct !== null
+                              ? `${r.xoWindowOk === false ? '⚠ ' : ''}${r.pairOverlapOct
+                                  .map((o) => (o === null ? '—' : o.toFixed(1)))
+                                  .join('/')} oct`
+                              : '—'}
+                          </td>
+                          <td
+                            className={
+                              ampMinLoadOhm !== null && r.zMinOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm)
+                                ? 'scan-z-low'
+                                : undefined
+                            }
+                            title={
+                              r.zMinOhm === null
+                                ? t('Minimum system impedance was not measured for this candidate')
+                                : ampMinLoadOhm === null
+                                  ? t('Minimum system impedance the amplifier sees. No rating entered, so nothing is ranked on it — put your amplifier’s minimum load in ⚙ Settings to have candidates judged on it.')
+                                  : !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm)
+                                    ? t('The amplifier sees {z} Ω at its worst — below the {floor} Ω you entered for it, so this candidate ranks below every one with a load it can drive, however flat it is', { z: r.zMinOhm.toFixed(1), floor: ampMinLoadOhm.toFixed(1) })
+                                    : t('Minimum system impedance the amplifier sees (you rated it to {floor} Ω)', { floor: ampMinLoadOhm.toFixed(1) })
+                            }
+                          >
+                            {r.zMinOhm !== null
+                              ? `${ampMinLoadOhm !== null && !meetsAmpFloor(r.zMinOhm, ampMinLoadOhm) ? '⚠ ' : ''}${r.zMinOhm.toFixed(1)} Ω`
+                              : '—'}
+                          </td>
+                          <td
+                            className={r.rSourceOhm !== null && r.rSourceOhm >= rSourceLimitOhm ? 'scan-z-low' : undefined}
+                            title={
+                              r.rSourceOhm === null
+                                ? t('Source resistance at the low driver — not measured for this candidate')
+                                : t('Source resistance the low driver sees at its box tuning (real part, model estimate outside the measured band). Tiers: yellow ≥ {w} Ω, ranking class lost ≥ {l} Ω, disqualified ≥ {d} Ω', { w: (0.5 * rSourceLimitOhm).toFixed(1), l: rSourceLimitOhm.toFixed(1), d: rSourceDisqOhm.toFixed(1) })
+                            }
+                          >
+                            {r.rSourceOhm !== null
+                              ? `${r.rSourceOhm >= rSourceDisqOhm ? '✗ ' : r.rSourceOhm >= rSourceLimitOhm ? '⚠ ' : r.rSourceOhm >= 0.5 * rSourceLimitOhm ? '△ ' : ''}${r.rSourceOhm.toFixed(2)} Ω`
+                              : '—'}
+                          </td>
+                          <td>{r.bomEur !== null ? `€${Math.round(r.bomEur)}` : '—'}</td>
+                          {v2Run && (() => {
+                            const g = gateCell(v2Run.gatesByLabel[r.label]);
+                            return (
+                              <td className={g.bad ? 'scan-z-low' : undefined} title={g.title}>
+                                {g.text}
+                              </td>
+                            );
+                          })()}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {/* F2b — when the façade selects v2 but the table came from a v1
+                    route, SAY SO. The two-way scan still runs on the v1 worker
+                    (see TODO(F2c) below); a table with no gate column and no
+                    stamp is already truthful, but silence about WHY invites the
+                    reader to assume the gates ran and found nothing. */}
+                {engineSelection.optimizer === 'v2' && chainScan && !v2Run && (
+                  <p className="sub">
+                    {t('Engine v2 is on, but this scan ran on the v1 engine — so no gate judged these candidates.')}{' '}
+                    {t('The gates run on the three-way scan; the two-way route is not wired to them yet.')}
+                  </p>
+                )}
+                {v2RunNotes.length > 0 && (
+                  <div className="sub">
+                    {v2RunNotes.map((n, i) => (
+                      <p className="sub" key={i}>
+                        {n}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </details>
             )}
+            {/* U-6 RESULT · END */}
           </div>
         </>
             )}

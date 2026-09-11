@@ -48,6 +48,18 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná U-6 (11-09-2026) gemeten op 455 s — 178 bestanden (177 geslaagd, 1 overgeslagen), 2240 tests
+    (2237 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
+    dev-server en de headless Chrome gestopt.** +1 BESTAND (`v2ResultLayout.test.ts`, 19 claims) en
+    +19 tests, en die twee getallen zijn HETZELFDE getal: het corpus is niet geregenereerd, dus geen
+    enkele `it.each` over het levende corpus beweegt, en de delta is precies de inhoud van het nieuwe
+    bestand. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan, en 455 tegen U-5b's 466 s
+    is dezelfde laag op dezelfde machine. **DE VOLLE RUN IS BIJ U-6 NIET GEDRAAID**, met de
+    U-3/U-5b/I-1-afweging: geen engine-, poort-, budget-, venster- of corpuswijziging — U-6
+    verplaatst JSX en klapt verantwoording in — en de twee byte-baselines die de zoektocht bewaken
+    (`f4cRegression`, `workerRouteRegression`) draaien in de snelle laag en reproduceerden, net als
+    `toggleRegression`. De drie live ketenruns zouden een corpus reproduceren dat deze sessie niet
+    aangeraakt heeft.
     **Ná U-5b (11-09-2026) gemeten op 466 s — 177 bestanden (176 geslaagd, 1 overgeslagen), 2221 tests
     (2218 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`predesign/statedRange.test.ts`, 27
@@ -3203,6 +3215,49 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproduceerden. Wat wél beweegt is de vingerafdruk (`estimators=` met z-re 1.2);
   `casus1_v2_herkomst.json` is niet herschreven en draagt dus nog de C-2-vingerafdruk, met casusboek B-1 als
   de reden (de V49-precedent).
+
+### U-6-guards (het resultaatgebied geordend; alleen UI/ordening, geen enkele zin herschreven)
+- **`src/lib/v2ResultLayout.ts` — DE VOLGORDE VAN HET RESULTAATGEBIED, ALS DATA.** Vijfendertig
+  blokken met per blok wat het is, wanneer het verschijnt, welk bronfragment het identificeert, waar
+  het hoort en WAAROM; plus de zes markers die de regio's afbakenen, de twee `sessionStorage`-sleutels
+  van de uitklappen, en `groupShortlistRows`. Dezelfde vorm als `v2InputRegister.ts` (I-1) en
+  `v2InputPlacement.ts` (U-3b), één laag stroomafwaarts: daar het INVOERformulier, hier het
+  UITVOERgebied. **Geen engine-import** (de toggle-invariant laat alleen de UI-instappunten in
+  `engine2/`), dus de groepering is structureel generiek over `{label}` en
+  `{label, sameNetworkAs}` — meer heeft zij niet nodig en meer hoort zij niet te weten.
+- **DE REGEL: verantwoording klapt in, een blokkade nooit.** Na een run staat de SHORTLIST bovenaan,
+  het NETWERK er direct onder, en alles wat de run verantwoordt achter één dichtgeklapte regel
+  ("Over deze run"); de weigeringen krijgen hun eigen uitklap onder de tabel, ook dicht. Wat een
+  FOUT of BLOKKADE meldt blijft altijd staan: `nothing-qualified` (als hij vuurt is er geen tabel en
+  IS die lijst het resultaat), `nothing-loaded`, `sim-status` en het aanbod uit een afgebroken scan.
+  **F0 overleeft de vouw:** elke zin die de app vóór U-6 drukte drukt zij nog, in dezelfde woorden.
+- `src/lib/v2ResultLayout.test.ts` (19 claims) — de markers bestaan elk één keer en staan in
+  volgorde; élk blok staat in de regio die zijn plaatsing noemt; geen blokkade staat vóór de
+  ABOUT-marker; beide uitklappen dragen een BESTUURDE `open` (en `tune-audit` draagt er sinds U-6
+  geen letterlijke meer); **de strook boven de tabel telt EXACT de tekstblokken die de inventaris
+  daar declareert** — de U-3b-vorm, dus een nieuwe alinea boven de tabel zonder rij in
+  `V2_RESULT_BLOCKS` laat de som niet kloppen; de uitklappen zijn `sessionStorage` en aantoonbaar
+  geen `localStorage`; en de groepering als zuivere functie. **Nagemeten dat hij kán falen** met
+  drie opzettelijke breuken (een `<p>` boven de tabel, `open` op de uitklap, een blok terug boven de
+  tabel): 1, 1 en 2 rode claims.
+- **DE U-5b-TWEELINGEN ZIJN IN DE TABEL ÉÉN RIJ MET "×N identiek", EN DAT BLIJFT EEN LEZING (F0).**
+  `groupShortlistRows` vouwt alleen GESTELDE ingangen die exact hetzelfde netwerk leverden, en
+  alleen in een gastheer die zélf een rij is; élke gevouwen ingang houdt haar volledige eigen ingang
+  — oordelen, grenzen en laadknop — in de gestelde sectie onder "Over deze run". Eén statuswoord per
+  rij (`geleverd` / `gesteld`), de reden in de tooltip; `geweigerd` is per constructie geen rij.
+- **DE TOGGLE-INVARIANT EN DE BYTE-BASELINES ZIJN NIET GERAAKT** en dat is nagemeten:
+  `toggleRegression`, `f4cRegression` en `workerRouteRegression` reproduceren. U-6 verplaatst JSX en
+  raakt geen engine-, poort-, venster- of corpuscode; zonder v2-run rendert de shortlist niet, dus
+  het paneel is dan exact wat het was.
+- **DE BROWSERCONTROLE IS EEN VÓÓR/NÁ OP ÉÉN MACHINE** (headless Chrome, 1600 × 900, kale tweewegdemo
+  met `2200, 2300, 2400` gesteld; 8 kandidaten, 180 s, 7 gekwalificeerd — alleen `App.tsx` verschilt
+  tussen de twee helften). **Blokken bóven de shortlist 11 → 0, tekens tekst erboven 25 964 → 0,
+  bovenkant van de tabel 7676 → 194 px, bovenkant van het schema 9208 → 715 px, in een viewport van
+  900 px.** De uitklappen staan dicht bij binnenkomst (BOM, part audit, "Over deze run"), `sim-status`
+  staat onder het schema en aantoonbaar niet in een uitklap, en élke rij draagt één statuswoord.
+  **DE TOOLBAR IS DAARBIJ ONDER DE TEKENING BELAND, en dat is een meting en geen smaak:** met de
+  toolbar van 234 bronregels erboven begon het schema op 1395 px — tweede in de bron en van het
+  scherm af op de pagina.
 
 ### U-5b-guards (de crossover-range-invoer is suikervorm voor de U-5-lijst; alleen de v2-route)
 - **DE METING EERST, EN ZIJ IS DE HELE BEVINDING** (`scripts/measure-u5b-range.ts`, seconden, geen
