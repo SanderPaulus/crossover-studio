@@ -32,6 +32,8 @@ import {
   V2_DISCLOSURE_KEYS,
   blocksAt,
   groupShortlistRows,
+  resultAreaState,
+  V2_RESULT_STATE_KINDS,
   statusTitle,
   readDisclosure,
   writeDisclosure,
@@ -310,5 +312,95 @@ describe('the table folds identical stated answers into one row', () => {
        nothing: U-5's section is in the drawer, with its load button (U-5). */
     expect(region('about')).toContain('className="shortlist-stated"');
     expect(region('about')).toContain('loadShortlistRow(e.label)');
+  });
+});
+
+/* ==================================================================== *
+ * 6. THE TABLE IS THERE WHEN A RUN IS — AND EVERY EMPTINESS SAYS SO
+ * ==================================================================== */
+
+describe('U-6b: empty is visibly empty, never a blank area', () => {
+  const state = (over: Partial<Parameters<typeof resultAreaState>[0]> = {}) =>
+    resultAreaState({
+      hasShortlist: false,
+      rowCount: 0,
+      consideredCount: 0,
+      hasScanTable: false,
+      ...over,
+    });
+
+  it('is in exactly one of four states, and rows means a shortlist with rows', () => {
+    expect(state({ hasShortlist: true, rowCount: 7, consideredCount: 8 }).kind).toBe('rows');
+    expect(state({ hasShortlist: true, rowCount: 0, consideredCount: 8 }).kind).toBe('no-rows');
+    expect(state({ hasScanTable: true }).kind).toBe('scan-only');
+    expect(state().kind).toBe('no-run');
+    // A run that delivered rows is the ONLY state without a message to print.
+    expect(state({ hasShortlist: true, rowCount: 1 }).empty).toBe(false);
+    for (const k of ['no-rows', 'scan-only', 'no-run'] as const) {
+      const s =
+        k === 'no-rows'
+          ? state({ hasShortlist: true })
+          : k === 'scan-only'
+            ? state({ hasScanTable: true })
+            : state();
+      expect(s.empty, `${k} must be flagged empty`).toBe(true);
+    }
+    expect(new Set(V2_RESULT_STATE_KINDS).size).toBe(V2_RESULT_STATE_KINDS.length);
+  });
+
+  it('lets a shortlist win over a scan table — a shortlist IS the reading', () => {
+    /* Both exist after a normal v2 run, and the v1 table must stay the second
+       reading. Only a run that left no shortlist may unfold the drawer. */
+    expect(state({ hasShortlist: true, rowCount: 3, hasScanTable: true }).aboutIsTheOnlyReading).toBe(
+      false,
+    );
+    expect(state({ hasShortlist: true, rowCount: 0, hasScanTable: true }).aboutIsTheOnlyReading).toBe(
+      false,
+    );
+    expect(state({ hasScanTable: true }).aboutIsTheOnlyReading).toBe(true);
+    expect(state().aboutIsTheOnlyReading).toBe(false);
+  });
+
+  it('keeps the TABLE on exactly one condition — a run, and rows in it', () => {
+    /* The regression U-6 could have had and the one the brief asks to pin: the
+       guard pinned the ORDER and not the EXISTENCE. These two conditions are
+       the whole of it, and neither may grow a clause — a fold, a disclosure
+       state or a session flag in here is a table that can vanish. */
+    expect(AREA).toContain('{v2Shortlist && (\n              <div className="shortlist">');
+    expect(region('table')).toContain('{v2Shortlist.rows.length > 0 && (() => {');
+    expect(region('table')).not.toContain('aboutRunOpen');
+    expect(region('table')).not.toContain('refusedOpen');
+    expect(region('shortlist-head')).not.toContain('<details');
+    // …and the table is NOT inside either fold.
+    const table = AREA.indexOf('{v2Shortlist.rows.length > 0 && (() => {');
+    expect(table).toBeGreaterThan(-1);
+    expect(table).toBeLessThan(markerAt('U-6 RESULT · ABOUT'));
+  });
+
+  it('gives every empty state a sentence in the app, and rows the table', () => {
+    for (const kind of V2_RESULT_STATE_KINDS) {
+      if (kind === 'rows') continue;
+      const at =
+        kind === 'scan-only'
+          ? AREA.indexOf('v2ResultState.aboutIsTheOnlyReading')
+          : AREA.indexOf(`v2ResultState.kind === '${kind}'`);
+      expect(at, `${kind} has no branch in the result area`).toBeGreaterThan(-1);
+      // The branch must SAY something, not merely exist.
+      expect(AREA.slice(at, at + 900), `${kind} prints no sentence`).toContain("{t('");
+    }
+  });
+
+  it('unfolds the drawer instead of duplicating it', () => {
+    const about = region('about');
+    expect((about.match(/const body = \(/g) ?? []).length).toBe(1);
+    expect((about.match(/\{body\}/g) ?? []).length).toBe(2);
+    /* The unfolded branch is not a <details>: it is the only table there is,
+       and a <details open> would be a fold one click from closing over it. The
+       tag is read BACKWARDS from the className, or the scan reads the wrapper
+       that follows instead of the one that carries it. */
+    const bare = about.indexOf('className="v2-about v2-about-bare"');
+    expect(bare).toBeGreaterThan(-1);
+    const tag = about.slice(about.lastIndexOf('<', bare), bare);
+    expect(tag, 'the unfolded branch must not be a <details>').toContain('<section');
   });
 });

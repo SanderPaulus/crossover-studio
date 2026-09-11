@@ -60,6 +60,11 @@
     (`f4cRegression`, `workerRouteRegression`) draaien in de snelle laag en reproduceerden, net als
     `toggleRegression`. De drie live ketenruns zouden een corpus reproduceren dat deze sessie niet
     aangeraakt heeft.
+    **Ná de U-6b-nazorg (11-09-2026) gemeten op 445 s — 178 bestanden (177 geslaagd, 1 overgeslagen),
+    2245 tests (2242 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de
+    browsercontrole met de dev-server en de headless Chrome gestopt.** GEEN nieuw bestand; +5 tests,
+    exact de vijf U-6b-claims in `v2ResultLayout.test.ts` (19 → 24). Het corpus is niet
+    geregenereerd. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
     **Ná U-5b (11-09-2026) gemeten op 466 s — 177 bestanden (176 geslaagd, 1 overgeslagen), 2221 tests
     (2218 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`predesign/statedRange.test.ts`, 27
@@ -3258,6 +3263,34 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   **DE TOOLBAR IS DAARBIJ ONDER DE TEKENING BELAND, en dat is een meting en geen smaak:** met de
   toolbar van 234 bronregels erboven begon het schema op 1395 px — tweede in de bron en van het
   scherm af op de pagina.
+- **U-6b — DE NAZORG, EN ZIJ IS EEN LEZING EN GEEN VERBORGEN TABEL.** Sander meldde dat de shortlist
+  "niet meer rendert"; gereproduceerd in de browser, zonder één console-fout: direct ná een run staat
+  de tabel er met zeven rijen, en ná een HARDE REFRESH niet. `v2Shortlist` is React-state en heeft een
+  herlaadbeurt nooit overleefd — wat U-6 veranderde is wáár die afwezigheid landt (het gebied begint
+  sinds U-6 bij de shortlist) en dat het NETWERK wél terugkomt uit de autosave, dus de pagina las als
+  een afgerond resultaat met zijn oordeel eruit. **Er zat een TWEEDE, echte regressie onder:**
+  `buildShortlist` draait alleen bij een stempel (`v2Stamp ? … : null`), dus een run zonder stempel
+  laat een scantabel na en géén shortlist — en U-6 had de v1-lezing net in de uitklap gezet, dus het
+  hele resultaat stond één klik verderop zonder dat iets zei dat er te klikken viel.
+  **`resultAreaState` in `v2ResultLayout.ts` beslist nu in welke van vier toestanden het gebied staat**
+  (`rows` / `no-rows` / `scan-only` / `no-run`); de ZINNEN staan in `App.tsx` omdat zij door `t()` gaan.
+  `no-run` krijgt een zichtbare melding bovenaan mét een knop naar Filters, `no-rows` zegt dat de run
+  niets leverde óók als de ladder geen diagnose had, en `scan-only` rendert dezelfde body als
+  `<section>` met een kop in plaats van als uitklap — **één body, twee omhulsels**, geen tweede kopie.
+  **NIET gedaan: de shortlist een herlaadbeurt laten overleven.** Dat is een nieuw
+  persistentiecontract (volledige `ChainResult`-objecten, een autosave met quotumwaarschuwing, en een
+  bewaarde shortlist die kan verouderen tegen het project waarin hij terugkomt) en dus een eigen
+  beslissing.
+- **DE GUARD IS DAAROP VERZWAARD** (24 claims): de vier toestanden zijn uitputtend en sluiten elkaar
+  uit; een shortlist wint van een scantabel, dus alleen een run zónder shortlist ontvouwt de uitklap;
+  **de tabel hangt aan precies twee condities (`{v2Shortlist && (` en
+  `{v2Shortlist.rows.length > 0 && (() => {`) en geen van beide mag een clausule bij krijgen** — een
+  vouw-, sessie- of uitklapvlag daarin is een tabel die kan verdwijnen; élke lege toestand heeft een
+  tak die werkelijk een zin drukt; en de ontvouwen tak is aantoonbaar géén `<details>`. Nagemeten dat
+  zij kunnen falen: no-run-melding weg (2 rood), `aboutRunOpen &&` vóór de tabelconditie (2 rood), de
+  ontvouwen tak als `<details open>` (1 rood). **`scan-only` is met opzet niet in de browser
+  gereproduceerd** — geen route door de zichtbare UI komt er sinds U-1 nog bij; hij is gedekt door de
+  eenheidstest en de bronscan, en dat staat er in plaats van een gemeten claim die niet gemeten is.
 
 ### U-5b-guards (de crossover-range-invoer is suikervorm voor de U-5-lijst; alleen de v2-route)
 - **DE METING EERST, EN ZIJ IS DE HELE BEVINDING** (`scripts/measure-u5b-range.ts`, seconden, geen

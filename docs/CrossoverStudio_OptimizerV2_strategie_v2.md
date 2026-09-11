@@ -10082,6 +10082,64 @@ UITVOERgebied.
 tabel (1 rood, met de zin "file it in V2_RESULT_BLOCKS with a reason"), `open` op de "Over deze
 run"-uitklap (1 rood), en de v1-motornotitie uit de uitklap terug naar boven de tabel (2 rood).
 
+#### U-6b — DE NAZORG: LEEG WAS NIET ZICHTBAAR LEEG (11-09-2026, zelfde sessie)
+
+Sander meldde na het opleveren dat de shortlist "niet meer rendert". **Gereproduceerd in de browser,
+en het is niet wat het lijkt: de tabel wordt nergens verborgen.** Drie toestanden nagemeten op de
+kale tweewegdemo, zonder één console-fout:
+
+| toestand | wat er stond |
+| --- | --- |
+| demo geladen, nog geen run | paneel begon met "Network editor (passive)" en verder niets over een run |
+| direct ná de run | `.shortlist` mét tabel, zeven rijen, "Over deze run" dicht |
+| ná een HARDE REFRESH | geen shortlist, geen melding, wél het herstelde netwerk |
+
+**De oorzaak is dus niet de herordening maar de LEZING ervan.** `v2Shortlist` is React-state en heeft
+een herlaadbeurt nooit overleefd — dat is niet nieuw. Wat U-6 veranderde is wáár die afwezigheid
+landt: het gebied begint sinds U-6 bij de shortlist, dus een ontbrekende shortlist is een gat precies
+daar waar het oog begint, en het NETWERK komt wél terug uit de autosave. De pagina las daarmee als
+een afgerond resultaat met zijn oordeel er stilletjes uit. Vóór U-6 stond de tabel 7676 px lager en
+verwachtte niemand haar bovenaan.
+
+**EN ER ZAT EEN TWEEDE, ECHTE REGRESSIE ONDER, die het reproduceren aan het licht bracht.**
+`buildShortlist` draait alleen als de run een stempel opleverde (`const shortlist = v2Stamp ? … :
+null`), dus een run zonder stempel laat een SCANTABEL na en géén shortlist — en U-6 had de v1-lezing
+net in de uitklap gezet. Het hele resultaat van zo'n run stond één klik verderop, met niets op het
+scherm dat zei dat er iets te klikken viel. **Een uitklap is voor een TWEEDE lezing; zodra hij de
+enige is, is hij geen tweede lezing.**
+
+**De reparatie is één zuivere functie en drie takken.** `resultAreaState` in `v2ResultLayout.ts`
+beslist in welke van vier toestanden het gebied staat — `rows`, `no-rows`, `scan-only`, `no-run` — en
+de ZINNEN staan in `App.tsx`, bij elke andere zin, want die gaan door `t()`.
+
+1. `no-run` → een zichtbare melding bovenaan het resultaatgebied: nog geen run in deze sessie, een
+   afgeronde run zet zijn shortlist hier, een resultaat leeft in de pagina en herladen wist het, en
+   het ontwerp eronder is wat er bewaard was. Mét een knop naar het Filters-tabblad.
+2. `no-rows` → een run die niets leverde zegt dat, óók als de ladder geen diagnose had. Een kop boven
+   een lege ruimte is het enige wat dit gebied nooit mag zijn.
+3. `scan-only` → dezelfde body, maar als `<section>` met een kop in plaats van als uitklap, met één
+   regel die zegt dat dit de enige tabel is die de run naliet. **Eén body, twee omhulsels** — geen
+   tweede kopie van vijfhonderd regels.
+
+**WAT NIET GEDAAN IS: de shortlist een herlaadbeurt laten overleven.** Dat is een nieuw
+persistentiecontract (de rijen dragen volledige `ChainResult`-objecten met onderdelen en metingen, de
+autosave heeft al een quotumwaarschuwing, en een bewaarde shortlist kan verouderen tegen het project
+waarin hij terugkomt). De opdracht vroeg om de tabel zodra een run bestaat en om een expliciete
+lege-toestand anders; na een herlaadbeurt bestaat er in deze sessie geen run. Persisteren is een
+eigen beslissing en die is niet eigenmachtig genomen.
+
+**DE GUARD IS VERZWAARD MET VIJF CLAIMS** (`v2ResultLayout.test.ts`, nu 24): de vier toestanden zijn
+uitputtend en sluiten elkaar uit; een shortlist wint van een scantabel, zodat alleen een run zonder
+shortlist de uitklap opent; **de tabel hangt aan precies twee condities — `{v2Shortlist && (` en
+`{v2Shortlist.rows.length > 0 && (() => {` — en geen van beide mag een clausule bij krijgen**, want
+een uitklap-, sessie- of vouwvlag daarin is een tabel die kan verdwijnen; élke lege toestand heeft een
+tak die werkelijk een zin drukt; en de ontvouwen tak is aantoonbaar géén `<details>`. Nagemeten dat
+zij kunnen falen met drie opzettelijke breuken: de no-run-melding weghalen (2 rood), `aboutRunOpen &&`
+vóór de tabelconditie zetten (2 rood) en van de ontvouwen tak een `<details open>` maken (1 rood).
+**`scan-only` is met opzet niet in de browser gereproduceerd**: geen route door de zichtbare UI komt
+er sinds U-1 nog bij. Hij is gedekt door de eenheidstest en de bronscan, en dat staat hier in plaats
+van een gemeten claim die niet gemeten is.
+
 #### WAT DEZE SESSIE NIET DOET, en waarom
 
 - **Geen enkele zin is herschreven of geschrapt.** Elke tekst die het resultaatgebied vóór U-6

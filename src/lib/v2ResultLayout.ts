@@ -138,6 +138,16 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
 
   /* ---- the badge row and the blockades --------------------------------- */
   {
+    id: 'no-run-notice',
+    what: 'That nothing has run in this session, and where the shortlist would be.',
+    when: 'No shortlist and no scan table.',
+    token: "{v2ResultState.kind === 'no-run' && (",
+    placement: 'top',
+    why: 'U-6b — the area now BEGINS where the shortlist is, so an absent one is a hole exactly where the eye lands. After a reload that is the normal case, and the loaded network comes back out of the autosave, so the page read as a finished result with its verdict quietly missing. Empty must be visibly empty (F0).',
+    blockade: true,
+    elements: 1,
+  },
+  {
     id: 'shortlist-heading',
     what: 'The heading: the word Shortlist, how many of how many qualified, the stale tag.',
     when: 'Always, with a shortlist.',
@@ -163,6 +173,17 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
     token: "'No design was loaded: {n} of {m} candidates",
     placement: 'shortlist-head',
     why: 'A blockade about the state of the app, not an account of the run. Its green twin ("X is loaded") folds, because the table marks the loaded row itself.',
+    blockade: true,
+    elements: 1,
+  },
+
+  {
+    id: 'no-rows-notice',
+    what: 'That the run delivered no design at all, with how many it judged.',
+    when: 'A shortlist exists and it holds no rows.',
+    token: "{v2ResultState.kind === 'no-rows' && (",
+    placement: 'shortlist-head',
+    why: 'A heading over a blank space is the one thing this area may never be. The ladder diagnosis says WHICH requirement was missed and is not always there; this says that nothing arrived, and always is.',
     blockade: true,
     elements: 1,
   },
@@ -310,6 +331,14 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
     token: '{v2Run && chainScan && (',
     placement: 'about',
     why: 'A5e.4 asks for the seed and the fingerprint to be visible AT THE RESULT; one click is visible, and an aborted run still says so in the summary line.',
+  },
+  {
+    id: 'about-unfolded',
+    what: 'The same body, unfolded and headed, when the run left no shortlist.',
+    when: 'A scan table exists and no shortlist does.',
+    token: 'className="v2-about v2-about-bare"',
+    placement: 'about',
+    why: 'U-6b — a fold is for a SECOND reading, and `buildShortlist` runs only when the run produced a stamp, so a run without one leaves the v1 reading as the ONLY table. One body, two wrappers: folded beside a shortlist, open when it is all there is.',
   },
   {
     id: 'field-mode',
@@ -541,4 +570,87 @@ export function statusTitle(view: ShortlistRowView<unknown>): string {
     `(${view.sameLabels.join(', ')} folded into this row). Each of them keeps its own entry, ` +
     'with its own verdicts and its own load button, under "About this run".'
   );
+}
+
+/* ------------------------------------------------------------------ *
+ * WHAT THE RESULT AREA IS SHOWING — AND WHEN IT IS SHOWING NOTHING
+ * ------------------------------------------------------------------ */
+
+/**
+ * U-6b — EMPTY MUST BE VISIBLY EMPTY (F0), AND U-6 MADE IT INVISIBLY EMPTY.
+ *
+ * Two states slipped through U-6, and both of them are the same mistake seen
+ * from two sides: the area now BEGINS where the shortlist is, so an absent
+ * shortlist is a hole exactly where the eye lands, and nothing said a word.
+ *
+ *  1. A RELOAD. `v2Shortlist` is React state and has never survived one — that
+ *     is not new — but the loaded NETWORK comes back out of the autosave, so
+ *     after a refresh the page looks like a finished result with its verdict
+ *     silently missing. Before U-6 the shortlist sat 7676 px down and nobody
+ *     expected it at the top; after U-6 its absence is the first thing there.
+ *  2. A RUN WITHOUT A STAMP. `buildShortlist` only runs when the run produced
+ *     one (`v2Stamp ? … : null`), so such a run leaves a scan table and NO
+ *     shortlist — and U-6 had just folded the v1 reading into "About this run".
+ *     A fold is for a SECOND reading; when it holds the ONLY table it is not a
+ *     second reading, and the run's whole result was one click away with no
+ *     sign that there was anything to click.
+ *
+ * This function owns the decision and nothing else: which of the four states
+ * the area is in. The SENTENCES live in `App.tsx` beside every other sentence,
+ * because they go through `t()` and this module knows nothing about language.
+ */
+export const V2_RESULT_STATE_KINDS = ['rows', 'no-rows', 'scan-only', 'no-run'] as const;
+
+export type V2ResultStateKind = (typeof V2_RESULT_STATE_KINDS)[number];
+
+export interface V2ResultStateInput {
+  /** A shortlist object exists — a v2 run finished in THIS session. */
+  hasShortlist: boolean;
+  /** How many designs it delivered. */
+  rowCount: number;
+  /** How many candidates it judged. */
+  consideredCount: number;
+  /** A scan table exists (a run of some kind left one). */
+  hasScanTable: boolean;
+}
+
+export interface V2ResultState {
+  kind: V2ResultStateKind;
+  /** How many candidates the message may quote. Zero when there was no run. */
+  consideredCount: number;
+  /** True when the area has no table of its own to show. */
+  empty: boolean;
+  /**
+   * True when the accountability drawer holds the run's ONLY table and must
+   * therefore not be a drawer at all.
+   */
+  aboutIsTheOnlyReading: boolean;
+}
+
+export function resultAreaState(i: V2ResultStateInput): V2ResultState {
+  if (i.hasShortlist && i.rowCount > 0) {
+    return {
+      kind: 'rows',
+      consideredCount: i.consideredCount,
+      empty: false,
+      aboutIsTheOnlyReading: false,
+    };
+  }
+  if (i.hasShortlist) {
+    return {
+      kind: 'no-rows',
+      consideredCount: i.consideredCount,
+      empty: true,
+      aboutIsTheOnlyReading: false,
+    };
+  }
+  if (i.hasScanTable) {
+    return {
+      kind: 'scan-only',
+      consideredCount: 0,
+      empty: true,
+      aboutIsTheOnlyReading: true,
+    };
+  }
+  return { kind: 'no-run', consideredCount: 0, empty: true, aboutIsTheOnlyReading: false };
 }

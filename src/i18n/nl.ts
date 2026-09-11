@@ -1971,4 +1971,11 @@ export const nl: Record<string, string> = {
   "delivered": "geleverd",
   "stated": "gesteld",
   "×{n} identical": "×{n} identiek",
+  // ── U-6b: leeg is zichtbaar leeg ─────────────────────────────────────
+  "No run in this session yet — a finished run puts its shortlist here, above the network it chose.": "Nog geen run in deze sessie — een afgeronde run zet zijn shortlist hier, boven het netwerk dat hij koos.",
+  "A result lives in the page: reloading clears it, and the design below is what was saved.": "Een resultaat leeft in de pagina: herladen wist het, en het ontwerp hieronder is wat er bewaard was.",
+  "Go to Optimize →": "Naar Optimize →",
+  "Go to the Filters tab, where the Optimize button is": "Naar het Filters-tabblad, waar de Optimize-knop staat",
+  "No design is on this list: {m} candidates were judged and none of them met everything in force, so there is no table to show.": "Er staat geen ontwerp op deze lijst: {m} kandidaten zijn beoordeeld en geen van hen haalde alles wat er geldt, dus er is geen tabel om te tonen.",
+  "This run left no shortlist, so the v1 reading below is the only table it produced — shown open rather than folded away.": "Deze run liet geen shortlist na, dus de v1-lezing hieronder is de enige tabel die hij opleverde — open getoond in plaats van weggeklapt.",
 };

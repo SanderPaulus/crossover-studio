@@ -1133,6 +1133,31 @@ svg.legend-key-dash {
   font-weight: 400;
 }
 
+/* U-6b — EMPTY IS VISIBLY EMPTY (F0). The result area starts where the
+   shortlist is, so an absent one is a hole exactly where the eye lands; these
+   two say which absence it is instead of leaving the space blank. */
+.v2-no-run,
+.v2-no-rows {
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  padding: 0.45rem 0.6rem;
+  margin: 0.4rem 0 0.7rem;
+}
+.v2-no-run button {
+  margin-left: 0.15rem;
+}
+
+/* …and when the drawer holds the run's ONLY table it is not a drawer. */
+.v2-about-bare {
+  margin: 1rem 0 0.6rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+.v2-about-bare > h4 {
+  margin: 0 0 0.2rem;
+  color: var(--muted);
+}
+
 /* V31's refusals, on screen for the first time (UI-1). Not a table and not
    clickable, on purpose: there is no design here to load or to compare.
    U-6 — and a fold since then, closed by default: the list of designs comes
