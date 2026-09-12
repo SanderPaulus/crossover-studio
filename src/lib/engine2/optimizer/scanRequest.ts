@@ -34,6 +34,7 @@ import type { GeneratedCandidate } from '../predesign/candidates.ts';
 import type { StatedCrossingMark } from '../predesign/statedCrossings.ts';
 import type { XoWindowInput } from '../predesign/xoWindow.ts';
 import type { EngineV2Report } from '../report.ts';
+import { chainGridFrom, describeJudgedFloor, judgedBandFloor } from '../predesign/judgedBand.ts';
 import type { TargetCurve } from '../requirements/targetCurve.ts';
 import { peakInputVolts } from '../metrics/driveExcursion.ts';
 
@@ -170,6 +171,115 @@ export function measurementFactsFor<R extends string>(args: {
 /* ==================================================================== *
  * 3 — THE RUN SETTINGS: gates, budgets, determinism, voicing, band
  * ==================================================================== */
+
+/**
+ * E-5 — WHERE A v2 RUN LOOKS AND WHERE IT JUDGES, for any number of ways.
+ *
+ * WHAT WAS WRONG. Both v2 branches handed the chain the SIM grid and the
+ * INTERSECTION of every source's validity, and neither is an answer about a
+ * loudspeaker:
+ *
+ *   · the sim grid's floor is `max(the fMin field, the lowest measurement)`,
+ *     and fMin is a PLOT range whose fallback is 200 Hz. F4d wrote that down
+ *     rather than moving it ("the grid is `sim`, which every plot on this
+ *     screen draws from") and left the silence in place;
+ *   · the judged band's floor is the highest way's gate — 455 Hz on casus 1 —
+ *     because a source that contributes nothing at 100 Hz still gets a veto
+ *     over judging 100 Hz.
+ *
+ * WHAT IT COST, MEASURED (E-5). The design step places its cut-only EQ bands
+ * at the sum's worst positive excursion INSIDE the judged band, and the
+ * synthesis turns a peak cut into the damped series-LC trap across the driver.
+ * On casus 1's merged set the derived floor puts a −6.7 dB cut at 37 Hz — the
+ * reflex peak, and the trap the whole C-2 corpus carries. The app's floor puts
+ * nothing below 303 Hz: no cut, no trap, and M-D then refuses the delivery for
+ * a bump the search was never allowed to see. Both floors have to come down:
+ * with the derived band on the 200 Hz grid the refine pushes a band to 140 Hz
+ * and clamps it at −15 dB, which is a cut fitted on ground the grid does not
+ * cover.
+ *
+ * AND THE RESOLUTION IS THE PRECEDENT'S, WHICH IS A SECOND CORRECTION OF THE
+ * SAME KIND. The app's chain ran on `GRID_N` = 600 points, and `GRID_N` is a
+ * PLOT constant: the chain used it only because nobody had ever separated the
+ * chain's grid from the one every chart draws from. Using a plot constant as a
+ * search resolution is the same accident as using the plot range as the search
+ * floor, and repairing one while keeping the other is half a repair. The
+ * resolution every casus fixture and every corpus in this repository has run on
+ * is the `f4b2_v2_worker_baseline.json` precedent — 96 points over 200–20 000 Hz,
+ * 14.4 per octave — and that is what the v2 chain takes here.
+ *
+ * WHAT THE TIMING SAYS, AND WHAT IT DOES NOT. Both densities were run on the
+ * three-way demo with the requirements armed: at the app's ~90 points per
+ * octave the grid grows to about 890 points and the exploration had not
+ * finished after 53 minutes; at the precedent's density it is about 140 points
+ * and it had not finished after 58 either. So the density is NOT where the cost
+ * of E-5 lands — the WIDER JUDGED BAND is, and that is the repair doing its
+ * work: the tuner is now asked to flatten three octaves it was never shown.
+ * The density is chosen on the argument above and not on a stopwatch, and the
+ * cost of judging the bass is stated in casebook E-5 rather than hidden here.
+ *
+ * The grid's TOP is still the caller's, and so is the band's CEILING.
+ *
+ * ABSENT IS ABSENT. No report, or a report whose lowest way has no on-axis
+ * band, returns the caller's own grid and band unchanged — byte for byte what
+ * every run did before E-5 — with no note, because nothing happened.
+ */
+export function v2ChainFrame(args: {
+  report: EngineV2Report | null | undefined;
+  /** The grid the caller already built — its top and density are kept. */
+  simGrid: readonly number[];
+  /** The band the caller would have judged on (the validity intersection). */
+  fallbackBand: readonly [number, number];
+}): { grid: readonly number[]; band: [number, number]; notes: string[] } {
+  const { simGrid, fallbackBand } = args;
+  const unchanged = {
+    grid: simGrid,
+    band: [fallbackBand[0], fallbackBand[1]] as [number, number],
+    notes: [] as string[],
+  };
+  if (!args.report || simGrid.length < 2) return unchanged;
+  const floor = judgedBandFloor(args.report);
+  if (floor === null) return unchanged;
+
+  const top = simGrid[simGrid.length - 1];
+  /* The grid reaches down to the lowest way's VALIDITY floor and not to f_p:
+   * `isHighPassProtected` probes half an octave under the lowest way's passband
+   * floor, which it reads off the grid's floor, and with the grid starting AT
+   * f_p that probe lands in the reflex impedance dip and the woofer reads as
+   * high-pass protected (M-1 measured it refusing eight candidates of eight). */
+  const gridFloor = Math.min(simGrid[0], floor.validityFloorHz);
+  if (!(top > gridFloor)) return unchanged;
+  const built = chainGridFrom(gridFloor, top);
+  /* Returned BY IDENTITY when it is the grid the caller already had, so a
+   * caller that is already on this frame can keep the branch responses it
+   * built on it instead of rebuilding three curves that did not move. */
+  const same =
+    built.length === simGrid.length && built.every((f, i) => Object.is(f, simGrid[i]));
+  const grid = same ? simGrid : built;
+
+  /* The band's floor is derived; its CEILING is the caller's. The top of the
+   * intersection is the lowest of every source's ceiling, which is the
+   * conservative answer and is not what E-5 found wrong — and it carries the
+   * designer's own view-range narrowing, which is theirs to make. */
+  const band: [number, number] = [floor.floorHz, fallbackBand[1]];
+  if (!(band[1] > band[0])) return unchanged;
+
+  const notes: string[] = [];
+  if (Math.abs(band[0] - fallbackBand[0]) > 0.01 || grid !== simGrid) {
+    notes.push(describeJudgedFloor(floor, grid[0]));
+    notes.push(
+      `The chain looks on ${grid.length} points from ${grid[0].toFixed(1)} Hz to ` +
+        `${top.toFixed(0)} Hz and judges on ${band[0].toFixed(1)}–${band[1].toFixed(0)} Hz. Before ` +
+        `E-5 it looked on the PLOT grid (${simGrid.length} points from ${simGrid[0].toFixed(1)} Hz, ` +
+        'whose floor is the fMin field) and judged from ' +
+        `${fallbackBand[0].toFixed(1)} Hz, the lowest ceiling of every source's validity — which on ` +
+        'a three-way is the tweeter\u2019s gate, where the tweeter is not playing. The resolution is ' +
+        'the one every casus fixture runs (96 points over 200\u201320 000 Hz, 14.4 per octave).',
+    );
+  }
+  return { grid, band, notes };
+}
+
 
 /** The gate block, every field absent unless stated (P4). */
 export function gateSettingsFor(args: {

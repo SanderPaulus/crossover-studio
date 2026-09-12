@@ -318,7 +318,11 @@ describe('F4b2 — through the worker route', () => {
       fundamentalHzByModel: { mid: 45 },
     });
     expect(r.bounds.map((b) => b.rule)).not.toContain('bump-series-l');
-    expect(r.notes.join(' ')).toContain('loaded impedance sweep');
+    /* E-5 — the note NAMES the missing input now, and it no longer calls the
+     * sweep "loaded": it is read from the measurement files rather than from a
+     * loaded network, which is the whole of E-5 part 2. */
+    expect(r.notes.join(' ')).toContain('Missing: its measured impedance sweep');
+    expect(r.notes.join(' ')).not.toContain('loaded impedance sweep');
   });
 });
 

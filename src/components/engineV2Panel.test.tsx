@@ -16,6 +16,7 @@ import { notSimulatedTag } from '../lib/networkReadiness.ts';
 import { buildReport } from '../lib/engine2/report.ts';
 import { casus1Files, casus1Filter, casus1Geometry, casus1Manifest, loadGolden } from '../lib/engine2/casus1.fixture.ts';
 import { FLAT_TARGET } from '../lib/engine2/requirements/targetCurve.ts';
+import { NO_SUBJECT } from '../lib/engine2/capability.ts';
 
 const golden = loadGolden();
 const manifest = casus1Manifest(golden);
@@ -44,5 +45,41 @@ describe('the v2 panel and the not-simulated state', () => {
     expect(html).toMatch(/class="panel v2-panel sim-stale"/);
     // The refusal itself is the tooltip's first line.
     expect(html).toContain('Not simulable: the network has no generator.');
+  });
+});
+
+/**
+ * E-5 — THE PANEL SURVIVES A PROJECT WITH ONE MEASURED WAY.
+ *
+ * Sander removed angle and impedance files from the inventory and the render
+ * died with "Cannot read properties of undefined (reading 'title')" and a black
+ * screen. The capability grid read `cells.find(…)!` for every metric in the
+ * register, and a metric whose SUBJECT does not exist — every pair metric on a
+ * one-way project — had no cell at all. Reproduced here by taking files away,
+ * which is what the inventory's remove button does.
+ */
+describe('E-5 — a report with fewer ways than metrics still renders', () => {
+  const reportWith = (drivers: string[]) =>
+    buildReport({
+      manifest: { ...manifest, entries: manifest.entries.filter((e) => drivers.includes(e.driver)) },
+      files: files.filter((f) => drivers.includes(f.entry.driver)),
+      filter: null,
+      geometry: casus1Geometry(golden),
+      settings: { targetCurve: FLAT_TARGET },
+    });
+
+  it('one way, and no way at all, both render — with the reason on the screen', () => {
+    for (const set of [['woofer'], []]) {
+      const r = reportWith(set);
+      const html = renderToStaticMarkup(<EngineV2Panel report={r} />);
+      expect(html.length, JSON.stringify(set)).toBeGreaterThan(1000);
+      expect(html, JSON.stringify(set)).toContain(NO_SUBJECT);
+      expect(html, JSON.stringify(set)).toMatch(/no adjacent pair|no measured way/);
+    }
+  });
+
+  it('and the three-way panel is unchanged — no extra column, same markup (P2)', () => {
+    const html = renderToStaticMarkup(<EngineV2Panel report={reportWith(['woofer', 'mid', 'tweeter'])} />);
+    expect(html).not.toContain(NO_SUBJECT);
   });
 });

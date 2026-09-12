@@ -249,6 +249,7 @@ import {
 import {
   candidateDeclarationFor,
   collectV2Scan,
+  v2ChainFrame,
   measurementFactsFor,
   pairDerivationInputs,
   reportingPowerW,
@@ -590,6 +591,30 @@ function useTheme(): [Theme, (t: Theme) => void] {
  *  the −60 dB phase-mask and the 20 dB integration-overlap window, so the
  *  ghost never draws a phase line and never counts as overlap. */
 const SILENT_GHOST_DB = -400;
+
+/**
+ * E-5 — A BRANCH ON A GRID, WITH THE SILENT GHOST OUTSIDE ITS OWN DATA.
+ *
+ * One rule, three readers: the sim grid (`simRaw`), the full-band safety set
+ * and — since E-5 — the v2 chain's own derived grid. It was written twice
+ * already and the third copy is what made it worth extracting: a branch that
+ * is banded differently on two grids is the same measurement answering two
+ * questions, which is the shape of every leak this layer has had.
+ *
+ * Outside the file's own extent the branch is SILENT rather than extrapolated.
+ * The ghost is a level, not a NaN, because every consumer downstream sums and
+ * a NaN would poison the sum instead of contributing nothing.
+ */
+function bandedOnGrid(l: Loaded, grid: readonly number[]): GriddedResponse {
+  const g = resample(l.frd.freq, l.frd.spl, l.frd.phase, grid, { clampEdges: true });
+  const f0 = l.frd.freq[0];
+  const f1 = l.frd.freq[l.frd.freq.length - 1];
+  return {
+    freq: [...grid],
+    spl: g.spl.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? SILENT_GHOST_DB : v)),
+    phaseDeg: g.phaseDeg.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? 0 : v)),
+  };
+}
 
 /* ------------------------------------------------------------------ *
  * V1 PIN DEFAULTS — LEGACY, and the toggle invariant is why they stay
@@ -5613,16 +5638,7 @@ export default function App() {
     /** Resample onto the grid; outside the driver's own measured range the
      *  branch is the silent ghost (3-way only — 2-way grids never extend
      *  past a measurement by construction). */
-    const banded = (l: Loaded): GriddedResponse => {
-      const f0 = l.frd.freq[0];
-      const f1 = l.frd.freq[l.frd.freq.length - 1];
-      const g = resample(l.frd.freq, l.frd.spl, l.frd.phase, grid, { clampEdges: true });
-      return {
-        freq: grid,
-        spl: g.spl.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? SILENT_GHOST_DB : v)),
-        phaseDeg: g.phaseDeg.map((v, i) => (grid[i] < f0 || grid[i] > f1 ? 0 : v)),
-      };
-    };
+    const banded = (l: Loaded): GriddedResponse => bandedOnGrid(l, grid);
     const toGrid = (l: Loaded): GriddedResponse =>
       threeWay ? banded(l) : resample(l.frd.freq, l.frd.spl, l.frd.phase, grid);
     let w = wIn ? toGrid(wIn) : silent();
@@ -6346,10 +6362,21 @@ export default function App() {
     return ws.map((w) => {
       const hz = (v: number | null) => (v === null ? '—' : `${Math.round(v)} Hz`);
       const pair = `${w.lower}→${w.upper}`;
-      if (w.empty) {
-        return { pair, text: t('EMPTY — no crossing frequency is allowed'), convention: false };
-      }
       const by = (l: typeof w.floorBy) => (l ? `${t(l.rule)} ${hz(l.hz)}` : t('none'));
+      if (w.empty) {
+        /* E-5 — AN EMPTY WINDOW NAMES THE TWO LIMITS THAT COLLIDED, here and
+         * not only in the panel's expandable list. A run that produces no
+         * candidate because a beaming ceiling landed at 34 Hz is unreadable
+         * until the line says which rule put it there; that is how long the
+         * E-5 artefact took to find. */
+        return {
+          pair,
+          text:
+            `${t('EMPTY — no crossing frequency is allowed')} · ` +
+            `${t('floor')}: ${by(w.floorBy)} > ${t('ceiling')}: ${by(w.ceilingBy)}`,
+          convention: false,
+        };
+      }
       return {
         pair,
         text: `${hz(w.floorHz)} – ${hz(w.ceilingHz)} · ${t('floor')}: ${by(w.floorBy)} · ${t('ceiling')}: ${by(w.ceilingBy)}`,
@@ -7999,7 +8026,7 @@ export default function App() {
        *
        * No fallback to the grid: without a validity band there is nothing to
        * optimise ON, and refuseIfUnverified above has already stopped the run. */
-      const band: [number, number] = evalBand
+      const v1Band: [number, number] = evalBand
         ? [evalBand.fromHz, evalBand.toHz]
         : [Math.max(200, grid[0] * 1.02), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))];
       const safety = (() => {
@@ -8008,16 +8035,7 @@ export default function App() {
         const hi = Math.min(20000, Math.max(...present.map((d) => d.frd.freq[d.frd.freq.length - 1])));
         if (!(hi > lo * 1.5)) return undefined;
         const sGrid = logspace(lo, hi, 240);
-        const bandedOn = (l: Loaded): GriddedResponse => {
-          const g = resample(l.frd.freq, l.frd.spl, l.frd.phase, sGrid, { clampEdges: true });
-          const f0 = l.frd.freq[0];
-          const f1 = l.frd.freq[l.frd.freq.length - 1];
-          return {
-            freq: sGrid,
-            spl: g.spl.map((v, i) => (sGrid[i] < f0 || sGrid[i] > f1 ? SILENT_GHOST_DB : v)),
-            phaseDeg: g.phaseDeg.map((v, i) => (sGrid[i] < f0 || sGrid[i] > f1 ? 0 : v)),
-          };
-        };
+        const bandedOn = (l: Loaded): GriddedResponse => bandedOnGrid(l, sGrid);
         return {
           freqs: sGrid,
           w: bandedOn(woofer!),
@@ -8042,6 +8060,16 @@ export default function App() {
        * also decides who MAKES them, and the first thing that depends on it is
        * the pin two lines below. */
       const useV2 = engineSelection.optimizer === 'v2';
+      /* E-5 — ON THE v2 ROUTE THE CHAIN LOOKS AND JUDGES WHERE THE MEASUREMENT
+       * SAYS, not where the plot range and the validity intersection put it.
+       * One implementation, both routes (`v2ChainFrame`); with no report it
+       * returns this grid and this band unchanged, so the v1 route stays byte
+       * for byte what it was. */
+      const v2Frame = useV2
+        ? v2ChainFrame({ report: engineV2Report?.report, simGrid: grid, fallbackBand: v1Band })
+        : { grid: grid as readonly number[], band: v1Band, notes: [] as string[] };
+      const chainGrid = v2Frame.grid;
+      const band = v2Frame.band;
       const pinsRaw = xoPinsValue();
       // F4b — a substituted or refused pin is a fact about the run, so it is
       // reported rather than left to be inferred from the delivered crossings.
@@ -8147,6 +8175,37 @@ export default function App() {
       // Banded per-branch angle sets (same treatment as the 0° branches) —
       // arms the in-room weight; without the mid's own set the term stays off.
       const angleSets3 = physWin3?.angleSets;
+      /* E-5 — the branch responses, impedances and angle sets the CHAIN runs
+       * on. Identical objects to `sim.base` whenever the frame kept the sim
+       * grid (the v1 route, and any v2 run whose measurement floor is already
+       * on it), so nothing is rebuilt that was not moved. */
+      const chainBranches =
+        chainGrid === grid
+          ? { w: sim.base.w, m: sim.base.m!, t: sim.base.t, z: zOnGrid, angles: angleSets3 }
+          : (() => {
+              const on = (l: Loaded | null): GriddedResponse =>
+                l
+                  ? bandedOnGrid(l, chainGrid)
+                  : {
+                      freq: [...chainGrid],
+                      spl: chainGrid.map(() => SILENT_GHOST_DB),
+                      phaseDeg: chainGrid.map(() => 0),
+                    };
+              const mp = (g: GriddedResponse): GriddedResponse =>
+                phaseMode === 'minimum' ? { ...g, phaseDeg: minimumPhaseDeg(chainGrid, g.spl) } : g;
+              const ad = angleResponsesOn(chainGrid);
+              return {
+                w: mp(on(effective(woofer, 'low'))),
+                m: mp(on(effective(midDrv, 'mid'))),
+                t: mp(on(effective(tweeter, 'high'))),
+                z: zGridWithSlots(impedances, chainGrid),
+                angles:
+                  ad?.mid && ad.mid.length > 0
+                    ? { woofer: ad.woofer, mid: ad.mid, tweeter: ad.tweeter }
+                    : undefined,
+              };
+            })();
+      if (v2Frame.notes.length > 0) setV2RunNotes((prev) => [...prev, ...v2Frame.notes]);
       const lowWin3 = physWin3?.low ?? { floorHz: midHpFloor, ceilHz: wooferXoCeiling };
       const highWin3 = physWin3?.high ?? { floorHz: tweeterHpFloor, ceilHz: midXoCeiling };
       // Warm start: the crossings of whatever design is in the sim right now
@@ -8467,12 +8526,12 @@ export default function App() {
             }
           : {};
         return {
-          grid: [...grid],
-          w: sim.base.w,
-          m: sim.base.m!,
-          t: sim.base.t,
-          driverZ: zOnGrid,
-          angleData: angleSets3,
+          grid: [...chainGrid],
+          w: chainBranches.w,
+          m: chainBranches.m,
+          t: chainBranches.t,
+          driverZ: chainBranches.z,
+          angleData: chainBranches.angles,
           tAdjust: tAdj,
           midAdjust: mAdj,
           xoLow: v.xoLow,
@@ -9309,9 +9368,31 @@ export default function App() {
     setV2Shortlist(null);
     setShortlistPick(null);
 
-    const grid = result.freq;
-    const w = resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, grid);
-    const t = resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, grid);
+    const simGrid = result.freq;
+    /* E-5 — WHICH ENGINE, hoisted from two hundred lines below so the chain
+     * frame can be decided here: the grid and the judged band are the first
+     * things that depend on it (the same move the three-way route made at
+     * F4d for the pin). One decision, read from here down. */
+    const useV2 = engineSelection.optimizer === 'v2';
+    const v1Band: [number, number] = evalBand
+      ? [evalBand.fromHz, evalBand.toHz]
+      : [Math.max(300, simGrid[0]), Math.min(simGrid[simGrid.length - 1] * 0.975, num(fMax, 20000))];
+    /* E-5 — on the v2 route the chain looks and judges where the measurement
+     * says (`v2ChainFrame`, one implementation for both routes). With no
+     * report it hands back this grid and this band, so the v1 two-way route is
+     * byte for byte what it was. */
+    const twoWayFrame = useV2
+      ? v2ChainFrame({ report: engineV2Report?.report, simGrid, fallbackBand: v1Band })
+      : { grid: simGrid as readonly number[], band: v1Band, notes: [] as string[] };
+    const grid = twoWayFrame.grid;
+    /* Outside its own measured extent a branch is SILENT rather than
+     * extrapolated — the two-way grid used to be the INTERSECTION of the two
+     * measurements, where the question could not arise; a derived floor can
+     * reach below one of them, so it has to be asked (`bandedOnGrid`). */
+    const onChainGrid = (l: Loaded) =>
+      grid === simGrid ? resample(l.frd.freq, l.frd.spl, l.frd.phase, grid) : bandedOnGrid(l, grid);
+    const w = onChainGrid(woofer);
+    const t = onChainGrid(tweeter);
     const angleData = angleResponsesOn(grid) ?? undefined;
     // The optimizer targets what you look at: the view range is the
     // evaluation band (top edge backed off 2.5% from the grid edge).
@@ -9344,13 +9425,10 @@ export default function App() {
       // Validity band, not the grid (A3d). The old Math.max(300, …) was a
       // stand-in for "below this the measurement cannot be trusted"; the
       // validity band says exactly that, from the gate, per measurement — so
-      // keeping both would be two floors for one fact.
-      band: (evalBand
-        ? [evalBand.fromHz, evalBand.toHz]
-        : [Math.max(300, grid[0]), Math.min(grid[grid.length - 1] * 0.975, num(fMax, 20000))]) as [
-        number,
-        number,
-      ],
+      // keeping both would be two floors for one fact. E-5: on the v2 route
+      // the FLOOR is derived from the lowest way instead of taken from the
+      // intersection, which the highest way's gate owns (`v2ChainFrame`).
+      band: twoWayFrame.band,
     };
 
     /* ---- FULL-CHAIN CROSSOVER SCAN (with measured impedances) ----
@@ -9483,7 +9561,6 @@ export default function App() {
        * generation belongs to A5d — the same reason the three-way route skips
        * its axis-by-axis mode and says so.
        * ================================================================ */
-      const useV2 = engineSelection.optimizer === 'v2';
       if (useV2) {
         /* SHOW THE CARD BEFORE THE SETUP: everything below is synchronous
          * main-thread work and until it finishes React cannot paint. */
@@ -9504,6 +9581,13 @@ export default function App() {
         setV2RunNotes([
           `Voicing (A5e.2): ${describeTargetCurve(activeTargetCurve)}. Every window, RMS and ` +
             'amplitude term in this run is measured against it.',
+          /* E-5 — and where this run LOOKS and JUDGES, in the same breath: both
+           * are derived from the measurement set since E-5 and neither leaves a
+           * trace in a number. Spread INTO the reset rather than appended before
+           * it — an append above this line is silently thrown away, which is
+           * how the first version of this shipped and what the browser run
+           * caught. */
+          ...twoWayFrame.notes,
         ]);
         /* E-2 — THE FIELD MODE this run uses: the "Run the full field" button
          * passes it explicitly (state has not landed yet in that tick), every
@@ -16745,6 +16829,18 @@ export default function App() {
                 remove: () => {
                   setLoaded(null);
                   dropAngles(() => false);
+                  /* E-5 — AND EVERYTHING THAT POINTED AT IT. The near-field
+                   * merge keeps the far field this response was built from and
+                   * the merged name beside it, so that "undo merge" can put the
+                   * ingredient back (I-2). With the response itself gone there
+                   * is nothing to undo INTO: leaving the slot filled offers a
+                   * button that restores a branch the designer just deleted,
+                   * and a pending preview would still be offered for accepting
+                   * onto a branch that no longer exists. The near-field
+                   * INGREDIENTS stay — they are a measurement of this driver
+                   * and not a reference to this file. */
+                  setNearField((n) => ({ ...n, [zKey]: { ...n[zKey], far: null, mergedName: null } }));
+                  setNfPreview((prv) => ({ ...prv, [zKey]: undefined }));
                 },
               });
             }

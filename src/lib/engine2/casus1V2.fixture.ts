@@ -36,6 +36,7 @@ import {
   declareCandidateChoices,
 } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
+import { chainGridFrom, judgedBandFloor } from './predesign/judgedBand.ts';
 import type { DriverBreakupDivisor, DriverMaxCrossover } from './predesign/xoWindow.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
@@ -140,10 +141,14 @@ export const SILENT_GHOST_DB = -400;
  * Read once at module load from the HUIDIG report — the band is class A (a
  * property of the measurement set), any netlist gives the same one.
  */
-const PRECEDENT_GRID_POINTS = 96;
-const PRECEDENT_GRID_HZ: [number, number] = [200, 20000]; // P6-OK: the resolution precedent, not a band
 const GRID_TOP_HZ = 20000; // P6-OK: the top of the audio band, as before
 const JUDGE_TOP_HZ = 19500; // P6-OK: the highest way's ceiling inside the grid, as before
+/* E-5 — THE DERIVATION MOVED, THE NUMBERS DID NOT. These eleven lines stood
+ * here, in `casus1b.fixture.ts` and in `casus2.fixture.ts`, verbatim, and the
+ * APP had none of them — it judged on `intersectValidity` and looked on the
+ * plot grid, so the same engine ran a different question (casebook E-5). One
+ * implementation, four readers; `judgedBandFloor` is the same arithmetic on the
+ * same report, so every number below is the number that was here. */
 const BAND_SOURCE = (() => {
   const golden = loadGolden();
   const manifest = casus1Manifest(golden);
@@ -155,20 +160,11 @@ const BAND_SOURCE = (() => {
     geometry: casus1Geometry(golden),
     settings: { reOhmByDriver: { woofer: CASUS1_WOOFER_DC_OHM } },
   });
-  const lowest = report.driversLowToHigh[0];
-  const d = report.ingest.drivers.find((x) => x.driver === lowest);
-  if (!d?.onAxis) throw new Error(`casus 1: the lowest way (${lowest}) has no on-axis band`);
-  const validityFloorHz = d.onAxis.bandHz[0];
-  const fpHz = d.impedance?.fundamentalHz ?? null;
-  const floorHz = fpHz !== null ? Math.max(validityFloorHz, fpHz) : validityFloorHz;
-  return { lowest, validityFloorHz, fpHz, floorHz, provenance: d.onAxis.bandFloorProvenance };
+  const f = judgedBandFloor(report);
+  if (f === null) throw new Error('casus 1: the lowest way has no on-axis band');
+  return f;
 })();
-const pointsPerOctave = PRECEDENT_GRID_POINTS / Math.log2(PRECEDENT_GRID_HZ[1] / PRECEDENT_GRID_HZ[0]);
-export const CASUS1_V2_GRID: number[] = logspace(
-  BAND_SOURCE.validityFloorHz,
-  GRID_TOP_HZ,
-  Math.round(pointsPerOctave * Math.log2(GRID_TOP_HZ / BAND_SOURCE.validityFloorHz)),
-);
+export const CASUS1_V2_GRID: number[] = chainGridFrom(BAND_SOURCE.validityFloorHz, GRID_TOP_HZ);
 
 /**
  * The band the SPL window and the RMS deviation are judged on — see the block

@@ -281,7 +281,11 @@ describe('UI-1 / E-3b — the two-way v2 route loads through the shortlist, not 
 
   /** The two-way v2 branch, from its guard to the `runChainScanV2` call's end. */
   const twoWayV2 = (): string => {
-    const start = APP.indexOf("const useV2 = engineSelection.optimizer === 'v2';\n      if (useV2) {");
+    /* E-5 — the two-way route's engine decision was HOISTED to the component's
+     * own indentation so the chain frame could be settled beside the grid it
+     * replaces, so the branch is anchored on its guard alone. The claims below
+     * are unchanged; only where the branch starts moved. */
+    const start = APP.indexOf('      if (useV2) {\n        /* SHOW THE CARD BEFORE THE SETUP');
     expect(start).toBeGreaterThan(0);
     /* The end is the v1 variant list, which sits at the component's own
      * indentation — the same call appears INSIDE the branch as the no-window

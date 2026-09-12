@@ -338,19 +338,47 @@ export function directivityFromPair(
   offAxisDb: readonly number[],
   grid: readonly number[],
   angleDeg: number,
-  opts: { octaveFraction?: number } = {},
+  opts: {
+    octaveFraction?: number;
+    /**
+     * E-5 — WHERE THE TWO MEASUREMENTS ARE BOTH VALID, Hz.
+     *
+     * The difference between an on-axis and an off-axis response is only
+     * defined where BOTH exist, and the caller's comment has said so since the
+     * pair was first derived — while the code read the off-axis curve
+     * interpolated onto the on-axis grid, which CLAMPS at its edges. An axis
+     * merged from a near field is valid from 20.5 Hz and the gated angle files
+     * beside it from about 400; below 400 the difference was then a clamped
+     * edge value against a real one, and the scan below takes the FIRST
+     * crossing from the bottom, so the artefact won. Measured in the running
+     * app on the Koan 67.7 L set: a beaming ceiling of 34 Hz, binding, which
+     * emptied the woofer→mid window.
+     *
+     * Absent = the whole grid, which is what every caller before E-5 got.
+     */
+    bandHz?: readonly [number, number];
+  } = {},
 ): DirectivityPair {
   const fraction = opts.octaveFraction ?? DEFAULT_TREND_OCTAVE_FRACTION;
-  const raw = offAxisDb.map((v, i) => v - onAxisDb[i]);
+  /* Restricted BEFORE the trend and not after it: a smoothing kernel that
+   * reaches into invalid data carries it back across the edge (the V38-fix
+   * lesson, one module over). */
+  const keep: number[] = [];
+  for (let i = 0; i < grid.length; i++) {
+    if (opts.bandHz && (grid[i] < opts.bandHz[0] || grid[i] > opts.bandHz[1])) continue;
+    keep.push(i);
+  }
+  const g = keep.length === grid.length ? grid : keep.map((i) => grid[i]);
+  const raw = keep.map((i) => offAxisDb[i] - onAxisDb[i]);
   // Smooth the DIFFERENCE, not the two curves: ripple that is common to both
   // cancels in the difference and what is left is the beaming trend.
-  const diff = octaveTrend(grid, raw, fraction);
+  const diff = g.length > 0 ? octaveTrend(g, raw, fraction) : [];
 
   const crossing = (target: number): number | null => {
-    for (let i = 1; i < grid.length; i++) {
+    for (let i = 1; i < g.length; i++) {
       if (diff[i - 1] > target && diff[i] <= target) {
         const t = (target - diff[i - 1]) / (diff[i] - diff[i - 1]);
-        return Math.exp(Math.log(grid[i - 1]) + t * (Math.log(grid[i]) - Math.log(grid[i - 1])));
+        return Math.exp(Math.log(g[i - 1]) + t * (Math.log(g[i]) - Math.log(g[i - 1])));
       }
     }
     return null;
@@ -365,12 +393,12 @@ export function directivityFromPair(
 
   return {
     angleDeg,
-    bandHz: [grid[0], grid[grid.length - 1]],
+    bandHz: g.length > 0 ? [g[0], g[g.length - 1]] : [NaN, NaN],
     minus3Hz: m3,
     minus6Hz: m6,
     effectiveRadiusM: radius,
     differenceDb: diff,
-    grid: [...grid],
+    grid: [...g],
     estimator: stamp(EXTRACTOR_DIRECTIVITY),
   };
 }

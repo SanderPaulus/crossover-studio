@@ -96,7 +96,12 @@ export const ESTIMATOR_VERSIONS = {
   /** Diffraction ripple + dominant path length — A5b.3. */
   'spl-diffraction': '1.0',
   /** Directivity from 0°/θ pairs — A5b.4. */
-  'spl-directivity': '1.0',
+  /* E-5 — 1.1: the pair is read on the INTERSECTION of the two measurements'
+   * validity instead of on the on-axis grid, where `interpLog` clamped the
+   * off-axis curve past its own floor. The quantity is unchanged; where it is
+   * read is corrected, and on a merged axis against gated angle files that
+   * moved a beaming ceiling from 34 Hz to the cone's own limit. */
+  'spl-directivity': '1.1',
   /** Passband level per driver (feeds the anchored gap analysis) — A5d.4. */
   'spl-level': '1.0',
 } as const;

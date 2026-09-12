@@ -935,10 +935,21 @@ export function invertBudgets(
     /* ---- LF-lift budget -> max series L at the path resistance --------- */
     if (budgets.lfBumpBudgetDb !== undefined && w.lowest) {
       if (!w.nearField || !w.impedance || w.fPeakHz === null) {
+        /* E-5 — WHICH ONE. "Missing one of the three" is half a message: it
+         * sent a designer looking for a measurement that was on disk (the
+         * sweep reached this way only through a LOADED NETWORK until E-5, so
+         * the note fired on a project with all three measurements and no
+         * filter). F0 — say which input is absent, by name. */
+        const missing = [
+          ...(w.nearField ? [] : ['a near-field measurement of this way']),
+          ...(w.impedance ? [] : ['its measured impedance sweep']),
+          ...(w.fPeakHz === null ? ['the impedance peak M-D derives its band from'] : []),
+        ];
         notes.push(
-          `${w.driver}: the LF-lift budget needs a near-field measurement, the loaded impedance ` +
-            'sweep and the impedance peak M-D derives its band from. Missing one of the three, ' +
-            'so no series-inductance bound was applied.',
+          `${w.driver}: the LF-lift budget needs a near-field measurement, the measured impedance ` +
+            'sweep and the impedance peak M-D derives its band from. ' +
+            `${missing.length === 1 ? 'Missing: ' : `Missing ${missing.length} of the three: `}` +
+            `${missing.join(', ')} — so no series-inductance bound was applied.`,
         );
       } else {
         /* The inversion's measured inputs, WITHOUT the path resistance — which

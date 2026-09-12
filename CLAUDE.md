@@ -48,6 +48,17 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná E-5 (12-09-2026) gemeten op 470 s — 184 bestanden (183 geslaagd, 1 overgeslagen),
+    2354 tests (2351 geslaagd, 3 overgeslagen), groen.** +3 BESTANDEN
+    (`predesign/judgedBand.test.ts` 10 claims, `e5AppFrame.test.ts` 10, `e5Repairs.test.ts` 17) en
+    +39 tests, en die telling sluit exact: die 37 plus TWEE in `engineV2Panel.test.tsx` (2 → 4, de
+    render met minder wegen dan metrieken). Het corpus is niet geregenereerd. GEEN nieuwe referentie:
+    de V43-waarde van 289 s blijft staan, en deze meting liep bovendien deels NAAST een browserrun en
+    een dev-server. **De EERSTE snelle run had vijf rode claims en alle vijf deden hun werk:** de
+    V25-noot in `lfBumpBorder` pinde het woord "loaded impedance sweep" dat E-5 juist weghaalt, en de
+    vier claims van `selection.test.ts` ankerden de tweewegtak op de INSPRINGING van zijn
+    `useV2`-declaratie, die E-5 naar het niveau van de component hees. Beide herankerd vóór de volle
+    laag; geen claim veranderde van inhoud.
     **Ná M-2 (12-09-2026) gemeten op 464 s — 179 bestanden (178 geslaagd, 1 overgeslagen), 2259 tests
     (2256 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 BESTAND
     (`engine2/koanDemo2026_09.test.ts`, 14 claims) en +14 tests, en die twee getallen zijn HETZELFDE
@@ -461,7 +472,19 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 10-09-2026 (U-5): 176 bestanden, 2194 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 12-09-2026 (E-5): 184 bestanden, 2354 tests,
+  1615 s (26 min 55), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
+  browsercontroles (dev-server gestopt) en ná de snelle laag.** +3 bestanden en +39 tests — zie de
+  `test:fast`-regel; het corpus is niet geregenereerd, dus geen enkele `it.each` over het levende
+  corpus beweegt. **DEZE RUN IS GEDRAAID OMDAT E-5 EEN VENSTERINVOER RAAKT** (`spl-directivity`
+  1.0 → 1.1: het 0°/θ-paar wordt op de doorsnede van beide geldigheidsintervallen gelezen, en een
+  bundelingsplafond is een vensterplafond), en wat hij bewijst is dat die correctie op dit boek geen
+  enkel venster verplaatst: de DRIE live ketenruns reproduceren op hun onveranderde corpora, beide
+  byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren, en de golden-suites van
+  casus 1, 1b en 2 staan. De app-kant van E-5 (het afgeleide ketenraster en de afgeleide band) raakt
+  geen fixture: die leveren hun eigen raster en band aan, en `v2ChainFrame` is op een aanroeper
+  zonder rapport de identiteit.
+  (De stand ervoor: **GEMETEN 10-09-2026 (U-5): 176 bestanden, 2194 tests,
   1539 s (25 min 39), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
   browsercontrole (dev-server en headless Chrome gestopt) en ná de snelle laag.** +2 bestanden
   (`predesign/statedCrossings.test.ts` 36 claims, `optimizer/statedVerdicts.test.ts` 19) en +55
@@ -471,7 +494,7 @@
   bevroren netlist byte voor byte, de VERWERPINGSRUN (881 s) komt terug als verwerping ZONDER
   netwerk — de V31-blankering staat dus onaangeroerd voor elke niet-gestelde kandidaat — casus 1b's
   live ketenrun reproduceert, en beide byte-baselines (`f4cRegression`, `workerRouteRegression`)
-  reproduceren. De wandkloktijd IS de byte-reproductie; al het andere draait ernaast.
+  reproduceren. De wandkloktijd IS de byte-reproductie; al het andere draait ernaast.)
   (De stand ervoor: **GEMETEN 10-09-2026 (U-4): 174 bestanden, 2139 tests,
   1542 s (25 min 42), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
   browsercontrole (dev-server en headless Chrome gestopt) en ná de snelle laag.** +1 bestand
@@ -3481,6 +3504,91 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   verwachting, met een aparte claim voor onderin waar de som wél optelt. (ii) "Een kleinere kast remt
   de conus" — zie de vorige entry; bij de afstemming piekt de last en beweegt de conus juist het
   minst.
+
+### E-5-guards (waar een v2-run kijkt en oordeelt; drie surfaces die iets onwaars zeiden)
+- **`src/lib/engine2/predesign/judgedBand.ts` — ÉÉN AFLEIDING, VIER LEZERS.** De elf regels die
+  `casus1V2.fixture.ts`, `casus1b.fixture.ts` en `casus2.fixture.ts` sinds M-1 VERBATIM droegen, en
+  die de APP niet had: de vloer van de geoordeelde band is `max(geldigheidsvloer, f_p)` van de
+  LAAGSTE weg, het raster start op de geldigheidsvloer en houdt de RESOLUTIE van het
+  `f4b2`-precedent (96 punten over 200–20 000 Hz, 14,4 per octaaf) — `GRID_N` = 600 is een
+  PLOT-constante, en een plotconstante als zoekresolutie is dezelfde vergissing als een plotbereik
+  als zoekvloer. `judgedBandFloor` + `chainGridFrom`; de drie fixtures lezen hem en leveren
+  **byte-identiek** wat zij leverden (casus 1: 143 rasterpunten, band 52,368–19 500), wat de drie
+  golden-suites bevestigen. **Het PLAFOND beslist deze module niet**: elke fixture stelt haar eigen
+  `JUDGE_TOP_HZ` en de app versmalt de doorsnede-top met het kijkbereik — beide zijn van de
+  aanroeper en geen van beide was fout.
+- **`v2ChainFrame` (`optimizer/scanRequest.ts`) — wat de APP ermee doet, N-neutraal, beide routes.**
+  Absent is de identiteit: geen rapport, of een rapport waarvan de laagste weg geen on-axis band
+  heeft, geeft de aanroeper zijn EIGEN raster en band terug, byte voor byte, en géén noot — dat is
+  élke v1-run, en de toggle-invariant is een uitspraak over v1-gedrag. `toggleRegression`,
+  `f4cRegression` en `workerRouteRegression` reproduceren.
+- **`bandedOnGrid` in `App.tsx` — ÉÉN banding-regel, drie lezers** (het sim-raster, de volle-band
+  veiligheidsset, en sinds E-5 het eigen v2-ketenraster). Zij stond er twee keer; de derde kopie was
+  wat haar de moeite van extraheren waard maakte. Buiten de eigen uitgestrektheid van een bestand is
+  een tak STIL en niet geëxtrapoleerd, en de geest is een NIVEAU en geen NaN, want alles
+  stroomafwaarts sommeert.
+- `src/lib/engine2/predesign/judgedBand.test.ts` (11 claims) — de afleiding met de hand, de drie
+  fixtures tegen dezelfde rekensom, en `v2ChainFrame` in vijf toestanden: geen rapport, een rapport
+  zonder band, casus 1 (band → f_p, raster → geldigheidsvloer, dezelfde punten per octaaf), een
+  aanroeper die de vloer al haalt (eigen rasterarray behouden, band beweegt nog), en een aanroeper
+  die er al op staat (GEEN noot — er is niets gebeurd).
+- `src/lib/engine2/e5AppFrame.test.ts` (10 claims, ~80 s) — **de meting die de sessie draagt**,
+  gepind tegen `test-fixtures/casus1_e5_app_vs_repo.json` en reproduceerbaar met
+  `npx vite-node scripts/measure-e5-app-vs-repo.ts` (seconden; `E5_RUN=1` voegt één ketenrun per arm
+  toe). Op de repo-frame krijgt ÉLKE kandidaat een gedempte val binnen een halve octaaf van f_p en de
+  cut die hem maakte ligt ONDER de app-bandvloer; op de app-frame geen enkele. De attributieclaim
+  staat ernaast: met de afgeleide band op het 200 Hz-raster klemt de refine een cut op −15 dB bij
+  125–141 Hz, dus beide vloeren moeten omlaag. En de tegenproef die het een bevinding maakt: het
+  ZAAD haalt het budget niet (3,09 dB tegen 1,4) terwijl alle tien de geleverde netlists het wél
+  halen — de tune is wat het verdient, mét de val die zij gekregen heeft.
+- `src/lib/engine2/e5Repairs.test.ts` (16 claims) — de drie kleinere reparaties, elk met de
+  tegenproef, en de app-koppelingen als BRONSCAN (het UI-1-idioom: een functietest kan niet zeggen of
+  de app haar aanroept, en in alle drie was het aanroepen de foute helft). **Nagemeten dat elk van de
+  vier kán falen**: de sweep weer uit het filter lezen (3 rood), de paarband uit `derive.ts` halen
+  (1 rood), de `NO_SUBJECT`-cel weghalen (2 rood), de ontkoppeling bij verwijderen weghalen (1 rood).
+- **DEEL 2 — een budget wordt op de MEETING geïnverteerd en niet op een netwerk.** `report.ts` las de
+  sweep uit `input.filter?.driverZ[driver]`, en `FilterInput.driverZ` wordt door de aanroeper uit
+  precies die Z-BESTANDEN gebouwd. Zonder geladen netwerk meldde het paneel dus *"missing one of the
+  three"* met alle drie de metingen op schijf. Sindsdien uit `input.files`, met de filterkopie als
+  terugval; **gemeten in de draaiende app op de demo zonder netwerk: `low · series inductance ·
+  2,14 mH` staat er en de melding is weg.** En een ontbrekende invoer wordt bij NAAM genoemd (F0).
+- **DEEL 3 — `spl-directivity` 1.0 → 1.1.** Het 0°/θ-paar wordt gelezen op de DOORSNEDE van beide
+  geldigheidsintervallen; `interpLog` klemt aan de randen van de hoekcurve, dus op een gemergde as
+  (20,5 Hz) tegen gepoorte hoekbestanden (≈400 Hz) was het verschil daaronder een gehouden randwaarde
+  tegen een echte meting — en `crossing()` neemt de EERSTE neerwaartse doorgang van onderaf. De
+  restrictie gaat vóór de trend en niet erna (V38-fix-les). Absent = het hele raster, byte voor byte.
+  **Het GETAL van Sanders sessie (34 Hz) is NIET gereproduceerd** — niet met de 67,7 L-as tegen de
+  gepoorte hoekbestanden van de demo (15° leest `geen`, 30/45/60° 2915/1480/927 Hz, vóór en ná gelijk)
+  en niet met de in-app-merge op de demowoofer. De bank in `e5Repairs.test.ts` reproduceert de VORM.
+- **DEEL 4 — `NO_SUBJECT` in `capability.ts`.** `subjectsFor` geeft de paren van een project, dus op
+  één weg heeft élke paarmetriek GEEN onderwerp, had geen cel, en las de paneelgrid `cells.find(…)!`
+  — bestanden verwijderen tot er één weg over was crashte de render met *"Cannot read properties of
+  undefined (reading 'title')"*. Een metriek zonder onderwerp is nu UIT met haar reden (P4); de kolom
+  verschijnt alleen op een project dat er een heeft, en een drieweg is byte-identiek (25 cellen).
+  Verwijderen van de 0°-respons ontkoppelt sindsdien de merge-boekhouding (`far`, `mergedName`, de
+  preview) en laat de nabij-veldINGREDIËNTEN staan.
+- **DEEL 5 — het U-5-veld rendert wél op de driewegroute**, gemeten op beide routes met verse
+  `localStorage`: twee regels en "low→mid, mid→high" op de drieweg, één en "low→high" op de tweeweg,
+  beide in dezelfde uitklap die dicht opent. De gemelde asymmetrie reproduceert niet; de claim in
+  `e5Repairs.test.ts` is structureel (één textarea, één setting, geen wegtelling ertussen).
+- **DE PRIJS, EN ZIJ IS HET EERSTE WAT JE MOET WETEN VOORDAT JE EEN v2-DRIEWEG START.** De
+  geoordeelde band gaat van 5,5 naar 8,6 octaaf, dus de tuner wordt gevraagd drie octaven vlak te
+  maken die hij nooit gezien heeft. **Gemeten in de draaiende app op de driewegdemo met de
+  woofermerge en de eisen gewapend: één driewegkandidaat kostte vóór E-5 ~150 s en kost er nu
+  MEER DAN 55 MINUTEN** — meer dan twintig keer, en het raster is er maar een klein deel van
+  (143 punten tegen 890 gaf geen zichtbaar verschil). Drie veldruns liepen over het uur zonder af te
+  komen; de TWEEWEGverkenning is wél klaar (1083 s, 6 van 6 geleverd). Wat het is: de trapmethode
+  mikt op `rippleDb 2,5 / phaseDeg 15`, en dat doel is op 5,5 octaaf haalbaar en op 8,6 niet meer,
+  dus de pas loopt zijn hele snoei-/escalatieladder af en stopt nooit vroeg. **Dat is dezelfde prijs
+  die de repo-route altijd betaalde** (C-2: 313–8671 s per kandidaat); de app was goedkoop omdat hij
+  een kleiner probleem oploste. **HET TRAPDOEL HERIJKEN OP DE BREDERE BAND IS EEN GESTELD GETAL EN
+  DUS SANDERS KEUZE** — niet die van E-5 (A5e.1: een doel dat precies zo ver meeschuift als nodig
+  bewaakt niets). Tot dat gesteld is: tweeweg een kwartier, drieweg-veld werk voor een nacht.
+- **EEN VOLGORDEFOUT DIE DE BROWSER VING EN GEEN TEST.** De tweewegroute voegde de frame-noten toe
+  en verving vier regels later de hele notenlijst, dus zij werden in stilte weggegooid. Sindsdien
+  gepind: `e5Repairs.test.ts` eist dat op elke route de enige toewijzing die de notenlijst VERVANGT
+  op of vóór de eigen bijdrage van de frame komt. Wie hier een noot toevoegt kijkt eerst waar de
+  reset staat.
 
 ### U-6-guards (het resultaatgebied geordend; alleen UI/ordening, geen enkele zin herschreven)
 - **`src/lib/v2ResultLayout.ts` — DE VOLGORDE VAN HET RESULTAATGEBIED, ALS DATA.** Vijfendertig

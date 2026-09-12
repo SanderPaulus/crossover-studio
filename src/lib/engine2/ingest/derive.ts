@@ -447,9 +447,20 @@ export function runIngest(
         // Compare on the on-axis grid: the two sums may have different valid
         // bands, and the difference is only defined where both exist.
         const offOn = onAxis.grid.map((f) => interpLog(off.grid, off.db, f));
+        /* E-5 — the band the PAIR is valid on, and it is what the comment above
+         * has always claimed: the intersection. `interpLog` clamps at the
+         * off-axis curve's edges, so without this the difference below the
+         * off-axis file's own validity floor is a held edge value against a
+         * real measurement, and the -6 dB scan takes the FIRST crossing from
+         * the bottom. On a merged axis (valid from 20.5 Hz) against gated angle
+         * files (valid from about 400) that put the beaming ceiling at 34 Hz. */
         directivity.push(
           directivityFromPair(onAxis.db, offOn, onAxis.grid, off.angleDeg, {
             octaveFraction: opts.trendOctaveFraction,
+            bandHz: [
+              Math.max(onAxis.bandHz[0], off.bandHz[0]),
+              Math.min(onAxis.bandHz[1], off.bandHz[1]),
+            ],
           }),
         );
         const offResid = onAxis.grid.map((f) => interpLog(off.grid, off.residualDb, f));

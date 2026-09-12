@@ -41,6 +41,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logspace, resample, resampleImpedance, type GriddedResponse } from '../dsp.ts';
+import { chainGridFrom, judgedBandFloor } from './predesign/judgedBand.ts';
 import type { Complex } from '../complex.ts';
 import { deserializeFilter } from '../filterFile.ts';
 import { crossoverToNetlist } from '../vxpNetwork.ts';
@@ -322,8 +323,6 @@ export function casus2Report(
  * The chain grid and the judged band — derived, as casus 1's are
  * ================================================================== */
 
-const PRECEDENT_GRID_POINTS = 96;
-const PRECEDENT_GRID_HZ: [number, number] = [200, 20000]; // P6-OK: the resolution precedent, not a band
 const GRID_TOP_HZ = 20000; // P6-OK: the top of the audio band, as casus 1
 const JUDGE_TOP_HZ = 19500; // P6-OK: the highest way's ceiling inside the grid, as casus 1
 const SAFETY_GRID_POINTS = 240;
@@ -339,20 +338,11 @@ const SAFETY_GRID_POINTS = 240;
  */
 const BAND_SOURCE = (() => {
   const report = casus2Report(null);
-  const lowest = report.driversLowToHigh[0];
-  const d = report.ingest.drivers.find((x) => x.driver === lowest);
-  if (!d?.onAxis) throw new Error(`casus 2: the lowest way (${lowest}) has no on-axis band`);
-  const validityFloorHz = d.onAxis.bandHz[0];
-  const fpHz = d.impedance?.fundamentalHz ?? null;
-  const floorHz = fpHz !== null ? Math.max(validityFloorHz, fpHz) : validityFloorHz;
-  return { lowest, validityFloorHz, fpHz, floorHz, provenance: d.onAxis.bandFloorProvenance };
+  const f = judgedBandFloor(report);
+  if (f === null) throw new Error('casus 2: the lowest way has no on-axis band');
+  return f;
 })();
-const pointsPerOctave = PRECEDENT_GRID_POINTS / Math.log2(PRECEDENT_GRID_HZ[1] / PRECEDENT_GRID_HZ[0]);
-export const CASUS2_V2_GRID: number[] = logspace(
-  BAND_SOURCE.validityFloorHz,
-  GRID_TOP_HZ,
-  Math.round(pointsPerOctave * Math.log2(GRID_TOP_HZ / BAND_SOURCE.validityFloorHz)),
-);
+export const CASUS2_V2_GRID: number[] = chainGridFrom(BAND_SOURCE.validityFloorHz, GRID_TOP_HZ);
 export const CASUS2_V2_BAND_HZ: [number, number] = [BAND_SOURCE.floorHz, JUDGE_TOP_HZ];
 export const CASUS2_V2_BAND_SOURCE = BAND_SOURCE;
 

@@ -74,7 +74,14 @@ function CapabilityGrid({ cells, subjects, metrics }: {
         </thead>
         <tbody>
           {metrics.map((m) => {
-            const any = cells.find((c) => c.metric === m)!;
+            /* E-5 — NO NON-NULL ASSERTION HERE. `metrics` is the whole metric
+             * register and `cells` is what this project could point it at; a
+             * metric with no subject used to have no cell and this line read
+             * `.find(…)!`, which crashed the render (see `NO_SUBJECT`). The
+             * matrix now always emits a cell, and this row survives even if a
+             * later shape does not. */
+            const any = cells.find((c) => c.metric === m);
+            if (!any) return null;
             return (
               <tr key={m}>
                 <th scope="row">
@@ -1094,7 +1101,9 @@ export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = n
                 {w.lower} → {w.upper}
                 <b>
                   {w.empty
-                    ? 'EMPTY — no crossing frequency is allowed'
+                    ? `EMPTY — no crossing frequency is allowed · floor ${
+                        w.floorBy ? `${w.floorBy.rule} ${hz(w.floorBy.hz)}` : 'none'
+                      } > ceiling ${w.ceilingBy ? `${w.ceilingBy.rule} ${hz(w.ceilingBy.hz)}` : 'none'}`
                     : `${hz(w.floorHz)} – ${hz(w.ceilingHz)}`}
                 </b>
               </div>

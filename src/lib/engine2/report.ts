@@ -1419,7 +1419,23 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
     const driver = order[i];
     const d = ingest.drivers.find((x) => x.driver === driver);
     if (!d) continue;
-    const raw = input.filter?.driverZ[driver];
+    /* E-5 — THE SWEEP IS A MEASUREMENT, SO IT IS READ FROM THE MEASUREMENTS.
+     *
+     * This used to be `input.filter?.driverZ[driver]`, and `FilterInput.driverZ`
+     * is built by the caller out of exactly these Z files (`appAdapter.ts`,
+     * `casus1FilterFromParts`) — the same numbers, behind a NETWORK. So with no
+     * filter loaded the panel reported "the LF-lift budget needs a near-field
+     * measurement, the loaded impedance sweep and the impedance peak … missing
+     * one of the three" while all three were on disk and only a netlist was
+     * absent, which is not one of the three and is not needed to invert a
+     * budget (E-5, measured in the running app on the Koan 67.7 L set).
+     *
+     * The filter's copy stays as the fallback for a caller that hands one over
+     * without the Z file behind it. */
+    const zFile = input.files.find(
+      (f) => f.entry.kind === 'Z' && f.entry.driver === driver && f.impedance,
+    )?.impedance;
+    const raw = zFile ?? input.filter?.driverZ[driver];
     const fallback: [number, number] = d.onAxis ? d.onAxis.bandHz : [20, 20000]; // P6-OK: only a fallback span when no measurement bounds exist
     const pass = passbandOf(driver, crossings, fallback);
     const gapWay = gaps?.ways.find((w) => w.driver === driver);

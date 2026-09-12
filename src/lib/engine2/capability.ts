@@ -42,11 +42,51 @@ export interface CapabilityMatrix {
   describeOff: string[];
 }
 
+/**
+ * E-5 — THE SUBJECT A PROJECT DOES NOT HAVE.
+ *
+ * `subjectsFor` returns the driver ids for a per-driver metric and the adjacent
+ * pairs for a per-pair one, so on a project with one measured way the pair
+ * metrics have NO subject and on one with none the driver metrics have none
+ * either. Until E-5 those metrics were still listed in `metrics` and had no
+ * cell at all, and the panel's grid read `cells.find(…)!` — so removing files
+ * from the inventory until one way was left crashed the render with "Cannot
+ * read properties of undefined (reading 'title')" and a black screen (measured,
+ * and reproduced in `capability.test.ts`).
+ *
+ * The repair is not a guard in the renderer. A metric that cannot run because
+ * its SUBJECT does not exist is the same state as one that cannot run because
+ * an input is missing, and P4 says that state is reported with its reason. So
+ * it gets a cell, off, on this subject — which appears as a column only on a
+ * project that actually has a metric with nothing to point at.
+ */
+export const NO_SUBJECT = 'no subject';
+
 export function buildCapabilityMatrix(ctx: MetricContext): CapabilityMatrix {
   const cells: CapabilityCell[] = [];
   const subjects = new Set<string>();
   for (const decl of METRIC_DECLARATIONS) {
-    for (const subject of subjectsFor(decl, ctx)) {
+    const own = subjectsFor(decl, ctx);
+    if (own.length === 0) {
+      subjects.add(NO_SUBJECT);
+      cells.push({
+        metric: decl.id,
+        title: decl.title,
+        subject: NO_SUBJECT,
+        active: false,
+        reasons: [
+          decl.scope === 'pair'
+            ? `this metric judges a HANDOVER and the project has ${ctx.driversLowToHigh.length} ` +
+              'measured way(s), so there is no adjacent pair to judge'
+            : 'this metric judges a DRIVER and the project has no measured way',
+        ],
+        role: decl.role,
+        specRef: decl.specRef,
+        uncalibrated: decl.uncalibrated,
+      });
+      continue;
+    }
+    for (const subject of own) {
       subjects.add(subject);
       const reasons = decl.needs
         .filter((n) => !n.met(ctx, subject === 'system' ? null : subject))

@@ -1,0 +1,262 @@
+{
+  "_wat": "E-5 — de app-frame tegen de repo-frame op casus 1s gemergde set; twee getallen verschillen (raster en band), de meetset niet.",
+  "frames": {
+    "repo_grid": {
+      "van_hz": 20.5078,
+      "tot_hz": 20000,
+      "punten": 143
+    },
+    "app_grid": {
+      "van_hz": 200,
+      "tot_hz": 20000,
+      "punten": 600
+    },
+    "repo_band_hz": [
+      52.3681640625,
+      19500
+    ],
+    "app_band_hz": [
+      396.66798889329635,
+      19500
+    ],
+    "band_bron": {
+      "lowest": "woofer",
+      "validityFloorHz": 20.5078,
+      "fpHz": 52.3681640625,
+      "floorHz": 52.3681640625,
+      "provenance": "merge-block"
+    }
+  },
+  "md_budget_resonant_db": 1.4,
+  "zaad": [
+    {
+      "arm": "A repo grid + repo band",
+      "candidate": "204 · 2251",
+      "wooferEq": [
+        "peak@37.2Hz -10.47dB q0.70",
+        "peak@143.1Hz -3.27dB q3.01"
+      ],
+      "trapHz": 52.12370787968185,
+      "trapDampedBy": "R",
+      "lowestWaySeriesMh": 32.62,
+      "mdExtraDb": 2.877,
+      "mdResonantDb": 2.875
+    },
+    {
+      "arm": "A repo grid + repo band",
+      "candidate": "335 · 2251",
+      "wooferEq": [
+        "peak@37.2Hz -6.71dB q0.70",
+        "peak@172.2Hz -2.34dB q1.61"
+      ],
+      "trapHz": 47.14382950876461,
+      "trapDampedBy": "R",
+      "lowestWaySeriesMh": 54.65,
+      "mdExtraDb": 3.089,
+      "mdResonantDb": 3.087
+    },
+    {
+      "arm": "A repo grid + repo band",
+      "candidate": "550 · 2251",
+      "wooferEq": [
+        "peak@37.2Hz -5.18dB q0.70",
+        "peak@423.5Hz -3.71dB q2.59"
+      ],
+      "trapHz": 48.43020379164242,
+      "trapDampedBy": "R",
+      "lowestWaySeriesMh": 16.21,
+      "mdExtraDb": 0.979,
+      "mdResonantDb": 0.977
+    },
+    {
+      "arm": "B repo grid + app  band",
+      "candidate": "204 · 2251",
+      "wooferEq": [],
+      "trapHz": null,
+      "trapDampedBy": null,
+      "lowestWaySeriesMh": 8.345,
+      "mdExtraDb": 11.038,
+      "mdResonantDb": 11.036
+    },
+    {
+      "arm": "B repo grid + app  band",
+      "candidate": "335 · 2251",
+      "wooferEq": [
+        "peak@271.6Hz -1.69dB q0.77",
+        "peak@367.8Hz -2.68dB q2.23"
+      ],
+      "trapHz": 50.024490564711996,
+      "trapDampedBy": "R",
+      "lowestWaySeriesMh": 26.66,
+      "mdExtraDb": 2.041,
+      "mdResonantDb": 2.039
+    },
+    {
+      "arm": "B repo grid + app  band",
+      "candidate": "550 · 2251",
+      "wooferEq": [
+        "peak@305.5Hz -11.36dB q1.86"
+      ],
+      "trapHz": 48.72731953450727,
+      "trapDampedBy": "R",
+      "lowestWaySeriesMh": 16,
+      "mdExtraDb": 1.105,
+      "mdResonantDb": 1.103
+    },
+    {
+      "arm": "C app  grid + repo band",
+      "candidate": "204 · 2251",
+      "wooferEq": [
+        "peak@125.0Hz -15.00dB q1.15"
+      ],
+      "trapHz": null,
+      "trapDampedBy": null,
+      "lowestWaySeriesMh": 9.217,
+      "mdExtraDb": 12.945,
+      "mdResonantDb": 12.943
+    },
+    {
+      "arm": "C app  grid + repo band",
+      "candidate": "335 · 2251",
+      "wooferEq": [
+        "peak@141.4Hz -15.00dB q1.60",
+        "peak@460.7Hz -1.87dB q3.30"
+      ],
+      "trapHz": null,
+      "trapDampedBy": null,
+      "lowestWaySeriesMh": 20.21,
+      "mdExtraDb": 14.531,
+      "mdResonantDb": 14.529
+    },
+    {
+      "arm": "C app  grid + repo band",
+      "candidate": "550 · 2251",
+      "wooferEq": [
+        "peak@376.8Hz -3.25dB q1.06",
+        "peak@125.0Hz -15.00dB q2.43"
+      ],
+      "trapHz": null,
+      "trapDampedBy": null,
+      "lowestWaySeriesMh": 13.166,
+      "mdExtraDb": 11.386,
+      "mdResonantDb": 11.384
+    },
+    {
+      "arm": "D app  grid + app  band",
+      "candidate": "204 · 2251",
+      "wooferEq": [],
+      "trapHz": null,
+      "trapDampedBy": null,
+      "lowestWaySeriesMh": 6.67,
+      "mdExtraDb": 7.993,
+      "mdResonantDb": 7.991
+    },
+    {
+      "arm": "D app  grid + app  band",
+      "candidate": "335 · 2251",
+      "wooferEq": [
+        "peak@341.5Hz -1.95dB q2.02",
+        "peak@337.1Hz -3.33dB q2.06"
+      ],
+      "trapHz": null,
+      "trapDampedBy": null,
+      "lowestWaySeriesMh": 34.53,
+      "mdExtraDb": 9.249,
+      "mdResonantDb": 9.247
+    },
+    {
+      "arm": "D app  grid + app  band",
+      "candidate": "550 · 2251",
+      "wooferEq": [
+        "peak@294.0Hz -6.77dB q1.07"
+      ],
+      "trapHz": null,
+      "trapDampedBy": null,
+      "lowestWaySeriesMh": 13.128,
+      "mdExtraDb": 12.713,
+      "mdResonantDb": 12.711
+    }
+  ],
+  "corpus": [
+    {
+      "key": "KAND_V2_1",
+      "trapHz": 41.5,
+      "dampedBy": "coil DCR",
+      "seriesMh": 38.434,
+      "resonantDb": 1.161,
+      "extraDb": 4.051
+    },
+    {
+      "key": "KAND_V2_2",
+      "trapHz": 56.4,
+      "dampedBy": "coil DCR",
+      "seriesMh": 43.318,
+      "resonantDb": -0.323,
+      "extraDb": 1.761
+    },
+    {
+      "key": "KAND_V2_3",
+      "trapHz": 45.5,
+      "dampedBy": "coil DCR",
+      "seriesMh": 55.833,
+      "resonantDb": -0.584,
+      "extraDb": 2.142
+    },
+    {
+      "key": "KAND_V2_4",
+      "trapHz": 55.6,
+      "dampedBy": "coil DCR",
+      "seriesMh": 44.35,
+      "resonantDb": -0.113,
+      "extraDb": 2.18
+    },
+    {
+      "key": "KAND_V2_5",
+      "trapHz": 58.9,
+      "dampedBy": "coil DCR",
+      "seriesMh": 28.907,
+      "resonantDb": 0.524,
+      "extraDb": 2.66
+    },
+    {
+      "key": "KAND_V2_6",
+      "trapHz": 45.2,
+      "dampedBy": "R",
+      "seriesMh": 16.802,
+      "resonantDb": -1.124,
+      "extraDb": 0.695
+    },
+    {
+      "key": "KAND_V2_7",
+      "trapHz": 60.2,
+      "dampedBy": "R",
+      "seriesMh": 33.495,
+      "resonantDb": -0.364,
+      "extraDb": 3.128
+    },
+    {
+      "key": "KAND_V2_8",
+      "trapHz": 56.6,
+      "dampedBy": "coil DCR",
+      "seriesMh": 26.512,
+      "resonantDb": -0.944,
+      "extraDb": 0.787
+    },
+    {
+      "key": "KAND_V2_9",
+      "trapHz": 55.5,
+      "dampedBy": "R",
+      "seriesMh": 34.19,
+      "resonantDb": -1.414,
+      "extraDb": 1.882
+    },
+    {
+      "key": "KAND_V2_10",
+      "trapHz": 56.4,
+      "dampedBy": "R",
+      "seriesMh": 26.539,
+      "resonantDb": -1.179,
+      "extraDb": 0.566
+    }
+  ]
+}

@@ -10185,6 +10185,200 @@ De rijen dragen sindsdien één statuswoord: `low→high 2300 LR4 · stated` lee
 compleet in de uitklap, met haar laadknoppen. `sim-status` ("Simulated as drawn — every part has a
 path to the generator") staat onder het schema en aantoonbaar NIET in een uitklap.
 
+### E-5 — de app-tuner bouwt de reflexpiek-val niet, en dat is niet de data: hij kijkt en oordeelt ergens anders (12-09-2026, alleen de v2-route; **geen corpuswijziging, geen regeneratie — maar een v2-run wordt er wél veel duurder van, zie de prijs onderaan**)
+
+**DE AANLEIDING, gemeten door Sander in de draaiende app (12-09-2026).** Het volle veld op de
+Koan-demoset van 67,7 L, met élke eis gesteld, levert **0 van 4**: alle vier de kandidaten
+(124,3 / 204 / 334,9 / 549,7 × 2250,6 Hz LR4) M-D-geweigerd met **12,34 / 3,88 / 2,32 / 2,87 dB**
+resonante opslingering tegen een gesteld budget van **1,4**. Tegelijk staan er tien netlists in deze
+repo — het C-2-corpus — die op vergelijkbare overnames hetzelfde budget wél halen, élk met een
+gedempte serie-LC-val op de reflexpiek. Zelfde engine, zelfde belofte, twee uitkomsten.
+
+#### DE DIAGNOSE IS NIET DE DATA, EN DAT IS GEMETEN IN PLAATS VAN BEREDENEERD
+
+`scripts/measure-e5-app-vs-repo.ts` (seconden, geen tune; `E5_RUN=1` voegt één ketenrun per arm toe)
+zet vier armen naast elkaar op **casus 1's eigen gemergde set**, zodat de meetset in beide helften
+hetzelfde object is en er precies TWEE getallen verschillen: waar de keten KIJKT (het raster) en waar
+zij OORDEELT (de band).
+
+| arm | raster | band | val op f_p (3 kandidaten) | serie-L mH | M-D resonant dB |
+| --- | --- | --- | --- | --- | --- |
+| A repo + repo | 20,5–20 000, 143 pt | 52,4–19 500 | **52,1 / 47,1 / 48,4 Hz** | 32,6 / 54,7 / 16,2 | 2,88 / 3,09 / 0,98 |
+| B repo + app | 20,5–20 000, 143 pt | 396,7–19 500 | geen / 50,0 / 48,7 Hz | 8,3 / 26,7 / 16,0 | 11,04 / 2,04 / 1,10 |
+| C app + repo | 200–20 000, 600 pt | 52,4–19 500 | **geen, alle drie** | 9,2 / 20,2 / 13,2 | 12,94 / 14,53 / 11,38 |
+| D app + app | 200–20 000, 600 pt | 396,7–19 500 | **geen, alle drie** | 6,7 / 34,5 / 13,1 | 7,99 / 9,25 / 12,71 |
+
+Kandidaten 204 / 334,9 / 549,7 × 2250,6 Hz; getallen in `test-fixtures/casus1_e5_app_vs_repo.json`,
+gereproduceerd door `e5AppFrame.test.ts`. **Arm D is wat de app tot E-5 draaide; arm A is wat élke
+fixture sinds M-1 draait.** Het verschil is absoluut: in A krijgt élke kandidaat een gedempte val op
+de reflexpiek, in D geen enkele.
+
+#### WAT DE DEUR NAAR DIE VAL IS, want het is NIET de `Fs`-val
+
+`synthesis.ts` heeft een slot dat "Fs trap" heet en het is gepoort op `spec.hp.enabled`. De laagste
+weg heeft geen hoogdoorlaat, dus die deur is op élke route dicht en was dat altijd — E-3 noteerde de
+conditie al. Wat het corpus draagt komt binnen via een **EQ-BAND**: de ontwerpstap legt een cut-only
+piek op de grootste POSITIEVE uitschieter van de som **binnen de geoordeelde band**, en de synthese
+bouwt daar een serie-L-C-R over de driver van. Dus de BAND beslist of de val kan bestaan, en het
+RASTER beslist of de band gezien kan worden.
+
+Dat het er twee zijn is de attributie, en arm C is waarom zij niet los te maken zijn: met de
+afgeleide band op het 200 Hz-raster duwt de refine een band naar **125–141 Hz en klemt hem op
+−15,00 dB** — een cut gefit op grond die de keten niet dekt. Beide vloeren moeten omlaag.
+
+#### WAAR DE APP ZIJN TWEE GETALLEN VANDAAN HAALDE, en waarom beide fout waren
+
+* **HET RASTER** was `sim`, en zijn vloer is `max(het fMin-veld, de laagste meting)` — fMin is een
+  PLOTbereik en zijn eigen terugval is 200 Hz. F4d schreef dat op in plaats van het te verplaatsen
+  ("the grid is `sim`, which every plot on this screen draws from") en liet de stilte staan. E-5
+  verplaatst `sim` niet: de v2-keten krijgt zijn EIGEN raster en geen plot beweegt.
+* **DE BAND** was `intersectValidity` — waar ÉLKE bron geloofd mag worden (issue #14, A3d). Dat is de
+  goede vraag over één meting en de verkeerde over een SOM. Op elke drieweg met een gepoorte tweeter
+  is de doorsnede-vloer de gate van de tweeter (396,7 Hz op casus 1), en daaronder wordt de som
+  volledig door woofer en mid gedragen — de tweeter staat er honderd dB onder. **De bas verwerpen
+  omdat de tweeter er niet geloofd kan worden is de luidspreker beoordelen op de enige weg die niet
+  meespeelt.**
+
+Sinds E-5 komt de VLOER van de laagste weg, tweemaal: zijn geldigheidsvloer (daaronder is er geen
+meting) en zijn f_p (daaronder rolt een reflexkast op eigen kracht af). Het RASTER start op de
+geldigheidsvloer en NIET op f_p: `isHighPassProtected` probeert een halve octaaf onder de
+doorlaatbandvloer, die van de rasterbodem wordt gelezen, en met het raster ÓP f_p landt die probe in
+het reflexdal — M-1 mat hem acht van acht kandidaten weigeren. Het PLAFOND blijft van de aanroeper.
+
+#### ÉÉN AFLEIDING, VIER LEZERS — EN DE RESOLUTIE IS DEZELFDE SOORT CORRECTIE
+
+Die elf regels stonden VERBATIM in `casus1V2.fixture.ts`, `casus1b.fixture.ts` en
+`casus2.fixture.ts`; de app had ze niet. `predesign/judgedBand.ts` is nu de ene afleiding en de drie
+fixtures lezen hem, **byte-identiek** (casus 1: 143 rasterpunten, band 52,368–19 500, zoals M-1 hem
+opschreef) — wat `goldenCasus1`, `goldenCasus1b`, `goldenCasus2` en `goldenClassification`
+bevestigen.
+
+De v2-keten draait sindsdien ook op de RESOLUTIE van dat precedent (96 punten over 200–20 000 Hz,
+14,4 per octaaf) in plaats van op `GRID_N` = 600. **`GRID_N` is een PLOT-constante**; de keten
+gebruikte hem alleen omdat niemand het ketenraster ooit van het plotraster gescheiden had. Een
+plotconstante als zoekresolutie is dezelfde vergissing als een plotbereik als zoekvloer, en de ene
+repareren en de andere houden is een halve reparatie. Het is ook wat de app en de repo vergelijkbaar
+maakt (de E-3b-belofte): een corpus in deze repo is nu een referentie voor wat de app levert.
+**De resolutie is op dat argument gekozen en niet op een stopwatch** — beide dichtheden zijn gedraaid
+en geen van beide verklaart de prijs hieronder.
+
+#### DEEL 2 — DE ZOEKGRENS DIE ZICHZELF UITSCHAKELDE, EN HALF MELDDE WAAROM
+
+Het paneel zei: *"the LF-lift budget needs a near-field measurement, the loaded impedance sweep and
+the impedance peak M-D derives its band from. Missing one of the three…"* — met alle drie de metingen
+op schijf. De conditie las `input.filter?.driverZ[driver]`, en `FilterInput.driverZ` wordt door de
+aanroeper uit precies die Z-BESTANDEN gebouwd (`appAdapter.ts`, `casus1FilterFromParts`). Zonder
+geladen NETWERK was er dus geen sweep — en een netwerk is geen van de drie en is niet nodig om een
+budget te inverteren.
+
+De sweep komt sindsdien uit `input.files`, met de filterkopie als terugval. **Gemeten in de draaiende
+app, zonder netwerk: de rij `low · series inductance · 2,14 mH` staat er (drieweg) en `1,60 mH`
+(tweeweg), en de melding is weg.** Ontbreekt er wél iets, dan zegt de melding WELKE van de drie —
+"missing one of the three" zonder te zeggen welke is een halve melding (F0).
+
+#### DEEL 3 — DE BUNDELINGSAFLEIDING LAS DE HOEKBESTANDEN VOORBIJ HUN EIGEN VLOER
+
+`derive.ts` zegt in zijn eigen commentaar dat het verschil tussen 0° en θ alleen bestaat waar BEIDE
+metingen bestaan — en las de hoekcurve `interpLog`'d op het 0°-raster, wat aan de RANDEN KLEMT. Met
+een gemergde as (geldig vanaf 20,5 Hz) tegen gepoorte hoekbestanden (≥ ~400 Hz) is het verschil
+daaronder dus een gehouden randwaarde tegen een echte meting, en `crossing()` neemt de EERSTE
+neerwaartse doorgang van onderaf. Sander mat een bundelingsplafond op **34 Hz**, bindend, waarmee het
+W-M-venster EMPTY werd.
+
+Sindsdien wordt het paar op de DOORSNEDE van beide geldigheidsintervallen gelezen, en de restrictie
+gaat vóór de trend en niet erna: een gladdingskern die in ongeldige data reikt draagt die over de
+rand terug (de V38-fix-les, één module verderop). `spl-directivity` 1.0 → **1.1**.
+
+**EN DE 34 Hz ZELF IS NIET GEREPRODUCEERD, wat hier hoort te staan.** De bank in `e5Repairs.test.ts`
+reproduceert de VORM exact (een reflexvormige 0°-curve tegen een geklemde hoekcurve: zonder band een
+plafond in de bas, met band het echte plafond erboven), en op casus 1 wordt élk echt paar aantoonbaar
+op zijn doorsnede gelezen. Het GETAL heeft Sanders eigen sessie nodig: met de 67,7 L-as tegen de
+gepoorte hoekbestanden van de demo leest het 15°-paar `geen` en 30/45/60° 2915 / 1480 / 927 Hz, vóór
+en ná de reparatie gelijk, en met de in-app-merge op de demowoofer verschijnt er evenmin een plafond
+in de bas. Het mechanisme is dicht en gepind; het getal blijft zijn meting.
+
+Ernaast: de **EMPTY-regel noemt sindsdien de twee grenzen die botsten** ("floor: … > ceiling: …"),
+naast de knop én in de paneelkop. Dat stond alleen in de uitklap, en het is de reden dat dit artefact
+twee dagen onzichtbaar bleef.
+
+#### DEEL 4 — EEN METRIEK ZONDER ONDERWERP WAS EEN CRASH EN IS NU EEN REDEN
+
+Bestanden uit de inventaris verwijderen tot er één weg over was liet de render sterven met *"Cannot
+read properties of undefined (reading 'title')"* en een zwart scherm. `CapabilityGrid` las
+`cells.find((c) => c.metric === m)!` voor élke metriek van het register, en een metriek waarvan het
+ONDERWERP niet bestaat — élke paarmetriek op een project met één weg — had helemaal geen cel.
+Gereproduceerd door bestanden weg te nemen, wat de verwijderknop doet.
+
+De reparatie zit niet in de renderer. Een metriek die niet kan draaien omdat haar onderwerp niet
+bestaat is dezelfde toestand als een metriek die een invoer mist, en P4 zegt dat die toestand mét
+reden gerapporteerd wordt. Zij krijgt dus een cel (`NO_SUBJECT`, uit), en die kolom verschijnt alleen
+op een project dat er een heeft — een drieweg is byte-identiek (25 cellen, 34 508 tekens markup).
+En **verwijderen ontkoppelt sindsdien wat ernaar verwees**: de merge-boekhouding (`far`,
+`mergedName`, de hangende preview); de nabij-veldINGREDIËNTEN blijven, want die meten een driver en
+niet een bestand.
+
+#### DEEL 5 — HET U-5-VELD RENDERT WÉL OP DE DRIEWEGROUTE
+
+Gemeten in de draaiende app, beide routes, verse `localStorage`: het veld "Crossings you state (Hz,
+per handover)" staat er op de drieweg met **twee** regels en de hint "one line per handover, low to
+high: low→mid, mid→high", en op de tweeweg met **één** regel en "low→high". Beide keren in dezelfde
+uitklap ("Engine v2 — 3. nice to have … — more"), die **dicht** opent, dus op beide routes één klik
+weg. **De gemelde asymmetrie reproduceert niet op deze build.** Wat de screenshot van 11-09 laat zien
+is waarschijnlijk die uitklap: dicht bij binnenkomst, en op een drieweg staan er meer velden boven.
+Dat is een plaatsingsvraag (U-3b's regel: `nice` → achter de uitklap) en geen defect; E-5 verplaatst
+hem niet zonder dat iemand dat stelt.
+
+#### DE PRIJS, EN ZIJ IS GROOT GENOEG OM HET EERSTE TE ZIJN WAT SANDER LEEST
+
+De geoordeelde band gaat van 455–20 000 Hz (5,5 octaaf) naar ~52–20 000 (8,6 octaaf), en de tuner
+wordt dus gevraagd drie octaven vlak te maken die hij nooit gezien heeft. **Gemeten in de draaiende
+app op de driewegdemo, met de woofermerge en de eisen gewapend:**
+
+| run | vóór E-5 | ná E-5 |
+| --- | --- | --- |
+| driewegverkenning, 6 kandidaten, kaal (U-3b) | **900 s** | — |
+| driewegverkenning, 6 kandidaten, eisen gewapend, ~890 rasterpunten | — | **> 53 min, niet klaar** |
+| idem, 143 rasterpunten | — | **> 58 min, niet klaar** |
+| drieweg, **ÉÉN** kandidaat, 143 rasterpunten | — | **> 55 min, niet klaar** |
+| tweewegverkenning, 6 kandidaten (5 afgeleid + 1 gesteld) | — | **1083 s, klaar, 6 van 6 geleverd** |
+
+Eén driewegkandidaat kostte vóór E-5 ongeveer 150 s en kost er nu meer dan 55 minuten — **meer dan
+twintig keer**, en het raster is er maar een klein deel van (143 punten tegen 890 maakte geen
+zichtbaar verschil). Wat het wél is: de trapmethode mikt op `rippleDb 2,5 / phaseDeg 15`, en dat doel
+is op 5,5 octaaf haalbaar en op 8,6 octaaf niet meer, dus de pas loopt zijn hele snoei-/escalatieladder
+af en stopt nooit vroeg. **Dat is dezelfde prijs die de repo-route altijd al betaalde** (het
+C-2-corpus kostte 313–8671 s per kandidaat); de app was goedkoop omdat hij een kleiner probleem
+oploste. De twee routes zijn nu even duur en stellen dezelfde vraag.
+
+**DIT IS EEN BESLISSING EN ZIJ IS NIET GENOMEN.** Het trapdoel is een GESTELD getal en het herijken
+op de bredere band is Sanders keuze, niet die van deze sessie (A5e.1: een doel dat precies zo ver
+meeschuift als nodig bewaakt niets). Tot dat gesteld is: de verkenning op een tweeweg is klaar in een
+kwartier, en een drieweg-veld is werk voor een nacht.
+
+#### WAT ER IN DE APP IS NAGEMETEN, EN WAT NIET
+
+**Wel, eind tot eind:** de tweewegverkenning draait de nieuwe frame en zegt het zelf — *"Engine v2
+judges from 88.8 Hz, set by the in-box resonance of low (f_p 88.8 Hz), and looks from 60.0 Hz"* en
+*"The chain looks on 121 points from 60.0 Hz … Before E-5 it looked on the PLOT grid (600 points from
+200.0 Hz …) and judged from 455.2 Hz"* — en levert zes van zes (RMS 0,66–1,24 dB, fase 8,1–9,5°,
+min |Z| 2,6–3,8 Ω boven de gestelde 2,6). Op de drieweg leest het paneel het ketenraster als
+**60–20 000 Hz** waar het vóór E-5 200–20 000 was. De bound van deel 2 staat op beide routes zonder
+netwerk. Het U-5-veld staat op beide routes.
+
+**Niet:** een GELEVERDE drieweg-netlist met de val erin, in de app. Beide veldruns en de
+één-kandidaat-run liepen over het uur zonder af te komen (zie de prijs hierboven). Wat die stap zou
+toevoegen bovenop wat er staat is "houdt de tune de val vast", en daar zijn de tien C-2-netlists het
+antwoord op: alle tien dragen er een en alle tien halen het budget (−1,41 tot +1,16 dB), terwijl het
+ZAAD het niet haalt (3,09 dB) — de tune is wat het verdient, mét de val die zij gekregen heeft.
+`e5AppFrame.test.ts` pint beide helften.
+
+#### EEN VOLGORDEFOUT DIE DE BROWSER VING EN GEEN TEST
+
+De tweewegroute voegde de frame-noten toe en verving vier regels later de hele notenlijst, dus zij
+werden in stilte weggegooid. Zichtbaar gemaakt door de eerste voltooide browserrun, en sindsdien
+gepind: `e5Repairs.test.ts` eist dat op elke route de enige toewijzing die de lijst VERVANGT op of
+vóór de eigen bijdrage van de frame komt.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 
