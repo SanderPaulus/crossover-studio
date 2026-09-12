@@ -61,6 +61,16 @@
     `workerRouteRegression`) draaien in de snelle laag en reproduceerden, net als `toggleRegression`
     en `p6Lint`. De drie live ketenruns zouden een corpus reproduceren dat deze sessie niet
     aangeraakt heeft; `goldenClassification` en `demoBundle` zijn apart nagedraaid en groen.
+    **Ná de M-2-woofermerge (12-09-2026, tweede commit) gemeten op 462 s — 180 bestanden
+    (179 geslaagd, 1 overgeslagen), 2281 tests (2278 geslaagd, 3 overgeslagen), in één keer groen,
+    alleen gedraaid.** +1 BESTAND (`engine2/koan2026_09.test.ts`, 22 claims) en +22 tests, en die
+    twee getallen zijn HETZELFDE getal: het corpus is niet geregenereerd. GEEN nieuwe referentie:
+    de V43-waarde van 289 s blijft staan. **DE VOLLE RUN IS OOK HIER NIET GEDRAAID**, met dezelfde
+    afweging als hierboven en om dezelfde reden: dit is data-opname plus één merge-bewerking die
+    uitsluitend in haar eigen map schrijft. Geen engine-, poort-, budget-, venster-, metriek- of
+    corpuswijziging; `nfMerge.ts` is GELEZEN en niet aangeraakt, en zijn eigen 56 claims draaien in
+    de snelle laag en reproduceerden, net als beide byte-baselines, `toggleRegression`, `p6Lint` en
+    `goldenCasus1`.
     **Ná U-6 (11-09-2026) gemeten op 455 s — 178 bestanden (177 geslaagd, 1 overgeslagen), 2240 tests
     (2237 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`v2ResultLayout.test.ts`, 19 claims) en
@@ -3301,6 +3311,62 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   De oorzaak staat in de koppen: elk bestand droeg een eigen splice-fit (−7,92 / −10,42 / −10,77 dB),
   en drie onafhankelijk gefitte niveaus tellen niet tot elkaar op. Set 5 levert een referentie die
   per constructie de som van háár eigen bronnen is, en daarmee sluit de test.
+- **DE WOOFERMERGE UIT DE HERMETING VAN 11-09-2026 — en zij sluit het open punt van I-2.** De
+  augustusmerge kon niet gereproduceerd worden en haar eigen kop zei waarom: `LF = eigen nearfield
+  + 0.5 x poort (g=0.41)`, terwijl die poortmeting in de repo niet bestond. Sander heeft hem
+  gemeten, samen met nieuwe nabije velden per conus en een nieuwe parallelle impedantiesweep.
+  `test-fixtures/koan_2026-09_testkast/` draagt die zes ruwe bestanden en de twee merges die eruit
+  volgen; `koan2026_09.fixture.ts` is de bewerking met élke constante en haar herkomst, en
+  `scripts/merge-koan-2026-09-woofers.ts` en `koan2026_09.test.ts` zijn de twee lezers (A3g). De
+  merge loopt door `nfMerge.ts`, de eigen merge-module van de app, en niet door een tweede
+  optelling ernaast.
+- **HET VERRE VELD IS HET BESTAANDE EN IS NIET AANGERAAKT, en dat is gemeten.** Boven 800 Hz is de
+  geleverde set bit-identiek aan `woofer_up_hor_0.txt`: 0,00 dB en 0,00° spreiding tot 20 kHz.
+  Alleen de NF-helft is nieuw, en dat is ook wat de merge doet. **In het BESTAND is het verschil
+  boven de blend exact NUL** — de claim die telt, want dat is wat stroomafwaarts gelezen wordt; in
+  het geheugen blijft 4e-14 over, de rondgang door `resample`s ontwikkel- en herwikkelstap.
+- **DE AANDRIJFTOESTAND, EN WAAROM ZIJ IN DE KOP STAAT IN PLAATS VAN GEREPAREERD TE ZIJN.** De
+  nabije velden zijn gemeten met ÉÉN woofer aangedreven en de andere passief in dezelfde kast.
+  Drie onafhankelijke metingen, alle drie binnen die ene sessie: (1) de parallelcombinatie van de
+  twee losse sweeps leest bij 28,56 Hz 24,96 Ω waar de parallelle sweep van diezelfde avond
+  4,00 Ω meet — **15,90 dB** — en boven 80 Hz komen zij binnen 0,6 dB overeen, dus het is de
+  toestand en niet de parser; (2) het conusminimum hoort bij f_b te liggen en ligt 4–5 Hz eronder
+  (26,37 en 25,63 Hz bij f_b 30,40, waar augustus 29,30 bij 31,31 legt); (3) de poort hoort bij f_b
+  te maximeren en piekt op 41,02 Hz, 0,43 octaaf eroverheen. **Sander heeft op 12-09-2026 besloten
+  dat er niet opnieuw gemeten wordt.** Dat besluit is uitgevoerd en niet verzwegen:
+  `NF_CONDITION_NOTE` reist mee in `Merge floor reason` van élk geschreven bestand, dus élke lezer
+  stroomafwaarts krijgt haar mee. **Niet gecorrigeerd** — een modelfactor bovenop een meting in de
+  verkeerde toestand is de plausibel-foute laag die A3h verbiedt (F0).
+- **WAT DE MERGE ER TOCH BRUIKBAAR MAAKT IS EEN MÉTING EN GEEN HOOP.** De SOM van conus en poort is
+  veel minder gevoelig voor de aandrijftoestand dan elk van beide apart, want waar de conus
+  ontlaadt neemt de poort over. Het conusminimum schuift vier hertz en de poortpiek elf, en de
+  merge komt onder de splice op bijna elk punt binnen **0,5 dB** van de augustusmerge uit, met
+  **2,04 dB bij 149 Hz** als grootste uitschieter. De claim in de suite staat op 3 dB over
+  20–450 Hz, ruim, zodat een latere regeneratie van de augustusmerge hem niet stil onwaar maakt.
+- **DE BLOKKADE IS WEG: beide lezers van de app lezen deze bestanden.** `readMergeBlock` geeft
+  `NF/FF` met `Valid from 20.5 Hz` en de splice-band, `declaredMergeValidity` een vloer met
+  herkomst `merge-block`, en engine2's `parseArtaHeader` dezelfde geldigheid. `App.tsx` slaat een
+  respons met een mergeblok over in zijn windowless-lijst, dus `refuseIfUnverified` weigert niet
+  meer. Dat is het verschil met de geleverde set: die stelde haar geldigheid in PROZA en deze in
+  VELDNAMEN. **De koppen van de geleverde set zijn niet aangepast** — daar was de vraag wat de
+  geldigheid IS, hier is zij een eigenschap van een bewerking die wij zelf uitvoeren.
+- **DE SPLICE-CONTROLE FAALT DE ±0,5 dB-CONVENTIE OP BEIDE WEGEN, en dat is geboekt en niet
+  weggewerkt:** p95 1,49 dB op W1 en 3,51 dB op W2, tegen Sanders eigen augustusrest van
+  −1,57…+1,77 en −3,19…+2,40 dB. Álle drie de merges van dit project falen hem (I-2). De claim pint
+  dat hij faalt ÉN onder 5 dB blijft: daarboven is er iets anders aan de hand dan een conventie.
+  De step-vormcontrole leest 1,89 dB tussen de twee woofers, ook een LET OP en ook geboekt.
+- **DE FITTED DELAY IS −5,58 EN −5,21 ms EN IS GEEN AFSTAND.** De twee helften stellen verschillende
+  referentietijden (nabij 51,188 ms, ver 2,5 ms), en `nfMerge.ts` zegt dat zelf in `Merge status`:
+  de fitted delay draagt dat verschil. Het tijdnulpunt van het merge-bestand is dat van het VERRE
+  veld — boven de blend is het bit-identiek — dus het deelt zijn nulpunt met mid en tweeter, en dat
+  is wat een kruisfilter nodig heeft.
+- **GEEN VOLUMETRANSFORMATIE, en dat is een ontbrekend GETAL en geen keuze.** Deze bestanden staan
+  in het frame van de TESTKAST zoals gemeten. De stap naar de echte kast van 67,7 L mist twee
+  dingen: het netto volume van de testkast, waarover de manifesten van de geleverde sets (53,2 L)
+  en Sander (51 L, 12-09-2026) elkaar TEGENSPREKEN — het schaalt de hele transformatie, dus het is
+  niet aangenomen — en de poortgeometrie in de nieuwe kast, zonder welke f_b daar niet volgt. Een
+  claim pint dat er geen transformatie in de kop staat, zodat wie er een toevoegt langs die twee
+  open getallen moet.
 
 ### U-6-guards (het resultaatgebied geordend; alleen UI/ordening, geen enkele zin herschreven)
 - **`src/lib/v2ResultLayout.ts` — DE VOLGORDE VAN HET RESULTAATGEBIED, ALS DATA.** Vijfendertig
