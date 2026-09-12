@@ -71,6 +71,18 @@
     corpuswijziging; `nfMerge.ts` is GELEZEN en niet aangeraakt, en zijn eigen 56 claims draaien in
     de snelle laag en reproduceerden, net als beide byte-baselines, `toggleRegression`, `p6Lint` en
     `goldenCasus1`.
+    **Ná de M-2-volumetransformatie (12-09-2026, derde commit) gemeten op 454 s — 181 bestanden
+    (180 geslaagd, 1 overgeslagen), 2306 tests (2303 geslaagd, 3 overgeslagen), in één keer groen,
+    alleen gedraaid.** +1 BESTAND (`ventedBoxTransform.test.ts`, 15 claims) en +25 tests, en die
+    telling sluit exact: die vijftien plus TIEN in `koan2026_09.test.ts` (22 → 32, de
+    transformatie-describe). Het corpus is niet geregenereerd. GEEN nieuwe referentie: de
+    V43-waarde van 289 s blijft staan. **DE VOLLE RUN IS OOK HIER NIET GEDRAAID**, met dezelfde
+    afweging: `ventedBoxTransform.ts` is een NIEUWE module die niemand buiten de M-2-map
+    importeert — nagegaan, niet aangenomen — en de merge-bewerking schrijft uitsluitend in haar
+    eigen map. Geen engine-, poort-, budget-, venster- of corpuswijziging; beide byte-baselines,
+    `toggleRegression`, `p6Lint`, `nfMerge` en `goldenCasus2` draaien in de snelle laag en
+    reproduceerden — die laatste is hier van belang, want de transformatie wordt tegen zijn
+    grondwaarheid gekruisd.
     **Ná U-6 (11-09-2026) gemeten op 455 s — 178 bestanden (177 geslaagd, 1 overgeslagen), 2240 tests
     (2237 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`v2ResultLayout.test.ts`, 19 claims) en
@@ -3367,6 +3379,63 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   niet aangenomen — en de poortgeometrie in de nieuwe kast, zonder welke f_b daar niet volgt. Een
   claim pint dat er geen transformatie in de kop staat, zodat wie er een toevoegt langs die twee
   open getallen moet.
+- **DE SPLICE-BAND IS BIJ M-2 VERPLAATST NAAR 400–550 Hz, OP SANDERS EIGEN GRENS, EN DAT IS
+  AANTOONBAAR BETER.** Augustus en M-1 gebruikten 500–800 Hz. Gemeten op zes kandidaatbanden:
+  400–550 geeft W1 p95 0,96 / max 1,19 dB en W2 1,45 / 1,79, waar 500–800 op W1 1,49 / 2,55 en op W2
+  **3,50 / 4,22** gaf. Op W2 halveert het residu en de piekfout gaat van 4,22 naar 1,79 dB. De reden
+  staat in `suggestSpliceBand` zelf: 800 Hz reikt boven 0,95 × ka = 1 (606 Hz) van een 255 cm²-conus,
+  waar een nabij veld de conus niet meer als één bron vertegenwoordigt — en het niveaufit van W2
+  wisselt daar van teken (+2,75 → −0,81 dB), wat op zichzelf al zegt dat de oude band in de
+  problemen zat. **Beide randen zijn getallen die het project al stelt:** 400 Hz is de 1/T-grens van
+  het gepoorte verre veld (de gate leest 397) en 550 Hz het geldigheidsplafond van de woofer dat elk
+  manifest noemt. Niets is gekozen om het residu te laten zakken.
+- **`src/lib/ventedBoxTransform.ts` — EEN GEMETEN REFLEXKAST NAAR EEN ANDER VOLUME, EN DE DRIVER
+  VALT ER GROTENDEELS UIT.** De gewone weg vraagt de volledige T/S, en die fit is op casus 1 DRIE
+  KEER geprobeerd en drie keer mislukt: de laatste, met de volledige complexe impedantie en 160
+  startpunten, liep met twee parameters naar hun grens (M_ms naar 55 g tegen een kaart van 44,2 en
+  het volume naar 58 L om een kast van 53,2 te beschrijven). Een fit die op zijn grenzen zit
+  beschrijft de kast niet; hij absorbeert wat het model mist. **De uitweg is dat de kast zichzelf
+  meet, op twee plaatsen.** (i) De poort/conus-verhouding is
+  `U_p/U_d = −1/(1 − (ω/ω_b)² + j(ω/ω_b)/Q_l)` — daarin komt GEEN drivergrootheid voor, dus f_b en
+  Q_l volgen uit twee gemeten nabije velden en Keele's weging. (ii) De conussnelheid volgt uit de
+  GEMETEN impedantie: `Z_mech = B_l²/(Z − Z_b)`, dus zij wordt afgelezen in plaats van gemodelleerd,
+  en het volume zit er maar op één plek in. Wat overblijft is `S_d`, `B_l`, `R_e` en de halfmachtsterm
+  van `Z_b` uit de HF-staart: **vier getallen waarvan drie datasheet, in plaats van negen fits.**
+- **DE TWEE ROUTES NAAR f_b ZIJN HET EENS, EN DAT IS WAAROM DE TRANSFORMATIE TE VERTROUWEN IS.**
+  De poort/conus-verhouding levert **29,67 Hz** met Q_l 2,80; het impedantiezadel van diezelfde
+  sessie **30,40 Hz**. **2,4 % uit elkaar**, langs twee volstrekt onafhankelijke wegen. `Z_b` fit op
+  de HF-staart met een residu van 0,109 dB. De guard pint de overeenstemming op 5 %, zodat zij
+  omvalt zodra een van beide wegdrijft.
+- **DRIE CONTROLES OP DE NATUURKUNDE, en de eerste heeft geen meting nodig.** HANDBEREKENING: bij
+  f_b is de noemer `j/Q_l`, dus de poort/conus-verhouding is exact `j·Q_l` — magnitude Q_l, fase
+  +90°, met de hand na te rekenen. GRONDWAARHEID: de kastformulering reproduceert de POORTMASSA die
+  casus 2's grondwaarheid opschrijft (88,74948 kg/m⁴) op vier cijfers, langs een onafhankelijke
+  implementatie met een bekend antwoord. P2: met twee gelijke kasten is élke teruggave EXACT 1, niet
+  bij benadering — zou dat ooit een tolerantie nodig hebben, dan telt de transformatie iets op dat
+  er niet in hoort.
+- **DE POORT WORDT APART GETRANSFORMEERD, en dat is geen detail.** Zijn deler hangt aan f_b, en die
+  verschuift van 29,67 naar 26,30 Hz, dus de deler zakt op 29,5 Hz van 2,81 naar 1,93 en stijgt onder
+  25 Hz. De poort krijgt daarom de conussnelheidsverandering MAAL de verhouding van de twee delers;
+  gemeten verschil met de conusfactor tot **4,3 dB rond 35 Hz**. Kreeg de poort dezelfde factor als
+  de conus, dan zou de 67,7 L-merge een poort dragen die nog op de oude afstemming staat — de guard
+  valt daarop om, nagemeten.
+- **EEN VERWACHTING DIE DE DATA WEERLEGDE, en zij staat er omdat zij terugkomt.** De eerste
+  richtingsclaim was "een kleinere kast remt de conus" en viel om op 1,083. Bij de AFSTEMMING piekt
+  de akoestische last, want daar resoneren compliantie en poorttak tegen elkaar; daar beweegt de
+  conus dus het minst, en élke verplaatsing van de afstemming — groter én kleiner — laat hem op die
+  frequentie MEER bewegen. De claim die wel discrimineert staat ruim onder de afstemming: daar
+  levert een groter volume meer en een kleiner minder.
+- **WAT DE TRANSFORMATIE OPLEVERT, gemeten op de geschreven bestanden:** 67,7 L levert onder 30 Hz
+  2,5 tot 3 dB meer dan 53,2 L en iets minder rond 50 Hz, en boven 300 Hz vrijwel niets — precies wat
+  een lagere afstemming hoort te doen. Het verre veld boven de blend blijft in BEIDE frames exact het
+  bestaande bestand, 0,00 dB en 0,00°.
+- **DE AANNAMES VAN DE TRANSFORMATIE, en zij zijn drie.** De POORT blijft dezelfde, dus `M_ap` blijft
+  en `f_b ∝ 1/√V`; de LEK blijft dezelfde, dus `Q_l` schaalt met diezelfde wortel (2,80 → 2,48); en de
+  conussen zijn identiek en identiek aangedreven. De derde staat op gespannen voet met de
+  aandrijftoestand van de nabije velden, en dat staat in de module én in de kop van elk geschreven
+  bestand. Sander heeft op 12-09-2026 het volume van de testkast (53,2 L), dat van de echte kast
+  (67,7 L) en de ongewijzigde poort gesteld; de leveringen claimden 27,7 Hz voor de echte kast, wat
+  overeenkomt met een testkast op 31,25 Hz en dus met deze meting sluit.
 
 ### U-6-guards (het resultaatgebied geordend; alleen UI/ordening, geen enkele zin herschreven)
 - **`src/lib/v2ResultLayout.ts` — DE VOLGORDE VAN HET RESULTAATGEBIED, ALS DATA.** Vijfendertig

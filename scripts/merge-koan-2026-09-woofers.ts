@@ -17,6 +17,9 @@ import { parseFrd } from '../src/lib/parsers/frd.ts';
 import { spliceBandCheck, stepShapeCheck, suggestSpliceBand, sweepUntouchedCheck, type StepPeer } from '../src/lib/nfMerge.ts';
 import {
   CABINET_STEP_HZ,
+  REAL_VOLUME_L,
+  buildKoanTransformedMerge,
+  fitKoanBox,
   KOAN_2026_09_DIR,
   KOAN_2026_09_WAYS,
   SD_CM2,
@@ -49,7 +52,7 @@ function main(): void {
     const derived = suggestSpliceBand({ farFloorHz: b.farFloorHz, sdCm2: SD_CM2 });
     console.log(`  ver veld   : gate-vloer ${b.farFloorHz.toFixed(1)} Hz`);
     console.log(`  afgeleide splice-band: ${derived.note}`);
-    console.log(`  GEBRUIKT   : ${SPLICE_BAND_HZ[0]}–${SPLICE_BAND_HZ[1]} Hz (Sanders augustusband, M-1 verbatim)`);
+    console.log(`  GEBRUIKT   : ${SPLICE_BAND_HZ[0]}–${SPLICE_BAND_HZ[1]} Hz (1/T-grens van het verre veld tot het geldigheidsplafond)`);
     console.log(`  geldig vanaf: ${b.validFromHz.toFixed(1)} Hz`);
     console.log(
       `  splice-fit : gain ${b.merge.fit.levelDb.toFixed(2)} dB, delay ${(b.merge.fit.delayUs / 1000).toFixed(4)} ms, residu ${b.merge.fit.residualDeg.toFixed(1)}° rms`,
@@ -81,11 +84,21 @@ function main(): void {
     });
   }
 
+  /* ---- en dezelfde merge in het frame van de ECHTE kast ---- */
   console.log(`\n${'='.repeat(78)}`);
-  console.log('KLAAR — frame van de TESTKAST zoals gemeten, geen volumetransformatie.');
-  console.log('Naar de echte kast van 67,7 L zijn nog twee dingen nodig:');
-  console.log('  (a) het netto volume van de testkast — de manifesten zeggen 53,2 L, Sander zegt 51 L;');
-  console.log('  (b) de poortgeometrie in de nieuwe kast, want zonder die volgt f_b daar niet.');
+  console.log(`DE VOLUMETRANSFORMATIE naar ${REAL_VOLUME_L} L, zelfde poort`);
+  const boxFit = fitKoanBox();
+  console.log(`  de kast meet zichzelf:`);
+  console.log(`    f_b uit de poort/conus-verhouding : ${boxFit.fit.tuningHz.toFixed(2)} Hz   Q_l ${boxFit.fit.leakageQ.toFixed(2)}   (residu ${boxFit.fit.residual.toFixed(4)} over ${boxFit.fit.points} punten)`);
+  console.log(`    f_b uit het impedantiezadel       : ${boxFit.saddleHz.toFixed(2)} Hz   ->  ${(boxFit.agreement * 100).toFixed(1)} % uit elkaar`);
+  console.log(`    Z_b uit de HF-staart              : R_e 5,8 + ${boxFit.blocked.coefficient.toFixed(5)} (jw)^${boxFit.blocked.exponent.toFixed(3)}  (residu ${boxFit.blocked.residualDb.toFixed(3)} dB)`);
+  for (const way of KOAN_2026_09_WAYS) {
+    const t = buildKoanTransformedMerge(way, boxFit, REAL_VOLUME_L);
+    writeFileSync(join(KOAN_2026_09_DIR, t.outFile), t.text);
+    console.log(`  ${way.label}: gain ${t.merge.fit.levelDb.toFixed(2)} dB -> ${t.outFile}`);
+  }
+  console.log('\nKLAAR. Twee frames naast elkaar: de TESTKAST zoals gemeten, en de ECHTE KAST als');
+  console.log('MODEL TRANSFORM. Het verre veld boven de splice is in beide onaangeroerde meting.');
 }
 
 main();

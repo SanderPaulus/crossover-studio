@@ -47,11 +47,13 @@
  * de splice op bijna elk punt binnen 0,5 dB van de augustusmerge uit, met
  * 2,04 dB bij 149 Hz als grootste uitschieter. `koan2026_09.test.ts` pint dat.
  *
- * GEEN VOLUMETRANSFORMATIE. Deze bestanden staan in het frame van de testkast
- * zoals gemeten. De stap naar de echte kast van 67,7 L mist twee dingen: het
- * netto volume van de testkast, waarover de manifesten (53,2 L) en Sander
- * (51 L) elkaar tegenspreken, en de poortgeometrie in de nieuwe kast, zonder
- * welke f_b daar niet volgt.
+ * DE VOLUMETRANSFORMATIE STAAT ERNAAST EN IS APART GEMARKEERD. Sander stelde op
+ * 12-09-2026 het netto volume van de testkast (53,2 L), dat van de echte kast
+ * (67,7 L) en dat de POORT ONGEWIJZIGD blijft. Daarmee volgt de afstemming daar
+ * uit de natuurkunde en hoeft niets aangenomen te worden. De transformatie zelf
+ * woont in `ventedBoxTransform.ts`; hier staat alleen de wiring. Elk
+ * getransformeerd bestand draagt MODEL TRANSFORM in zijn kop, en het verre veld
+ * boven de splice blijft onaangeroerde meting.
  *
  * ZIJ LEEST VAN SCHIJF, dus alleen tests en `scripts/` importeren haar.
  */
@@ -61,6 +63,20 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrd } from '../parsers/frd.ts';
 import { parseLim } from '../parsers/lim.ts';
+import { resampleImpedance } from '../dsp.ts';
+import { abs, arg, cplx, mul, type Complex } from '../complex.ts';
+import {
+  VENTED_BOX_TRANSFORM_VERSION,
+  blockedImpedance,
+  fitBlockedImpedance,
+  fitPortConeRatio,
+  samePortInVolume,
+  volumeTransfer,
+  type BlockedFit,
+  type DriverFacts,
+  type PortConeFit,
+  type VentedBox,
+} from '../ventedBoxTransform.ts';
 import { DEFAULT_GATE_TAPER_ALPHA, dataFloorFromGateMs, readGateHeader } from '../xoWindow.ts';
 import {
   mergeNearField,
@@ -89,12 +105,30 @@ export const CASUS1_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '.
  * ==================================================================== */
 
 /**
- * De splice-band die Sander in augustus gebruikte en die M-1 verbatim overnam.
- * NIET de afgeleide band: `suggestSpliceBand` levert 455–576 Hz en zegt zelf
- * dat 800 Hz boven 0,95 × ka = 1 van een 255 cm²-conus reikt. Dat is een
- * ontwerpersoordeel en geen fout die de app mag overrulen (F0).
+ * DE SPLICE-BAND, EN ZIJ IS BIJ M-2 VERPLAATST OP SANDERS EIGEN GRENS.
+ *
+ * Augustus en M-1 gebruikten 500–800 Hz. Sander stelde op 12-09-2026 dat het
+ * VERRE veld betrouwbaar is tot 400 Hz, dus dat daar gesplicet mag worden, en
+ * dat is aantoonbaar beter — gemeten op alle zes de kandidaatbanden:
+ *
+ *   band        W1 p95 / max      W2 p95 / max
+ *   400–550     0,96 / 1,19 dB    1,45 / 1,79 dB
+ *   455–576     1,09 / 1,31       1,23 / 1,45
+ *   500–800     1,49 / 2,55       3,50 / 4,22     ← augustus
+ *
+ * Op W2 halveert het residu en de piekfout gaat van 4,22 naar 1,79 dB. De
+ * reden staat in `suggestSpliceBand` zelf: 800 Hz reikt boven 0,95 × ka = 1
+ * (606 Hz) van een 255 cm²-conus, waar een nabij veld de conus niet meer als
+ * één bron vertegenwoordigt. Het niveaufit van W2 wisselt daar ook van teken
+ * (+2,75 → −0,81 dB), wat op zichzelf al zegt dat de oude band in de problemen
+ * zat.
+ *
+ * BEIDE RANDEN ZIJN GETALLEN DIE HET PROJECT AL STELT: 400 Hz is Sanders
+ * 1/T-grens van het gepoorte verre veld (de gate leest 397 Hz), en 550 Hz is
+ * het geldigheidsplafond van de woofer dat élk manifest van deze casus noemt.
+ * Niets is hier gekozen om het residu te laten zakken.
  */
-export const SPLICE_BAND_HZ: readonly [number, number] = [500, 800];
+export const SPLICE_BAND_HZ: readonly [number, number] = [400, 550];
 
 /**
  * Het baffle-step-MODEL van casus 1: eerste-orde shelf, 6 dB op 440 Hz, als
@@ -277,6 +311,223 @@ export function buildKoanMerge(way: KoanWay): KoanMergeBuild {
     validFromReason,
     madeOn: MADE_ON,
     branchLabel: way.label,
+  });
+  return { way, farFloorHz, merge, validFromHz, validFromReason, outFile, text };
+}
+
+/* ==================================================================== *
+ * M-2 — DE VOLUMETRANSFORMATIE NAAR DE ECHTE KAST
+ *
+ * De kast meet zichzelf op twee plaatsen en de driver valt er grotendeels uit;
+ * `ventedBoxTransform.ts` draagt de natuurkunde en de motivering. Hier staat
+ * uitsluitend de WIRING naar de gemeten bestanden van deze sessie, plus de twee
+ * volumes die Sander gesteld heeft.
+ * ==================================================================== */
+
+/** Netto volume van de testkast, litres. Gesteld door Sander op 12-09-2026. */
+export const TEST_VOLUME_L = 53.2;
+/** Netto volume van de echte Koan-kast, litres. Gesteld door Sander. */
+export const REAL_VOLUME_L = 67.7;
+
+/**
+ * `R_e` per driver, Ω. Datasheet, en de motionele fit van augustus landt er
+ * onafhankelijk op (2,896 Ω voor het paar is 5,79 per driver).
+ */
+export const RE_PER_DRIVER_OHM = 5.8;
+/** Krachtfactor per driver, Tm. Datasheet. */
+export const BL_TM = 10.45;
+
+/**
+ * De band waarop de poort/conus-verhouding gefit wordt. De onderkant is waar het
+ * nabije veld nog signaal heeft; de bovenkant is waar de poortbijdrage onder een
+ * tiende zakt en er niets meer te fitten valt — daarboven meet men buismodes en
+ * ruis, en het residu loopt dan op zonder dat de fit slechter wordt.
+ */
+export const PORT_FIT_BAND_HZ: readonly [number, number] = [8, 70];
+
+/** De HF-staart waarop `Z_b` gefit wordt: daar is de motionele term verwaarloosbaar. */
+export const BLOCKED_FIT_BAND_HZ: readonly [number, number] = [3000, 15000];
+
+const DEG = Math.PI / 180;
+
+/** Eén FRD als frequentie, dB en graden — de vorm die de fits vragen. */
+function frdOf(file: string) {
+  const m = parseFrd(readNew(file));
+  return { freq: m.freq, spl: m.spl, phase: m.phase };
+}
+
+/** De gemeten parallelle sweep als complexe impedantie op haar eigen raster. */
+export function koanMeasuredImpedance(): { freq: number[]; z: Complex[] } {
+  const b = readFileSync(join(KOAN_2026_09_DIR, PARALLEL_LIM));
+  const m = parseLim(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer);
+  return {
+    freq: m.freq,
+    z: m.freq.map((_, i) => cplx(m.magnitude[i] * Math.cos(m.phase[i] * DEG), m.magnitude[i] * Math.sin(m.phase[i] * DEG))),
+  };
+}
+
+export interface KoanBoxFit {
+  /** De kast zoals de poort/conus-verhouding haar meet. */
+  box: VentedBox;
+  fit: PortConeFit;
+  /** De afstemming uit het impedantiezadel — een ONAFHANKELIJKE tweede route. */
+  saddleHz: number;
+  /** Het verschil tussen de twee routes, als fractie. */
+  agreement: number;
+  blocked: BlockedFit;
+}
+
+/**
+ * DE KAST UIT HAAR EIGEN METINGEN. `f_b` en `Q_l` uit de poort/conus-verhouding,
+ * waarin geen drivergrootheid voorkomt; `Z_b` uit de HF-staart. De afstemming
+ * uit het impedantiezadel staat ernaast als tweede, onafhankelijke route, en
+ * `agreement` is het verschil — een lezer hoort te zien hoe goed de twee het
+ * eens zijn voordat hij de transformatie gebruikt.
+ */
+export function fitKoanBox(): KoanBoxFit {
+  const cone = frdOf(KOAN_2026_09_WAYS[0].nearFile);
+  const port = frdOf(PORT_FILE);
+  const g = PORT_MOUTH_DIA_MM / CONE_DIA_MM;
+  const [lo, hi] = PORT_FIT_BAND_HZ;
+  const ratio: { freqHz: number; value: Complex }[] = [];
+  for (const [i, f] of cone.freq.entries()) {
+    if (f < lo || f > hi) continue;
+    const a = Math.pow(10, (port.spl[i] - cone.spl[i]) / 20) * g;
+    let ph = port.phase[i] - cone.phase[i];
+    while (ph > 180) ph -= 360;
+    while (ph < -180) ph += 360;
+    ratio.push({ freqHz: f, value: cplx(a * Math.cos(ph * DEG), a * Math.sin(ph * DEG)) });
+  }
+  const fit = fitPortConeRatio(ratio, { tuningHz: [20, 40], leakageQ: [1, 15], scale: [0.3, 5] });
+  if (!fit) throw new Error('fitKoanBox: te weinig punten in de poortfitband.');
+
+  const z = koanMeasuredImpedance();
+  const [blo, bhi] = BLOCKED_FIT_BAND_HZ;
+  const tail = z.freq
+    .map((f, i) => ({ freqHz: f, magnitudeOhm: 2 * abs(z.z[i]) }))
+    .filter((t) => t.freqHz >= blo && t.freqHz <= bhi);
+  const blocked = fitBlockedImpedance(tail, RE_PER_DRIVER_OHM, { coefficient: [5e-4, 0.03], exponent: [0.5, 1] });
+  if (!blocked) throw new Error('fitKoanBox: te weinig punten in de HF-staart.');
+
+  const saddleHz = koanBoxTuneHz().fbHz;
+  return {
+    box: { volumeL: TEST_VOLUME_L, tuningHz: fit.tuningHz, leakageQ: fit.leakageQ },
+    fit,
+    saddleHz,
+    agreement: Math.abs(fit.tuningHz - saddleHz) / saddleHz,
+    blocked,
+  };
+}
+
+/** Wat de driverkaart aan de transformatie bijdraagt, en het is drie getallen. */
+export function koanDriverFacts(): DriverFacts {
+  return { sdM2: SD_CM2 * 1e-4, blTm: BL_TM, count: PORT_SHARED_BY };
+}
+
+/**
+ * Eén nabij veld naar het frame van de echte kast, als FRD-TEKST op hetzelfde
+ * raster. De kop van het bronbestand blijft staan en er komt één regel bij die
+ * zegt wat er gebeurd is; de datarijen zijn de enige die bewegen.
+ *
+ * De impedantie wordt op het NF-raster geïnterpoleerd met vlakke randen. Onder
+ * 10 Hz is dat een gehouden waarde, en dat is zichtbaar gemaakt in de regel:
+ * de merge draagt daar toch niets, want het raster van het verre veld begint op
+ * 20,5 Hz.
+ */
+export function transformNearFieldText(
+  file: string,
+  channel: 'cone' | 'port',
+  boxFit: KoanBoxFit,
+  toVolumeL: number,
+): string {
+  const src = readNew(file);
+  const m = parseFrd(src);
+  const to = samePortInVolume(boxFit.box, toVolumeL);
+  const z = koanMeasuredImpedance();
+  const zOn = resampleImpedance(z.freq, z.z.map(abs), z.z.map((c) => (arg(c) * 180) / Math.PI), m.freq);
+  /* `clamped` is hier WAAR en dat is bedoeld: het NF-raster begint op 5,1 Hz en
+   * de sweep op 10,1, dus onder 10 Hz wordt de impedantie vlak gehouden. De
+   * merge draagt daar niets — het raster van het verre veld begint op 20,5 Hz. */
+  const driver = koanDriverFacts();
+
+  const spl: number[] = [];
+  const phase: number[] = [];
+  for (const [i, f] of m.freq.entries()) {
+    const zOne = mul(cplx(driver.count), zOn.z[i]);
+    const zb = blockedImpedance(f, RE_PER_DRIVER_OHM, boxFit.blocked);
+    const t = volumeTransfer(f, zOne, zb, boxFit.box, to, driver);
+    const h = channel === 'cone' ? t.cone : t.port;
+    spl.push(m.spl[i] + 20 * Math.log10(abs(h)));
+    let p = m.phase[i] + (arg(h) * 180) / Math.PI;
+    while (p > 180) p -= 360;
+    while (p < -180) p += 360;
+    phase.push(p);
+  }
+
+  const head = src
+    .split('\n')
+    .filter((l) => l.trimStart().startsWith('*'))
+    .concat([
+      `* TRANSFORMED to ${toVolumeL} L by Crossover Studio (${VENTED_BOX_TRANSFORM_VERSION}), channel ${channel}`,
+      `* basis: ${file} measured in ${boxFit.box.volumeL} L, f_b ${boxFit.box.tuningHz.toFixed(2)} Hz, Q_l ${boxFit.box.leakageQ.toFixed(2)}`,
+      `* target: ${toVolumeL} L with the SAME port, so f_b ${to.tuningHz.toFixed(2)} Hz and Q_l ${to.leakageQ.toFixed(2)}`,
+      `* box measured itself: f_b from the port/cone ratio ${boxFit.fit.tuningHz.toFixed(2)} Hz against ${boxFit.saddleHz.toFixed(2)} Hz from the impedance saddle (${(boxFit.agreement * 100).toFixed(1)} % apart); Z_b = R_e ${RE_PER_DRIVER_OHM} + ${boxFit.blocked.coefficient.toFixed(5)} (jw)^${boxFit.blocked.exponent.toFixed(3)}, tail residual ${boxFit.blocked.residualDb.toFixed(3)} dB`,
+      `* MODEL: this is a model transform, not a measurement in the real cabinet. Below 10 Hz the impedance is held flat; the merge carries nothing there.`,
+    ]);
+  const fmt = (v: number, d: number, w: number) => v.toFixed(d).padStart(w);
+  const rows = m.freq.map((f, i) => `${fmt(f, 4, 12)}${fmt(spl[i], 3, 10)}${fmt(phase[i], 3, 10)}`);
+  return [...head, 'Freq[Hz]  dBSPL  Phase[Deg]', ...rows].join('\n') + '\n';
+}
+
+/** De merge van één weg IN HET FRAME VAN DE ECHTE KAST. */
+export function buildKoanTransformedMerge(way: KoanWay, boxFit: KoanBoxFit, toVolumeL: number): KoanMergeBuild {
+  const farText = readCasus1(way.farFile);
+  const nearText = transformNearFieldText(way.nearFile, 'cone', boxFit, toVolumeL);
+  const portText = transformNearFieldText(PORT_FILE, 'port', boxFit, toVolumeL);
+  const pw = koanPortWeight();
+  const gate = readGateHeader(farText);
+  if (gate.kind !== 'parsed') throw new Error(`${way.farFile}: geen leesbaar venster (${gate.kind}).`);
+  const farFloorHz = dataFloorFromGateMs(gate.gateMs, gate.alpha ?? DEFAULT_GATE_TAPER_ALPHA);
+  if (farFloorHz === null) throw new Error(`${way.farFile}: venster gelezen maar geen vloer.`);
+
+  const merge = mergeNearField({
+    farText,
+    farName: way.farFile,
+    nearText,
+    nearName: `${way.nearFile} → ${toVolumeL} L`,
+    portText,
+    portName: `${PORT_FILE} → ${toVolumeL} L`,
+    portWeight: pw.weight,
+    portNote: pw.note,
+    spliceBandHz: [SPLICE_BAND_HZ[0], SPLICE_BAND_HZ[1]],
+    step: { hz: STEP.hz, depthDb: STEP.depthDb },
+    cabinetStepHz: CABINET_STEP_HZ,
+  });
+  if (merge === null) throw new Error(`${way.label}: de getransformeerde merge leverde niets.`);
+
+  const to = samePortInVolume(boxFit.box, toVolumeL);
+  const validFromHz = merge.freq[0];
+  const validFromReason =
+    `the near field carries this branch down to ${validFromHz.toFixed(1)} Hz and the port is summed into it, ` +
+    `so the merge is the whole radiating system through its tuning (f_b ${to.tuningHz.toFixed(1)} Hz MODELLED for ${toVolumeL} L); ` +
+    `the far-field gate (${farFloorHz.toFixed(0)} Hz) applies only above the splice. ` +
+    `MODEL TRANSFORM from ${boxFit.box.volumeL} L with the same port; the far field above the splice is UNTOUCHED measurement. ` +
+    NF_CONDITION_NOTE;
+
+  const outFile = `${way.farFile.replace(/\.[A-Za-z0-9]+$/, '')}_koan${String(toVolumeL).replace('.', '')}_merged.frd`;
+  const text = renderMergedFrd({
+    merge,
+    farName: way.farFile,
+    nearName: `${way.nearFile} transformed to ${toVolumeL} L`,
+    portName: `${PORT_FILE} transformed to ${toVolumeL} L`,
+    portNote: pw.note,
+    spliceBandHz: SPLICE_BAND_HZ,
+    step: { hz: STEP.hz, depthDb: STEP.depthDb },
+    cabinetStepHz: CABINET_STEP_HZ,
+    validFromHz,
+    validFromReason,
+    madeOn: MADE_ON,
+    branchLabel: `${way.label} — ${toVolumeL} L (MODEL TRANSFORM)`,
   });
   return { way, farFloorHz, merge, validFromHz, validFromReason, outFile, text };
 }

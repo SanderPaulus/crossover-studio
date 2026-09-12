@@ -14,6 +14,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   CASUS1_DIR,
+  REAL_VOLUME_L,
+  RE_PER_DRIVER_OHM,
+  buildKoanTransformedMerge,
+  fitKoanBox,
+  koanDriverFacts,
+  koanMeasuredImpedance,
   KOAN_2026_09_DIR,
   KOAN_2026_09_NAME,
   KOAN_2026_09_WAYS,
@@ -32,7 +38,9 @@ import { parseLim } from '../parsers/lim.ts';
 import { readGateHeader, readMergeBlock } from '../xoWindow.ts';
 import { declaredMergeValidity } from '../sourceMeta.ts';
 import { parseArtaHeader } from './ingest/manifest.ts';
-import { spliceBandCheck } from '../nfMerge.ts';
+import { mergedFileName as mergedFileNameOf, spliceBandCheck } from '../nfMerge.ts';
+import { abs, cplx, mul } from '../complex.ts';
+import { blockedImpedance, portToConeRatio, samePortInVolume, volumeTransfer } from '../ventedBoxTransform.ts';
 
 const BUILDS = KOAN_2026_09_WAYS.map((w) => buildKoanMerge(w));
 const CASES = BUILDS.map((b) => [b.way.label, b] as const);
@@ -275,5 +283,95 @@ describe('M-2 — de meetbasis en het frame', () => {
       expect(head).toContain('Merge step model = shelf');
       expect(head).toContain('MODEL-validated');
     }
+  });
+});
+
+describe('M-2 volumetransformatie — de wiring naar de gemeten bestanden', () => {
+  const boxFit = fitKoanBox();
+  const TRANS = KOAN_2026_09_WAYS.map((w) => buildKoanTransformedMerge(w, boxFit, REAL_VOLUME_L));
+  const TCASES = TRANS.map((b) => [b.way.label, b] as const);
+
+  it.each(TCASES)('%s: het getransformeerde bestand reproduceert byte voor byte', (_l, b) => {
+    expect(readFileSync(join(KOAN_2026_09_DIR, b.outFile), 'utf8')).toBe(b.text);
+  });
+
+  /**
+   * DE TWEE ONAFHANKELIJKE ROUTES NAAR f_b. De poort/conus-verhouding kent geen
+   * enkele drivergrootheid; het impedantiezadel is een heel andere meting. Dat
+   * zij het eens zijn is de reden dat de transformatie te vertrouwen is, en het
+   * is de claim die omvalt zodra een van beide wegdrijft.
+   */
+  it('f_b uit de poortverhouding en uit het impedantiezadel komen overeen', () => {
+    expect(boxFit.agreement).toBeLessThan(0.05);
+    expect(boxFit.fit.tuningHz).toBeGreaterThan(25);
+    expect(boxFit.fit.tuningHz).toBeLessThan(35);
+    expect(boxFit.blocked.residualDb).toBeLessThan(0.5);
+  });
+
+  /**
+   * DE POORT KRIJGT ZIJN EIGEN TRANSFORMATIE, en dat is wat deze claim vastlegt:
+   * zijn deler hangt aan f_b, en die verschuift mee met het volume. Zou de poort
+   * dezelfde factor krijgen als de conus, dan zou het verschil overal nul zijn en
+   * zou de merge een poort dragen die nog op de oude afstemming staat.
+   */
+  it('de poort wordt anders getransformeerd dan de conus', () => {
+    const to = samePortInVolume(boxFit.box, REAL_VOLUME_L);
+    const z = koanMeasuredImpedance();
+    const drv = koanDriverFacts();
+    let worst = 0;
+    for (const [i, f] of z.freq.entries()) {
+      if (f < 15 || f > 120) continue;
+      const zb = blockedImpedance(f, RE_PER_DRIVER_OHM, boxFit.blocked);
+      const t = volumeTransfer(f, mul(cplx(drv.count), z.z[i]), zb, boxFit.box, to, drv);
+      worst = Math.max(worst, Math.abs(20 * Math.log10(abs(t.port) / abs(t.cone))));
+    }
+    /* Gemeten 4,3 dB rond 35 Hz; de grens staat ruim zodat een herfit hem niet breekt. */
+    expect(worst).toBeGreaterThan(2);
+    /* En de deler verschuift de kant op die een lagere afstemming geeft. */
+    expect(abs(portToConeRatio(boxFit.box.tuningHz, to))).toBeLessThan(abs(portToConeRatio(boxFit.box.tuningHz, boxFit.box)));
+  });
+
+  /** Ook na de transformatie IS de merge boven de blend het verre veld. */
+  it.each(TCASES)('%s: boven de blend blijft het verre veld onaangeroerd', (_l, b) => {
+    const far = parseFrd(readCasus1(b.way.farFile));
+    const written = parseFrd(readFileSync(join(KOAN_2026_09_DIR, b.outFile), 'utf8'));
+    let worst = 0;
+    for (const [i, f] of written.freq.entries()) {
+      if (f <= SPLICE_BAND_HZ[1] * 1.2) continue;
+      worst = Math.max(worst, Math.abs(written.spl[i] - far.spl[i]), Math.abs(written.phase[i] - far.phase[i]));
+    }
+    expect(worst).toBe(0);
+  });
+
+  /** Het bestand zegt zelf dat het een modeltransformatie is, en uit welke kast. */
+  it.each(TCASES)('%s: de kop draagt MODEL TRANSFORM en beide volumes', (_l, b) => {
+    const mb = readMergeBlock(readFileSync(join(KOAN_2026_09_DIR, b.outFile), 'utf8'));
+    expect(mb).not.toBeNull();
+    expect(mb!.floorReason).toContain('MODEL TRANSFORM');
+    expect(mb!.floorReason).toContain(String(REAL_VOLUME_L));
+    expect(mb!.floorReason).toContain('NF CONDITION');
+    expect(b.outFile).toContain('koan677');
+  });
+
+  /**
+   * DE RICHTING OP DE ECHTE DATA: een grotere kast stemt lager af, dus onder de
+   * oude afstemming komt er uitstraling bij. Gemeten op de geschreven bestanden
+   * en niet op de formule, zodat een fout in de wiring hier omvalt.
+   */
+  it.each(TCASES)('%s: onder de oude afstemming levert 67,7 L meer dan 53,2 L', (_l, b) => {
+    const test = parseFrd(readFileSync(join(KOAN_2026_09_DIR, mergedFileNameOf(b.way.farFile)), 'utf8'));
+    const real = parseFrd(readFileSync(join(KOAN_2026_09_DIR, b.outFile), 'utf8'));
+    const at = (m: { freq: number[]; spl: number[] }, f0: number) =>
+      m.spl[m.freq.reduce((x, f, i) => (Math.abs(f - f0) < Math.abs(m.freq[x] - f0) ? i : x), 0)];
+    /* Uitgelijnd op 150–400 Hz, waar de transformatie vrijwel niets doet. */
+    const band = (m: { freq: number[]; spl: number[] }) => {
+      const ix = m.freq.map((_, i) => i).filter((i) => m.freq[i] >= 150 && m.freq[i] <= 400);
+      return ix.reduce((s, i) => s + m.spl[i], 0) / ix.length;
+    };
+    const d = (f: number) => (at(real, f) - band(real)) - (at(test, f) - band(test));
+    expect(d(22)).toBeGreaterThan(0.5);
+    expect(d(25)).toBeGreaterThan(0.5);
+    /* En ruim erboven doet zij vrijwel niets. */
+    expect(Math.abs(d(300))).toBeLessThan(0.5);
   });
 });
