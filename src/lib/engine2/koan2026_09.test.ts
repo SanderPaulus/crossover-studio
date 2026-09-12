@@ -51,8 +51,19 @@ import { blockedImpedance, portToConeRatio, samePortInVolume, volumeTransfer } f
 const BUILDS = KOAN_2026_09_WAYS.map((w) => buildKoanMerge(w));
 const CASES = BUILDS.map((b) => [b.way.label, b] as const);
 
+/**
+ * DE REPRODUCTIECLAIMS DRAGEN `[bytes]` EN DRAAIEN DUS NIET IN CI, om precies de
+ * reden die V46 preciseerde en die dit project daarna nog twee keer betaald
+ * heeft (V49, B-1): zij leggen een VERS BEREKEND bestand byte voor byte naast
+ * een opgeslagen bestand, en byte-gelijkheid geldt per (machine, runtime). De
+ * merge loopt door fits, een faseontwikkeling en een interpolatie, en wordt op
+ * drie decimalen weggeschreven; één laatste bit anders op linux/Node 22 kantelt
+ * ergens in 82 000 getallen een afronding. Wat zij bewaken is dat de bewerking
+ * niet verandert, en dat bewaakt de lokale suite. `ciLayer.test.ts` draagt de
+ * inventaris van de andere kant.
+ */
 describe('M-2 reproductie — de bestanden op schijf komen uit deze bewerking', () => {
-  it.each(CASES)('%s: het geschreven bestand reproduceert byte voor byte', (_l, b) => {
+  it.each(CASES)('[bytes] %s: het geschreven bestand reproduceert byte voor byte', (_l, b) => {
     const onDisk = readFileSync(join(KOAN_2026_09_DIR, b.outFile), 'utf8');
     expect(onDisk).toBe(b.text);
   });
@@ -297,7 +308,7 @@ describe('M-2 volumetransformatie — de wiring naar de gemeten bestanden', () =
   const TRANS = KOAN_2026_09_WAYS.map((w) => buildKoanTransformedMerge(w, boxFit, REAL_VOLUME_L));
   const TCASES = TRANS.map((b) => [b.way.label, b] as const);
 
-  it.each(TCASES)('%s: het getransformeerde bestand reproduceert byte voor byte', (_l, b) => {
+  it.each(TCASES)('[bytes] %s: het getransformeerde bestand reproduceert byte voor byte', (_l, b) => {
     expect(readFileSync(join(KOAN_2026_09_DIR, b.outFile), 'utf8')).toBe(b.text);
   });
 
@@ -387,7 +398,7 @@ describe('M-2 demoset 67,7 L — wat de set draagt en wat zij niet belooft', () 
   const pair = buildKoanPairFrd(boxFit, REAL_VOLUME_L);
   const zma = buildKoanPairZma(boxFit, REAL_VOLUME_L);
 
-  it('de geschreven bestanden reproduceren byte voor byte', () => {
+  it('[bytes] de geschreven demoset-bestanden reproduceren byte voor byte', () => {
     expect(readFileSync(join(KOAN_DEMO_67L_DIR, pair.name), 'utf8')).toBe(pair.text);
     expect(readFileSync(join(KOAN_DEMO_67L_DIR, zma.name), 'utf8')).toBe(zma.text);
   });

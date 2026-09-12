@@ -148,7 +148,7 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     }
   });
 
-  it('de byte-inventaris is precies deze ZEVEN bronnamen — elf gedraaide tests', () => {
+  it('de byte-inventaris is precies deze TIEN bronnamen — zestien gedraaide tests', () => {
     /* De namen staan hier voluit zodat een toevoeging een BEWUSTE daad is: wie
      * er een tagt, komt hier langs en moet opschrijven wat hij uit CI haalt.
      *
@@ -175,9 +175,20 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
      * E-3 voegde de ZEVENDE toe: de byte-reproductie van casus 1b door de
      * tweewegroute van de worker (`casus1bV2Candidates.test.ts`, kind
      * `v2ChainOne`). Uit CI om dezelfde reden als de zes andere; zeven namen,
-     * elf gedraaide tests. */
+     * elf gedraaide tests.
+     *
+     * M-2 voegde er DRIE toe, samen vijf gedraaide tests: de drie
+     * reproductieclaims van `koan2026_09.test.ts`, waarvan er twee een
+     * `it.each` over de twee wooferwegen zijn. Zij leggen een vers berekende
+     * merge byte voor byte naast het bestand op schijf, en dat is dezelfde
+     * klasse als de zeven andere — geen tuner-run, maar wel fits, een
+     * faseontwikkeling en een interpolatie die op drie decimalen worden
+     * weggeschreven. Tien namen, zestien gedraaide tests. */
     expect(taggedNames(BYTES_TAG)).toEqual([
+      `${BYTES_TAG} %s: het geschreven bestand reproduceert byte voor byte`,
+      `${BYTES_TAG} %s: het getransformeerde bestand reproduceert byte voor byte`,
       `${BYTES_TAG} casus 1b: the cheapest delivered netlist, by recorded runtime, live through v2ChainOne, byte for byte`,
+      `${BYTES_TAG} de geschreven demoset-bestanden reproduceren byte voor byte`,
       `${BYTES_TAG} seed %i: ALL SIX verdicts reproduce the V50 block minus that row, and the M-1 block in full`,
       `${BYTES_TAG} seed %i: so does the F4b2 shape — the fixture pins both`,
       `${BYTES_TAG} seed %i: the F4c shape reproduces the STORED F4b2 network`,
