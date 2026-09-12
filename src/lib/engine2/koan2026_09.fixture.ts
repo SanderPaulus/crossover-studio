@@ -531,3 +531,124 @@ export function buildKoanTransformedMerge(way: KoanWay, boxFit: KoanBoxFit, toVo
   });
   return { way, farFloorHz, merge, validFromHz, validFromReason, outFile, text };
 }
+
+/* ==================================================================== *
+ * M-2 — DE DEMOSET VOOR DE ECHTE KAST
+ *
+ * Wat de app van een weg wil is ÉÉN on-axis bestand, dus het wooferPAAR wordt
+ * complex gesommeerd: elk van de twee merges draagt een halve poort, dus samen
+ * dragen zij hem heel. En de IMPEDANTIE gaat mee naar hetzelfde volume — een set
+ * waarvan de SPL 67,7 L zegt en de last 53,2 is intern tegenstrijdig, en het
+ * filter zou dan tegen de verkeerde last ontworpen worden.
+ * ==================================================================== */
+
+/** De map waarin de demoset voor de echte kast geschreven wordt. */
+export const KOAN_DEMO_67L_NAME = 'koan_demo_2026-09_67L';
+export const KOAN_DEMO_67L_DIR = join(
+  dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'test-fixtures', KOAN_DEMO_67L_NAME,
+);
+
+/** Eén FRD-tekst uit een raster en twee kolommen, in de layout die beide parsers lezen. */
+function renderFrd(head: readonly string[], freq: readonly number[], spl: readonly number[], phase: readonly number[]): string {
+  const f = (v: number, d: number, w: number) => v.toFixed(d).padStart(w);
+  return [...head, 'Freq[Hz]  dBSPL  Phase[Deg]',
+    ...freq.map((x, i) => `${f(x, 4, 12)}${f(spl[i], 3, 10)}${f(phase[i], 3, 10)}`)].join('\n') + '\n';
+}
+
+/**
+ * HET WOOFERPAAR ALS ÉÉN BESTAND, complex gesommeerd uit de twee
+ * getransformeerde merges. Beide staan op hetzelfde raster — dat van het verre
+ * veld — dus er wordt niets geïnterpoleerd.
+ */
+export function buildKoanPairFrd(boxFit: KoanBoxFit, toVolumeL: number): { text: string; name: string } {
+  const parts = KOAN_2026_09_WAYS.map((w) => parseFrd(buildKoanTransformedMerge(w, boxFit, toVolumeL).text));
+  const grid = parts[0].freq;
+  for (const p of parts) {
+    if (p.freq.length !== grid.length) throw new Error('buildKoanPairFrd: de twee merges staan niet op één raster.');
+  }
+  const spl: number[] = [], phase: number[] = [];
+  for (let i = 0; i < grid.length; i++) {
+    let re = 0, im = 0;
+    for (const p of parts) {
+      const a = Math.pow(10, p.spl[i] / 20), ph = p.phase[i] * DEG;
+      re += a * Math.cos(ph); im += a * Math.sin(ph);
+    }
+    spl.push(20 * Math.log10(Math.hypot(re, im)));
+    phase.push((Math.atan2(im, re) * 180) / Math.PI);
+  }
+  const to = samePortInVolume(boxFit.box, toVolumeL);
+  const src = KOAN_2026_09_WAYS.map((w) => w.nearFile).join(' + ');
+  return {
+    name: 'woofer_pair_hor0.frd',
+    text: renderFrd([
+      `* Koan 2951 — woofer PAIR on axis, ${toVolumeL} L (MODEL TRANSFORM) — made by Crossover Studio (${VENTED_BOX_TRANSFORM_VERSION})`,
+      `* complex sum of the two per-driver merges; each carries half the port, so together they carry it whole`,
+      `* basis: ${src} + ${PORT_FILE} (near fields, 11-09-2026) spliced onto the existing gated far fields at ${SPLICE_BAND_HZ[0]}-${SPLICE_BAND_HZ[1]} Hz`,
+      `* Merge = NF/FF`,
+      `* Valid from = ${grid[0].toFixed(1)} Hz`,
+      `* Valid to = ${Math.round(grid[grid.length - 1])} Hz`,
+      `* Merge NF source = ${src} + ${PORT_FILE}, transformed from ${boxFit.box.volumeL} L to ${toVolumeL} L`,
+      `* Merge FF source = ${KOAN_2026_09_WAYS.map((w) => w.farFile).join(' + ')}`,
+      `* Merge splice band = ${SPLICE_BAND_HZ[0]}-${SPLICE_BAND_HZ[1]} Hz`,
+      `* Merge step model = shelf ${STEP.depthDb} dB @ ${STEP.hz} Hz, first order, minimum phase (MODEL — the teardrop was never measured)`,
+      `* Merge port model = summed at weight ${koanPortWeight().weight.toFixed(3)} per driver (Keele, complex)`,
+      `* Merge prediction = none`,
+      `* Merge floor reason = MODEL TRANSFORM from ${boxFit.box.volumeL} L with the SAME port, so f_b ${boxFit.box.tuningHz.toFixed(2)} -> ${to.tuningHz.toFixed(2)} Hz and Q_l ${boxFit.box.leakageQ.toFixed(2)} -> ${to.leakageQ.toFixed(2)}. Above the splice this is UNTOUCHED measurement. ${NF_CONDITION_NOTE}`,
+      `* Merge status = MODEL-validated, made by Crossover Studio on ${MADE_ON}; the box measured itself: f_b ${boxFit.fit.tuningHz.toFixed(2)} Hz from the port/cone ratio against ${boxFit.saddleHz.toFixed(2)} Hz from the impedance saddle, ${(boxFit.agreement * 100).toFixed(1)} % apart`,
+      `* SENSITIVITY of the transform to the datasheet B_l (10.45 Tm), measured at +/-10 %: 2.3 dB around 30 Hz, 0.4-0.7 dB below 27 Hz, under 0.2 dB above 60 Hz. That is the error bar on the low end; the crossover band carries none of it.`,
+      `* the LOAD beside this file is the MEASURED sweep from ${boxFit.box.volumeL} L and is NOT transformed — see its own header for why.`,
+    ], grid, spl, phase),
+  };
+}
+
+/**
+ * DE PARALLELLE IMPEDANTIE — GEMETEN, EN MET OPZET NIET GETRANSFORMEERD.
+ *
+ * Zij hoort bij de kast waarin zij gemeten is, en dat is de testkast. Dat is
+ * een inconsistentie met de respons ernaast, en zij staat daarom in de kop van
+ * dit bestand in plaats van te worden weggewerkt.
+ *
+ * WAAROM NIET GETRANSFORMEERD, en dit is gemeten en niet besloten. De
+ * transformatie leest `Z_mech` af als `B_l²/(Z − Z_b)` en trekt daar de
+ * GEMODELLEERDE kastlast van af om de driver over te houden. Bij het zadel is
+ * `Z − Z_b` maar 2,0 Ω van de 7,9, en de kastlast is daar 53,9 van de 54,4:
+ * het eigen deel van de driver is dus een klein verschil van twee grote
+ * getallen. Wat eruit komt is ONFYSISCH — de mechanische weerstand van de
+ * driver wordt onder 30 Hz negatief (−5,3 bij 14,8 Hz, −14,0 bij 24,9) — en een
+ * weerstand kan niet negatief zijn. Het zadel schoof daardoor de verkeerde kant
+ * op: 31,3 Hz waar 27,0 verwacht werd.
+ *
+ * DE GEVOELIGHEID ZEGT HETZELFDE. Bij ±10 % op de datasheet-`B_l` beweegt de
+ * getransformeerde impedantie 4,75 Ω op de bovenste piek. Dat is geen
+ * transformatie maar een gok met een foutbalk die groter is dan het effect.
+ *
+ * BOVEN 100 Hz DOET DE TRANSFORMATIE SOWIESO NIETS (0,005 dB boven 300 Hz), en
+ * dat is de band waarin het kruisfilter zijn werk doet. De inconsistentie zit
+ * dus onder 50 Hz, waar zij de basafstemming raakt en niet de overname.
+ */
+export function buildKoanPairZma(boxFit: KoanBoxFit, toVolumeL: number): { text: string; name: string } {
+  const z = koanMeasuredImpedance();
+  const to = samePortInVolume({ ...boxFit.box, tuningHz: boxFit.saddleHz }, toVolumeL);
+  const rows = z.freq.map((f, i) => {
+    const pair = z.z[i];
+    return `${f.toFixed(4).padStart(12)}${abs(pair).toFixed(4).padStart(11)}${((arg(pair) * 180) / Math.PI).toFixed(3).padStart(10)}`;
+  });
+  return {
+    name: 'woofers_parallel.zma',
+    text: [
+      `* Koan 2951 — parallel woofer impedance, MEASURED 11-09-2026 in ${boxFit.box.volumeL} L with both woofers driven in parallel`,
+      `* source: ${PARALLEL_LIM} (ARTA LIMP binary), converted to ZMA text; not one value is modelled`,
+      `* NOT TRANSFORMED to ${toVolumeL} L, and that is a measured decision, not an omission:`,
+      `*   reading Z_mech as Bl^2/(Z - Z_b) and subtracting the modelled box load leaves the driver as a small`,
+      `*   difference of two large numbers (2.0 of 7.9 ohm at the saddle; box load 53.9 of 54.4), and the result is`,
+      `*   UNPHYSICAL - the driver's mechanical resistance goes negative below 30 Hz (-5.3 at 14.8 Hz, -14.0 at 24.9).`,
+      `*   At +/-10 % on the datasheet Bl the transformed curve moves 4.75 ohm on the upper peak.`,
+      `* CONSEQUENCE: this load belongs to ${boxFit.box.volumeL} L while the response beside it is modelled for ${toVolumeL} L.`,
+      `*   Above 100 Hz the transform does nothing anyway (0.005 dB above 300 Hz), so the crossover band is unaffected;`,
+      `*   the mismatch sits below 50 Hz, where it touches the bass alignment and not the crossover.`,
+      `* for reference, the same port in ${toVolumeL} L would tune to f_b ${to.tuningHz.toFixed(2)} Hz against ${boxFit.saddleHz.toFixed(2)} Hz measured here.`,
+      'Freq[Hz]  Ohm  Phase[Deg]',
+      ...rows,
+    ].join('\n') + '\n',
+  };
+}

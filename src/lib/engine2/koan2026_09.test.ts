@@ -14,8 +14,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   CASUS1_DIR,
+  KOAN_DEMO_67L_DIR,
   REAL_VOLUME_L,
   RE_PER_DRIVER_OHM,
+  SD_CM2,
+  buildKoanPairFrd,
+  buildKoanPairZma,
   buildKoanTransformedMerge,
   fitKoanBox,
   koanDriverFacts,
@@ -35,6 +39,8 @@ import {
 } from './koan2026_09.fixture.ts';
 import { parseFrd } from '../parsers/frd.ts';
 import { parseLim } from '../parsers/lim.ts';
+import { parseZma } from '../parsers/zma.ts';
+import { KOAN_DEMO_2026_09_DIR } from './koanDemo2026_09.fixture.ts';
 import { readGateHeader, readMergeBlock } from '../xoWindow.ts';
 import { declaredMergeValidity } from '../sourceMeta.ts';
 import { parseArtaHeader } from './ingest/manifest.ts';
@@ -373,5 +379,112 @@ describe('M-2 volumetransformatie — de wiring naar de gemeten bestanden', () =
     expect(d(25)).toBeGreaterThan(0.5);
     /* En ruim erboven doet zij vrijwel niets. */
     expect(Math.abs(d(300))).toBeLessThan(0.5);
+  });
+});
+
+describe('M-2 demoset 67,7 L — wat de set draagt en wat zij niet belooft', () => {
+  const boxFit = fitKoanBox();
+  const pair = buildKoanPairFrd(boxFit, REAL_VOLUME_L);
+  const zma = buildKoanPairZma(boxFit, REAL_VOLUME_L);
+
+  it('de geschreven bestanden reproduceren byte voor byte', () => {
+    expect(readFileSync(join(KOAN_DEMO_67L_DIR, pair.name), 'utf8')).toBe(pair.text);
+    expect(readFileSync(join(KOAN_DEMO_67L_DIR, zma.name), 'utf8')).toBe(zma.text);
+  });
+
+  /** Mid en tweeter gaan ONGEWIJZIGD mee: een pod en een waveguide voelen het kastvolume niet. */
+  it('mid en tweeter zijn byte-identiek aan de geleverde meetdata', () => {
+    for (const f of ['mid.frd', 'mid.zma', 'tweeter.frd', 'tweeter.zma']) {
+      expect(readFileSync(join(KOAN_DEMO_67L_DIR, f))).toEqual(readFileSync(join(KOAN_DEMO_2026_09_DIR, f)));
+    }
+  });
+
+  /**
+   * HET PAAR IS DE COMPLEXE SOM van de twee merges, punt voor punt. Dat is de
+   * CONSTRUCTIE en dus wat hier getoetst wordt.
+   *
+   * De eerste versie van deze claim verwachtte +6 dB boven de blend — twee
+   * gelijke bronnen in fase — en de data gaf −0,64 dB. Terecht: boven de splice
+   * is elke merge zijn EIGEN verre veld, en de onderste woofer meet op deze
+   * mic-positie 4–5 dB zachter dan de bovenste en op een andere afstand, dus de
+   * som kamt in plaats van op te tellen. De verwachting was fout, niet de som.
+   */
+  it('het paar is punt voor punt de complexe som van de twee merges', () => {
+    const p = parseFrd(readFileSync(join(KOAN_DEMO_67L_DIR, pair.name), 'utf8'));
+    const parts = KOAN_2026_09_WAYS.map((w) => parseFrd(buildKoanTransformedMerge(w, boxFit, REAL_VOLUME_L).text));
+    let worst = 0;
+    for (const [i] of p.freq.entries()) {
+      let re = 0, im = 0;
+      for (const q of parts) {
+        const a = Math.pow(10, q.spl[i] / 20), ph = (q.phase[i] * Math.PI) / 180;
+        re += a * Math.cos(ph); im += a * Math.sin(ph);
+      }
+      worst = Math.max(worst, Math.abs(20 * Math.log10(Math.hypot(re, im)) - p.spl[i]));
+    }
+    /* Alleen de afronding van het bestand op drie decimalen blijft over. */
+    expect(worst).toBeLessThan(5e-3);
+  });
+
+  /**
+   * ONDERIN, waar de twee conussen akoestisch samenvallen en de poort erbij zit,
+   * telt de som wél op: daar hoort het paar boven elke losse merge te liggen.
+   */
+  it('onder 100 Hz ligt het paar boven een losse weg', () => {
+    const p = parseFrd(readFileSync(join(KOAN_DEMO_67L_DIR, pair.name), 'utf8'));
+    const one = parseFrd(buildKoanTransformedMerge(KOAN_2026_09_WAYS[0], boxFit, REAL_VOLUME_L).text);
+    const ix = p.freq.map((_, i) => i).filter((i) => p.freq[i] >= 25 && p.freq[i] <= 100);
+    const mean = ix.reduce((s2, i) => s2 + (p.spl[i] - one.spl[i]), 0) / ix.length;
+    expect(mean).toBeGreaterThan(1);
+  });
+
+  /** Beide parsers lezen het paar, dus de set blokkeert Optimize niet. */
+  it('het wooferbestand stelt een geldigheid die beide lezers lezen', () => {
+    const raw = readFileSync(join(KOAN_DEMO_67L_DIR, pair.name), 'utf8');
+    const mb = readMergeBlock(raw);
+    expect(mb?.kind).toBe('NF/FF');
+    expect(mb!.validFromHz).toBeGreaterThan(0);
+    expect(parseArtaHeader(parseFrd(raw).meta.rawComments).merge?.kind).toBe('NF/FF');
+  });
+
+  /**
+   * DE IMPEDANTIE IS DE GEMETEN SWEEP, NIET GETRANSFORMEERD, en het bestand zegt
+   * waarom. Deze claim pint dat de reden meereist én dat de waarden werkelijk de
+   * meting zijn — anders zou de kop een transformatie ontkennen die er wel in zit.
+   */
+  it('de impedantie is de gemeten sweep, met de reden in de kop', () => {
+    const raw = readFileSync(join(KOAN_DEMO_67L_DIR, zma.name), 'utf8');
+    expect(raw).toContain('NOT TRANSFORMED');
+    expect(raw).toContain('UNPHYSICAL');
+    const parsed = parseZma(raw);
+    const z = koanMeasuredImpedance();
+    expect(parsed.freq.length).toBe(z.freq.length);
+    let worst = 0;
+    for (const [i] of z.freq.entries()) worst = Math.max(worst, Math.abs(parsed.magnitude[i] - abs(z.z[i])));
+    expect(worst).toBeLessThan(5e-4);
+  });
+
+  /**
+   * DE GEVOELIGHEID VOOR B_l, als MÉTING en niet als voorbehoud in proza. Een
+   * datasheetgetal dat niemand hier kan narekenen draagt de transformatie, dus de
+   * foutbalk hoort gepind te zijn: klein waar het kruisfilter werkt, groot rond de
+   * oude afstemming. Zakt dit ooit, dan is er een betere B_l en mag de claim mee.
+   */
+  it('de transformatie hangt aan B_l: klein boven 60 Hz, groot rond de afstemming', () => {
+    const z = koanMeasuredImpedance();
+    const to = samePortInVolume(boxFit.box, REAL_VOLUME_L);
+    const at = (f0: number) => {
+      const i = z.freq.reduce((x, f, j) => (Math.abs(f - f0) < Math.abs(z.freq[x] - f0) ? j : x), 0);
+      const f = z.freq[i];
+      const zb = blockedImpedance(f, RE_PER_DRIVER_OHM, boxFit.blocked);
+      const vals = [9.4, 10.45, 11.5].map((blTm) => {
+        const drv = { sdM2: SD_CM2 * 1e-4, blTm, count: 2 };
+        return 20 * Math.log10(abs(volumeTransfer(f, mul(cplx(drv.count), z.z[i]), zb, boxFit.box, to, drv).total));
+      });
+      return Math.max(...vals) - Math.min(...vals);
+    };
+    expect(at(30.4)).toBeGreaterThan(1.5);
+    expect(at(22)).toBeLessThan(1);
+    expect(at(60)).toBeLessThan(0.3);
+    expect(at(100)).toBeLessThan(0.3);
   });
 });

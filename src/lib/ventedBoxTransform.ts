@@ -364,3 +364,33 @@ export function blockedTerm(coefficient: number, exponent: number, omega: number
 export function blockedImpedance(freqHz: number, reOhm: number, fit: BlockedFit): Complex {
   return add(cplx(reOhm), blockedTerm(fit.coefficient, fit.exponent, 2 * Math.PI * freqHz));
 }
+
+/**
+ * DE ELEKTRISCHE IMPEDANTIE IN EEN ANDER VOLUME.
+ *
+ * Dezelfde aflezing als `coneVelocityRatio`, één stap verder doorgerekend:
+ * `Z_mech` komt uit de GEMETEN impedantie, het volume verandert alleen de
+ * akoestische last, en daaruit volgt de nieuwe elektrische impedantie. Een
+ * demoset waarvan de SPL het ene volume zegt en de impedantie het andere is
+ * intern tegenstrijdig — het kruisfilter zou dan tegen de verkeerde last
+ * ontworpen worden — dus wie de respons transformeert hoort dit ook te doen.
+ *
+ * `zMeasuredOne` en de teruggave zijn die van ÉÉN driver. Een parallel paar is
+ * de meting maal `count` in en gedeeld door `count` uit.
+ *
+ * P2: met `to` gelijk aan `from` is de teruggave EXACT de meting.
+ */
+export function transformImpedance(
+  freqHz: number,
+  zMeasuredOne: Complex,
+  zBlocked: Complex,
+  from: VentedBox,
+  to: VentedBox,
+  driver: DriverFacts,
+): Complex {
+  const bl2 = cplx(driver.blTm * driver.blTm);
+  const zMechFrom = div(bl2, sub(zMeasuredOne, zBlocked));
+  const coupling = cplx(driver.count * driver.sdM2 * driver.sdM2);
+  const delta = mul(coupling, sub(boxLoad(freqHz, to).Zab, boxLoad(freqHz, from).Zab));
+  return add(zBlocked, div(bl2, add(zMechFrom, delta)));
+}

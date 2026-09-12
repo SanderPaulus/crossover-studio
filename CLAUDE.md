@@ -83,6 +83,16 @@
     `toggleRegression`, `p6Lint`, `nfMerge` en `goldenCasus2` draaien in de snelle laag en
     reproduceerden — die laatste is hier van belang, want de transformatie wordt tegen zijn
     grondwaarheid gekruisd.
+    **Ná de M-2-demoset voor 67,7 L (12-09-2026, vierde commit) gemeten op 451 s — 181 bestanden
+    (180 geslaagd, 1 overgeslagen), 2315 tests (2312 geslaagd, 3 overgeslagen), in één keer groen,
+    alleen gedraaid.** GEEN nieuw bestand; +9 tests: zeven in de demoset-describe van
+    `koan2026_09.test.ts` (32 → 39) en twee in de impedantie-describe van
+    `ventedBoxTransform.test.ts` (15 → 17). Het corpus is niet geregenereerd. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan. **DE VOLLE RUN IS OOK HIER NIET GEDRAAID**,
+    om dezelfde reden als de drie M-2-commits ervoor: data-opname plus bewerkingen die uitsluitend
+    in hun eigen map schrijven, geen engine-, poort-, budget-, venster- of corpuswijziging, en
+    beide byte-baselines plus `toggleRegression`, `p6Lint`, `nfMerge` en `goldenCasus2` draaien in
+    de snelle laag en reproduceerden.
     **Ná U-6 (11-09-2026) gemeten op 455 s — 178 bestanden (177 geslaagd, 1 overgeslagen), 2240 tests
     (2237 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid ná de browsercontrole met de
     dev-server en de headless Chrome gestopt.** +1 BESTAND (`v2ResultLayout.test.ts`, 19 claims) en
@@ -3436,6 +3446,41 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   bestand. Sander heeft op 12-09-2026 het volume van de testkast (53,2 L), dat van de echte kast
   (67,7 L) en de ongewijzigde poort gesteld; de leveringen claimden 27,7 Hz voor de echte kast, wat
   overeenkomt met een testkast op 31,25 Hz en dus met deze meting sluit.
+- **DE DEMOSET VOOR DE ECHTE KAST: `test-fixtures/koan_demo_2026-09_67L/`.** Het wooferPAAR als één
+  on-axis bestand (de twee getransformeerde merges, complex gesommeerd — elk draagt een halve poort,
+  dus samen dragen zij hem heel), de parallelle impedantie, en mid en tweeter byte-identiek uit
+  Sanders levering. Een pod en een waveguide voelen het kastvolume niet, dus die gaan ONGEWIJZIGD
+  mee; `scripts/build-koan-demo-67l.ts` schrijft de set en `koan2026_09.test.ts` reproduceert haar.
+- **DE IMPEDANTIE IS NIET GETRANSFORMEERD, EN DAT IS EEN MEETRESULTAAT EN GEEN VERZUIM.** Sander
+  vroeg er expliciet om en het is geprobeerd. `transformImpedance` leest `Z_mech` af als
+  `B_l²/(Z − Z_b)` en trekt daar de gemodelleerde kastlast van af; bij het zadel is `Z − Z_b` maar
+  **2,0 Ω van de 7,9** en de kastlast **53,9 van de 54,4**, dus het eigen deel van de driver is een
+  klein verschil van twee grote getallen. Wat eruit komt is ONFYSISCH: de mechanische weerstand van
+  de driver wordt onder 30 Hz NEGATIEF (−5,3 bij 14,8 Hz, −14,0 bij 24,9), en een weerstand kan dat
+  niet zijn. Het zadel schoof daardoor naar 31,3 Hz waar 27,0 verwacht werd — eerst met de
+  poortfit als kast A (32,2 Hz), en ook nadat die op het gemeten zadel was gezet (31,3). De functie
+  blijft bestaan en is getest, want op een synthetische sweep doet zij het juiste; wat niet werkt is
+  haar op DEZE meting loslaten. Het bestand draagt de reden in zijn eigen kop.
+- **DE GEVOELIGHEID VOOR `B_l`, ALS MÉTING EN NIET ALS VOORBEHOUD.** De hele transformatie hangt aan
+  één datasheetgetal (10,45 Tm) dat hier niet na te rekenen is. Bij ±10 % daarop beweegt de RESPONS
+  **2,3 dB rond 30 Hz**, 0,4–0,7 dB onder 27 Hz en **minder dan 0,2 dB boven 60 Hz**; de
+  getransformeerde IMPEDANTIE bewoog **4,75 Ω** op de bovenste piek, wat op zichzelf al genoeg was om
+  haar niet te schrijven. De guard pint alle vier die banden, zodat een betere `B_l` de claim mag
+  aanscherpen in plaats van haar stil te laten verouderen.
+- **DE LEESREGEL VOOR DEZE SET, en zij is de bruikbare helft van het bovenstaande: BOVEN 60 Hz DOET
+  DE TRANSFORMATIE VRIJWEL NIETS** en boven 300 Hz meetbaar niets (0,005 dB). De kruisband van de
+  woofer ligt volledig in dat gebied en is onaangeroerde meting. De hele 53,2-tegen-67,7-kwestie —
+  inclusief het feit dat de last bij de testkast hoort en de respons bij de echte — zit ONDER 50 Hz,
+  waar zij de basafstemming raakt en niet de overname. Voor filterontwerp is de set daarmee
+  bruikbaar; voor een uitspraak over het diepe laag draagt zij een foutbalk van een paar dB.
+- **TWEE VERWACHTINGEN DIE DE DATA WEERLEGDE, allebei van mij en allebei opgeschreven omdat zij
+  terugkomen.** (i) "Het paar ligt boven de blend 6 dB boven één weg" — twee gelijke bronnen in
+  fase. Gemeten −0,64 dB: boven de splice is elke merge zijn EIGEN verre veld, de onderste woofer
+  meet op deze mic-positie 4–5 dB zachter dan de bovenste en op een andere afstand, dus de som KAMT.
+  De claim toetst sindsdien de CONSTRUCTIE (punt voor punt de complexe som) en niet mijn
+  verwachting, met een aparte claim voor onderin waar de som wél optelt. (ii) "Een kleinere kast remt
+  de conus" — zie de vorige entry; bij de afstemming piekt de last en beweegt de conus juist het
+  minst.
 
 ### U-6-guards (het resultaatgebied geordend; alleen UI/ordening, geen enkele zin herschreven)
 - **`src/lib/v2ResultLayout.ts` — DE VOLGORDE VAN HET RESULTAATGEBIED, ALS DATA.** Vijfendertig

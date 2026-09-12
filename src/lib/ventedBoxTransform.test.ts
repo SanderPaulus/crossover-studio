@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { abs, arg, cplx, type Complex } from './complex.ts';
+import { abs, add, arg, cplx, div, mul, type Complex } from './complex.ts';
 import {
   C_AIR,
   RHO_AIR,
@@ -28,6 +28,7 @@ import {
   portToConeRatio,
   samePortInVolume,
   totalToConeRatio,
+  transformImpedance,
   volumeTransfer,
   type DriverFacts,
   type VentedBox,
@@ -240,5 +241,59 @@ describe('M-2 nieuwe meting — de fits vinden een gestelde kast terug', () => {
 describe('M-2 — de versiestring', () => {
   it('draagt haar naam en versie', () => {
     expect(VENTED_BOX_TRANSFORM_VERSION).toBe('vented-box-transform/1.0');
+  });
+});
+
+describe('M-2 impedantie — dezelfde aflezing, één stap verder', () => {
+  const driver: DriverFacts = { sdM2: 255e-4, blTm: 10.45, count: 2 };
+  const from: VentedBox = { volumeL: 53.2, tuningHz: 29.67, leakageQ: 2.8 };
+
+  /** P2, en hier is hij scherp: gelijke kasten geven de MÉTING exact terug. */
+  it('geeft de meting exact terug bij gelijke kasten', () => {
+    for (const f of [12, 20, 30, 52, 120, 400]) {
+      const z = cplx(9.3, -2.1);
+      const out = transformImpedance(f, z, cplx(5.8, 0.7), from, { ...from }, driver);
+      expect(out.re).toBeCloseTo(z.re, 12);
+      expect(out.im).toBeCloseTo(z.im, 12);
+    }
+  });
+
+  /**
+   * DE RICHTING: een groter volume stemt lager af, dus het ZADEL tussen de twee
+   * impedantiepieken verschuift mee naar beneden. Dat is de eigenschap waaraan
+   * je een getransformeerde sweep herkent, en zij wordt hier op een gemodelleerde
+   * sweep getoetst zodat de claim niet aan één meting hangt.
+   */
+  it('het zadel verschuift mee met de nieuwe afstemming', () => {
+    const to = samePortInVolume(from, 67.7);
+    const zb = (f: number) => cplx(5.8, 0.002 * 2 * Math.PI * f);
+    /* Een sweep die per constructie een zadel op f_b van `from` heeft: de
+     * akoestische last piekt daar, dus de motionele term is daar het kleinst. */
+    const model = (f: number, box: VentedBox) => {
+      const w = 2 * Math.PI * f;
+      const zmech = add(cplx(3, w * 0.0442 - 1 / (w * 6.4e-4)), mul(cplx(driver.count * driver.sdM2 ** 2), boxLoad(f, box).Zab));
+      return add(zb(f), div(cplx(driver.blTm ** 2), zmech));
+    };
+    const saddle = (g: (f: number) => Complex) => {
+      let best = { f: 0, z: Infinity };
+      for (let f = 20; f <= 45; f += 0.05) {
+        const v = abs(g(f));
+        if (v < best.z) best = { f, z: v };
+      }
+      return best.f;
+    };
+    const before = saddle((f) => model(f, from));
+    const after = saddle((f) => transformImpedance(f, model(f, from), zb(f), from, to, driver));
+    /* De ABSOLUTE plek van het zadel hangt ook aan de driverresonantie — dit
+     * speelgoedmodel legt hem op 30,9 in plaats van op 29,7 — dus de claim gaat
+     * over de VERSCHUIVING: het zadel beweegt met dezelfde factor als de
+     * afstemming, want dat is wat het volume eraan doet. */
+    expect(after).toBeLessThan(before);
+    const shift = after / before;
+    const tuned = to.tuningHz / from.tuningHz;
+    /* Binnen 2 %: het zadel volgt de afstemming, maar niet tot op de komma,
+     * want de driverresonantie trekt er een fractie aan. Gemeten 0,896 tegen
+     * 0,886. */
+    expect(Math.abs(shift - tuned) / tuned).toBeLessThan(0.02);
   });
 });
