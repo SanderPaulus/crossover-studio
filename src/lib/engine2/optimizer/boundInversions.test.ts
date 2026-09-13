@@ -48,6 +48,43 @@ const filter = casus1Filter('HUIDIG', manifest, files, golden);
 
 const woofer = ingest.drivers.find((d) => d.driver === 'woofer')!;
 
+/**
+ * M-2b — THE SAME LIFT, ON A NAMED MEASUREMENT SET.
+ *
+ * The A5d.6 inversion reads the woofer's NEAR FIELD and its impedance sweep,
+ * and M-2b replaced both. The LIVE bound is therefore solved on the current
+ * set and the DATED V42/V43 decision on the set it was taken from; this
+ * factory is what lets one file do both without either half borrowing the
+ * other's data.
+ */
+function liftOn(set: Parameters<typeof casus1Manifest>[1]) {
+  const m = casus1Manifest(golden, set);
+  const f = casus1Files(m);
+  const ing = runIngest(m, f);
+  const w = ing.drivers.find((d) => d.driver === 'woofer')!;
+  const raw = casus1Filter('HUIDIG', m, f, golden).driverZ.woofer;
+  const grid = raw.freq;
+  const zz = raw.freq.map((_, i) => {
+    const mag = raw.magnitude[i];
+    const ph = (raw.phaseDeg[i] * Math.PI) / 180;
+    return { re: mag * Math.cos(ph), im: mag * Math.sin(ph) };
+  });
+  return (henry: number, pathROhm: number): number | null => {
+    const h = grid.map((fq, i) => {
+      const zl = { re: zz[i].re + pathROhm, im: zz[i].im + 2 * Math.PI * fq * henry };
+      const d = zl.re * zl.re + zl.im * zl.im;
+      return {
+        re: (zz[i].re * zl.re + zz[i].im * zl.im) / d,
+        im: (zz[i].im * zl.re - zz[i].re * zl.im) / d,
+      };
+    });
+    const r = lfBump(w.nearField!.grid, w.nearField!.db, grid, h, w.impedance!.fundamentalHz!, {
+      validHz: w.nearField!.bandHz,
+    });
+    return r ? r.extraDb : null;
+  };
+}
+
 /** The measured impedance sweep of one driver, as complex values on its own grid. */
 function measuredZ(driver: string): { grid: readonly number[]; z: Complex[]; magnitude: readonly number[] } {
   const raw = filter.driverZ[driver];
@@ -171,30 +208,44 @@ describe('A5d.6 bound inversions - casus 1 references', () => {
     ).toBeLessThan(0.01);
   });
 
-  it('the V42 form of this same bound is a BRIDGE, and it still reproduces', () => {
+  it('the V42 form of this same bound is a DATED BRIDGE, and it reproduces on its own measurement set', () => {
     /* The redefinition is only defensible if both halves of it are visible: the
      * quantity moved (extraDb -> resonantDb) AND the stated budget was
      * re-derived on the designer's own coil rule (2.5 -> 1.4 dB). Together they
-     * leave the ceiling nearly where it was — 2.432 -> 2.322 mH — and THAT is
+     * left the ceiling nearly where it was — 2.432 -> 2.322 mH — and THAT is
      * the claim this test keeps honest. Changing the quantity alone, with the
-     * old 2.5 dB left standing, would have moved it to 3.162 mH. */
+     * old 2.5 dB left standing, would have moved it to 3.162 mH.
+     *
+     * M-2b — MEASURED ON THE M-1 SET, and the block says so in `_gemeten_op`.
+     * The A5d.6 inversion READS THE NEAR FIELD, and M-2b replaced it, so the
+     * same three solves land elsewhere on the new measurement (the live bound
+     * went 2.322 -> 1.999 mH). V43's decision was taken on the August
+     * measurement; re-measuring a dated decision on today's data rewrites it
+     * rather than checking it. The LIVE bound is asserted above, on the current
+     * set; this reproduces the decision on the data it was made from. */
     const b = REF._maxL_op_de_som_V42;
     const p = REF.parameters.maxL_bult;
+    const datedLift = liftOn('merged');
 
     // The withdrawn value, on the quantity it was solved against.
-    const atOld = liftAt(b.waarde * H_PER_MH, b.pad_R_ohm);
+    const atOld = datedLift(b.waarde * H_PER_MH, b.pad_R_ohm);
     expect(Math.abs(atOld! - b.budget_dB)).toBeLessThanOrEqual(TOL.dB);
 
     // The recorded "quantity changed, budget not" figure, on the new quantity.
-    const atZero = liftAt(0, b.pad_R_ohm)!;
-    const atUnrevised = liftAt(b.waarde_zonder_herijking * H_PER_MH, b.pad_R_ohm)!;
+    const atZero = datedLift(0, b.pad_R_ohm)!;
+    const atUnrevised = datedLift(b.waarde_zonder_herijking * H_PER_MH, b.pad_R_ohm)!;
     expect(Math.abs(atUnrevised - atZero - b.budget_dB)).toBeLessThanOrEqual(TOL.dB);
 
-    // And the move that actually happened is small, where that one is not.
-    const live = REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH;
-    expect(Math.abs(live - b.waarde) / b.waarde).toBeLessThan(0.1);
+    /* And the move that actually happened was small, where that one is not —
+     * against the bound AS IT STOOD ON THAT SET, which M-2b kept as its own
+     * bridge rather than leaving the comparison to read across two sets. */
+    const datedLive = REF._waarden_M1_tot_M2b!.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH;
+    expect(Math.abs(datedLive - b.waarde) / b.waarde).toBeLessThan(0.1);
     expect((b.waarde_zonder_herijking - b.waarde) / b.waarde).toBeGreaterThan(0.25);
     expect(p.budget_dB).toBeLessThan(b.budget_dB);
+    /* ...and the dated bound really is a DIFFERENT number from the live one,
+     * so this test cannot pass by the two accidentally agreeing. */
+    expect(Math.abs(datedLive - REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH)).toBeGreaterThan(TOL.dB);
   });
 
   it('the WITHDRAWN 25-08 value reproduces from its own session band', () => {

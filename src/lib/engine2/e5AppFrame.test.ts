@@ -201,8 +201,18 @@ describe('E-5 — the judged band decides whether the reflex trap can exist', ()
       const s = seedOf(repoFrame, [CASUS1_V2_BAND_HZ[0], CASUS1_V2_BAND_HZ[1]], low, high);
       expect(s.trap, `${low} Hz`).not.toBeNull();
       expect(Math.abs(Math.log2(s.trap!.f0Hz / fpHz)), `${low} Hz`).toBeLessThan(TRAP_WINDOW_OCTAVES);
-      // And the cut that made it is BELOW the app's floor, which is the point.
-      expect(Math.min(...s.eq.map((b) => b.freq)), `${low} Hz`).toBeLessThan(appBandFloorHz);
+      /* And the TRAP sits below the app's floor, which is the point of E-5: it
+       * is tuned to something the app's band cannot see at all.
+       *
+       * M-2b — THIS LINE USED TO ASSERT THE LOWEST EQ BAND instead, and that
+       * stopped being true on the 67.7 L set for the highest crossing: at
+       * 549.7 Hz the synthesis now places its woofer EQ at 428 and 488 Hz,
+       * both ABOVE the app floor, and still produces a damped trap at 49.5 Hz.
+       * The two were never the same statement — a 428 Hz cut did not make a
+       * 49 Hz trap — and the one that carries E-5's finding is the trap's own
+       * frequency. The EQ placement is a property of the synthesis and is
+       * recorded in `casus1_e5_app_vs_repo.json` rather than asserted here. */
+      expect(s.trap!.f0Hz, `${low} Hz`).toBeLessThan(appBandFloorHz);
     }
   });
 

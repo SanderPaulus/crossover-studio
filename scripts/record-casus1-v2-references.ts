@@ -285,6 +285,23 @@ const CHAIN_GRID_LO_HZ = CASUS1_V2_GRID[0];
  * rather than a plausible-sounding reason that belongs to a different corpus.
  */
 const DATED_REASON: Record<string, string> = {
+  C2:
+    'HET GEDATEERDE C2-CORPUS. Bevroren voor M-2b, en het is de laatste regeneratie die op de ' +
+    'M-1-MEETSET draaide: de augustus-wooferMERGE in het frame van de 53,2 L TESTKAST. Drie dingen ' +
+    'die M-2b sindsdien verplaatst. (1) DE MEETSET: de wooferhelft is de hermeting van 11-09-2026 - ' +
+    'nabije velden per conus EN de poortmeting die I-2 miste - getransformeerd naar de echte kast van ' +
+    '67,7 L. De augustusmerge was niet te reproduceren omdat haar eigen kop een poortmeting noemde ' +
+    'die niet bestond, en zij droeg de vlag PLACEHOLDER tot groundplane/hermeting; die vlag is ' +
+    'vervallen. (2) HET ANKER KANTELT DAARDOOR. Op de M-1-set is de MID het anker en staat het ' +
+    'wooferpaar er 0,78 dB boven, dus de configuratie VRAAGT niveauwerk op de laagste weg terwijl ' +
+    'V51 het verbiedt - de spanning die dertien van vijftien V51-kandidaten op de versterkervloer ' +
+    'liet stranden. Op de 67,7 L-set is de WOOFER het anker (X = 0) en verdwijnt de ' +
+    'anchorSwitchWarning. (3) DE M-T-VLOER: de aanbevolen ondergrens van de BlieSMa T25T-6 ' +
+    '(2200 Hz bij 2e orde) was bij U-4 wel GEREGISTREERD maar niet GEVOED, met de reden erbij dat ' +
+    'voeden een ander veld en dus een regeneratie is; M-2b voedt hem, waarmee het M-T-venster van ' +
+    '1646,9-2304,0 naar 2200-2304 Hz gaat (0,484 -> 0,067 octaaf, drie posities -> een) en het veld ' +
+    'van 16 naar 11 kandidaten. Bewaard als de "voor"-helft van de M-2b-vergelijking. Meetobject, ' +
+    'GEEN ontwerp: mag niet gebouwd worden.',
   A5E3C:
     'HET GEDATEERDE A5E3C-CORPUS. Bevroren voor C-2, de laatste regeneratie van casus 1, en het is de ' +
     '"voor"-helft van drie besluiten tegelijk. (1) De A5d.6-inversie lag als KOOI om de zoekdoos: ' +

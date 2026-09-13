@@ -14,16 +14,21 @@
  * default is the newest comparison.
  *
  *   corpora: `v30` · `v32` · `v33sweep` · `v33` · `v34` · `v37` · `v38fix` · `v41` ·
- *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `v50` · `v51` · `v51b` · `a5e3c` ·
+ *            `v42` · `v43` · `v44` · `v45` · `v47` · `v48` · `v49` · `v50` · `v51` · `v51b` · `a5e3c` · `c2` ·
  *            `a5e3arm` (één netlist: de geregistreerde arm m1+dcr) · `m1` (alleen uitkomsten,
  *            geen bestanden: het lege M-1-corpus) · `live`   (de kaart staat in
  *            `casus1Corpora.fixture.ts`; deze regel is de leesbare kopie ervan)
- *   default: `a5e3c` → `live`  (casusboek C-2 — de LAATSTE regeneratie van casus 1;
+ *   default: `c2` → `live`  (casusboek M-2b — de LAATSTE regeneratie van casus 1; `a5e3c live` was
+ *            de C-2-tabel;
  *            `v51b live` was de A5e.3-veld-tabel, `v51b m1` de M-1-tabel — een lege ná-helft —,
  *            `v51 v51b` de V51b-tabel, `v50 v51` de V51-tabel, `v49 v50` de V50-tabel,
  *            `v48 v49` de V47b-tabel, `v47 v48` de V48-tabel).
- *   SINDS M-1 meet de bank op de GEMERGEDE set (casus1Corpora.fixture.ts, corpusBank(golden, 'merged')):
- *   beide helften door hetzelfde pad, ook een gedateerd corpus dat op de gepoorte set is opgewekt.
+ *   SINDS M-2b meet de bank op de 67,7 L-SET (casus1Corpora.fixture.ts, corpusBank default 'koan677'):
+ *   beide helften door hetzelfde pad, ook een gedateerd corpus dat op een andere set is opgewekt.
+ *   LET OP BIJ DE M-2b-TABEL, en het is de scherpste vorm van de leesregel hieronder: bij deze
+ *   vergelijking is de MEETSET ZELF de ingreep. De C-2-kolom is dus die netlists HERMETEN op de
+ *   nieuwe basis en niet wat C-2 opschreef; wat de basis zelf verplaatste staat in de klasse-A-bruggen
+ *   (afgeleide_parameters.woofer._waarden_M1_tot_M2b) en in m2bMeetset.test.ts, en niet in deze tabel.
  *   V32's own table: `npx vite-node scripts/compare-corpora.ts v30 v32`
  *   V33's own table: `npx vite-node scripts/compare-corpora.ts v32 v33`
  *   V33's two arms:  `npx vite-node scripts/compare-corpora.ts v33sweep v33`
@@ -122,7 +127,7 @@ const golden = loadGolden();
 const bank = corpusBank(golden);
 const { manifest, files, settings: SETTINGS, floorOhm: FLOOR } = bank;
 
-const [beforeId = 'a5e3c', afterId = 'live'] = process.argv.slice(2);
+const [beforeId = 'c2', afterId = 'live'] = process.argv.slice(2);
 const before = corpusOf(beforeId, golden);
 const after = corpusOf(afterId, golden);
 

@@ -163,9 +163,16 @@ export function casus1bManifest(golden: GoldenRefs1b = loadGolden1b(), set: Casu
   return { sessionId: set === 'merged' ? 'koan2951-2026-08-22-casus1b-M1-merge' : 'koan2951-2026-08-22-casus1b', entries };
 }
 
-/** The measurement files, read from casus 1's directory. */
+/**
+ * The measurement files, read from casus 1's directory.
+ *
+ * The arrow is not decoration: `loadMeasurement` takes an optional directory
+ * since M-2b, and `.map(loadMeasurement)` would hand it the ARRAY INDEX as a
+ * path. The compiler caught that when the parameter was added; the arrow keeps
+ * it caught.
+ */
 export function casus1bFiles(manifest: Manifest): MeasurementFile[] {
-  return manifest.entries.map(loadMeasurement);
+  return manifest.entries.map((e) => loadMeasurement(e));
 }
 
 /** The geometry of the two ways, from the reference file's own block. */

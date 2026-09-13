@@ -122,33 +122,38 @@ describe('the field casus 1 implies', () => {
     expect(win(0, '4').floorHz!).toBeGreaterThan(wm._k_fs_tot_A5e3veld.venster[0]);
     expect(near(win(1, '4').floorHz!, mt.venster[0])).toBe(true);
     expect(near(win(1, '4').ceilingHz!, mt.venster[1])).toBe(true);
-    expect(win(1, '4').floorBy!.rule).toBe('drive-stated');
-    expect(mt.vloer_bindend).toBe('aandrijving_gesteld');
-    // ...and the A5e.3-veld reading (k·f_s bound) stays as the bridge.
+    /* M-2b — the M-T floor is the manufacturer's recommended lower bound now
+     * (2200 Hz, BlieSMa, verbatim at the stated order). U-4 registered the
+     * figure and refused to feed it because feeding it is a different field;
+     * this is that regeneration. */
+    expect(win(1, '4').floorBy!.rule).toBe('stated-min');
+    expect(mt.vloer_bindend).toBe('aanbevolen_ondergrens');
+    // ...and the two earlier floors stay as bridges, each stricter than the last.
     const mtBridge = (golden.kruisvensters.mid_tweeter_orde4 as unknown as { _excursievloer_tot_A5e3b: { venster: [number, number]; vloer_bindend: string } })._excursievloer_tot_A5e3b;
+    const mtM2b = (golden.kruisvensters.mid_tweeter_orde4 as unknown as { _afgeleide_vloer_tot_M2b: { venster: [number, number]; vloer_bindend: string } })._afgeleide_vloer_tot_M2b;
     expect(mtBridge.vloer_bindend).toBe('fs');
-    expect(win(1, '4').floorHz!).toBeGreaterThan(mtBridge.venster[0]);
+    expect(mtM2b.vloer_bindend).toBe('aandrijving_gesteld');
+    expect(win(1, '4').floorHz!).toBeGreaterThan(mtM2b.venster[0]);
+    expect(mtM2b.venster[0]).toBeGreaterThan(mtBridge.venster[0]);
     // Order 4 is STATED on both axes since A5e.3-veld: no second-order window is built.
     expect(axes[0].window['2']).toBeUndefined();
     expect(axes[1].window['2']).toBeUndefined();
   });
 
-  it('places eight LR4 positions on the lower axis and two on the upper under a budget of 16, and says why', () => {
+  it('places eleven LR4 positions on the lower axis and ONE on the upper, under a budget of 16 that no longer binds', () => {
     /* The count is derived: `1 + floor(span / smoothing)`, over the stretch a
      * position may SIT on, per order. Since C-2 that stretch is the A5d.3
      * window INSET by half a spacing on each side, because every cage is one
-     * spacing wide and two-sided and has to fit inside the window. On the
-     * merged set the W-M window spans ~148–550 Hz and its inset ~157–519
-     * (1.73 octaves ⇒ eleven at the acceptance smoothing); the M-T window
-     * spans 1647–2304 Hz and its inset ~1745–2175 (0.32 octaves) ⇒ two.
-     * 11 × 2 = 22 offered, and the STATED budget of 16 thins POSITIONS on the
-     * widest axis one at a time: the lower axis goes from eleven to eight and
-     * the field is 8 × 2 = 16. Orders are never thinned (there is one).
+     * spacing wide and two-sided and has to fit inside the window.
      *
-     * The A5e.3c field was 8 × 3 = 24 out of 36 at budget 24 with edge-clipped
-     * cages — the upper axis loses its third position because a 0.48-octave
-     * window has room for exactly two two-sided cages, which is the honest
-     * answer rather than a refusal. */
+     * M-2b — THE UPPER AXIS COLLAPSED TO ONE POSITION, and the budget stopped
+     * binding as a result. The mid→tweeter window was 1647–2304 Hz (0.48
+     * octaves, room for two two-sided cages); with the tweeter's recommended
+     * lower bound fed it is 2200–2304 Hz — 0.067 octaves, which holds exactly
+     * one. The lower axis is unchanged at eleven, so the field is 11 × 1 = 11,
+     * BELOW the stated budget of 16: nothing is thinned, and what made the
+     * field smaller is a GRENS and not a begroting. The C-2 field was
+     * 8 × 2 = 16 out of 22 offered, with the lower axis thinned from eleven. */
     const wm = FIELD.field.axes[0].positionsByOrder;
     const mt = FIELD.field.axes[1].positionsByOrder;
     expect(FIELD.field.axes[0].orders).toEqual([CASUS1_FIELD_STATED_ORDER]);
@@ -156,18 +161,20 @@ describe('the field casus 1 implies', () => {
     expect(wm).toHaveLength(1);
     expect(mt).toHaveLength(1);
     expect(wm[0].derivedCount).toBe(11);
-    expect(wm[0].count).toBe(8);
-    expect(mt[0].derivedCount).toBe(2);
-    expect(mt[0].count).toBe(2);
+    expect(wm[0].count).toBe(11);
+    expect(mt[0].derivedCount).toBe(1);
+    expect(mt[0].count).toBe(1);
     expect(FIELD.field.parameters.chainBudget).toBe(CASUS1_FIELD_CHAIN_BUDGET);
     expect(FIELD.field.parameters.positionPolicy).toBe('two-sided');
-    expect(FIELD.field.parameters.derivedSize).toBe(22);
+    expect(FIELD.field.parameters.derivedSize).toBe(11);
     expect(FIELD.field.parameters.deliveredSize).toBe(wm[0].count * mt[0].count);
-    expect(FIELD.field.candidates).toHaveLength(16);
-    expect(FIELD.field.candidates.length).toBeLessThanOrEqual(CASUS1_FIELD_CHAIN_BUDGET);
-    // The thinning is said out loud, with both numbers.
-    expect(FIELD.notes.join(' ')).toContain('offered 22 candidates and the stated budget is 16');
-    expect(FIELD.notes.join(' ')).toContain('16 are delivered');
+    expect(FIELD.field.candidates).toHaveLength(11);
+    expect(FIELD.field.candidates.length).toBeLessThan(CASUS1_FIELD_CHAIN_BUDGET);
+    /* NOTHING WAS THINNED, so the thinning note must NOT be there — the
+     * counter-proof, since "no note" is also true of a field that lost its
+     * accounting. */
+    expect(FIELD.notes.join(' ')).not.toContain('are delivered');
+    expect(FIELD.field.parameters.derivedSize).toBe(FIELD.field.parameters.deliveredSize);
     // The lowest position is the drive floor itself, and no position lies under it.
     for (const h of wm[0].hz) expect(h).toBeGreaterThanOrEqual(FIELD.field.axes[0].window['4'].floorHz! - 0.5);
 
@@ -190,7 +197,24 @@ describe('the field casus 1 implies', () => {
     }
     // ...and the provenance says so rather than leaving it to be re-derived.
     expect(FIELD.field.candidates[0].provenance).toContain('laid two-sided');
-    expect(FIELD.field.candidates.some((c) => c.provenance.includes('one-sided'))).toBe(false);
+    /* M-2b — THE UPPER CAGE IS THE WHOLE WINDOW, and the provenance says which
+     * kind of edge that is. C-2's claim was that no cage is CLIPPED — asked
+     * half a question because the generator ran out of band on one side. The
+     * mid→tweeter window is now narrower than one spacing, so its single cage
+     * spans it end to end and touches BOTH edges, which is the honest answer
+     * to "where may this handover sit" rather than a clipping. The lower axis,
+     * where there is room, carries no such cage at all. */
+    const mtCage = FIELD.field.candidates[0].crossings[1];
+    /* Rounded to the printed hertz on the ceiling: the generator rounds the
+     * cage edge it reports and the window keeps the full float. */
+    expect(mtCage.cageHz[0]).toBe(FIELD.field.axes[1].window['4'].floorHz);
+    expect(mtCage.cageHz[1]).toBeCloseTo(FIELD.field.axes[1].window['4'].ceilingHz!, 1);
+    expect(FIELD.field.candidates[0].provenance).toContain('the whole band: one-sided at both edges');
+    for (const c of FIELD.field.candidates) {
+      const wm = c.crossings[0];
+      const wmWin = FIELD.field.axes[0].window['4'];
+      expect(wm.cageHz[0] > wmWin.floorHz! || wm.cageHz[1] < wmWin.ceilingHz!).toBe(true);
+    }
     // The stated order is said out loud on both axes.
     expect(FIELD.orders[0].why.join(' ')).toContain('the designer stated');
     expect(FIELD.orders[1].why.join(' ')).toContain('the designer stated');
@@ -210,16 +234,21 @@ describe('the field casus 1 implies', () => {
      * synthesis. What replaces the gap is not silence — the zone travels with
      * every candidate, attributed, and a position genuinely sits inside it. */
     const rec = FIELD.field.axes[1].recommended['4'];
-    /* One segment since A5e.3b: the stated-figure floor (1647 Hz) lands INSIDE
-     * the worst lobing zone (~1327–1858 Hz on 129.2 mm), so the zone now cuts
-     * the recommendation at the bottom edge instead of splitting it in two.
-     * `recommendedBand` itself is untouched. */
+    /* M-2b — ONE SEGMENT, AND SINCE M-2b IT LIES ENTIRELY OUTSIDE THE ZONE.
+     * At A5e.3b the stated-figure floor (1647 Hz) landed INSIDE the worst
+     * lobing zone (~1327–1858 Hz on 129.2 mm) and the zone cut the
+     * recommendation at its bottom edge. The manufacturer's recommended lower
+     * bound (2200 Hz) sits above the zone altogether, so the whole window is
+     * clear of it and NO candidate sits inside it any more. `recommendedBand`
+     * itself is untouched — what moved is the window it is given. */
     expect(rec.segments).toHaveLength(1);
     const zone = rec.worstZoneHz!;
     const inZone = FIELD.field.candidates.filter(
       (c) => c.crossings[1].hz > zone[0] && c.crossings[1].hz < zone[1],
     );
-    expect(inZone.length).toBeGreaterThan(0);
+    expect(inZone).toHaveLength(0);
+    expect(FIELD.field.axes[1].window['4'].floorHz!).toBeGreaterThan(zone[1]);
+    expect(rec.segments[0].reasons.join(' ')).toContain('outside the worst lobing zone');
 
     for (const c of FIELD.field.candidates) {
       const ex = c.crossings[1].excisions;
@@ -260,7 +289,7 @@ describe('the pre-start estimate on the v2 route: 0 of N', () => {
     for (const axis of estimate.perAxis) expect(axis.outside).toBe(0);
   });
 
-  it('some DO lie outside the F3c recommended band, and that divergence is the point', () => {
+  it('since M-2b NONE lie outside the F3c recommended band either — and the estimator still can say so', () => {
     /* This read zero until the F4d follow-up, and the change is worth stating
      * rather than absorbing. The hard line — outside a feasible WINDOW — is
      * still zero and always will be: a candidate outside the window is
@@ -277,12 +306,39 @@ describe('the pre-start estimate on the v2 route: 0 of N', () => {
       FIELD.field.candidates.map((c) => ({ label: c.label, hz: c.crossings.map((x) => x.hz) })),
       windows,
     );
-    expect(estimate.outsideRecommended).toBeGreaterThan(0);
-    expect(estimate.message).not.toBeNull();
-    // ...and it is the UPPER axis that diverges, because that is the axis
-    // whose window the worst lobing zone sits inside.
-    expect(estimate.perAxis[0].outsideRecommended).toBe(0);
-    expect(estimate.perAxis[1].outsideRecommended).toBeGreaterThan(0);
+    /* M-2b — ZERO, and that is the state the claim now records. Until M-2b the
+     * mid→tweeter window ran from 1647 Hz, which lands INSIDE the worst lobing
+     * zone (1327–1858 Hz), so part of the field sat outside the F3c
+     * recommendation and the divergence between window and recommendation was
+     * visible in the field itself. The manufacturer's recommended lower bound
+     * (2200 Hz) lifts the whole window clear of that zone, so every candidate
+     * is now inside the recommendation as well.
+     *
+     * The claim this test makes is unchanged — window and recommendation are
+     * DIFFERENT questions — and the counter-proof moves to where it can still
+     * be measured: the recommendation is strictly narrower than the window on
+     * the LOWER axis, where the zone still bites. */
+    expect(estimate.outsideRecommended).toBe(0);
+    for (const axis of estimate.perAxis) expect(axis.outsideRecommended).toBe(0);
+    /* THE COUNTER-PROOF, and it is what keeps the zero from being a silence.
+     * The worst lobing zone is still THERE and still travels with every
+     * candidate of the upper axis; what changed is that the window no longer
+     * reaches into it. Both halves are asserted — the zone exists, and the
+     * window's floor is above its top — so a version that simply stopped
+     * computing zones would not pass. */
+    const zone = FIELD.field.axes[1].recommended['4'].worstZoneHz!;
+    expect(zone[1]).toBeGreaterThan(zone[0]);
+    expect(FIELD.field.axes[1].window['4'].floorHz!).toBeGreaterThan(zone[1]);
+    for (const c of FIELD.field.candidates) {
+      expect(c.crossings[1].excisions).toHaveLength(1);
+      expect(c.crossings[1].excisions[0].hz).toEqual(zone);
+      expect(c.crossings[1].excisions[0].applied).toBe(false);
+    }
+    /* ...and the estimator has not gone silent. That it still REPORTS on a
+     * field that diverges is measured in the next test, on the v1 window, and
+     * is not re-asserted here with a synthetic candidate: one below the
+     * window's floor counts as outside the WINDOW, which is a different
+     * column and would make this claim pass for the wrong reason. */
   });
 
   it('the same estimator DOES report the v1 physics window, so zero means something', () => {

@@ -539,28 +539,36 @@ describe('V43 — the recorded inversion finding, re-measured', () => {
     };
   }).v43_inversie_bevinding;
 
-  const ingest = runIngest(manifest, files);
-  const woofer = ingest.drivers.find((d) => d.driver === 'woofer')!;
-  const facts = factsForWorker(report, identity, sweeps);
   const toComplex = (m: readonly number[], ph: readonly number[]): Complex[] =>
     m.map((mag, i) => {
       const r = (ph[i] * Math.PI) / 180;
       return { re: mag * Math.cos(r), im: mag * Math.sin(r) };
     });
 
-  const inputAt = (pathROhm: number) => {
-    const zW = facts.impedanceByModel!.woofer;
-    const nfW = facts.nearFieldByModel!.woofer;
-    return {
-      nfGrid: nfW.grid,
-      nfDb: nfW.db,
-      zGrid: zW.grid,
-      z: toComplex(zW.magnitude, zW.phaseDeg),
-      fPeakHz: woofer.impedance!.fundamentalHz!,
-      nfValidHz: nfW.validHz,
-      pathROhm,
-    };
-  };
+  /* M-2b — THIS TABLE IS MEASURED ON THE M-1 SET, and the block says so in
+   * `_gemeten_op`. `v43_inversie_bevinding` IS the argument of V43 — three
+   * columns showing that the quantity and the figure together left the ceiling
+   * where it stood — and that argument was made on the August measurement. The
+   * A5d.6 inversion READS THE NEAR FIELD, which M-2b replaced, so the same
+   * three solves land elsewhere today (the live ceiling went 2.322 -> 1.999
+   * mH). Re-measuring a dated argument on today's data rewrites it rather than
+   * checking it; the LIVE ceiling is asserted in `boundInversions.test.ts`,
+   * with its own M-2b bridge. */
+  const datedManifest = casus1Manifest(golden, 'merged');
+  const datedFiles = casus1Files(datedManifest);
+  const datedIngest = runIngest(datedManifest, datedFiles);
+  const datedWoofer = datedIngest.drivers.find((d) => d.driver === 'woofer')!;
+  const datedZ = casus1Filter('HUIDIG', datedManifest, datedFiles, golden).driverZ.woofer;
+
+  const inputAt = (pathROhm: number) => ({
+    nfGrid: datedWoofer.nearField!.grid,
+    nfDb: datedWoofer.nearField!.db,
+    zGrid: datedZ.freq,
+    z: toComplex(datedZ.magnitude, datedZ.phaseDeg),
+    fPeakHz: datedWoofer.impedance!.fundamentalHz!,
+    nfValidHz: datedWoofer.nearField!.bandHz,
+    pathROhm,
+  });
 
   /** The SUM at a given inductance — what the V42 form solved against. */
   const sumAt = (pathR: number, mH: number): number =>
@@ -649,7 +657,14 @@ describe('V43 — the recorded inversion finding, re-measured', () => {
     const r = FINDING!.referentie_bij_pad_R_0_5;
     expect(r.op_de_som_2_5_mH).toBe(REF._maxL_op_de_som_V42.waarde);
     expect(r.op_de_opslingering_2_5_mH).toBe(REF._maxL_op_de_som_V42.waarde_zonder_herijking);
-    expect(r.op_de_opslingering_1_4_mH).toBe(REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH);
+    /* M-2b — the LIVE bound has moved with the measurement set, so the third
+     * column is checked against the DATED bound this table belongs to and not
+     * against the live one. All three numbers in this row are the August
+     * reading, which is what makes the comparison below a comparison. */
+    expect(r.op_de_opslingering_1_4_mH).toBe(
+      REF._waarden_M1_tot_M2b!.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH,
+    );
+    expect(r.op_de_opslingering_1_4_mH).not.toBe(REF.maxL_bij_Rs0_5_budget1_4dB_opslingering_mH);
 
     const loosened = (r.op_de_opslingering_2_5_mH - r.op_de_som_2_5_mH) / r.op_de_som_2_5_mH;
     const actual = Math.abs(r.op_de_opslingering_1_4_mH - r.op_de_som_2_5_mH) / r.op_de_som_2_5_mH;

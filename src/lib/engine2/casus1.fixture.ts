@@ -14,7 +14,7 @@
 
 import { readFileSync } from 'node:fs';
 import type { DriverPowerRating } from './metrics/thermalLoad.ts';
-import type { DriverBreakupDivisor, DriverMaxCrossover } from './predesign/xoWindow.ts';
+import type { DriverBreakupDivisor, DriverMaxCrossover, DriverMinCrossover } from './predesign/xoWindow.ts';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrd } from '../parsers/frd.ts';
@@ -81,8 +81,16 @@ export interface GoldenRefs {
    */
   verankerde_gaps_dB: Record<string, unknown> & {
     anker: string;
-    woofer_tov_mid: number;
-    tweeter_tov_mid: number;
+    /**
+     * M-2b — the gap of every NON-ANCHOR way to the anchor, keyed by way.
+     *
+     * It replaces the pair `woofer_tov_mid` / `tweeter_tov_mid`, and the reason
+     * is the one the anchor flip exposed: a key that names the anchor becomes
+     * untrue the moment the anchor moves, and on the 67.7 L set it moved from
+     * the mid to the woofer. The old pair lives on in the dated bridge, where
+     * the name is still correct.
+     */
+    gaps_tov_anker: Record<string, number>;
     status: string;
     /** The values this block carried before A5e.2 closed — the V15 bridge. */
     _waarden_voor_A5e2: {
@@ -131,6 +139,18 @@ export interface GoldenRefs {
    * field.
    */
   grens_inversies: {
+    /**
+     * M-2b — the three A5d.6 inversions as they stood on the M-1 set.
+     *
+     * Typed for the reason the withdrawn M-C block is typed: the golden suite
+     * runs a standing test off it. The inversion READS THE NEAR FIELD, which
+     * M-2b replaced, so the dated V42/V43 decision is reproduced on its own
+     * measurement set and the live bound on the current one — and the two are
+     * asserted to be different numbers, so neither half can pass by accident.
+     */
+    _waarden_M1_tot_M2b?: {
+      maxL_bij_Rs0_5_budget1_4dB_opslingering_mH: number;
+    };
     maxRs_Qmult1_3_ohm: number;
     maxRs_Qmult1_5_ohm: number;
     maxRs_Qmult2_0_ohm: number;
@@ -243,9 +263,14 @@ export function loadGolden(): GoldenRefs {
   return JSON.parse(readFileSync(GOLDEN_PATH, 'utf-8')) as GoldenRefs;
 }
 
-/** Read one measurement file and pair it with its manifest tags. */
-export function loadMeasurement(entry: ManifestEntry): MeasurementFile {
-  const path = join(CASUS1_DIR, entry.file);
+/**
+ * Read one measurement file and pair it with its manifest tags.
+ *
+ * `dir` defaults to casus 1's own directory; the 67.7 L set (M-2b) hands in
+ * the re-measurement's directory so one measurement keeps one home.
+ */
+export function loadMeasurement(entry: ManifestEntry, dir: string = CASUS1_DIR): MeasurementFile {
+  const path = join(dir, entry.file);
   if (entry.kind === 'Z') {
     const buf = readFileSync(path);
     const z = parseLim(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
@@ -268,31 +293,69 @@ export function loadMeasurement(entry: ManifestEntry): MeasurementFile {
  * ceiling is derived from.
  */
 /**
- * WHICH MEASUREMENT SET (M-1).
+ * WHICH MEASUREMENT SET (M-1, M-2b).
  *
- * `'merged'` — THE v2 SET since M-1 (04-09-2026): the on-axis far fields of the
- * woofers and the mid are replaced by their NF/FF MERGES
- * (`manifest_en_geometrie.gemergde_set`), each carrying a merge block the
- * parser reads (`Merge = NF/FF`, `Valid from = …`), so the woofer is valid from
- * 20.5 Hz and the mid from 60 Hz instead of from the 2.5 ms gate at 397 Hz.
- * Everything else — impedances, near fields, the 30° mid, the tweeter — is the
- * 22-08-2026 session unchanged. This is the DEFAULT: what the v2 route, the
- * corpus and every class-A/B reference read.
+ * `'koan677'` — THE v2 SET SINCE M-2b (13-09-2026), and the default. The
+ * WOOFER half of the M-1 set is replaced by the 11-09-2026 re-measurement
+ * transformed to the real cabinet: the two per-driver NF/FF merges in the
+ * 67.7 L frame (`woofer_*_hor_0_koan677_merged.frd`), the near fields they are
+ * built from, and the parallel sweep of that same session. Everything else —
+ * the mid's merge, the 30° mid, the tweeter, their impedances — is the M-1 set
+ * unchanged, and that is a MEASURED decision and not an omission: a sealed pod
+ * and a waveguide do not feel the cabinet volume, so there is nothing to
+ * transform (M-2).
+ *
+ * THE SWEEP IS NOT TRANSFORMED, and every reader of it has to know. The
+ * response beside it is modelled for 67.7 L; the load is the MEASURED 53.2 L
+ * test box. M-2 measured why (reading `Z_mech = Bl²/(Z − Z_b)` and subtracting
+ * the modelled box load leaves the driver as a small difference of two large
+ * numbers, and the result goes unphysical below 30 Hz), and the mismatch sits
+ * where the transform does something at all: below ~50 Hz. Above 100 Hz the
+ * transform moves nothing (0.005 dB above 300 Hz), so the crossover band
+ * carries none of it. `meetset_2026_09_67L.sweep_frame` in the manifest names
+ * the reader-by-reader consequence.
+ *
+ * `'merged'` — THE M-1 SET (04-09-2026): the on-axis far fields of the woofers
+ * and the mid replaced by their AUGUST NF/FF merges. Kept as the dated set the
+ * C-2 corpus and every reference before M-2b was measured on, and as the
+ * bridge each re-derived class-A reference is checked against.
  *
  * `'gated'` — the 22-08-2026 session as measured, gated far fields and all.
  * Kept for the v1 route (byte-identical, it never reads engine2) and for the
  * tests that exercise the HEADER-FLOOR machinery itself (1/T, the advisory
  * FF/NF detector, the manual window): those claims are about a gated file and
  * have to be made on one. A test that reads it says so at the call.
+ *
+ * NOTHING WAS MOVED ON DISK, and that is deliberate. The gated far fields are
+ * not a previous set to be filed away: `woofer_up_hor_0.txt` is the FAR-FIELD
+ * HALF of the 67.7 L merge that replaces it, so a directory named "previous"
+ * would say the wrong thing about a file the current set is built from. What
+ * dates a set here is its manifest block, exactly as M-1 dated its own.
  */
-export type Casus1MeasurementSet = 'merged' | 'gated';
+export type Casus1MeasurementSet = 'koan677' | 'merged' | 'gated';
 
-/** The merged files, keyed by name, with the gated file each one REPLACES. */
+/** The session id each set reports — also how `casus1Files` knows which set it holds. */
+export const CASUS1_SESSION_ID: Record<Casus1MeasurementSet, string> = {
+  koan677: 'koan2951-2026-09-11-67L',
+  merged: 'koan2951-2026-08-22-M1-merge',
+  gated: 'koan2951-2026-08-22',
+};
+
+/**
+ * One replacement: the file that steps in, the 22-08 file it replaces, and —
+ * since M-2b — the directory under `test-fixtures/` it lives in.
+ *
+ * `map` absent means casus 1's own directory. It exists because the 67.7 L set
+ * lives in `koan_2026-09_testkast/` beside the raw re-measurement it is built
+ * from, and copying those files into `casus1/` would make two homes for one
+ * measurement — which is the drift this project keeps paying for.
+ */
 export interface MergedSetEntry {
   drv: string;
   typ: string;
   hoek?: number;
   vervangt: string;
+  map?: string;
 }
 
 export function casus1MergedSet(golden: GoldenRefs = loadGolden()): Record<string, MergedSetEntry> {
@@ -302,18 +365,38 @@ export function casus1MergedSet(golden: GoldenRefs = loadGolden()): Record<strin
   return block?.bestanden ?? {};
 }
 
+/** M-2b — the woofer half in the 67.7 L frame. */
+export function casus1Set67L(golden: GoldenRefs = loadGolden()): Record<string, MergedSetEntry> {
+  const block = (golden.manifest_en_geometrie as unknown as {
+    meetset_2026_09_67L?: { bestanden?: Record<string, MergedSetEntry> };
+  }).meetset_2026_09_67L;
+  return block?.bestanden ?? {};
+}
+
+/**
+ * The replacements a set applies, keyed by the 22-08 file each one replaces.
+ *
+ * `'koan677'` layers the 67.7 L woofer ON TOP of the M-1 merges, so the mid
+ * keeps its M-1 merge and the two woofer files are the only ones that move.
+ */
+function swapsFor(golden: GoldenRefs, set: Casus1MeasurementSet): Map<string, [string, MergedSetEntry]> {
+  const out = new Map<string, [string, MergedSetEntry]>();
+  if (set === 'gated') return out;
+  for (const [file, tag] of Object.entries(casus1MergedSet(golden))) out.set(tag.vervangt, [file, tag]);
+  if (set === 'koan677') for (const [file, tag] of Object.entries(casus1Set67L(golden))) out.set(tag.vervangt, [file, tag]);
+  return out;
+}
+
 export function casus1Manifest(
   golden: GoldenRefs = loadGolden(),
-  set: Casus1MeasurementSet = 'merged',
+  set: Casus1MeasurementSet = 'koan677',
 ): Manifest {
   const g = golden.manifest_en_geometrie;
-  const merged = set === 'merged' ? casus1MergedSet(golden) : {};
-  const replacedBy = new Map<string, [string, MergedSetEntry]>();
-  for (const [file, tag] of Object.entries(merged)) replacedBy.set(tag.vervangt, [file, tag]);
+  const replacedBy = swapsFor(golden, set);
   const entries: ManifestEntry[] = Object.entries(g.bestanden).map(([gatedFile, gatedTag]) => {
-    /* The merged file takes the gated file's PLACE — same driver, same kind,
+    /* The replacing file takes the gated file's PLACE — same driver, same kind,
      * same angle, same position in the list — so the manifest reads as one
-     * session with three files swapped and not as a second session. */
+     * session with files swapped and not as a second session. */
     const swap = replacedBy.get(gatedFile);
     const [file, tag] = swap ?? [gatedFile, gatedTag];
     const kind = tag.typ as MeasurementKind;
@@ -325,18 +408,46 @@ export function casus1Manifest(
     }
     return entry;
   });
-  if (set === 'merged') {
-    for (const [file, tag] of Object.entries(merged)) {
+  /* A replacement that names a file the 22-08 manifest does not list is a
+   * silent no-op, so it throws instead. */
+  for (const [set2, block] of [
+    ['gemergde_set', set === 'gated' ? {} : casus1MergedSet(golden)],
+    ['meetset_2026_09_67L', set === 'koan677' ? casus1Set67L(golden) : {}],
+  ] as const) {
+    for (const [file, tag] of Object.entries(block)) {
       if (!(tag.vervangt in g.bestanden)) {
-        throw new Error(`gemergde_set: ${file} replaces ${tag.vervangt}, which the 22-08 manifest does not list`);
+        throw new Error(`${set2}: ${file} replaces ${tag.vervangt}, which the 22-08 manifest does not list`);
       }
     }
   }
-  return { sessionId: set === 'merged' ? 'koan2951-2026-08-22-M1-merge' : 'koan2951-2026-08-22', entries };
+  return { sessionId: CASUS1_SESSION_ID[set], entries };
 }
 
-export function casus1Files(manifest: Manifest): MeasurementFile[] {
-  return manifest.entries.map(loadMeasurement);
+/** Which set a manifest holds — read back from the session id it carries. */
+export function casus1SetOf(manifest: Manifest): Casus1MeasurementSet {
+  for (const [set, id] of Object.entries(CASUS1_SESSION_ID)) {
+    if (id === manifest.sessionId) return set as Casus1MeasurementSet;
+  }
+  throw new Error(`casus1SetOf: unknown session id ${manifest.sessionId}`);
+}
+
+/**
+ * Where each file of a set lives. Keyed by file NAME and built PER SET,
+ * because the two sets share names: `woofer_up_near.txt` is the 22-08 near
+ * field in casus 1's directory and the 11-09 one in the re-measurement's, and
+ * a name-only lookup would quietly hand one set the other's measurement.
+ */
+function fileDirs(golden: GoldenRefs, set: Casus1MeasurementSet): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [, [file, tag]] of swapsFor(golden, set)) {
+    if (tag.map !== undefined) out.set(file, join(CASUS1_DIR, '..', tag.map));
+  }
+  return out;
+}
+
+export function casus1Files(manifest: Manifest, golden: GoldenRefs = loadGolden()): MeasurementFile[] {
+  const dirs = fileDirs(golden, casus1SetOf(manifest));
+  return manifest.entries.map((e) => loadMeasurement(e, dirs.get(e.file)));
 }
 
 /**
@@ -773,6 +884,43 @@ export function casus1MaxCrossovers(golden: GoldenRefs = loadGolden()): Record<s
       hz,
       ...(typeof g.bron === 'string' ? { source: g.bron } : {}),
       ...(g.overrule_breakup === true ? { overridesBreakup: true } : {}),
+    };
+  }
+  return out;
+}
+
+/**
+ * M-2b — the MANUFACTURER'S RECOMMENDED LOWEST HANDOVER per way, from
+ * `driverkaart.<weg>.aanbevolen_kruisband.ondergrens_hz` (+ `_orde`).
+ *
+ * U-4 read this number off the Bliesma sheet and deliberately did NOT feed it,
+ * saying exactly what feeding it would cost: "op casus 1 zou zij de
+ * mid→tweeter-vloer van 1646,9 Hz (drive-stated, A5e.3b) naar 2200 Hz tillen —
+ * een ander veld en dus een regeneratie". M-2b is that regeneration, and Sander
+ * stated the floor on 12-09-2026, so it is fed.
+ *
+ * The mirror of `casus1MaxCrossovers`, and it reads the OTHER end of the same
+ * line on the same sheet. The ORDER travels with it when the sheet names one;
+ * absent means the frequency is taken verbatim and no slope is claimed (U-3g).
+ */
+export function casus1MinCrossovers(golden: GoldenRefs = loadGolden()): Record<string, DriverMinCrossover> {
+  const kaart = (golden.manifest_en_geometrie as unknown as {
+    driverkaart?: Record<string, unknown>;
+  }).driverkaart;
+  const out: Record<string, DriverMinCrossover> = {};
+  if (!kaart) return out;
+  for (const [way, v] of Object.entries(kaart)) {
+    if (!v || typeof v !== 'object') continue;
+    const b = (v as { aanbevolen_kruisband?: unknown }).aanbevolen_kruisband;
+    if (!b || typeof b !== 'object') continue;
+    const g = b as Record<string, unknown>;
+    const hz = g.ondergrens_hz;
+    if (typeof hz !== 'number' || !Number.isFinite(hz) || hz <= 0) continue;
+    const order = g.ondergrens_orde;
+    out[way] = {
+      hz,
+      ...(typeof order === 'number' && Number.isFinite(order) && order > 0 ? { order } : {}),
+      ...(typeof g.bron === 'string' ? { source: g.bron } : {}),
     };
   }
   return out;

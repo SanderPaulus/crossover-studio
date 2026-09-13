@@ -50,7 +50,10 @@ import { evaluateGates, freezeGateReference, type GateEvaluation, type GateRefer
 import { derivedGateViolation } from './worker.ts';
 
 const golden = loadGolden();
-const bank = corpusBank(golden, 'merged');
+/* M-2b — the LIVE set. `e1_kruispuntafleiding` is a record of what the two
+ * routes derive TODAY (the recorder writes it on the current set), so reading
+ * it against a dated measurement would compare two different questions. */
+const bank = corpusBank(golden);
 const { manifest, files } = bank;
 const gridded = casus1ChainInput(manifest, files, golden);
 const facts = casus1V2Facts(bank.report('HUIDIG'), manifest, files);

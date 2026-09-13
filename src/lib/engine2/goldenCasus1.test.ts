@@ -36,6 +36,7 @@ import {
   casus1Geometry,
   casus1Manifest,
   casus1MaxDriveOnFsDbByDriver,
+  casus1MinCrossovers,
   casus1TargetCurve,
   casus1TargetCurveAt,
   casus1BassPlateauDb,
@@ -75,6 +76,14 @@ const settings = {
    * written here (P6). */
   ...(Object.keys(casus1MaxDriveOnFsDbByDriver(golden)).length > 0
     ? { maxDriveOnFsDbByDriver: casus1MaxDriveOnFsDbByDriver(golden) }
+    : {}),
+  /* M-2b — the manufacturer's recommended LOWEST handover per driver. Until
+   * M-2b the manifest carried the BlieSMa figure and nothing fed it (U-4 said
+   * so in the block itself: feeding it is a different field and therefore a
+   * regeneration). It is fed now, so the class-A window references below are
+   * measured with it. Read, never written here (P6). */
+  ...(Object.keys(casus1MinCrossovers(golden)).length > 0
+    ? { driverMinCrossoverByDriver: casus1MinCrossovers(golden) }
     : {}),
 };
 
@@ -188,7 +197,27 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       // the casebook's own meter reading of the pair.
       expect(w.re!.source).toBe('motional-fit');
       expect(Math.abs(w.re!.ohm - ref.Re)).toBeLessThanOrEqual(TOL.ohm);
-      expect(Math.abs(w.re!.ohm - ref.Re_werkelijk_ca)).toBeLessThanOrEqual(TOL.ohm);
+      /* M-2b — THE V8d CLAIM IN THIS FORM IS NO LONGER TRUE, and it is not
+       * relaxed: the distance is measured and written down instead. On the
+       * August sweep the fit landed 0.004 Ω from the casebook's meter reading
+       * of the pair — the independent confirmation V8d wanted. On the 11-09
+       * sweep it lands outside the ohm class. That is a finding about the two
+       * SESSIONS, not about the estimator, and the block that carries it says
+       * which two meter readings this casebook holds and that they disagree
+       * with each other. `m2bMeetset.test.ts` pins both distances and the
+       * counter-proof on the M-1 set; here the recorded distance is held
+       * against a fresh measurement. */
+      const meterBlock = (golden.afgeleide_parameters.woofer as Record<string, unknown>)
+        .Re_meterlezing as Record<string, number>;
+      expect(Math.abs(w.re!.ohm - ref.Re_werkelijk_ca)).toBeCloseTo(
+        meterBlock.afstand_tot_casusboek_ohm,
+        3,
+      );
+      expect(Math.abs(w.re!.ohm - ref.Re_werkelijk_ca)).toBeGreaterThan(TOL.ohm);
+      /* ...and the reading the ROUTE enters is unchanged, so nothing that
+       * divides by R_e moved: that is what keeps this a reference-only
+       * finding. */
+      expect(meterBlock.meterlezing_referentie_analyse_ohm).toBe(CASUS1_WOOFER_DC_OHM);
       // The old reading is kept, unchanged, as the comparison value - and it
       // is still the overestimate the casebook recorded.
       expect(Math.abs(w.re!.directOhm - ref.Re_naief)).toBeLessThanOrEqual(TOL.ohm);
@@ -681,37 +710,60 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const w = r.predesign.windows.find((x) => x.lower === 'mid')!;
       expect(pct(w.floorHz!, ref.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(pct(w.ceilingHz!, ref.venster[1])).toBeLessThanOrEqual(TOL.frequenties_pct);
-      /* A5e.3b — the STATED figure binds here now ("vloer_bindend":
-       * "aandrijving_gesteld"): the floor is the strictest of stated and
-       * derived, and the stated −20 dB at the stated order 4 inverts to
-       * ~1647 Hz, above both k·f_s (1294) and the tweeter's excursion floor
-       * (1184 — its ceiling is −8.6 dB re input). All three limits are
-       * present; the highest wins, and each of the other two is measurably
-       * BELOW the floor — without that, "the stated figure binds" cannot be
-       * told apart from "the stated figure is the only floor left". */
-      expect(w.floorBy!.rule).toBe('drive-stated');
+      /* M-2b — THE MANUFACTURER'S RECOMMENDED LOWER BOUND BINDS HERE NOW
+       * ("vloer_bindend": "aanbevolen_ondergrens"): 2200 Hz, verbatim off the
+       * BlieSMa sheet, above A5e.3b's stated-figure floor (~1647 Hz), above
+       * k·f_s (1294) and above the tweeter's excursion floor (1184). FOUR
+       * floors are present; the highest wins, and each of the other three is
+       * measurably BELOW it — without that, "the recommended bound binds"
+       * cannot be told apart from "it is the only floor left". */
+      expect(w.floorBy!.rule).toBe('stated-min');
       const kfs = w.limits.find((l) => l.rule === 'fs');
       const drive = w.limits.find((l) => l.rule === 'drive');
+      const stated = w.limits.find((l) => l.rule === 'drive-stated');
       expect(kfs, 'the k·f_s convention no longer produces a limit').toBeDefined();
       expect(drive, 'the tweeter carries no drive floor although its ceiling is derived').toBeDefined();
-      expect(kfs!.hz).toBeLessThan(w.floorHz!);
+      expect(stated, 'the stated M-C figure no longer produces a floor').toBeDefined();
+      expect(stated!.hz).toBeLessThan(w.floorHz!);
+      expect(kfs!.hz).toBeLessThan(stated!.hz);
       expect(drive!.hz).toBeLessThan(kfs!.hz);
-      // The inversion is what it says it is: at the floor, a filter of the
-      // stated order attenuates by exactly the stated figure (asymptotic slope).
+      /* VERBATIM and not inverted: the sheet states its bound at 2nd order and
+       * the design states 4th, which is STEEPER, so the bound is taken as it
+       * stands (U-3g). At the STATED order the figure would land elsewhere,
+       * and that is the counter-proof. */
+      expect(w.floorHz!).toBe(casus1MinCrossovers(golden).tweeter.hz);
       const wi = r.predesign.windowInputs.find((x) => x.lower === 'mid')!;
-      expect(DB_PER_OCTAVE_PER_ORDER * 4 * Math.log2(w.floorHz! / wi.upperFsHz!)).toBeCloseTo(
+      /* A5e.3b's inversion still reproduces on the floor it sets when the
+       * recommended bound is withheld: at THAT floor a filter of the stated
+       * order attenuates by exactly the stated figure (asymptotic slope). */
+      const wStated = crossoverWindow({ ...wi, order: 4, upperMinCrossoverHz: null, upperMinCrossoverOrder: null });
+      expect(wStated.floorBy!.rule).toBe('drive-stated');
+      expect(DB_PER_OCTAVE_PER_ORDER * 4 * Math.log2(wStated.floorHz! / wi.upperFsHz!)).toBeCloseTo(
         Math.abs(wi.upperStatedDriveLimitDb!),
         9,
       );
-      // The A5e.3-veld reading (k·f_s bound) reproduces with the figure withheld.
+      // ...and that reading is the M-2b bridge the recorder wrote down.
+      const m2b = (golden.kruisvensters.mid_tweeter_orde4 as unknown as {
+        _afgeleide_vloer_tot_M2b: { venster: [number, number]; vloer_bindend: string };
+      })._afgeleide_vloer_tot_M2b;
+      expect(pct(wStated.floorHz!, m2b.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
+      expect(m2b.vloer_bindend).toBe('aandrijving_gesteld');
+      // The A5e.3-veld reading (k·f_s bound) reproduces with both withheld.
       const bridge = (golden.kruisvensters.mid_tweeter_orde4 as unknown as {
         _excursievloer_tot_A5e3b: { venster: [number, number]; vloer_bindend: string };
       })._excursievloer_tot_A5e3b;
-      const wz = crossoverWindow({ ...wi, order: 4, upperStatedDriveLimitDb: null });
+      const wz = crossoverWindow({ ...wi, order: 4, upperStatedDriveLimitDb: null, upperMinCrossoverHz: null, upperMinCrossoverOrder: null });
       expect(pct(wz.floorHz!, bridge.venster[0])).toBeLessThanOrEqual(TOL.frequenties_pct);
       expect(wz.floorBy!.rule).toBe('fs');
       expect(bridge.vloer_bindend).toBe('fs');
       expect(w.ceilingBy!.rule).toBe('breakup');
+      /* AND THE WINDOW IS NOW 0.07 OCTAVE WIDE. That is the finding M-2b
+       * leaves standing: the tweeter's recommended bound and the mid's breakup
+       * derivation are 0.07 octave apart, so this driver pair has almost no
+       * legal handover band once both sheets are taken seriously — and the
+       * upper of the two rests on a divisor nobody has measured. */
+      expect(Math.log2(w.ceilingHz! / w.floorHz!)).toBeLessThan(0.1);
+      expect(w.ceilingBy!.uncalibrated).toBeTruthy();
       // "spanning": "lobing-goed boven breakup-plafond"
       expect(w.tensions.join(' ')).toContain('ABOVE the ceiling');
     });
@@ -735,35 +787,48 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       }
     });
 
-    it('A5d.4: the mid is the anchor, and that is a feasibility warning', () => {
+    it('A5d.4: since M-2b the WOOFER is the anchor, and the feasibility warning is gone', () => {
       const g = r.predesign.gaps!;
       expect(g.anchor).toBe(golden.verankerde_gaps_dB.anker);
-      expect(g.anchorSwitchWarning).toContain('NOT the lowest way');
-      /* V45 — THE VALUES ARE AN ACCEPTANCE CRITERION NOW. Until V45 they were
-       * not, and the reference file said so in its own `status`: A5d.4(a)
-       * wants the anchor taken after baffle step in the intended setup, which
-       * is a property of the target-curve object, and that object did not
-       * exist. It does, this design states one, and the numbers are read from
-       * the reference file rather than typed here — a value in a test is the
-       * second home P6 forbids, one level up. */
+      /* M-2b — THE ANCHOR FLIPPED, and this is the assertion that says so.
+       * Until M-2b the anchor was the MID and `anchorSwitchWarning` carried
+       * A5d.4(b)'s "this is a driver-selection problem": the lowest way sat
+       * ABOVE the quietest one, so the configuration ASKED for level work on
+       * the woofer while V51 forbids it. On the 67.7 L set the woofer is both
+       * the lowest and the quietest way, so X is 0 and there is nothing to
+       * warn about. Both halves are asserted — a null warning on its own would
+       * also be true of a report that never computed one. */
+      expect(g.anchor).toBe(r.driversLowToHigh[0]);
+      expect(g.anchorSwitchWarning).toBeNull();
       expect(String(golden.verankerde_gaps_dB.status)).toContain('GESLOTEN BIJ V45');
-      expect(String(golden.verankerde_gaps_dB.status)).toContain('M-1');
-      const w = g.ways.find((x) => x.driver === 'woofer')!;
-      const t = g.ways.find((x) => x.driver === 'tweeter')!;
-      expect(w.gapToAnchorDb).toBeCloseTo(golden.verankerde_gaps_dB.woofer_tov_mid, 2);
-      expect(t.gapToAnchorDb).toBeCloseTo(golden.verankerde_gaps_dB.tweeter_tov_mid, 2);
-      /* M-1 — X IS MEASURED ON THE WHOLE WOOFER BAND for the first time: the
-       * woofer's level runs from its merge floor to the centre of the opened
-       * window, and the plateau is FLAT (stated 0 dB), so the levels are
-       * compared as measured and the note says so. */
+      expect(String(golden.verankerde_gaps_dB.status)).toContain('M-2b');
+      /* V45 — THE VALUES ARE AN ACCEPTANCE CRITERION, read from the reference
+       * file rather than typed here (a value in a test is the second home P6
+       * forbids, one level up). Since M-2b they are keyed by WAY and not by
+       * the anchor's name: a key like `woofer_tov_mid` becomes untrue the
+       * moment the anchor moves, which is exactly what happened. */
+      const live = golden.verankerde_gaps_dB.gaps_tov_anker;
+      expect(Object.keys(live).sort()).toEqual(['mid', 'tweeter']);
+      for (const way of Object.keys(live)) {
+        const x = g.ways.find((y) => y.driver === way);
+        expect(x, `no gap for ${way}`).toBeDefined();
+        expect(x!.gapToAnchorDb).toBeCloseTo(live[way], 2);
+        expect(x!.gapToAnchorDb).toBeGreaterThan(0);
+      }
+      /* The anchor itself carries no gap — it IS the reference — so the block
+       * names exactly the non-anchor ways and never the anchor. */
+      expect(Object.keys(live)).not.toContain(g.anchor);
+      /* M-1 — X IS MEASURED ON THE WHOLE WOOFER BAND: the woofer's level runs
+       * from its merge floor to the centre of the opened window, and the
+       * plateau is FLAT (stated 0 dB), so the levels are compared as measured
+       * and the note says so. */
       expect(g.notes.join(' ')).toContain('flat reference');
-      expect(w.gapToAnchorDb).toBeGreaterThan(0);
-      /* THE BRIDGES, and they are what make the movement readable as a
-       * redefinition instead of a regression (V15). (a) The GATED set with the
-       * V45–V51b plateau reproduces the values this block carried until M-1;
-       * (b) the gated set without a voicing reproduces the F3b bare reading;
-       * (c) the MERGED set WITH that old plateau is the counter-proof that a
-       * target curve still moves these numbers even though M-1 states none. */
+
+      /* ------------------------------------------------------------------ *
+       * THE BRIDGES. They are what make the movement readable as a
+       * redefinition instead of a regression (V15). Three of them are DATED
+       * (gated set, old voicing) and one is the M-1 reading of the live block.
+       * ------------------------------------------------------------------ */
       const bridge = golden.verankerde_gaps_dB._waarden_gepoort_tot_M1 as unknown as {
         gepoort_plateau_2_5: { woofer_tov_mid: number; tweeter_tov_mid: number; plateau_diepte_dB: number };
         gepoort_flat: { woofer_tov_mid: number; tweeter_tov_mid: number };
@@ -775,11 +840,14 @@ describe('golden references - casus 1 (Koan 2951)', () => {
        * A5d.4 way bands are window centres, since A5e.3b the M-T window moves
        * with the stated-figure floor (1294 → 1647 Hz), and a dated bridge
        * documents the reading of THEN — when the window did not read the
-       * figure. Recomputing it with the figure would silently rewrite a dated
-       * block; the recorder withholds it for the same reason. The LIVE values
-       * above are asserted against the full settings, figure included. */
-      const { maxDriveOnFsDbByDriver: _statedFig, ...settingsTot } = settings;
+       * figure. M-2b adds a second withholding for the same reason: the
+       * recommended lower bound (2200 Hz) did not exist on any dated reading
+       * either. Recomputing a dated block with today's inputs would silently
+       * rewrite it; the recorder withholds both for the same reason. The LIVE
+       * values above are asserted against the full settings. */
+      const { maxDriveOnFsDbByDriver: _statedFig, driverMinCrossoverByDriver: _minXo, ...settingsTot } = settings;
       void _statedFig;
+      void _minXo;
       const gapsOn = (m: typeof gm, f: typeof gf, curve: ReturnType<typeof casus1TargetCurveAt>) =>
         buildReport({
           manifest: m,
@@ -795,27 +863,72 @@ describe('golden references - casus 1 (Koan 2951)', () => {
       const oldFlat = gapsOn(gm, gf, FLAT_TARGET);
       expect(gap(oldFlat, 'woofer')).toBeCloseTo(bridge.gepoort_flat.woofer_tov_mid, 2);
       expect(gap(oldFlat, 'tweeter')).toBeCloseTo(bridge.gepoort_flat.tweeter_tov_mid, 2);
-      const voiced = gapsOn(manifest, files, casus1TargetCurveAt(bridge.gepoort_plateau_2_5.plateau_diepte_dB, golden));
-      expect(gap(voiced, 'woofer')).toBeCloseTo(bridge.gemergd_plateau_2_5.woofer_tov_mid, 2);
-      expect(gap(voiced, 'tweeter')).toBeCloseTo(bridge.gemergd_plateau_2_5.tweeter_tov_mid, 2);
-      /* A5e.3b — the fourth bridge: the A5e.3-veld reading of the LIVE block
-       * itself (merged set, live curve, figure withheld), so the movement the
-       * window shift caused is readable as a redefinition too. */
+
+      /* M-2b — THE BRIDGE THAT CARRIES THE FLIP. The same live block on the
+       * M-1 measurement set: the mid is the anchor there, the woofer sits
+       * above it, and the warning fires. Asserting all three is what makes
+       * "the anchor flipped" a measurement rather than a claim — and it is
+       * measured on the set the C-2 corpus was generated on, so a reader can
+       * put the two corpora side by side and know which world each is in. */
+      const m1Bridge = golden.verankerde_gaps_dB._waarden_M1_tot_M2b as unknown as {
+        anker: string;
+        woofer_tov_mid: number;
+        tweeter_tov_mid: number;
+        ankerwaarschuwing_aanwezig: boolean;
+      };
+      const m1m = casus1Manifest(golden, 'merged');
+      const m1f = casus1Files(m1m);
+      /* The bridge is a DATED reading and is reproduced with the inputs of its
+       * own day: `settingsTot` withholds both the stated M-C figure and the
+       * recommended lower bound, and the second of those moves the M-T window,
+       * which moves the way BANDS these gaps are averaged over. */
+      /* The bridge is a DATED reading and is reproduced with the inputs of
+       * its own day: the recommended lower bound (M-2b) did not exist then and
+       * it moves the M-T window, which moves the way BANDS these gaps average
+       * over. The stated M-C figure DID exist, so it stays in. */
+      const { driverMinCrossoverByDriver: _mx, ...settingsM1 } = settings;
+      void _mx;
+      const m1gaps = buildReport({
+        manifest: m1m,
+        files: m1f,
+        filter: casus1Filter('HUIDIG', m1m, m1f, golden),
+        geometry,
+        settings: settingsM1,
+      }).predesign.gaps!;
+      expect(m1gaps.anchor).toBe(m1Bridge.anker);
+      expect(m1gaps.anchor).not.toBe(g.anchor);
+      expect(gap(m1gaps, 'woofer')).toBeCloseTo(m1Bridge.woofer_tov_mid, 2);
+      expect(gap(m1gaps, 'tweeter')).toBeCloseTo(m1Bridge.tweeter_tov_mid, 2);
+      expect(m1gaps.anchorSwitchWarning).not.toBeNull();
+      expect(m1gaps.anchorSwitchWarning).toContain('NOT the lowest way');
+      expect(m1Bridge.ankerwaarschuwing_aanwezig).toBe(true);
+      /* X — what the configuration ASKS of level work on the lowest way — is
+       * the whole point of the flip, and it is 0 here and positive there. */
+      expect(r.predesign.levelWork!.aboveAnchorDb).toBe(0);
+      expect(gap(m1gaps, 'woofer')).toBeGreaterThan(0);
+
+      /* The MERGED set, not the live one: `gemergd_plateau_2_5` is the M-1
+       * reading and on the 67.7 L set the woofer is the anchor, so it carries
+       * no gap at all and the lookup below would read undefined. */
+      const voiced = gapsOn(m1m, m1f, casus1TargetCurveAt(bridge.gepoort_plateau_2_5.plateau_diepte_dB, golden));
+      /* A5e.3b — the fourth bridge: the A5e.3-veld reading (merged set, live
+       * curve, figure withheld). It is asserted on the MERGED set, which is
+       * where it was measured. */
       const veldBridge = golden.verankerde_gaps_dB._waarden_veld_tot_A5e3b as unknown as {
         woofer_tov_mid: number;
         tweeter_tov_mid: number;
       };
-      const veld = gapsOn(manifest, files, casus1TargetCurve(golden));
+      const veld = gapsOn(m1m, m1f, casus1TargetCurve(golden));
       expect(gap(veld, 'woofer')).toBeCloseTo(veldBridge.woofer_tov_mid, 2);
       expect(gap(veld, 'tweeter')).toBeCloseTo(veldBridge.tweeter_tov_mid, 2);
-      expect(w.gapToAnchorDb).not.toBeCloseTo(gap(veld, 'woofer'), 2);
-      // ...and the four readings really are different numbers, so no bridge is
-      // the same assertion written twice.
-      expect(w.gapToAnchorDb).not.toBeCloseTo(gap(old, 'woofer'), 2);
-      expect(w.gapToAnchorDb).not.toBeCloseTo(gap(voiced, 'woofer'), 2);
-      expect(gap(voiced, 'woofer')).toBeGreaterThan(w.gapToAnchorDb);
-      expect(g.notes.join(' ')).toContain('A5e.2');
+      expect(gap(voiced, 'woofer')).toBeCloseTo(bridge.gemergd_plateau_2_5.woofer_tov_mid, 2);
+      expect(gap(voiced, 'tweeter')).toBeCloseTo(bridge.gemergd_plateau_2_5.tweeter_tov_mid, 2);
+      // ...and the readings really are different numbers, so no bridge is the
+      // same assertion written twice.
+      expect(gap(old, 'woofer')).not.toBeCloseTo(gap(veld, 'woofer'), 2);
+      expect(gap(old, 'woofer')).not.toBeCloseTo(gap(voiced, 'woofer'), 2);
       // The chain is the sum of the steps, which is what A5d.4 specifies.
+      const t = g.ways.find((x) => x.driver === 'tweeter')!;
       expect(t.budgetDb).toBeCloseTo(t.gapToAnchorDb, 6);
     });
 

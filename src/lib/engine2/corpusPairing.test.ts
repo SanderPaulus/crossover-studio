@@ -364,37 +364,53 @@ describe('de gepaarde delta naast het corpusgemiddelde (V47-nazorg)', () => {
     }
   });
 
-  it('C-2: A5e.3c → levend heeft opnieuw GEEN enkel paar — élke positie verhuisde toen de kooi tweezijdig werd', () => {
-    /* De laatste regeneratie van casus 1. De positieregel is TWEEZIJDIG
-     * geworden (elke kooi één spacing breed en binnen het venster), en dat
-     * verspringt per constructie ÉLKE positie: de W-M-as ging van
-     * 147,9–549,7 in acht naar 156,7–518,8 in acht, de M-T-as van drie
-     * posities (1646,9 / 1947,9 / 2304) naar twee (1744,8 / 2174,7). Geen
-     * enkel label overleeft, dus de gepaarde lezing is n = 0 en élk
-     * corpusgemiddelde in de tabel is COMPOSITIE — de leesregel van de
-     * V47-nazorg in haar uiterste vorm, voor de tweede regeneratie op rij.
+  it('C-2: A5e.3c → C-2 heeft GEEN enkel paar — élke positie verhuisde toen de kooi tweezijdig werd (herankerd bij M-2b)', () => {
+    /* De regeneratie van C-2, en sinds M-2b is deze claim VOLLEDIG GEDATEERD:
+     * beide helften zijn bevroren corpora, dus zij kan niet meer stil
+     * verouderen als het levende veld beweegt. Dezelfde herankering die V43 op
+     * `v42_bult_bevinding` deed en V48 op de V45→levend-helft hier.
      *
-     * En het veld is kleiner: budget 24 → 16, tien geleverd van zestien tegen
-     * elf van vierentwintig. De shortlist houdt er sindsdien tien van tien in
-     * plaats van tien van elf. */
+     * Wat zij zegt: de positieregel werd TWEEZIJDIG (elke kooi één spacing
+     * breed en binnen het venster), en dat verspringt per constructie ÉLKE
+     * positie — de W-M-as ging van 147,9–549,7 in acht naar 156,7–518,8 in
+     * acht, de M-T-as van drie posities naar twee. Geen enkel label overleeft,
+     * dus de gepaarde lezing is n = 0 en élk corpusgemiddelde in die tabel is
+     * COMPOSITIE. */
     const before = corpusOf('a5e3c');
-    const after = corpusOf('live');
+    const after = corpusOf('c2');
     expect(before.byCandidate.size).toBe(10);
     expect(after.byCandidate.size).toBe(10);
     expect(pairedCandidates(before, after)).toHaveLength(0);
     for (const label of before.order) expect(after.order).not.toContain(label);
-    const run = corpusOf('live');
-    expect(run.order.length).toBe(16);
-    const delivered = run.outcomes!.filter((o) => o.verwerping === null);
-    expect(delivered.length).toBe(11);
-    /* De DERDE TOESTAND die A5e.3c introduceerde staat er weer, en op precies
-     * dezelfde schaal: ELF geleverd, TIEN bevroren. De shortlist houdt
-     * `DEFAULT_SHORTLIST_SIZE` en kiest op spreiding, dus één geleverd netwerk
-     * (261,8 · 1744,8) bestaat alleen in de shards. Dat is geen verlies dat
-     * deze regeneratie veroorzaakte maar de grootte van de lijst, en sinds E-4
-     * zegt `buildShortlist` het zelf. */
-    expect(after.byCandidate.size).toBe(10);
-    expect(after.byCandidate.size).toBeLessThan(delivered.length);
+    for (const pick of [PHASE, DISS]) expect(pairedDelta([], pick).n).toBe(0);
+  });
+
+  it('M-2b: C-2 → levend heeft GEEN enkel paar — de M-T-as kromp tot één positie en de W-M-as herverdeelde', () => {
+    /* DE EERSTE VERGELIJKING IN DIT BOEK WAARVAN DE MEETSET ZELF DE INGREEP IS,
+     * en dat maakt de leesregel van de V47-nazorg scherper dan zij ooit was.
+     * Bij elke eerdere regeneratie stond ÉÉN grens of budget anders en las het
+     * corpusgemiddelde de compositie mee; hier staat de MEETBASIS anders, dus
+     * bewegen de netlists én de grootheden waarin zij gemeten worden. Een
+     * gepaard gemiddelde zou de enige eerlijke lezing zijn — en er is geen
+     * enkel paar, want het veld verhuisde ook.
+     *
+     * Twee oorzaken tegelijk, en zij zijn onafhankelijk. (1) De aanbevolen
+     * ondergrens van de tweeter wordt sinds M-2b GEVOED, dus de M-T-as ging van
+     * twee posities naar ÉÉN (2251,4 Hz) en het venster van 0,484 naar 0,067
+     * octaaf. (2) Het veld kreeg daardoor elf in plaats van zestien
+     * kandidaten, en de W-M-posities herverdeelden zich over dezelfde band.
+     * Geen enkel label overleeft. */
+    const before = corpusOf('c2');
+    const after = corpusOf('live');
+    expect(before.byCandidate.size).toBe(10);
+    expect(pairedCandidates(before, after)).toHaveLength(0);
+    for (const label of before.order) expect(after.order).not.toContain(label);
+    /* De M-T-as: élke C-2-kandidaat draagt een van twee posities, élke
+     * M-2b-kandidaat dezelfde ene. Dat is de vorm van de ingreep, afgelezen uit
+     * de labels zelf en niet uit een venster. */
+    const mtOf = (label: string) => label.split('·')[1]?.trim() ?? '';
+    expect(new Set(before.order.map(mtOf)).size).toBe(2);
+    expect(new Set(after.order.map(mtOf)).size).toBe(1);
     for (const pick of [PHASE, DISS]) expect(pairedDelta([], pick).n).toBe(0);
   });
 

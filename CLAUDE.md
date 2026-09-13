@@ -48,6 +48,19 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná M-2b (13-09-2026) gemeten op 509 s — 188 bestanden (186 geslaagd, 1 rood, 1 overgeslagen),
+    2401 tests (2397 geslaagd, 1 rood, 3 overgeslagen); ná de reparatie van die ene claim GROEN.**
+    +1 BESTAND (`m2bMeetset.test.ts`, 22 claims) en +22 tests, en die twee getallen zijn HETZELFDE
+    getal — maar dat is hier GEEN teken dat het corpus stilstond: het corpus is wél opnieuw opgewekt
+    (van tien netlists naar drie), en de `it.each`-en die erover lopen zijn per constructie
+    kandidaat-gestuurd en niet corpusgroot. **DE EERSTE snelle run had 37 rode claims in 8 bestanden
+    en zij deden allemaal hun werk**: acht klasse-B-referenties van de drie referentiefilters die de
+    wooferhelft lezen (minZ, M-D, M-K, M-F), de drie A5d.6-inversies (de inversie LEEST het nabije
+    veld), het gekantelde ankerblok, het gekrompen veld, en drie GEDATEERDE argumenten die met de
+    nieuwe meting gemeten werden in plaats van met hun eigen. Geen enkele tolerantie is opgerekt;
+    wat er gebeurde is herleiden (met brug) of dateren (met `_gemeten_op`). GEEN nieuwe referentie:
+    de V43-waarde van 289 s blijft staan, en 509 tegen E-5c's 473 s is dezelfde laag op dezelfde
+    machine met één bestand erbij.
     **Ná E-5c (13-09-2026) gemeten op 473 s — 187 bestanden (186 geslaagd, 1 overgeslagen),
     2379 tests (2376 geslaagd, 3 overgeslagen), in één keer groen.** +1 BESTAND
     (`optimizer/structureRetune.test.ts`, 10 claims) en +10 tests, en die twee getallen zijn
@@ -486,7 +499,18 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 13-09-2026 (E-5c): 187 bestanden, 2379 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 13-09-2026 (M-2b): 188 bestanden, 2401 tests,
+  1771 s (29 min 31), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
+  (`m2bMeetset.test.ts`, 22 claims) en +22 tests. **DEZE RUN IS DE ACCEPTATIE VAN EEN MEETSETWISSEL ÉN
+  VAN EEN REGENERATIE, en dat is de zwaarste soort die dit project kent:** casus 1 leest sinds M-2b de
+  67,7 L-set, het corpus is opnieuw opgewekt (tien netlists → DRIE) en de aanbevolen ondergrens van de
+  tweeter is gevoed. Wat de run bewijst is dat de DRIE live ketenruns het NIEUWE corpus byte voor byte
+  reproduceren — de goedkoopste geleverde netlist van casus 1 (518,8 · 2251,4), de goedkoopste
+  verwerping (156,7 · 2251,4, 905 s) en casus 1b (306 s, onaangeroerd corpus) — en dat beide
+  byte-baselines (`f4cRegression`, `workerRouteRegression`) en `toggleRegression` staan: de wissel
+  raakt geen enkele v1-route. De wandkloktijd IS de byte-reproductie (1767 s voor dat ene bestand);
+  `threeWayChain` (335 s) en de verwerping draaien ernaast in de schaduw.
+  (De stand ervoor: **GEMETEN 13-09-2026 (E-5c): 187 bestanden, 2379 tests,
   1574 s (26 min 14), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
   en +10 tests — zie de `test:fast`-regel. **DEZE RUN IS GEDRAAID OMDAT E-5c DE TUNER ZELF AANRAAKT**
   (een run-scoped memo op de waardefit, `repeatedTune: 'reuse'`, gewapend op de v2-route), EN WAT HIJ
@@ -494,7 +518,7 @@
   komen byte voor byte terug mét de sleutel gewapend, en beide byte-baselines (`f4cRegression`,
   `workerRouteRegression`) reproduceren — die stellen de sleutel niet, dus zij tonen de identiteit
   van de andere kant. E-5c's tweede sleutel (`structureRetune: 'capped'`) is GEBOUWD EN NIET
-  GEWAPEND: de meting wees hem af (ander netwerk), dus de declaratie verklaart hem ABSENT.
+  GEWAPEND: de meting wees hem af (ander netwerk), dus de declaratie verklaart hem ABSENT.)
   (De stand ervoor: **GEMETEN 13-09-2026 (E-5b): 186 bestanden, 2369 tests,
   1564 s (26 min 4), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle
   laag en vóór de browsercontrole.** +2 bestanden en +15 tests — zie de `test:fast`-regel.
@@ -904,6 +928,35 @@
   `npx vite-node scripts/record-casus1-v2-references.ts` (drie seconden) voor de klasse-B-blokken én
   de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
+- **DE 67,7 L-MEETSET (M-2b, 13-09-2026) — wat de v2-route sinds M-2b leest.** De fixture kent DRIE
+  meetsets: `casus1Manifest(golden)` = `casus1Manifest(golden, 'koan677')` is de **STANDAARD** (de
+  wooferhelft is de hermeting van 11-09-2026 getransformeerd naar de echte kast: twee per-driver
+  NF/FF-merges uit `koan_2026-09_testkast/`, hun twee nabije velden en de parallelle sweep van
+  diezelfde sessie; mid en tweeter zijn de M-1-set ONGEWIJZIGD, want een gesloten pod en een
+  waveguide voelen het kastvolume niet), `'merged'` is de M-1-set (04-09-2026) en `'gated'` de sessie
+  van 22-08-2026 zoals gemeten. **Een test die de HEADER-VLOER zelf toetst leest `'gated'`; een test
+  die een GEDATEERDE claim van vóór M-2b draagt leest `'merged'`; al het andere leest de standaard.**
+  `corpusBank(golden, set)` idem, default sinds M-2b `'koan677'`.
+  **ER IS NIETS VERHUISD OP SCHIJF en dat is opzet:** `woofer_up_hor_0.txt` is de VER-VELDHELFT van
+  de 67,7 L-merge die hem vervangt, dus een map met "vorige" in de naam zou het verkeerde zeggen over
+  een bestand waar de huidige set uit gebouwd is. Wat een set dateert is haar manifestblok
+  (`manifest_en_geometrie.meetset_2026_09_67L`), precies zoals M-1 het deed.
+  - `npx vite-node scripts/record-casus1-67l-set.ts` — seconden. Schrijft dat blok: welk bestand welk
+    bestand van 22-08 vervangt, in welke MAP het woont, en per bestand de parameters GELEZEN uit de
+    kop (`parseArtaHeader` / `readGateHeader` / `parseLim`), nooit overgetypt. Plus `sweep_frame` (zie
+    hieronder) en de byte-status van wat NIET meegaat.
+  - `npx vite-node scripts/record-casus1-m2b-references.ts` — seconden, geen tune. Herleidt élke
+    klasse-A-referentie van de woofer die de SWEEP leest, met de M-1-lezing als brug
+    (`_waarden_M1_tot_M2b`), plus het M-T-venster op de gestelde ondergrens en het gekantelde
+    ankerblok.
+  - **DE SWEEP IS NIET GETRANSFORMEERD, en `meetset_2026_09_67L.sweep_frame` zegt per lezer wat dat
+    betekent.** De respons is gemodelleerd voor 67,7 L, de last is de GEMETEN 53,2 L-testkast (M-2 mat
+    waarom: teruggerekend wordt de driver onfysisch). M-B/|Z| leest de gemeten sweep en dat is het
+    goede antwoord; M-E leest alleen de impedantie en is dus volledig in het 53,2 L-frame; M-D leest
+    BEIDE en daar zit de mismatch; de geoordeelde band begint op f_p uit de impedantie (52,37 Hz) en
+    is daarmee CONSERVATIEF, want in de echte kast ligt f_p lager. **Boven 100 Hz doet de
+    transformatie vrijwel niets en boven 300 Hz meetbaar niets (0,005 dB)** — de hele kruisband ligt
+    daarin.
 - **DE GEMERGEDE MEETSET (M-1, 04-09-2026) — wat de v2-route sinds M-1 leest, en hoe zij is gemaakt.**
   De fixture kent TWEE meetsets: `casus1Manifest(golden)` = `casus1Manifest(golden, 'merged')` is de
   STANDAARD (de on-axis ver velden van woofers en mid zijn NF/FF-merges met een geldigheidsblok:
@@ -936,13 +989,35 @@
     `verankerde_gaps_dB` met vlak plateau) en de responsafhankelijke klasse-B-velden van de drie
     referentiefilters (W-M-fase, lobing-fracties, F3-venster/RMS), elk met de GEPOORTE lezing als brug
     (`_gepoort_tot_M1`, reproduceerbaar met set `'gated'`). De corpora schrijft de gewone recorder.
+- **Welke invoer van de meetsetwissel M-D verplaatst (M-2b)**:
+  `npx vite-node scripts/measure-m2b-lf-arms.ts` — seconden, geen ketenrun en geen tune. Zes armen op
+  élke netlist van het C-2-corpus plus HUIDIG, elk met ÉÉN factor verzet: alleen het verre veld,
+  alleen het nabije veld, alleen de sweep, alle drie, en de vierde vraag — het nabije veld
+  GETRANSFORMEERD naar 67,7 L. **Gemeten 13-09-2026: het NABIJE VELD doet 123 % van de verschuiving,
+  het verre veld 3,8 % en de sweep 16,7 % (de sweep werkt tegen).** M-D leest het nabije veld als de
+  kale-kast-respons, en dat van 11-09 is gemeten met ÉÉN woofer aangedreven (M-2, STATED NOT
+  CORRECTED): de reflexinkeping van de conus ligt 4,0–4,8 Hz onder f_b waar die van augustus
+  1,3–2,0 Hz eronder ligt. **De transformatie-arm herstelt het NIET** — hij beweegt beide kanten op —
+  dus de dominante factor is de AANDRIJFTOESTAND en niet het volume, en een modelleerstap is geen
+  uitweg. Schrijft `test-fixtures/casus1_m2b_lf_armen.json`.
+
+- **De tabel per kandidaat van een regeneratie** heet nog steeds
+  `scripts/measure-a5e3c-field.ts` maar draagt sinds M-2b ARGUMENTEN, om de V33-reden: een tabel
+  waarvan één helft aan het levende corpus vastzit maakt na de eerste regeneratie stilletjes een
+  ándere tabel. `--before <corpus-id> --set <meetset> --out <bestand> [--arm]`; de default is de
+  M-2b-tabel (`--before c2 --set koan677`), en de A5e.3c-tabel is
+  `--before a5e3veld --set merged --out casus1_a5e3c_veld_tabel.json --arm`.
 - **De vóór/ná-tabel tussen twee corpora**: `npx vite-node scripts/compare-corpora.ts [vóór] [ná]` —
   seconden, geen ketenrun. Corpora: `v30`, `v32`, `v33sweep`, `v33`, `v34`, `v37`, `v38fix`,
-  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `v50`, `v51`, `v51b`, `a5e3arm`, `a5e3veld`, `live`; default `v51b live`, wat
-  de M-1-tabel is (`a5e3veld live` is de A5e.3c-tabel — nul paren op label, de leesregel in haar uiterste vorm; `v51 v51b` is de V51b-tabel; `v50 v51` de V51-tabel; `v49 v50` was de V50-tabel — de
-  identiteit; `v48 v49` is de V47b-tabel, `v47 v48` de V48-tabel). **SINDS M-1 meet de bank op de
-  GEMERGEDE set** — beide helften door hetzelfde pad, óók een gedateerd corpus dat op de gepoorte set is
-  opgewekt; de gedateerde claims van `corpusPairing.test.ts` lezen daarom expliciet `'gated'`. **Sinds V51b twee kolommen erbij:** `serie-R laagste weg Ω
+  `v41`, `v42`, `v43`, `v44`, `v45`, `v47`, `v48`, `v49`, `v50`, `v51`, `v51b`, `a5e3arm`, `a5e3veld`, `a5e3c`, `c2`, `live`;
+  **default sinds M-2b `c2 live`, de M-2b-tabel** (`a5e3c live` is de C-2-tabel; `v51b live` was
+  de M-1-tabel; `a5e3veld live` de A5e.3c-tabel — nul paren op label, de leesregel in haar uiterste vorm; `v51 v51b` is de V51b-tabel; `v50 v51` de V51-tabel; `v49 v50` was de V50-tabel — de
+  identiteit; `v48 v49` is de V47b-tabel, `v47 v48` de V48-tabel). **SINDS M-2b meet de bank op de
+  67,7 L-SET** (`corpusBank` default `'koan677'`) — beide helften door hetzelfde pad, óók een gedateerd
+  corpus dat op een andere set is opgewekt; de gedateerde claims van `corpusPairing.test.ts` lezen daarom
+  expliciet `'gated'`. **LET OP BIJ DE M-2b-TABEL: daar is de MEETSET ZELF de ingreep**, dus de
+  C-2-kolom is dat corpus HERMETEN op de nieuwe basis en niet wat C-2 opschreef; wat de basis zelf
+  verplaatste staat in de klasse-A-bruggen en in `m2bMeetset.test.ts`. **Sinds V51b twee kolommen erbij:** `serie-R laagste weg Ω
   (R + DCR = totaal)` — de serieweerstand die de driver van de laagste weg in zijn pad ziet, GESPLITST
   in discrete R en spoel-DCR (`describeSeriesResistance`), want de gestelde variant `series-r-max`
   oordeelt op de SOM en de splitsing is de bouwkeuze — en `heetste R W bij oordeelvermogen` (de watt
@@ -3536,6 +3611,44 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de conus" — zie de vorige entry; bij de afstemming piekt de last en beweegt de conus juist het
   minst.
 
+### M-2b-guards (de 67,7 L-set is de meetbasis; het anker kantelt; de ondergrens gevoed)
+- **`casus1Manifest` kent DRIE sets en de standaard is sinds M-2b `'koan677'`.** De wooferhelft is de
+  hermeting van 11-09-2026 getransformeerd naar de echte kast; mid en tweeter zijn de M-1-set
+  ongewijzigd. `casus1SetOf(manifest)` leest de set terug uit de sessie-id, en `casus1Files` leidt
+  daar de MAP van elk bestand uit af — **dat is geen boekhouding maar een noodzaak: de twee sessies
+  dragen bestanden met dezelfde NAAM** (`woofer_up_near.txt` bestaat in beide mappen met andere
+  inhoud), dus een opzoeking op naam alleen zou een set stilletjes de meting van de andere geven.
+  `m2bMeetset.test.ts` pint dat met de twee metingen naast elkaar.
+- **`loadMeasurement` kreeg een optionele `dir`, en de COMPILER ving meteen wat dat kost:**
+  `casus1bFiles` deed `.map(loadMeasurement)` en zou de ARRAY-INDEX als pad hebben doorgegeven. Sinds
+  M-2b een pijlfunctie, met de reden erbij.
+- `src/lib/engine2/m2bMeetset.test.ts` — **de acceptatie van de wissel, in twee soorten claims, en
+  beide dragen.** WAT ZIJ WEL VERPLAATST: het anker (mid → woofer), X (0,78 → 0 dB), de
+  anchorSwitchWarning (weg), de sweep-afgeleiden (R_e, de rok, f_L, f_b) elk buiten hun klasse. WAT
+  ZIJ NIET VERPLAATST: de breakup-scan IDENTIEK tot op het laatste cijfer (zij leeft boven de splice,
+  waar beide merges hetzelfde onaangeroerde verre veld dragen), de geldigheidsvloer, f_p, en mid en
+  tweeter in hun geheel. **Zonder die tweede helft is een meetsetwissel niet te onderscheiden van een
+  herschrijving.**
+- **HET PAARBESTAND VAN DE DEMO IS DE COMPLEXE SOM VAN DE TWEE PER-DRIVER MERGES**, nagemeten op
+  5·10⁻⁴ dB en 5·10⁻⁴° — de afdrukafronding van het bestand zelf. De DEMO draagt het paar als één
+  bestand (V13: een demobundel wil een bestand per driverblok), CASUS 1 de twee apart (V20: zijn
+  manifest en zijn lobing-metriek kennen twee bronnen op twee afstanden). Dezelfde data, twee vormen.
+- **DE BYTE-STATUS VAN WAT NIET MEEGAAT, gemeten en gepind:** de demo-tweeter is IDENTIEK aan
+  `tweeter_hor_0.txt` (0,000 dB / 0,000°), de demo-ZMA's zijn dezelfde metingen als de LIMP's
+  (5·10⁻⁵ Ω), en de demo-MID is een ÁNDERE MERGE — boven 800 Hz bit-identiek, eronder tot 1,94 dB en
+  78,9° — die zijn geldigheid bovendien in PROZA stelt, dus geen van beide lezers haalt er een vloer
+  uit. Hem invoeren zou de mid haar vloer kosten en de verankerde gaps blokkeren (UI-1). **De
+  I-2-bevinding over de FASE van `Koan_M_merged.frd` blijft daarmee openstaan.**
+- **`verankerde_gaps_dB` heet zijn kolom sinds M-2b `gaps_tov_anker` en niet meer
+  `<weg>_tov_mid`.** Een sleutel die het ANKER noemt wordt onwaar op het moment dat het anker
+  kantelt, en dat is precies wat hier gebeurde. Het oude paar leeft voort in de gedateerde brug, waar
+  de naam nog klopt.
+- **DE V8d-CLAIM IS OP DEZE SWEEP ONWAAR, en de tolerantie is niet opgerekt.** `goldenCasus1.test.ts`
+  meet de AFSTAND en houdt haar tegen het opgeschreven getal: 0,004 Ω op de augustussweep, 0,104 Ω op
+  die van 11-09. Het casusboek draagt twee meterlezingen van hetzelfde paar (2,90 en 3,05 Ω) die het
+  nooit met elkaar eens waren; de fit landt sinds 11-09 ertussen. Wat de ROUTE invoert is onveranderd
+  (3,05 Ω), dus geen enkele poort, grens of metriek beweegt hierdoor.
+
 ### E-5c-guards (de prijs van een pas gemeten; één sleutel gewapend, één gebouwd en afgewezen)
 - **`scripts/measure-e5c-prune-anatomy.ts` — DE ANATOMIE, MET TWEE OBSERVATOREN EN NUL REGELS
   ENGINE-WIJZIGING.** Eén casus-1-kandidaat door `handleV2Request`, met een observator op
@@ -5400,7 +5513,7 @@ te tunen. **Deze twee runs zijn samen het leeuwendeel van de suite** — en zij 
 `casus1V2Refusal.test.ts` de verwerping), zodat zij naast elkaar draaien in plaats van na elkaar.
 Gemeten in de volle run van 01-09-2026: 1244,3 s en 924,2 s, bij een wandklok van 1254,4 s.
 
-**Sinds C-2 zijn het er TWEEËNTWINTIG corpora plus TWEE gedateerde HERKOMSTEN, en dat is opzet.** `KAND_V2_*` is het levende corpus (het C-2-veld: tien netlists). `A5E3C_KAND_*` is het A5e.3c-corpus van tien, bevroren vóór C-2 — toen de A5d.6-inversie nog als KOOI om de zoekdoos lag (E-4 mat 69 van 161 netlists boven hun plafond én binnen hun budget, nul andersom), de barrière het verlengde veiligheidsraster ZONDER verdichting las (twee van 161 boven de vloerspeling, beide op een dip smaller dan één rastercel) en de posities met EENZIJDIGE kooien op de vensterranden lagen (8 × 3 = 24 uit 36, budget 24); `casus1_a5e3c_herkomst.json` bewaart die run zelf, want elf geleverd tegen tien bevroren is een feit over de RUN dat de netlists niet dragen. `A5E3VELD_KAND_*` is het A5e.3-veld-corpus van zeven, bevroren vóór A5e.3c — toen de M-T-as nog op k·f_s (1294 Hz) stond en het gestelde tweetergetal niet als vensterinvoer werd gelezen, spoelen op de laagste weg boven de spanwijdte van de gestelde familie 'gevlagd en doorgezet' werden (22–36 mH in de val van vijf van de zeven), de barrière het veiligheidsraster vanaf 20,5 Hz las en niet de sweepbodem (KAND_V2_2: 2,55 Ω op 10,07 Hz waar de barrière 2,85 las), en een L+R-shunt zonder C niet als pad gold (drie van de zeven dragen er een): de vier grenzen die A5e.3b sloot en waarop A5e.3c het veld opnieuw opwekte. `A5E3ARM_KAND_1` is het geleverde netwerk van de arm `m1+dcr` — één netlist, geregistreerd met `scripts/register-a5e3-arm.ts` omdat het M-1-corpus LEEG was en er niets te bevriezen viel; de M-1-boekhouding zelf (115 uitkomsten, geen bestanden) staat als `casus1_m1_herkomst.json` (corpus-id `m1`, `DATED_HERKOMST`). 
+**Sinds M-2b zijn het er DRIEËNTWINTIG corpora plus TWEE gedateerde HERKOMSTEN, en dat is opzet.** `KAND_V2_*` is het levende corpus (het M-2b-veld: DRIE netlists — 253, 362,3 en 518,8 Hz, elk op mid→tweeter 2251,4). `C2_KAND_*` is het C-2-corpus van tien, bevroren vóór M-2b, en het is het laatste veld dat op de M-1-MEETSET is opgewekt: de augustus-wooferMERGE in het frame van de 53,2 L testkast, met de MID als anker en het wooferpaar 0,78 dB daarboven (de spanning die V51's niveauwerkverbod onbetaalbaar maakte), en met de mid→tweeter-vloer op de afgeleide 1646,9 Hz omdat de aanbevolen ondergrens van de BlieSMa (2200 Hz) wel geregistreerd maar niet gevoed was (U-4). `A5E3C_KAND_*` is het A5e.3c-corpus van tien, bevroren vóór C-2 — toen de A5d.6-inversie nog als KOOI om de zoekdoos lag (E-4 mat 69 van 161 netlists boven hun plafond én binnen hun budget, nul andersom), de barrière het verlengde veiligheidsraster ZONDER verdichting las (twee van 161 boven de vloerspeling, beide op een dip smaller dan één rastercel) en de posities met EENZIJDIGE kooien op de vensterranden lagen (8 × 3 = 24 uit 36, budget 24); `casus1_a5e3c_herkomst.json` bewaart die run zelf, want elf geleverd tegen tien bevroren is een feit over de RUN dat de netlists niet dragen. `A5E3VELD_KAND_*` is het A5e.3-veld-corpus van zeven, bevroren vóór A5e.3c — toen de M-T-as nog op k·f_s (1294 Hz) stond en het gestelde tweetergetal niet als vensterinvoer werd gelezen, spoelen op de laagste weg boven de spanwijdte van de gestelde familie 'gevlagd en doorgezet' werden (22–36 mH in de val van vijf van de zeven), de barrière het veiligheidsraster vanaf 20,5 Hz las en niet de sweepbodem (KAND_V2_2: 2,55 Ω op 10,07 Hz waar de barrière 2,85 las), en een L+R-shunt zonder C niet als pad gold (drie van de zeven dragen er een): de vier grenzen die A5e.3b sloot en waarop A5e.3c het veld opnieuw opwekte. `A5E3ARM_KAND_1` is het geleverde netwerk van de arm `m1+dcr` — één netlist, geregistreerd met `scripts/register-a5e3-arm.ts` omdat het M-1-corpus LEEG was en er niets te bevriezen viel; de M-1-boekhouding zelf (115 uitkomsten, geen bestanden) staat als `casus1_m1_herkomst.json` (corpus-id `m1`, `DATED_HERKOMST`). 
 `V28_KAND_*` is bevroren vóór de vloer een ZOEKDOEL was (V30); `V30_KAND_*` toen de poort nog blind
 was onder de verre-veldbodem (V32); `V32_KAND_*` toen de BARRIÈRE nog het evaluatieraster las terwijl
 de poort de sweep handhaafde (V33); `V33_SWEEP_KAND_*` is V33's dure referentiearm, met de barrière

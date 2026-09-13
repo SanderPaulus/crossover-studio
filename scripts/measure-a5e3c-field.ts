@@ -1,12 +1,26 @@
 /**
- * A5e.3c — DE TABEL PER KANDIDAAT OP HET VELD ONDER DE A5e.3b-GRENZEN, GEPAARD
- * TEGEN HET BEVROREN A5e.3-VELD, MET DE ABLATIE-ARM EN HUIDIG ERNAAST.
+ * DE TABEL PER KANDIDAAT VAN EEN REGENERATIE, GEPAARD TEGEN HET BEVROREN CORPUS
+ * ERVOOR, MET HUIDIG ERNAAST. (A5e.3c, sinds M-2b met argumenten.)
  *
- * `npx vite-node scripts/measure-a5e3c-field.ts` — seconden, geen ketenrun en
- * geen enkele tune. Élke rij door dezelfde meetbank (`corpusBank(golden,
- * 'merged')`: de gemergede set, de doelcurve van het ontwerp, de gestelde
- * eisen, het gestelde DCR-model), zodat élke kolom hetzelfde meet ongeacht uit
- * welke run een netlist kwam. Vier soorten rijen:
+ * `npx vite-node scripts/measure-a5e3c-field.ts [--before <id>] [--set <set>]
+ * [--out <bestand>] [--arm]` — seconden, geen ketenrun en geen enkele tune.
+ *
+ *   M-2b-tabel (de DEFAULT): `--before c2 --set koan677 --out casus1_m2b_veld_tabel.json`
+ *   A5e.3c-tabel:            `--before a5e3veld --set merged --out casus1_a5e3c_veld_tabel.json --arm`
+ *
+ * De drie dingen die de tabel definiëren zijn ARGUMENTEN sinds M-2b, om de
+ * reden die V33 op `compare-corpora.ts` vond: een tabel waarvan één helft aan
+ * het LEVENDE corpus vastzit maakt na de eerste regeneratie stilletjes een
+ * ándere tabel dan die waarvoor zij geschreven is.
+ *
+ * Élke rij door dezelfde meetbank (`corpusBank(golden, SET)`: de meetset, de
+ * doelcurve van het ontwerp, de gestelde eisen, het gestelde DCR-model), zodat
+ * élke kolom hetzelfde meet ongeacht uit welke run een netlist kwam. **BIJ DE
+ * M-2b-TABEL IS DAT EEN SCHERPERE UITSPRAAK DAN OOIT EERDER:** daar is de
+ * MEETSET ZELF de ingreep, dus de "vóór"-kolom is het C-2-corpus HERMETEN op de
+ * 67,7 L-basis en niet wat C-2 opschreef. Wat de basis zelf verplaatste staat in
+ * de klasse-A-bruggen en in `m2bMeetset.test.ts`; deze tabel gaat over de
+ * NETWERKEN. Vier soorten rijen:
  *
  *   · het LEVENDE corpus (A5e.3c): élke kandidaat van het veld in de volgorde
  *     van de generator — GELEVERD met de volle vector, of GEWEIGERD met de
@@ -49,8 +63,7 @@
  * wat hier "gepaard" heet is per rij zo gelabeld — een anekdote per rij, geen
  * corpusdelta.
  *
- * Schrijft `test-fixtures/casus1_a5e3c_veld_tabel.json`. Stelt niets, wijzigt
- * niets.
+ * Schrijft het bestand dat `--out` noemt. Stelt niets, wijzigt niets.
  */
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -67,7 +80,7 @@ import { coilDcrInventory } from '../src/lib/coilDcr.ts';
 import { judgeResponse } from '../src/lib/engine2/requirements/response.ts';
 import { buildReport, type EngineV2Report } from '../src/lib/engine2/report.ts';
 import { decompose, type Group } from './v38-groups.ts';
-import { CASUS1_DIR, casus1CoilCatalogPath, casus1FilterFromParts, loadGolden } from '../src/lib/engine2/casus1.fixture.ts';
+import { CASUS1_DIR, casus1CoilCatalogPath, casus1FilterFromParts, loadGolden, type Casus1MeasurementSet } from '../src/lib/engine2/casus1.fixture.ts';
 import {
   CASUS1_COIL_DCR,
   CASUS1_COIL_FAMILY_BY_DRIVER,
@@ -76,7 +89,7 @@ import {
   CASUS1_THERMAL_DESIGN_POWER_W,
   CASUS1_V2_BAND_HZ,
 } from '../src/lib/engine2/casus1V2.fixture.ts';
-import { corpusBank, corpusOf, round2 } from '../src/lib/engine2/casus1Corpora.fixture.ts';
+import { DATED_CORPORA, corpusBank, corpusOf, round2 } from '../src/lib/engine2/casus1Corpora.fixture.ts';
 import { DEFAULT_SHORTLIST_SIZE } from '../src/lib/engine2/constants.ts';
 
 /** Het raster van de takanalyse: het hele hoorbare bereik, fijn genoeg voor een smalle dip (M-1-diagnose). */
@@ -91,9 +104,31 @@ const ARM_FILE = 'bouwbaar.json';
 const ARM_LABEL = 'A5e.3b-arm bouwbare val (354,9 · 1994,6, L ≤ 22 mH)';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUT = join(HERE, '..', 'test-fixtures', 'casus1_a5e3c_veld_tabel.json');
+
+/* ==================================================================== *
+ * M-2b — DE DRIE DINGEN DIE DEZE TABEL DEFINIËREN ZIJN ARGUMENTEN.
+ *
+ * Tot M-2b stonden het gedateerde corpus, de meetset en de uitvoernaam HARD in
+ * dit bestand, en dat is precies het gebrek dat V33 op `compare-corpora.ts`
+ * vond: een tabel waarvan één helft aan het LEVENDE corpus vastzit maakt na de
+ * eerste regeneratie stilletjes een ándere tabel dan die waarvoor zij
+ * geschreven is. De A5e.3c-tabel blijft reproduceerbaar door haar argumenten te
+ * NOEMEN; de default is de nieuwste vergelijking.
+ *
+ *   A5e.3c-tabel: --before a5e3veld --set merged --out casus1_a5e3c_veld_tabel.json --arm
+ *   M-2b-tabel:   (de default)
+ * ==================================================================== */
+const argOf = (name: string, fallback: string): string => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 && process.argv[i + 1] !== undefined ? process.argv[i + 1] : fallback;
+};
+const BEFORE_ID = argOf('before', 'c2');
+const SET: Casus1MeasurementSet = argOf('set', 'koan677') as Casus1MeasurementSet;
+const OUT = join(HERE, '..', 'test-fixtures', argOf('out', 'casus1_m2b_veld_tabel.json'));
+/** De A5e.3b-ablatie-arm hoort bij de A5e.3c-tabel en wordt alleen op verzoek gemeten. */
+const WITH_ARM = process.argv.includes('--arm');
 const golden = loadGolden();
-const bank = corpusBank(golden, 'merged');
+const bank = corpusBank(golden, SET);
 const netlists = (golden.manifest_en_geometrie as { netlists: Record<string, string> }).netlists;
 const FLOOR = bank.floorOhm;
 const grid = logspace(DIAG_GRID_HZ[0], DIAG_GRID_HZ[1], DIAG_GRID_POINTS);
@@ -535,9 +570,9 @@ function refusedRow(corpus: string, o: HerkomstOutcome, ground?: string): Row {
 
 /* ---- de rijen --------------------------------------------------------------- */
 const live = corpusOf('live');
-const dated = corpusOf('a5e3veld');
-const LIVE_NAME = 'A5e.3c';
-const DATED_NAME = 'A5e.3-veld';
+const dated = corpusOf(BEFORE_ID);
+const LIVE_NAME = 'levend';
+const DATED_NAME = DATED_CORPORA[BEFORE_ID]?.name ?? BEFORE_ID;
 const rows: Row[] = [];
 const NOT_FROZEN = `${LIVE_NAME} (geleverd, niet bevroren)`;
 const notFrozenGround = `GELEVERD, NIET BEVROREN — de shortlist houdt ${DEFAULT_SHORTLIST_SIZE} ontwerpen en koos op spreiding (selectDiverse); geen poort en geen eis`;
@@ -554,17 +589,19 @@ for (const o of HERKOMST.kandidaat_uitkomst) {
   } else rows.push(refusedRow(LIVE_NAME, o));
 }
 for (const label of dated.order) rows.push(measureKey(DATED_NAME, label, dated.byCandidate.get(label)!));
-const armParts = (JSON.parse(readFileSync(join(HERE, '..', 'test-fixtures', 'casus1_a5e3b_ablatie', ARM_FILE), 'utf-8')) as { parts: VxpPart[] }).parts;
-rows.push(
-  measureParts(
-    'A5e.3b-arm',
-    ARM_LABEL,
-    null,
-    armParts,
-    buildReport({ manifest: bank.manifest, files: bank.files, filter: casus1FilterFromParts('bouwbaar', armParts, bank.manifest, bank.files), geometry: bank.geometry, settings: bank.settings }),
-    null,
-  ),
-);
+if (WITH_ARM) {
+  const armParts = (JSON.parse(readFileSync(join(HERE, '..', 'test-fixtures', 'casus1_a5e3b_ablatie', ARM_FILE), 'utf-8')) as { parts: VxpPart[] }).parts;
+  rows.push(
+    measureParts(
+      'A5e.3b-arm',
+      ARM_LABEL,
+      null,
+      armParts,
+      buildReport({ manifest: bank.manifest, files: bank.files, filter: casus1FilterFromParts('bouwbaar', armParts, bank.manifest, bank.files), geometry: bank.geometry, settings: bank.settings }),
+      null,
+    ),
+  );
+}
 rows.push(measureKey('HUIDIG (met pad)', 'HUIDIG', 'HUIDIG'));
 
 /* ---- gepaard: op label waar dat kan, anders het dichtstbijzijnde kruispunt ---- */

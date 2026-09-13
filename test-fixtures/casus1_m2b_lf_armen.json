@@ -1,0 +1,213 @@
+{
+ "_": "M-2b — welke invoer van de meetsetwissel M-D verplaatst, één factor per arm. Geschreven door scripts/measure-m2b-lf-arms.ts; m2bMeetset.test.ts reproduceert hem uit een verse meting. De grootheid is de RESONANTE helft van de LF-bult (A4 M-D, lfBump().resonantDb) op de woofer, in dB, gemeten met de meetbank van de corpusvergelijkingen.",
+ "gesteld_budget_dB": 1.4,
+ "onderwerpen": [
+  "HUIDIG",
+  "C2_KAND_1",
+  "C2_KAND_2",
+  "C2_KAND_3",
+  "C2_KAND_4",
+  "C2_KAND_5",
+  "C2_KAND_6",
+  "C2_KAND_7",
+  "C2_KAND_8",
+  "C2_KAND_9",
+  "C2_KAND_10"
+ ],
+ "armen": [
+  {
+   "id": "m1",
+   "label": "M-1 (niets verzet)"
+  },
+  {
+   "id": "ff",
+   "label": "alleen het VERRE veld (merge 67,7 L)"
+  },
+  {
+   "id": "nf",
+   "label": "alleen het NABIJE veld (11-09, ruw)"
+  },
+  {
+   "id": "z",
+   "label": "alleen de SWEEP (11-09)"
+  },
+  {
+   "id": "m2b",
+   "label": "M-2b (alle drie)"
+  },
+  {
+   "id": "m2b_nf_transformed",
+   "label": "M-2b met het nabije veld GETRANSFORMEERD naar 67,7 L"
+  }
+ ],
+ "resonantDb": {
+  "m1": {
+   "HUIDIG": -0.939,
+   "C2_KAND_1": 1.161,
+   "C2_KAND_2": -0.323,
+   "C2_KAND_3": -0.584,
+   "C2_KAND_4": -0.113,
+   "C2_KAND_5": 0.524,
+   "C2_KAND_6": -1.124,
+   "C2_KAND_7": -0.364,
+   "C2_KAND_8": -0.944,
+   "C2_KAND_9": -1.414,
+   "C2_KAND_10": -1.179
+  },
+  "ff": {
+   "HUIDIG": -0.939,
+   "C2_KAND_1": 1.161,
+   "C2_KAND_2": -0.323,
+   "C2_KAND_3": -0.584,
+   "C2_KAND_4": -0.113,
+   "C2_KAND_5": 0.524,
+   "C2_KAND_6": -1.124,
+   "C2_KAND_7": -0.753,
+   "C2_KAND_8": -0.944,
+   "C2_KAND_9": -1.414,
+   "C2_KAND_10": -1.179
+  },
+  "nf": {
+   "HUIDIG": -1.182,
+   "C2_KAND_1": 2.724,
+   "C2_KAND_2": 1.264,
+   "C2_KAND_3": 0.122,
+   "C2_KAND_4": 1.556,
+   "C2_KAND_5": 1.436,
+   "C2_KAND_6": 0.565,
+   "C2_KAND_7": 0.366,
+   "C2_KAND_8": 0.522,
+   "C2_KAND_9": -0.956,
+   "C2_KAND_10": 0.375
+  },
+  "z": {
+   "HUIDIG": -0.989,
+   "C2_KAND_1": 0.801,
+   "C2_KAND_2": -0.525,
+   "C2_KAND_3": -0.668,
+   "C2_KAND_4": -0.35,
+   "C2_KAND_5": 0.415,
+   "C2_KAND_6": -1.277,
+   "C2_KAND_7": -0.422,
+   "C2_KAND_8": -1.107,
+   "C2_KAND_9": -1.524,
+   "C2_KAND_10": -1.359
+  },
+  "m2b": {
+   "HUIDIG": -1.223,
+   "C2_KAND_1": 2.328,
+   "C2_KAND_2": 0.983,
+   "C2_KAND_3": -0.155,
+   "C2_KAND_4": 1.239,
+   "C2_KAND_5": 1.296,
+   "C2_KAND_6": 0.413,
+   "C2_KAND_7": -0.057,
+   "C2_KAND_8": 0.374,
+   "C2_KAND_9": -1.071,
+   "C2_KAND_10": 0.2
+  },
+  "m2b_nf_transformed": {
+   "HUIDIG": -1.223,
+   "C2_KAND_1": 1.866,
+   "C2_KAND_2": 0.697,
+   "C2_KAND_3": -0.605,
+   "C2_KAND_4": 0.793,
+   "C2_KAND_5": 1.553,
+   "C2_KAND_6": -0.044,
+   "C2_KAND_7": 0.778,
+   "C2_KAND_8": 0.004,
+   "C2_KAND_9": -1.033,
+   "C2_KAND_10": -0.246
+  }
+ },
+ "delta_tov_m1": {
+  "ff": {
+   "HUIDIG": 0,
+   "C2_KAND_1": 0,
+   "C2_KAND_2": 0,
+   "C2_KAND_3": 0,
+   "C2_KAND_4": 0,
+   "C2_KAND_5": 0,
+   "C2_KAND_6": 0,
+   "C2_KAND_7": -0.389,
+   "C2_KAND_8": 0,
+   "C2_KAND_9": 0,
+   "C2_KAND_10": 0
+  },
+  "nf": {
+   "HUIDIG": -0.243,
+   "C2_KAND_1": 1.563,
+   "C2_KAND_2": 1.587,
+   "C2_KAND_3": 0.706,
+   "C2_KAND_4": 1.669,
+   "C2_KAND_5": 0.912,
+   "C2_KAND_6": 1.69,
+   "C2_KAND_7": 0.729,
+   "C2_KAND_8": 1.466,
+   "C2_KAND_9": 0.458,
+   "C2_KAND_10": 1.553
+  },
+  "z": {
+   "HUIDIG": -0.05,
+   "C2_KAND_1": -0.36,
+   "C2_KAND_2": -0.202,
+   "C2_KAND_3": -0.084,
+   "C2_KAND_4": -0.238,
+   "C2_KAND_5": -0.109,
+   "C2_KAND_6": -0.152,
+   "C2_KAND_7": -0.058,
+   "C2_KAND_8": -0.163,
+   "C2_KAND_9": -0.11,
+   "C2_KAND_10": -0.181
+  },
+  "m2b": {
+   "HUIDIG": -0.284,
+   "C2_KAND_1": 1.167,
+   "C2_KAND_2": 1.306,
+   "C2_KAND_3": 0.428,
+   "C2_KAND_4": 1.352,
+   "C2_KAND_5": 0.773,
+   "C2_KAND_6": 1.538,
+   "C2_KAND_7": 0.307,
+   "C2_KAND_8": 1.318,
+   "C2_KAND_9": 0.344,
+   "C2_KAND_10": 1.378
+  },
+  "m2b_nf_transformed": {
+   "HUIDIG": -0.284,
+   "C2_KAND_1": 0.705,
+   "C2_KAND_2": 1.02,
+   "C2_KAND_3": -0.021,
+   "C2_KAND_4": 0.906,
+   "C2_KAND_5": 1.03,
+   "C2_KAND_6": 1.081,
+   "C2_KAND_7": 1.141,
+   "C2_KAND_8": 0.948,
+   "C2_KAND_9": 0.381,
+   "C2_KAND_10": 0.933
+  }
+ },
+ "aandeel_in_de_verschuiving": {
+  "ff": 0.038,
+  "nf": 1.234,
+  "z": 0.167
+ },
+ "boven_budget": {
+  "m1": [],
+  "ff": [],
+  "nf": [
+   "C2_KAND_1",
+   "C2_KAND_4",
+   "C2_KAND_5"
+  ],
+  "z": [],
+  "m2b": [
+   "C2_KAND_1"
+  ],
+  "m2b_nf_transformed": [
+   "C2_KAND_1",
+   "C2_KAND_5"
+  ]
+ },
+ "bevinding": "HET NABIJE VELD DOET HET, en het verre veld dat de kasttransformatie draagt vrijwel niets. M-D leest het nabije veld als de kale-kast-respons; het nabije veld van 11-09 is gemeten met EEN woofer aangedreven en de andere passief (M-2, STATED NOT CORRECTED door Sander op 12-09-2026), en de reflexinkeping van de conus ligt daardoor 4,0-4,8 Hz onder f_b waar die van augustus 1,3-2,0 Hz eronder ligt. De arm met het nabije veld GETRANSFORMEERD naar 67,7 L herstelt het NIET — hij beweegt beide kanten op — dus de dominante factor is de AANDRIJFTOESTAND en niet het volume, en een modelleerstap is geen uitweg. Wat overblijft is een keuze van de ontwerper: het budget van 1,4 dB (herijkt bij V43 op de augustusmeting) opnieuw stellen, of het nabije veld hermeten met beide woofers aangedreven."
+}

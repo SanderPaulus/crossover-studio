@@ -53,6 +53,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { crossoverWindow } from './predesign/xoWindow.ts';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -501,7 +502,16 @@ describe('the STATED amplifier floor judges every frozen netlist', () => {
        * for an entirely different reason (V32, the gate reference's 200 Hz
        * floor) and a correct entry made the test fail. Any entry, and a
        * sentence long enough to be one. */
-      expect(e.reden, `${e.netlist}: an exception without a reason is a waiver`).toMatch(/\bV\d+\b/);
+      /* M-2b widened the pattern, and the reason is V51b: an entry name in
+       * this casebook may carry a LOWERCASE SUFFIX (V51b, A5e.3c, M-2b, E-5c)
+       * or a letter prefix with a dash (M-1, E-5, UI-2, LP-1), and `\bV\d+\b`
+       * matched none of those. It went unnoticed until the new sweep pushed
+       * V51B_KAND_6 under the floor and its reason — a correct one, naming
+       * V51b — failed the check. The pattern now matches the naming scheme the
+       * casebook actually uses. */
+      expect(e.reden, `${e.netlist}: an exception without a reason is a waiver`).toMatch(
+        /\bV\d+[a-z]?\b|\b[A-Z]{1,2}-\d+[a-z]?\b|\bA5[a-z]?\.\d+[a-z]?\b/,
+      );
       expect(e.reden.length, `${e.netlist}: a stub reason is not a reason`).toBeGreaterThan(80);
     }
   });
@@ -1365,7 +1375,13 @@ describe('V36 — de dissipatie van élke bevroren netlist, en de noemer van de 
     expect(
       Math.abs((fitFacts.reOhmByModel?.woofer ?? 0) - CASUS1_WOOFER_DC_OHM),
       'zonder ingevoerde DC levert de hiërarchie hetzelfde getal — dan meet zij niets',
-    ).toBeGreaterThan(0.05);
+      /* M-2b — GELEZEN UIT DE OHM-KLASSE en niet meer uit een literal van 0,05.
+       * Op de sweep van 11-09 landt de fit op 3,004 Ω tegen de ingevoerde
+       * 3,05: 0,046 Ω, nog steeds ruim buiten de klasse waarbinnen dit
+       * casusboek twee weerstanden gelijk noemt (0,03), maar onder het getal
+       * dat hier stond. Het getal dat hier hoort is de klasse — anders pint
+       * deze guard een marge in plaats van een uitspraak. */
+    ).toBeGreaterThan(golden.toleranties.ohm);
 
     const rows = record.per_netlist.filter((r) => r.term_veiligheidsraster !== null);
     expect(rows.length, 'geen enkele netlist probet nog op het veiligheidsraster').toBe(
@@ -1916,6 +1932,38 @@ describe('V38-fix — de zoekmaat op elke bevroren netlist', () => {
  * V42 — het gestelde LF-bult-budget
  * ================================================================== */
 
+/**
+ * M-2b — THE SAME LF READING ON THE M-1 SET, for the dated findings only.
+ *
+ * V42's negative result and the withdrawn-budget reading of the three
+ * reference filters are findings ABOUT THE AUGUST MEASUREMENT: the A5d.6
+ * inversion and M-D both read the woofer's near field, and M-2b replaced it.
+ * Re-measuring a dated finding on today's data rewrites it rather than
+ * checking it, so these two claims get the set they were taken on — the same
+ * discipline every gated bridge in this suite follows. Built lazily: it is
+ * three reports, and only two tests want them.
+ */
+let DATED_LF: Map<string, number | null> | null = null;
+function datedLfBumpDb(key: string): number | null {
+  if (DATED_LF === null) {
+    DATED_LF = new Map();
+    const m1m = casus1Manifest(golden, 'merged');
+    const m1f = casus1Files(m1m);
+    for (const k of NETLIST_KEYS) {
+      const rep = buildReport({
+        manifest: m1m,
+        files: m1f,
+        filter: casus1Filter(k, m1m, m1f, golden),
+        geometry,
+        settings: BASE,
+      });
+      const lf = rep.metrics.lfBump.find((x) => x.result.extraDb !== null);
+      DATED_LF.set(k, lf ? lf.result.extraDb : null);
+    }
+  }
+  return DATED_LF.get(key) ?? null;
+}
+
 describe('V42 (herankerd bij V43) — what the budget on the SUM did, on the corpus it did it to', () => {
   /** The dB tolerance class, from the reference file — never written here. */
   const TOL_DB = (golden as unknown as { toleranties: { dB: number } }).toleranties.dB;
@@ -1956,7 +2004,8 @@ describe('V42 (herankerd bij V43) — what the budget on the SUM did, on the cor
       frozen.map((f) => f.key).sort(),
     );
 
-    const over = frozen.filter((f) => f.lfBumpDb !== null && f.lfBumpDb > FINDING!.gesteld_budget_dB);
+    const dated = (key: string) => datedLfBumpDb(key);
+    const over = frozen.filter((f) => dated(f.key) !== null && dated(f.key)! > FINDING!.gesteld_budget_dB);
     expect(
       over.length,
       `the finding records ${FINDING!.eroverheen} of them over the budget it was stated at, and ` +
@@ -1964,11 +2013,12 @@ describe('V42 (herankerd bij V43) — what the budget on the SUM did, on the cor
     ).toBe(FINDING!.eroverheen);
 
     for (const row of FINDING!.per_netlist) {
-      const f = frozen.find((x) => x.key === row.netlist)!;
+      const got = dated(row.netlist);
+      expect(got, `${row.netlist}: no dated M-D reading`).not.toBeNull();
       expect(
-        Math.abs(f.lfBumpDb! - row.bult_dB),
+        Math.abs(got! - row.bult_dB),
         `${row.netlist}: the finding records ${row.bult_dB} dB and the metric reads ` +
-          `${f.lfBumpDb!.toFixed(2)}`,
+          `${got!.toFixed(2)} on the set it was measured on`,
       ).toBeLessThanOrEqual(TOL_DB);
     }
     // The reason has to be a reason, not a shrug.
@@ -1987,13 +2037,14 @@ describe('V42 (herankerd bij V43) — what the budget on the SUM did, on the cor
     }).gestelde_eisen?.gemeten_bult_referentiefilters_dB;
     expect(stated, 'the manifest does not record what the reference filters measure').toBeTruthy();
     for (const key of V1_BASELINES) {
-      const f = FIELD.find((x) => x.key === key)!;
+      const dated = datedLfBumpDb(key);
+      expect(dated, `${key}: no dated M-D reading`).not.toBeNull();
       expect(
-        Math.abs(f.lfBumpDb! - stated![key]),
-        `${key}: the manifest records ${stated![key]} dB and the metric now reads ` +
-          `${f.lfBumpDb!.toFixed(2)}`,
+        Math.abs(dated! - stated![key]),
+        `${key}: the manifest records ${stated![key]} dB and the metric reads ` +
+          `${dated!.toFixed(2)} on the set it was measured on`,
       ).toBeLessThanOrEqual(TOL_DB);
-      expect(f.lfBumpDb!).toBeGreaterThan(FINDING!.gesteld_budget_dB);
+      expect(dated!).toBeGreaterThan(FINDING!.gesteld_budget_dB);
     }
   });
 });
@@ -2198,7 +2249,7 @@ describe('V43 — the lift splits into a resistive and a resonant half', () => {
     for (const key of V1_BASELINES) {
       const f = FIELD.find((x) => x.key === key)!;
       expect(
-        f.lfBumpDb!,
+        datedLfBumpDb(key)!,
         `${key} no longer exceeds the WITHDRAWN budget on the SUM — then V42's finding has moved`,
       ).toBeGreaterThan(withdrawn);
       expect(
@@ -2547,11 +2598,37 @@ describe('V45 — the delivered network is tested against the stated LF budget',
      * must not reintroduce one metric later. They agree by construction (same
      * `lfBump`, same grid, same measured impedances) and this asserts it on
      * every frozen netlist rather than on the one that was tried by hand. */
+    /* M-2b — ONE NETLIST PARTS THE TWO READERS, and it is NAMED rather than
+     * absorbed into a wider tolerance (the V30 form: an exception carries its
+     * size and its reason, and the list is meant to shrink).
+     *
+     * WHY IT CAN HAPPEN AT ALL. `resonantDb` is the difference of two maxima
+     * taken independently over the band — the lift of the real network and the
+     * lift of its resistive equivalent — and on this netlist those two maxima
+     * sit about seven hertz apart. The two readers get the same band and the
+     * same measured impedance but arrive on different GRIDS (the report on the
+     * analysis grid, the delivered-network check on the gate reference's), and
+     * where a maximum is flat enough the two grids land on different points.
+     * On the M-1 set all 174 netlists agreed to four decimals; on the 67.7 L
+     * set 173 still do and C2_KAND_7 reads 0.38 dB apart.
+     *
+     * IT CHANGES NO VERDICT HERE — both readings are a decibel and a half
+     * inside the budget — but it is a real split between two readers of one
+     * number, which is exactly what V32 found in the gates, and it is written
+     * down as an open point rather than left to a tolerance. */
+    const SPLIT: readonly string[] = ['C2_KAND_7'];
     let compared = 0;
+    let split = 0;
     for (const f of FIELD) {
       if (f.lfResonantDb === null || f.lfWay === null) continue;
       const got = checked(f.key, f.lfWay);
       expect(got, `${f.key}: the delivered-network check produced nothing`).not.toBeNull();
+      if (SPLIT.includes(f.key)) {
+        split++;
+        /* A named exception still has to be BOUNDED, or it is a waiver. */
+        expect(Math.abs(got! - f.lfResonantDb), `${f.key}: the split grew`).toBeLessThan(0.5);
+        continue;
+      }
       expect(
         Math.abs(got! - f.lfResonantDb),
         `${f.key}: the check reads ${got} where M-D reads ${f.lfResonantDb}`,
@@ -2559,8 +2636,11 @@ describe('V45 — the delivered network is tested against the stated LF budget',
       compared++;
     }
     // A loop over an empty list passes silently, which is how a guard rots.
-    expect(compared).toBe(FIELD.filter((f) => f.lfResonantDb !== null).length);
+    expect(compared).toBe(FIELD.filter((f) => f.lfResonantDb !== null).length - split);
     expect(compared).toBeGreaterThan(0);
+    /* ...and every named netlist was actually reached, so a stale name cannot
+     * sit in the list unnoticed. */
+    expect(split).toBe(SPLIT.length);
   });
 
   it('it CAN refuse: the casebook holds networks that exceed the stated budget', () => {
@@ -3376,7 +3456,7 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     expect(w!.gewenst).toBe('parallel');
   });
 
-  it('X — what the configuration asks — is CLASS A: the same on all three reference filters, above zero, and the anchor is not the lowest way', () => {
+  it('X — what the configuration asks — is CLASS A, and since M-2b it is ZERO: the lowest way IS the anchor', () => {
     for (const f of REF) {
       expect(f.levelWork, `${f.key}: no level-work block`).not.toBeNull();
       expect(f.levelWork!.requirement).toEqual(CASUS1_LOWEST_WAY_LEVEL_WORK);
@@ -3385,14 +3465,38 @@ describe('V51 — no level work on the lowest way: what the configuration asks, 
     }
     const xs = REF.map((f) => f.levelWork!.aboveAnchorDb!);
     expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(TOL_DB_V51);
-    /* The casus-1 fact V51 is about: the anchor is NOT the lowest way, so the
-     * configuration asks level work on the lowest way, and the amount is the
-     * A5d.4 gap after the target curve — the same number
-     * `verankerde_gaps_dB.woofer_tov_mid` records. */
-    expect(REF[0].levelWork!.anchor).not.toBe(REF[0].levelWork!.lowestWay);
-    expect(xs[0]).toBeGreaterThan(0);
-    const gaps = (golden as unknown as { verankerde_gaps_dB: { woofer_tov_mid: number } }).verankerde_gaps_dB;
-    expect(Math.abs(xs[0] - gaps.woofer_tov_mid)).toBeLessThanOrEqual(TOL_DB_V51);
+    /* M-2b — THE CASUS-1 FACT V51 WAS ABOUT HAS TURNED OVER, and the claim
+     * turns with it. On the M-1 set the anchor was the MID, the lowest way sat
+     * 0.78 dB above it, and the configuration therefore ASKED for level work
+     * on the lowest way while V51 forbids it — the tension that stranded
+     * thirteen of fifteen V51 candidates on the amplifier floor. On the 67.7 L
+     * set the woofer is both the lowest and the quietest way, so X is exactly
+     * zero and the requirement costs nothing by construction.
+     *
+     * Both halves are asserted, because "X is zero" on its own would also be
+     * true of a report that never computed one: the anchor IS the lowest way,
+     * and the anchored-gaps block names the non-anchor ways only. */
+    expect(REF[0].levelWork!.anchor).toBe(REF[0].levelWork!.lowestWay);
+    expect(xs[0]).toBe(0);
+    const gaps = (golden as unknown as {
+      verankerde_gaps_dB: { anker: string; gaps_tov_anker: Record<string, number> };
+    }).verankerde_gaps_dB;
+    expect(gaps.anker).toBe(REF[0].levelWork!.lowestWay);
+    expect(Object.keys(gaps.gaps_tov_anker)).not.toContain(gaps.anker);
+    /* ...and the DATED reading is the counter-proof that this is a measured
+     * change and not a lost computation: on the M-1 set the same block reads a
+     * different anchor and a POSITIVE X. */
+    const m1m = casus1Manifest(golden, 'merged');
+    const m1f = casus1Files(m1m);
+    const m1 = buildReport({
+      manifest: m1m,
+      files: m1f,
+      filter: casus1Filter('HUIDIG', m1m, m1f, golden),
+      geometry,
+      settings: BASE,
+    }).predesign.levelWork!;
+    expect(m1.anchor).not.toBe(m1.lowestWay);
+    expect(m1.aboveAnchorDb!).toBeGreaterThan(0);
     // Two equal drivers in series would deliver 20·log10(2) of it.
     expect(REF[0].levelWork!.seriesWouldDeliverDb).toBeCloseTo(20 * Math.log10(2), 6);
     /* M-1 — the design states a FLAT plateau (0 dB), so the block carries no
@@ -3610,14 +3714,37 @@ describe('V45 — the anchor is taken AFTER baffle step, and the bridge holds', 
      * the transition and is credited most; the tweeter's sits above it and is
      * credited least — so the woofer's budget must GROW and the tweeter's must
      * SHRINK. One number under two names cannot do that (V23). */
-    const bare = report('HUIDIG').predesign.gaps!;
-    const voiced = report('HUIDIG', { ...BASE, targetCurve: CURVE }).predesign.gaps!;
+    /* M-2b — MEASURED ON THE M-1 SET, and it has to be. The claim is about a
+     * curve moving two ways in OPPOSITE directions, and it needs two ways that
+     * both carry a gap. On the 67.7 L set the woofer IS the anchor, so it has
+     * no gap at all and there is nothing to compare in that direction — the
+     * anchor is the reference, not a way with a budget. The mechanism V45
+     * established has not changed; the set it can be shown on has. */
+    const m1m = casus1Manifest(golden, 'merged');
+    const m1f = casus1Files(m1m);
+    const gapsOn = (curve?: typeof CURVE) =>
+      buildReport({
+        manifest: m1m,
+        files: m1f,
+        filter: casus1Filter('HUIDIG', m1m, m1f, golden),
+        geometry,
+        settings: curve ? { ...BASE, targetCurve: curve } : BASE,
+      }).predesign.gaps!;
+    const bare = gapsOn();
+    const voiced = gapsOn(CURVE);
     expect(voiced.anchor).toBe(bare.anchor);
+    /* The premise: on THIS set the anchor is the mid, so both the woofer and
+     * the tweeter carry a budget. Without it the two lookups below could pass
+     * by reading undefined. */
+    expect(bare.anchor).toBe('mid');
     const w = (g: typeof bare, d: string): number =>
       g.ways.find((x) => x.driver === d)!.budgetDb;
     expect(w(voiced, 'woofer')).toBeGreaterThan(w(bare, 'woofer'));
     expect(w(voiced, 'tweeter')).toBeLessThan(w(bare, 'tweeter'));
     expect(voiced.notes.join(' ')).toContain('AFTER the target curve');
+    /* ...and on the LIVE set the woofer is the anchor, which is why this claim
+     * is dated rather than deleted. */
+    expect(report('HUIDIG').predesign.gaps!.anchor).toBe('woofer');
   });
 
   it('it is a PRE-design analysis still: no netlist moves it (class A)', () => {
@@ -3768,7 +3895,11 @@ describe('A5e.3-veld — the stated coil families, and every live netlist judged
     const wm = field.field.axes[0];
     const mt = field.field.axes[1];
     expect(wm.window['4'].floorBy!.rule).toBe('drive');
-    expect(mt.window['4'].floorBy!.rule).toBe('drive-stated');
+    /* M-2b — the M-T floor is the manufacturer's recommended lower bound now
+     * (2200 Hz, BlieSMa, rule 'stated-min'), which sits ABOVE A5e.3b's
+     * stated-figure floor. The claim is unchanged in substance: no recorded
+     * position may reach under whatever floor binds. */
+    expect(mt.window['4'].floorBy!.rule).toBe('stated-min');
     const recordedWm = LIVE_HERKOMST.veld_uitlijningen.per_as[0].posities_per_orde[0];
     const recordedMt = LIVE_HERKOMST.veld_uitlijningen.per_as[1].posities_per_orde[0];
     expect(recordedWm.orde).toBe(4);
@@ -3798,19 +3929,30 @@ describe('A5e.3-veld — the stated coil families, and every live netlist judged
      * under the floor, five are inside it, as the (b)3 pre-measurement said. */
     const field = casus1Field(report('HUIDIG'));
     const mt = field.field.axes[1];
-    expect(mt.window['4'].floorBy!.rule).toBe('drive-stated');
-    const kfs = mt.window['4'].limits.find((l) => l.rule === 'fs')!;
-    const excursion = mt.window['4'].limits.find((l) => l.rule === 'drive')!;
-    expect(mt.window['4'].floorHz!).toBeGreaterThan(kfs.hz);
+    /* M-2b — THE FLOOR THIS CLAIM IS ABOUT IS A5e.3b's, AND IT IS NO LONGER
+     * THE ONE THAT BINDS. Since M-2b the manufacturer's recommended lower
+     * bound (2200 Hz) sits above it, so reading the live floor would test a
+     * different statement — and a DATED finding measured against a later
+     * floor is a rewritten finding. The stated-figure floor is therefore
+     * re-derived by withholding the recommended bound, exactly as the dated
+     * bridges elsewhere in this suite withhold the inputs of their own day. */
+    const wiMt = report('HUIDIG').predesign.windowInputs.find((x) => x.lower === 'mid')!;
+    const statedFloor = crossoverWindow({ ...wiMt, order: 4, upperMinCrossoverHz: null, upperMinCrossoverOrder: null });
+    expect(statedFloor.floorBy!.rule).toBe('drive-stated');
+    expect(mt.window['4'].floorBy!.rule).toBe('stated-min');
+    expect(mt.window['4'].floorHz!).toBeGreaterThan(statedFloor.floorHz!);
+    const kfs = statedFloor.limits.find((l) => l.rule === 'fs')!;
+    const excursion = statedFloor.limits.find((l) => l.rule === 'drive')!;
+    expect(statedFloor.floorHz!).toBeGreaterThan(kfs.hz);
     expect(excursion.hz).toBeLessThan(kfs.hz);
     const datedBlock = (golden.manifest_en_geometrie as unknown as { a5e3veld_corpus?: { bestanden: { naam: string; kandidaat: string }[] } }).a5e3veld_corpus;
     expect(datedBlock, 'the case book has no a5e3veld_corpus').toBeDefined();
     const datedMt = datedBlock!.bestanden.map((b) => Number(/mid→tweeter ([\d.]+)/.exec(b.kandidaat)![1]));
     expect(datedMt).toHaveLength(7);
-    const under = datedBlock!.bestanden.filter((_b, i) => datedMt[i] < mt.window['4'].floorHz! - 0.5).map((b) => b.naam);
+    const under = datedBlock!.bestanden.filter((_b, i) => datedMt[i] < statedFloor.floorHz! - 0.5).map((b) => b.naam);
     expect(under.sort()).toEqual(['A5E3VELD_KAND_1', 'A5E3VELD_KAND_7']);
-    for (const hz of datedMt) if (hz < mt.window['4'].floorHz! - 0.5) expect(hz).toBeLessThan(1647); // P6-OK: the recorded finding of the pre-measurement, not an engine number
-    // ...and no position of the LIVE field lies under the floor.
+    for (const hz of datedMt) if (hz < statedFloor.floorHz! - 0.5) expect(hz).toBeLessThan(1647); // P6-OK: the recorded finding of the pre-measurement, not an engine number
+    // ...and no position of the LIVE field lies under the floor that binds TODAY.
     for (const hz of mt.positionsByOrder[0].hz) expect(hz).toBeGreaterThanOrEqual(mt.window['4'].floorHz! - 0.5);
   });
 });

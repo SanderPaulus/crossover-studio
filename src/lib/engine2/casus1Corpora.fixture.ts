@@ -155,6 +155,14 @@ export const DATED_CORPORA: Record<string, { block: string; name: string }> = {
    * CAGE, the barrier on the unrefined extended grid, and edge-clipped
    * (one-sided) cages at budget 24. */
   a5e3c: { block: 'a5e3c_corpus', name: 'A5e.3c' },
+  /* M-2b — the ten C-2 netlists, frozen before the MEASUREMENT SET moved. The
+   * "before" half of the only kind of comparison this project has not made
+   * before: not a boundary, a budget or a position rule, but the measurement
+   * every reference stands on. On this corpus the woofer is the August merge
+   * in the 53.2 L test box, the MID is the anchor and the lowest way sits above
+   * it; on the live one the woofer is the 11-09 re-measurement transformed to
+   * 67.7 L and it is the anchor itself. */
+  c2: { block: 'c2_corpus', name: 'C-2' },
 };
 
 /**
@@ -314,15 +322,28 @@ export interface CorpusBank {
 }
 
 /**
- * M-1 — WHICH MEASUREMENT SET THE BANK MEASURES ON. Default `'merged'`: the
- * v2 set since M-1, what every comparison from M-1 on reads (both halves
- * through the same path). `'gated'` is for the DATED claims of
- * `corpusPairing.test.ts`: the V45→V47 and V30→V32 readings that demonstrate
- * the reading rule were measured on the gated set and are pinned as numbers;
- * re-measuring them on the merged set would move the numbers without moving
- * the rule. A comparison that mixes the two sets is not a comparison.
+ * M-1, M-2b — WHICH MEASUREMENT SET THE BANK MEASURES ON. Default `'koan677'`
+ * since M-2b: the current v2 set, and BOTH HALVES of a comparison go through it.
+ * That rule has not changed since M-1; what changed is which set it names.
+ *
+ * WHY BOTH HALVES AND NOT "EACH HALF ON ITS OWN SET", and M-2b is the session
+ * where that stops being obvious. Every earlier regeneration moved ONE boundary
+ * or budget and left the measurement alone, so a dated corpus measured on the
+ * current set read the same quantities it always had. M-2b moves the
+ * MEASUREMENT, so a table that measured each half on its own set would move the
+ * netlists AND the yardstick at once and report the sum as if it were one
+ * effect. Both halves on the current set answers the question a comparison is
+ * for — what do these networks do, measured the same way — and the separate
+ * question, what the basis itself moved, is answered by the class-A bridges in
+ * `afgeleide_parameters.woofer._waarden_M1_tot_M2b` and by `m2bMeetset.test.ts`.
+ *
+ * `'gated'` is for the DATED claims of `corpusPairing.test.ts`: the V45→V47 and
+ * V30→V32 readings that demonstrate the reading rule were measured on the gated
+ * set and are pinned as numbers; re-measuring them elsewhere would move the
+ * numbers without moving the rule. A comparison that mixes sets is not a
+ * comparison.
  */
-export function corpusBank(golden: GoldenRefs = loadGolden(), set: Casus1MeasurementSet = 'merged'): CorpusBank {
+export function corpusBank(golden: GoldenRefs = loadGolden(), set: Casus1MeasurementSet = 'koan677'): CorpusBank {
   const manifest = casus1Manifest(golden, set);
   const files = casus1Files(manifest);
   const geometry = casus1Geometry(golden);

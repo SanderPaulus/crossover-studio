@@ -10708,6 +10708,286 @@ sessie dan deze.
 - **`TODO(observability)(a)` staat er nog.** Deze sessie heeft de liegende etiketten omzeild door
   de simplexaanroepen te lezen; zij heeft ze niet gerepareerd, want dat is gedeelde v1-voortgangscode.
 
+### M-2b — de 67,7 L-meetset wordt de meetbasis van casus 1, en het anker kantelt daardoor (13-09-2026, **BREAKING, alleen v2-runs**)
+
+**AANLEIDING EN OMVANG.** M-2 nam de hermeting van 11-09-2026 op als een eigen, gedateerde meetset naast
+casus 1 en schreef er met zoveel woorden bij: *"DIT IS DE MEETBASIS VAN CASUS 1 NIET. Casus 1 leest
+onveranderd M-1."* Deze sessie doet precies dat ene ding wél. Daarnaast wordt de aanbevolen ONDERGRENS van
+de tweeter gevoed — het getal dat U-4 registreerde en weigerde in te voeren, met de reden erbij dat voeden
+een ander veld en dus een regeneratie is. Beide ingrepen kosten precies één regeneratie, en zij is hier.
+
+---
+
+**WAT ER VERVANGT, EN WAT MET OPZET NIET.** De set `'koan677'` is sinds M-2b de standaard van
+`casus1Manifest`; `'merged'` (M-1) en `'gated'` (22-08) blijven als gedateerde sets bestaan. Zij vervangt
+de WOOFERHELFT en niets anders:
+
+| rol | tot M-2b | sinds M-2b |
+| --- | --- | --- |
+| woofer FF 0° (×2) | augustus-merges (`Koan_W_*_merged_ingespeeld_mild.frd`) | `woofer_*_hor_0_koan677_merged.frd` — nabij veld 11-09 + poort, getransformeerd 53,2 → 67,7 L, gespliced op hetzelfde gepoorte verre veld |
+| woofer NF (×2) | 22-08 | 11-09 |
+| woofer Z | `woofers_parallel__1_.lim` (22-08) | `woofers_parallel.lim` (11-09) |
+| mid, tweeter, hun Z, de mid 30° | — | **onveranderd** |
+
+De mid en de tweeter blijven omdat een gesloten pod en een waveguide het kastvolume niet voelen (M-2), en
+omdat er niets te herijken valt: de meetspanning is ongedocumenteerd. Dat is een besluit met een meting
+eronder en geen verzuim.
+
+**ER IS NIETS VERHUISD OP SCHIJF, en dat is de kant van de opdracht die de data weerlegde.** De opdracht
+vroeg de oude bestanden naar `casus1/meetset-vorige-2026-08/` te verplaatsen. Dat kan niet kloppen:
+`woofer_up_hor_0.txt` is de VER-VELDHELFT van de 67,7 L-merge die hem vervangt, dus een map die "vorige"
+heet zou het verkeerde zeggen over een bestand waar de huidige set uit gebouwd is. Wat een set dateert is
+haar manifestblok — precies zoals M-1 het deed, en zonder de padchurn die acht testbestanden zou raken.
+
+**WAAROM NIET DE DEMOSET ZELF.** `koan_demo_2026-09_67L/` draagt het wooferpaar als ÉÉN bestand, omdat een
+demobundel een bestand per driverblok wil (V13). Casus 1's manifest en zijn lobing-metriek kennen twee
+bronnen op twee afstanden (V20), dus casus 1 leest de twee per-driver merges. **NAGEMETEN en niet
+aangenomen: het paarbestand IS de complexe som van die twee, op 5·10⁻⁴ dB en 5·10⁻⁴° — de afdrukafronding
+van het bestand zelf.** Dezelfde data, twee vormen; `m2bMeetset.test.ts` pint de identiteit.
+
+**DE BYTE-STATUS VAN WAT NIET MEEGAAT, gemeten omdat de opdracht erom vroeg:**
+
+| demobestand | tegen wat casus 1 leest | uitkomst |
+| --- | --- | --- |
+| `tweeter.frd` | `tweeter_hor_0.txt` | **IDENTIEK**: max \|ΔdB\| 0,000 en \|Δfase\| 0,000 over 13 640 rijen |
+| `tweeter.zma`, `mid.zma` | `tweeter.lim`, `mid.lim` | zelfde meting, andere vorm: max \|ΔZ\| 5·10⁻⁵ Ω |
+| `mid.frd` | `Koan_M_merged.frd` | **ANDERE MERGE**: boven 800 Hz 0,000 dB, eronder tot 1,94 dB en 78,9° |
+
+Die laatste rij is de reden dat casus 1 de demo-mid niet leest. Het is een andere merge van dezelfde
+metingen (shelf 6 dB @ 520 Hz, splice gefit in 700–1200, crossfade 700) tegen M-1's shelf @ 440 gefit in
+500–800 — en zijn kop stelt zijn geldigheid in PROZA, dus `readMergeBlock` geeft `null` en
+`readGateHeader` `unparseable`. Hem invoeren zou de mid haar geldigheidsvloer kosten en daarmee de
+verankerde gaps blokkeren (UI-1). **De I-2-bevinding over de FASE van `Koan_M_merged.frd` blijft dus
+openstaan** — zij vraagt casus 1's mid opnieuw mergen, en dat is een andere sessie.
+
+---
+
+**DE UITKOMST DIE DE SESSIE DRAAGT: HET ANKER KANTELT.**
+
+| grootheid (HUIDIG) | M-1 | M-2b |
+| --- | --- | --- |
+| anker | mid | **woofer** |
+| X — wat de configuratie aan niveauwerk op de LAAGSTE weg vraagt | 0,78 dB | **0** |
+| `anchorSwitchWarning` | "NOT the lowest way" | **null** |
+
+Dit is geen versoepelde eis maar een andere meting. Op de M-1-set stond het wooferpaar BOVEN de stilste
+weg, dus de configuratie vroeg om niveauwerk op de laagste weg terwijl V51 het verbiedt — en dat is precies
+de spanning die dertien van de vijftien V51-kandidaten op de versterkervloer liet stranden (zonder wooferpad
+ontbrak de serieweerstand die de impedantiebodem optilde). Op de 67,7 L-set is de woofer de laagste ÉN de
+stilste weg, dus X is nul en de V51-eis kost per constructie niets meer.
+
+**WAT ER NOG MEER BEWEEGT, EN WAT MET OPZET NIET.**
+
+| klasse-A-referentie | M-1 | M-2b | klasse |
+| --- | --- | --- | --- |
+| R_e (motionele fit, zonder ingevoerde DC) | 2,8962 Ω | **3,0040 Ω** | 0,03 Ω → buiten |
+| R_e directe aflezing | 3,81 Ω | **4,15 Ω** | buiten |
+| motionele rok | 0,787 Ω | **0,910 Ω** | buiten |
+| f_L / f_b | 16,5 / 31,3 Hz | **15,9 / 30,4 Hz** | 2 % → buiten |
+| Q_bovenpiek | 4,97 | 4,79 | 7 % → binnen |
+| semi-inductantie n | 0,83 | 0,82 | 5 % → binnen |
+| M-C excursieplafond woofer | −9,83 dB | −9,79 dB | binnen |
+| **f_p** | 52,368 Hz | **52,368 Hz** | identiek |
+| **breakup** | 1396,093 Hz / 3,237 dB / Q 6,035 | **identiek** | — |
+| **geldigheidsvloer** | 20,5 Hz | **20,5 Hz** | — |
+
+De drie onderste rijen zijn de helft die telt: de breakup-scan leeft BOVEN de splice, waar beide merges
+hetzelfde onaangeroerde verre veld dragen, dus zij is identiek tot op het laatste cijfer. Zonder die
+tegenproef is een meetsetwissel niet te onderscheiden van een herschrijving.
+
+**DE SWEEP IS NIET GETRANSFORMEERD, en elke lezer hoort dat te weten.** De respons is gemodelleerd voor
+67,7 L en de last is de GEMETEN 53,2 L-testkast. M-2 mat waarom: `Z_mech` teruglezen als `Bl²/(Z − Z_b)` en
+de gemodelleerde kastlast eraf laat de driver als een klein verschil van twee grote getallen, en de uitkomst
+is onfysisch (de mechanische weerstand wordt onder 30 Hz negatief). Het nieuwe blok
+`meetset_2026_09_67L.sweep_frame` legt per lezer vast wat dat betekent:
+
+- **M-B/|Z|** leest de gemeten sweep, en dat is het goede antwoord — een versterker ziet de last die de
+  drivers in hun kast presenteren, en het minimum ligt op 152,7 Hz, ver boven waar het volume iets doet.
+- **M-D** leest BEIDE frames tegelijk (respons 67,7 L, impedantie 53,2 L). Daar zit de mismatch en zij zit
+  waar de metriek kijkt: de reflexpiek van de last staat 3,4 Hz hoger dan die van de respons.
+- **M-E** leest alleen de impedantie en is dus volledig in het 53,2 L-frame — geen mismatch maar de juiste
+  lezing, want Q_es schaalt met de bronweerstand en niet met het volume.
+- **de geoordeelde band** begint op f_p uit de impedantie (52,37 Hz). In de echte kast ligt f_p LAGER
+  (dezelfde poort in 67,7 L stemt af op f_b 26,30 in plaats van 29,67 Hz), dus de band is CONSERVATIEF en
+  nooit permissief.
+- **boven 100 Hz doet de transformatie vrijwel niets en boven 300 Hz meetbaar niets (0,005 dB)**, en de hele
+  kruisband van de woofer ligt daarin. Voor het FILTERONTWERP draagt deze mismatch geen foutbalk; zij raakt
+  de basafstemming.
+
+**DE PLACEHOLDER-VLAG IS VERVALLEN, EN WAT ERVOOR IN DE PLAATS KOMT IS NIET "AF".** De M-1-set droeg
+*"PLACEHOLDER tot groundplane/hermeting na inspelen"* omdat de augustusmerge niet te reproduceren was: haar
+eigen kop noemde een poortmeting die in de repo niet bestond (I-2). Die meting is er. Wat blijft zijn drie
+BENOEMDE foutbalken: (1) de modeltransformatie — onder de splice is dit nabij veld plus stapmodel plus
+volumetransformatie, geen meting op afstand; (2) de aandrijftoestand van de nabije velden (één woofer
+aangedreven, de andere passief) — STATED, NOT CORRECTED, Sander 12-09-2026, en de zin reist mee in de
+`Merge floor reason` van élk bestand; (3) de B_l-gevoeligheid — bij ±10 % op 10,45 Tm beweegt de respons
+2,3 dB rond 30 Hz en **minder dan 0,2 dB boven 60 Hz**.
+
+---
+
+**EEN CLAIM DIE NIET MEER WAAR IS, EN NIET OPGEREKT.** V8d's bevinding was dat de motionele fit landt op de
+meterlezing van het parallelle paar: op de augustussweep 0,004 Ω ernaast. Op de sweep van 11-09 landt hij
+**0,104 Ω** erboven — buiten de ohm-klasse. De tolerantie is niet verruimd; de afstand is gemeten en
+opgeschreven in `afgeleide_parameters.woofer.Re_meterlezing`, met beide meterlezingen die dit casusboek
+draagt en die het al die tijd niet met elkaar eens waren: 2,90 Ω (casusboek) en 3,05 Ω (de eigen lezing van
+de referentie-analyse, `docs/prototype/compare.py`). De fit landt sinds 11-09 ertussen, dichter bij de
+tweede — en dat is precies de waarde die de HELE route invoert, dus geen enkele poort, grens of metriek
+beweegt hierdoor. **Wat de meting zou beslechten is een meterlezing bij de hermeting van 11-09, en die is
+niet genoteerd.** De V8d-bevinding zelf staat onverkort: de directe aflezing overschat R_e met de motionele
+rok, en die rok is op deze sweep GROTER geworden.
+
+---
+
+**DE TWEEDE INGREEP: DE AANBEVOLEN ONDERGRENS WORDT GEVOED.** U-4 las *"Recommended frequency range
+2.2kHz - 30kHz"* van het BlieSMa-blad, voerde de BOVENgrens in (30 kHz, die niets bindt omdat de tweeter van
+geen enkel paar de onderste weg is) en liet de ONDERgrens staan met de reden erbij:
+
+> *"de ondergrens is een VLOER, en op casus 1 zou zij de mid→tweeter-vloer van 1646,9 Hz (drive-stated,
+> A5e.3b) naar 2200 Hz tillen — een ander veld en dus een regeneratie."*
+
+Sander stelde de vloer op 12-09-2026. Wat het kost:
+
+| | tot M-2b | sinds M-2b |
+| --- | --- | --- |
+| M-T-venster | 1647 – 2304 Hz | **2200 – 2304 Hz** |
+| spanwijdte | 0,484 octaaf | **0,067 octaaf** |
+| M-T-posities | 2 | **1** (2251,4 Hz) |
+| veld | 8 × 2 = 16 uit 22 aangeboden | **11 × 1 = 11, onder budget 16** |
+
+De 2200 Hz wordt VERBATIM genomen en niet geïnverteerd: een ondergrens wordt alleen opgetild voor een flank
+die ONDIEPER is dan die waarbij het blad haar stelt (2e orde), en de gestelde orde is 4 — steiler (U-3g).
+Het veld ligt onder het budget, dus er wordt NIETS gedund: wat het kleiner maakt is een grens en geen
+begroting.
+
+**EN DE BEVINDING DIE ERUIT VALT.** Het PLAFOND blijft de breakup-afleiding van de mid (5688 Hz gedeeld door
+een geïnterpoleerde 2,4689) en die deler draagt sinds V9 het UNCALIBRATED-merk. **De aanbeveling van de
+tweeter en de breakup van de mid liggen 0,07 octaaf uit elkaar: dit driverpaar heeft, zodra beide bladen
+serieus genomen worden, vrijwel geen legale overnameband.** Dat is precies de spanning waarvoor A5d.3
+gebouwd is — conflicterende zones worden getoond in plaats van opgelost — en de bovenste van die twee
+grenzen rust op een getal dat niemand gemeten heeft. **De tweetoonsmeting van
+`driverkaart.breakup_deler.protocol` blijft daarmee het scherpste open punt van deze casus.**
+
+---
+
+**DE REGENERATIE, EN ZIJ BEANTWOORDT DE VRAAG VAN DE SESSIE.** Elf kandidaten, acht tegelijk,
+**4146 s (69 min)**; per kandidaat 1066–4144 s. **DRIE GELEVERD, ACHT GEWEIGERD**, en de shortlist
+bevriest alle drie (drie van drie — voor het eerst sinds A5e.3c is de lijst niet de bindende grens).
+
+| W-M | uitkomst | M-D opslingering | rimpel / fase | min \|Z\| | RMS vol / vanaf 397 | BOM |
+| --- | --- | --- | --- | --- | --- | --- |
+| 156,7 | geweigerd (budget) | **4,42** | — | — | 2,29 | — |
+| 176,6 | geweigerd (budget) | **4,84** | — | — | 1,03 | — |
+| 199,1 | geweigerd (budget) | **3,25** | — | — | 1,21 | — |
+| 224,4 | geweigerd (budget) | **4,41** | — | — | 2,09 | — |
+| **253** | **GELEVERD** | **+1,11** | 2,35 dB / 11,6° | 2,58 Ω | 1,20 / 1,23 | € 513 |
+| 285,1 | geweigerd (gate + topology) | — | — | 2,53 | 1,00 | — |
+| 321,4 | geweigerd (budget) | **3,92** | — | — | 2,29 | — |
+| **362,3** | **GELEVERD** | **−0,61** | 2,33 dB / 9,1° | 2,61 Ω | 1,14 / 0,91 | € 490 |
+| 408,4 | geweigerd (topology) | — | — | — | 0,79 | — |
+| 460,3 | geweigerd (budget) | **2,57** | — | — | 2,32 | — |
+| **518,8** | **GELEVERD** | **−0,94** | 2,31 dB / 8,6° | 2,58 Ω | 1,16 / 1,00 | € 264 |
+
+**HET ANTWOORD OP SANDERS VRAAG IS JA.** Het veld haalt 1,4 dB op de echte kast: drie van elf
+kandidaten, met opslingering **−0,94, −0,61 en +1,11 dB**. De beste op RMS is **362,3 · 2251,4**
+(1,14 dB over de volle band, 0,91 vanaf 397 Hz, M-K 10,3°/8,4°, min \|Z\| 2,61 Ω, 39 onderdelen,
+€ 490); de goedkoopste is **518,8 · 2251,4** (€ 264, RMS 1,16, opslingering −0,94 en de laagste
+dissipatie van de drie). Van de acht weigeringen vallen er **zes op M-D** (2,57–4,84 dB), één op de
+versterkervloer (285,1 vraagt 1,27 Ω serieweerstand die de eis verbiedt) en één op een
+resonantieloze shunt-keten. Er is dus GEEN reden het budget te verplaatsen — maar wel iets om te
+weten voordat iemand dat overweegt, en het is de tweede meting van deze sessie.
+
+---
+
+**DE TWEEDE MÉTING: WELKE INVOER M-D VERPLAATST, EN HET IS NIET DE KASTTRANSFORMATIE.**
+`scripts/measure-m2b-lf-arms.ts`, zes armen met elk ÉÉN factor verzet, op het bevroren C-2-corpus:
+
+| arm | aandeel in de verschuiving | boven het budget (van 11) |
+| --- | --- | --- |
+| M-1 (niets verzet) | — | 0 |
+| alleen het VERRE veld (de 67,7 L-merge) | **3,8 %** | 0 |
+| alleen het NABIJE veld (11-09, ruw) | **123,4 %** | 3 |
+| alleen de SWEEP (11-09) | 16,7 % (tegengesteld) | 0 |
+| M-2b (alle drie) | 100 % | 1 |
+| M-2b met het nabije veld GETRANSFORMEERD | — | 2 |
+
+**De kasttransformatie doet vrijwel niets en het nabije veld bijna alles.** M-D leest het nabije
+veld als de kale-kast-respons, en dat van 11-09 is gemeten met ÉÉN woofer aangedreven: de
+reflexinkeping van de conus ligt daardoor **4,0–4,8 Hz onder f_b** waar die van augustus 1,3–2,0 Hz
+eronder ligt. De vierde arm beantwoordt de volgende vraag voordat iemand hem stelt: als het FRAME
+het probleem was, zou het nabije veld naar 67,7 L transformeren het moeten repareren — **dat doet
+het niet, de arm beweegt beide kanten op.** De dominante factor is de AANDRIJFTOESTAND en niet het
+volume, en een modelleerstap is dus geen uitweg.
+
+**WAT DAT VOOR HET BUDGET BETEKENT, en het is de eerlijke lezing:** de 1,4 dB is bij V43 herijkt op
+de augustusmeting, en op de nieuwe meting leest M-D 0,31–1,54 dB strenger op dezelfde netwerken.
+Toch blijft **49 van de 50 netlists van het casusboek binnen het budget** (alleen `C2_KAND_1` gaat
+eroverheen) en haalt het nieuwe veld het drie keer. Het budget is dus NIET onbereikbaar geworden;
+wat er staat is een strengere lezing waarvan de oorzaak benoemd is. **De keuze die overblijft is
+Sanders: het budget opnieuw stellen, of de nabije velden hermeten met beide woofers aangedreven.**
+Er is niets in deze sessie eigenmachtig aan een van beide gedaan.
+
+---
+
+**WAT ER VERDER BEWOOG, en het is meer dan een regeneratie normaal verplaatst.**
+
+**NEGEN GEDATEERDE NETLISTS ZAKKEN NET ONDER DE VERSTERKERVLOER.** De nieuwe sweep verlaagt min \|Z\|
+met ongeveer 0,03 Ω, en negen netlists die op 2,55–2,57 Ω binnen de meettolerantie van de 2,60 Ω-vloer
+zaten lezen nu 2,52–2,55. De uitzonderingenlijst gaat van dertien namen naar tweeëntwintig. Dat is
+precies waar die lijst voor is (V30: boekhouding, geen vrijstelling) en élke naam draagt zijn reden
+— maar het is een lijst die hoorde te krimpen en die gegroeid is, en dat staat hier omdat het niet
+wegvalt tegen de rest.
+
+**EEN LATENTE FOUT IN DIE GUARD IS ERDOOR ZICHTBAAR GEWORDEN.** De regel eiste dat elke reden naar
+een genummerde casusboek-entry wijst, met `\bV\d+\b` — een patroon dat `V51b`, `A5e.3c`, `M-2b` en
+`E-5c` geen van alle matcht. Het viel pas op toen `V51B_KAND_6` onder de vloer zakte en zijn
+CORRECTE reden de controle niet haalde. Het patroon volgt sindsdien de namen die dit boek werkelijk
+gebruikt.
+
+**ÉÉN NETLIST SPLIJT DE TWEE LEZERS VAN M-D.** `deliveredResonantDb` (waarop de worker weigert) en
+`metrics.lfBump` (wat het paneel afdrukt) lazen op de M-1-set op alle 174 netlists hetzelfde getal
+tot in vier decimalen. Op de 67,7 L-set doen 173 dat nog en leest `C2_KAND_7` er **0,378 dB** naast.
+De reden is de vorm van de grootheid: `resonantDb` is het VERSCHIL VAN TWEE ONAFHANKELIJK GENOMEN
+MAXIMA (de lift van het echte netwerk en die van zijn resistieve equivalent), en op deze netlist
+liggen die twee maxima zeven hertz uit elkaar — waar zo'n maximum vlak genoeg is landen twee
+RASTERS op verschillende punten. **Het verandert hier geen enkel oordeel** (beide lezingen liggen
+anderhalve dB binnen het budget), maar het is een echte splitsing tussen twee lezers van één getal —
+precies wat V32 in de poorten vond — en zij staat als BENOEMDE uitzondering met haar grootte in de
+guard, niet in een opgerekte tolerantie. **Openstaand.**
+
+**DE V8d-CLAIM IS VAN VORM VERANDERD** (zie hierboven), de A5d.6-INVERSIE is opnieuw opgelost
+(2,322 → 1,999 mH bij 0,5 Ω padweerstand — zij leest het nabije veld), en élke klasse-B-referentie
+van de drie referentiefilters die de wooferhelft leest is herleid mét haar M-1-brug. Anders dan bij
+M-1 bewegen daar ook de ELEKTRISCHE velden: M-1 verving alleen het verre veld, M-2b de sweep en het
+nabije veld erbij.
+
+**DRIE GEDATEERDE ARGUMENTEN WORDEN SINDS M-2b OP HUN EIGEN MEETSET GEREPRODUCEERD** —
+`_maxL_op_de_som_V42`, `v43_inversie_bevinding` en het V42-bevindingsblok — en elk van de drie zegt
+dat nu in een eigen `_gemeten_op`-veld. Zij zijn ARGUMENTEN over een besluit en geen metingen van
+vandaag; hermeten op de nieuwe data is ze herschrijven. Dezelfde discipline die elke gepoorte brug
+in dit boek al volgt, nu één meetset verder.
+
+---
+
+**WAT ER NIET GEDAAN IS, en waarom.**
+
+- **De sweep is niet getransformeerd.** M-2 mat waarom (de teruggerekende driver wordt onfysisch), en
+  `sweep_frame` legt per lezer vast wat de mismatch betekent. Boven 100 Hz doet de transformatie
+  vrijwel niets, dus de kruisband draagt er geen foutbalk van.
+- **Het nabije veld is niet getransformeerd en niet gecorrigeerd.** De arm laat zien dat een
+  transformatie het niet repareert; een correctie op de aandrijftoestand zou een modelfactor bovenop
+  een meting in de verkeerde toestand zijn, en dat is de A3h-laag die dit project verbiedt.
+- **De mid is niet opnieuw gemergd.** De I-2-bevinding over zijn FASE (de minimumfase-fout in
+  `merge-casus1-mid.ts`) staat nog open; zij vraagt casus 1's mid opnieuw mergen en dat verplaatst
+  élke referentie opnieuw. Deze sessie verving de WOOFERHELFT, en dat is genoeg voor één
+  regeneratie.
+- **De 2200 Hz is verbatim genomen en niet geïnverteerd.** De gestelde orde is 4, steiler dan de 2e
+  waarbij het blad de aanbeveling doet, en een ondergrens wordt alleen opgetild voor een ONDIEPERE
+  flank (U-3g).
+- **Het M-T-plafond blijft ONGEKALIBREERD.** De tweetoonsmeting van
+  `driverkaart.breakup_deler.protocol` is niet gedaan, en met een venster van 0,067 octaaf is dat nu
+  het scherpste open punt van deze casus: de bovenkant van de enige legale overnameband van dit
+  driverpaar rust op een deler die niemand gemeten heeft.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

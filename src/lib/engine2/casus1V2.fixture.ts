@@ -37,7 +37,7 @@ import {
 } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { chainGridFrom, judgedBandFloor } from './predesign/judgedBand.ts';
-import type { DriverBreakupDivisor, DriverMaxCrossover } from './predesign/xoWindow.ts';
+import type { DriverBreakupDivisor, DriverMaxCrossover, DriverMinCrossover } from './predesign/xoWindow.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
@@ -54,6 +54,7 @@ import {
   casus1BreakupDivisors,
   casus1MaxCrossingHzByPair,
   casus1MaxCrossovers,
+  casus1MinCrossovers,
   casus1QesMultiplierMax,
   casus1RippleStopFromLowestCrossing,
   casus1TargetCurve,
@@ -314,9 +315,22 @@ export const CASUS1_MAX_CROSSING_HZ_BY_PAIR: Record<string, number> = casus1MaxC
 export const CASUS1_MAX_CROSSOVER_BY_DRIVER = casus1MaxCrossovers();
 export const CASUS1_BREAKUP_DIVISOR_BY_DRIVER = casus1BreakupDivisors();
 
+/**
+ * M-2b — the OTHER end of that same datasheet line, and it is the one that
+ * moves a window. The tweeter's recommended lowest handover (2200 Hz at 2nd
+ * order, BlieSMa T25T-6) lifts the mid→tweeter floor from A5e.3b's derived
+ * 1646.9 Hz to 2200 Hz, leaving a 0.067-octave window against the breakup
+ * ceiling at 2304 Hz — one position where there were three.
+ *
+ * U-4 registered the number and refused to feed it, because feeding it is a
+ * different field and therefore a regeneration. M-2b IS that regeneration.
+ */
+export const CASUS1_MIN_CROSSOVER_BY_DRIVER = casus1MinCrossovers();
+
 export const CASUS1_WINDOW_SETTINGS: {
   maxCrossingHzByPair?: Record<string, number>;
   driverMaxCrossoverByDriver?: Record<string, DriverMaxCrossover>;
+  driverMinCrossoverByDriver?: Record<string, DriverMinCrossover>;
   driverBreakupDivisorByDriver?: Record<string, DriverBreakupDivisor>;
 } = {
   ...(Object.keys(CASUS1_MAX_CROSSING_HZ_BY_PAIR).length > 0
@@ -324,6 +338,9 @@ export const CASUS1_WINDOW_SETTINGS: {
     : {}),
   ...(Object.keys(CASUS1_MAX_CROSSOVER_BY_DRIVER).length > 0
     ? { driverMaxCrossoverByDriver: { ...CASUS1_MAX_CROSSOVER_BY_DRIVER } }
+    : {}),
+  ...(Object.keys(CASUS1_MIN_CROSSOVER_BY_DRIVER).length > 0
+    ? { driverMinCrossoverByDriver: { ...CASUS1_MIN_CROSSOVER_BY_DRIVER } }
     : {}),
   ...(Object.keys(CASUS1_BREAKUP_DIVISOR_BY_DRIVER).length > 0
     ? { driverBreakupDivisorByDriver: { ...CASUS1_BREAKUP_DIVISOR_BY_DRIVER } }

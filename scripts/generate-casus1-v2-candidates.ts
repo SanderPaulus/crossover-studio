@@ -38,6 +38,7 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1Manifest,
+  casus1SetOf,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { buildReport } from '../src/lib/engine2/report.ts';
@@ -1338,11 +1339,16 @@ writeFileSync(
           'daar en houdt de resolutie van het precedent (96 punten over 200–20 000 Hz).',
       },
       meetset: {
-        set: 'merged',
+        set: casus1SetOf(manifest),
         bestanden: Object.fromEntries(manifest.entries.map((e) => [e.file, { driver: e.driver, kind: e.kind, hoek: e.angleDeg ?? null }])),
         _:
-          'M-1: de gemergede set (manifest_en_geometrie.gemergde_set) — de on-axis ver velden van woofers en mid ' +
-          'zijn NF/FF-merges met een geldigheidsblok; status PLACEHOLDER tot groundplane/hermeting.',
+          'M-2b: de 67,7 L-set (manifest_en_geometrie.meetset_2026_09_67L) — de WOOFERHELFT is de hermeting van ' +
+          '11-09-2026 getransformeerd naar de echte kast (twee per-driver NF/FF-merges, hun nabije velden en de ' +
+          'parallelle sweep van diezelfde sessie); mid en tweeter zijn de M-1-set ongewijzigd, want een gesloten ' +
+          'pod en een waveguide voelen het kastvolume niet. De SWEEP is de gemeten 53,2 L-testkast en is NIET ' +
+          'getransformeerd — zie meetset_2026_09_67L.sweep_frame voor wat dat per lezer betekent. De ' +
+          'PLACEHOLDER-vlag van de M-1-set is daarmee vervallen; wat ervoor in de plaats komt zijn drie benoemde ' +
+          'foutbalken (modeltransformatie, aandrijftoestand van de nabije velden, B_l-gevoeligheid).',
       },
       veld_uitlijningen: {
         bibliotheek: CASUS1_FIELD_ALIGNMENTS.map((a) => `${a.kind}${a.order}`),
