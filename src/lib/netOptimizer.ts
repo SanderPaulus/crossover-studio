@@ -677,6 +677,73 @@ export interface NetOptimizeOptions {
    */
   rippleTargetBandHz?: [number, number];
   /**
+   * E-5c — HOW LONG A STRUCTURE RETUNE IS GIVEN.
+   *
+   * The staged pass tests a structure move by re-fitting the VALUES around it:
+   * one part opened or shorted (prune), or one bypass capacitor added
+   * (escalation). Both retunes are SEEDED on the converged vector — they always
+   * were, and the amp-load repair already calls that "warm-started" — and both
+   * then get the full simplex budget, twice.
+   *
+   * THE MEASUREMENT SAYS WHERE THAT BUDGET STOPS EARNING. On casus 1 not one
+   * of the four structure retunes ever met its tolerance: all four ran to the
+   * 3276-iteration ceiling. What they did do is arrive: the running best came
+   * within 1 % of that call's own final value after 1522, 2006, 1989 and 2385
+   * of 4047–4213 evaluations. So a little over half the budget buys the answer
+   * and the rest buys the last percent of it.
+   *
+   * `'capped'` stops there. The STEPS are untouched — and that is a correction
+   * the measurement forced: a local polish (small initial simplex) was built
+   * first and LOST on the two-way fixture, six of eight retunes falling back,
+   * because a structure change moves the optimum far enough that a local
+   * refinement cannot follow it. The budget was the slack; the step was not.
+   *
+   * THE SAFETY NET, and it is what makes this cheap rather than risky: a capped
+   * retune that fails the acceptance rule is retried UNCAPPED before the
+   * structure move is judged, against the same rule written once. So the cap
+   * can never cost a move that the full search would have taken — only the
+   * extra attempt.
+   *
+   * NEVER LONGER THAN THE SEARCH IT REPLACES. The cap is an absolute number
+   * measured on a 39-value three-way; on a small design the full budget is
+   * already smaller, and a "cap" above it would be a budget INCREASE wearing
+   * the word cap. It is applied as a minimum with the search budget, so on
+   * those runs this choice is exactly the search, byte for byte.
+   *
+   * WHAT IT DOES NOT TOUCH, deliberately. The basin challenge retunes from
+   * `reseedOutliers`, which exists to LEAVE the current basin. The value tune,
+   * the post-structure settle and the target barrier tune are not structure
+   * retunes. Nothing about WHAT is stripped, or WHEN, moves.
+   *
+   * Absent = `'search'`, byte for byte. A CHOICE and not polish because where a
+   * search stops decides which point it lands on, and therefore which network
+   * is delivered — the reason `errorSmoothOct` stopped being polish at V38-fix.
+   */
+  structureRetune?: StructureRetune;
+  /**
+   * E-5c — WHETHER A TUNE THIS RUN HAS ALREADY DONE IS DONE AGAIN.
+   *
+   * Measured on casus 1 (`scripts/measure-e5c-prune-anatomy.ts`): the basin
+   * challenge and the drift catch that follows it reseed to the SAME vector —
+   * `reseedOutliers` resets outliers to exactly textbook, so two different
+   * starting points reach one point — and the run then fits it twice. Every
+   * intermediate objective value of the second fit equals the first to nine
+   * decimals, all sixteen simplex calls of it, for 28 581 evaluations and 323
+   * seconds: 17.6 % of that run, spent arriving at a number it already had.
+   *
+   * THE ONE KEY HERE THAT CANNOT CHANGE THE DELIVERED NETWORK, and it is filed
+   * as a choice anyway. The fit is a pure function of its inputs within a run
+   * (A5e.4 is exactly that claim), so reuse returns the same parts. What it
+   * does change is `evaluations`, which is a REPORTED number both byte
+   * baselines compare — so it cannot be a silent optimisation, and a shortcut
+   * filed as polish is how a shortcut that turns out not to be equivalent
+   * hides. It is stated, it is in the fingerprint, and the two-arm measurement
+   * is what shows the networks agree.
+   *
+   * Absent = `'recompute'`, byte for byte.
+   */
+  repeatedTune?: RepeatedTune;
+  /**
    * V47 — WHICH RULE JUDGES THE UPPER DRIVER'S PROTECTION IN THE FULL-BAND
    * SAFETY GATE.
    *
@@ -969,6 +1036,26 @@ export interface NetOptimizeOptions {
  */
 export type RippleTargetBand = 'judged' | 'from-lowest-crossing';
 
+/**
+ * E-5c — HOW LONG A STRUCTURE CANDIDATE'S RETUNE IS GIVEN.
+ *
+ *   'search' — the historic reading and the default: the full budget.
+ *   'capped' — the SAME search, stopped at the measured point where such a
+ *              retune has what it comes for, with one uncapped retune before a
+ *              structure move is judged on a capped answer.
+ */
+export type StructureRetune = 'search' | 'capped';
+
+/**
+ * E-5c — WHETHER A TUNE THAT HAS ALREADY BEEN COMPUTED IS COMPUTED AGAIN.
+ *
+ *   'recompute' — the historic reading and the default.
+ *   'reuse'     — a run-scoped memo on the value fit. Same input, same answer:
+ *                 A5e.4 is the guarantee, and the memo is keyed on everything
+ *                 the fit reads.
+ */
+export type RepeatedTune = 'recompute' | 'reuse';
+
 export interface NetOptimizeResult {
   /** The schematic parts with re-fitted values (locked ones untouched). */
   parts: VxpPart[];
@@ -1055,6 +1142,17 @@ export interface NetOptimizeResult {
   /** The band the run actually optimised on — an optimiser that cannot say
    *  which band it worked on is not auditable (issue #14). */
   bandNote: string;
+  /**
+   * E-5c — what the two E-5c choices actually did on this run, present ONLY
+   * when one of them was stated (the V30 `zFloorSourceNote` shape, so a run
+   * that states neither is byte-identical to every run before them).
+   *
+   * Reported and never read by a decision. It exists because both choices are
+   * claims about COST that must be falsifiable from a single run: how many
+   * structure retunes ran warm, how many of those had to be retried cold, and
+   * how many fits the memo served instead of recomputing.
+   */
+  structureRetuneNote?: string;
   /**
    * Set when a pass after the value search had to be rolled back because it
    * could not reach its goal without breaking a hard constraint (A3f).
@@ -1594,6 +1692,25 @@ function seriesCeilFor(
   if (kind === 'R') return SERIES_CEIL.R;
   return Math.max(SERIES_CEIL[kind], SERIES_CEIL_MULT[kind] * textbook[kind]);
 }
+
+/**
+ * E-5c — WHERE A CAPPED STRUCTURE RETUNE STOPS, in iterations.
+ *
+ * THE MEASURED NUMBER, and it is measured on the only quantity that exists
+ * here. "Iterations to convergence" does not: on casus 1 every one of the four
+ * structure retunes ran to its 3276-iteration ceiling without ever meeting the
+ * tolerance. What does exist is how long a retune takes to reach what it
+ * eventually finds — evaluations until the running best is within 1 % of that
+ * call's own final value: 1522, 2006, 1989 and 2385 of 4047–4213. The tail is
+ * 2385, and those calls averaged 1.26 evaluations per iteration, so 2385
+ * evaluations is about 1893 iterations. Rounded up.
+ *
+ * So the cap keeps the whole measured distribution and drops what came after
+ * it. It is not a promise that 1900 is enough on every design — it is the
+ * measured tail of one — and the uncapped retry is what makes being wrong
+ * about that cost an attempt instead of a component.
+ */
+export const STRUCTURE_RETUNE_CAP_ITERATIONS = 1900;
 
 /** Reset big-side reactive OUTLIERS (> tol × textbook magnitude) to exactly
  *  textbook; returns null when nothing exceeds. Only the big side: oversized
@@ -3621,7 +3738,49 @@ export function optimizeNetworkValues(
     freeCount: number;
     fx: number;
     metrics: Metrics;
+    /** E-5c — true when a requested cap was actually SHORTER than the budget
+     *  and therefore stopped this fit early. False when no cap was asked for,
+     *  and false when one was asked for but the budget was already below it:
+     *  in that case the fit IS the full search, and retrying it uncapped would
+     *  re-run the identical computation. */
+    cappedEarly?: boolean;
   }
+
+  /* E-5c — the fit memo and its bookkeeping. `reuseTunes` is the stated
+   * choice; with it absent the map is never written, never read, and the
+   * counter stays zero, so nothing below this line exists for a v1 run. */
+  const reuseTunes = opts.repeatedTune === 'reuse';
+  const structureCapped = opts.structureRetune === 'capped';
+  const tuneMemo = new Map<string, TuneOut>();
+  let tuneMemoHits = 0;
+  /** Store a fit under its key (when one was made) and hand it back. */
+  const remember = (key: string | null, out: TuneOut): TuneOut => {
+    if (key !== null) tuneMemo.set(key, { ...out, parts: cloneParts(out.parts) });
+    return out;
+  };
+  /* E-5c — how many structure retunes ran under the cap, and how many of those
+   * had to be re-run uncapped before the move could be judged. Reported, never
+   * read by a decision. */
+  let structureCappedCount = 0;
+  let structureUncappedRetries = 0;
+  /* The cost note, read at RETURN time so it reports the run that happened.
+   * Yields an EMPTY object unless a choice was stated, so the field is absent
+   * from the serialised result of every run that states neither — which is
+   * what keeps both byte baselines reproducing. */
+  const structureNote = (): { structureRetuneNote?: string } => {
+    if (!structureCapped && !reuseTunes) return {};
+    const parts: string[] = [];
+    if (structureCapped) {
+      parts.push(
+        `structure retunes capped: ${structureCappedCount}` +
+          (structureUncappedRetries > 0
+            ? `, ${structureUncappedRetries} re-run uncapped before the move was judged`
+            : ', none needed the uncapped retry'),
+      );
+    }
+    if (reuseTunes) parts.push(`repeated fits reused: ${tuneMemoHits}`);
+    return { structureRetuneNote: parts.join('; ') };
+  };
 
   /** Nelder-Mead value re-fit of a parts array; never worse than its seed.
    *  With `barrier` (staged mode) exceeding the targets is punished hard, so
@@ -3652,11 +3811,50 @@ export function optimizeNetworkValues(
      *  stops counting and the deep polish is skipped", which is two more
      *  changes than anyone asked for. */
     zFloorRepairPass = false,
+    /** E-5c — stop the search at this many iterations per simplex call, when
+     *  that is FEWER than the budget. Null = the search this function has
+     *  always run, byte for byte. Only the staged pass's two structure retunes
+     *  ever pass it. */
+    capIterations: number | null = null,
   ): TuneOut => {
+    /* E-5c — THE RUN-SCOPED FIT MEMO, and it is only consulted when the run
+     * asked for it. Keyed on everything the fit reads that can differ between
+     * two calls: the parts as values, and every argument above. RUN-SCOPED for
+     * the reason the gate cache states one screen up — a module-level memo
+     * would survive into the next run, where the measurements are different
+     * objects, and a reproducibility claim that rests on remembering to clear a
+     * map is not a claim. A hit returns CLONED parts, so no caller can reach
+     * another caller's array. */
+    const memoKey =
+      reuseTunes
+        ? JSON.stringify([
+            budgetScale,
+            barrier,
+            applyWindow,
+            zFloorBarrier,
+            zFloorRepairPass,
+            capIterations,
+            ps.map((q) => [
+              q.partId ?? q.type,
+              q.type,
+              q.open === true,
+              q.shorted === true,
+              q.locked === true,
+              q.params.map((par) => [par.name, par.value]),
+            ]),
+          ])
+        : null;
+    if (memoKey !== null) {
+      const hit = tuneMemo.get(memoKey);
+      if (hit) {
+        tuneMemoHits++;
+        return { ...hit, parts: cloneParts(hit.parts) };
+      }
+    }
     const { work, free } = buildWork(ps);
     if (free.length === 0) {
       const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
-      return { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m };
+      return remember(memoKey, { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m, cappedEarly: false });
     }
     /* A5e.3 — THE DCR THAT MOVES WITH THE INDUCTANCE. A free coil on a way
      * with a stated family re-reads its DCR from the fit at every evaluation,
@@ -3953,10 +4151,15 @@ export function optimizeNetworkValues(
       return fxOf(m) + barr + 8 * penalty;
     };
     const x0 = free.map((e) => Math.log10(e.value));
-    const iters = Math.max(
+    const budget = Math.max(
       200,
       Math.round((maxIterations ?? Math.max(700, 140 * free.length)) * budgetScale),
     );
+    /* E-5c — a cap NEVER lengthens the search (see `structureRetune`): on a
+     * design whose budget is already below it this line is the identity, and
+     * the choice costs nothing anywhere. */
+    const iters = capIterations === null ? budget : Math.min(capIterations, budget);
+    const cappedEarly = iters < budget;
     let fit = nelderMead(objective, x0, { maxIterations: iters, tolerance: 1e-6, step: 0.1 });
     const again = nelderMead(objective, [...fit.x], { maxIterations: iters, tolerance: 1e-6, step: 0.25 });
     if (again.fx < fit.fx) fit = again;
@@ -4052,7 +4255,7 @@ export function optimizeNetworkValues(
       }
       return { ...rest, params };
     });
-    return { parts: out, freeCount: free.length, fx: fxOf(m), metrics: m };
+    return remember(memoKey, { parts: out, freeCount: free.length, fx: fxOf(m), metrics: m, cappedEarly });
   };
 
   {
@@ -4378,6 +4581,22 @@ export function optimizeNetworkValues(
 
   if (opts.staged) {
     const tgt = opts.staged;
+    /* E-5c — a STRUCTURE RETUNE: the converged vector with exactly one
+     * structural change, re-fitted. One helper so the prune and the escalation
+     * cannot drift apart about what "the same retune, polished" means, and so
+     * the cold fallback below is literally the same call without the polish. */
+    const structureTune = (trial: readonly VxpPart[], capped: boolean): TuneOut => {
+      if (capped) structureCappedCount++;
+      return tune(
+        trial,
+        0.6,
+        tgt,
+        undefined,
+        undefined,
+        undefined,
+        capped ? STRUCTURE_RETUNE_CAP_ITERATIONS : null,
+      );
+    };
     // Targets are judged on the FULL grid — the numbers the user sees. The
     // decimated inner grid drives the search but its (integration-weighted)
     // phase metric can differ visibly from the full-grid one.
@@ -4497,24 +4716,38 @@ export function optimizeNetworkValues(
         const shortlist = cands.slice(0, 8);
         let accepted = false;
         for (const cand of shortlist) {
-          const t = tune(cand.trial, 0.6, tgt);
-          const tFull = fullM(t.parts);
-          if (
+          /* E-5c — THE ACCEPTANCE RULE, WRITTEN ONCE AND ASKED TWICE.
+           *
+           * The warm retune and its cold fallback have to be judged by the
+           * same rule, and the only way to guarantee that is for there to be
+           * one rule. Two copies of an acceptance test is the failure this
+           * engine has paid for elsewhere (A3g), and here it would be
+           * invisible: a fallback that judged a shade differently would strip
+           * parts the cold path never would. Nothing inside has changed —
+           * including the order, gate LAST (F2b), so a removal the quality
+           * rules reject still never costs a network solve. */
+          const acceptable = (t: TuneOut, tFull: Metrics): boolean =>
             meets(tFull) &&
             safe(tFull, curFull) &&
             rsSafe(t.parts, cur.parts) &&
             t.fx <= cur.fx * 1.1 &&
             t.fx <= fx0 * 1.35 &&
-            // F2: a removal is a polish step like any other and may not cross
-            // an active gate, however free it looks on the objective.
-            //
-            // LAST IN THE CHAIN ON PURPOSE (F2b). The gate is a VETO on a step
-            // that is otherwise about to be taken, not a filter over every
-            // trial — and `&&` short-circuits, so a removal that the quality
-            // rules reject never costs a network solve. Semantically identical
-            // either way; the ordering is the whole saving.
-            gateOk(t.parts, `prune ${cand.id}`)
-          ) {
+            gateOk(t.parts, `prune ${cand.id}`);
+
+          let t = structureTune(cand.trial, structureCapped);
+          let tFull = fullM(t.parts);
+          let ok = acceptable(t, tFull);
+          /* THE SAFETY NET. A capped retune that could not reach the
+           * acceptance rule is not an answer about the PART — it is an answer
+           * about the cap. One uncapped search before the removal is refused,
+           * so the choice can cost the run an attempt but never a component. */
+          if (!ok && structureCapped && t.cappedEarly === true) {
+            structureUncappedRetries++;
+            t = structureTune(cand.trial, false);
+            tFull = fullM(t.parts);
+            ok = acceptable(t, tFull);
+          }
+          if (ok) {
             cur = t;
             curFull = tFull;
             removed.push(cand.id);
@@ -4528,23 +4761,39 @@ export function optimizeNetworkValues(
       stage('escalation');
       /* ---- ESCALATE (rule 3): bypass-C across series resistors ---- */
       for (let round = 0; round < 2 && !meets(curFull); round++) {
-        let best: { id: string; t: TuneOut } | null = null;
+        let best: { id: string; trial: VxpPart[]; t: TuneOut } | null = null;
         const cands = bypassCandidates(cur.parts, cloneParts);
         for (const cand of cands) {
-          const t = tune(cand.trial, 0.6, tgt);
-          if (!best || t.fx < best.t.fx) best = { id: cand.id, t };
+          const t = structureTune(cand.trial, structureCapped);
+          if (!best || t.fx < best.t.fx) best = { id: cand.id, trial: cand.trial, t };
         }
         if (!best) break;
-        const bestFull = fullM(best.t.parts);
-        // The new part must EARN its place: reach the targets or pay ≥3%.
-        if (
-          safeEsc(bestFull, curFull) &&
-          rsSafe(best.t.parts, cur.parts) &&
-          (meets(bestFull) || best.t.fx < cur.fx * 0.97) &&
+        /* E-5c — the same shape as the prune above: the acceptance rule
+         * written ONCE, so the capped attempt and its uncapped retry cannot
+         * be judged differently. Unchanged inside, gate last (F2b). */
+        const earnsItsPlace = (t: TuneOut, tFull: Metrics, id: string): boolean =>
+          // The new part must EARN its place: reach the targets or pay ≥3%.
+          safeEsc(tFull, curFull) &&
+          rsSafe(t.parts, cur.parts) &&
+          (meets(tFull) || t.fx < cur.fx * 0.97) &&
           // F2: an ADDED part must earn its place inside the gates too.
           // Veto-last (F2b) — see the prune sweep above.
-          gateOk(best.t.parts, `escalation ${best.id}`)
-        ) {
+          gateOk(t.parts, `escalation ${id}`);
+
+        let bestFull = fullM(best.t.parts);
+        let ok = earnsItsPlace(best.t, bestFull, best.id);
+        /* THE SAFETY NET, mirrored: a capped retune that fell short would
+         * REFUSE a part the full search would have kept, so the winner — and
+         * only the winner — is re-run uncapped before the escalation gives up.
+         * The ranking is capped; what gets judged is not. */
+        if (!ok && structureCapped && best.t.cappedEarly === true) {
+          structureUncappedRetries++;
+          const full = structureTune(best.trial, false);
+          best = { ...best, t: full };
+          bestFull = fullM(full.parts);
+          ok = earnsItsPlace(full, bestFull, best.id);
+        }
+        if (ok) {
           cur = best.t;
           curFull = bestFull;
           added.push(best.id);
@@ -5451,6 +5700,7 @@ export function optimizeNetworkValues(
         removed: [],
         added: [],
         bandNote: bandNoteText,
+        ...structureNote(),
       ...(opts.rejectedTuneReport
           ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
           : {}),
@@ -5581,6 +5831,7 @@ export function optimizeNetworkValues(
         removed: [],
         added: [],
         bandNote: bandNoteText,
+        ...structureNote(),
       safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
       safetyKinds: kinds,
       /* V33 — the same refusal, in the one shape a caller detects. `kinds` is
@@ -5647,6 +5898,7 @@ export function optimizeNetworkValues(
         removed: [],
         added: [],
         bandNote: bandNoteText,
+        ...structureNote(),
         refusal: {
           by: 'active-gate',
           /* One category, recorded where the decision is taken (A3g). It is
@@ -5725,6 +5977,7 @@ export function optimizeNetworkValues(
     removed,
     added,
     bandNote: bandNoteText,
+    ...structureNote(),
     ...(snapNote ? { snapNote } : {}),
     ...(infeasible ? { infeasible } : {}),
     ...(ampFloorNote ? { ampFloorNote } : {}),

@@ -182,9 +182,9 @@ describe('F4c — every tuner option has a class', () => {
     // by the chain from the candidate's own handover positions). A pair in the
     // V33/V34/V37/V44/V45 shape: the decision and the data it needs, filed
     // apart. Split becomes 38/5/13.
-    expect(keys.length).toBe(56);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(56);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([38, 5, 13]);
+    expect(keys.length).toBe(58);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(58);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 13]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -309,7 +309,7 @@ describe('F4c — every tuner option has a class', () => {
      * compares against. Folding them together would make "watch the full band
      * against a stated requirement" unsayable. */
     expect(CHOICE_KEYS).toContain('safety');
-    expect(CHOICE_KEYS.length).toBe(38); // E-5b: rippleTargetBand
+    expect(CHOICE_KEYS.length).toBe(40); // E-5c: structureRetune, repeatedTune
     expect(GREY_KEYS.length).toBe(5);
     expect(POLISH_KEYS.length).toBe(13); // E-5b: rippleTargetBandHz
   });

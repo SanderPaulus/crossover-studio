@@ -48,7 +48,16 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
-    **Ná E-5b (13-09-2026) gemeten op 470 s — 186 bestanden (185 geslaagd, 1 overgeslagen),
+    **Ná E-5c (13-09-2026) gemeten op 473 s — 187 bestanden (186 geslaagd, 1 overgeslagen),
+    2379 tests (2376 geslaagd, 3 overgeslagen), in één keer groen.** +1 BESTAND
+    (`optimizer/structureRetune.test.ts`, 10 claims) en +10 tests, en die twee getallen zijn
+    HETZELFDE getal: het corpus is niet geregenereerd. GEEN nieuwe referentie: de V43-waarde van
+    289 s blijft staan. **DE EERSTE snelle run had één rode claim en zij deed haar werk:** de
+    E-3-claim in `casus1bV2Candidates.test.ts` vergelijkt de gestelde sleutels van de declaratie
+    EXACT met wat de herkomst registreert, en E-5c stelt er één bij (`repeatedTune`) die de
+    herkomst — geschreven vóór de sleutel bestond — niet kan dragen. Benoemd in `SINCE_THE_RECORD`,
+    de V15-brug die E-4 daarvoor leeg achterliet.
+        **Ná E-5b (13-09-2026) gemeten op 470 s — 186 bestanden (185 geslaagd, 1 overgeslagen),
     2369 tests (2366 geslaagd, 3 overgeslagen), in één keer groen.** +2 BESTANDEN
     (`rippleTargetBand.test.ts` 10 claims, `ingest/directivityBand.test.ts` 5) en +15 tests, en die
     twee getallen zijn HETZELFDE getal: het corpus is niet geregenereerd. GEEN nieuwe referentie: de
@@ -477,14 +486,23 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 13-09-2026 (E-5b): 186 bestanden, 2369 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 13-09-2026 (E-5c): 187 bestanden, 2379 tests,
+  1574 s (26 min 14), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
+  en +10 tests — zie de `test:fast`-regel. **DEZE RUN IS GEDRAAID OMDAT E-5c DE TUNER ZELF AANRAAKT**
+  (een run-scoped memo op de waardefit, `repeatedTune: 'reuse'`, gewapend op de v2-route), EN WAT HIJ
+  BEWIJST IS DAT DAT NIETS VERPLAATST: de DRIE live ketenruns reproduceren, dus alle drie de corpora
+  komen byte voor byte terug mét de sleutel gewapend, en beide byte-baselines (`f4cRegression`,
+  `workerRouteRegression`) reproduceren — die stellen de sleutel niet, dus zij tonen de identiteit
+  van de andere kant. E-5c's tweede sleutel (`structureRetune: 'capped'`) is GEBOUWD EN NIET
+  GEWAPEND: de meting wees hem af (ander netwerk), dus de declaratie verklaart hem ABSENT.
+  (De stand ervoor: **GEMETEN 13-09-2026 (E-5b): 186 bestanden, 2369 tests,
   1564 s (26 min 4), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle
   laag en vóór de browsercontrole.** +2 bestanden en +15 tests — zie de `test:fast`-regel.
   **DEZE RUN IS GEDRAAID OMDAT E-5b EEN KEUZESLEUTEL TOEVOEGT DIE DE ZOEKTOCHT RAAKT** (`rippleTargetBand`
   beslist wanneer de trapmethode tevreden is) EN OMDAT CASUS 1 HEM WAPENT, en wat hij bewijst is dat de
   eis op dit corpus inert is: de DRIE live ketenruns reproduceren, dus het C-2-corpus komt byte voor byte
   terug mét de sleutel gewapend, en beide byte-baselines (`f4cRegression`, `workerRouteRegression`)
-  reproduceren — die laatste twee stellen de sleutel niet, dus zij tonen de identiteit van de andere kant.
+  reproduceren — die laatste twee stellen de sleutel niet, dus zij tonen de identiteit van de andere kant.)
   (De stand ervoor: **GEMETEN 12-09-2026 (E-5): 184 bestanden, 2354 tests,
   1615 s (26 min 55), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
   browsercontroles (dev-server gestopt) en ná de snelle laag.** +3 bestanden en +39 tests — zie de
@@ -3517,6 +3535,76 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   verwachting, met een aparte claim voor onderin waar de som wél optelt. (ii) "Een kleinere kast remt
   de conus" — zie de vorige entry; bij de afstemming piekt de last en beweegt de conus juist het
   minst.
+
+### E-5c-guards (de prijs van een pas gemeten; één sleutel gewapend, één gebouwd en afgewezen)
+- **`scripts/measure-e5c-prune-anatomy.ts` — DE ANATOMIE, MET TWEE OBSERVATOREN EN NUL REGELS
+  ENGINE-WIJZIGING.** Eén casus-1-kandidaat door `handleV2Request`, met een observator op
+  `runThreeWayChain` (die via `hooks.tuneOptionsFor` een `onStage` meegeeft — mag, want `onStage`
+  staat in POLISH_KEYS omdat hij `void` teruggeeft en nooit gelezen wordt, een eigenschap van zijn
+  TYPE) en één op `nelderMead` (dimensie, plafond, stap, gebruikte iteraties, tijd, en door de
+  doelfunctie om te wikkelen het exacte aantal evaluaties plus wanneer het lopende minimum binnen
+  5/1/0,1 % van de einduitkomst kwam). `E5C_ARM=` kiest één arm, `E5C_ONLY=<n>` een andere kandidaat.
+  **LEES DE ETIKETTEN NIET.** `stage('value tune')` draait vóór de zaad-audit en `runAudit` zet het
+  etiket op `part audit (seed)` zonder het terug te zetten — de `TODO(observability)(a)` in
+  `netOptimizer.ts` — dus een fasetabel op de etiketten schrijft 56 % toe aan een audit die er niets
+  van gebruikt. Reconstrueer uit de SIMPLEXAANROEPEN; dimensie, plafond en stap identificeren elke
+  pas eenduidig.
+- **DE GEMETEN KANDIDAAT (index 0, de default van E-5b) LEVERT GEEN NETWERK.** Het casusboek
+  registreert hem als verworpen op M-D (1,47 dB opslingering tegen 1,4), `runCandidate` blankt de
+  onderdelen vóór het resultaat de worker verlaat (V31), en `net.after` overleeft die blanking —
+  dus de rimpel en fase die E-5b (en E-5c's tabel) afdrukken beschrijven het WEGGEGOOIDE netwerk.
+  Een digest van een lege onderdelenlijst is daarom `null` en geen hash: twee armen zouden er
+  hetzelfde getal uit krijgen en dat zou als bewijs van gelijkheid lezen (A3h).
+- **`repeatedTune: 'recompute' | 'reuse'` — de 40e CHOICE, GEWAPEND.** `reseedOutliers` zet
+  uitschieters op exact textbook, dus de basin-uitdaging en de drift-catch erachter fitten HETZELFDE
+  vector: alle zestien simplexaanroepen van het tweede blok gelijk aan het eerste tot op negen
+  decimalen, 28 581 evaluaties, 326 s — 17,6 % van de run. Een run-scoped memo op de waardefit,
+  gesleuteld op de parts als waarden plus elk argument; run-scoped om de reden die de poortcache
+  draagt. **De enige sleutel in de CHOICE-lijst die het geleverde netwerk niet KAN verplaatsen, en
+  hij staat er toch:** wat reuse wél verandert is `evaluations`, een gerapporteerd getal dat beide
+  byte-baselines vergelijken, dus hij kan geen stille optimalisatie zijn. Gemeten: 1852 → 1516 s
+  (−18,1 %), 161 554 → 132 971 evaluaties, IDENTIEK netwerk.
+- **`structureRetune: 'search' | 'capped'` — de 39e CHOICE, GEBOUWD EN NIET GEWAPEND.** Het gemeten
+  plafond (`STRUCTURE_RETUNE_CAP_ITERATIONS = 1900`) op de hertune rond één structuurwijziging, met
+  één ONGECAPTE hertune vóór een move geweigerd wordt. **De meting verwierp hem:** de gecapte arm
+  snoeit twee onderdelen die de volle zoektocht niet snoeit (`R7`, `B·C10`) en levert een ander
+  netwerk (rimpel 2,267 tegen 2,214, min |Z| 2,662 tegen 2,701). Het vangnet doet wat het belooft —
+  het laat een plafond nooit een move WEIGEREN die de zoektocht wél had genomen — maar niets erin
+  belet een gecapte hertune op een ANDER aanvaardbaar punt te landen. De declaratie verklaart hem
+  ABSENT (P4, niet als `'search'` gesteld); een expliciete waarde wint, dus de arm blijft vraagbaar.
+- **TWEE DINGEN DIE DE METING AFDWONG.** (i) Een LOKALE polijsting (kleine initiële simplex) was de
+  eerste bouw en zij VERLOOR op het tweewegfixture: zes van de acht hertunes vielen terug op de
+  koude zoektocht. Een structuurwijziging verplaatst het optimum te ver voor een lokale verfijning;
+  de stappen zijn daarom onaangeroerd en alleen het budget is gecapt. (ii) Een plafond BOVEN het
+  budget is een budgetverhoging, en liet elke geweigerde kandidaat twee keer identiek berekenen
+  (+18 %). `cappedEarly` zegt of het plafond werkelijk beet, en alleen dan vuurt de retry.
+- `src/lib/engine2/optimizer/structureRetune.test.ts` (10 claims) — P2 op beide sleutels (absent ==
+  gesteld-historisch, tot op de evaluatie); de premisse dat dit fixture SNOEIT (zonder die claim kan
+  het hele bestand groen zijn op een run die escaleert — precies wat casus 1 doet); dat het plafond
+  de pas bereikt; **de invariant** (dezelfde onderdelen gesnoeid, waarden binnen de klasse); dat een
+  inert plafond byte-identiek is en geen retry vuurt; de premisse dat het memo-fixture de dubbele
+  tune werkelijk bereikt (herzaaibaar zaad + weigerende poort = de casus-1-situatie); en dat reuse
+  een IDENTIEK netwerk levert voor minder evaluaties. Nagemeten dat zij kunnen falen: de
+  `cappedEarly`-conditie weghalen geeft 1 rood, het memo niet opslaan 2.
+- **`scripts/measure-e5c-polish-exit.ts` — HENDEL 3, VOORBEREID EN AFGEWEZEN.** Wat een vroege exit
+  op de volle-dimensie polijstpas (step 0,04) aan de eindvector doet, op de tien C-2-netlists.
+  **Geen nieuwe drempel:** `nelderMead` stopt al onder `tolerance` 1e-6, maar die test is ABSOLUUT
+  en de objectiefwaarden liggen rond 10³, dus hij vuurt nooit; het script leest hetzelfde criterium
+  op de schaal van de pas door de doelfunctie door haar eigen startwaarde te delen — dezelfde
+  solver, dezelfde constante, geen tweede implementatie. **Gemeten: 4 van 10 buiten de klasse (tot
+  11,3 % op een componentwaarde), 4 binnen, 2 identiek, iteraties 37 991 → 25 220.** De
+  objectiefwaarde beweegt hoogstens 0,006 % terwijl de vector 11 % beweegt: vlak bij het optimum is
+  het objectief in sommige richtingen vlak. **Daarom krijgt hendel 3 zijn sleutel niet** — dat was
+  de gestelde voorwaarde.
+- **DE 2026-09-DEMOSET KAN NIET GEOPTIMALISEERD WORDEN, en de app zegt zelf waarom.** In een verse
+  browser met de zes bestanden van `koan_demo_2026-09_67L/` geladen leidt de app haar vensters af
+  (124–550 en 1294–2302 Hz) en weigert dan: *"mid: `mid.frd` states no measurement window … high:
+  the window in `tweeter.frd` could not be read — a window line is present but its length could not
+  be read as a number of ms"*. De woofer is in orde (mergeblok, M-2/P-1); de mid stelt haar
+  geldigheid in PROZA en de tweeter draagt een prozaregel die de v1-lezer HERKENT en niet kan parsen
+  — de P-1-val in haar derde gedaante. Precies wat M-2 voorspelde toen het die set een fixture
+  noemde en geen laadbare `DemoBundle`. **NIET gerepareerd:** een venster terugschrijven in een
+  bestand dat er nooit een droeg is een meting verzinnen (A3h).
 
 ### E-5b-guards (de band van het rimpel-stopdoel; en de meting die E-5's verklaring weerlegt)
 - **`src/lib/rippleTargetBand.ts` — ÉÉN REGEL, DRIE LEZERS** (de driewegketen, de tweewegketen, het

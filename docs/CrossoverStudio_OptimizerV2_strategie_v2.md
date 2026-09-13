@@ -10482,6 +10482,232 @@ er staat is de val in een GELEVERD driewegnetwerk uit de app, en daar zijn de ti
 antwoord op (E-5, `e5AppFrame.test.ts`). De acceptatie die wél gedraaid is, is de volle suite: de drie
 live ketenruns reproduceren, dus het C-2-corpus komt byte voor byte terug mét de sleutel gewapend.
 
+### E-5c — de anatomie van de 1852 s: de snoeipas draait niet, en de duurste post is een tune die de run al gedaan had (13-09-2026, alleen de v2-route; **geen corpuswijziging, geen regeneratie — de volle suite reproduceert alle drie de corpora byte voor byte**)
+
+**DE OPDRACHT WAS DE SNOEIPAS WARM TE STARTEN, EN DE EERSTE STAP WAS HEM TE METEN. Dat is de reden
+dat er iets anders geleverd is dan er gevraagd is: op de gemeten kandidaat draait de snoeipas niet,
+en wat er in zijn plaats gevonden werd is groter.**
+
+#### HET MEETINSTRUMENT — twee observatoren, nul regels engine-wijziging
+
+`scripts/measure-e5c-prune-anatomy.ts` draait één casus-1-kandidaat door `handleV2Request` met twee
+observatoren op de module-namespace (de vorm die `measure-m1-diagnose-arms.ts` al draagt, en het
+script CONTROLEERT dat beide gevuurd hebben in plaats van dat aan te nemen):
+
+1. op `runThreeWayChain`, om via `hooks.tuneOptionsFor` een `onStage` mee te geven. Dat mag omdat
+   het per constructie niets kan verplaatsen: `onStage` staat in POLISH_KEYS met precies die reden
+   — hij geeft `void` terug en de engine leest hem nooit, een eigenschap van zijn TYPE en geen
+   aanname.
+2. op `nelderMead`, om per simplexaanroep de dimensie, het plafond, de stapgrootte, de GEBRUIKTE
+   iteraties, de tijd en — door de doelfunctie om te wikkelen — het exacte aantal evaluaties van
+   die aanroep vast te leggen, plus wanneer het lopende minimum binnen 5 / 1 / 0,1 % van de
+   einduitkomst kwam.
+
+**DE ETIKETTEN LIEGEN, EN DE ENGINE ZEGT ZELF WAAROM.** `stage('value tune')` draait vóór de
+zaad-audit, `runAudit` zet het etiket op `part audit (seed)` en niets zet het terug — de
+`TODO(observability)(a)` in `netOptimizer.ts` beschrijft precies dit gebrek. Een fasetabel die dat
+etiket gelooft rapporteert 56 % voor een audit die van die tijd niets gebruikt. De tabel hieronder
+is daarom uit de SIMPLEXAANROEPEN gereconstrueerd — dimensie, plafond en stapgrootte identificeren
+elke pas eenduidig — en niet uit de etiketten.
+
+#### DEEL 1 — WAAR DE 1852 s HEEN GAAT
+
+| fase | aanroepen | evaluaties | s | % |
+| --- | --- | --- | --- | --- |
+| ontwerp + synthese (vóór de tuner) | 25 | 3 709 | 0 | 0,0 |
+| waardetune (38 vrij, vol budget) | 16 | 25 581 | 293 | 15,8 |
+| basin-uitdaging op het herzaaide punt | 16 | 28 581 | 326 | 17,6 |
+| **drift-catch — DEZELFDE tune, bit-identiek** | 16 | 28 581 | **326** | **17,6** |
+| barrièretune (0,6) | 2 | 7 954 | 91 | 4,9 |
+| escalatie — 2 bypass-kandidaten | 4 | 16 442 | 188 | 10,2 |
+| settle na de structuurwijziging (vol) | 16 | 25 545 | 292 | 15,8 |
+| late drift-catch | 16 | 28 853 | 330 | 17,8 |
+| **SNOEIPAS** | **0** | **0** | **0** | **0,0** |
+
+De simplex IS de wandklok: 111 aanroepen, 165 246 evaluaties, 1848 van de 1852 s (100 %). De
+evaluatietelling van de engine (161 554) sluit erop aan: 165 246 − 3 709 (ontwerp en synthese, die
+buiten `optimizeNetworkValues` draaien en dus niet tikken) = 161 537, zeventien onder de teller —
+de `quickFx`-aanroepen. Dat die twee onafhankelijk gemeten getallen op zeventien na sluiten is wat
+het instrument geloofwaardig maakt.
+
+#### DRIE BEVINDINGEN, EN TWEE ERVAN ZIJN CORRECTIES
+
+**(1) DE SNOEIPAS DRAAIT NIET — en de gemeten kandidaat LEVERT NIET EENS EEN NETWERK.** Na de
+barrièretune haalt hij het stopdoel niet, dus de trapmethode ESCALEERT: `added: ["C10"]` komt daar
+vandaan, en `removed: ["C4","C·L4"]` is de onderdelen-AUDIT. Sterker: het casusboek registreert deze
+kandidaat als VERWORPEN op het LF-bult-budget (M-D: 1,47 dB opslingering tegen een gestelde 1,4).
+`runCandidate` blankt de onderdelen vóór het resultaat de worker verlaat (V31) en `net.after`
+overleeft die blanking, dus de rimpel 2,214 dB en de fase 4,1° die E-5b afdrukt beschrijven **het
+weggegooide netwerk**.
+
+**DIT IS DE TWEEDE CORRECTIE OP E-5b IN TWEE SESSIES, en van dezelfde soort als die zij zelf op E-5
+maakte.** Die entry schreef "met de doelen GEHAALD doet de trapmethode niet escaleren maar SNOEIEN:
+zij probeert per ronde tot acht verwijderingen". Dat was een gevolgtrekking uit de GELEVERDE rimpel
+(2,21 tegen 2,5), opgeschreven als meting. `meets()` oordeelt op het netwerk zoals het er ná de
+barrièretune bij staat, niet op wat de run uiteindelijk oplevert — en daar haalde het de doelen
+niet. E-5b koos bovendien kandidaat 0 (de default van `E5B_ONLY`) en noemt nergens dat dat de
+verworpen kandidaat is. **Gevolg voor deze entry zelf: "de snoeipas draait niet" is een uitspraak
+over DEZE kandidaat en niet over het veld.**
+
+**(2) 326 s — 17,6 % — IS EEN BIT-IDENTIEKE DUBBELE TUNE.** `reseedOutliers` zet uitschieters op
+exact textbook, dus twee verschillende startpunten komen op één punt uit: de basin-uitdaging
+(`challenge(cur, s1)`) en de drift-catch erachter (`driftCatch(cur)`) fitten hetzelfde vector.
+Niet "ongeveer hetzelfde": alle zestien simplexaanroepen van het tweede blok hebben dezelfde
+begin- én eindwaarde als het eerste tot op NEGEN DECIMALEN (9578,974016554 → 1504,546840486, en zo
+vijftien keer verder), dezelfde iteratietelling en dezelfde evaluatietelling. 28 581 evaluaties om
+aan te komen bij een getal dat de run al had.
+
+**(3) DE STRUCTUUR-HERTUNES CONVERGEREN NOOIT.** Alle vier de escalatie-aanroepen liepen tot hun
+3276-iteratieplafond zonder de tolerantie ooit te halen, dus "iteraties tot convergentie" — de
+grootheid waar de opdracht het plafond uit wilde halen — BESTAAT hier niet. Wat wel bestaat: het
+lopende minimum kwam binnen 1 % van de eigen einduitkomst na 1522, 2006, 1989 en 2385 van de
+4047–4213 evaluaties. Ruim de helft van zo'n hertune koopt de laatste procent.
+
+#### DEEL 2 — WAT ER GEBOUWD IS, EN WAT ER GEWAPEND IS
+
+Twee F4c-KEUZES (de 39e en 40e; 58 sleutels, 40/5/13), allebei absent = byte-identiek.
+
+**`repeatedTune: 'recompute' | 'reuse'` — GEWAPEND.** Een run-scoped memo op de waardefit, gesleuteld
+op alles wat de fit leest: de parts als waarden plus elk argument. RUN-SCOPED om de reden die de
+poortcache één scherm hoger opschrijft — een module-brede memo overleeft in de volgende run, waar de
+metingen andere objecten zijn, en een reproduceerbaarheidsclaim die op het legen van een map rust is
+geen claim. **De enige sleutel in de CHOICE-lijst die het geleverde netwerk niet KAN verplaatsen**,
+en hij staat er toch: wat reuse wél verandert is `evaluations`, een GERAPPORTEERD getal dat beide
+byte-baselines vergelijken, dus hij kan nooit een stille optimalisatie zijn — en een zoek-afkorting
+als polish filen is precies hoe een afkorting die tóch niet equivalent blijkt zich zou verstoppen.
+
+**`structureRetune: 'search' | 'capped'` — GEBOUWD, GETEST, NIET GEWAPEND.** De hertune rond één
+structuurwijziging, gestopt op de gemeten staart (`STRUCTURE_RETUNE_CAP_ITERATIONS = 1900`: 2385
+evaluaties bij 1,26 evaluaties per iteratie, naar boven afgerond), met één ONGECAPTE hertune vóór
+een structuurmove geweigerd wordt. **De meting verwierp hem** — zie deel 3.
+
+**TWEE DINGEN DIE DE METING ONDERWEG AFDWONG, en ze zijn het opschrijven waard omdat ik ze allebei
+eerst verkeerd had.**
+
+*De stap is niet het probleem, het budget was dat.* De eerste versie polijstte LOKAAL (een kleine
+initiële simplex, stap 0,04/0,015 in plaats van 0,1/0,25). Op het tweewegfixture verloor dat: zes
+van de acht hertunes haalden de acceptatie niet en vielen terug op de koude zoektocht, terwijl de
+koude die wél haalde. Een structuurwijziging verplaatst het optimum ver genoeg dat een lokale
+verfijning hem niet volgt. De stappen zijn daarom ONAANGEROERD; wat E-5c levert is uitsluitend het
+gemeten plafond — en dat is ook de eerlijke lezing van "de staart van stap 1's verdeling", want die
+verdeling is bij de BESTAANDE stappen gemeten.
+
+*Een plafond boven het budget is een budgetVERHOGING.* Op een klein ontwerp is het volle budget al
+kleiner dan 1900, en de eerste versie liet de "gecapte" poging dan tóch door de vangnet-lus lopen:
+elke geweigerde kandidaat werd twee keer identiek berekend, +18 % op het fixture. Sinds `cappedEarly`
+weet de hertune of het plafond werkelijk beet, en een plafond dat niet beet vuurt geen retry.
+`structureRetune.test.ts` claim 3 pint dat, en is nagemeten dat hij rood gaat als die ene conditie weg is.
+
+#### DEEL 3 — DE VOOR/NA, DRIE ARMEN OP ÉÉN MACHINE
+
+Alles behalve de twee sleutels is hetzelfde object. Getallen in `test-fixtures/casus1_e5c_anatomie.json`.
+
+| arm | wandklok | evaluaties | gesnoeid | toegevoegd | rimpel/fase | min \|Z\| |
+| --- | --- | --- | --- | --- | --- | --- |
+| `search+recompute` (historisch) | 1852 s | 161 554 | C4, C·L4 | C10 | 2,214 / 4,1 | 2,701 |
+| **`search+reuse` (GELEVERD)** | **1516 s (−18,1 %)** | **132 971 (−17,7 %)** | C4, C·L4 | C10 | 2,214 / 4,1 | 2,701 |
+| `capped+reuse` (niet gewapend) | (besmet, zie onder) | 133 069 | **C4, R7, B·C10, C·L4** | C10 | **2,267 / 3,6** | **2,662** |
+
+**HET GEHEUGEN HAALT DE INVARIANT.** Identieke gesnoeide onderdelen, identieke toevoeging,
+identieke rimpel, fase en min |Z|; 111 → 95 simplexaanroepen, precies de zestien van het dubbele
+blok; en de escalatie- en drift-check-fasen zijn tot op de evaluatie gelijk (41 987 en 28 853 in
+beide armen), wat laat zien dat er stroomafwaarts niets bewoog. 161 554 − 132 971 = 28 583, en het
+dubbele blok was er 28 581.
+
+**HET PLAFOND HAALT DE INVARIANT NIET.** De gecapte arm snoeit TWEE onderdelen die de volle
+zoektocht niet snoeit (`R7`, `B·C10`) en levert een ander netwerk. Het vangnet doet wat het belooft
+— het laat een plafond nooit een move WEIGEREN die de zoektocht wél had genomen — maar niets erin
+belet een gecapte hertune om op een ANDER aanvaardbaar punt te landen, en stroomafwaarts is dat een
+ander ontwerp. Daarom is hij ABSENT verklaard en niet als `'search'` gesteld (P4, de regel die V45
+over `'flat'` en V48 over `'seed'` stelt): het historische gedrag benoemen zou claimen dat iemand
+het koos, en wat gekozen is, is de ander niet te wapenen. Een expliciete waarde wint nog steeds, dus
+de arm blijft vraagbaar — de hele reden dat dit een sleutel is en geen tak (V48).
+
+**DE WANDKLOK VAN DE DERDE ARM IS BESMET EN WORDT NIET GERAPPORTEERD.** Eén simplexaanroep (index
+64) liep op 411 ms per evaluatie tegen 13 ms in alle 110 andere — 1663 s stilstand van de machine,
+niet van de ingreep. De evaluatietelling is daar niet door geraakt. Het staat in het fixture-`_wat`
+en hier, in plaats van als een getal dat als resultaat leest.
+
+#### DEEL 4 — DE NIEUWE ANATOMIE, EN DUS OF HENDEL 3 NOG DE MOEITE IS
+
+Na het geheugen (1516 s): waardetune 290 s (19,1 %), basin-uitdaging 324 s (21,4 %), barrièretune
+90 s (6,0 %), escalatie 187 s (12,4 %), settle 291 s (19,2 %), **late drift-catch 329 s (21,7 %)**,
+drift-catch 0 s. **De grootste post is nu de late drift-catch, op een haar na gelijk aan de
+basin-uitdaging — en dat zijn allebei basin-UITDAGINGEN**, volle tunes vanaf een herzaaid punt.
+Samen 43 % van de run, en ze zijn met opzet koud: `reseedOutliers` bestaat om de basin te VERLATEN,
+en daar iets polijsten of overslaan zou de pas opheffen.
+
+Wat er daarbinnen wél aanspreekbaar is, is hendel 3: de vier volle-dimensie polijstpassen (step
+0,04, één per volle tune) kosten samen ongeveer 300 s van de 1516 — **een vijfde van de run** — en
+twee ervan stonden in de vóór-arm op evaluatie 1 al binnen 1 % van hun eigen einduitkomst.
+
+#### DEEL 5 — HENDEL 3: VOORBEREID, GEMETEN, EN AFGEWEZEN
+
+`scripts/measure-e5c-polish-exit.ts` meet op de TIEN C-2-netlists wat een vroege exit op die
+polijstpas aan de eindvector doet. **Het criterium is dat van de pas zelf en er komt geen drempel
+bij:** `nelderMead` stopt al zodra de spreiding onder `tolerance` (1e-6) zakt, maar die test is
+ABSOLUUT en de objectiefwaarden liggen hier rond 10³ — hij vraagt dus negen significante cijfers en
+vuurt daarom nooit. De meting leest hetzelfde criterium op de SCHAAL VAN DE PAS, en doet dat zonder
+één regel solver-wijziging en zonder tweede simplex-implementatie: de doelfunctie wordt door haar
+eigen startwaarde gedeeld, waarna de ONGEWIJZIGDE `nelderMead` met diezelfde 1e-6 een relatieve test
+uitvoert.
+
+| netlist | dims | iteraties nu | met exit | fx nu | fx exit | max Δ % | oordeel |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| KAND_V2_1 | 36 | 5040 | 3756 | 54,181431 | 54,182633 | 1,38 | binnen de klasse |
+| KAND_V2_2 | 31 | 180 | 180 | 58,789390 | 58,789390 | 0,00 | identiek |
+| KAND_V2_3 | 37 | 5180 | 2890 | 57,247203 | 57,249881 | **6,53** | **erbuiten** |
+| KAND_V2_4 | 24 | 3360 | 1827 | 58,397809 | 58,401229 | **11,32** | **erbuiten** |
+| KAND_V2_5 | 21 | 2371 | 827 | 57,214129 | 57,236404 | **7,37** | **erbuiten** |
+| KAND_V2_6 | 34 | 4760 | 4760 | 57,118734 | 57,118734 | 0,00 | identiek |
+| KAND_V2_7 | 41 | 5740 | 3888 | 58,889732 | 58,890994 | 1,94 | binnen de klasse |
+| KAND_V2_8 | 20 | 1686 | 1314 | 55,557886 | 55,557987 | 0,12 | binnen de klasse |
+| KAND_V2_9 | 40 | 5600 | 3971 | 62,485349 | 62,487238 | 1,85 | binnen de klasse |
+| KAND_V2_10 | 31 | 4074 | 1807 | 63,508401 | 63,509347 | **3,99** | **erbuiten** |
+
+**VIER VAN DE TIEN VALLEN BUITEN DE KLASSE, dus hendel 3 krijgt zijn sleutel niet** — dat was de
+gestelde voorwaarde. Iteraties zouden van 37 991 naar 25 220 gaan (−34 %), en dat is precies wat het
+resultaat interessant maakt: **de objectiefwaarde beweegt hoogstens 0,006 %, en de VECTOR tot
+11,3 %.** Vlak bij het optimum is het objectief in sommige richtingen vlak, dus vroeg stoppen kost
+vrijwel niets in fx en landt tóch op een zichtbaar andere componentwaarde. Wie hier ooit verder
+wil: de vraag is niet of de exit goedkoop is (dat is hij) maar of een 11 %-andere spoel hetzelfde
+ontwerp is, en dat is een gestelde beslissing en geen meetresultaat.
+
+#### DEEL 6 — DE BROWSERCONTROLE: DE 2026-09-SET KAN NIET GEOPTIMALISEERD WORDEN, EN DE APP ZEGT ZELF WAAROM
+
+De volle-veldrun op de 67,7 L-demoset is NIET gedraaid, en dat is een eigenschap van de data. In een
+verse browser met de zes bestanden van `test-fixtures/koan_demo_2026-09_67L/` in de drie sleuven
+(hoog → laag) leidt de app haar vensters gewoon af — `low→mid 124–550 Hz`, `mid→high 1294–2302 Hz` —
+en weigert dan de run:
+
+> Cannot optimise yet — mid: "mid.frd" states no measurement window, so there is no way to know how
+> low it is honest. … · high: the window in "tweeter.frd" could not be read — a window line is
+> present but its length could not be read as a number of ms. The line is: "* gated farfield 5.021
+> ms, ref 2.5 ms - GELDIG BOVEN ~400 Hz (ruim onder gebruiksband)". This is an import problem, not a
+> property of your measurement.
+
+Precies wat M-2 voorspelde toen het die set een FIXTURE noemde en geen laadbare `DemoBundle` ("een
+demo hiervan zou de U-3-fout herhalen"). De woofer is in orde — die draagt sinds de M-2-merge een
+echt mergeblok en wordt door beide lezers gelezen (P-1). De mid stelt haar geldigheid in PROZA, en
+de tweeter draagt een prozaregel die de v1-lezer als vensterregel HERKENT en niet kan parsen: de
+P-1-val in haar derde gedaante. **Niet gerepareerd, en met opzet:** een venster terugschrijven in een
+bestand dat er nooit een droeg is een meting verzinnen (A3h), en M-2 verbiedt het voor deze set
+expliciet. De reparatie is óf Sanders koppen, óf een v1-parsersessie — en beide zijn een andere
+sessie dan deze.
+
+#### WAT ER NIET GEDAAN IS
+
+- **Het corpus is niet geregenereerd** en hoefde dat niet: de volle suite draait de drie live
+  ketenruns mét `repeatedTune: 'reuse'` gewapend en zij reproduceren byte voor byte.
+- **De anatomie is van één kandidaat, en die levert niet.** Of de snoeipas op een GELEVERDE
+  kandidaat draait is niet gemeten. Het is de eerste vraag voor wie hier verdergaat, en het
+  instrument staat er (`E5C_ONLY=<n>`).
+- **De dubbele tune is niet WEGGENOMEN, alleen niet herberekend.** Dat `challenge` en `driftCatch`
+  naar hetzelfde punt herzaaien is een eigenschap van `reseedOutliers`, en of de drift-catch daar
+  iets ANDERS zou moeten doen is een besluit over de pas en niet over zijn prijs.
+- **`TODO(observability)(a)` staat er nog.** Deze sessie heeft de liegende etiketten omzeild door
+  de simplexaanroepen te lezen; zij heeft ze niet gerepareerd, want dat is gedeelde v1-voortgangscode.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

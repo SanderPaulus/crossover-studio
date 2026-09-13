@@ -81,15 +81,20 @@ describe('E-3 casus 1b — the record of the two-way run agrees with the fixture
   it('the declaration the generator carried is the declaration the fixture builds today, key for key', () => {
     const c = field.field.candidates[field.field.candidates.length - 1];
     const decl = casus1bV2Declaration(c, gridded.safety);
-    /* THE DELTA BETWEEN THE RECORD AND TODAY, NAMED — and since C-2 it is
-     * EMPTY, because casus 1b was regenerated on the same engine casus 1 was.
-     * At E-4 it held `coilSnapDcrCeiling`: the record predated that key and
-     * rewriting it would have needed a generator run. This is the V15 bridge
-     * form and it stays in place empty, so the next key that arrives without a
-     * regeneration has somewhere to be named — the claim is exact in both
-     * directions, a key that appears unnamed fails and so does one that stops
-     * appearing. */
-    const SINCE_THE_RECORD: string[] = [];
+    /* THE DELTA BETWEEN THE RECORD AND TODAY, NAMED. It was empty from C-2
+     * until E-5c, because casus 1b had been regenerated on the same engine
+     * casus 1 was; at E-4 it held `coilSnapDcrCeiling`. This is the V15 bridge
+     * form, and the claim is exact in both directions — a key that appears
+     * unnamed fails, and so does one that stops appearing.
+     *
+     * E-5c put ONE key in it. `repeatedTune` is stated unconditionally by the
+     * declaration, so the record — written before it existed — cannot carry it,
+     * and rewriting it would mean a generator run. That it changes nothing this
+     * route delivers is not an argument made here but a measurement, and it is
+     * what the live two-way chain run at the bottom of this file reproduces
+     * byte for byte. (E-5c's other key, `structureRetune`, is declared ABSENT —
+     * measured and not armed — so it was never going to appear here.) */
+    const SINCE_THE_RECORD: string[] = ['repeatedTune'];
     expect(Object.keys(decl.declaration.stated).sort()).toEqual(
       [...HERKOMST.meetopstelling.beschermingen_via_kandidaat, ...SINCE_THE_RECORD].sort(),
     );

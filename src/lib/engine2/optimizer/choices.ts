@@ -112,6 +112,26 @@ export const CHOICE_KEYS = [
    * requirements that own it (stated 13-09-2026). Absent is `'judged'`, the
    * historic reading, byte for byte. */
   'rippleTargetBand',
+  /* E-5c — and HOW a structure candidate's retune is run. A choice for the
+   * same reason `errorSmoothOct` became one at V38-fix: it is search DEPTH,
+   * and depth decides which point the search lands on, so it can decide which
+   * network is delivered. Filing it as polish would be the claim that a local
+   * refinement and a wide re-search always agree, which nobody has measured.
+   *
+   * Absent is `'search'`, byte for byte — which is what keeps both byte
+   * baselines, neither of which passes a candidate declaration, reproducing. */
+  'structureRetune',
+  /* E-5c — and whether a fit this run has ALREADY done is done again.
+   *
+   * THE ONE ENTRY IN THIS LIST THAT CANNOT CHANGE THE DELIVERED NETWORK, and
+   * it is here anyway. Within a run the fit is a pure function of its inputs —
+   * that is what A5e.4 claims — so a memo returns the same parts. What reuse
+   * does change is `evaluations`, a REPORTED number both byte baselines
+   * compare, so it can never be a silent optimisation. And filing a search
+   * shortcut as polish is precisely how a shortcut that turns out NOT to be
+   * equivalent would hide: `onStage` may sit in polish because its type makes
+   * it inert, and a memo's inertness is an argument, not a type. */
+  'repeatedTune',
   'angleData',
   /* --- what the topology IS --- */
   'midBranch',

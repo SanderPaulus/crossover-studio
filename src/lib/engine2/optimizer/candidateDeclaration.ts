@@ -88,6 +88,8 @@ export type StatedByDesigner = Partial<
     | 'phaseAdmission'
     | 'amplitudeReference'
     | 'rippleTargetBand'
+    | 'structureRetune'
+    | 'repeatedTune'
     | 'protectionRule'
     | 'seriesInductanceCeilingSource'
     | 'seriesInductanceBound'
@@ -518,6 +520,43 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
    * built the line that says so. And an explicit value still wins, so V38-fix's
    * before/after is a run someone can ask for rather than a build to patch. */
   stated.errorSmoothOct = s.errorSmoothOct ?? SEARCH_SMOOTHING_OCTAVES;
+
+  /* ---- E-5c: WHAT A REPEATED FIT COSTS --------------------------------
+   *
+   * STATED UNCONDITIONALLY, like V37's `'re'`, V38-fix's smoothing width and
+   * V44's `'measured'`, and for the same shape of reason: it is not a fact
+   * about this loudspeaker that a candidate could be missing. Any run that
+   * reseeds twice to the same vector fits it twice, and that is a statement
+   * about what the PASSES are.
+   *
+   * It cannot change the delivered network — within a run the fit is a pure
+   * function of its inputs, which is what A5e.4 claims — and that was MEASURED
+   * rather than argued; see the E-5c entry. An explicit value still wins, so
+   * the before/after stays a run someone can ask for (the V48 rule). */
+  stated.repeatedTune = s.repeatedTune ?? 'reuse';
+
+  /* ---- E-5c: AND WHY THE OTHER ONE IS NOT ARMED ------------------------
+   *
+   * `structureRetune: 'capped'` was built, tested and measured, and the
+   * measurement REFUSED it. On casus 1 the capped arm stripped two parts the
+   * full search does not (`R7`, `B·C10`) and delivered a different network
+   * (ripple 2.267 against 2.214 dB, min |Z| 2.662 against 2.701 Ω). The safety
+   * net does what it promises — it never lets the cap REFUSE a move the search
+   * would have taken — but nothing in it stops a capped retune from landing on
+   * a DIFFERENT acceptable point, and downstream that is another design.
+   *
+   * ABSENT and not a stated `'search'` (P4, the rule V45 states about `'flat'`
+   * and V48 about `'seed'`): naming the historic reading would claim somebody
+   * chose it, and what was chosen is not to arm the other one. An explicit
+   * value still wins, so the arm stays askable — which is the whole reason it
+   * is a key and not a branch. */
+  absent.push({
+    key: 'structureRetune',
+    why:
+      'the structure retunes run their full budget, as they always have. E-5c measured the ' +
+      'capped alternative on casus 1 and it delivered a different network — same safety net, ' +
+      'different landing point — so it is built and not armed. An explicit value still wins',
+  });
 
   /* ---- V44: WHICH POINTS MAY CARRY A PHASE JUDGEMENT -------------------
    *
