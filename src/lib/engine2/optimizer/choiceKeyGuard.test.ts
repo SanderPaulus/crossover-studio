@@ -176,9 +176,15 @@ describe('F4c — every tuner option has a class', () => {
     // FIFTH choice without a polish companion, and for the same reason as
     // V48's: the measurements the inversion reads are already filed inside
     // `valueSumCeilings`. Split becomes 37/5/12.
-    expect(keys.length).toBe(54);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(54);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([37, 5, 12]);
+    // 56 since E-5b added `rippleTargetBand` (choice — which band the staged
+    // pass's ripple stop-goal is read on, and therefore when the search is
+    // SATISFIED) and `rippleTargetBandHz` (polish — that band in hertz, derived
+    // by the chain from the candidate's own handover positions). A pair in the
+    // V33/V34/V37/V44/V45 shape: the decision and the data it needs, filed
+    // apart. Split becomes 38/5/13.
+    expect(keys.length).toBe(56);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(56);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([38, 5, 13]);
     for (const k of CHAIN_CHOICE_KEYS) {
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
@@ -303,9 +309,9 @@ describe('F4c — every tuner option has a class', () => {
      * compares against. Folding them together would make "watch the full band
      * against a stated requirement" unsayable. */
     expect(CHOICE_KEYS).toContain('safety');
-    expect(CHOICE_KEYS.length).toBe(37); // C-2: seriesInductanceBound
+    expect(CHOICE_KEYS.length).toBe(38); // E-5b: rippleTargetBand
     expect(GREY_KEYS.length).toBe(5);
-    expect(POLISH_KEYS.length).toBe(12); // C-2: valueSoftCeilings
+    expect(POLISH_KEYS.length).toBe(13); // E-5b: rippleTargetBandHz
   });
 
   /* V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES, and it may

@@ -87,6 +87,7 @@ export type StatedByDesigner = Partial<
     | 'errorSmoothOct'
     | 'phaseAdmission'
     | 'amplitudeReference'
+    | 'rippleTargetBand'
     | 'protectionRule'
     | 'seriesInductanceCeilingSource'
     | 'seriesInductanceBound'
@@ -125,6 +126,23 @@ export interface CandidateDeclarationInput {
   coilDcrCatalogLabel?: string;
   /** True when this design has more than one way — i.e. is not a solo design. */
   multiWay: boolean;
+  /**
+   * E-5b — TRUE when the project states that the staged pass's ripple stop-goal
+   * is read from the lowest handover down half an octave, instead of over the
+   * whole judged band (Sander, 13-09-2026).
+   *
+   * A FLAG rather than a derivation, and that is the honest shape: whether the
+   * bass ripple may hold the escalation ladder open is a statement about what
+   * the design is FOR, not a fact this module can read off a measurement. The
+   * band itself is not here — it is the candidate's own handover positions, and
+   * the chain that knows them hands it over as polish (`rippleTargetBand.ts`).
+   *
+   * Absent or false ⇒ ABSENT and never a stated `'judged'` (P4), for the reason
+   * V45 gives about `'flat'` and V48 about `'seed'`: naming the historic
+   * reading here would claim somebody chose it, and with nothing stated nobody
+   * chose anything.
+   */
+  rippleStopFromLowestCrossing?: boolean;
   /**
    * A5e.2 — the design's own target curve, when it carries one that can
    * actually be evaluated.
@@ -562,6 +580,37 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
    * curve object, which travels as POLISH beside this key for the same reason
    * the phase-admission facts do: they are the design's own data, not a second
    * opinion the candidate brought along. */
+  /* ---- E-5b: WHICH BAND THE STAGED STOP-GOAL IS READ ON ----------------
+   *
+   * STATED, not derived. Since E-5 the judged band reaches the lowest way's
+   * in-box resonance, and the staged pass's ripple target was read over all of
+   * it — so three octaves of bass that no crossover can flatten were deciding
+   * when the escalation ladder was allowed to stop. Below the lowest handover
+   * the sum IS the box: its shape belongs to the plateau target (A5e.2) and to
+   * M-D against the stated LF budget, and both still judge there.
+   *
+   * The design step may still place cut bands down there — that is where the
+   * reflex-peak trap comes from (E-5) — and the BARRIER still presses on the
+   * whole judged band. What changes is only the stop test.
+   *
+   * ABSENT AND NEVER `'judged'` (P4): a stated historic reading would claim
+   * somebody chose it. An explicit value still wins, so the before/after is a
+   * run that can be asked for. */
+  if (s.rippleTargetBand !== undefined) {
+    stated.rippleTargetBand = s.rippleTargetBand;
+  } else if (input.rippleStopFromLowestCrossing === true) {
+    stated.rippleTargetBand = 'from-lowest-crossing';
+  } else {
+    absent.push({
+      key: 'rippleTargetBand',
+      why:
+        'this design states nothing about which band the staged pass\'s ripple stop-goal is read ' +
+        'on, so it is read over the whole judged band exactly as it always has been. Absent ' +
+        'rather than a stated \'judged\' (P4): naming the historic reading would read as a ' +
+        'decision, and nobody made one',
+    });
+  }
+
   if (s.amplitudeReference !== undefined) {
     stated.amplitudeReference = s.amplitudeReference;
   } else if (input.targetCurve && input.targetCurve.type !== 'flat' && isImplementedCurve(input.targetCurve)) {

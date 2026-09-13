@@ -55,6 +55,7 @@ import {
   casus1MaxCrossingHzByPair,
   casus1MaxCrossovers,
   casus1QesMultiplierMax,
+  casus1RippleStopFromLowestCrossing,
   casus1TargetCurve,
   casus1ThermalDesignPowerW,
   casus1WiringByDriver,
@@ -470,6 +471,18 @@ export const CASUS1_V2_GATES: {
  * chain settings would be a number with no reader.
  */
 export const CASUS1_QES_MULTIPLIER_MAX: number | null = casus1QesMultiplierMax();
+/**
+ * E-5b — the stated reading of the staged pass's ripple stop-goal
+ * (`gestelde_eisen.rimpel_stopdoel_band`, Sander 13-09-2026).
+ *
+ * MEASURED INERT ON THIS CASUS before it was armed, which is why arming it
+ * needs no regeneration: both arms of `measure-e5b-stop-band.ts` deliver the
+ * same network along the same path — the same 161 554 evaluations, the same
+ * pruned parts and the same added one — because the stop-goal was already met
+ * over the whole judged band (2.21 dB against 2.5). What it changes is what a
+ * run SAYS it did, and the fingerprint records it.
+ */
+export const CASUS1_RIPPLE_STOP_FROM_LOWEST_CROSSING: boolean = casus1RippleStopFromLowestCrossing();
 
 /**
  * V45 — the design's own TARGET CURVE, built by the fixture helper from the
@@ -684,6 +697,10 @@ export function casus1V2Declaration(
       cages: c.crossings.map((x) => x.cageHz),
       windowFloorsHz: c.crossings.map((x) => x.windowHz[0]),
       multiWay: true,
+      /* E-5b — the stated reading of the ripple stop-goal, from the manifest.
+       * Spread, so a casus that states nothing declares the key ABSENT and
+       * reads the judged band exactly as it always did (P4). */
+      ...(CASUS1_RIPPLE_STOP_FROM_LOWEST_CROSSING ? { rippleStopFromLowestCrossing: true } : {}),
       stated: {
         band: CASUS1_V2_BAND_HZ,
         staged: CASUS1_V2_SETTINGS.targets,

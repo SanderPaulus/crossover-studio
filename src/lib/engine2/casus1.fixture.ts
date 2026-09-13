@@ -932,6 +932,22 @@ export function casus1ThermalDesignPowerW(golden: GoldenRefs = loadGolden()): nu
  * (`gestelde_eisen.geen_niveauwerk_op_laagste_weg`). True = stated; false =
  * not stated, which is P4's absent and never a stated "allowed".
  */
+/**
+ * E-5b — does this casus state that the staged pass's ripple stop-goal is read
+ * from the lowest handover rather than over the whole judged band?
+ *
+ * Read from `gestelde_eisen.rimpel_stopdoel_band`, never typed here (P6). The
+ * value is the CHOICE's own word, so a manifest that ever states `'judged'`
+ * says so in the tuner's vocabulary rather than in a boolean somebody has to
+ * translate; anything else is not stated.
+ */
+export function casus1RippleStopFromLowestCrossing(golden: GoldenRefs = loadGolden()): boolean {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { rimpel_stopdoel_band?: unknown };
+  }).gestelde_eisen;
+  return e?.rimpel_stopdoel_band === 'from-lowest-crossing';
+}
+
 export function casus1LowestWayLevelWorkForbidden(golden: GoldenRefs = loadGolden()): boolean {
   const e = (golden.manifest_en_geometrie as unknown as {
     gestelde_eisen?: { geen_niveauwerk_op_laagste_weg?: unknown };

@@ -10379,6 +10379,109 @@ werden in stilte weggegooid. Zichtbaar gemaakt door de eerste voltooide browserr
 gepind: `e5Repairs.test.ts` eist dat op elke route de enige toewijzing die de lijst VERVANGT op of
 vóór de eigen bijdrage van de frame komt.
 
+### E-5b — het rimpel-stopdoel krijgt zijn band, en de meting weerlegt waaróm E-5 dacht dat het duur was (13-09-2026, alleen de v2-route; **inert op casus 1, gemeten: geen regeneratie, corpus onaangeroerd**)
+
+**DE GESTELDE EIS (Sander, 13-09-2026).** Het rimpel-STOPDOEL van de trapmethode (2,5 dB) wordt
+beoordeeld op de band vanaf de ONDERSTE overname-positie minus een halve octaaf tot de bovengrens van
+de geoordeelde band. Daaronder oordelen de bestaande eisen — de plateau-doelvorm (A5e.2), M-D tegen
+het gestelde LF-budget, en de versterkervloer — en de ontwerpstap mag er nog steeds cut-banden
+leggen: daar komt de reflexpiek-val vandaan (E-5). Wat verandert is dat de rimpel van het laag de
+escalatie niet meer openhoudt. Motivering in `gestelde_eisen.rimpel_stopdoel_band`.
+
+De reden is dat E-5 de geoordeelde band tot f_p van de laagste weg liet reiken. Onder de onderste
+overname IS de som de kast, en haar vorm is de zaak van de doelcurve en van M-D — niet van het
+filter. Een stopdoel dat daar meeleest laat drie octaven die geen kruisfilter kan vlakmaken beslissen
+wanneer de zoektocht klaar is.
+
+#### DE MEETING, EN ZIJ WEERLEGT DE VERWACHTING
+
+`scripts/measure-e5b-stop-band.ts` draait ÉÉN casus-1-kandidaat door `handleV2Request` in twee armen
+die in precies één sleutel verschillen. Alles daaromheen — veld, seed, poorten, budgetten, raster,
+geoordeelde band — is hetzelfde object.
+
+| arm | s | evaluaties | rimpel dB | fase ° | min \|Z\| Ω | gesnoeid | toegevoegd |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `judged` (historisch) | 1934 | 161 554 | 2,214 | 4,1 | 2,701 | C4, C·L4 | C10 |
+| `from-lowest-crossing` | 1908 | **161 554** | 2,214 | 4,1 | 2,701 | C4, C·L4 | C10 |
+
+Kandidaat woofer→mid 156,7 LR4 · mid→tweeter 1744,8 LR4; stopband 110,8–19 500 Hz tegen een
+geoordeelde band van 52,4–19 500. **Hetzelfde netwerk langs hetzelfde pad**: dezelfde evaluatietelling
+tot op de eenheid, dezelfde gesnoeide onderdelen, dezelfde toevoeging. De 26 s verschil is ruis op een
+run van een half uur. Getallen in `test-fixtures/casus1_e5b_stopband.json`.
+
+**De verwachting was dat de escalatie weer vroeg zou stoppen en de tune in minuten zou landen. Dat
+gebeurt niet, en de meting zegt waarom: het stopdoel werd op de HELE geoordeelde band al gehaald**
+(2,21 dB tegen 2,5), dus `meets()` was in beide armen op dezelfde punten waar en er viel niets eerder
+te stoppen. Datzelfde geldt voor het hele corpus: over de tien C-2-netlists leest de piek 2,23–2,40 dB
+op de volle band en 1,42–2,40 op de stopband, en alle tien halen de 2,5 in BEIDE lezingen.
+
+#### WAAR DE TIJD DAN WEL ZIT — het profiel dat E-5 had moeten hebben
+
+161 554 evaluaties op 39 vrije waarden. Het budget per tune is `max(700, 140 · vrij)` = 5460, dus dat
+zijn ongeveer DERTIG volle tunes. En met de doelen GEHAALD doet de trapmethode niet escaleren maar
+SNOEIEN: zij probeert per ronde tot acht verwijderingen, elk met een eigen hertune, plus de
+her-controle, de barrièretune, de drift-catch, de reseed-uitdaging en de settle na elke
+structuurwijziging. **De kost is de STRUCTUURZOEKTOCHT, niet het stopdoel.**
+
+**DIT IS EEN CORRECTIE OP E-5.** Die entry schreef: "het trapdoel mikt op 2,5 dB, en dat is op 5,5
+octaaf haalbaar en op 8,6 niet meer, dus de pas loopt zijn hele ladder af en stopt nooit vroeg." Dat
+was een HYPOTHESE die als meting is opgeschreven, en zij is op casus 1 onwaar. Wat E-5 wél goed had
+staat er nog: een driewegkandidaat kost op deze casus tientallen minuten, en dat is de prijs die de
+repo-route altijd betaalde — de herkomst van C-2 noteert 1060–5755 s per kandidaat, opgenomen met acht
+processen naast elkaar, en de byte-reproductie kost er alleen 1550.
+
+#### WAT ER DAN TOCH GELEVERD IS, EN WAAROM
+
+De eis is GESTELD en zij is juist: de rimpel van het laag hoort niet te beslissen wanneer een
+kruisfilterzoektocht klaar is. Dat zij op deze casus niets verplaatst is precies wat haar veilig maakt
+om te wapenen — het is de reden dat het C-2-corpus niet geregenereerd hoeft te worden, en dat is
+gemeten en niet beredeneerd. Op een set waar de basrimpel wél boven het doel uitkomt bijt zij, en dan
+bijt zij aan de goede kant.
+
+`rippleTargetBand` is de F4c-KEUZE (de 38e) en `rippleTargetBandHz` de POLISH ernaast (de 13e) — de
+V33/V34/V37/V44/V45-vorm: het besluit en de data die het nodig heeft, apart gefiled. De band zelf
+wordt door de KETEN afgeleid uit de overname-posities die zij al heeft (`src/lib/rippleTargetBand.ts`,
+één regel, drie lezers), want de tuner kent een kruispunt pas nadat hij iets opgelost heeft en een
+stopdoel waarvan de band met de tune meebeweegt is een doel dat wegloopt terwijl je het nadert.
+
+**Wat NIET veranderd is, en het is met opzet:** de BARRIÈRE drukt nog steeds op de hele geoordeelde
+band. De eis gaat over wanneer de escalatie mag stoppen, niet over waar de zoektocht mag drukken — en
+de barrière is juist de druk die het laag überhaupt vlakmaakt. Overwogen en niet genomen; wie hem ook
+wil versmallen doet een tweede gestelde beslissing. En de her-controle na een verwijdering
+(`m.ripplePeakDb <= ref.ripplePeakDb + 0.1`) blijft op de geoordeelde band: dat is een vergelijking
+tussen twee NETWERKEN en geen stoptest.
+
+#### DEEL 4 — DE 34 Hz DIE E-5 NIET KON REPRODUCEREN, ALS GUARD
+
+`src/lib/engine2/ingest/directivityBand.test.ts` bouwt de vorm die Sander zag in de U-3-guardvorm:
+de gemergde 67,7 L-wooferas (NF/FF, geldig vanaf 20,5 Hz) tegen de gepoorte 15/30/45/60°-bestanden van
+de driewegdemo (geldig vanaf 396,7 Hz). Vijf claims: de premisse (de as declareert een merge, de
+hoeken staan vierhonderd hertz hoger), elk paar wordt op de DOORSNEDE gelezen, **de invariant** — geen
+enkele directiviteitsgrens onder de eigen vloer van haar paar en geen enkele in de bas — en het
+venster dat erop staat draagt geen sub-100 Hz-bundelingsplafond.
+
+**En de vijfde claim is hoe dichtbij de echte data komt, als getal in plaats van als zin.** Gelezen
+zoals E-5 het aantrof — de hoekcurve geklemd op het 0°-raster — begint het verschil op **+16,4 dB** bij
+20,5 Hz en zakt naar ongeveer nul bij de hoekvloer. Het zou **22 dB** moeten zakken om onderweg door
+−6 te gaan en het artefact te maken. Deze data mist het dus met **zes decibel**, en dat is ruim binnen
+wat een anders gefitte splice verschuift. Daarom staat de claim als INVARIANT en niet als getal: het
+mechanisme is dicht, en het getal blijft Sanders meting. Nagemeten dat de guard kán falen: de
+paarband uit `derive.ts` halen zet hem op rood.
+
+#### WAT ER IN DE APP IS NAGEMETEN, EN WAT NIET
+
+**Wel:** de kandidaat STELT de sleutel op de app-route — `rippleTargetBand` staat niet in de
+"Declared ABSENT"-lijst van de run — en de tweewegverkenning levert **exact de shortlist van E-5**:
+1940 LR4 op 0,66 dB / 9,0° / 3,8 Ω, dan 1728,4 (0,93), 2177,6 (0,99) en de gestelde 1900 (1,01), in
+1189 s tegen E-5's 1083. Dezelfde rijen, dezelfde getallen: ook hier inert.
+
+**Niet: het volle driewegveld in de browser.** Item 3 vroeg erom "in een looptijd die een browser
+aankan", en de meting hierboven zegt dat die looptijd niet bewogen is — één driewegkandidaat kost
+onveranderd een half uur, dus een veld is werk voor een nacht. Wat die run zou toevoegen bovenop wat
+er staat is de val in een GELEVERD driewegnetwerk uit de app, en daar zijn de tien C-2-netlists het
+antwoord op (E-5, `e5AppFrame.test.ts`). De acceptatie die wél gedraaid is, is de volle suite: de drie
+live ketenruns reproduceren, dus het C-2-corpus komt byte voor byte terug mét de sleutel gewapend.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

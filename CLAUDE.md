@@ -48,6 +48,11 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná E-5b (13-09-2026) gemeten op 470 s — 186 bestanden (185 geslaagd, 1 overgeslagen),
+    2369 tests (2366 geslaagd, 3 overgeslagen), in één keer groen.** +2 BESTANDEN
+    (`rippleTargetBand.test.ts` 10 claims, `ingest/directivityBand.test.ts` 5) en +15 tests, en die
+    twee getallen zijn HETZELFDE getal: het corpus is niet geregenereerd. GEEN nieuwe referentie: de
+    V43-waarde van 289 s blijft staan, en 470 tegen E-5's 470 is dezelfde laag op dezelfde machine.
     **Ná E-5 (12-09-2026) gemeten op 470 s — 184 bestanden (183 geslaagd, 1 overgeslagen),
     2354 tests (2351 geslaagd, 3 overgeslagen), groen.** +3 BESTANDEN
     (`predesign/judgedBand.test.ts` 10 claims, `e5AppFrame.test.ts` 10, `e5Repairs.test.ts` 17) en
@@ -472,7 +477,15 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 12-09-2026 (E-5): 184 bestanden, 2354 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 13-09-2026 (E-5b): 186 bestanden, 2369 tests,
+  1564 s (26 min 4), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de snelle
+  laag en vóór de browsercontrole.** +2 bestanden en +15 tests — zie de `test:fast`-regel.
+  **DEZE RUN IS GEDRAAID OMDAT E-5b EEN KEUZESLEUTEL TOEVOEGT DIE DE ZOEKTOCHT RAAKT** (`rippleTargetBand`
+  beslist wanneer de trapmethode tevreden is) EN OMDAT CASUS 1 HEM WAPENT, en wat hij bewijst is dat de
+  eis op dit corpus inert is: de DRIE live ketenruns reproduceren, dus het C-2-corpus komt byte voor byte
+  terug mét de sleutel gewapend, en beide byte-baselines (`f4cRegression`, `workerRouteRegression`)
+  reproduceren — die laatste twee stellen de sleutel niet, dus zij tonen de identiteit van de andere kant.
+  (De stand ervoor: **GEMETEN 12-09-2026 (E-5): 184 bestanden, 2354 tests,
   1615 s (26 min 55), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
   browsercontroles (dev-server gestopt) en ná de snelle laag.** +3 bestanden en +39 tests — zie de
   `test:fast`-regel; het corpus is niet geregenereerd, dus geen enkele `it.each` over het levende
@@ -483,7 +496,7 @@
   byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren, en de golden-suites van
   casus 1, 1b en 2 staan. De app-kant van E-5 (het afgeleide ketenraster en de afgeleide band) raakt
   geen fixture: die leveren hun eigen raster en band aan, en `v2ChainFrame` is op een aanroeper
-  zonder rapport de identiteit.
+  zonder rapport de identiteit.)
   (De stand ervoor: **GEMETEN 10-09-2026 (U-5): 176 bestanden, 2194 tests,
   1539 s (25 min 39), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup` ná de
   browsercontrole (dev-server en headless Chrome gestopt) en ná de snelle laag.** +2 bestanden
@@ -3504,6 +3517,64 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   verwachting, met een aparte claim voor onderin waar de som wél optelt. (ii) "Een kleinere kast remt
   de conus" — zie de vorige entry; bij de afstemming piekt de last en beweegt de conus juist het
   minst.
+
+### E-5b-guards (de band van het rimpel-stopdoel; en de meting die E-5's verklaring weerlegt)
+- **`src/lib/rippleTargetBand.ts` — ÉÉN REGEL, DRIE LEZERS** (de driewegketen, de tweewegketen, het
+  meetscript). De band van het STOPDOEL van de trapmethode: vanaf de onderste overname-positie minus
+  `RIPPLE_STOP_MARGIN_OCTAVES` (0,5 — een MARGE en geen frequentie), tot de bovengrens van de
+  geoordeelde band, geklemd aan beide kanten. Geen bruikbare overname ⇒ GEEN band en de tuner leest de
+  geoordeelde band precies zoals altijd (P4). Woont in `src/lib/` om de reden die `impedanceFloor.ts`,
+  `phaseAdmission.ts` en `targetLevel.ts` al dragen: de ketens en de tuner mogen niets uit `engine2/`
+  importeren.
+- **`rippleTargetBand` is de 38e CHOICE en `rippleTargetBandHz` de 13e POLISH** (56 sleutels, 38/5/13)
+  — de V33/V34/V37/V44/V45-vorm. De keuze beslist WANNEER de zoektocht tevreden is en dus welke
+  structuren zij ooit probeert; de band is de afleiding die de KETEN al heeft. De tuner kent een
+  kruispunt pas ná een oplossing, en een stopdoel waarvan de band met de tune meebeweegt is een doel
+  dat wegloopt terwijl je het nadert.
+- **`Metrics.rippleStopPeakDb` — dezelfde piek, op de stopband, en identiek aan `ripplePeakDb` zodra
+  er niets gesteld is.** Zo leest de trapmethode ÉÉN veld onconditioneel in plaats van tussen twee te
+  kiezen. `bandPeakOn` is de ene lezer met een bandargument en `bandPeak` is hij op de geoordeelde
+  band: twee lussen zouden twee definities van "rimpel" zijn. `rippleTargetBand.test.ts` scant
+  `netOptimizer.ts` en eist dat ÉLKE vergelijking tegen `opts.staged.rippleDb`/`tgt.rippleDb` de
+  stopband leest en dat de rest niet beweegt.
+- **WAT MET OPZET NIET IS VERANDERD, en de scan pint het:** de BARRIÈRE drukt nog steeds op de hele
+  geoordeelde band (de eis gaat over wanneer de escalatie mag stoppen, niet over waar de zoektocht mag
+  drukken — en de barrière is juist de druk die het laag vlakmaakt), en de her-controle na een
+  verwijdering (`m.ripplePeakDb <= ref.ripplePeakDb + 0.1`) blijft op de geoordeelde band, want dat is
+  een vergelijking tussen twee NETWERKEN en geen stoptest.
+- **DE METING, EN ZIJ WEERLEGT DE VERWACHTING** (`scripts/measure-e5b-stop-band.ts`,
+  `test-fixtures/casus1_e5b_stopband.json`). Eén casus-1-kandidaat, twee armen die in één sleutel
+  verschillen: **1934 s tegen 1908 s, en 161 554 evaluaties in BEIDE**, rimpel 2,214 dB, fase 4,1°,
+  min |Z| 2,701 Ω, dezelfde gesnoeide onderdelen (C4, C·L4) en dezelfde toevoeging (C10). Hetzelfde
+  netwerk langs hetzelfde pad. **Het stopdoel werd op de hele geoordeelde band al gehaald** (2,21 tegen
+  2,5; over het hele C-2-corpus 2,23–2,40 vol en 1,42–2,40 op de stopband), dus er viel niets eerder te
+  stoppen. Daarom is de eis op deze casus INERT — en dat is precies waarom hij gewapend mag worden
+  zonder regeneratie.
+- **HET PROFIEL, dat E-5 had moeten hebben.** 161 554 evaluaties op 39 vrije waarden tegen een budget
+  van `max(700, 140·vrij)` = 5460 is ongeveer DERTIG volle tunes. Met de doelen GEHAALD escaleert de
+  trapmethode niet maar SNOEIT zij: tot acht verwijderingen per ronde, elk met een eigen hertune, plus
+  her-controle, barrièretune, drift-catch, reseed-uitdaging en de settle na elke structuurwijziging.
+  **De kost is de STRUCTUURZOEKTOCHT en niet het stopdoel.**
+- **CORRECTIE OP E-5.** Die entry schreef dat het trapdoel op 8,6 octaaf onbereikbaar is en de
+  escalatie daarom nooit vroeg stopt. Dat was een HYPOTHESE die als meting is opgeschreven en zij is op
+  casus 1 onwaar. Wat blijft staan: een driewegkandidaat kost op deze casus tientallen minuten, en dat
+  is de prijs die de repo-route altijd betaalde (de C-2-herkomst noteert 1060–5755 s per kandidaat,
+  opgenomen met acht processen naast elkaar).
+- `src/lib/engine2/ingest/directivityBand.test.ts` (5 claims) — **de 34 Hz die E-5 niet reproduceerde,
+  als guard in de U-3-vorm**: de gemergde 67,7 L-wooferas (geldig vanaf 20,5 Hz) tegen de gepoorte
+  15/30/45/60°-bestanden van de driewegdemo (vanaf 396,7). De premisse, de doorsnede-lezing, **de
+  invariant** (geen directiviteitsgrens onder de eigen vloer van haar paar en geen in de bas), het
+  venster dat erop staat, en **hoe dichtbij de echte data komt, als getal**: geklemd gelezen begint het
+  verschil op +16,4 dB bij 20,5 Hz en zakt naar nul; het zou 22 dB moeten zakken om door −6 te gaan.
+  **Zes decibel tekort**, en dat is ruim binnen wat een anders gefitte splice verschuift — vandaar de
+  invariant in plaats van een getal. Nagemeten dat hij kán falen.
+- **GEWAPEND OP BEIDE ROUTES.** Casus 1 leest hem uit `gestelde_eisen.rimpel_stopdoel_band`
+  (`casus1RippleStopFromLowestCrossing`, nooit getypt — P6) en de app stelt hem onconditioneel
+  (`scanRequest.ts`), om de reden die V37's `'re'` en V38-fix's gladdingsbreedte onconditioneel maakt:
+  het is een uitspraak over wat de stoptest BETEKENT en geen getal dat het ene project heeft en het
+  andere niet. Absent blijft ABSENT en nooit een gesteld `'judged'` (P4). **De `run_vingerafdruk` in
+  `casus1_v2_herkomst.json` dateert daarmee van vóór de sleutel** — de V49/B-1-precedent: hij wordt pas
+  bij de eerstvolgende regeneratie herschreven, en de casusboek-entry is de reden.
 
 ### E-5-guards (waar een v2-run kijkt en oordeelt; drie surfaces die iets onwaars zeiden)
 - **`src/lib/engine2/predesign/judgedBand.ts` — ÉÉN AFLEIDING, VIER LEZERS.** De elf regels die

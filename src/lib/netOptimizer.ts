@@ -646,6 +646,37 @@ export interface NetOptimizeOptions {
    */
   zFloorBarrierSource?: 'grid' | 'safety' | 'sweep' | 'safety-extended' | 'safety-extended-refined';
   /**
+   * E-5b — WHICH BAND THE STAGED PASS'S RIPPLE STOP-GOAL IS READ ON.
+   *
+   *   'judged'              — the whole judged band, which is what it has
+   *                           always been read on and what every v1 run reads.
+   *   'from-lowest-crossing'— the band `rippleTargetBandHz` carries: from the
+   *                           lowest handover minus half an octave up to the
+   *                           judged ceiling (`rippleTargetBand.ts`).
+   *
+   * WHY IT IS A CHOICE AND NOT POLISH: it decides WHEN the staged pass is
+   * satisfied, so it decides which structures the search ever tries. Two runs
+   * that differ in it are two searches, not one search polished differently —
+   * the same reason `zFloorBarrierSource` and `amplitudeReference` are choices.
+   *
+   * Absent = 'judged', byte for byte. The stop-goal is the only reader: the
+   * REPORTED ripple, the objective, every gate and every budget go on reading
+   * the judged band, because what a network measures and when a search may
+   * stop looking are different questions.
+   */
+  rippleTargetBand?: RippleTargetBand;
+  /**
+   * E-5b — that band, in hertz. POLISH: the caller's own derivation from the
+   * handover positions it already holds, handed over rather than re-derived
+   * here, exactly as `zFloorBarrierImpedance` is. The tuner knows the crossings
+   * only after it has solved something, and a stop-goal whose band moved with
+   * the tune would be a goal that moves as you approach it.
+   *
+   * Absent while the choice asks for it = the choice cannot be honoured, and
+   * the run says so and reads the judged band (P4, never a silent substitute).
+   */
+  rippleTargetBandHz?: [number, number];
+  /**
    * V47 — WHICH RULE JUDGES THE UPPER DRIVER'S PROTECTION IN THE FULL-BAND
    * SAFETY GATE.
    *
@@ -932,6 +963,12 @@ export interface NetOptimizeOptions {
  * three passes earlier. Pass outcomes are typed (`ampFloorRepair`) precisely
  * so nothing has to read a sentence to find out what happened.
  */
+/**
+ * E-5b — the two readings of the ripple stop-goal, as a named type so the
+ * choice key, the classification and the declaration all spell it once.
+ */
+export type RippleTargetBand = 'judged' | 'from-lowest-crossing';
+
 export interface NetOptimizeResult {
   /** The schematic parts with re-fitted values (locked ones untouched). */
   parts: VxpPart[];
@@ -2392,6 +2429,33 @@ export function optimizeNetworkValues(
   const foldW = Math.max(0, opts.powerFoldWeight ?? 0.5);
   const useLw = ampTarget === 'listeningWindow' && !!angleData;
   const band: [number, number] = opts.band ?? [grid[0] * 1.02, grid[grid.length - 1] * 0.975];
+  /* E-5b — THE BAND THE STAGED STOP-GOAL IS READ ON, resolved once.
+   *
+   * `band` is unchanged and stays the band of every metric, every gate and the
+   * objective; this is read by ONE thing, the staged pass's `meets()`. A run
+   * that does not state the choice, or states it without handing the band over,
+   * gets `band` here and is byte-identical (P4/P2). */
+  const stopBandStated =
+    opts.rippleTargetBand === 'from-lowest-crossing' && opts.rippleTargetBandHz
+      ? ([
+          Math.max(band[0], opts.rippleTargetBandHz[0]),
+          Math.min(band[1], opts.rippleTargetBandHz[1]),
+        ] as [number, number])
+      : null;
+  const stopBand: [number, number] =
+    stopBandStated && stopBandStated[1] > stopBandStated[0] ? stopBandStated : band;
+  const stopBandNarrowed = stopBand !== band;
+  /* E-5b — the band note, written once. It was spelled out at all FOUR return
+   * sites, so a sentence added to one of them would have been missing from the
+   * other three — and three of those are refusal paths, where a reader is
+   * asking hardest what the run was actually doing. */
+  const bandNoteText =
+    `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
+    (opts.band ? '' : ' (full grid minus edges — no validity band supplied)') +
+    (stopBandNarrowed
+      ? `; the staged ripple stop-goal was read on ${Math.round(stopBand[0])}–${Math.round(stopBand[1])} Hz ` +
+        '(from the lowest handover minus half an octave, E-5b)'
+      : '');
 
   // Decimated evaluation grid (inner loop); full grid for reported metrics.
   const step = Math.max(1, Math.floor(grid.length / 150));
@@ -2521,16 +2585,26 @@ export function optimizeNetworkValues(
    *  strip reads (combinedRippleDb), the unit staged TARGETS gate on and
    *  before/after report. The search objective keeps the smooth std-dev
    *  (bandStd); a peak/max objective would be non-smooth and outlier-driven. */
-  const bandPeak = (freq: readonly number[], spl: readonly number[]): number => {
+  /* E-5b — one peak reader, two bands. `bandPeak` is the judged band and is
+   * what every report, strip and gate has always read; `bandPeakOn` is the same
+   * arithmetic on whatever band the caller names, and the staged stop-goal is
+   * its only other reader. Two loops would be two definitions of "ripple". */
+  const bandPeakOn = (
+    freq: readonly number[],
+    spl: readonly number[],
+    over: readonly [number, number],
+  ): number => {
     let lo = Infinity;
     let hi = -Infinity;
     for (let i = 0; i < freq.length; i++) {
-      if (freq[i] < band[0] || freq[i] > band[1]) continue;
+      if (freq[i] < over[0] || freq[i] > over[1]) continue;
       if (spl[i] < lo) lo = spl[i];
       if (spl[i] > hi) hi = spl[i];
     }
     return Number.isFinite(lo) && hi > lo ? (hi - lo) / 2 : 0;
   };
+  const bandPeak = (freq: readonly number[], spl: readonly number[]): number =>
+    bandPeakOn(freq, spl, band);
 
   let evaluations = 0;
   /**
@@ -2604,9 +2678,13 @@ export function optimizeNetworkValues(
   ): {
     /** Std-dev flatness — the smooth term the SEARCH objective minimizes. */
     rippleDb: number;
-    /** Peak ±dB over the band — what the strip reads, targets gate on and
-     *  before/after report. Never fed to the search objective. */
+    /** Peak ±dB over the band — what the strip reads and before/after report.
+     *  Never fed to the search objective. */
     ripplePeakDb: number;
+    /** E-5b — the same peak over the STAGED STOP-GOAL's band, which is the
+     *  judged band unless the run stated a narrower one. The staged pass's
+     *  `meets()` is the only reader; nothing reports or gates on it. */
+    rippleStopPeakDb: number;
     /** Mean |deviation| of the on-axis combined vs the band mean — the
      *  whole-range verdict for the chain ranking. Report-only. */
     avgDevDb: number;
@@ -3287,6 +3365,12 @@ export function optimizeNetworkValues(
     return {
       rippleDb: targetStd,
       ripplePeakDb: bandPeak(r.freq, r.combinedSpl),
+      /* E-5b — the same peak on the STOP band. Identical to `ripplePeakDb`
+       * whenever no narrower band was stated, so the staged pass below can read
+       * this one unconditionally instead of choosing between two fields. */
+      rippleStopPeakDb: stopBandNarrowed
+        ? bandPeakOn(r.freq, r.combinedSpl, stopBand)
+        : bandPeak(r.freq, r.combinedSpl),
       avgDevDb: bandAvgDev(r.freq, r.combinedSpl),
       // Solo: relative phase against a silent ghost is noise — report 0 so
       // every phase gate (staged target, barrier) passes trivially and the
@@ -3811,6 +3895,12 @@ export function optimizeNetworkValues(
         // acceptance check runs on the full grid); the heavy weight keeps a
         // small fx gain from buying a target violation. Barrier tunes are
         // always seeded from an already-good point, so the cliffs are safe.
+        /* E-5b — THE BARRIER KEEPS THE JUDGED BAND, deliberately. The stated
+         * requirement is about when the escalation may STOP, not about where
+         * the search may press: the barrier is the pressure that flattens the
+         * bass at all, and narrowing it too would take the low end out of the
+         * search rather than out of the stop test. Considered and not taken;
+         * if it is ever wanted it is a second stated decision. */
         const exR = Math.max(0, m.ripplePeakDb - barrier.rippleDb * 0.92);
         const exP = Math.max(0, (m.phaseDeg - barrier.phaseDeg * 0.92) / 15);
         barr = 120 * (exR * exR + exP * exP) + 4 * Math.max(0, m.protSqDb - protRef);
@@ -4076,7 +4166,7 @@ export function optimizeNetworkValues(
       const mAlt = full(alt.parts);
       const mBase = full(base.parts);
       if (
-        mAlt.ripplePeakDb <= opts.staged.rippleDb &&
+        mAlt.rippleStopPeakDb <= opts.staged.rippleDb &&
         phaseGate(mAlt) <= opts.staged.phaseDeg &&
         mAlt.protSqDb <= mBase.protSqDb + 0.5 &&
         mAlt.xoDipDb <= mBase.xoDipDb + 1 &&
@@ -4294,7 +4384,7 @@ export function optimizeNetworkValues(
     const fullM = (ps: readonly VxpPart[]): Metrics =>
       metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
     const meets = (m: Metrics): boolean =>
-      m.ripplePeakDb <= tgt.rippleDb && phaseGate(m) <= tgt.phaseDeg;
+      m.rippleStopPeakDb <= tgt.rippleDb && phaseGate(m) <= tgt.phaseDeg;
     // Steer INTO the target region from the fx-optimum: the barrier is a
     // local refinement — applied from a cold seed it drowns the landscape
     // (learned the hard way: 843 µF caps chasing an unreachable target).
@@ -4530,7 +4620,7 @@ export function optimizeNetworkValues(
     const baseMeets =
       base0 !== null &&
       (!opts.staged ||
-        (base0.ripplePeakDb <= opts.staged.rippleDb && phaseGate(base0) <= opts.staged.phaseDeg));
+        (base0.rippleStopPeakDb <= opts.staged.rippleDb && phaseGate(base0) <= opts.staged.phaseDeg));
     if (base0 !== null && baseMeets) {
       const fx00 = cur.fx;
       for (const id of ladderIds) {
@@ -4572,7 +4662,7 @@ export function optimizeNetworkValues(
           const fm = fullOf(cand.parts);
           const meetsOk =
             !opts.staged ||
-            (fm.ripplePeakDb <= opts.staged.rippleDb && phaseGate(fm) <= opts.staged.phaseDeg);
+            (fm.rippleStopPeakDb <= opts.staged.rippleDb && phaseGate(fm) <= opts.staged.phaseDeg);
           const safeOk =
             fm.protSqDb <= base0.protSqDb + 0.5 &&
             fm.xoDipDb <= base0.xoDipDb + 1 &&
@@ -4676,8 +4766,8 @@ export function optimizeNetworkValues(
       const zRep = zRepI;
       const targetsKept =
         !opts.staged ||
-        mCur.ripplePeakDb > opts.staged.rippleDb || // weren't met before either
-        (mRep.ripplePeakDb <= opts.staged.rippleDb && phaseGate(mRep) <= opts.staged.phaseDeg);
+        mCur.rippleStopPeakDb > opts.staged.rippleDb || // weren't met before either
+        (mRep.rippleStopPeakDb <= opts.staged.rippleDb && phaseGate(mRep) <= opts.staged.phaseDeg);
       // Full repair or nothing: a partial lift (2.7 of 3 Ω at the old floor)
       // still fails the safety gate and the whole tune bounces back to the
       // seed anyway — the dip must clear the detection threshold itself.
@@ -5360,9 +5450,7 @@ export function optimizeNetworkValues(
         evaluations,
         removed: [],
         added: [],
-        bandNote:
-        `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
-        (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+        bandNote: bandNoteText,
       ...(opts.rejectedTuneReport
           ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
           : {}),
@@ -5492,9 +5580,7 @@ export function optimizeNetworkValues(
         evaluations,
         removed: [],
         added: [],
-        bandNote:
-        `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
-        (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+        bandNote: bandNoteText,
       safetyNote: `safety gate: tune rejected on the full measurement band — ${reasons.join('; ')}. ${tail}`,
       safetyKinds: kinds,
       /* V33 — the same refusal, in the one shape a caller detects. `kinds` is
@@ -5560,9 +5646,7 @@ export function optimizeNetworkValues(
         evaluations,
         removed: [],
         added: [],
-        bandNote:
-          `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
-          (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+        bandNote: bandNoteText,
         refusal: {
           by: 'active-gate',
           /* One category, recorded where the decision is taken (A3g). It is
@@ -5640,9 +5724,7 @@ export function optimizeNetworkValues(
     evaluations,
     removed,
     added,
-    bandNote:
-      `optimised on ${Math.round(band[0])}–${Math.round(band[1])} Hz` +
-      (opts.band ? '' : ' (full grid minus edges — no validity band supplied)'),
+    bandNote: bandNoteText,
     ...(snapNote ? { snapNote } : {}),
     ...(infeasible ? { infeasible } : {}),
     ...(ampFloorNote ? { ampFloorNote } : {}),

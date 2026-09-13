@@ -27,6 +27,7 @@ import {
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { forbidsPads, seriesRMaxOhmOf, type LowestWayLevelWork } from './levelWork.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
+import { rippleStopBand } from './rippleTargetBand.ts';
 import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
 import { ALIVE_DB, type ChainEngineHooks } from './threeWayChain.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
@@ -135,6 +136,19 @@ export interface ChainSettings {
    * chain-level choice key (`chainChoices.ts`); byte-identical when absent.
    */
   synthesisGrid?: 'alive' | 'full';
+}
+
+/**
+ * E-5b — the position a cage was built around, in octaves.
+ *
+ * GEOMETRIC and not arithmetic: every window, spacing and cage in this project
+ * is laid out in octave distance, so the middle of `[a, b]` is √(ab). Null
+ * without a cage, and the caller then states no stop band at all rather than
+ * guessing a handover.
+ */
+function cageCentreHz(cage: readonly [number, number] | undefined): number | null {
+  if (!cage || !(cage[0] > 0) || !(cage[1] > 0)) return null;
+  return Math.sqrt(cage[0] * cage[1]);
 }
 
 export interface ChainInput {
@@ -412,6 +426,15 @@ export function runDesignChain(
       ampTarget: s.ampTarget,
       breakupGuard: s.breakupGuard,
       staged: s.targets,
+      /* E-5b — the band the stop-goal may be read on. This chain has ONE
+       * handover and no `xoLow`: what it holds is the candidate's CAGE, whose
+       * geometric centre is the position it was generated at (every cage since
+       * C-2 is centred on its position, two-sided). No cage, no band, and the
+       * stop-goal stays on the judged band. POLISH throughout: the choice that
+       * reads it is the candidate's (`rippleTargetBand.ts`). */
+      ...(rippleStopBand([cageCentreHz(input.xoRange)], s.band) !== null
+        ? { rippleTargetBandHz: rippleStopBand([cageCentreHz(input.xoRange)], s.band)! }
+        : {}),
       xoRange: input.xoRange,
       phaseMetric: s.phaseMetric,
       acousticSlopes: s.acousticSlopes,

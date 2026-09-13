@@ -1,0 +1,56 @@
+{
+  "_wat": "E-5b — één casus-1-kandidaat door de keten, met en zonder de gestelde stopband. Alles behalve die ene sleutel is hetzelfde object.",
+  "kandidaat": "woofer→mid 156.7 LR4 · mid→tweeter 1744.8 LR4",
+  "oordeelband_hz": [
+    52.3681640625,
+    19500
+  ],
+  "stopband_hz": [
+    110.803632611932,
+    19500
+  ],
+  "stopband_marge_octaaf": 0.5,
+  "stopdoel": {
+    "rippleDb": 2.5,
+    "phaseDeg": 15
+  },
+  "raster_punten": 143,
+  "armen": [
+    {
+      "arm": "judged",
+      "seconds": 1933.5,
+      "evaluations": 161554,
+      "tuned": 39,
+      "rippleDb": 2.214,
+      "phaseDeg": 4.1,
+      "zMinOhm": 2.701,
+      "parts": 0,
+      "removed": [
+        "C4",
+        "C·L4"
+      ],
+      "added": [
+        "C10"
+      ],
+      "refusedBy": []
+    },
+    {
+      "arm": "from-lowest-crossing",
+      "seconds": 1908.3,
+      "evaluations": 161554,
+      "tuned": 39,
+      "rippleDb": 2.214,
+      "phaseDeg": 4.1,
+      "zMinOhm": 2.701,
+      "parts": 0,
+      "removed": [
+        "C4",
+        "C·L4"
+      ],
+      "added": [
+        "C10"
+      ],
+      "refusedBy": []
+    }
+  ]
+}

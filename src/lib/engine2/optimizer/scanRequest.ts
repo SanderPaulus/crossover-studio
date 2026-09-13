@@ -487,6 +487,15 @@ export function candidateDeclarationFor(args: {
     cages: args.candidate.crossings.map((x) => x.cageHz),
     windowFloorsHz: windowFloorsFor(args.candidate),
     multiWay: args.multiWay,
+    /* E-5b — THE RIPPLE STOP-GOAL IS READ FROM THE LOWEST HANDOVER, on every
+     * app run (Sander, 13-09-2026). Unconditional here rather than behind a
+     * form field, for the reason V37's `'re'` and V38-fix's smoothing width are
+     * unconditional: it is a statement about what the stop test MEANS, not a
+     * number one project has and another does not. The band itself is the
+     * candidate's own handover positions and the chain hands it over
+     * (`rippleTargetBand.ts`); with no band the choice cannot be honoured and
+     * the tuner says so and reads the judged band. */
+    rippleStopFromLowestCrossing: true,
     stated: {
       band: s.band,
       acousticSlopes: s.acousticSlopes,

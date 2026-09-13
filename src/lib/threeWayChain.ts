@@ -13,6 +13,7 @@ import { designThreeWay, type Struct3Choice } from './threeWayDesign.ts';
 import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { seriesRMaxOhmOf, type LowestWayLevelWork } from './levelWork.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
+import { rippleStopBand } from './rippleTargetBand.ts';
 import {
   optimizeNetworkValues,
   type NetOptimizeOptions,
@@ -491,6 +492,14 @@ export function runThreeWayChain(
     xoRangePairs: [lowCage, highCage],
     xoFloorPairs: s.xoFloorPairs,
     staged: s.targets,
+    /* E-5b — THE BAND THE STOP-GOAL MAY BE READ ON, derived here because this
+     * is where the candidate's handover positions live. POLISH: it carries no
+     * decision — whether the tuner reads it is `rippleTargetBand`, a choice the
+     * candidate states. Handed over on every run, v1 included, and on a run
+     * that states no choice nothing reads it (`rippleTargetBand.ts`). */
+    ...(rippleStopBand([xoLow, xoHigh], s.band) !== null
+      ? { rippleTargetBandHz: rippleStopBand([xoLow, xoHigh], s.band)! }
+      : {}),
     phaseMetric: s.phaseMetric,
     catalogSnap: s.catalogSnap,
     snapPrefs: s.snapPrefs,

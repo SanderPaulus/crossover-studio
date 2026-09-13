@@ -99,6 +99,19 @@ export const CHOICE_KEYS = [
    * was searched against horizontal and judged against a plateau; the search
    * has the whole budget and wins that argument every time. */
   'amplitudeReference',
+  /* E-5b — and WHICH BAND the staged pass's ripple stop-goal is read on. A
+   * choice for the same reason `amplitudeReference` above is: it decides when
+   * the search is SATISFIED, and therefore which structures it ever tries. Two
+   * runs that differ in it are two searches.
+   *
+   * Since E-5 the judged band reaches the lowest way's in-box resonance, so the
+   * stop test included three octaves of bass that no crossover can flatten:
+   * below the lowest handover the sum IS the box, and its shape belongs to the
+   * plateau target and to M-D. `'from-lowest-crossing'` reads the goal from the
+   * lowest handover minus half an octave and leaves everything below it to the
+   * requirements that own it (stated 13-09-2026). Absent is `'judged'`, the
+   * historic reading, byte for byte. */
+  'rippleTargetBand',
   'angleData',
   /* --- what the topology IS --- */
   'midBranch',
@@ -392,6 +405,13 @@ export const POLISH_KEYS = [
    * the curve hangs on the design rather than on the project is so that two
    * voicings can be COMPARED instead of toggled. */
   'amplitudeTargetDb',
+  /* E-5b — the band the choice above names, in hertz, derived by the CHAIN
+   * from the handover positions it already holds. Polish for the same reason:
+   * it carries no decision. The tuner knows a crossing only after it has solved
+   * something, and a stop-goal whose band moved with the tune would be a goal
+   * that moves as you approach it — so the band is a property of the CANDIDATE
+   * and the party that knows the candidate hands it over. */
+  'rippleTargetBandHz',
 ] as const;
 
 export type PolishKey = (typeof POLISH_KEYS)[number];
