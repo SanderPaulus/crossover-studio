@@ -53,6 +53,7 @@ import {
   CASUS1_V2_BAND_HZ,
   CASUS1_V2_SEED,
   CASUS1_V2_SETTINGS,
+  casus1CorpusSet,
   casus1ChainInput,
   casus1Field,
   casus1V2Declaration,
@@ -73,7 +74,17 @@ import { handleV2Request, type V2Chain3Payload, type V2Response } from './optimi
 import type { Chain3Input, Chain3Result } from '../threeWayChain.ts';
 
 const golden = loadGolden();
-const manifest = casus1Manifest(golden);
+/** M-3 — de set waarop het levende corpus is opgewekt, GELEZEN uit zijn eigen
+ *  herkomst en niet getypt. Zie `casus1CorpusSet`. */
+const CORPUS_SET = casus1CorpusSet();
+/* M-3 — DE SET WAAROP HET CORPUS GEMAAKT IS, en niet de standaard. Dit hele
+ * bestand is de live ketenrun: het draait de zoektocht opnieuw en legt haar
+ * uitkomst naast een OPGENOMEN verwerping. Sinds M-3 leest de standaardset een
+ * hermergde mid met een andere fase in de W-M-kruisband, dus het objectief dat
+ * de zoektocht minimaliseert leest daar andere getallen en de run zou een ander
+ * pad lopen. Reproduceren betekent hier: reproduceren op de set waarop het
+ * corpus gemaakt is. Zie `CORPUS_SET` voor de volledige motivering. */
+const manifest = casus1Manifest(golden, CORPUS_SET);
 const files = casus1Files(manifest);
 const geometry = casus1Geometry(golden);
 

@@ -301,7 +301,7 @@
    "excursie_toelichting": "M-C v2.0 (V49), route electromechanical: x/V op f0 = 88.8 Hz, klasse A — dezelfde waarde op élke netlist van het casusboek. Het plafond is dB t.o.v. de PIEKINGANGSSPANNING; de grens per netlist (plafond − doorlaatbandgemiddelde) staat in manifest_en_geometrie.v49_excursie. Route 2: acoustic route off for mid: the drive voltage and mic distance of the on-axis response are not documented.",
    "FF_vloer_merge": 60,
    "FF_vloer_merge_bron": "merge-block",
-   "FF_vloer_merge_toelichting": "M-1: de on-axis geldigheidsvloer van de mid op de GEMERGEDE set, gelezen uit het mergeblok van Koan_M_merged.frd (Valid from = 60 Hz, gesteld uit de pod: f_c 88,8 Hz, -7 dB op de tweede-orde flank, raggedness van het nabije veld loopt eronder op). Op de gepoorte set is de vloer de header-gate van mid_hor_0.txt (396,7 Hz). PLACEHOLDER tot groundplane/hermeting.",
+   "FF_vloer_merge_toelichting": "M-1: de on-axis geldigheidsvloer van de mid op de GEMERGEDE set, gelezen uit het mergeblok van Koan_M_merged.frd (Valid from = 60 Hz, gesteld uit de pod: f_c 88,8 Hz, -7 dB op de tweede-orde flank, raggedness van het nabije veld loopt eronder op). Op de gepoorte set is de vloer de header-gate van mid_hor_0.txt (396,7 Hz). PLACEHOLDER tot groundplane/hermeting. SINDS M-3 (16-09-2026) gelezen uit het mergeblok van mid_hor_0_merged.frd: DEZELFDE gestelde vloer (60 Hz, dezelfde reden, dezelfde twee bronbestanden) - M-3 repareert de FASE van het stapmodel en raakt de vloer niet. Koan_M_merged.frd blijft op schijf als de mid van de sets \"merged\" en \"koan677\".",
    "_breakups_gepoort_tot_M1": {
     "_": "De breakups en hun 30-graden-persistentie op de GEPOORTE set (scanband 397-20000 Hz): de trend verschuift met de band (V8c). Brug, reproduceerbaar met set \"gated\".",
     "breakups": [
@@ -554,10 +554,10 @@
   "HUIDIG_2e": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.HUIDIG. Zij toetsen de metriekbibliotheek, niet een zoektocht: de netlist staat als bestand in test-fixtures/casus1/ en is sinds b04f9fa onveranderd. Een eigen kandidaatgeneratie in v2 verplaatst deze getallen dus niet. SINDS M-1 gemeten op de GEMERGEDE set (woofers en mid NF/FF-gemerged, plateau vlak): de responsafhankelijke velden bewogen en staan met hun gepoorte lezing in _gepoort_tot_M1; PLACEHOLDER tot groundplane. SINDS M-2b gemeten op de 67,7 L-SET: de wooferhelft is de hermeting van 11-09-2026 getransformeerd naar de echte kast, dus zowel de responsvelden als de ELEKTRISCHE velden bewogen; hun M-1-lezing staat in _waarden_M1_tot_M2b.",
-   "wm_fase_oct": 20.35,
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.HUIDIG. Zij toetsen de metriekbibliotheek, niet een zoektocht: de netlist staat als bestand in test-fixtures/casus1/ en is sinds b04f9fa onveranderd. Een eigen kandidaatgeneratie in v2 verplaatst deze getallen dus niet. SINDS M-1 gemeten op de GEMERGEDE set (woofers en mid NF/FF-gemerged, plateau vlak): de responsafhankelijke velden bewogen en staan met hun gepoorte lezing in _gepoort_tot_M1; PLACEHOLDER tot groundplane. SINDS M-2b gemeten op de 67,7 L-SET: de wooferhelft is de hermeting van 11-09-2026 getransformeerd naar de echte kast, dus zowel de responsvelden als de ELEKTRISCHE velden bewogen; hun M-1-lezing staat in _waarden_M1_tot_M2b. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): alleen de W-M-fasevelden bewogen, hun M-2b-lezing staat in _waarden_M2b_tot_M3.",
+   "wm_fase_oct": 20.61,
    "mt_fase_oct": 7.04,
-   "wm_fase_oct_octaafgeknipt_V43": 19.47,
+   "wm_fase_oct_octaafgeknipt_V43": 19.76,
    "mt_fase_oct_octaafgeknipt_V43": 7.04,
    "minZ": 3.43,
    "minEPDR": 1.71,
@@ -616,14 +616,19 @@
     "V_tweeter_op_fs_dB": -25.08,
     "rms_vlakheid_dB": 0.583,
     "spl_venster_pm_dB": 1.173
+   },
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 20.35,
+    "wm_fase_oct_octaafgeknipt_V43": 19.47
    }
   },
   "KAND_A_2e": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "wm_fase_oct": 4.96,
+   "wm_fase_oct": 4.63,
    "mt_fase_oct": 3.92,
-   "wm_fase_oct_octaafgeknipt_V43": 4.41,
+   "wm_fase_oct_octaafgeknipt_V43": 4.14,
    "mt_fase_oct_octaafgeknipt_V43": 3.69,
    "minZ": 3.29,
    "minEPDR": 1.65,
@@ -682,14 +687,19 @@
     "V_tweeter_op_fs_dB": -34.54,
     "rms_vlakheid_dB": 0.771,
     "spl_venster_pm_dB": 1.237
+   },
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 4.96,
+    "wm_fase_oct_octaafgeknipt_V43": 4.41
    }
   },
   "KAND_B_3e": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "wm_fase_oct": 3.15,
+   "wm_fase_oct": 2.83,
    "mt_fase_oct": 3.39,
-   "wm_fase_oct_octaafgeknipt_V43": 2.98,
+   "wm_fase_oct_octaafgeknipt_V43": 2.71,
    "mt_fase_oct_octaafgeknipt_V43": 3.41,
    "minZ": 3.41,
    "minEPDR": 1.71,
@@ -754,7 +764,12 @@
     "rms_vlakheid_dB": 0.699,
     "spl_venster_pm_dB": 1.126
    },
-   "R8_W_bij_100W": 19.6
+   "R8_W_bij_100W": 19.6,
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 3.15,
+    "wm_fase_oct_octaafgeknipt_V43": 2.98
+   }
   },
   "_wm_fase_oct_opmerking": "V44 — DE GROOTHEID IS HERDEFINIEERD EN DE NAAM NIET. `wm_fase_oct` en `mt_fase_oct` zijn sinds V44 M-K: het gemiddelde |relatieve fase| over de punten die een fase-oordeel MOGEN dragen — binnen de meetgeldigheid van beide takken, beide takken boven de stille-geestvloer, en binnen het overlapvenster (|niveauverschil na filter| <= 20 dB). De +-1-octaafband rond het kruispunt is als toelating VERVALLEN: het niveaucriterium leest het overnamegebied van het geleverde netwerk af in plaats van het met een octaafregel te benaderen. DE BRUG: `wm_fase_oct_octaafgeknipt_V43` en `mt_fase_oct_octaafgeknipt_V43` dragen de waarden die deze sleutels tot V43 hadden, en de metriek reproduceert ze nog steeds als controlekolom (`control.octaveClipped`) — dat is wat de herdefinitie leesbaar maakt in plaats van stil (V15's vorm). WAT ER TOT V43 STOND, en dat blijft waar over die oude grootheid: het gemiddelde |fasefout| over +-1 octaaf rond het kruispunt, GECLIPT op de meetgeldigheidsband (A5.5). De referentie van 25-08 gebruikte een band onder de geldigheidsvloer: bij HUIDIG ligt het kruispunt op 360 Hz en dus de onderste helft van het venster onder de 397 Hz-vloer. KAND-A en KAND-B reproduceerden de oorspronkelijke referentiewaarden (2,8 / 1,3) omdat hun kruispunten boven de vloer liggen. WAAROM DIE OUDE GROOTHEID NIET GENOEG WAS: zij middelt fase mee waar EEN van de twee takken al dertig dB weg is en zijn fase de som niet kan bewegen. Op V28_KAND_1 mid|tweeter zijn dat dertien punten van gemiddeld 146 graden, en het rapport las daar 90,7 waar de som 29,7 zag (casusboek V40).",
   "_V_tweeter_op_fs_dB_opmerking": "20*log10(|V_drv(f_s)| / V_passband), met de doorlaatband AFGELEID uit de gevonden kruispunten (A4 M-C) en het gemiddelde genomen in dB. De referentie van 25-08 gebruikte SESSIE-BANDEN 4-10 kHz (tweeter) en 0,7-1,5 kHz (mid) - tweede V15-geval. Het bandverschil is de volledige verklaring: met exact die banden reproduceert de engine de oude waarden tot binnen 0,05 dB (zie _V_tweeter_op_fs_dB_sessie_25_08, dat als staande test is vastgelegd).",
@@ -3920,7 +3935,7 @@
   "KAND_V2_1": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): alleen de W-M-fasevelden bewogen, hun M-2b-lezing staat in _waarden_M2b_tot_M3.",
    "minZ": 2.61,
    "minEPDR": 1.44,
    "dissipatie_pct": 53,
@@ -3932,17 +3947,23 @@
    "V_tweeter_op_fs_dB": -30.57,
    "rms_vlakheid_dB": 0.91,
    "spl_venster_pm_dB": 1.47,
-   "wm_fase_oct": 10.26,
+   "wm_fase_oct": 10.57,
    "mt_fase_oct": 8.41,
-   "wm_fase_oct_octaafgeknipt_V43": 12.58,
+   "wm_fase_oct_octaafgeknipt_V43": 12.83,
    "mt_fase_oct_octaafgeknipt_V43": 8.04,
-   "wm_fase_overlapvenster_V43": 45.45,
-   "mt_fase_overlapvenster_V43": 8.41
+   "wm_fase_overlapvenster_V43": 50.62,
+   "mt_fase_overlapvenster_V43": 8.41,
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 10.26,
+    "wm_fase_oct_octaafgeknipt_V43": 12.58,
+    "wm_fase_overlapvenster_V43": 45.45
+   }
   },
   "KAND_V2_2": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): alleen de W-M-fasevelden bewogen, hun M-2b-lezing staat in _waarden_M2b_tot_M3.",
    "minZ": 2.58,
    "minEPDR": 1.29,
    "dissipatie_pct": 51,
@@ -3954,17 +3975,23 @@
    "V_tweeter_op_fs_dB": -33.55,
    "rms_vlakheid_dB": 1,
    "spl_venster_pm_dB": 2.08,
-   "wm_fase_oct": 12.89,
+   "wm_fase_oct": 13.12,
    "mt_fase_oct": 5.41,
-   "wm_fase_oct_octaafgeknipt_V43": 12.77,
+   "wm_fase_oct_octaafgeknipt_V43": 13,
    "mt_fase_oct_octaafgeknipt_V43": 5.22,
-   "wm_fase_overlapvenster_V43": 20.7,
-   "mt_fase_overlapvenster_V43": 5.41
+   "wm_fase_overlapvenster_V43": 19.75,
+   "mt_fase_overlapvenster_V43": 5.41,
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 12.89,
+    "wm_fase_oct_octaafgeknipt_V43": 12.77,
+    "wm_fase_overlapvenster_V43": 20.7
+   }
   },
   "KAND_V2_3": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): alleen de W-M-fasevelden bewogen, hun M-2b-lezing staat in _waarden_M2b_tot_M3.",
    "minZ": 2.58,
    "minEPDR": 2.1,
    "dissipatie_pct": 52,
@@ -3976,12 +4003,18 @@
    "V_tweeter_op_fs_dB": -38.57,
    "rms_vlakheid_dB": 1.23,
    "spl_venster_pm_dB": 2.03,
-   "wm_fase_oct": 31.37,
+   "wm_fase_oct": 32.02,
    "mt_fase_oct": 8.05,
-   "wm_fase_oct_octaafgeknipt_V43": 32.19,
+   "wm_fase_oct_octaafgeknipt_V43": 33.23,
    "mt_fase_oct_octaafgeknipt_V43": 6.7,
-   "wm_fase_overlapvenster_V43": 28.67,
-   "mt_fase_overlapvenster_V43": 8.05
+   "wm_fase_overlapvenster_V43": 27.08,
+   "mt_fase_overlapvenster_V43": 8.05,
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 31.37,
+    "wm_fase_oct_octaafgeknipt_V43": 32.19,
+    "wm_fase_overlapvenster_V43": 28.67
+   }
   }
  },
  "kruisvensters": {
@@ -8184,7 +8217,7 @@
       "r_source_ohm": 0.0014,
       "noemer_ohm": 3.05,
       "ratio": 0.0005,
-      "term": 1.113e-08
+      "term": 1.113e-8
      }
     },
     {
@@ -8242,7 +8275,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.657e-09
+      "term": 6.657e-9
      }
     },
     {
@@ -8300,7 +8333,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.657e-09
+      "term": 6.657e-9
      }
     },
     {
@@ -8358,7 +8391,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.657e-09
+      "term": 6.657e-9
      }
     },
     {
@@ -8474,7 +8507,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.36e-09
+      "term": 6.36e-9
      }
     },
     {
@@ -8503,7 +8536,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.397e-09
+      "term": 6.397e-9
      }
     },
     {
@@ -8619,7 +8652,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.485e-09
+      "term": 6.485e-9
      }
     },
     {
@@ -9025,7 +9058,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.194e-09
+      "term": 6.194e-9
      }
     },
     {
@@ -9112,7 +9145,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.31e-09
+      "term": 6.31e-9
      }
     },
     {
@@ -9257,7 +9290,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.141e-09
+      "term": 6.141e-9
      }
     },
     {
@@ -9286,7 +9319,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.278e-09
+      "term": 6.278e-9
      }
     },
     {
@@ -9576,7 +9609,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.141e-09
+      "term": 6.141e-9
      }
     },
     {
@@ -9605,7 +9638,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.278e-09
+      "term": 6.278e-9
      }
     },
     {
@@ -9634,7 +9667,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.203e-09
+      "term": 6.203e-9
      }
     },
     {
@@ -9837,7 +9870,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.141e-09
+      "term": 6.141e-9
      }
     },
     {
@@ -9866,7 +9899,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.278e-09
+      "term": 6.278e-9
      }
     },
     {
@@ -9881,14 +9914,14 @@
       "r_source_ohm": 0.8515,
       "noemer_ohm": 19.44,
       "ratio": 0.0438,
-      "term": 9.594e-05
+      "term": 0.00009594
      },
      "term_veiligheidsraster": {
       "hz": 51.5,
       "r_source_ohm": 0.8515,
       "noemer_ohm": 19.44,
       "ratio": 0.0438,
-      "term": 9.595e-05
+      "term": 0.00009595
      },
      "term_op_R_e": {
       "hz": 51.5,
@@ -10214,7 +10247,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0003,
-      "term": 6.114e-09
+      "term": 6.114e-9
      }
     },
     {
@@ -10301,7 +10334,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0004,
-      "term": 6.239e-09
+      "term": 6.239e-9
      }
     },
     {
@@ -10359,7 +10392,7 @@
       "r_source_ohm": 0.0011,
       "noemer_ohm": 3.05,
       "ratio": 0.0003,
-      "term": 6.106e-09
+      "term": 6.106e-9
      }
     },
     {
@@ -12027,21 +12060,21 @@
       "r_source_ohm": 0.0419,
       "noemer_ohm": 19.44,
       "ratio": 0.0022,
-      "term": 2.323e-07
+      "term": 2.323e-7
      },
      "term_veiligheidsraster": {
       "hz": 51.5,
       "r_source_ohm": 0.0419,
       "noemer_ohm": 19.44,
       "ratio": 0.0022,
-      "term": 2.325e-07
+      "term": 2.325e-7
      },
      "term_op_R_e": {
       "hz": 51.5,
       "r_source_ohm": 0.0419,
       "noemer_ohm": 3.05,
       "ratio": 0.0137,
-      "term": 9.443e-06
+      "term": 0.000009443
      }
     },
     {
@@ -12288,14 +12321,14 @@
       "r_source_ohm": 0.7773,
       "noemer_ohm": 19.44,
       "ratio": 0.04,
-      "term": 7.996e-05
+      "term": 0.00007996
      },
      "term_veiligheidsraster": {
       "hz": 51.5,
       "r_source_ohm": 0.7774,
       "noemer_ohm": 19.44,
       "ratio": 0.04,
-      "term": 7.998e-05
+      "term": 0.00007998
      },
      "term_op_R_e": {
       "hz": 51.5,
@@ -12607,14 +12640,14 @@
       "r_source_ohm": 0.7969,
       "noemer_ohm": 19.44,
       "ratio": 0.041,
-      "term": 8.405e-05
+      "term": 0.00008405
      },
      "term_veiligheidsraster": {
       "hz": 51.5,
       "r_source_ohm": 0.7965,
       "noemer_ohm": 19.44,
       "ratio": 0.041,
-      "term": 8.396e-05
+      "term": 0.00008396
      },
      "term_op_R_e": {
       "hz": 51.5,
@@ -12636,14 +12669,14 @@
       "r_source_ohm": 0.7572,
       "noemer_ohm": 19.44,
       "ratio": 0.039,
-      "term": 7.587e-05
+      "term": 0.00007587
      },
      "term_veiligheidsraster": {
       "hz": 51.5,
       "r_source_ohm": 0.757,
       "noemer_ohm": 19.44,
       "ratio": 0.0389,
-      "term": 7.583e-05
+      "term": 0.00007583
      },
      "term_op_R_e": {
       "hz": 51.5,
@@ -12897,14 +12930,14 @@
       "r_source_ohm": 0.7487,
       "noemer_ohm": 19.44,
       "ratio": 0.0385,
-      "term": 7.418e-05
+      "term": 0.00007418
      },
      "term_veiligheidsraster": {
       "hz": 51.5,
       "r_source_ohm": 0.7483,
       "noemer_ohm": 19.44,
       "ratio": 0.0385,
-      "term": 7.411e-05
+      "term": 0.00007411
      },
      "term_op_R_e": {
       "hz": 51.5,
@@ -14798,21 +14831,21 @@
    ]
   },
   "v44_fasematen": {
-   "_": "V44 — WELKE PUNTEN EEN FASE-OORDEEL DRAGEN. `mk_dB` is M-K: het gemiddelde |relatieve fase| over de punten die alle drie de gronden doorstaan (binnen de meetgeldigheid van beide takken, beide takken boven de stille-geestvloer, en binnen het overlapvenster). `octaafgeknipt_dB` is wat `system.phaseTracking` tot V43 afdrukte (±1 octaaf rond het kruispunt, geknipt op meetgeldigheid) en `overlapvenster_dB` is wat de TUNER tot V43 las (elk punt binnen het overlapvenster, ongeknipt). Beide laatste zijn CONTROLEKOLOMMEN: geen poort, geen eis, geen sorteersleutel leest ze. Zij staan er omdat hun onderlinge tegenspraak het bewijsmateriaal onder V44 is. De eenheid is graden; de sleutelnamen zeggen dB en dat is een vergissing in de naam die niet in de waarde zit. Zie casusboek V40 en V44.",
+   "_": "V44 — WELKE PUNTEN EEN FASE-OORDEEL DRAGEN. `mk_dB` is M-K: het gemiddelde |relatieve fase| over de punten die alle drie de gronden doorstaan (binnen de meetgeldigheid van beide takken, beide takken boven de stille-geestvloer, en binnen het overlapvenster). `octaafgeknipt_dB` is wat `system.phaseTracking` tot V43 afdrukte (±1 octaaf rond het kruispunt, geknipt op meetgeldigheid) en `overlapvenster_dB` is wat de TUNER tot V43 las (elk punt binnen het overlapvenster, ongeknipt). Beide laatste zijn CONTROLEKOLOMMEN: geen poort, geen eis, geen sorteersleutel leest ze. Zij staan er omdat hun onderlinge tegenspraak het bewijsmateriaal onder V44 is. De eenheid is graden; de sleutelnamen zeggen dB en dat is een vergissing in de naam die niet in de waarde zit. Zie casusboek V40 en V44. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): elke woofer|mid-rij leest een andere fase, elke mid|tweeter-rij exact dezelfde, en de M-2b-lezing van de bewogen rijen staat in _waarden_M2b_tot_M3.",
    "metriek_versie": "phase-integration/2.0",
    "toelating_versie": "phase-admission/1.0",
    "per_netlist": [
     {
      "netlist": "HUIDIG",
      "paar": "woofer|mid",
-     "mk_graden": 20.35,
+     "mk_graden": 20.61,
      "punten": 131,
      "band_Hz": [
       396.85,
       736.73
      ],
-     "octaafgeknipt_graden": 19.47,
-     "overlapvenster_graden": 28.3,
+     "octaafgeknipt_graden": 19.76,
+     "overlapvenster_graden": 26.75,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -14839,14 +14872,14 @@
     {
      "netlist": "KAND_A",
      "paar": "woofer|mid",
-     "mk_graden": 4.96,
+     "mk_graden": 4.63,
      "punten": 140,
      "band_Hz": [
       396.85,
       768.97
      ],
-     "octaafgeknipt_graden": 4.41,
-     "overlapvenster_graden": 14.26,
+     "octaafgeknipt_graden": 4.14,
+     "overlapvenster_graden": 12.7,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -14873,14 +14906,14 @@
     {
      "netlist": "KAND_B",
      "paar": "woofer|mid",
-     "mk_graden": 3.15,
+     "mk_graden": 2.83,
      "punten": 140,
      "band_Hz": [
       396.85,
       768.97
      ],
-     "octaafgeknipt_graden": 2.98,
-     "overlapvenster_graden": 11,
+     "octaafgeknipt_graden": 2.71,
+     "overlapvenster_graden": 9.44,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -14907,14 +14940,14 @@
     {
      "netlist": "V28_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 4.73,
+     "mk_graden": 4.95,
      "punten": 174,
      "band_Hz": [
       396.85,
       904.03
      ],
-     "octaafgeknipt_graden": 5.52,
-     "overlapvenster_graden": 12.77,
+     "octaafgeknipt_graden": 5.72,
+     "overlapvenster_graden": 11.3,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -14941,14 +14974,14 @@
     {
      "netlist": "V28_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 32.36,
+     "mk_graden": 32.16,
      "punten": 213,
      "band_Hz": [
       396.85,
       19189.44
      ],
-     "octaafgeknipt_graden": 27.44,
-     "overlapvenster_graden": 31.15,
+     "octaafgeknipt_graden": 27.22,
+     "overlapvenster_graden": 30.32,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -14965,7 +14998,7 @@
       4224.96
      ],
      "octaafgeknipt_graden": 89.17,
-     "overlapvenster_graden": 21.01,
+     "overlapvenster_graden": 33.75,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -14975,14 +15008,14 @@
     {
      "netlist": "V28_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 24.52,
+     "mk_graden": 24.16,
      "punten": 120,
      "band_Hz": [
       396.85,
       699.16
      ],
-     "octaafgeknipt_graden": 23.86,
-     "overlapvenster_graden": 42.12,
+     "octaafgeknipt_graden": 23.53,
+     "overlapvenster_graden": 39.82,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15009,14 +15042,14 @@
     {
      "netlist": "V28_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 20.39,
+     "mk_graden": 20.11,
      "punten": 157,
      "band_Hz": [
       396.85,
       833.77
      ],
-     "octaafgeknipt_graden": 20.44,
-     "overlapvenster_graden": 29.63,
+     "octaafgeknipt_graden": 20.18,
+     "overlapvenster_graden": 28.18,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15043,14 +15076,14 @@
     {
      "netlist": "V28_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 9.99,
+     "mk_graden": 9.59,
      "punten": 110,
      "band_Hz": [
       396.85,
       666.66
      ],
-     "octaafgeknipt_graden": 9.39,
-     "overlapvenster_graden": 31.54,
+     "octaafgeknipt_graden": 9.03,
+     "overlapvenster_graden": 29.14,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15077,14 +15110,14 @@
     {
      "netlist": "V28_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 13.69,
+     "mk_graden": 13.38,
      "punten": 140,
      "band_Hz": [
       396.85,
       768.97
      ],
-     "octaafgeknipt_graden": 13.52,
-     "overlapvenster_graden": 28.53,
+     "octaafgeknipt_graden": 13.22,
+     "overlapvenster_graden": 26.76,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15111,14 +15144,14 @@
     {
      "netlist": "V28_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 4.53,
+     "mk_graden": 4.17,
      "punten": 105,
      "band_Hz": [
       396.85,
       650.99
      ],
-     "octaafgeknipt_graden": 5.51,
-     "overlapvenster_graden": 27.46,
+     "octaafgeknipt_graden": 5.18,
+     "overlapvenster_graden": 25.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15145,14 +15178,14 @@
     {
      "netlist": "V28_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 11.83,
+     "mk_graden": 11.52,
      "punten": 151,
      "band_Hz": [
       396.85,
       810.3
      ],
-     "octaafgeknipt_graden": 11.78,
-     "overlapvenster_graden": 23.47,
+     "octaafgeknipt_graden": 11.47,
+     "overlapvenster_graden": 21.94,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15179,14 +15212,14 @@
     {
      "netlist": "V28_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 15.5,
+     "mk_graden": 15.26,
      "punten": 148,
      "band_Hz": [
       396.85,
       798.81
      ],
-     "octaafgeknipt_graden": 15.44,
-     "overlapvenster_graden": 25.58,
+     "octaafgeknipt_graden": 15.2,
+     "overlapvenster_graden": 24.09,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15213,14 +15246,14 @@
     {
      "netlist": "V28_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 16.85,
+     "mk_graden": 16.64,
      "punten": 139,
      "band_Hz": [
       396.85,
       765.32
      ],
-     "octaafgeknipt_graden": 16.85,
-     "overlapvenster_graden": 27.1,
+     "octaafgeknipt_graden": 16.64,
+     "overlapvenster_graden": 25.53,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15247,14 +15280,14 @@
     {
      "netlist": "V30_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 8.67,
+     "mk_graden": 9,
      "punten": 142,
      "band_Hz": [
       396.85,
       776.33
      ],
-     "octaafgeknipt_graden": 9.23,
-     "overlapvenster_graden": 21.29,
+     "octaafgeknipt_graden": 9.6,
+     "overlapvenster_graden": 20.25,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15281,14 +15314,14 @@
     {
      "netlist": "V30_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 4.35,
+     "mk_graden": 4.61,
      "punten": 144,
      "band_Hz": [
       396.85,
       783.75
      ],
-     "octaafgeknipt_graden": 4.42,
-     "overlapvenster_graden": 19.16,
+     "octaafgeknipt_graden": 4.71,
+     "overlapvenster_graden": 18.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15315,14 +15348,14 @@
     {
      "netlist": "V30_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 13.19,
+     "mk_graden": 13.21,
      "punten": 166,
      "band_Hz": [
       396.85,
       870.26
      ],
-     "octaafgeknipt_graden": 11.65,
-     "overlapvenster_graden": 21.67,
+     "octaafgeknipt_graden": 11.67,
+     "overlapvenster_graden": 20.73,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15349,14 +15382,14 @@
     {
      "netlist": "V30_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 13.39,
+     "mk_graden": 13.4,
      "punten": 169,
      "band_Hz": [
       396.85,
       882.77
      ],
-     "octaafgeknipt_graden": 11.37,
-     "overlapvenster_graden": 21.92,
+     "octaafgeknipt_graden": 11.38,
+     "overlapvenster_graden": 20.9,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15383,14 +15416,14 @@
     {
      "netlist": "V30_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 29.97,
+     "mk_graden": 30.25,
      "punten": 167,
      "band_Hz": [
       396.85,
       874.41
      ],
-     "octaafgeknipt_graden": 38.82,
-     "overlapvenster_graden": 39.71,
+     "octaafgeknipt_graden": 39.03,
+     "overlapvenster_graden": 42.41,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15417,14 +15450,14 @@
     {
      "netlist": "V30_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 8.36,
+     "mk_graden": 8.62,
      "punten": 152,
      "band_Hz": [
       396.85,
       814.17
      ],
-     "octaafgeknipt_graden": 7.09,
-     "overlapvenster_graden": 20.46,
+     "octaafgeknipt_graden": 7.39,
+     "overlapvenster_graden": 19.26,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15451,14 +15484,14 @@
     {
      "netlist": "V30_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 22.31,
+     "mk_graden": 22.37,
      "punten": 176,
      "band_Hz": [
       396.85,
       3394.3
      ],
-     "octaafgeknipt_graden": 21.27,
-     "overlapvenster_graden": 25.58,
+     "octaafgeknipt_graden": 21.32,
+     "overlapvenster_graden": 25.07,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15485,14 +15518,14 @@
     {
      "netlist": "V30_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 16.78,
+     "mk_graden": 16.68,
      "punten": 179,
      "band_Hz": [
       396.85,
       925.8
      ],
-     "octaafgeknipt_graden": 15.7,
-     "overlapvenster_graden": 22.19,
+     "octaafgeknipt_graden": 15.59,
+     "overlapvenster_graden": 21.34,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15519,14 +15552,14 @@
     {
      "netlist": "V30_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 29.91,
+     "mk_graden": 30.2,
      "punten": 165,
      "band_Hz": [
       396.85,
       866.13
      ],
-     "octaafgeknipt_graden": 39.62,
-     "overlapvenster_graden": 35.95,
+     "octaafgeknipt_graden": 39.83,
+     "overlapvenster_graden": 38.37,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15553,14 +15586,14 @@
     {
      "netlist": "V30_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 11.57,
+     "mk_graden": 11.72,
      "punten": 157,
      "band_Hz": [
       396.85,
       833.77
      ],
-     "octaafgeknipt_graden": 11.95,
-     "overlapvenster_graden": 19.09,
+     "octaafgeknipt_graden": 12.06,
+     "overlapvenster_graden": 18.32,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15587,14 +15620,14 @@
     {
      "netlist": "V32_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 13.19,
+     "mk_graden": 13.21,
      "punten": 166,
      "band_Hz": [
       396.85,
       870.26
      ],
-     "octaafgeknipt_graden": 11.65,
-     "overlapvenster_graden": 21.67,
+     "octaafgeknipt_graden": 11.67,
+     "overlapvenster_graden": 20.73,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15621,14 +15654,14 @@
     {
      "netlist": "V32_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 13.39,
+     "mk_graden": 13.4,
      "punten": 169,
      "band_Hz": [
       396.85,
       882.77
      ],
-     "octaafgeknipt_graden": 11.37,
-     "overlapvenster_graden": 21.92,
+     "octaafgeknipt_graden": 11.38,
+     "overlapvenster_graden": 20.9,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15655,14 +15688,14 @@
     {
      "netlist": "V32_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 29.97,
+     "mk_graden": 30.25,
      "punten": 167,
      "band_Hz": [
       396.85,
       874.41
      ],
-     "octaafgeknipt_graden": 38.82,
-     "overlapvenster_graden": 39.71,
+     "octaafgeknipt_graden": 39.03,
+     "overlapvenster_graden": 42.41,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15689,14 +15722,14 @@
     {
      "netlist": "V32_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 22.31,
+     "mk_graden": 22.37,
      "punten": 176,
      "band_Hz": [
       396.85,
       3394.3
      ],
-     "octaafgeknipt_graden": 21.27,
-     "overlapvenster_graden": 25.58,
+     "octaafgeknipt_graden": 21.32,
+     "overlapvenster_graden": 25.07,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15723,14 +15756,14 @@
     {
      "netlist": "V32_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 16.78,
+     "mk_graden": 16.68,
      "punten": 179,
      "band_Hz": [
       396.85,
       925.8
      ],
-     "octaafgeknipt_graden": 15.7,
-     "overlapvenster_graden": 22.19,
+     "octaafgeknipt_graden": 15.59,
+     "overlapvenster_graden": 21.34,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15757,14 +15790,14 @@
     {
      "netlist": "V32_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 29.91,
+     "mk_graden": 30.2,
      "punten": 165,
      "band_Hz": [
       396.85,
       866.13
      ],
-     "octaafgeknipt_graden": 39.62,
-     "overlapvenster_graden": 35.95,
+     "octaafgeknipt_graden": 39.83,
+     "overlapvenster_graden": 38.37,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15791,14 +15824,14 @@
     {
      "netlist": "V32_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 11.57,
+     "mk_graden": 11.72,
      "punten": 157,
      "band_Hz": [
       396.85,
       833.77
      ],
-     "octaafgeknipt_graden": 11.95,
-     "overlapvenster_graden": 19.09,
+     "octaafgeknipt_graden": 12.06,
+     "overlapvenster_graden": 18.32,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15825,14 +15858,14 @@
     {
      "netlist": "V33_SWEEP_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 22.36,
+     "mk_graden": 22.63,
      "punten": 164,
      "band_Hz": [
       396.85,
       862.01
      ],
-     "octaafgeknipt_graden": 20.83,
-     "overlapvenster_graden": 39.6,
+     "octaafgeknipt_graden": 21.03,
+     "overlapvenster_graden": 40.56,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15859,14 +15892,14 @@
     {
      "netlist": "V33_SWEEP_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 26.81,
+     "mk_graden": 27.09,
      "punten": 161,
      "band_Hz": [
       396.85,
       849.79
      ],
-     "octaafgeknipt_graden": 29.5,
-     "overlapvenster_graden": 41.1,
+     "octaafgeknipt_graden": 29.71,
+     "overlapvenster_graden": 41.4,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15893,14 +15926,14 @@
     {
      "netlist": "V33_SWEEP_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 17.5,
+     "mk_graden": 17.8,
      "punten": 159,
      "band_Hz": [
       396.85,
       841.74
      ],
-     "octaafgeknipt_graden": 17.99,
-     "overlapvenster_graden": 22.65,
+     "octaafgeknipt_graden": 18.28,
+     "overlapvenster_graden": 21.62,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15927,14 +15960,14 @@
     {
      "netlist": "V33_SWEEP_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 31.29,
+     "mk_graden": 31.58,
      "punten": 168,
      "band_Hz": [
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 42.58,
-     "overlapvenster_graden": 35.86,
+     "octaafgeknipt_graden": 42.8,
+     "overlapvenster_graden": 36.75,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15961,14 +15994,14 @@
     {
      "netlist": "V33_SWEEP_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 29.78,
+     "mk_graden": 30.07,
      "punten": 165,
      "band_Hz": [
       396.85,
       866.13
      ],
-     "octaafgeknipt_graden": 38.74,
-     "overlapvenster_graden": 37.27,
+     "octaafgeknipt_graden": 38.96,
+     "overlapvenster_graden": 38.25,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -15995,14 +16028,14 @@
     {
      "netlist": "V33_SWEEP_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 9.28,
+     "mk_graden": 9.63,
      "punten": 137,
      "band_Hz": [
       396.85,
       758.07
      ],
-     "octaafgeknipt_graden": 8.55,
-     "overlapvenster_graden": 18.29,
+     "octaafgeknipt_graden": 8.83,
+     "overlapvenster_graden": 17.07,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16029,14 +16062,14 @@
     {
      "netlist": "V33_SWEEP_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 14.1,
+     "mk_graden": 14.14,
      "punten": 172,
      "band_Hz": [
       396.85,
       895.46
      ],
-     "octaafgeknipt_graden": 11.32,
-     "overlapvenster_graden": 20.64,
+     "octaafgeknipt_graden": 11.37,
+     "overlapvenster_graden": 19.64,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16063,14 +16096,14 @@
     {
      "netlist": "V33_SWEEP_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 11.99,
+     "mk_graden": 12.01,
      "punten": 167,
      "band_Hz": [
       396.85,
       874.41
      ],
-     "octaafgeknipt_graden": 10.56,
-     "overlapvenster_graden": 21.54,
+     "octaafgeknipt_graden": 10.59,
+     "overlapvenster_graden": 20.85,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16097,14 +16130,14 @@
     {
      "netlist": "V33_SWEEP_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 19.66,
+     "mk_graden": 19.67,
      "punten": 215,
      "band_Hz": [
       396.85,
       3697.88
      ],
-     "octaafgeknipt_graden": 13.77,
-     "overlapvenster_graden": 25.37,
+     "octaafgeknipt_graden": 13.78,
+     "overlapvenster_graden": 24.9,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16131,14 +16164,14 @@
     {
      "netlist": "V33_SWEEP_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 15.65,
+     "mk_graden": 15.67,
      "punten": 170,
      "band_Hz": [
       396.85,
       886.98
      ],
-     "octaafgeknipt_graden": 12.9,
-     "overlapvenster_graden": 23.7,
+     "octaafgeknipt_graden": 12.92,
+     "overlapvenster_graden": 22.69,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16165,14 +16198,14 @@
     {
      "netlist": "V33_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 18.25,
+     "mk_graden": 18.53,
      "punten": 164,
      "band_Hz": [
       396.85,
       862.01
      ],
-     "octaafgeknipt_graden": 18.64,
-     "overlapvenster_graden": 22.06,
+     "octaafgeknipt_graden": 18.91,
+     "overlapvenster_graden": 21.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16199,14 +16232,14 @@
     {
      "netlist": "V33_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 13.73,
+     "mk_graden": 14.05,
      "punten": 149,
      "band_Hz": [
       396.85,
       802.62
      ],
-     "octaafgeknipt_graden": 14.42,
-     "overlapvenster_graden": 21.9,
+     "octaafgeknipt_graden": 14.71,
+     "overlapvenster_graden": 20.82,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16233,14 +16266,14 @@
     {
      "netlist": "V33_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 12.48,
+     "mk_graden": 12.5,
      "punten": 166,
      "band_Hz": [
       396.85,
       870.26
      ],
-     "octaafgeknipt_graden": 10.98,
-     "overlapvenster_graden": 20.64,
+     "octaafgeknipt_graden": 11,
+     "overlapvenster_graden": 19.62,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16267,14 +16300,14 @@
     {
      "netlist": "V33_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 13.67,
+     "mk_graden": 13.66,
      "punten": 170,
      "band_Hz": [
       396.85,
       886.98
      ],
-     "octaafgeknipt_graden": 11.31,
-     "overlapvenster_graden": 22.58,
+     "octaafgeknipt_graden": 11.3,
+     "overlapvenster_graden": 21.55,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16301,14 +16334,14 @@
     {
      "netlist": "V33_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 29.51,
+     "mk_graden": 29.79,
      "punten": 163,
      "band_Hz": [
       396.85,
       857.92
      ],
-     "octaafgeknipt_graden": 34.9,
-     "overlapvenster_graden": 42.16,
+     "octaafgeknipt_graden": 35.11,
+     "overlapvenster_graden": 43.87,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16335,14 +16368,14 @@
     {
      "netlist": "V33_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 14.86,
+     "mk_graden": 14.96,
      "punten": 165,
      "band_Hz": [
       396.85,
       866.13
      ],
-     "octaafgeknipt_graden": 15.44,
-     "overlapvenster_graden": 23.22,
+     "octaafgeknipt_graden": 15.55,
+     "overlapvenster_graden": 22.34,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16369,14 +16402,14 @@
     {
      "netlist": "V33_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 31.79,
+     "mk_graden": 32.08,
      "punten": 166,
      "band_Hz": [
       396.85,
       870.26
      ],
-     "octaafgeknipt_graden": 43.75,
-     "overlapvenster_graden": 35.78,
+     "octaafgeknipt_graden": 43.97,
+     "overlapvenster_graden": 37.63,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16403,14 +16436,14 @@
     {
      "netlist": "V33_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 14.16,
+     "mk_graden": 14.36,
      "punten": 164,
      "band_Hz": [
       396.85,
       862.01
      ],
-     "octaafgeknipt_graden": 13.41,
-     "overlapvenster_graden": 23.25,
+     "octaafgeknipt_graden": 13.64,
+     "overlapvenster_graden": 22.47,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16437,14 +16470,14 @@
     {
      "netlist": "V33_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 31.91,
+     "mk_graden": 32.18,
      "punten": 174,
      "band_Hz": [
       396.85,
       904.03
      ],
-     "octaafgeknipt_graden": 44.17,
-     "overlapvenster_graden": 33.13,
+     "octaafgeknipt_graden": 44.39,
+     "overlapvenster_graden": 35.31,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16471,14 +16504,14 @@
     {
      "netlist": "V33_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 21.31,
+     "mk_graden": 21.3,
      "punten": 183,
      "band_Hz": [
       396.85,
       943.59
      ],
-     "octaafgeknipt_graden": 19.16,
-     "overlapvenster_graden": 27.21,
+     "octaafgeknipt_graden": 19.15,
+     "overlapvenster_graden": 26.61,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16505,14 +16538,14 @@
     {
      "netlist": "V34_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 28.67,
+     "mk_graden": 28.96,
      "punten": 163,
      "band_Hz": [
       396.85,
       857.92
      ],
-     "octaafgeknipt_graden": 36.46,
-     "overlapvenster_graden": 36.77,
+     "octaafgeknipt_graden": 36.69,
+     "overlapvenster_graden": 37.3,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16539,14 +16572,14 @@
     {
      "netlist": "V34_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 18.25,
+     "mk_graden": 18.53,
      "punten": 164,
      "band_Hz": [
       396.85,
       862.01
      ],
-     "octaafgeknipt_graden": 18.64,
-     "overlapvenster_graden": 22.06,
+     "octaafgeknipt_graden": 18.91,
+     "overlapvenster_graden": 21.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16573,14 +16606,14 @@
     {
      "netlist": "V34_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 13.73,
+     "mk_graden": 14.05,
      "punten": 149,
      "band_Hz": [
       396.85,
       802.62
      ],
-     "octaafgeknipt_graden": 14.42,
-     "overlapvenster_graden": 21.9,
+     "octaafgeknipt_graden": 14.71,
+     "overlapvenster_graden": 20.82,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16607,14 +16640,14 @@
     {
      "netlist": "V34_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 14.08,
+     "mk_graden": 14.37,
      "punten": 157,
      "band_Hz": [
       396.85,
       833.77
      ],
-     "octaafgeknipt_graden": 15.22,
-     "overlapvenster_graden": 21.81,
+     "octaafgeknipt_graden": 15.49,
+     "overlapvenster_graden": 20.68,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16641,14 +16674,14 @@
     {
      "netlist": "V34_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 14.87,
+     "mk_graden": 14.91,
      "punten": 165,
      "band_Hz": [
       396.85,
       866.13
      ],
-     "octaafgeknipt_graden": 13.92,
-     "overlapvenster_graden": 22.28,
+     "octaafgeknipt_graden": 13.97,
+     "overlapvenster_graden": 21.39,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16675,14 +16708,14 @@
     {
      "netlist": "V34_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 25.76,
+     "mk_graden": 26.05,
      "punten": 162,
      "band_Hz": [
       396.85,
       853.85
      ],
-     "octaafgeknipt_graden": 30.28,
-     "overlapvenster_graden": 37.19,
+     "octaafgeknipt_graden": 30.5,
+     "overlapvenster_graden": 38.92,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16709,14 +16742,14 @@
     {
      "netlist": "V34_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 14.13,
+     "mk_graden": 14.14,
      "punten": 168,
      "band_Hz": [
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 12.12,
-     "overlapvenster_graden": 22.91,
+     "octaafgeknipt_graden": 12.14,
+     "overlapvenster_graden": 21.96,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16743,14 +16776,14 @@
     {
      "netlist": "V34_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 32.96,
+     "mk_graden": 33.24,
      "punten": 170,
      "band_Hz": [
       396.85,
       886.98
      ],
-     "octaafgeknipt_graden": 46.71,
-     "overlapvenster_graden": 33.24,
+     "octaafgeknipt_graden": 46.93,
+     "overlapvenster_graden": 34.5,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16783,8 +16816,8 @@
       396.85,
       886.98
      ],
-     "octaafgeknipt_graden": 12.15,
-     "overlapvenster_graden": 17.59,
+     "octaafgeknipt_graden": 12.14,
+     "overlapvenster_graden": 16.67,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16811,14 +16844,14 @@
     {
      "netlist": "V34_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 16.08,
+     "mk_graden": 16.33,
      "punten": 183,
      "band_Hz": [
       396.85,
       3476.03
      ],
-     "octaafgeknipt_graden": 14.96,
-     "overlapvenster_graden": 20.84,
+     "octaafgeknipt_graden": 15.16,
+     "overlapvenster_graden": 20.32,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16845,14 +16878,14 @@
     {
      "netlist": "V37_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 18.25,
+     "mk_graden": 18.53,
      "punten": 164,
      "band_Hz": [
       396.85,
       862.01
      ],
-     "octaafgeknipt_graden": 18.64,
-     "overlapvenster_graden": 22.06,
+     "octaafgeknipt_graden": 18.91,
+     "overlapvenster_graden": 21.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16879,14 +16912,14 @@
     {
      "netlist": "V37_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 13.73,
+     "mk_graden": 14.05,
      "punten": 149,
      "band_Hz": [
       396.85,
       802.62
      ],
-     "octaafgeknipt_graden": 14.42,
-     "overlapvenster_graden": 21.9,
+     "octaafgeknipt_graden": 14.71,
+     "overlapvenster_graden": 20.82,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16913,14 +16946,14 @@
     {
      "netlist": "V37_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 26.21,
+     "mk_graden": 26.49,
      "punten": 161,
      "band_Hz": [
       396.85,
       849.79
      ],
-     "octaafgeknipt_graden": 28.45,
-     "overlapvenster_graden": 42.54,
+     "octaafgeknipt_graden": 28.66,
+     "overlapvenster_graden": 43.81,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16954,7 +16987,7 @@
       899.74
      ],
      "octaafgeknipt_graden": 12.34,
-     "overlapvenster_graden": 21.67,
+     "overlapvenster_graden": 20.76,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -16981,14 +17014,14 @@
     {
      "netlist": "V37_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 32.36,
+     "mk_graden": 32.64,
      "punten": 171,
      "band_Hz": [
       396.85,
       891.21
      ],
-     "octaafgeknipt_graden": 45.33,
-     "overlapvenster_graden": 33.66,
+     "octaafgeknipt_graden": 45.55,
+     "overlapvenster_graden": 35.95,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17015,14 +17048,14 @@
     {
      "netlist": "V37_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 12.69,
+     "mk_graden": 12.72,
      "punten": 165,
      "band_Hz": [
       396.85,
       866.13
      ],
-     "octaafgeknipt_graden": 12.03,
-     "overlapvenster_graden": 19.4,
+     "octaafgeknipt_graden": 12.06,
+     "overlapvenster_graden": 18.5,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17049,14 +17082,14 @@
     {
      "netlist": "V37_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 29.17,
+     "mk_graden": 29.45,
      "punten": 170,
      "band_Hz": [
       396.85,
       886.98
      ],
-     "octaafgeknipt_graden": 40.65,
-     "overlapvenster_graden": 32.53,
+     "octaafgeknipt_graden": 40.87,
+     "overlapvenster_graden": 35.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17083,14 +17116,14 @@
     {
      "netlist": "V37_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 13,
+     "mk_graden": 13.01,
      "punten": 167,
      "band_Hz": [
       396.85,
       874.41
      ],
-     "octaafgeknipt_graden": 11.28,
-     "overlapvenster_graden": 21.42,
+     "octaafgeknipt_graden": 11.29,
+     "overlapvenster_graden": 20.5,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17117,14 +17150,14 @@
     {
      "netlist": "V37_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 14.01,
+     "mk_graden": 14.13,
      "punten": 184,
      "band_Hz": [
       396.85,
       3476.03
      ],
-     "octaafgeknipt_graden": 13.65,
-     "overlapvenster_graden": 22.51,
+     "octaafgeknipt_graden": 13.78,
+     "overlapvenster_graden": 21.94,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17151,14 +17184,14 @@
     {
      "netlist": "V37_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 73.13,
+     "mk_graden": 73.08,
      "punten": 384,
      "band_Hz": [
       396.85,
       7408.05
      ],
-     "octaafgeknipt_graden": 82.31,
-     "overlapvenster_graden": 68.17,
+     "octaafgeknipt_graden": 82.2,
+     "overlapvenster_graden": 67.82,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17185,14 +17218,14 @@
     {
      "netlist": "V38FIX_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 14.92,
+     "mk_graden": 15.02,
      "punten": 172,
      "band_Hz": [
       396.85,
       895.46
      ],
-     "octaafgeknipt_graden": 12.89,
-     "overlapvenster_graden": 16.98,
+     "octaafgeknipt_graden": 13,
+     "overlapvenster_graden": 16.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17219,14 +17252,14 @@
     {
      "netlist": "V38FIX_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 12.35,
+     "mk_graden": 12.48,
      "punten": 166,
      "band_Hz": [
       396.85,
       870.26
      ],
-     "octaafgeknipt_graden": 10.34,
-     "overlapvenster_graden": 16.99,
+     "octaafgeknipt_graden": 10.48,
+     "overlapvenster_graden": 15.95,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17253,14 +17286,14 @@
     {
      "netlist": "V38FIX_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 16.3,
+     "mk_graden": 16.39,
      "punten": 172,
      "band_Hz": [
       396.85,
       895.46
      ],
-     "octaafgeknipt_graden": 15.99,
-     "overlapvenster_graden": 18.79,
+     "octaafgeknipt_graden": 16.09,
+     "overlapvenster_graden": 17.93,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17287,14 +17320,14 @@
     {
      "netlist": "V38FIX_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 16.35,
+     "mk_graden": 16.63,
      "punten": 164,
      "band_Hz": [
       396.85,
       862.01
      ],
-     "octaafgeknipt_graden": 17.01,
-     "overlapvenster_graden": 20.33,
+     "octaafgeknipt_graden": 17.28,
+     "overlapvenster_graden": 19.24,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17321,14 +17354,14 @@
     {
      "netlist": "V38FIX_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 16.11,
+     "mk_graden": 16.42,
      "punten": 155,
      "band_Hz": [
       396.85,
       825.87
      ],
-     "octaafgeknipt_graden": 16.15,
-     "overlapvenster_graden": 43.86,
+     "octaafgeknipt_graden": 16.38,
+     "overlapvenster_graden": 47.39,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17355,14 +17388,14 @@
     {
      "netlist": "V38FIX_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 13.99,
+     "mk_graden": 14.25,
      "punten": 162,
      "band_Hz": [
       396.85,
       853.85
      ],
-     "octaafgeknipt_graden": 12.88,
-     "overlapvenster_graden": 19.93,
+     "octaafgeknipt_graden": 13.19,
+     "overlapvenster_graden": 19.01,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17389,14 +17422,14 @@
     {
      "netlist": "V38FIX_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 6.42,
+     "mk_graden": 6.72,
      "punten": 140,
      "band_Hz": [
       396.85,
       768.97
      ],
-     "octaafgeknipt_graden": 6.46,
-     "overlapvenster_graden": 17.37,
+     "octaafgeknipt_graden": 6.76,
+     "overlapvenster_graden": 16.01,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17429,8 +17462,8 @@
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 10.24,
-     "overlapvenster_graden": 15.51,
+     "octaafgeknipt_graden": 10.23,
+     "overlapvenster_graden": 14.58,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17457,14 +17490,14 @@
     {
      "netlist": "V38FIX_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 21.38,
+     "mk_graden": 21.66,
      "punten": 167,
      "band_Hz": [
       396.85,
       874.41
      ],
-     "octaafgeknipt_graden": 21.26,
-     "overlapvenster_graden": 25,
+     "octaafgeknipt_graden": 21.54,
+     "overlapvenster_graden": 24.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17491,14 +17524,14 @@
     {
      "netlist": "V38FIX_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 26.9,
+     "mk_graden": 27.18,
      "punten": 166,
      "band_Hz": [
       396.85,
       870.26
      ],
-     "octaafgeknipt_graden": 34.99,
-     "overlapvenster_graden": 35.18,
+     "octaafgeknipt_graden": 35.21,
+     "overlapvenster_graden": 38.05,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17525,14 +17558,14 @@
     {
      "netlist": "V41_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 6.87,
+     "mk_graden": 6.5,
      "punten": 129,
      "band_Hz": [
       396.85,
       729.75
      ],
-     "octaafgeknipt_graden": 7.27,
-     "overlapvenster_graden": 14.58,
+     "octaafgeknipt_graden": 6.94,
+     "overlapvenster_graden": 12.48,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17559,14 +17592,14 @@
     {
      "netlist": "V41_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 3.53,
+     "mk_graden": 3.24,
      "punten": 156,
      "band_Hz": [
       396.85,
       829.81
      ],
-     "octaafgeknipt_graden": 3.38,
-     "overlapvenster_graden": 10.79,
+     "octaafgeknipt_graden": 3.09,
+     "overlapvenster_graden": 9.14,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17593,14 +17626,14 @@
     {
      "netlist": "V41_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 8.61,
+     "mk_graden": 8.35,
      "punten": 182,
      "band_Hz": [
       396.85,
       939.11
      ],
-     "octaafgeknipt_graden": 8.74,
-     "overlapvenster_graden": 11.03,
+     "octaafgeknipt_graden": 8.49,
+     "overlapvenster_graden": 10.29,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17627,14 +17660,14 @@
     {
      "netlist": "V41_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 6.22,
+     "mk_graden": 5.86,
      "punten": 133,
      "band_Hz": [
       396.85,
       743.78
      ],
-     "octaafgeknipt_graden": 6.32,
-     "overlapvenster_graden": 14.27,
+     "octaafgeknipt_graden": 5.99,
+     "overlapvenster_graden": 12.1,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17661,14 +17694,14 @@
     {
      "netlist": "V41_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 3.97,
+     "mk_graden": 3.7,
      "punten": 161,
      "band_Hz": [
       396.85,
       849.79
      ],
-     "octaafgeknipt_graden": 4.61,
-     "overlapvenster_graden": 10.23,
+     "octaafgeknipt_graden": 4.36,
+     "overlapvenster_graden": 8.82,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17695,14 +17728,14 @@
     {
      "netlist": "V41_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 3.86,
+     "mk_graden": 3.57,
      "punten": 153,
      "band_Hz": [
       396.85,
       818.05
      ],
-     "octaafgeknipt_graden": 3.92,
-     "overlapvenster_graden": 11.17,
+     "octaafgeknipt_graden": 3.63,
+     "overlapvenster_graden": 9.5,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17729,14 +17762,14 @@
     {
      "netlist": "V41_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 11.17,
+     "mk_graden": 11.46,
      "punten": 154,
      "band_Hz": [
       396.85,
       821.95
      ],
-     "octaafgeknipt_graden": 11.68,
-     "overlapvenster_graden": 22.95,
+     "octaafgeknipt_graden": 12.04,
+     "overlapvenster_graden": 21.96,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17763,14 +17796,14 @@
     {
      "netlist": "V41_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 19.95,
+     "mk_graden": 20.04,
      "punten": 172,
      "band_Hz": [
       396.85,
       895.46
      ],
-     "octaafgeknipt_graden": 18.72,
-     "overlapvenster_graden": 24.93,
+     "octaafgeknipt_graden": 18.83,
+     "overlapvenster_graden": 24.09,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17797,14 +17830,14 @@
     {
      "netlist": "V42_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 6.87,
+     "mk_graden": 6.5,
      "punten": 129,
      "band_Hz": [
       396.85,
       729.75
      ],
-     "octaafgeknipt_graden": 7.27,
-     "overlapvenster_graden": 14.58,
+     "octaafgeknipt_graden": 6.94,
+     "overlapvenster_graden": 12.48,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17831,14 +17864,14 @@
     {
      "netlist": "V42_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 8.61,
+     "mk_graden": 8.35,
      "punten": 182,
      "band_Hz": [
       396.85,
       939.11
      ],
-     "octaafgeknipt_graden": 8.74,
-     "overlapvenster_graden": 11.03,
+     "octaafgeknipt_graden": 8.49,
+     "overlapvenster_graden": 10.29,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17865,14 +17898,14 @@
     {
      "netlist": "V42_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 3.97,
+     "mk_graden": 3.7,
      "punten": 161,
      "band_Hz": [
       396.85,
       849.79
      ],
-     "octaafgeknipt_graden": 4.61,
-     "overlapvenster_graden": 10.23,
+     "octaafgeknipt_graden": 4.36,
+     "overlapvenster_graden": 8.82,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17899,14 +17932,14 @@
     {
      "netlist": "V42_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 19.95,
+     "mk_graden": 20.04,
      "punten": 172,
      "band_Hz": [
       396.85,
       895.46
      ],
-     "octaafgeknipt_graden": 18.72,
-     "overlapvenster_graden": 24.93,
+     "octaafgeknipt_graden": 18.83,
+     "overlapvenster_graden": 24.09,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17933,14 +17966,14 @@
     {
      "netlist": "V43_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 5.9,
+     "mk_graden": 5.62,
      "punten": 165,
      "band_Hz": [
       396.85,
       866.13
      ],
-     "octaafgeknipt_graden": 6.16,
-     "overlapvenster_graden": 11.64,
+     "octaafgeknipt_graden": 5.89,
+     "overlapvenster_graden": 10.15,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -17967,14 +18000,14 @@
     {
      "netlist": "V43_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 7.34,
+     "mk_graden": 7.1,
      "punten": 184,
      "band_Hz": [
       396.85,
       948.09
      ],
-     "octaafgeknipt_graden": 7.66,
-     "overlapvenster_graden": 8.73,
+     "octaafgeknipt_graden": 7.45,
+     "overlapvenster_graden": 8.04,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18001,14 +18034,14 @@
     {
      "netlist": "V43_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 25.22,
+     "mk_graden": 25.04,
      "punten": 172,
      "band_Hz": [
       396.85,
       895.46
      ],
-     "octaafgeknipt_graden": 24.46,
-     "overlapvenster_graden": 31.08,
+     "octaafgeknipt_graden": 24.26,
+     "overlapvenster_graden": 29.81,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18035,14 +18068,14 @@
     {
      "netlist": "V43_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 27.3,
+     "mk_graden": 27.11,
      "punten": 163,
      "band_Hz": [
       396.85,
       857.92
      ],
-     "octaafgeknipt_graden": 26.69,
-     "overlapvenster_graden": 25.19,
+     "octaafgeknipt_graden": 26.5,
+     "overlapvenster_graden": 23.64,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18075,8 +18108,8 @@
       396.85,
       4602.83
      ],
-     "octaafgeknipt_graden": 20.37,
-     "overlapvenster_graden": 22.82,
+     "octaafgeknipt_graden": 20.38,
+     "overlapvenster_graden": 21.73,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18103,14 +18136,14 @@
     {
      "netlist": "V43_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 14.33,
+     "mk_graden": 14.45,
      "punten": 172,
      "band_Hz": [
       396.85,
       895.46
      ],
-     "octaafgeknipt_graden": 13.42,
-     "overlapvenster_graden": 23.4,
+     "octaafgeknipt_graden": 13.56,
+     "overlapvenster_graden": 22.59,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18137,14 +18170,14 @@
     {
      "netlist": "V43_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 24.87,
+     "mk_graden": 25.12,
      "punten": 170,
      "band_Hz": [
       396.85,
       3378.18
      ],
-     "octaafgeknipt_graden": 29.26,
-     "overlapvenster_graden": 32.45,
+     "octaafgeknipt_graden": 29.6,
+     "overlapvenster_graden": 31.78,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18161,7 +18194,7 @@
       5283.99
      ],
      "octaafgeknipt_graden": 15.3,
-     "overlapvenster_graden": 45.84,
+     "overlapvenster_graden": 56.54,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18171,14 +18204,14 @@
     {
      "netlist": "V44_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 7.05,
+     "mk_graden": 6.81,
      "punten": 196,
      "band_Hz": [
       396.85,
       1003.81
      ],
-     "octaafgeknipt_graden": 7.36,
-     "overlapvenster_graden": 12.18,
+     "octaafgeknipt_graden": 7.13,
+     "overlapvenster_graden": 11.39,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18205,14 +18238,14 @@
     {
      "netlist": "V44_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 4.66,
+     "mk_graden": 4.4,
      "punten": 171,
      "band_Hz": [
       396.85,
       891.21
      ],
-     "octaafgeknipt_graden": 5.22,
-     "overlapvenster_graden": 4.53,
+     "octaafgeknipt_graden": 4.99,
+     "overlapvenster_graden": 4.31,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18239,14 +18272,14 @@
     {
      "netlist": "V44_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 23.23,
+     "mk_graden": 23.05,
      "punten": 169,
      "band_Hz": [
       396.85,
       882.77
      ],
-     "octaafgeknipt_graden": 22.32,
-     "overlapvenster_graden": 32.14,
+     "octaafgeknipt_graden": 22.12,
+     "overlapvenster_graden": 30.85,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18273,14 +18306,14 @@
     {
      "netlist": "V44_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 27.14,
+     "mk_graden": 27.01,
      "punten": 224,
      "band_Hz": [
       396.85,
       3476.03
      ],
-     "octaafgeknipt_graden": 26.74,
-     "overlapvenster_graden": 30.86,
+     "octaafgeknipt_graden": 26.58,
+     "overlapvenster_graden": 29.91,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18307,14 +18340,14 @@
     {
      "netlist": "V44_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 22.11,
+     "mk_graden": 21.93,
      "punten": 164,
      "band_Hz": [
       396.85,
       862.01
      ],
-     "octaafgeknipt_graden": 21.05,
-     "overlapvenster_graden": 31.15,
+     "octaafgeknipt_graden": 20.86,
+     "overlapvenster_graden": 29.79,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18341,14 +18374,14 @@
     {
      "netlist": "V44_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 12.13,
+     "mk_graden": 12.06,
      "punten": 160,
      "band_Hz": [
       396.85,
       845.76
      ],
-     "octaafgeknipt_graden": 11.21,
-     "overlapvenster_graden": 22.36,
+     "octaafgeknipt_graden": 11.13,
+     "overlapvenster_graden": 21.36,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18375,14 +18408,14 @@
     {
      "netlist": "V44_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 19.95,
+     "mk_graden": 20.21,
      "punten": 168,
      "band_Hz": [
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 24.14,
-     "overlapvenster_graden": 31.97,
+     "octaafgeknipt_graden": 24.47,
+     "overlapvenster_graden": 31.15,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18399,7 +18432,7 @@
       3130.51
      ],
      "octaafgeknipt_graden": 23.41,
-     "overlapvenster_graden": 20.8,
+     "overlapvenster_graden": 20.76,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18409,14 +18442,14 @@
     {
      "netlist": "V45_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 6.32,
+     "mk_graden": 6.06,
      "punten": 182,
      "band_Hz": [
       396.85,
       939.11
      ],
-     "octaafgeknipt_graden": 6.64,
-     "overlapvenster_graden": 15.91,
+     "octaafgeknipt_graden": 6.39,
+     "overlapvenster_graden": 14.75,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18443,14 +18476,14 @@
     {
      "netlist": "V45_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 3.09,
+     "mk_graden": 3.18,
      "punten": 163,
      "band_Hz": [
       396.85,
       857.92
      ],
-     "octaafgeknipt_graden": 4.21,
-     "overlapvenster_graden": 4.79,
+     "octaafgeknipt_graden": 4.29,
+     "overlapvenster_graden": 6.14,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18477,14 +18510,14 @@
     {
      "netlist": "V45_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 20.25,
+     "mk_graden": 20.06,
      "punten": 167,
      "band_Hz": [
       396.85,
       874.41
      ],
-     "octaafgeknipt_graden": 18.16,
-     "overlapvenster_graden": 40.46,
+     "octaafgeknipt_graden": 17.94,
+     "overlapvenster_graden": 39.14,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18511,14 +18544,14 @@
     {
      "netlist": "V45_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 20.33,
+     "mk_graden": 20.15,
      "punten": 171,
      "band_Hz": [
       396.85,
       891.21
      ],
-     "octaafgeknipt_graden": 20.33,
-     "overlapvenster_graden": 26.34,
+     "octaafgeknipt_graden": 20.15,
+     "overlapvenster_graden": 25.04,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18545,14 +18578,14 @@
     {
      "netlist": "V45_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 50.31,
+     "mk_graden": 50.49,
      "punten": 210,
      "band_Hz": [
       396.85,
       2792.62
      ],
-     "octaafgeknipt_graden": 50.51,
-     "overlapvenster_graden": 38.45,
+     "octaafgeknipt_graden": 50.73,
+     "overlapvenster_graden": 37.71,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18579,14 +18612,14 @@
     {
      "netlist": "V45_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 57.94,
+     "mk_graden": 58.1,
      "punten": 269,
      "band_Hz": [
       396.85,
       3559.74
      ],
-     "octaafgeknipt_graden": 65.39,
-     "overlapvenster_graden": 44.17,
+     "octaafgeknipt_graden": 65.65,
+     "overlapvenster_graden": 44.12,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18613,14 +18646,14 @@
     {
      "netlist": "V45_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 17.14,
+     "mk_graden": 17.11,
      "punten": 171,
      "band_Hz": [
       396.85,
       891.21
      ],
-     "octaafgeknipt_graden": 16.39,
-     "overlapvenster_graden": 25.15,
+     "octaafgeknipt_graden": 16.35,
+     "overlapvenster_graden": 24.38,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18647,14 +18680,14 @@
     {
      "netlist": "V47_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 6.98,
+     "mk_graden": 6.72,
      "punten": 182,
      "band_Hz": [
       396.85,
       939.11
      ],
-     "octaafgeknipt_graden": 7.74,
-     "overlapvenster_graden": 7.04,
+     "octaafgeknipt_graden": 7.51,
+     "overlapvenster_graden": 7.5,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18681,14 +18714,14 @@
     {
      "netlist": "V47_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 3.99,
+     "mk_graden": 3.76,
      "punten": 170,
      "band_Hz": [
       396.85,
       886.98
      ],
-     "octaafgeknipt_graden": 4.56,
-     "overlapvenster_graden": 4.45,
+     "octaafgeknipt_graden": 4.35,
+     "overlapvenster_graden": 3.9,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18715,14 +18748,14 @@
     {
      "netlist": "V47_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 20.19,
+     "mk_graden": 20,
      "punten": 170,
      "band_Hz": [
       396.85,
       886.98
      ],
-     "octaafgeknipt_graden": 18.42,
-     "overlapvenster_graden": 34.48,
+     "octaafgeknipt_graden": 18.21,
+     "overlapvenster_graden": 33.19,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18749,14 +18782,14 @@
     {
      "netlist": "V47_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 22.41,
+     "mk_graden": 22.22,
      "punten": 163,
      "band_Hz": [
       396.85,
       857.92
      ],
-     "octaafgeknipt_graden": 21.53,
-     "overlapvenster_graden": 30.12,
+     "octaafgeknipt_graden": 21.34,
+     "overlapvenster_graden": 28.78,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18783,14 +18816,14 @@
     {
      "netlist": "V48_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 7.66,
+     "mk_graden": 7.41,
      "punten": 190,
      "band_Hz": [
       396.85,
       975.55
      ],
-     "octaafgeknipt_graden": 7.5,
-     "overlapvenster_graden": 15.71,
+     "octaafgeknipt_graden": 7.26,
+     "overlapvenster_graden": 14.76,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18817,14 +18850,14 @@
     {
      "netlist": "V48_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 6.41,
+     "mk_graden": 6.15,
      "punten": 177,
      "band_Hz": [
       396.85,
       917.03
      ],
-     "octaafgeknipt_graden": 6.35,
-     "overlapvenster_graden": 19.49,
+     "octaafgeknipt_graden": 6.1,
+     "overlapvenster_graden": 18.31,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18851,14 +18884,14 @@
     {
      "netlist": "V48_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 8.56,
+     "mk_graden": 8.28,
      "punten": 159,
      "band_Hz": [
       396.85,
       841.74
      ],
-     "octaafgeknipt_graden": 8.36,
-     "overlapvenster_graden": 24.69,
+     "octaafgeknipt_graden": 8.05,
+     "overlapvenster_graden": 23.25,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18885,14 +18918,14 @@
     {
      "netlist": "V48_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 7.4,
+     "mk_graden": 7.12,
      "punten": 156,
      "band_Hz": [
       396.85,
       829.81
      ],
-     "octaafgeknipt_graden": 7.51,
-     "overlapvenster_graden": 25.01,
+     "octaafgeknipt_graden": 7.2,
+     "overlapvenster_graden": 23.57,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18919,14 +18952,14 @@
     {
      "netlist": "V48_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 15.75,
+     "mk_graden": 15.71,
      "punten": 171,
      "band_Hz": [
       396.85,
       891.21
      ],
-     "octaafgeknipt_graden": 14.09,
-     "overlapvenster_graden": 23.09,
+     "octaafgeknipt_graden": 14.05,
+     "overlapvenster_graden": 22.41,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18953,14 +18986,14 @@
     {
      "netlist": "V49_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 5.33,
+     "mk_graden": 5.06,
      "punten": 173,
      "band_Hz": [
       396.85,
       899.74
      ],
-     "octaafgeknipt_graden": 6.41,
-     "overlapvenster_graden": 5.06,
+     "octaafgeknipt_graden": 6.17,
+     "overlapvenster_graden": 5.14,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -18987,14 +19020,14 @@
     {
      "netlist": "V49_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 6.69,
+     "mk_graden": 6.42,
      "punten": 177,
      "band_Hz": [
       396.85,
       917.03
      ],
-     "octaafgeknipt_graden": 6.55,
-     "overlapvenster_graden": 18.07,
+     "octaafgeknipt_graden": 6.3,
+     "overlapvenster_graden": 16.89,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19021,14 +19054,14 @@
     {
      "netlist": "V49_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 9.21,
+     "mk_graden": 8.95,
      "punten": 162,
      "band_Hz": [
       396.85,
       853.85
      ],
-     "octaafgeknipt_graden": 9.36,
-     "overlapvenster_graden": 29.99,
+     "octaafgeknipt_graden": 9.06,
+     "overlapvenster_graden": 28.57,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19055,14 +19088,14 @@
     {
      "netlist": "V49_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 7.93,
+     "mk_graden": 7.8,
      "punten": 168,
      "band_Hz": [
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 7.86,
-     "overlapvenster_graden": 11.72,
+     "octaafgeknipt_graden": 7.72,
+     "overlapvenster_graden": 10.44,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19089,14 +19122,14 @@
     {
      "netlist": "V49_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 17.88,
+     "mk_graden": 17.66,
      "punten": 210,
      "band_Hz": [
       396.85,
       2479.37
      ],
-     "octaafgeknipt_graden": 20.76,
-     "overlapvenster_graden": 33.95,
+     "octaafgeknipt_graden": 20.47,
+     "overlapvenster_graden": 33.41,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19123,14 +19156,14 @@
     {
      "netlist": "V49_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 24.12,
+     "mk_graden": 24.04,
      "punten": 180,
      "band_Hz": [
       396.85,
       930.21
      ],
-     "octaafgeknipt_graden": 20.58,
-     "overlapvenster_graden": 32.34,
+     "octaafgeknipt_graden": 20.48,
+     "overlapvenster_graden": 31.61,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19157,14 +19190,14 @@
     {
      "netlist": "V49_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 20.27,
+     "mk_graden": 20.53,
      "punten": 168,
      "band_Hz": [
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 24.53,
-     "overlapvenster_graden": 31.72,
+     "octaafgeknipt_graden": 24.86,
+     "overlapvenster_graden": 30.89,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19191,14 +19224,14 @@
     {
      "netlist": "V50_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 5.33,
+     "mk_graden": 5.06,
      "punten": 173,
      "band_Hz": [
       396.85,
       899.74
      ],
-     "octaafgeknipt_graden": 6.41,
-     "overlapvenster_graden": 5.06,
+     "octaafgeknipt_graden": 6.17,
+     "overlapvenster_graden": 5.14,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19225,14 +19258,14 @@
     {
      "netlist": "V50_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 6.69,
+     "mk_graden": 6.42,
      "punten": 177,
      "band_Hz": [
       396.85,
       917.03
      ],
-     "octaafgeknipt_graden": 6.55,
-     "overlapvenster_graden": 18.07,
+     "octaafgeknipt_graden": 6.3,
+     "overlapvenster_graden": 16.89,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19259,14 +19292,14 @@
     {
      "netlist": "V50_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 9.21,
+     "mk_graden": 8.95,
      "punten": 162,
      "band_Hz": [
       396.85,
       853.85
      ],
-     "octaafgeknipt_graden": 9.36,
-     "overlapvenster_graden": 29.99,
+     "octaafgeknipt_graden": 9.06,
+     "overlapvenster_graden": 28.57,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19293,14 +19326,14 @@
     {
      "netlist": "V50_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 7.93,
+     "mk_graden": 7.8,
      "punten": 168,
      "band_Hz": [
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 7.86,
-     "overlapvenster_graden": 11.72,
+     "octaafgeknipt_graden": 7.72,
+     "overlapvenster_graden": 10.44,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19327,14 +19360,14 @@
     {
      "netlist": "V50_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 17.88,
+     "mk_graden": 17.66,
      "punten": 210,
      "band_Hz": [
       396.85,
       2479.37
      ],
-     "octaafgeknipt_graden": 20.76,
-     "overlapvenster_graden": 33.95,
+     "octaafgeknipt_graden": 20.47,
+     "overlapvenster_graden": 33.41,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19361,14 +19394,14 @@
     {
      "netlist": "V50_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 24.12,
+     "mk_graden": 24.04,
      "punten": 180,
      "band_Hz": [
       396.85,
       930.21
      ],
-     "octaafgeknipt_graden": 20.58,
-     "overlapvenster_graden": 32.34,
+     "octaafgeknipt_graden": 20.48,
+     "overlapvenster_graden": 31.61,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19395,14 +19428,14 @@
     {
      "netlist": "V50_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 20.27,
+     "mk_graden": 20.53,
      "punten": 168,
      "band_Hz": [
       396.85,
       878.58
      ],
-     "octaafgeknipt_graden": 24.53,
-     "overlapvenster_graden": 31.72,
+     "octaafgeknipt_graden": 24.86,
+     "overlapvenster_graden": 30.89,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19429,14 +19462,14 @@
     {
      "netlist": "V51_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 14.75,
+     "mk_graden": 14.55,
      "punten": 228,
      "band_Hz": [
       396.85,
       3576.72
      ],
-     "octaafgeknipt_graden": 13.99,
-     "overlapvenster_graden": 20.17,
+     "octaafgeknipt_graden": 13.78,
+     "overlapvenster_graden": 19.38,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19463,14 +19496,14 @@
     {
      "netlist": "V51B_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 9.23,
+     "mk_graden": 8.98,
      "punten": 190,
      "band_Hz": [
       396.85,
       975.55
      ],
-     "octaafgeknipt_graden": 8.94,
-     "overlapvenster_graden": 21.79,
+     "octaafgeknipt_graden": 8.7,
+     "overlapvenster_graden": 20.91,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19497,14 +19530,14 @@
     {
      "netlist": "V51B_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 10.48,
+     "mk_graden": 10.24,
      "punten": 194,
      "band_Hz": [
       396.85,
       994.3
      ],
-     "octaafgeknipt_graden": 9.75,
-     "overlapvenster_graden": 10.92,
+     "octaafgeknipt_graden": 9.53,
+     "overlapvenster_graden": 10.4,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19531,14 +19564,14 @@
     {
      "netlist": "V51B_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 7.75,
+     "mk_graden": 7.52,
      "punten": 192,
      "band_Hz": [
       396.85,
       984.88
      ],
-     "octaafgeknipt_graden": 7.19,
-     "overlapvenster_graden": 9.58,
+     "octaafgeknipt_graden": 6.99,
+     "overlapvenster_graden": 9.02,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19565,14 +19598,14 @@
     {
      "netlist": "V51B_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 19.63,
+     "mk_graden": 19.55,
      "punten": 187,
      "band_Hz": [
       396.85,
       5135.24
      ],
-     "octaafgeknipt_graden": 19.35,
-     "overlapvenster_graden": 34.98,
+     "octaafgeknipt_graden": 19.25,
+     "overlapvenster_graden": 33.9,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19599,14 +19632,14 @@
     {
      "netlist": "V51B_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 17.81,
+     "mk_graden": 17.64,
      "punten": 193,
      "band_Hz": [
       396.85,
       989.58
      ],
-     "octaafgeknipt_graden": 19.14,
-     "overlapvenster_graden": 21.65,
+     "octaafgeknipt_graden": 18.95,
+     "overlapvenster_graden": 20.9,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19633,14 +19666,14 @@
     {
      "netlist": "V51B_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 15.36,
+     "mk_graden": 15.26,
      "punten": 195,
      "band_Hz": [
       396.85,
       3492.62
      ],
-     "octaafgeknipt_graden": 14.71,
-     "overlapvenster_graden": 22.93,
+     "octaafgeknipt_graden": 14.59,
+     "overlapvenster_graden": 22.38,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19667,14 +19700,14 @@
     {
      "netlist": "A5E3ARM_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 14.66,
+     "mk_graden": 14.4,
      "punten": 162,
      "band_Hz": [
       396.85,
       853.85
      ],
-     "octaafgeknipt_graden": 16.07,
-     "overlapvenster_graden": 14.64,
+     "octaafgeknipt_graden": 15.82,
+     "overlapvenster_graden": 13.27,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19701,14 +19734,14 @@
     {
      "netlist": "A5E3VELD_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 13.28,
+     "mk_graden": 13.61,
      "punten": 102,
      "band_Hz": [
       396.85,
       641.76
      ],
-     "octaafgeknipt_graden": 16.87,
-     "overlapvenster_graden": 38.09,
+     "octaafgeknipt_graden": 17.12,
+     "overlapvenster_graden": 41.38,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19725,7 +19758,7 @@
       4265.36
      ],
      "octaafgeknipt_graden": 34.29,
-     "overlapvenster_graden": 34.2,
+     "overlapvenster_graden": 49.69,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19735,14 +19768,14 @@
     {
      "netlist": "A5E3VELD_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 2.46,
+     "mk_graden": 2.58,
      "punten": 82,
      "band_Hz": [
       396.85,
       583.5
      ],
-     "octaafgeknipt_graden": 2.63,
-     "overlapvenster_graden": 18.16,
+     "octaafgeknipt_graden": 2.71,
+     "overlapvenster_graden": 23.52,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19759,7 +19792,7 @@
       2714.01
      ],
      "octaafgeknipt_graden": 19.81,
-     "overlapvenster_graden": 28.6,
+     "overlapvenster_graden": 43.37,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19769,14 +19802,14 @@
     {
      "netlist": "A5E3VELD_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 7.18,
+     "mk_graden": 6.53,
      "punten": 70,
      "band_Hz": [
       396.85,
       551.11
      ],
-     "octaafgeknipt_graden": 7.52,
-     "overlapvenster_graden": 11.36,
+     "octaafgeknipt_graden": 7.08,
+     "overlapvenster_graden": 12.23,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19803,14 +19836,14 @@
     {
      "netlist": "A5E3VELD_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 5.21,
+     "mk_graden": 5.26,
      "punten": 187,
      "band_Hz": [
       396.85,
       961.72
      ],
-     "octaafgeknipt_graden": 7.51,
-     "overlapvenster_graden": 9.18,
+     "octaafgeknipt_graden": 7.56,
+     "overlapvenster_graden": 9.81,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19837,14 +19870,14 @@
     {
      "netlist": "A5E3VELD_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 3.56,
+     "mk_graden": 3.47,
      "punten": 153,
      "band_Hz": [
       396.85,
       818.05
      ],
-     "octaafgeknipt_graden": 3.66,
-     "overlapvenster_graden": 4.31,
+     "octaafgeknipt_graden": 3.59,
+     "overlapvenster_graden": 5.53,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19871,14 +19904,14 @@
     {
      "netlist": "A5E3VELD_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 22.47,
+     "mk_graden": 22.76,
      "punten": 163,
      "band_Hz": [
       396.85,
       857.92
      ],
-     "octaafgeknipt_graden": 28.49,
-     "overlapvenster_graden": 50.58,
+     "octaafgeknipt_graden": 28.71,
+     "overlapvenster_graden": 53.22,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19905,14 +19938,14 @@
     {
      "netlist": "A5E3VELD_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 5.22,
+     "mk_graden": 5.55,
      "punten": 144,
      "band_Hz": [
       396.85,
       783.75
      ],
-     "octaafgeknipt_graden": 5.4,
-     "overlapvenster_graden": 13.65,
+     "octaafgeknipt_graden": 5.75,
+     "overlapvenster_graden": 12.53,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19929,7 +19962,7 @@
       2375.42
      ],
      "octaafgeknipt_graden": 24.17,
-     "overlapvenster_graden": 43.23,
+     "overlapvenster_graden": 61.11,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19939,14 +19972,14 @@
     {
      "netlist": "A5E3C_KAND_1",
      "paar": "woofer|mid",
-     "mk_graden": 4.83,
+     "mk_graden": 4.52,
      "punten": 144,
      "band_Hz": [
       396.85,
       783.75
      ],
-     "octaafgeknipt_graden": 5.6,
-     "overlapvenster_graden": 13.28,
+     "octaafgeknipt_graden": 5.32,
+     "overlapvenster_graden": 15.55,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -19973,14 +20006,14 @@
     {
      "netlist": "A5E3C_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 3.11,
+     "mk_graden": 2.82,
      "punten": 147,
      "band_Hz": [
       396.85,
       795.02
      ],
-     "octaafgeknipt_graden": 4.05,
-     "overlapvenster_graden": 10.47,
+     "octaafgeknipt_graden": 3.78,
+     "overlapvenster_graden": 12.68,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20007,14 +20040,14 @@
     {
      "netlist": "A5E3C_KAND_3",
      "paar": "woofer|mid",
-     "mk_graden": 6.47,
+     "mk_graden": 6.78,
      "punten": 135,
      "band_Hz": [
       396.85,
       750.89
      ],
-     "octaafgeknipt_graden": 7.78,
-     "overlapvenster_graden": 40.95,
+     "octaafgeknipt_graden": 8.03,
+     "overlapvenster_graden": 44.39,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20041,14 +20074,14 @@
     {
      "netlist": "A5E3C_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 15.48,
+     "mk_graden": 16.02,
      "punten": 83,
      "band_Hz": [
       396.85,
       586.28
      ],
-     "octaafgeknipt_graden": 18.98,
-     "overlapvenster_graden": 18.44,
+     "octaafgeknipt_graden": 19.36,
+     "overlapvenster_graden": 22,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20075,14 +20108,14 @@
     {
      "netlist": "A5E3C_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 5.43,
+     "mk_graden": 5.66,
      "punten": 188,
      "band_Hz": [
       396.85,
       966.31
      ],
-     "octaafgeknipt_graden": 7,
-     "overlapvenster_graden": 5.52,
+     "octaafgeknipt_graden": 7.2,
+     "overlapvenster_graden": 6.15,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20109,14 +20142,14 @@
     {
      "netlist": "A5E3C_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 3.07,
+     "mk_graden": 3.06,
      "punten": 71,
      "band_Hz": [
       396.85,
       553.74
      ],
-     "octaafgeknipt_graden": 6.74,
-     "overlapvenster_graden": 15.13,
+     "octaafgeknipt_graden": 6.71,
+     "overlapvenster_graden": 19.44,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20143,14 +20176,14 @@
     {
      "netlist": "A5E3C_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 2.33,
+     "mk_graden": 1.79,
      "punten": 50,
      "band_Hz": [
       396.85,
       501.07
      ],
-     "octaafgeknipt_graden": 2.03,
-     "overlapvenster_graden": 11.12,
+     "octaafgeknipt_graden": 1.64,
+     "overlapvenster_graden": 11.88,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20177,14 +20210,14 @@
     {
      "netlist": "A5E3C_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 5.14,
+     "mk_graden": 4.68,
      "punten": 95,
      "band_Hz": [
       396.85,
       620.73
      ],
-     "octaafgeknipt_graden": 4.52,
-     "overlapvenster_graden": 14.23,
+     "octaafgeknipt_graden": 4.13,
+     "overlapvenster_graden": 16.39,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20211,14 +20244,14 @@
     {
      "netlist": "A5E3C_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 37.61,
+     "mk_graden": 36.91,
      "punten": 65,
      "band_Hz": [
       396.85,
       538.15
      ],
-     "octaafgeknipt_graden": 38.38,
-     "overlapvenster_graden": 53.6,
+     "octaafgeknipt_graden": 37.78,
+     "overlapvenster_graden": 49.49,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20279,14 +20312,14 @@
     {
      "netlist": "C2_KAND_2",
      "paar": "woofer|mid",
-     "mk_graden": 4.5,
+     "mk_graden": 4.84,
      "punten": 136,
      "band_Hz": [
       396.85,
       754.47
      ],
-     "octaafgeknipt_graden": 4.5,
-     "overlapvenster_graden": 9.91,
+     "octaafgeknipt_graden": 4.84,
+     "overlapvenster_graden": 8.8,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20330,14 +20363,14 @@
     {
      "netlist": "C2_KAND_4",
      "paar": "woofer|mid",
-     "mk_graden": 4.97,
+     "mk_graden": 5.47,
      "punten": 88,
      "band_Hz": [
       396.85,
       600.4
      ],
-     "octaafgeknipt_graden": 4.36,
-     "overlapvenster_graden": 15.07,
+     "octaafgeknipt_graden": 4.72,
+     "overlapvenster_graden": 19.42,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20364,14 +20397,14 @@
     {
      "netlist": "C2_KAND_5",
      "paar": "woofer|mid",
-     "mk_graden": 4.27,
+     "mk_graden": 4.75,
      "punten": 93,
      "band_Hz": [
       396.85,
       614.85
      ],
-     "octaafgeknipt_graden": 4.27,
-     "overlapvenster_graden": 6.3,
+     "octaafgeknipt_graden": 4.75,
+     "overlapvenster_graden": 5.97,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20398,14 +20431,14 @@
     {
      "netlist": "C2_KAND_6",
      "paar": "woofer|mid",
-     "mk_graden": 17.18,
+     "mk_graden": 17.44,
      "punten": 183,
      "band_Hz": [
       396.85,
       943.59
      ],
-     "octaafgeknipt_graden": 22.52,
-     "overlapvenster_graden": 17.27,
+     "octaafgeknipt_graden": 22.73,
+     "overlapvenster_graden": 17.73,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20422,7 +20455,7 @@
       3896.61
      ],
      "octaafgeknipt_graden": 4.29,
-     "overlapvenster_graden": 32.85,
+     "overlapvenster_graden": 46.7,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20432,14 +20465,14 @@
     {
      "netlist": "C2_KAND_7",
      "paar": "woofer|mid",
-     "mk_graden": 33.74,
+     "mk_graden": 32.71,
      "punten": 34,
      "band_Hz": [
       396.85,
       464.33
      ],
      "octaafgeknipt_graden": null,
-     "overlapvenster_graden": 35.09,
+     "overlapvenster_graden": 32.41,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20466,14 +20499,14 @@
     {
      "netlist": "C2_KAND_8",
      "paar": "woofer|mid",
-     "mk_graden": 5.28,
+     "mk_graden": 5.35,
      "punten": 160,
      "band_Hz": [
       396.85,
       845.76
      ],
-     "octaafgeknipt_graden": 5.29,
-     "overlapvenster_graden": 6.36,
+     "octaafgeknipt_graden": 5.35,
+     "overlapvenster_graden": 7.65,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20500,14 +20533,14 @@
     {
      "netlist": "C2_KAND_9",
      "paar": "woofer|mid",
-     "mk_graden": 2.31,
+     "mk_graden": 2.45,
      "punten": 8,
      "band_Hz": [
       396.85,
       410.29
      ],
-     "octaafgeknipt_graden": 8.47,
-     "overlapvenster_graden": 25.87,
+     "octaafgeknipt_graden": 9.09,
+     "overlapvenster_graden": 19.93,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20534,14 +20567,14 @@
     {
      "netlist": "C2_KAND_10",
      "paar": "woofer|mid",
-     "mk_graden": 7.93,
+     "mk_graden": 8.22,
      "punten": 150,
      "band_Hz": [
       396.85,
       806.45
      ],
-     "octaafgeknipt_graden": 8.25,
-     "overlapvenster_graden": 12.67,
+     "octaafgeknipt_graden": 8.57,
+     "overlapvenster_graden": 11.53,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20558,7 +20591,7 @@
       2600.22
      ],
      "octaafgeknipt_graden": 30.01,
-     "overlapvenster_graden": 34.57,
+     "overlapvenster_graden": 35.7,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20568,14 +20601,14 @@
     {
      "netlist": "KAND_V2_1",
      "paar": "woofer|mid",
-     "mk_graden": 10.26,
+     "mk_graden": 10.57,
      "punten": 121,
      "band_Hz": [
       396.85,
       702.49
      ],
-     "octaafgeknipt_graden": 12.58,
-     "overlapvenster_graden": 45.45,
+     "octaafgeknipt_graden": 12.83,
+     "overlapvenster_graden": 50.62,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20602,14 +20635,14 @@
     {
      "netlist": "KAND_V2_2",
      "paar": "woofer|mid",
-     "mk_graden": 12.89,
+     "mk_graden": 13.12,
      "punten": 182,
      "band_Hz": [
       396.85,
       939.11
      ],
-     "octaafgeknipt_graden": 12.77,
-     "overlapvenster_graden": 20.7,
+     "octaafgeknipt_graden": 13,
+     "overlapvenster_graden": 19.75,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20636,14 +20669,14 @@
     {
      "netlist": "KAND_V2_3",
      "paar": "woofer|mid",
-     "mk_graden": 31.37,
+     "mk_graden": 32.02,
      "punten": 70,
      "band_Hz": [
       396.85,
       551.11
      ],
-     "octaafgeknipt_graden": 32.19,
-     "overlapvenster_graden": 28.67,
+     "octaafgeknipt_graden": 33.23,
+     "overlapvenster_graden": 27.08,
      "afgewezen": {
       "validity": 776,
       "silence": 0,
@@ -20667,7 +20700,3072 @@
       "level": 521
      }
     }
-   ]
+   ],
+   "_waarden_M2b_tot_M3": {
+    "_": "De rijen van dit blok die op de M-2b-set (13-09-2026 tot M-3) anders lazen, toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). ALLEEN de bewogen rijen staan er. Op elke mid|tweeter-rij reproduceren M-K, het puntental, de band, de octaafgeknipte controlekolom en de afwijzingen EXACT - die overname ligt op 2251 Hz, ruim boven de splice, waar de merge het verre veld zelf is. Dit script weigert te schrijven als daar iets van beweegt.",
+    "bewogen_rijen": 179,
+    "onbewogen_rijen": 166,
+    "mid_tweeter_alleen_ongeknipte_controle": {
+     "_": "DE BEVINDING VAN M-3 DIE NIEMAND BESTELD HAD, en zij is het bewijsmateriaal onder V44 dat zichzelf aanwijst. Op deze netlists beweegt van de mid|tweeter-rij UITSLUITEND `overlapvenster_graden`: de maat die de TUNER tot V43 las, die elk punt binnen het overlapvenster meetelt ZONDER hem tegen de meetgeldigheid te knippen. Een fasereparatie ONDER 800 Hz kan een overname op 2251 Hz alleen bereiken via een maat die kijkt waar zij niet hoort te kijken - precies wat V44 mat (1047 meegetelde punten over het hele casusboek, waarvan 911 onder de meetgeldigheidsvloer) en precies waarom die kolom sinds V44 een CONTROLEKOLOM is die niets oordeelt. M-K, de octaafgeknipte kolom en het puntental staan op alle 174 mid|tweeter-rijen stil.",
+     "netlists": [
+      "V28_KAND_2",
+      "V43_KAND_7",
+      "V44_KAND_7",
+      "A5E3VELD_KAND_1",
+      "A5E3VELD_KAND_2",
+      "A5E3VELD_KAND_7",
+      "C2_KAND_6",
+      "C2_KAND_10"
+     ],
+     "aantal": 8,
+     "van_de_mid_tweeter_rijen": 174
+    },
+    "per_netlist": [
+     {
+      "netlist": "HUIDIG",
+      "paar": "woofer|mid",
+      "mk_graden": 20.35,
+      "punten": 131,
+      "band_Hz": [
+       396.85,
+       736.73
+      ],
+      "octaafgeknipt_graden": 19.47,
+      "overlapvenster_graden": 28.3,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 693
+      }
+     },
+     {
+      "netlist": "KAND_A",
+      "paar": "woofer|mid",
+      "mk_graden": 4.96,
+      "punten": 140,
+      "band_Hz": [
+       396.85,
+       768.97
+      ],
+      "octaafgeknipt_graden": 4.41,
+      "overlapvenster_graden": 14.26,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 684
+      }
+     },
+     {
+      "netlist": "KAND_B",
+      "paar": "woofer|mid",
+      "mk_graden": 3.15,
+      "punten": 140,
+      "band_Hz": [
+       396.85,
+       768.97
+      ],
+      "octaafgeknipt_graden": 2.98,
+      "overlapvenster_graden": 11,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 684
+      }
+     },
+     {
+      "netlist": "V28_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 4.73,
+      "punten": 174,
+      "band_Hz": [
+       396.85,
+       904.03
+      ],
+      "octaafgeknipt_graden": 5.52,
+      "overlapvenster_graden": 12.77,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 650
+      }
+     },
+     {
+      "netlist": "V28_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 32.36,
+      "punten": 213,
+      "band_Hz": [
+       396.85,
+       19189.44
+      ],
+      "octaafgeknipt_graden": 27.44,
+      "overlapvenster_graden": 31.15,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 611
+      }
+     },
+     {
+      "netlist": "V28_KAND_2",
+      "paar": "mid|tweeter",
+      "mk_graden": 28.26,
+      "punten": 286,
+      "band_Hz": [
+       1083.23,
+       4224.96
+      ],
+      "octaafgeknipt_graden": 89.17,
+      "overlapvenster_graden": 21.01,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 538
+      }
+     },
+     {
+      "netlist": "V28_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 24.52,
+      "punten": 120,
+      "band_Hz": [
+       396.85,
+       699.16
+      ],
+      "octaafgeknipt_graden": 23.86,
+      "overlapvenster_graden": 42.12,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 704
+      }
+     },
+     {
+      "netlist": "V28_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 20.39,
+      "punten": 157,
+      "band_Hz": [
+       396.85,
+       833.77
+      ],
+      "octaafgeknipt_graden": 20.44,
+      "overlapvenster_graden": 29.63,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 667
+      }
+     },
+     {
+      "netlist": "V28_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 9.99,
+      "punten": 110,
+      "band_Hz": [
+       396.85,
+       666.66
+      ],
+      "octaafgeknipt_graden": 9.39,
+      "overlapvenster_graden": 31.54,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 714
+      }
+     },
+     {
+      "netlist": "V28_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 13.69,
+      "punten": 140,
+      "band_Hz": [
+       396.85,
+       768.97
+      ],
+      "octaafgeknipt_graden": 13.52,
+      "overlapvenster_graden": 28.53,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 684
+      }
+     },
+     {
+      "netlist": "V28_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 4.53,
+      "punten": 105,
+      "band_Hz": [
+       396.85,
+       650.99
+      ],
+      "octaafgeknipt_graden": 5.51,
+      "overlapvenster_graden": 27.46,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 719
+      }
+     },
+     {
+      "netlist": "V28_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 11.83,
+      "punten": 151,
+      "band_Hz": [
+       396.85,
+       810.3
+      ],
+      "octaafgeknipt_graden": 11.78,
+      "overlapvenster_graden": 23.47,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 673
+      }
+     },
+     {
+      "netlist": "V28_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 15.5,
+      "punten": 148,
+      "band_Hz": [
+       396.85,
+       798.81
+      ],
+      "octaafgeknipt_graden": 15.44,
+      "overlapvenster_graden": 25.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 676
+      }
+     },
+     {
+      "netlist": "V28_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 16.85,
+      "punten": 139,
+      "band_Hz": [
+       396.85,
+       765.32
+      ],
+      "octaafgeknipt_graden": 16.85,
+      "overlapvenster_graden": 27.1,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 685
+      }
+     },
+     {
+      "netlist": "V30_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 8.67,
+      "punten": 142,
+      "band_Hz": [
+       396.85,
+       776.33
+      ],
+      "octaafgeknipt_graden": 9.23,
+      "overlapvenster_graden": 21.29,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 682
+      }
+     },
+     {
+      "netlist": "V30_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 4.35,
+      "punten": 144,
+      "band_Hz": [
+       396.85,
+       783.75
+      ],
+      "octaafgeknipt_graden": 4.42,
+      "overlapvenster_graden": 19.16,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 680
+      }
+     },
+     {
+      "netlist": "V30_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 13.19,
+      "punten": 166,
+      "band_Hz": [
+       396.85,
+       870.26
+      ],
+      "octaafgeknipt_graden": 11.65,
+      "overlapvenster_graden": 21.67,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 658
+      }
+     },
+     {
+      "netlist": "V30_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 13.39,
+      "punten": 169,
+      "band_Hz": [
+       396.85,
+       882.77
+      ],
+      "octaafgeknipt_graden": 11.37,
+      "overlapvenster_graden": 21.92,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 655
+      }
+     },
+     {
+      "netlist": "V30_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 29.97,
+      "punten": 167,
+      "band_Hz": [
+       396.85,
+       874.41
+      ],
+      "octaafgeknipt_graden": 38.82,
+      "overlapvenster_graden": 39.71,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 657
+      }
+     },
+     {
+      "netlist": "V30_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 8.36,
+      "punten": 152,
+      "band_Hz": [
+       396.85,
+       814.17
+      ],
+      "octaafgeknipt_graden": 7.09,
+      "overlapvenster_graden": 20.46,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 672
+      }
+     },
+     {
+      "netlist": "V30_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 22.31,
+      "punten": 176,
+      "band_Hz": [
+       396.85,
+       3394.3
+      ],
+      "octaafgeknipt_graden": 21.27,
+      "overlapvenster_graden": 25.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 648
+      }
+     },
+     {
+      "netlist": "V30_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 16.78,
+      "punten": 179,
+      "band_Hz": [
+       396.85,
+       925.8
+      ],
+      "octaafgeknipt_graden": 15.7,
+      "overlapvenster_graden": 22.19,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 645
+      }
+     },
+     {
+      "netlist": "V30_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 29.91,
+      "punten": 165,
+      "band_Hz": [
+       396.85,
+       866.13
+      ],
+      "octaafgeknipt_graden": 39.62,
+      "overlapvenster_graden": 35.95,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 659
+      }
+     },
+     {
+      "netlist": "V30_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 11.57,
+      "punten": 157,
+      "band_Hz": [
+       396.85,
+       833.77
+      ],
+      "octaafgeknipt_graden": 11.95,
+      "overlapvenster_graden": 19.09,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 667
+      }
+     },
+     {
+      "netlist": "V32_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 13.19,
+      "punten": 166,
+      "band_Hz": [
+       396.85,
+       870.26
+      ],
+      "octaafgeknipt_graden": 11.65,
+      "overlapvenster_graden": 21.67,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 658
+      }
+     },
+     {
+      "netlist": "V32_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 13.39,
+      "punten": 169,
+      "band_Hz": [
+       396.85,
+       882.77
+      ],
+      "octaafgeknipt_graden": 11.37,
+      "overlapvenster_graden": 21.92,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 655
+      }
+     },
+     {
+      "netlist": "V32_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 29.97,
+      "punten": 167,
+      "band_Hz": [
+       396.85,
+       874.41
+      ],
+      "octaafgeknipt_graden": 38.82,
+      "overlapvenster_graden": 39.71,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 657
+      }
+     },
+     {
+      "netlist": "V32_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 22.31,
+      "punten": 176,
+      "band_Hz": [
+       396.85,
+       3394.3
+      ],
+      "octaafgeknipt_graden": 21.27,
+      "overlapvenster_graden": 25.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 648
+      }
+     },
+     {
+      "netlist": "V32_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 16.78,
+      "punten": 179,
+      "band_Hz": [
+       396.85,
+       925.8
+      ],
+      "octaafgeknipt_graden": 15.7,
+      "overlapvenster_graden": 22.19,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 645
+      }
+     },
+     {
+      "netlist": "V32_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 29.91,
+      "punten": 165,
+      "band_Hz": [
+       396.85,
+       866.13
+      ],
+      "octaafgeknipt_graden": 39.62,
+      "overlapvenster_graden": 35.95,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 659
+      }
+     },
+     {
+      "netlist": "V32_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 11.57,
+      "punten": 157,
+      "band_Hz": [
+       396.85,
+       833.77
+      ],
+      "octaafgeknipt_graden": 11.95,
+      "overlapvenster_graden": 19.09,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 667
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 22.36,
+      "punten": 164,
+      "band_Hz": [
+       396.85,
+       862.01
+      ],
+      "octaafgeknipt_graden": 20.83,
+      "overlapvenster_graden": 39.6,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 660
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 26.81,
+      "punten": 161,
+      "band_Hz": [
+       396.85,
+       849.79
+      ],
+      "octaafgeknipt_graden": 29.5,
+      "overlapvenster_graden": 41.1,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 663
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 17.5,
+      "punten": 159,
+      "band_Hz": [
+       396.85,
+       841.74
+      ],
+      "octaafgeknipt_graden": 17.99,
+      "overlapvenster_graden": 22.65,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 665
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 31.29,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 42.58,
+      "overlapvenster_graden": 35.86,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 29.78,
+      "punten": 165,
+      "band_Hz": [
+       396.85,
+       866.13
+      ],
+      "octaafgeknipt_graden": 38.74,
+      "overlapvenster_graden": 37.27,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 659
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 9.28,
+      "punten": 137,
+      "band_Hz": [
+       396.85,
+       758.07
+      ],
+      "octaafgeknipt_graden": 8.55,
+      "overlapvenster_graden": 18.29,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 687
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 14.1,
+      "punten": 172,
+      "band_Hz": [
+       396.85,
+       895.46
+      ],
+      "octaafgeknipt_graden": 11.32,
+      "overlapvenster_graden": 20.64,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 652
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 11.99,
+      "punten": 167,
+      "band_Hz": [
+       396.85,
+       874.41
+      ],
+      "octaafgeknipt_graden": 10.56,
+      "overlapvenster_graden": 21.54,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 657
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 19.66,
+      "punten": 215,
+      "band_Hz": [
+       396.85,
+       3697.88
+      ],
+      "octaafgeknipt_graden": 13.77,
+      "overlapvenster_graden": 25.37,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 609
+      }
+     },
+     {
+      "netlist": "V33_SWEEP_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 15.65,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       886.98
+      ],
+      "octaafgeknipt_graden": 12.9,
+      "overlapvenster_graden": 23.7,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V33_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 18.25,
+      "punten": 164,
+      "band_Hz": [
+       396.85,
+       862.01
+      ],
+      "octaafgeknipt_graden": 18.64,
+      "overlapvenster_graden": 22.06,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 660
+      }
+     },
+     {
+      "netlist": "V33_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 13.73,
+      "punten": 149,
+      "band_Hz": [
+       396.85,
+       802.62
+      ],
+      "octaafgeknipt_graden": 14.42,
+      "overlapvenster_graden": 21.9,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 675
+      }
+     },
+     {
+      "netlist": "V33_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 12.48,
+      "punten": 166,
+      "band_Hz": [
+       396.85,
+       870.26
+      ],
+      "octaafgeknipt_graden": 10.98,
+      "overlapvenster_graden": 20.64,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 658
+      }
+     },
+     {
+      "netlist": "V33_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 13.67,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       886.98
+      ],
+      "octaafgeknipt_graden": 11.31,
+      "overlapvenster_graden": 22.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V33_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 29.51,
+      "punten": 163,
+      "band_Hz": [
+       396.85,
+       857.92
+      ],
+      "octaafgeknipt_graden": 34.9,
+      "overlapvenster_graden": 42.16,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 661
+      }
+     },
+     {
+      "netlist": "V33_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 14.86,
+      "punten": 165,
+      "band_Hz": [
+       396.85,
+       866.13
+      ],
+      "octaafgeknipt_graden": 15.44,
+      "overlapvenster_graden": 23.22,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 659
+      }
+     },
+     {
+      "netlist": "V33_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 31.79,
+      "punten": 166,
+      "band_Hz": [
+       396.85,
+       870.26
+      ],
+      "octaafgeknipt_graden": 43.75,
+      "overlapvenster_graden": 35.78,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 658
+      }
+     },
+     {
+      "netlist": "V33_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 14.16,
+      "punten": 164,
+      "band_Hz": [
+       396.85,
+       862.01
+      ],
+      "octaafgeknipt_graden": 13.41,
+      "overlapvenster_graden": 23.25,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 660
+      }
+     },
+     {
+      "netlist": "V33_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 31.91,
+      "punten": 174,
+      "band_Hz": [
+       396.85,
+       904.03
+      ],
+      "octaafgeknipt_graden": 44.17,
+      "overlapvenster_graden": 33.13,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 650
+      }
+     },
+     {
+      "netlist": "V33_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 21.31,
+      "punten": 183,
+      "band_Hz": [
+       396.85,
+       943.59
+      ],
+      "octaafgeknipt_graden": 19.16,
+      "overlapvenster_graden": 27.21,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 641
+      }
+     },
+     {
+      "netlist": "V34_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 28.67,
+      "punten": 163,
+      "band_Hz": [
+       396.85,
+       857.92
+      ],
+      "octaafgeknipt_graden": 36.46,
+      "overlapvenster_graden": 36.77,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 661
+      }
+     },
+     {
+      "netlist": "V34_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 18.25,
+      "punten": 164,
+      "band_Hz": [
+       396.85,
+       862.01
+      ],
+      "octaafgeknipt_graden": 18.64,
+      "overlapvenster_graden": 22.06,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 660
+      }
+     },
+     {
+      "netlist": "V34_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 13.73,
+      "punten": 149,
+      "band_Hz": [
+       396.85,
+       802.62
+      ],
+      "octaafgeknipt_graden": 14.42,
+      "overlapvenster_graden": 21.9,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 675
+      }
+     },
+     {
+      "netlist": "V34_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 14.08,
+      "punten": 157,
+      "band_Hz": [
+       396.85,
+       833.77
+      ],
+      "octaafgeknipt_graden": 15.22,
+      "overlapvenster_graden": 21.81,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 667
+      }
+     },
+     {
+      "netlist": "V34_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 14.87,
+      "punten": 165,
+      "band_Hz": [
+       396.85,
+       866.13
+      ],
+      "octaafgeknipt_graden": 13.92,
+      "overlapvenster_graden": 22.28,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 659
+      }
+     },
+     {
+      "netlist": "V34_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 25.76,
+      "punten": 162,
+      "band_Hz": [
+       396.85,
+       853.85
+      ],
+      "octaafgeknipt_graden": 30.28,
+      "overlapvenster_graden": 37.19,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 662
+      }
+     },
+     {
+      "netlist": "V34_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 14.13,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 12.12,
+      "overlapvenster_graden": 22.91,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V34_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 32.96,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       886.98
+      ],
+      "octaafgeknipt_graden": 46.71,
+      "overlapvenster_graden": 33.24,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V34_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 12.01,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       886.98
+      ],
+      "octaafgeknipt_graden": 12.15,
+      "overlapvenster_graden": 17.59,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V34_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 16.08,
+      "punten": 183,
+      "band_Hz": [
+       396.85,
+       3476.03
+      ],
+      "octaafgeknipt_graden": 14.96,
+      "overlapvenster_graden": 20.84,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 641
+      }
+     },
+     {
+      "netlist": "V37_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 18.25,
+      "punten": 164,
+      "band_Hz": [
+       396.85,
+       862.01
+      ],
+      "octaafgeknipt_graden": 18.64,
+      "overlapvenster_graden": 22.06,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 660
+      }
+     },
+     {
+      "netlist": "V37_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 13.73,
+      "punten": 149,
+      "band_Hz": [
+       396.85,
+       802.62
+      ],
+      "octaafgeknipt_graden": 14.42,
+      "overlapvenster_graden": 21.9,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 675
+      }
+     },
+     {
+      "netlist": "V37_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 26.21,
+      "punten": 161,
+      "band_Hz": [
+       396.85,
+       849.79
+      ],
+      "octaafgeknipt_graden": 28.45,
+      "overlapvenster_graden": 42.54,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 663
+      }
+     },
+     {
+      "netlist": "V37_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 14.44,
+      "punten": 173,
+      "band_Hz": [
+       396.85,
+       899.74
+      ],
+      "octaafgeknipt_graden": 12.34,
+      "overlapvenster_graden": 21.67,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 651
+      }
+     },
+     {
+      "netlist": "V37_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 32.36,
+      "punten": 171,
+      "band_Hz": [
+       396.85,
+       891.21
+      ],
+      "octaafgeknipt_graden": 45.33,
+      "overlapvenster_graden": 33.66,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 653
+      }
+     },
+     {
+      "netlist": "V37_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 12.69,
+      "punten": 165,
+      "band_Hz": [
+       396.85,
+       866.13
+      ],
+      "octaafgeknipt_graden": 12.03,
+      "overlapvenster_graden": 19.4,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 659
+      }
+     },
+     {
+      "netlist": "V37_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 29.17,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       886.98
+      ],
+      "octaafgeknipt_graden": 40.65,
+      "overlapvenster_graden": 32.53,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V37_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 13,
+      "punten": 167,
+      "band_Hz": [
+       396.85,
+       874.41
+      ],
+      "octaafgeknipt_graden": 11.28,
+      "overlapvenster_graden": 21.42,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 657
+      }
+     },
+     {
+      "netlist": "V37_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 14.01,
+      "punten": 184,
+      "band_Hz": [
+       396.85,
+       3476.03
+      ],
+      "octaafgeknipt_graden": 13.65,
+      "overlapvenster_graden": 22.51,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 640
+      }
+     },
+     {
+      "netlist": "V37_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 73.13,
+      "punten": 384,
+      "band_Hz": [
+       396.85,
+       7408.05
+      ],
+      "octaafgeknipt_graden": 82.31,
+      "overlapvenster_graden": 68.17,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 440
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 14.92,
+      "punten": 172,
+      "band_Hz": [
+       396.85,
+       895.46
+      ],
+      "octaafgeknipt_graden": 12.89,
+      "overlapvenster_graden": 16.98,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 652
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 12.35,
+      "punten": 166,
+      "band_Hz": [
+       396.85,
+       870.26
+      ],
+      "octaafgeknipt_graden": 10.34,
+      "overlapvenster_graden": 16.99,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 658
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 16.3,
+      "punten": 172,
+      "band_Hz": [
+       396.85,
+       895.46
+      ],
+      "octaafgeknipt_graden": 15.99,
+      "overlapvenster_graden": 18.79,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 652
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 16.35,
+      "punten": 164,
+      "band_Hz": [
+       396.85,
+       862.01
+      ],
+      "octaafgeknipt_graden": 17.01,
+      "overlapvenster_graden": 20.33,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 660
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 16.11,
+      "punten": 155,
+      "band_Hz": [
+       396.85,
+       825.87
+      ],
+      "octaafgeknipt_graden": 16.15,
+      "overlapvenster_graden": 43.86,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 669
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 13.99,
+      "punten": 162,
+      "band_Hz": [
+       396.85,
+       853.85
+      ],
+      "octaafgeknipt_graden": 12.88,
+      "overlapvenster_graden": 19.93,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 662
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 6.42,
+      "punten": 140,
+      "band_Hz": [
+       396.85,
+       768.97
+      ],
+      "octaafgeknipt_graden": 6.46,
+      "overlapvenster_graden": 17.37,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 684
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 10.68,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 10.24,
+      "overlapvenster_graden": 15.51,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 21.38,
+      "punten": 167,
+      "band_Hz": [
+       396.85,
+       874.41
+      ],
+      "octaafgeknipt_graden": 21.26,
+      "overlapvenster_graden": 25,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 657
+      }
+     },
+     {
+      "netlist": "V38FIX_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 26.9,
+      "punten": 166,
+      "band_Hz": [
+       396.85,
+       870.26
+      ],
+      "octaafgeknipt_graden": 34.99,
+      "overlapvenster_graden": 35.18,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 658
+      }
+     },
+     {
+      "netlist": "V41_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 6.87,
+      "punten": 129,
+      "band_Hz": [
+       396.85,
+       729.75
+      ],
+      "octaafgeknipt_graden": 7.27,
+      "overlapvenster_graden": 14.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 695
+      }
+     },
+     {
+      "netlist": "V41_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 3.53,
+      "punten": 156,
+      "band_Hz": [
+       396.85,
+       829.81
+      ],
+      "octaafgeknipt_graden": 3.38,
+      "overlapvenster_graden": 10.79,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 668
+      }
+     },
+     {
+      "netlist": "V41_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 8.61,
+      "punten": 182,
+      "band_Hz": [
+       396.85,
+       939.11
+      ],
+      "octaafgeknipt_graden": 8.74,
+      "overlapvenster_graden": 11.03,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 642
+      }
+     },
+     {
+      "netlist": "V41_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 6.22,
+      "punten": 133,
+      "band_Hz": [
+       396.85,
+       743.78
+      ],
+      "octaafgeknipt_graden": 6.32,
+      "overlapvenster_graden": 14.27,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 691
+      }
+     },
+     {
+      "netlist": "V41_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 3.97,
+      "punten": 161,
+      "band_Hz": [
+       396.85,
+       849.79
+      ],
+      "octaafgeknipt_graden": 4.61,
+      "overlapvenster_graden": 10.23,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 663
+      }
+     },
+     {
+      "netlist": "V41_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 3.86,
+      "punten": 153,
+      "band_Hz": [
+       396.85,
+       818.05
+      ],
+      "octaafgeknipt_graden": 3.92,
+      "overlapvenster_graden": 11.17,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 671
+      }
+     },
+     {
+      "netlist": "V41_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 11.17,
+      "punten": 154,
+      "band_Hz": [
+       396.85,
+       821.95
+      ],
+      "octaafgeknipt_graden": 11.68,
+      "overlapvenster_graden": 22.95,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 670
+      }
+     },
+     {
+      "netlist": "V41_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 19.95,
+      "punten": 172,
+      "band_Hz": [
+       396.85,
+       895.46
+      ],
+      "octaafgeknipt_graden": 18.72,
+      "overlapvenster_graden": 24.93,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 652
+      }
+     },
+     {
+      "netlist": "V42_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 6.87,
+      "punten": 129,
+      "band_Hz": [
+       396.85,
+       729.75
+      ],
+      "octaafgeknipt_graden": 7.27,
+      "overlapvenster_graden": 14.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 695
+      }
+     },
+     {
+      "netlist": "V42_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 8.61,
+      "punten": 182,
+      "band_Hz": [
+       396.85,
+       939.11
+      ],
+      "octaafgeknipt_graden": 8.74,
+      "overlapvenster_graden": 11.03,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 642
+      }
+     },
+     {
+      "netlist": "V42_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 3.97,
+      "punten": 161,
+      "band_Hz": [
+       396.85,
+       849.79
+      ],
+      "octaafgeknipt_graden": 4.61,
+      "overlapvenster_graden": 10.23,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 663
+      }
+     },
+     {
+      "netlist": "V42_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 19.95,
+      "punten": 172,
+      "band_Hz": [
+       396.85,
+       895.46
+      ],
+      "octaafgeknipt_graden": 18.72,
+      "overlapvenster_graden": 24.93,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 652
+      }
+     },
+     {
+      "netlist": "V43_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 5.9,
+      "punten": 165,
+      "band_Hz": [
+       396.85,
+       866.13
+      ],
+      "octaafgeknipt_graden": 6.16,
+      "overlapvenster_graden": 11.64,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 659
+      }
+     },
+     {
+      "netlist": "V43_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 7.34,
+      "punten": 184,
+      "band_Hz": [
+       396.85,
+       948.09
+      ],
+      "octaafgeknipt_graden": 7.66,
+      "overlapvenster_graden": 8.73,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 640
+      }
+     },
+     {
+      "netlist": "V43_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 25.22,
+      "punten": 172,
+      "band_Hz": [
+       396.85,
+       895.46
+      ],
+      "octaafgeknipt_graden": 24.46,
+      "overlapvenster_graden": 31.08,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 652
+      }
+     },
+     {
+      "netlist": "V43_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 27.3,
+      "punten": 163,
+      "band_Hz": [
+       396.85,
+       857.92
+      ],
+      "octaafgeknipt_graden": 26.69,
+      "overlapvenster_graden": 25.19,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 661
+      }
+     },
+     {
+      "netlist": "V43_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 22.17,
+      "punten": 175,
+      "band_Hz": [
+       396.85,
+       4602.83
+      ],
+      "octaafgeknipt_graden": 20.37,
+      "overlapvenster_graden": 22.82,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 649
+      }
+     },
+     {
+      "netlist": "V43_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 14.33,
+      "punten": 172,
+      "band_Hz": [
+       396.85,
+       895.46
+      ],
+      "octaafgeknipt_graden": 13.42,
+      "overlapvenster_graden": 23.4,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 652
+      }
+     },
+     {
+      "netlist": "V43_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 24.87,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       3378.18
+      ],
+      "octaafgeknipt_graden": 29.26,
+      "overlapvenster_graden": 32.45,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V43_KAND_7",
+      "paar": "mid|tweeter",
+      "mk_graden": 14.57,
+      "punten": 206,
+      "band_Hz": [
+       1083.23,
+       5283.99
+      ],
+      "octaafgeknipt_graden": 15.3,
+      "overlapvenster_graden": 45.84,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 618
+      }
+     },
+     {
+      "netlist": "V44_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 7.05,
+      "punten": 196,
+      "band_Hz": [
+       396.85,
+       1003.81
+      ],
+      "octaafgeknipt_graden": 7.36,
+      "overlapvenster_graden": 12.18,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 628
+      }
+     },
+     {
+      "netlist": "V44_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 4.66,
+      "punten": 171,
+      "band_Hz": [
+       396.85,
+       891.21
+      ],
+      "octaafgeknipt_graden": 5.22,
+      "overlapvenster_graden": 4.53,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 653
+      }
+     },
+     {
+      "netlist": "V44_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 23.23,
+      "punten": 169,
+      "band_Hz": [
+       396.85,
+       882.77
+      ],
+      "octaafgeknipt_graden": 22.32,
+      "overlapvenster_graden": 32.14,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 655
+      }
+     },
+     {
+      "netlist": "V44_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 27.14,
+      "punten": 224,
+      "band_Hz": [
+       396.85,
+       3476.03
+      ],
+      "octaafgeknipt_graden": 26.74,
+      "overlapvenster_graden": 30.86,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 600
+      }
+     },
+     {
+      "netlist": "V44_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 22.11,
+      "punten": 164,
+      "band_Hz": [
+       396.85,
+       862.01
+      ],
+      "octaafgeknipt_graden": 21.05,
+      "overlapvenster_graden": 31.15,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 660
+      }
+     },
+     {
+      "netlist": "V44_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 12.13,
+      "punten": 160,
+      "band_Hz": [
+       396.85,
+       845.76
+      ],
+      "octaafgeknipt_graden": 11.21,
+      "overlapvenster_graden": 22.36,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 664
+      }
+     },
+     {
+      "netlist": "V44_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 19.95,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 24.14,
+      "overlapvenster_graden": 31.97,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V44_KAND_7",
+      "paar": "mid|tweeter",
+      "mk_graden": 20.66,
+      "punten": 214,
+      "band_Hz": [
+       1136.03,
+       3130.51
+      ],
+      "octaafgeknipt_graden": 23.41,
+      "overlapvenster_graden": 20.8,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 610
+      }
+     },
+     {
+      "netlist": "V45_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 6.32,
+      "punten": 182,
+      "band_Hz": [
+       396.85,
+       939.11
+      ],
+      "octaafgeknipt_graden": 6.64,
+      "overlapvenster_graden": 15.91,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 642
+      }
+     },
+     {
+      "netlist": "V45_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 3.09,
+      "punten": 163,
+      "band_Hz": [
+       396.85,
+       857.92
+      ],
+      "octaafgeknipt_graden": 4.21,
+      "overlapvenster_graden": 4.79,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 661
+      }
+     },
+     {
+      "netlist": "V45_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 20.25,
+      "punten": 167,
+      "band_Hz": [
+       396.85,
+       874.41
+      ],
+      "octaafgeknipt_graden": 18.16,
+      "overlapvenster_graden": 40.46,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 657
+      }
+     },
+     {
+      "netlist": "V45_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 20.33,
+      "punten": 171,
+      "band_Hz": [
+       396.85,
+       891.21
+      ],
+      "octaafgeknipt_graden": 20.33,
+      "overlapvenster_graden": 26.34,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 653
+      }
+     },
+     {
+      "netlist": "V45_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 50.31,
+      "punten": 210,
+      "band_Hz": [
+       396.85,
+       2792.62
+      ],
+      "octaafgeknipt_graden": 50.51,
+      "overlapvenster_graden": 38.45,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 614
+      }
+     },
+     {
+      "netlist": "V45_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 57.94,
+      "punten": 269,
+      "band_Hz": [
+       396.85,
+       3559.74
+      ],
+      "octaafgeknipt_graden": 65.39,
+      "overlapvenster_graden": 44.17,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 555
+      }
+     },
+     {
+      "netlist": "V45_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 17.14,
+      "punten": 171,
+      "band_Hz": [
+       396.85,
+       891.21
+      ],
+      "octaafgeknipt_graden": 16.39,
+      "overlapvenster_graden": 25.15,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 653
+      }
+     },
+     {
+      "netlist": "V47_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 6.98,
+      "punten": 182,
+      "band_Hz": [
+       396.85,
+       939.11
+      ],
+      "octaafgeknipt_graden": 7.74,
+      "overlapvenster_graden": 7.04,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 642
+      }
+     },
+     {
+      "netlist": "V47_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 3.99,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       886.98
+      ],
+      "octaafgeknipt_graden": 4.56,
+      "overlapvenster_graden": 4.45,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V47_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 20.19,
+      "punten": 170,
+      "band_Hz": [
+       396.85,
+       886.98
+      ],
+      "octaafgeknipt_graden": 18.42,
+      "overlapvenster_graden": 34.48,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "V47_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 22.41,
+      "punten": 163,
+      "band_Hz": [
+       396.85,
+       857.92
+      ],
+      "octaafgeknipt_graden": 21.53,
+      "overlapvenster_graden": 30.12,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 661
+      }
+     },
+     {
+      "netlist": "V48_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 7.66,
+      "punten": 190,
+      "band_Hz": [
+       396.85,
+       975.55
+      ],
+      "octaafgeknipt_graden": 7.5,
+      "overlapvenster_graden": 15.71,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 634
+      }
+     },
+     {
+      "netlist": "V48_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 6.41,
+      "punten": 177,
+      "band_Hz": [
+       396.85,
+       917.03
+      ],
+      "octaafgeknipt_graden": 6.35,
+      "overlapvenster_graden": 19.49,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 647
+      }
+     },
+     {
+      "netlist": "V48_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 8.56,
+      "punten": 159,
+      "band_Hz": [
+       396.85,
+       841.74
+      ],
+      "octaafgeknipt_graden": 8.36,
+      "overlapvenster_graden": 24.69,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 665
+      }
+     },
+     {
+      "netlist": "V48_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 7.4,
+      "punten": 156,
+      "band_Hz": [
+       396.85,
+       829.81
+      ],
+      "octaafgeknipt_graden": 7.51,
+      "overlapvenster_graden": 25.01,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 668
+      }
+     },
+     {
+      "netlist": "V48_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 15.75,
+      "punten": 171,
+      "band_Hz": [
+       396.85,
+       891.21
+      ],
+      "octaafgeknipt_graden": 14.09,
+      "overlapvenster_graden": 23.09,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 653
+      }
+     },
+     {
+      "netlist": "V49_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 5.33,
+      "punten": 173,
+      "band_Hz": [
+       396.85,
+       899.74
+      ],
+      "octaafgeknipt_graden": 6.41,
+      "overlapvenster_graden": 5.06,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 651
+      }
+     },
+     {
+      "netlist": "V49_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 6.69,
+      "punten": 177,
+      "band_Hz": [
+       396.85,
+       917.03
+      ],
+      "octaafgeknipt_graden": 6.55,
+      "overlapvenster_graden": 18.07,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 647
+      }
+     },
+     {
+      "netlist": "V49_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 9.21,
+      "punten": 162,
+      "band_Hz": [
+       396.85,
+       853.85
+      ],
+      "octaafgeknipt_graden": 9.36,
+      "overlapvenster_graden": 29.99,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 662
+      }
+     },
+     {
+      "netlist": "V49_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 7.93,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 7.86,
+      "overlapvenster_graden": 11.72,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V49_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 17.88,
+      "punten": 210,
+      "band_Hz": [
+       396.85,
+       2479.37
+      ],
+      "octaafgeknipt_graden": 20.76,
+      "overlapvenster_graden": 33.95,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 614
+      }
+     },
+     {
+      "netlist": "V49_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 24.12,
+      "punten": 180,
+      "band_Hz": [
+       396.85,
+       930.21
+      ],
+      "octaafgeknipt_graden": 20.58,
+      "overlapvenster_graden": 32.34,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 644
+      }
+     },
+     {
+      "netlist": "V49_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 20.27,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 24.53,
+      "overlapvenster_graden": 31.72,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V50_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 5.33,
+      "punten": 173,
+      "band_Hz": [
+       396.85,
+       899.74
+      ],
+      "octaafgeknipt_graden": 6.41,
+      "overlapvenster_graden": 5.06,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 651
+      }
+     },
+     {
+      "netlist": "V50_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 6.69,
+      "punten": 177,
+      "band_Hz": [
+       396.85,
+       917.03
+      ],
+      "octaafgeknipt_graden": 6.55,
+      "overlapvenster_graden": 18.07,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 647
+      }
+     },
+     {
+      "netlist": "V50_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 9.21,
+      "punten": 162,
+      "band_Hz": [
+       396.85,
+       853.85
+      ],
+      "octaafgeknipt_graden": 9.36,
+      "overlapvenster_graden": 29.99,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 662
+      }
+     },
+     {
+      "netlist": "V50_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 7.93,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 7.86,
+      "overlapvenster_graden": 11.72,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V50_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 17.88,
+      "punten": 210,
+      "band_Hz": [
+       396.85,
+       2479.37
+      ],
+      "octaafgeknipt_graden": 20.76,
+      "overlapvenster_graden": 33.95,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 614
+      }
+     },
+     {
+      "netlist": "V50_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 24.12,
+      "punten": 180,
+      "band_Hz": [
+       396.85,
+       930.21
+      ],
+      "octaafgeknipt_graden": 20.58,
+      "overlapvenster_graden": 32.34,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 644
+      }
+     },
+     {
+      "netlist": "V50_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 20.27,
+      "punten": 168,
+      "band_Hz": [
+       396.85,
+       878.58
+      ],
+      "octaafgeknipt_graden": 24.53,
+      "overlapvenster_graden": 31.72,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 656
+      }
+     },
+     {
+      "netlist": "V51_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 14.75,
+      "punten": 228,
+      "band_Hz": [
+       396.85,
+       3576.72
+      ],
+      "octaafgeknipt_graden": 13.99,
+      "overlapvenster_graden": 20.17,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 596
+      }
+     },
+     {
+      "netlist": "V51B_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 9.23,
+      "punten": 190,
+      "band_Hz": [
+       396.85,
+       975.55
+      ],
+      "octaafgeknipt_graden": 8.94,
+      "overlapvenster_graden": 21.79,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 634
+      }
+     },
+     {
+      "netlist": "V51B_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 10.48,
+      "punten": 194,
+      "band_Hz": [
+       396.85,
+       994.3
+      ],
+      "octaafgeknipt_graden": 9.75,
+      "overlapvenster_graden": 10.92,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 630
+      }
+     },
+     {
+      "netlist": "V51B_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 7.75,
+      "punten": 192,
+      "band_Hz": [
+       396.85,
+       984.88
+      ],
+      "octaafgeknipt_graden": 7.19,
+      "overlapvenster_graden": 9.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 632
+      }
+     },
+     {
+      "netlist": "V51B_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 19.63,
+      "punten": 187,
+      "band_Hz": [
+       396.85,
+       5135.24
+      ],
+      "octaafgeknipt_graden": 19.35,
+      "overlapvenster_graden": 34.98,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 637
+      }
+     },
+     {
+      "netlist": "V51B_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 17.81,
+      "punten": 193,
+      "band_Hz": [
+       396.85,
+       989.58
+      ],
+      "octaafgeknipt_graden": 19.14,
+      "overlapvenster_graden": 21.65,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 631
+      }
+     },
+     {
+      "netlist": "V51B_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 15.36,
+      "punten": 195,
+      "band_Hz": [
+       396.85,
+       3492.62
+      ],
+      "octaafgeknipt_graden": 14.71,
+      "overlapvenster_graden": 22.93,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 629
+      }
+     },
+     {
+      "netlist": "A5E3ARM_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 14.66,
+      "punten": 162,
+      "band_Hz": [
+       396.85,
+       853.85
+      ],
+      "octaafgeknipt_graden": 16.07,
+      "overlapvenster_graden": 14.64,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 662
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 13.28,
+      "punten": 102,
+      "band_Hz": [
+       396.85,
+       641.76
+      ],
+      "octaafgeknipt_graden": 16.87,
+      "overlapvenster_graden": 38.09,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 722
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_1",
+      "paar": "mid|tweeter",
+      "mk_graden": 5.8,
+      "punten": 193,
+      "band_Hz": [
+       1702.41,
+       4265.36
+      ],
+      "octaafgeknipt_graden": 34.29,
+      "overlapvenster_graden": 34.2,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 631
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 2.46,
+      "punten": 82,
+      "band_Hz": [
+       396.85,
+       583.5
+      ],
+      "octaafgeknipt_graden": 2.63,
+      "overlapvenster_graden": 18.16,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 742
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_2",
+      "paar": "mid|tweeter",
+      "mk_graden": 6.8,
+      "punten": 202,
+      "band_Hz": [
+       1042.76,
+       2714.01
+      ],
+      "octaafgeknipt_graden": 19.81,
+      "overlapvenster_graden": 28.6,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 622
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 7.18,
+      "punten": 70,
+      "band_Hz": [
+       396.85,
+       551.11
+      ],
+      "octaafgeknipt_graden": 7.52,
+      "overlapvenster_graden": 11.36,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 754
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 5.21,
+      "punten": 187,
+      "band_Hz": [
+       396.85,
+       961.72
+      ],
+      "octaafgeknipt_graden": 7.51,
+      "overlapvenster_graden": 9.18,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 637
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 3.56,
+      "punten": 153,
+      "band_Hz": [
+       396.85,
+       818.05
+      ],
+      "octaafgeknipt_graden": 3.66,
+      "overlapvenster_graden": 4.31,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 671
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 22.47,
+      "punten": 163,
+      "band_Hz": [
+       396.85,
+       857.92
+      ],
+      "octaafgeknipt_graden": 28.49,
+      "overlapvenster_graden": 50.58,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 661
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 5.22,
+      "punten": 144,
+      "band_Hz": [
+       396.85,
+       783.75
+      ],
+      "octaafgeknipt_graden": 5.4,
+      "overlapvenster_graden": 13.65,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 680
+      }
+     },
+     {
+      "netlist": "A5E3VELD_KAND_7",
+      "paar": "mid|tweeter",
+      "mk_graden": 12.71,
+      "punten": 170,
+      "band_Hz": [
+       1062.8,
+       2375.42
+      ],
+      "octaafgeknipt_graden": 24.17,
+      "overlapvenster_graden": 43.23,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 654
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_1",
+      "paar": "woofer|mid",
+      "mk_graden": 4.83,
+      "punten": 144,
+      "band_Hz": [
+       396.85,
+       783.75
+      ],
+      "octaafgeknipt_graden": 5.6,
+      "overlapvenster_graden": 13.28,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 680
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 3.11,
+      "punten": 147,
+      "band_Hz": [
+       396.85,
+       795.02
+      ],
+      "octaafgeknipt_graden": 4.05,
+      "overlapvenster_graden": 10.47,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 677
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_3",
+      "paar": "woofer|mid",
+      "mk_graden": 6.47,
+      "punten": 135,
+      "band_Hz": [
+       396.85,
+       750.89
+      ],
+      "octaafgeknipt_graden": 7.78,
+      "overlapvenster_graden": 40.95,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 689
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 15.48,
+      "punten": 83,
+      "band_Hz": [
+       396.85,
+       586.28
+      ],
+      "octaafgeknipt_graden": 18.98,
+      "overlapvenster_graden": 18.44,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 741
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 5.43,
+      "punten": 188,
+      "band_Hz": [
+       396.85,
+       966.31
+      ],
+      "octaafgeknipt_graden": 7,
+      "overlapvenster_graden": 5.52,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 636
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 3.07,
+      "punten": 71,
+      "band_Hz": [
+       396.85,
+       553.74
+      ],
+      "octaafgeknipt_graden": 6.74,
+      "overlapvenster_graden": 15.13,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 753
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 2.33,
+      "punten": 50,
+      "band_Hz": [
+       396.85,
+       501.07
+      ],
+      "octaafgeknipt_graden": 2.03,
+      "overlapvenster_graden": 11.12,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 774
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 5.14,
+      "punten": 95,
+      "band_Hz": [
+       396.85,
+       620.73
+      ],
+      "octaafgeknipt_graden": 4.52,
+      "overlapvenster_graden": 14.23,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 729
+      }
+     },
+     {
+      "netlist": "A5E3C_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 37.61,
+      "punten": 65,
+      "band_Hz": [
+       396.85,
+       538.15
+      ],
+      "octaafgeknipt_graden": 38.38,
+      "overlapvenster_graden": 53.6,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 759
+      }
+     },
+     {
+      "netlist": "C2_KAND_2",
+      "paar": "woofer|mid",
+      "mk_graden": 4.5,
+      "punten": 136,
+      "band_Hz": [
+       396.85,
+       754.47
+      ],
+      "octaafgeknipt_graden": 4.5,
+      "overlapvenster_graden": 9.91,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 688
+      }
+     },
+     {
+      "netlist": "C2_KAND_4",
+      "paar": "woofer|mid",
+      "mk_graden": 4.97,
+      "punten": 88,
+      "band_Hz": [
+       396.85,
+       600.4
+      ],
+      "octaafgeknipt_graden": 4.36,
+      "overlapvenster_graden": 15.07,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 736
+      }
+     },
+     {
+      "netlist": "C2_KAND_5",
+      "paar": "woofer|mid",
+      "mk_graden": 4.27,
+      "punten": 93,
+      "band_Hz": [
+       396.85,
+       614.85
+      ],
+      "octaafgeknipt_graden": 4.27,
+      "overlapvenster_graden": 6.3,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 731
+      }
+     },
+     {
+      "netlist": "C2_KAND_6",
+      "paar": "woofer|mid",
+      "mk_graden": 17.18,
+      "punten": 183,
+      "band_Hz": [
+       396.85,
+       943.59
+      ],
+      "octaafgeknipt_graden": 22.52,
+      "overlapvenster_graden": 17.27,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 641
+      }
+     },
+     {
+      "netlist": "C2_KAND_6",
+      "paar": "mid|tweeter",
+      "mk_graden": 3.88,
+      "punten": 238,
+      "band_Hz": [
+       1261.41,
+       3896.61
+      ],
+      "octaafgeknipt_graden": 4.29,
+      "overlapvenster_graden": 32.85,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 586
+      }
+     },
+     {
+      "netlist": "C2_KAND_7",
+      "paar": "woofer|mid",
+      "mk_graden": 33.74,
+      "punten": 34,
+      "band_Hz": [
+       396.85,
+       464.33
+      ],
+      "octaafgeknipt_graden": null,
+      "overlapvenster_graden": 35.09,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 790
+      }
+     },
+     {
+      "netlist": "C2_KAND_8",
+      "paar": "woofer|mid",
+      "mk_graden": 5.28,
+      "punten": 160,
+      "band_Hz": [
+       396.85,
+       845.76
+      ],
+      "octaafgeknipt_graden": 5.29,
+      "overlapvenster_graden": 6.36,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 664
+      }
+     },
+     {
+      "netlist": "C2_KAND_9",
+      "paar": "woofer|mid",
+      "mk_graden": 2.31,
+      "punten": 8,
+      "band_Hz": [
+       396.85,
+       410.29
+      ],
+      "octaafgeknipt_graden": 8.47,
+      "overlapvenster_graden": 25.87,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 816
+      }
+     },
+     {
+      "netlist": "C2_KAND_10",
+      "paar": "woofer|mid",
+      "mk_graden": 7.93,
+      "punten": 150,
+      "band_Hz": [
+       396.85,
+       806.45
+      ],
+      "octaafgeknipt_graden": 8.25,
+      "overlapvenster_graden": 12.67,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 674
+      }
+     },
+     {
+      "netlist": "C2_KAND_10",
+      "paar": "mid|tweeter",
+      "mk_graden": 18.13,
+      "punten": 183,
+      "band_Hz": [
+       1093.59,
+       2600.22
+      ],
+      "octaafgeknipt_graden": 30.01,
+      "overlapvenster_graden": 34.57,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 641
+      }
+     },
+     {
+      "netlist": "KAND_V2_1",
+      "paar": "woofer|mid",
+      "mk_graden": 10.26,
+      "punten": 121,
+      "band_Hz": [
+       396.85,
+       702.49
+      ],
+      "octaafgeknipt_graden": 12.58,
+      "overlapvenster_graden": 45.45,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 703
+      }
+     },
+     {
+      "netlist": "KAND_V2_2",
+      "paar": "woofer|mid",
+      "mk_graden": 12.89,
+      "punten": 182,
+      "band_Hz": [
+       396.85,
+       939.11
+      ],
+      "octaafgeknipt_graden": 12.77,
+      "overlapvenster_graden": 20.7,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 642
+      }
+     },
+     {
+      "netlist": "KAND_V2_3",
+      "paar": "woofer|mid",
+      "mk_graden": 31.37,
+      "punten": 70,
+      "band_Hz": [
+       396.85,
+       551.11
+      ],
+      "octaafgeknipt_graden": 32.19,
+      "overlapvenster_graden": 28.67,
+      "afgewezen": {
+       "validity": 776,
+       "silence": 0,
+       "level": 754
+      }
+     }
+    ]
+   }
   },
   "v45_qes": {
    "_": "V45 — M-E TEGEN DE GESTELDE Q_es-GRENS, per bevroren netlist en op de LAAGSTE weg. `R_s_ohm` is de Thevenin-bronweerstand op f_p uit M-E zelf; `padweerstand_ohm` is de DC-serieweerstand van diezelfde weg (discrete weerstanden plus spoel-DCR), en dat is de grootheid die de A5d.6-inversie qes-series-r begrenst. `R_e_ohm` is wat de PAS oploste (A5c.1) en niet een van de twee vaste casusboeklezingen — de eis deelt door de R_e van de run, en een plafond dat aan een andere lezing hing zou stilletjes van het paneel ernaast afwijken (V16). Zie gestelde_eisen.qes_vermenigvuldiging_max.",
@@ -39644,6 +42742,157 @@
      "kandidaat": "woofer→mid 437.3 LR4 · mid→tweeter 1744.8 LR4"
     }
    ]
+  },
+  "meetset_M3_mid": {
+   "_": "M-3 (16-09-2026) - DE HERMERGDE MID, en zij is de v2-set van casus 1. Het ENIGE bestand dat verhuist is de on-axis merge van de mid: I-2 mat dat M-1 de minimumfase van het stapmodel als atan2(Im, Re) van het LOG-spectrum nam waar de minimumfase Im IS, en deze set is diezelfde merge door de route die de app sinds I-2 zelf gebruikt (nfMerge.ts, dat minphase.ts leest). De BRONNEN zijn onveranderd (mid_near.txt en mid_hor_0.txt, 22-08-2026) en de splice-band, de shelf en de gestelde geldigheidsvloer zijn die van M-1, zodat er precies EEN factor beweegt. De wooferhelft is de 67,7 L-set van M-2b ongewijzigd, de tweeter de M-1-set ongewijzigd. De fixture leest deze set standaard (casus1Manifest, set \"m3\"); \"koan677\" blijft bestaan als de GEDATEERDE M-2b-set waarop het M-2b-corpus en elke referentie van voor M-3 gemeten is, \"merged\" als de M-1-set en \"gated\" voor v1 en voor de tests die de header-vloer zelf toetsen. Klasse A: projectinvoer, nergens een functie van behalve van de meetsessie en van de merge die de app erop deed.",
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "status": "MODEL-VALIDATED onder de splice, MEETDATA erboven - dezelfde status als de M-1-merge die zij vervangt, want het zijn dezelfde twee metingen. Wat VERVALT is de fasefout van het stapmodel; wat BLIJFT is dat de mid onder 500 Hz een nabij veld plus een MODEL is en geen meting op afstand, en dat de shelf (6 dB @ 440 Hz) gesteld is en nooit gemeten.",
+   "gesteld_door": "de reparatie is afgeleid (nfMerge.ts); de splice-band, de shelf en de geldigheidsvloer zijn Sanders/M-1s gestelde waarden, hier onveranderd herhaald en door assertM1ModelMatches() tegen het M-1-bestand gehouden.",
+   "bestanden": {
+    "mid_hor_0_merged.frd": {
+     "drv": "mid",
+     "typ": "FF",
+     "hoek": 0,
+     "vervangt": "mid_hor_0.txt",
+     "gemaakt_door": "scripts/merge-casus1-mid-m3.ts (M-3): dezelfde twee bestanden als M-1, gemergd door nfMerge.ts - de eigen merge-module van de app, die de minimumfase uit minphase.ts leest."
+    }
+   },
+   "parameters": {
+    "mid_hor_0_merged.frd": {
+     "vervangt": "mid_hor_0.txt",
+     "merge": "NF/FF",
+     "geldig_van_Hz": 60,
+     "geldig_tot_Hz": 20000,
+     "NF_bron": "mid_near.txt",
+     "FF_bron": "mid_hor_0.txt",
+     "FF_venster_ms": 2.521,
+     "FF_venster_referentietijd_ms": 2.5,
+     "FF_venster_rechter_ms": 5.021,
+     "splice_band_Hz": [
+      500,
+      800
+     ],
+     "splice_gain_dB": -13.68,
+     "splice_delay_ms": 0.6307,
+     "step_model": "shelf 6 dB @ 440 Hz, first order (baffleStepShelfDb), minimum phase; cabinet derivation 442.3 Hz; MODEL SENSITIVITY: a second-order shelf differs by up to 0.90 dB below the splice, and a real diffraction model by more — the published formulas disagree by about 3x",
+     "poortmodel": "none (no port measurement was given)",
+     "predictie": "none (no break-in or other model prediction applied)",
+     "vloer_reden": "STATED, carried unchanged from Koan_M_merged.frd (M-1) because M-3 re-merges the SAME two files and changes only the step model s phase: \"sealed pod f_c 88.8 Hz: at 60 Hz the near field reads -7.0 dB below its passband on the second-order slope (-2.1 dB at f_c) and its 1/12-octave raggedness rises from 0.12 dB above 120 Hz to 0.15 at 60 Hz and 0.42 at 30 Hz - where the near field stops carrying; NF Keele limit 1078 Hz, FF gate floor 396.7 Hz\". For the record, this app s own derivation for a sealed enclosure would answer 20.5 Hz — the cone is the whole radiator, so it reads the merge as honest as far as the near field reaches; the stated floor is the narrower claim and is kept.",
+     "status": "MODEL-validated merge made by Crossover Studio on 2026-09-16; the fitted delay is 0.6307 ms; the two halves state DIFFERENT reference times (near 6.313 ms, far 2.5 ms, a 3.813 ms difference), so the time origins do not close and the fitted delay carries that difference. It is not an acoustic-centre distance.",
+     "bereik_Hz": [
+      20.5078,
+      19999.51
+     ],
+     "rijen": 13640
+    }
+   },
+   "fasedelta_M1_naar_M3": {
+    "_": "WAT DE REPARATIE VERPLAATST, gemeten op het gedeelde raster, in de banden waarin I-2 de fout mat. De MAGNITUDE beweegt nergens meer dan 0,0007 dB - binnen de 0,001 dB-afronding van de bestanden zelf, en precies waarom dit vier sessies onopgemerkt bleef. De FASE loopt op naarmate je zakt, en is boven 800 Hz exact nul omdat de merge daar HET VERRE VELD IS.",
+    "per_band": [
+     {
+      "van_Hz": 20,
+      "tot_Hz": 40,
+      "n": 14,
+      "dB_rms": 0,
+      "dB_max": 0,
+      "graden_rms": 26.68,
+      "graden_max": 28.91
+     },
+     {
+      "van_Hz": 40,
+      "tot_Hz": 80,
+      "n": 27,
+      "dB_rms": 0,
+      "dB_max": 0,
+      "graden_rms": 20.98,
+      "graden_max": 24.2
+     },
+     {
+      "van_Hz": 80,
+      "tot_Hz": 150,
+      "n": 48,
+      "dB_rms": 0,
+      "dB_max": 0,
+      "graden_rms": 14.16,
+      "graden_max": 17.78
+     },
+     {
+      "van_Hz": 150,
+      "tot_Hz": 300,
+      "n": 102,
+      "dB_rms": 0,
+      "dB_max": 0,
+      "graden_rms": 6.95,
+      "graden_max": 10.75
+     },
+     {
+      "van_Hz": 300,
+      "tot_Hz": 500,
+      "n": 137,
+      "dB_rms": 0,
+      "dB_max": 0,
+      "graden_rms": 1.86,
+      "graden_max": 3.58
+     },
+     {
+      "van_Hz": 500,
+      "tot_Hz": 800,
+      "n": 205,
+      "dB_rms": 0.0002,
+      "dB_max": 0.001,
+      "graden_rms": 0.08,
+      "graden_max": 0.32
+     },
+     {
+      "van_Hz": 800,
+      "tot_Hz": 20000,
+      "n": 13107,
+      "dB_rms": 0,
+      "dB_max": 0,
+      "graden_rms": 0,
+      "graden_max": 0
+     }
+    ],
+    "leesregel": "De 18-29 graden die I-2 noemt liggen ONDER 150 Hz. Over de W-M-kruisband (253-519 Hz op het M-2b-corpus) is de fout 1,9-7,0 graden rms, en dat is de ordegrootte waarmee M-K daar beweegt."
+   },
+   "klasse_A_onbewogen": {
+    "_": "GEMETEN EN NIET AANGENOMEN (M-3). Elke klasse-A-referentie van de MID is op de nieuwe set opnieuw gelezen en geen enkele beweegt: Re, f_c, Z_max, de Q s en de semi-inductantie komen uit de IMPEDANTIE (mid.lim, onaangeraakt); de breakups en de directiviteit leven BOVEN de splice, waar de merge het verre veld zelf IS; de geldigheidsvloer is gesteld en onveranderd; en de verankerde gaps zijn energiegemiddelden van MAGNITUDES, die nergens meer dan 0,001 dB bewegen. goldenCasus1.test.ts toetst al deze referenties tegen een verse meting op de standaardset, dus de claim is falsifieerbaar en niet alleen opgeschreven.",
+    "steekproef": {
+     "Re_ohm": [
+      3.36,
+      3.36
+     ],
+     "breakups_aantal": [
+      12,
+      12
+     ],
+     "NF_plafond_Hz": [
+      1077.75,
+      1077.75
+     ],
+     "doorlaatband_niveau_dB": [
+      134.72,
+      134.72
+     ],
+     "anker": [
+      "woofer",
+      "woofer"
+     ],
+     "_leesregel": "per veld [M-2b, M-3]; gelijk betekent onbewogen."
+    },
+    "wat_WEL_beweegt": "Uitsluitend de fase van het paar woofer-mid (klasse B, per netlist): M-K, en de twee controlekolommen ernaast. Zie kandidaten.*._waarden_M2b_tot_M3 en v44_fasematen."
+   },
+   "wat_NIET_verhuist": {
+    "_": "GEMETEN EN NIET AANGENOMEN (M-3).",
+    "mid_near.txt": "ONGEWIJZIGD, 22-08-2026 - de bron van de merge.",
+    "mid_hor_0.txt": "ONGEWIJZIGD, 22-08-2026 - de andere bron; boven de splice IS de merge dit bestand.",
+    "mid.lim": "ONGEWIJZIGD - een merge raakt geen impedantie (controle 3 van nfMerge).",
+    "mid_hor_30.txt": "ONGEWIJZIGD - de 30-graden-respons is gepoort en niet gemergd; de directiviteit leest hem.",
+    "Koan_M_merged.frd": "BLIJFT OP SCHIJF en blijft de mid van de sets \"merged\" en \"koan677\". Dat is wat elke referentie van voor M-3 reproduceerbaar houdt als gedateerde brug; hem vervangen zou de bruggen weggooien waartegen deze sessie haar eigen getallen legt.",
+    "de wooferhelft": "DE 67,7 L-SET VAN M-2b, ongewijzigd.",
+    "de tweeter": "DE M-1-SET, ongewijzigd."
+   }
   }
  },
  "herzien_F1": "25-08-2026 vastgesteld; herzien bij oplevering F1 (engine2-fundament)",

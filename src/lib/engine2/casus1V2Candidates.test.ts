@@ -81,6 +81,7 @@ import {
   casus1Filter,
   casus1Geometry,
   casus1Manifest,
+  casus1SetOf,
   loadGolden,
 } from './casus1.fixture.ts';
 import {
@@ -98,6 +99,7 @@ import {
   CASUS1_V2_BAND_SOURCE,
   CASUS1_V2_SEED,
   CASUS1_V2_SETTINGS,
+  casus1CorpusSet,
   casus1ChainInput,
   casus1Field,
   casus1V2Declaration,
@@ -127,6 +129,9 @@ import { handleV2Request, type V2Chain3Payload, type V2Response } from './optimi
 import type { Chain3Input, Chain3Result } from '../threeWayChain.ts';
 
 const golden = loadGolden();
+/** M-3 — de set waarop het levende corpus is opgewekt, GELEZEN uit zijn eigen
+ *  herkomst en niet getypt. Zie `casus1CorpusSet`. */
+const CORPUS_SET = casus1CorpusSet();
 const TOL = golden.toleranties;
 const manifest = casus1Manifest(golden);
 const files = casus1Files(manifest);
@@ -137,6 +142,8 @@ const HERKOMST = JSON.parse(
   seed: number;
   run_vingerafdruk: string;
   gegenereerd_op_commit: string;
+  /** M-2b — the measurement set the generator ran on. */
+  meetset?: { set?: string };
   bestanden: { name: string; label: string }[];
   /** E-1 — per candidate, delivered or refused, with the generator's own runtime. */
   kandidaat_uitkomst: { label: string; verwerping: unknown; looptijd_s?: number }[];
@@ -283,7 +290,49 @@ const report = (key: string): EngineV2Report =>
     settings: REPORT_SETTINGS,
   });
 
+/* M-3 — DE TWEEDE BANK, EN WAAROM DIT BESTAND ER TWEE NODIG HEEFT.
+ *
+ * Alles wat MEET — elke metriek, elke poort, elke klasse-B-referentie — hoort
+ * op de HUIDIGE meetbasis gemeten te worden, en dat is `manifest` hierboven.
+ * De LIVE ketenrun hoort dat niet: die draait de zoektocht opnieuw en legt haar
+ * uitkomst byte voor byte naast een netlist die op de M-2b-set is opgewekt.
+ * Sinds M-3 leest de standaardset een hermergde mid met een andere fase in de
+ * W-M-kruisband, dus daar zou de zoektocht een ander pad lopen — geen
+ * regressie, maar het gevolg van een gerepareerde meting. Zie
+ * `CORPUS_SET` voor de volledige motivering. */
+const corpusManifest = casus1Manifest(golden, CORPUS_SET);
+const corpusFiles = casus1Files(corpusManifest);
+const corpusReport = (key: string): EngineV2Report =>
+  buildReport({
+    manifest: corpusManifest,
+    files: corpusFiles,
+    filter: casus1Filter(key, corpusManifest, corpusFiles, golden),
+    geometry,
+    settings: REPORT_SETTINGS,
+  });
+
 describe('the frozen v2 candidates are files, and the file says where they came from', () => {
+  it('M-3 — de live reproductie draait op de set waarop het corpus gemaakt is', () => {
+    /* Sinds M-3 is de standaardset NIET de set waarop dit corpus is opgewekt:
+     * de hermergde mid verandert de fase in de W-M-kruisband en dus het
+     * objectief dat de zoektocht minimaliseert. De twee live ketenruns lezen
+     * daarom `CORPUS_SET`. Deze claim houdt die constante eerlijk op
+     * twee manieren: hij moet een BESTAANDE set noemen, en hij moet — zodra een
+     * regeneratie de set in de herkomst zelf schrijft — daarmee overeenkomen.
+     * Tot die regeneratie staat de constante ervoor in, en dat is de reden dat
+     * deze claim de afwezigheid van het veld toestaat en niet verzwijgt. */
+    /* De set komt UIT de herkomst (M-2b schreef hem daar al), dus deze claim
+     * toetst twee dingen: dat het veld een BESTAANDE set noemt, en dat de
+     * standaard er sinds M-3 van VERSCHILT. Dat tweede is de claim die ertoe
+     * doet: zou hij ooit weer gelijk zijn, dan is er geregenereerd en hoort de
+     * pin te verdwijnen in plaats van stil te blijven staan. */
+    expect(HERKOMST.meetset?.set).toBe(CORPUS_SET);
+    expect(casus1SetOf(casus1Manifest(golden, CORPUS_SET))).toBe(CORPUS_SET);
+    expect(CORPUS_SET, 'standaard en corpusset zijn weer gelijk: regenereer en haal de pin weg').not.toBe(
+      casus1SetOf(casus1Manifest(golden)),
+    );
+  });
+
   it('every generated netlist is listed in the manifest and readable', () => {
     expect(V2_KEYS.length).toBe(HERKOMST.bestanden.length);
     for (const key of V2_KEYS) {
@@ -780,9 +829,9 @@ describe('[live] the run still delivers the frozen netlist', () => {
       expect(HERKOMST.verwerpingen.length).toBe(HERKOMST.shortlist.overwogen);
       return;
     }
-    const rep = report('HUIDIG');
+    const rep = corpusReport('HUIDIG');
     const field = casus1Field(rep);
-    const gridded = casus1ChainInput(manifest, files, golden);
+    const gridded = casus1ChainInput(corpusManifest, corpusFiles, golden);
     /* The candidate whose FILE this compares against: since E-1 the delivered
      * netlist with the LOWEST recorded runtime (`liveSubjects`, one rule for
      * both live files), matched by the label the provenance block records
@@ -855,7 +904,7 @@ describe('[live] the run still delivers the frozen netlist', () => {
     const payload: V2Chain3Payload = {
       input,
       v2: {
-        ...casus1V2Facts(rep, manifest, files),
+        ...casus1V2Facts(rep, corpusManifest, corpusFiles),
         gates: armedGates,
         /* V42 — the budgets the GENERATOR arms, from the one place that
          * defines them. This said `{}` until V42 armed a budget, and the run

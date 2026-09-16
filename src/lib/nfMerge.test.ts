@@ -138,9 +138,11 @@ describe('I-2 — the app merge against M-1s mid merge', () => {
    * 12.6°. `minphase.ts`, the project's one implementation, has always taken
    * `Im`; this module uses it.
    *
-   * NOT REPAIRED HERE, deliberately: repairing `Koan_M_merged.frd` means
-   * re-merging casus 1's mid, which moves the measurement set and every corpus
-   * that rests on it. So the divergence is MEASURED, pinned, and left standing.
+   * NOT REPAIRED HERE, deliberately — and repaired at M-3, one file over. This
+   * claim still measures `Koan_M_merged.frd`, which is exactly right: that file
+   * is now casus 1's DATED BRIDGE (the mid of sets 'merged' and 'koan677'), so
+   * the divergence it pins is what the bridge has to keep showing. The route
+   * reads `mid_hor_0_merged.frd` since M-3; `midM3.test.ts` pins that one.
    */
   it('differs from M-1 in PHASE below the splice and nowhere else — the atan2 step', () => {
     const { subject, merge } = mergeOf('mid');

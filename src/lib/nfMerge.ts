@@ -42,9 +42,15 @@
  *      The merged MAGNITUDE is unaffected (the difference is inside the file's
  *      own 0.001 dB rounding), the phase below the splice is not. This module
  *      uses the project's own `minphase.ts`, which has always extracted `Im`.
- *      Repairing `Koan_M_merged.frd` means re-merging casus 1's mid and moving
- *      every corpus that rests on it, so it is MEASURED here and repaired
- *      nowhere — see the entry.
+ *      REPAIRED AT M-3 (16-09-2026), and not the way this note expected: the
+ *      file was not rewritten and no corpus moved. M-3 wrote a NEW merge with
+ *      this module (`midM3.fixture.ts` -> `mid_hor_0_merged.frd`), layered it as
+ *      a new measurement set, and PINNED the two live chain runs to the set the
+ *      corpus was generated on — so the search still reproduces its own netlists
+ *      byte for byte while everything that MEASURES reads the repaired file.
+ *      `Koan_M_merged.frd` stays on disk as the dated bridge. What this note got
+ *      right is that repairing it IN PLACE would have moved every corpus; what
+ *      it missed is that a merge is a FILE, so a second one can stand beside it.
  *
  *  (2) A port that is summed into the near field is NOT negligible in the fit
  *      band. Sanders August merge summed half a port at g 0.41; reproducing it

@@ -12,6 +12,11 @@
  *    same far field, same band, same step, no port. Anything that moves here
  *    is a difference between this module and the script M-1 ran.
  *
+ *    SINCE M-3 that difference has a NAME and a repair: `mid_hor_0_merged.frd`
+ *    is this module's own merge of those same two files, and it is what casus 1
+ *    reads. This script keeps measuring the M-1 file on purpose — it is the
+ *    dated bridge, and this is the measurement that says what the bridge is.
+ *
  *  - THE WOOFERS (`Koan_W_*_merged_ingespeeld_mild.frd`, Sanders August
  *    pipeline) cannot be reproduced exactly and the reason is in their own
  *    header: `LF = eigen nearfield + 0.5 x poort (g=0.41)`. That port

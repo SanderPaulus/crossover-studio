@@ -60,9 +60,17 @@ interface Job {
 
 const FAR: Job[] = [
   {
-    src: 'Koan_M_merged.frd',
+    /* M-3 (16-09-2026): the mid's merge REMADE with the corrected step-model
+     * phase. I-2 measured that M-1's merge applied the shelf's minimum phase as
+     * `atan2(Im, Re)` of the log spectrum where the minimum phase IS `Im`; the
+     * magnitude was never affected, the phase below the splice was. A demo
+     * carries the app's own current reading of this speaker, so it carries the
+     * repaired file — and the provenance line below names it, so nobody has to
+     * take that on trust. `Koan_M_merged.frd` stays on disk as casus 1's dated
+     * bridge and as the mid of sets 'merged' and 'koan677'. */
+    src: 'mid_hor_0_merged.frd',
     out: 'mid-merged-hor0.frd',
-    title: 'KOAN 2951 2-way demo — midrange on axis, NF/FF merged (M-1), mic 1 m',
+    title: 'KOAN 2951 2-way demo — midrange on axis, NF/FF merged (M-3), mic 1 m',
     points: FAR_POINTS,
   },
   {

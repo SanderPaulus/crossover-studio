@@ -295,7 +295,17 @@ export function loadMeasurement(entry: ManifestEntry, dir: string = CASUS1_DIR):
 /**
  * WHICH MEASUREMENT SET (M-1, M-2b).
  *
- * `'koan677'` — THE v2 SET SINCE M-2b (13-09-2026), and the default. The
+ * `'m3'` — THE v2 SET SINCE M-3 (16-09-2026), and the default. Exactly the
+ * M-2b set with ONE file swapped: the mid's on-axis merge. I-2 measured that
+ * M-1's mid merge applied the step model's minimum phase as `atan2(Im, Re)` of
+ * the log spectrum where the minimum phase IS `Im`; `'m3'` is that same merge
+ * made by the app's own `nfMerge.ts`. The sources are unchanged, and so are the
+ * splice band, the shelf and the stated floor — one factor moves. The MAGNITUDE
+ * moves nowhere beyond the files' own 0.001 dB rounding; the phase below the
+ * splice moves 26.7 deg rms at 20-40 Hz falling to 1.9 at 300-500 and exactly
+ * zero above 800, where the merge IS the far field.
+ *
+ * `'koan677'` — THE M-2b SET (13-09-2026). The
  * WOOFER half of the M-1 set is replaced by the 11-09-2026 re-measurement
  * transformed to the real cabinet: the two per-driver NF/FF merges in the
  * 67.7 L frame (`woofer_*_hor_0_koan677_merged.frd`), the near fields they are
@@ -315,10 +325,13 @@ export function loadMeasurement(entry: ManifestEntry, dir: string = CASUS1_DIR):
  * carries none of it. `meetset_2026_09_67L.sweep_frame` in the manifest names
  * the reader-by-reader consequence.
  *
+ * Kept as the dated set the M-2b corpus and every reference before M-3 was
+ * measured on, and as the bridge each re-derived class-A reference is checked
+ * against.
+ *
  * `'merged'` — THE M-1 SET (04-09-2026): the on-axis far fields of the woofers
  * and the mid replaced by their AUGUST NF/FF merges. Kept as the dated set the
- * C-2 corpus and every reference before M-2b was measured on, and as the
- * bridge each re-derived class-A reference is checked against.
+ * C-2 corpus was measured on.
  *
  * `'gated'` — the 22-08-2026 session as measured, gated far fields and all.
  * Kept for the v1 route (byte-identical, it never reads engine2) and for the
@@ -332,10 +345,11 @@ export function loadMeasurement(entry: ManifestEntry, dir: string = CASUS1_DIR):
  * would say the wrong thing about a file the current set is built from. What
  * dates a set here is its manifest block, exactly as M-1 dated its own.
  */
-export type Casus1MeasurementSet = 'koan677' | 'merged' | 'gated';
+export type Casus1MeasurementSet = 'm3' | 'koan677' | 'merged' | 'gated';
 
 /** The session id each set reports — also how `casus1Files` knows which set it holds. */
 export const CASUS1_SESSION_ID: Record<Casus1MeasurementSet, string> = {
+  m3: 'koan2951-2026-09-11-67L-M3-mid',
   koan677: 'koan2951-2026-09-11-67L',
   merged: 'koan2951-2026-08-22-M1-merge',
   gated: 'koan2951-2026-08-22',
@@ -373,23 +387,38 @@ export function casus1Set67L(golden: GoldenRefs = loadGolden()): Record<string, 
   return block?.bestanden ?? {};
 }
 
+/** M-3 — the mid's merge remade with the corrected step-model phase. */
+export function casus1SetM3(golden: GoldenRefs = loadGolden()): Record<string, MergedSetEntry> {
+  const block = (golden.manifest_en_geometrie as unknown as {
+    meetset_M3_mid?: { bestanden?: Record<string, MergedSetEntry> };
+  }).meetset_M3_mid;
+  return block?.bestanden ?? {};
+}
+
 /**
  * The replacements a set applies, keyed by the 22-08 file each one replaces.
  *
- * `'koan677'` layers the 67.7 L woofer ON TOP of the M-1 merges, so the mid
- * keeps its M-1 merge and the two woofer files are the only ones that move.
+ * THE SETS LAYER, and the map is keyed by the 22-08 file each entry REPLACES,
+ * so a later layer simply overwrites an earlier one's answer for the same slot.
+ * `'koan677'` puts the 67.7 L woofer on top of the M-1 merges, so the mid keeps
+ * its M-1 merge; `'m3'` puts the re-merged mid on top of that, so the woofer
+ * half stays exactly what M-2b measured. Each set is therefore its predecessor
+ * plus one named change, which is what makes the dated bridges honest.
  */
 function swapsFor(golden: GoldenRefs, set: Casus1MeasurementSet): Map<string, [string, MergedSetEntry]> {
   const out = new Map<string, [string, MergedSetEntry]>();
   if (set === 'gated') return out;
   for (const [file, tag] of Object.entries(casus1MergedSet(golden))) out.set(tag.vervangt, [file, tag]);
-  if (set === 'koan677') for (const [file, tag] of Object.entries(casus1Set67L(golden))) out.set(tag.vervangt, [file, tag]);
+  if (set === 'koan677' || set === 'm3') {
+    for (const [file, tag] of Object.entries(casus1Set67L(golden))) out.set(tag.vervangt, [file, tag]);
+  }
+  if (set === 'm3') for (const [file, tag] of Object.entries(casus1SetM3(golden))) out.set(tag.vervangt, [file, tag]);
   return out;
 }
 
 export function casus1Manifest(
   golden: GoldenRefs = loadGolden(),
-  set: Casus1MeasurementSet = 'koan677',
+  set: Casus1MeasurementSet = 'm3',
 ): Manifest {
   const g = golden.manifest_en_geometrie;
   const replacedBy = swapsFor(golden, set);
@@ -412,7 +441,8 @@ export function casus1Manifest(
    * silent no-op, so it throws instead. */
   for (const [set2, block] of [
     ['gemergde_set', set === 'gated' ? {} : casus1MergedSet(golden)],
-    ['meetset_2026_09_67L', set === 'koan677' ? casus1Set67L(golden) : {}],
+    ['meetset_2026_09_67L', set === 'koan677' || set === 'm3' ? casus1Set67L(golden) : {}],
+    ['meetset_M3_mid', set === 'm3' ? casus1SetM3(golden) : {}],
   ] as const) {
     for (const [file, tag] of Object.entries(block)) {
       if (!(tag.vervangt in g.bestanden)) {

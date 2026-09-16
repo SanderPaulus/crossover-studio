@@ -322,8 +322,8 @@ export interface CorpusBank {
 }
 
 /**
- * M-1, M-2b — WHICH MEASUREMENT SET THE BANK MEASURES ON. Default `'koan677'`
- * since M-2b: the current v2 set, and BOTH HALVES of a comparison go through it.
+ * M-1, M-2b, M-3 — WHICH MEASUREMENT SET THE BANK MEASURES ON. Default `'m3'`
+ * since M-3: the current v2 set, and BOTH HALVES of a comparison go through it.
  * That rule has not changed since M-1; what changed is which set it names.
  *
  * WHY BOTH HALVES AND NOT "EACH HALF ON ITS OWN SET", and M-2b is the session
@@ -335,7 +335,8 @@ export interface CorpusBank {
  * effect. Both halves on the current set answers the question a comparison is
  * for — what do these networks do, measured the same way — and the separate
  * question, what the basis itself moved, is answered by the class-A bridges in
- * `afgeleide_parameters.woofer._waarden_M1_tot_M2b` and by `m2bMeetset.test.ts`.
+ * `afgeleide_parameters.woofer._waarden_M1_tot_M2b` and by `m2bMeetset.test.ts`
+ * — and, for M-3's mid, by `_waarden_M2b_tot_M3` and `midM3.test.ts`.
  *
  * `'gated'` is for the DATED claims of `corpusPairing.test.ts`: the V45→V47 and
  * V30→V32 readings that demonstrate the reading rule were measured on the gated
@@ -343,7 +344,7 @@ export interface CorpusBank {
  * numbers without moving the rule. A comparison that mixes sets is not a
  * comparison.
  */
-export function corpusBank(golden: GoldenRefs = loadGolden(), set: Casus1MeasurementSet = 'koan677'): CorpusBank {
+export function corpusBank(golden: GoldenRefs = loadGolden(), set: Casus1MeasurementSet = 'm3'): CorpusBank {
   const manifest = casus1Manifest(golden, set);
   const files = casus1Files(manifest);
   const geometry = casus1Geometry(golden);

@@ -1,0 +1,1284 @@
+{
+  "_wat": "M-3 — de drie geleverde netlists van het M-2b-corpus en de drie referentiefilters, herlezen op de hermergde mid. GEEN regeneratie: beide helften door dezelfde corpusBank-instellingen, alleen de meetset verschilt.",
+  "_hoe": "npx vite-node scripts/measure-m3-mid-phase.ts",
+  "_gemeten_op": "2026-09-16",
+  "voor_set": "koan677",
+  "na_set": "m3",
+  "fasedelta_meetbestand": {
+    "per_band": [
+      {
+        "van_Hz": 20,
+        "tot_Hz": 40,
+        "n": 14,
+        "dB_max": 0,
+        "graden_rms": 26.68,
+        "graden_max": 28.91
+      },
+      {
+        "van_Hz": 40,
+        "tot_Hz": 80,
+        "n": 27,
+        "dB_max": 0,
+        "graden_rms": 20.98,
+        "graden_max": 24.2
+      },
+      {
+        "van_Hz": 80,
+        "tot_Hz": 150,
+        "n": 48,
+        "dB_max": 0,
+        "graden_rms": 14.16,
+        "graden_max": 17.78
+      },
+      {
+        "van_Hz": 150,
+        "tot_Hz": 300,
+        "n": 102,
+        "dB_max": 0,
+        "graden_rms": 6.95,
+        "graden_max": 10.75
+      },
+      {
+        "van_Hz": 300,
+        "tot_Hz": 500,
+        "n": 137,
+        "dB_max": 0,
+        "graden_rms": 1.86,
+        "graden_max": 3.58
+      },
+      {
+        "van_Hz": 500,
+        "tot_Hz": 800,
+        "n": 205,
+        "dB_max": 0.001,
+        "graden_rms": 0.08,
+        "graden_max": 0.32
+      },
+      {
+        "van_Hz": 800,
+        "tot_Hz": 20000,
+        "n": 13107,
+        "dB_max": 0,
+        "graden_rms": 0,
+        "graden_max": 0
+      }
+    ],
+    "spoor": [
+      {
+        "hz": 20.51,
+        "m1_deg": -17.49,
+        "m3_deg": -46.4,
+        "delta_deg": -28.91
+      },
+      {
+        "hz": 39.55,
+        "m1_deg": -85.9,
+        "m3_deg": -110.41,
+        "delta_deg": -24.51
+      },
+      {
+        "hz": 60.06,
+        "m1_deg": -136.29,
+        "m3_deg": -157.08,
+        "delta_deg": -20.79
+      },
+      {
+        "hz": 80.57,
+        "m1_deg": -170.53,
+        "m3_deg": 171.68,
+        "delta_deg": -17.78
+      },
+      {
+        "hz": 120.12,
+        "m1_deg": 132.6,
+        "m3_deg": 119.25,
+        "delta_deg": -13.35
+      },
+      {
+        "hz": 149.41,
+        "m1_deg": 104.86,
+        "m3_deg": 94,
+        "delta_deg": -10.86
+      },
+      {
+        "hz": 200.68,
+        "m1_deg": 69.9,
+        "m3_deg": 62.32,
+        "delta_deg": -7.57
+      },
+      {
+        "hz": 253.42,
+        "m1_deg": 44.92,
+        "m3_deg": 39.76,
+        "delta_deg": -5.16
+      },
+      {
+        "hz": 300.29,
+        "m1_deg": 25.68,
+        "m3_deg": 22.1,
+        "delta_deg": -3.58
+      },
+      {
+        "hz": 361.82,
+        "m1_deg": 3.79,
+        "m3_deg": 1.69,
+        "delta_deg": -2.1
+      },
+      {
+        "hz": 399.9,
+        "m1_deg": -9.69,
+        "m3_deg": -11.12,
+        "delta_deg": -1.43
+      },
+      {
+        "hz": 518.55,
+        "m1_deg": -47.41,
+        "m3_deg": -47.61,
+        "delta_deg": -0.2
+      },
+      {
+        "hz": 600.59,
+        "m1_deg": -68.85,
+        "m3_deg": -68.78,
+        "delta_deg": 0.07
+      },
+      {
+        "hz": 700.2,
+        "m1_deg": -95.54,
+        "m3_deg": -95.53,
+        "delta_deg": 0.01
+      },
+      {
+        "hz": 799.8,
+        "m1_deg": -112.09,
+        "m3_deg": -112.09,
+        "delta_deg": 0
+      },
+      {
+        "hz": 1000.49,
+        "m1_deg": -152.96,
+        "m3_deg": -152.96,
+        "delta_deg": 0
+      }
+    ]
+  },
+  "netlists": {
+    "KAND_V2_1": {
+      "voor": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 394.35,
+            "mk": 10.26,
+            "n": 121,
+            "bandHz": [
+              396.9,
+              702.5
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2264.27,
+            "mk": 8.41,
+            "n": 331,
+            "bandHz": [
+              1146.9,
+              5756.6
+            ]
+          }
+        ],
+        "rmsDb": 0.912,
+        "windowDb": 1.465,
+        "minZOhm": 2.614,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.534,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.445,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 2.614,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -8.773,
+            "limit": -3.802
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -30.575,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.071,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 16.492,
+            "limit": null
+          }
+        ]
+      },
+      "na": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 394.35,
+            "mk": 10.57,
+            "n": 121,
+            "bandHz": [
+              396.9,
+              702.5
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2264.27,
+            "mk": 8.41,
+            "n": 331,
+            "bandHz": [
+              1146.9,
+              5756.6
+            ]
+          }
+        ],
+        "rmsDb": 0.911,
+        "windowDb": 1.465,
+        "minZOhm": 2.614,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.534,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.445,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 2.614,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -8.773,
+            "limit": -3.802
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -30.575,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.071,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 16.492,
+            "limit": null
+          }
+        ]
+      }
+    },
+    "KAND_V2_2": {
+      "voor": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 467.36,
+            "mk": 12.89,
+            "n": 182,
+            "bandHz": [
+              396.9,
+              939.1
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2242.16,
+            "mk": 5.41,
+            "n": 244,
+            "bandHz": [
+              1354.8,
+              4306.2
+            ]
+          }
+        ],
+        "rmsDb": 1.002,
+        "windowDb": 2.082,
+        "minZOhm": 2.578,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.508,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.292,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": true,
+            "value": 2.578,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -47.442,
+            "limit": -3.443
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -33.548,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.278,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 26.713,
+            "limit": null
+          }
+        ]
+      },
+      "na": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 467.36,
+            "mk": 13.12,
+            "n": 182,
+            "bandHz": [
+              396.9,
+              939.1
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2242.16,
+            "mk": 5.41,
+            "n": 244,
+            "bandHz": [
+              1354.8,
+              4306.2
+            ]
+          }
+        ],
+        "rmsDb": 1.001,
+        "windowDb": 2.083,
+        "minZOhm": 2.578,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.508,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.292,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": true,
+            "value": 2.578,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -47.442,
+            "limit": -3.443
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -33.548,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.278,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 26.713,
+            "limit": null
+          }
+        ]
+      }
+    },
+    "KAND_V2_3": {
+      "voor": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 231.49,
+            "mk": 31.37,
+            "n": 70,
+            "bandHz": [
+              396.9,
+              551.1
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2269.15,
+            "mk": 8.05,
+            "n": 303,
+            "bandHz": [
+              1407.3,
+              5923.3
+            ]
+          }
+        ],
+        "rmsDb": 1.232,
+        "windowDb": 2.032,
+        "minZOhm": 2.582,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.517,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 2.096,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": true,
+            "value": 2.582,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -26.783,
+            "limit": -3.475
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -38.566,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.477,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.606,
+            "limit": null
+          }
+        ]
+      },
+      "na": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 231.49,
+            "mk": 32.02,
+            "n": 70,
+            "bandHz": [
+              396.9,
+              551.1
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2269.15,
+            "mk": 8.05,
+            "n": 303,
+            "bandHz": [
+              1407.3,
+              5923.3
+            ]
+          }
+        ],
+        "rmsDb": 1.232,
+        "windowDb": 2.032,
+        "minZOhm": 2.582,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.517,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 2.096,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": true,
+            "value": 2.582,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -26.783,
+            "limit": -3.475
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -38.566,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.477,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.606,
+            "limit": null
+          }
+        ]
+      }
+    },
+    "HUIDIG": {
+      "voor": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 350.96,
+            "mk": 20.35,
+            "n": 131,
+            "bandHz": [
+              396.9,
+              736.7
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2250.24,
+            "mk": 7.04,
+            "n": 267,
+            "bandHz": [
+              1114.6,
+              3952.6
+            ]
+          }
+        ],
+        "rmsDb": 0.552,
+        "windowDb": 1.173,
+        "minZOhm": 3.428,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.456,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.714,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.428,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -42.455,
+            "limit": -11.767
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -25.084,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 2.532,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.577,
+            "limit": null
+          }
+        ]
+      },
+      "na": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 350.96,
+            "mk": 20.61,
+            "n": 131,
+            "bandHz": [
+              396.9,
+              736.7
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2250.24,
+            "mk": 7.04,
+            "n": 267,
+            "bandHz": [
+              1114.6,
+              3952.6
+            ]
+          }
+        ],
+        "rmsDb": 0.552,
+        "windowDb": 1.173,
+        "minZOhm": 3.428,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.456,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.714,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.428,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -42.455,
+            "limit": -11.767
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -25.084,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 2.532,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.577,
+            "limit": null
+          }
+        ]
+      }
+    },
+    "KAND_A": {
+      "voor": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 447.16,
+            "mk": 4.96,
+            "n": 140,
+            "bandHz": [
+              396.9,
+              769
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2503.06,
+            "mk": 3.92,
+            "n": 274,
+            "bandHz": [
+              1394,
+              5110.9
+            ]
+          }
+        ],
+        "rmsDb": 0.792,
+        "windowDb": 1.244,
+        "minZOhm": 3.292,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.522,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.647,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.292,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -46.765,
+            "limit": -10.899
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -34.538,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.071,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.962,
+            "limit": null
+          }
+        ]
+      },
+      "na": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 447.16,
+            "mk": 4.63,
+            "n": 140,
+            "bandHz": [
+              396.9,
+              769
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2503.06,
+            "mk": 3.92,
+            "n": 274,
+            "bandHz": [
+              1394,
+              5110.9
+            ]
+          }
+        ],
+        "rmsDb": 0.791,
+        "windowDb": 1.244,
+        "minZOhm": 3.292,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.522,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.647,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.292,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -46.765,
+            "limit": -10.899
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -34.538,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.071,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.962,
+            "limit": null
+          }
+        ]
+      }
+    },
+    "KAND_B": {
+      "voor": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 422.93,
+            "mk": 3.15,
+            "n": 140,
+            "bandHz": [
+              396.9,
+              769
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2500.04,
+            "mk": 3.39,
+            "n": 252,
+            "bandHz": [
+              1400.6,
+              5621.2
+            ]
+          }
+        ],
+        "rmsDb": 0.677,
+        "windowDb": 1.125,
+        "minZOhm": 3.41,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.384,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.706,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.41,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -34.072,
+            "limit": -10.989
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -35.181,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.957,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.439,
+            "limit": null
+          }
+        ]
+      },
+      "na": {
+        "pairs": [
+          {
+            "pair": "woofer→mid",
+            "crossingHz": 422.93,
+            "mk": 2.83,
+            "n": 140,
+            "bandHz": [
+              396.9,
+              769
+            ]
+          },
+          {
+            "pair": "mid→tweeter",
+            "crossingHz": 2500.04,
+            "mk": 3.39,
+            "n": 252,
+            "bandHz": [
+              1400.6,
+              5621.2
+            ]
+          }
+        ],
+        "rmsDb": 0.677,
+        "windowDb": 1.125,
+        "minZOhm": 3.41,
+        "verdicts": [
+          {
+            "gate": "M-A",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 0.384,
+            "limit": null
+          },
+          {
+            "gate": "M-B/EPDR",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.706,
+            "limit": null
+          },
+          {
+            "gate": "M-B/|Z|",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 3.41,
+            "limit": 2.6
+          },
+          {
+            "gate": "M-C",
+            "subject": "mid",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -34.072,
+            "limit": -10.989
+          },
+          {
+            "gate": "M-C",
+            "subject": "tweeter",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": -35.181,
+            "limit": -20
+          },
+          {
+            "gate": "M-A/part",
+            "subject": "system",
+            "active": true,
+            "pass": true,
+            "tolOnly": false,
+            "value": 1.957,
+            "limit": 5
+          },
+          {
+            "gate": "M-L",
+            "subject": "system",
+            "active": false,
+            "pass": true,
+            "tolOnly": false,
+            "value": 15.439,
+            "limit": null
+          }
+        ]
+      }
+    }
+  },
+  "oordeelswissels": []
+}

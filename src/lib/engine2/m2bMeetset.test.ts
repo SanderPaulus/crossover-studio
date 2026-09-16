@@ -102,17 +102,22 @@ describe('M-2b — de meetset', () => {
      * bestand uit af, en zonder die stap zou een set de nabije velden van de
      * andere lezen — de twee sessies dragen bestanden met dezelfde NAAM. */
     const ids = new Set(Object.values(CASUS1_SESSION_ID));
-    expect(ids.size).toBe(3);
-    for (const set of ['koan677', 'merged', 'gated'] as const) {
+    expect(ids.size).toBe(4);
+    for (const set of ['m3', 'koan677', 'merged', 'gated'] as const) {
       const m = casus1Manifest(golden, set);
       expect(m.sessionId).toBe(CASUS1_SESSION_ID[set]);
       expect(casus1SetOf(m)).toBe(set);
     }
   });
 
-  it('de STANDAARD is de 67,7 L-set — elke aanroeper zonder argument krijgt haar', () => {
-    expect(casus1SetOf(casus1Manifest(golden))).toBe('koan677');
-    expect(casus1SetOf(casus1Manifest())).toBe('koan677');
+  it('de 67,7 L-set is GEDATEERD sinds M-3 en blijft bij naam bereikbaar', () => {
+    /* Tot M-3 was dit "de standaard"; sinds M-3 is de standaard `'m3'` — de
+     * M-2b-set plus de hermergde mid — en die claim woont in `midM3.test.ts`,
+     * bij de sessie die haar zette. Wat HIER telt is dat de M-2b-set bereikbaar
+     * BLIJFT: elke referentie en elk corpus van vóór M-3 is erop gemeten, en
+     * een gedateerde brug die je niet meer kunt aanroepen bewijst niets. */
+    expect(casus1SetOf(casus1Manifest(golden, 'koan677'))).toBe('koan677');
+    expect(casus1SetOf(casus1Manifest(golden))).not.toBe('koan677');
   });
 
   it('zij vervangt precies de WOOFERHELFT: vijf bestanden, en mid en tweeter bij naam niet', () => {

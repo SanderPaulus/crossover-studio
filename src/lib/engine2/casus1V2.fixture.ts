@@ -24,6 +24,8 @@
  * not reproducible and therefore not a reference.
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { logspace, resample, resampleImpedance, type GriddedResponse } from '../dsp.ts';
 import type { Complex } from '../complex.ts';
 import { runIngest } from './ingest/derive.ts';
@@ -67,6 +69,9 @@ import {
   CASUS1_WOOFER_DC_OHM,
   loadGolden,
   type GoldenRefs,
+  type Casus1MeasurementSet,
+  CASUS1_SESSION_ID,
+  CASUS1_DIR,
   casus1CoilDcrFits,
   casus1CoilDcrModel,
   casus1CoilFamilyByDriver,
@@ -143,6 +148,57 @@ export const SILENT_GHOST_DB = -400;
  * Read once at module load from the HUIDIG report — the band is class A (a
  * property of the measurement set), any netlist gives the same one.
  */
+/**
+ * M-3 — WELKE MEETSET HET LEVENDE CORPUS HEEFT VOORTGEBRACHT, en waarom dat
+ * sinds M-3 een ANDERE set is dan de standaard.
+ *
+ * De drie `KAND-V2-*`-netlists zijn opgewekt op de M-2b-set. M-3 vervangt de
+ * mid door zijn hermergde tegenhanger, en die verandert de FASE van een tak in
+ * de W-M-kruisband — dus het objectief dat de zoektocht minimaliseert leest
+ * andere getallen, en de zoektocht loopt een ander pad. Een byte-reproductie
+ * van die netlists op de M-3-set zou daarom niet reproduceren, en dat is geen
+ * regressie maar het gevolg van een gerepareerde meting.
+ *
+ * DUS: de twee LIVE ketenruns draaien op DEZE set, niet op de standaard. Wat
+ * zij bewijzen blijft precies wat zij altijd bewezen — dat de route, op de set
+ * waarop het corpus gemaakt is, nog steeds de bevroren netlist levert — en dat
+ * is de regressie die telt zolang er niet geregenereerd is. Wat zij sinds M-3
+ * NIET meer bewijzen is dat de route op de HUIDIGE meetbasis diezelfde netlist
+ * levert; dat is per constructie onwaar en het is de eerste vraag van de
+ * volgende regeneratie. Alles wat GEEN zoektocht is — elke metriek, elke poort,
+ * elke klasse-B-referentie — wordt wél op de standaard gemeten, en dat is waar
+ * de herleide referenties van M-3 vandaan komen.
+ *
+ * Precedent: V49 en B-1 lieten `casus1_v2_herkomst.json` een vingerafdruk van
+ * vóór hun sleutel dragen, met de casusboek-entry als de reden, tot de
+ * eerstvolgende regeneratie. Dit is dezelfde vorm, één laag dieper.
+ *
+ * HET GETAL WORDT GELEZEN EN NIET GETYPT, en dat is de hele reden dat deze
+ * functie bestaat in plaats van een constante: M-2b liet de generator de set al
+ * in de herkomst schrijven (`meetset.set`), dus het corpus zegt zelf waarop het
+ * gemaakt is. Een constante ernaast zou een tweede antwoord zijn op een vraag
+ * die de data al beantwoordt — precies de drift waar P6 en A3g over gaan — en
+ * zij zou stil verouderen bij de eerstvolgende regeneratie. Een herkomst
+ * ZONDER het veld is een fout en geen terugval (P4): dan is niet te weten
+ * waartegen de live run reproduceert, en raden is erger dan stoppen.
+ */
+export function casus1CorpusSet(): Casus1MeasurementSet {
+  const raw = JSON.parse(readFileSync(join(CASUS1_DIR, '..', 'casus1_v2_herkomst.json'), 'utf8')) as {
+    meetset?: { set?: string };
+  };
+  const set = raw.meetset?.set;
+  if (set === undefined) {
+    throw new Error(
+      'casus1_v2_herkomst.json noemt geen meetset. De live ketenrun reproduceert een netlist die op ' +
+        'EEN bepaalde set is opgewekt, en sinds M-3 is dat niet noodzakelijk de standaard — zonder dat ' +
+        'veld is niet te weten waartegen zij reproduceert. Regenereer, of vul het veld in uit de ' +
+        'commit waarin het corpus landde.',
+    );
+  }
+  if (!(set in CASUS1_SESSION_ID)) throw new Error(`casus1_v2_herkomst.json noemt een onbekende meetset: ${set}`);
+  return set as Casus1MeasurementSet;
+}
+
 const GRID_TOP_HZ = 20000; // P6-OK: the top of the audio band, as before
 const JUDGE_TOP_HZ = 19500; // P6-OK: the highest way's ceiling inside the grid, as before
 /* E-5 — THE DERIVATION MOVED, THE NUMBERS DID NOT. These eleven lines stood

@@ -48,6 +48,13 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná M-3 (16-09-2026) gemeten op 511 s — 189 bestanden (188 geslaagd, 1 overgeslagen),
+    2445 tests (2442 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 BESTAND
+    (`engine2/midM3.test.ts`, 43 claims) en +44 tests: die 43 plus ÉÉN in
+    `casus1V2Candidates.test.ts` (de corpusset-claim). Het corpus is NIET geregenereerd, dus geen
+    enkele `it.each` over het levende corpus beweegt en de delta sluit exact. GEEN nieuwe referentie:
+    de V43-waarde van 289 s blijft staan, en 511 tegen M-2b's 509 s is dezelfde laag op dezelfde
+    machine met één bestand erbij.
     **Ná M-2b (13-09-2026) gemeten op 509 s — 188 bestanden (186 geslaagd, 1 rood, 1 overgeslagen),
     2401 tests (2397 geslaagd, 1 rood, 3 overgeslagen); ná de reparatie van die ene claim GROEN.**
     +1 BESTAND (`m2bMeetset.test.ts`, 22 claims) en +22 tests, en die twee getallen zijn HETZELFDE
@@ -499,7 +506,21 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 13-09-2026 (M-2b): 188 bestanden, 2401 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 16-09-2026 (M-3): 189 bestanden, 2445 tests,
+  1785 s (29 min 45), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
+  (`engine2/midM3.test.ts`, 43 claims) en +44 tests — zie de `test:fast`-regel; het corpus is NIET
+  geregenereerd, dus geen enkele `it.each` over het levende corpus beweegt. **DEZE RUN IS DE
+  ACCEPTATIE VAN EEN MEETSETWISSEL DIE DE ZOEKTOCHT RAAKT ZONDER HAAR TE HERDRAAIEN, en dat is een
+  soort die dit boek nog niet kende.** M-3 vervangt de mid, de zoektocht LEEST de fase van de mid, en
+  er is met opzet niet geregenereerd — dus de twee live ketenruns zijn gepind op `'koan677'`, de set
+  waarop het corpus is opgewekt. Wat de run bewijst is dat die pin sluit: de goedkoopste geleverde
+  netlist van casus 1 (1779 s), de goedkoopste verwerping (936 s) en casus 1b (313 s) reproduceren
+  byte voor byte, en beide byte-baselines (`f4cRegression`, `workerRouteRegression`) plus
+  `toggleRegression` staan — de wissel raakt geen enkele v1-route. De wandkloktijd IS de
+  byte-reproductie (1781 s voor dat ene bestand); `frozenNetlistGates` (482 s) en de rest draaien
+  ernaast in de schaduw. **Wat de run NIET bewijst en niet kan bewijzen is dat de route op de HUIDIGE
+  meetbasis diezelfde netlists levert; dat is de eerste vraag van de volgende regeneratie.**
+  (De stand ervoor: **GEMETEN 13-09-2026 (M-2b): 188 bestanden, 2401 tests,
   1771 s (29 min 31), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
   (`m2bMeetset.test.ts`, 22 claims) en +22 tests. **DEZE RUN IS DE ACCEPTATIE VAN EEN MEETSETWISSEL ÉN
   VAN EEN REGENERATIE, en dat is de zwaarste soort die dit project kent:** casus 1 leest sinds M-2b de
@@ -509,7 +530,7 @@
   verwerping (156,7 · 2251,4, 905 s) en casus 1b (306 s, onaangeroerd corpus) — en dat beide
   byte-baselines (`f4cRegression`, `workerRouteRegression`) en `toggleRegression` staan: de wissel
   raakt geen enkele v1-route. De wandkloktijd IS de byte-reproductie (1767 s voor dat ene bestand);
-  `threeWayChain` (335 s) en de verwerping draaien ernaast in de schaduw.
+  `threeWayChain` (335 s) en de verwerping draaien ernaast in de schaduw.)
   (De stand ervoor: **GEMETEN 13-09-2026 (E-5c): 187 bestanden, 2379 tests,
   1574 s (26 min 14), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
   en +10 tests — zie de `test:fast`-regel. **DEZE RUN IS GEDRAAID OMDAT E-5c DE TUNER ZELF AANRAAKT**
@@ -928,15 +949,22 @@
   `npx vite-node scripts/record-casus1-v2-references.ts` (drie seconden) voor de klasse-B-blokken én
   de vergelijkingstabel voor het casusboek. **Nagemeten bij de nazorg: twee opeenvolgende runs leveren de
   netlists byte-identiek terug, op het `savedAt`-stempel van de serialisatie na.**
-- **DE 67,7 L-MEETSET (M-2b, 13-09-2026) — wat de v2-route sinds M-2b leest.** De fixture kent DRIE
-  meetsets: `casus1Manifest(golden)` = `casus1Manifest(golden, 'koan677')` is de **STANDAARD** (de
-  wooferhelft is de hermeting van 11-09-2026 getransformeerd naar de echte kast: twee per-driver
-  NF/FF-merges uit `koan_2026-09_testkast/`, hun twee nabije velden en de parallelle sweep van
-  diezelfde sessie; mid en tweeter zijn de M-1-set ONGEWIJZIGD, want een gesloten pod en een
+- **DE MEETSETS VAN CASUS 1 — wat de v2-route leest, en de sets LIGGEN OP ELKAAR.** De fixture kent
+  sinds M-3 VIER meetsets, elk haar voorganger plus één benoemde wijziging:
+  `casus1Manifest(golden)` = `casus1Manifest(golden, 'm3')` is de **STANDAARD sinds M-3
+  (16-09-2026)** — de M-2b-set met de on-axis merge van de MID vervangen door zijn hermergde
+  tegenhanger (`mid_hor_0_merged.frd`, de gecorrigeerde fasewiskunde van I-2; de bronnen, de
+  splice-band, de shelf en de gestelde vloer zijn onveranderd). `'koan677'` is de M-2b-set
+  (13-09-2026: de wooferhelft is de hermeting van 11-09 getransformeerd naar de echte kast — twee
+  per-driver NF/FF-merges uit `koan_2026-09_testkast/`, hun twee nabije velden en de parallelle sweep
+  van diezelfde sessie; mid en tweeter zijn de M-1-set ONGEWIJZIGD, want een gesloten pod en een
   waveguide voelen het kastvolume niet), `'merged'` is de M-1-set (04-09-2026) en `'gated'` de sessie
   van 22-08-2026 zoals gemeten. **Een test die de HEADER-VLOER zelf toetst leest `'gated'`; een test
-  die een GEDATEERDE claim van vóór M-2b draagt leest `'merged'`; al het andere leest de standaard.**
-  `corpusBank(golden, set)` idem, default sinds M-2b `'koan677'`.
+  die een GEDATEERDE claim van vóór M-2b draagt leest `'merged'`; een claim van vóór M-3 leest
+  `'koan677'`; al het andere leest de standaard.** `corpusBank(golden, set)` idem, default sinds M-3
+  `'m3'`. **DE TWEE LIVE KETENRUNS ZIJN DE UITZONDERING EN LEZEN `'koan677'`** — de set waarop het
+  levende corpus is opgewekt, GELEZEN uit `casus1_v2_herkomst.json` door `casus1CorpusSet()` en niet
+  getypt; zie de M-3-guards voor waarom een byte-reproductie op de standaard sinds M-3 niet meer kan.
   **ER IS NIETS VERHUISD OP SCHIJF en dat is opzet:** `woofer_up_hor_0.txt` is de VER-VELDHELFT van
   de 67,7 L-merge die hem vervangt, dus een map met "vorige" in de naam zou het verkeerde zeggen over
   een bestand waar de huidige set uit gebouwd is. Wat een set dateert is haar manifestblok
@@ -957,6 +985,27 @@
     is daarmee CONSERVATIEF, want in de echte kast ligt f_p lager. **Boven 100 Hz doet de
     transformatie vrijwel niets en boven 300 Hz meetbaar niets (0,005 dB)** — de hele kruisband ligt
     daarin.
+- **DE HERMERGDE MID (M-3, 16-09-2026) — de reparatie van de fasefout die I-2 mat.** Drie scripts, en
+  **DE VOLGORDE IS BINDEND** (de C-2-regel): merge → set → referenties. `src/lib/engine2/midM3.fixture.ts`
+  draagt de bewerking en élke constante met haar herkomst; `midM3.test.ts` is de tweede lezer (A3g).
+  - `npx vite-node scripts/merge-casus1-mid-m3.ts` — seconden, geen tune. Schrijft
+    `test-fixtures/casus1/mid_hor_0_merged.frd` met het gestructureerde geldigheidsblok, en drukt de
+    drie `nfMerge`-controles af plus de FASEDELTA oud→nieuw band voor band. `Koan_M_merged.frd` blijft
+    op schijf als de gedateerde brug; `assertM1ModelMatches()` weigert als band, shelf of vloer van
+    M-1's blok zijn gedreven — precies één factor mag bewegen.
+  - `npx vite-node scripts/record-casus1-m3-set.ts` — seconden. Schrijft
+    `manifest_en_geometrie.meetset_M3_mid`: welk bestand welk bestand vervangt, de parameters GELEZEN
+    uit de kop, de fasedelta, en wat er NIET verhuist. `KEPT_BY_THE_RECORDER` draagt de sleutels door
+    die de recorder hieronder toevoegt, zodat de volgorde een voorkeur is en geen valstrik.
+  - `npx vite-node scripts/record-casus1-m3-references.ts` — seconden, geen tune. Herleidt de
+    klasse-B-fasevelden die de mid lezen (W-M, per netlist) met de M-2b-lezing als brug
+    (`_waarden_M2b_tot_M3`, idempotent), herschrijft `v44_fasematen` over het hele casusboek, en
+    boekt de klasse-A-verificatie. **Hij GOOIT als een mid|tweeter-rij op M-K, puntental, band,
+    octaafgeknipte kolom of afwijzingen beweegt** — die overname ligt boven de splice.
+  - `npx vite-node scripts/measure-m3-mid-phase.ts` — seconden, GEEN ketenrun en GEEN tune. De drie
+    geleverde netlists en de drie referentiefilters, vóór (`'koan677'`) tegen ná (`'m3'`): M-K per
+    paar, de RMS, min |Z| en ÉLK poortoordeel, met het fasespoor van het meetbestand erboven.
+    Schrijft `test-fixtures/casus1_m3_hermeting.json`; zegt hardop of er een oordeel wisselt.
 - **DE GEMERGEDE MEETSET (M-1, 04-09-2026) — wat de v2-route sinds M-1 leest, en hoe zij is gemaakt.**
   De fixture kent TWEE meetsets: `casus1Manifest(golden)` = `casus1Manifest(golden, 'merged')` is de
   STANDAARD (de on-axis ver velden van woofers en mid zijn NF/FF-merges met een geldigheidsblok:
@@ -3648,6 +3697,193 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   die van 11-09. Het casusboek draagt twee meterlezingen van hetzelfde paar (2,90 en 3,05 Ω) die het
   nooit met elkaar eens waren; de fit landt sinds 11-09 ertussen. Wat de ROUTE invoert is onveranderd
   (3,05 Ω), dus geen enkele poort, grens of metriek beweegt hierdoor.
+
+### M-3-guards (de mid hermergd met de gecorrigeerde fasewiskunde; GEEN regeneratie)
+- **WAT ER GEREPAREERD IS, EN HET IS PRECIES ÉÉN DING.** I-2 mat dat
+  `scripts/merge-casus1-mid.ts` (M-1) de minimumfase van het stapmodel toepaste als
+  `atan2(Im, Re)` van het LOG-spectrum, waar de minimumfase `Im` IS. De grootheid die M-1 berekende
+  loopt van ~175° bij 20 Hz naar ~140° bij 800 Hz waar de echte minimumfase van de shelf tussen 3,6°
+  en 12,6° ligt. `nfMerge.ts` — de module waarmee de APP sinds I-2 zelf mergt — leest `minphase.ts`,
+  dat altijd al `Im` nam, dus de reparatie is geen nieuwe berekening maar casus 1's mid door de route
+  die er al lag. `src/lib/engine2/midM3.fixture.ts` draagt de bewerking, `scripts/merge-casus1-mid-m3.ts`
+  schrijft `test-fixtures/casus1/mid_hor_0_merged.frd`, en `midM3.test.ts` is de tweede lezer die
+  reproduceert wat het script schrijft — één implementatie, twee lezers (A3g), de vorm die M-2 voor de
+  woofers zette.
+- **ÉÉN FACTOR BEWEEGT, EN EEN ASSERT HOUDT DAT ZO.** Splice-band (500–800 Hz), shelf (6 dB @ 440 Hz)
+  en gestelde geldigheidsvloer (60 Hz) zijn M-1's waarden, hier herhaald met hun herkomst, en
+  `assertM1ModelMatches()` leest ze terug uit M-1's EIGEN blok op schijf en weigert als er één van
+  gedreven is. Een arm die de band verplaatste terwijl hij de fase repareerde zou er twee tegelijk
+  meten, en dit project heeft daar eerder voor betaald.
+- **DE FASEDELTA, BESTAND TEGEN BESTAND** (`meetset_M3_mid.fasedelta_M1_naar_M3`, en
+  `midM3.test.ts` pint elke band):
+
+  | band | n | dB max | ° rms | ° max |
+  | --- | --- | --- | --- | --- |
+  | 20–40 Hz | 14 | 0,000 | **26,68** | 28,91 |
+  | 40–80 Hz | 27 | 0,000 | 20,98 | 24,20 |
+  | 80–150 Hz | 48 | 0,000 | 14,16 | 17,78 |
+  | 150–300 Hz | 102 | 0,000 | 6,95 | 10,75 |
+  | 300–500 Hz | 137 | 0,000 | 1,86 | 3,58 |
+  | 500–800 Hz | 205 | 0,001 | 0,08 | 0,32 |
+  | 800–20 000 Hz | 13 107 | 0,000 | **0,00** | 0,00 |
+
+  **DE MAGNITUDE BEWEEGT NERGENS**, op één afrondingsstap van het bestand zelf na — en dát is waarom
+  de fout vier sessies onopgemerkt bleef: élke poort, élke eis en élke RMS leest magnitudes.
+- **DE LEESREGEL, EN ZIJ CORRIGEERT DE VERWACHTING WAARMEE DEZE SESSIE BEGON: de 18–29° die I-2 noemt
+  liggen ONDER 150 Hz, niet in 150–800.** Over de W-M-kruisband van het levende corpus (253–519 Hz) is
+  de fout 1,9–7,0° rms. Het spoor door die band, M-1 tegen M-3 (1 teken = 2°):
+
+  ```
+      20,5 Hz   −17,49° → −46,40°   Δ −28,91  ##############
+      39,6 Hz   −85,90° → −110,41°  Δ −24,51  ############
+      60,1 Hz  −136,29° → −157,08°  Δ −20,79  ##########
+      80,6 Hz  −170,53° → +171,68°  Δ −17,78  #########
+     120,1 Hz  +132,60° → +119,25°  Δ −13,35  #######
+     149,4 Hz  +104,86° →  +94,00°  Δ −10,86  #####
+     200,7 Hz   +69,90° →  +62,32°  Δ  −7,57  ####
+     253,4 Hz   +44,92° →  +39,76°  Δ  −5,16  ###   <- W-M-kruispunt KAND_V2_1
+     300,3 Hz   +25,68° →  +22,10°  Δ  −3,58  ##
+     361,8 Hz    +3,79° →   +1,69°  Δ  −2,10  #     <- W-M-kruispunt KAND_V2_2
+     399,9 Hz    −9,69° →  −11,12°  Δ  −1,43  #
+     518,6 Hz   −47,41° →  −47,61°  Δ  −0,20        <- W-M-kruispunt KAND_V2_3
+     600,6 Hz   −68,85° →  −68,78°  Δ  +0,07
+     799,8 Hz  −112,09° → −112,09°  Δ   0,00        <- boven de splice IS de merge het verre veld
+    1000,5 Hz  −152,96° → −152,96°  Δ   0,00
+  ```
+
+  De fout is een MINIMUMFASE-fout van een shelf, dus zij groeit monotoon naar beneden; `midM3.test.ts`
+  assert die monotonie en niet alleen de losse bandgetallen — een willekeurige faseverschuiving zou
+  dezelfde getallen kunnen halen.
+- **DE DRIE GELEVERDE NETLISTS, HERLEZEN ZONDER TE REGENEREREN** (`scripts/measure-m3-mid-phase.ts`,
+  `test-fixtures/casus1_m3_hermeting.json`; seconden, geen ketenrun en geen tune — beide helften door
+  dezelfde `corpusBank`-instellingen, alleen de meetset verschilt):
+
+  | netlist | W→M vóór | ná | Δ | M→T vóór | ná | Δ | RMS vóór | ná |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | KAND_V2_1 | 10,26 | 10,57 | **+0,31** | 8,41 | 8,41 | **0,00** | 0,912 | 0,911 |
+  | KAND_V2_2 | 12,89 | 13,12 | +0,23 | 5,41 | 5,41 | 0,00 | 1,002 | 1,001 |
+  | KAND_V2_3 | 31,37 | 32,02 | +0,65 | 8,05 | 8,05 | 0,00 | 1,232 | 1,232 |
+  | HUIDIG | 20,35 | 20,61 | +0,26 | 7,04 | 7,04 | 0,00 | 0,552 | 0,552 |
+  | KAND_A | 4,96 | 4,63 | **−0,33** | 3,92 | 3,92 | 0,00 | 0,792 | 0,791 |
+  | KAND_B | 3,15 | 2,83 | −0,32 | 3,39 | 3,39 | 0,00 | 0,677 | 0,677 |
+
+  **GEEN ENKEL OORDEEL WISSELT: zes netlists × zeven poorten, alle 42 identiek in actief, in pass én
+  in "alleen op tolerantie".** Het corpus klopt dus nog op de gerepareerde meting.
+- **DE TOEGELATEN PUNTENVERZAMELING BEWEEGT NERGENS, en dat is de sterkste vorm van "alleen de fase
+  bewoog".** Over de 345 rijen van `v44_fasematen`: `punten`, `band_Hz` en `afgewezen` verschuiven op
+  NUL rijen. De drie gronden van de toelating — meetgeldigheid, stille geest, niveau — lezen alle drie
+  magnitudes en geldigheden, en die staan stil; wat beweegt zijn uitsluitend fasewaarden. Wat er
+  precies bewoog: 167 van de 171 woofer|mid-rijen op M-K (vier rondden op twee decimalen hetzelfde af),
+  169 op de octaafgeknipte kolom, 171 op de ongeknipte, en van de 174 mid|tweeter-rijen ACHT op alleen
+  de ongeknipte. `midM3.test.ts` toetst dat uit de brug, dus over het hele casusboek en zonder er
+  115 rapporten voor te bouwen.
+- **M-K VERBETERT NIET — HIJ BEWEEGT IN BEIDE RICHTINGEN, en dat weerlegt de verwachting waarmee de
+  opdracht geschreven is.** Dat is geen teleurstelling maar de juiste lezing: M-K is een gemiddelde
+  |faseverschil|, de OUDE waarde was geen slechtere meting maar een BETEKENISLOZE, en of de
+  gerepareerde waarde hoger of lager uitkomt hangt af van aan welke kant van nul het paar zat. Drie
+  netlists lezen sindsdien iets slechtere fasetracking dan de kapotte meting suggereerde en twee iets
+  betere. `midM3.test.ts` assert dat er van beide tekens minstens één is — zonder die claim zou
+  "M-K beweegt" ook waar zijn voor een maat die stelselmatig één kant op schuift.
+- **DE MID→TWEETER-OVERNAME STAAT EXACT STIL, op alle 174 rijen van het casusboek**, en dat is de
+  claim die zegt dat M-3 alleen raakt wat hij hoort te raken: die overname ligt op ~2251 Hz, ruim
+  boven de splice, waar de merge het verre veld ZELF is. `midM3.test.ts` pint hem per netlist op
+  negen decimalen, en `boven de splice is het bestand bit-identiek aan `mid_hor_0.txt`` staat er als
+  aparte claim naast — zonder die tweede is "exact nul boven 800" niet te onderscheiden van een test
+  die daar niet kijkt.
+- **DE BEVINDING DIE NIEMAND BESTELD HAD, en zij is V44's eigen bewijsmateriaal dat zichzelf
+  aanwijst.** Op ACHT netlists (`V28_KAND_2`, `V43_KAND_7`, `V44_KAND_7`, `A5E3VELD_KAND_1/_2/_7`,
+  `C2_KAND_6`, `C2_KAND_10`) beweegt van de mid|tweeter-rij UITSLUITEND `overlapvenster_graden`: de
+  maat die de TUNER tot V43 las, die elk punt binnen het overlapvenster meetelt ZONDER hem tegen de
+  meetgeldigheid te knippen. **Een fasereparatie ONDER 800 Hz kan een overname op 2251 Hz alleen
+  bereiken via een maat die kijkt waar zij niet hoort te kijken** — precies wat V44 mat (1047
+  meegetelde punten over het hele casusboek, waarvan 911 onder de meetgeldigheidsvloer) en precies
+  waarom die kolom sinds V44 een CONTROLEKOLOM is die niets oordeelt. M-K, de octaafgeknipte kolom,
+  het puntental, de band en de afwijzingen staan op alle 174 rijen stil. **De recorder WEIGERT te
+  schrijven als daar iets van beweegt** (`record-casus1-m3-references.ts` gooit per veld, bij naam),
+  en de acht staan als benoemde verzameling in de brug — de V30-vorm: boekhouding, geen vrijstelling.
+  De eerste versie van die guard claimde "geen enkele mid|tweeter-rij beweegt" en de data weerlegde
+  haar; de claim is aangescherpt in plaats van de tolerantie opgerekt.
+- **DE MEETSET: `'m3'` IS SINDS M-3 DE STANDAARD, en zij is de M-2b-set met precies ÉÉN bestand
+  verwisseld.** `Casus1MeasurementSet` telt sindsdien VIER waarden en de sets LAGEN op elkaar:
+  `merged` (M-1) → `koan677` (M-2b, de wooferhelft) → `m3` (de mid). `swapsFor` sleutelt op het
+  bestand dat VERVANGEN wordt, dus een latere laag overschrijft de vorige voor hetzelfde slot, en elke
+  set is daarmee haar voorganger plus één benoemde wijziging — dat is wat de gedateerde bruggen
+  eerlijk maakt. `corpusBank` meet sinds M-3 op `'m3'`; `'koan677'` blijft bij NAAM bereikbaar, want
+  élke referentie en élk corpus van vóór M-3 is erop gemeten en een brug die je niet meer kunt draaien
+  bewijst niets.
+- **DE TWEE LIVE KETENRUNS DRAAIEN SINDS M-3 OP `'koan677'` EN NIET OP DE STANDAARD, en dat is de
+  zwaarste beslissing van deze sessie.** De drie `KAND-V2-*`-netlists zijn op de M-2b-set opgewekt; de
+  hermergde mid verandert de fase in de W-M-kruisband, dus het objectief dat de zoektocht minimaliseert
+  leest daar andere getallen en de run zou een ander pad lopen. Een byte-reproductie op de M-3-set zou
+  daarom niet reproduceren — **geen regressie, maar het gevolg van een gerepareerde meting**. Wat de
+  twee runs bewijzen blijft precies wat zij altijd bewezen: dat de route, op de set waarop het corpus
+  gemaakt is, nog steeds de bevroren netlist byte voor byte levert. **Wat zij sinds M-3 NIET meer
+  bewijzen is dat de route op de HUIDIGE meetbasis diezelfde netlist levert; dat is per constructie
+  onwaar en het is de eerste vraag van de volgende regeneratie.** Alles wat GEEN zoektocht is — elke
+  metriek, elke poort, elke klasse-B-referentie — wordt wél op de standaard gemeten.
+  **DE SET WORDT GELEZEN EN NIET GETYPT:** `casus1CorpusSet()` haalt hem uit `meetset.set` in
+  `casus1_v2_herkomst.json`, dat M-2b de generator al liet schrijven, en GOOIT als het veld ontbreekt
+  (P4 — raden is erger dan stoppen). `casus1V2Candidates.test.ts` assert dat de standaard er sinds M-3
+  van VERSCHILT: zijn zij ooit weer gelijk, dan is er geregenereerd en hoort de pin weg in plaats van
+  stil te blijven staan. Precedent: V49 en B-1 lieten de herkomst een vingerafdruk van vóór hun
+  sleutel dragen, met de casusboek-entry als de reden, tot de eerstvolgende regeneratie.
+- **WAT ER NIET BEWOOG, GEMETEN EN NIET AANGENOMEN** (`meetset_M3_mid.klasse_A_onbewogen`): ÉLKE
+  klasse-A-referentie van de mid staat stil. R_e, f_c, Z_max, de Q's en de semi-inductantie komen uit
+  de IMPEDANTIE (`mid.lim`, onaangeraakt); de breakups en de directiviteit leven BOVEN de splice; de
+  geldigheidsvloer is gesteld en onveranderd; en de verankerde gaps zijn energiegemiddelden van
+  MAGNITUDES. Het ANKER blijft de woofer (M-2b). `goldenCasus1.test.ts` toetst al die referenties tegen
+  een verse meting op de standaardset, dus de claim is falsifieerbaar en niet alleen opgeschreven.
+  Van de klasse-B-referenties beweegt precies ÉÉN familie: de W-M-fase, met haar twee controlekolommen.
+  Elk bewogen veld draagt zijn M-2b-lezing in `_waarden_M2b_tot_M3` (V15's vorm, idempotent — de
+  A5e.3b-les).
+- **DE GESTELDE VLOER IS NIET VERBREED, en de afgeleide staat ernaast.** De app zou voor een gesloten
+  pod ~20,5 Hz afleiden (de conus is de hele straler, dus de merge is eerlijk zover het nabije veld
+  reikt). Dat is een RUIMERE claim over dezelfde bestanden dan M-1 wilde maken, en M-3 verandert een
+  fasewiskunde en geen meting — dus 60 Hz blijft, met M-1's eigen reden verbatim in het blok en de
+  afgeleide waarde ernaast zodat het verschil zichtbaar is in plaats van verdwenen.
+- **DE SPLICE-BAND IS NIET VERPLAATST, en dat is gemeten en niet nagelaten.** M-2b bracht de WOOFER
+  naar 400–550 Hz omdat 800 Hz boven 0,95 × ka = 1 van een 255 cm²-conus reikt (606 Hz). De mid is een
+  4″-conus met een Keele-plafond van 1107 Hz, dus 500–800 ligt er volledig binnen en er valt niets te
+  repareren. De app zou 455–1107 Hz voorstellen; dat staat in de scriptuitvoer.
+- **DE KASTAFLEIDING IN HET BLOK IS DIE VAN HET PROJECT ZELF (442,3 Hz), EN DAT LEGT EEN BESTAANDE
+  TEGENSPRAAK BLOOT.** `midM3.fixture.ts` leest `baffleStepHz` — Elliotts 115/W, de ENE functie die
+  A5e.2's shelf-hoek, V45's ankermeting en V51's plateau-toets ook lezen. `koan2026_09.fixture.ts`
+  (M-2) beantwoordt diezelfde vraag met `c/(π·W)` = 419,9 Hz, en de twee wooferbestanden van de
+  HUIDIGE set dragen dát getal. Twee gepubliceerde formules voor één grootheid — precies de
+  onenigheid waar `baffleStepHz` in zijn eigen doc-commentaar voor waarschuwt. **GEMELD, NIET
+  GEREPAREERD:** de wooferblokken verzoenen betekent bestanden herschrijven waarop het C-2- en het
+  M-2b-corpus zijn opgenomen, voor een veld waarmee niets rekent.
+- **P-1's FAALVORM STAAT IN ELK BESTAND DAT `renderMergeBlock` SCHRIJFT, en zij is PRE-EXISTENT sinds
+  M-2.** De eigen prozaregel `* basis: … (gated far field)` draagt het woord "gate" zonder
+  millisecondegetal, dus `readGateHeader` antwoordt `unparseable` — gemeten op de twee 67,7 L-woofers
+  (sinds 13-09-2026) en sinds M-3 ook op de mid; M-1's en Sanders eigen bestanden lezen `absent`. Het
+  is ONSCHADELIJK omdat P-1 de VOLGORDE repareerde: `sourceMeta` beantwoordt een verklaarde merge vóór
+  de gepoorte tak, en `readMergeBlock` slaagt op alle drie. `midM3.test.ts` pint beide helften, zodat
+  de dag waarop iemand die volgorde omdraait hier langskomt — en zodat "M-3 deed dit" niet geloofd
+  wordt.
+- **DE SPLICE-CONTROLE FAALT DE ±0,5 dB-CONVENTIE (p95 1,37 dB), zoals alle drie de merges van dit
+  project** (I-2 mat de woofers op 1,53 en 2,58). Het is een CONVENTIE en geen eigenschap (F0), en
+  M-3 verandert er niets aan: het is dezelfde merge op één fasewiskunde na. De test pint dat hij
+  faalt ÉN onder 5 dB blijft — daarboven is er iets anders aan de hand dan een conventie.
+- **DE DEMOBUNDEL VOLGT, EN GEEN ENKELE REPLAY-EXPORT HOEFDE OPNIEUW VASTGELEGD.** `build-demo2way.ts`
+  leest sinds M-3 `mid_hor_0_merged.frd`, dus de tweewegdemo draagt de gerepareerde mid; de
+  provenance-regel in het bestand noemt hem, dus niemand hoeft dat op gezag aan te nemen. De
+  byte-identiteitsclaim van `demoBundle.test.ts` dekt de drie GEDEELDE bestanden (`mid-hor30`,
+  `tweeter-hor0`, `mid-near`) en niet de merge, dus zij staat. **Nagemeten in plaats van aangenomen:**
+  `replay-app-run.ts --set demo` op `casus1_u3b_kale_demo_run.json` zegt SAME op BEIDE lagen en
+  `--set casus1b` op `casus1b_e3b_verkenning_run.json` zegt SAME/DIFFERENT precies zoals opgeschreven —
+  geen van beide exports LEEST de tweewegdemobundel (er is geen `--set demo2way`), dus er is niets te
+  herzien en niets te dateren. **Casus 1b is met opzet NIET meeverhuisd:** die casus heeft een eigen
+  corpus en een eigen live ketenrun, en zijn mid verplaatsen is een eigen beslissing.
+- **`demo_u3_bundels.json` IS BIJ HET HERGENEREREN OOK VAN STALENESS ONTDAAN, en dat staat er omdat het
+  NIET van M-3 komt.** De draagbare-rijen-tabel stond nog op de toestand van vóór U-3b (toen de
+  tweewegbundel nog eisen droeg) en kende de registerrijen niet die U-3f, U-3g en U-4 erbij zetten
+  (`powerRating`, `minCrossover`, `maxCrossover`, `maxCrossoverOverride`, `breakupDivisor`). Geen enkele
+  test leest dat bestand — het is een diagnostiek — dus het kon stil verouderen.
+- **DE VOLGORDE IS BINDEND** (de C-2-regel): merge → `record-casus1-m3-set.ts` → 
+  `record-casus1-m3-references.ts`. Het set-script herschrijft het hele `meetset_M3_mid`-blok, dus wat
+  de recorder eraan toevoegt zou het weggooien; `KEPT_BY_THE_RECORDER` draagt die sleutels expliciet
+  door, zodat de volgorde een VOORKEUR is en geen valstrik. Dat is gevonden doordat het gebeurde.
 
 ### E-5c-guards (de prijs van een pas gemeten; één sleutel gewapend, één gebouwd en afgewezen)
 - **`scripts/measure-e5c-prune-anatomy.ts` — DE ANATOMIE, MET TWEE OBSERVATOREN EN NUL REGELS

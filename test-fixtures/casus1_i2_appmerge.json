@@ -1,7 +1,7 @@
 {
   "_wat": "I-2 — de app-merge (nfMerge.ts) naast de twee merges die al in dit project bestaan. Gemeten, niet gesteld.",
   "_hoe": "npx vite-node scripts/measure-i2-appmerge.ts",
-  "_gemeten_op": "2026-09-08",
+  "_gemeten_op": "2026-09-16",
   "onderwerpen": {
     "mid": {
       "referentie": "Koan_M_merged.frd",
