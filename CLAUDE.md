@@ -1803,7 +1803,15 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   is per (machine, runtime) byte-identiek en niet daarbuiten (V46). De andere tweeënveertig claims van
   `midM3.test.ts` dragen de tag NIET en draaien wél in CI: zij lezen grootheden met een tolerantie.
   Wie een reproductieclaim schrijft, vraagt zich af of zij een FIT of een FFT herberekent — zo ja,
-  dan hoort `[bytes]` erop vóór de commit en niet erna. (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
+  dan hoort `[bytes]` erop vóór de commit en niet erna.
+  **HET AANTAL OVERGESLAGEN TESTS IN `test:ci` IS SINDS M-3 ACHTTIEN**, en het rekent op GEDRAAIDE
+  tests en niet op bronnamen: 17 `[bytes]` + 3 `[live]` − 2 die beide dragen. De TWAALF hierboven is
+  de E-3-stand en blijft staan als wat zij toen was; wie de twee getallen naast elkaar legt moet ze
+  niet verwarren — het verschil is M-2's drie reproductieclaims (vijf gedraaide tests) en M-3's ene.
+  **GEMETEN IN CI OP ubuntu/Node 22 (16-09-2026, M-3): 189 bestanden (188 geslaagd, 1 overgeslagen),
+  2427 geslaagd, 18 overgeslagen, 3438 s (57 min) — GROEN.** Dat is de eerste CI-run sinds M-2 die de
+  inventaris toetst ná een toevoeging, en het getal 18 bevestigt haar van de andere kant: zou de
+  elfde naam niet getagd zijn, dan had CI de merge vers herberekend op een andere runtime. (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
   vorm en om dezelfde reden: precies TWEE blokken, met naam (DRIE sinds E-3).** De splitsing van de twee live
   ketenruns bracht het tagtal van één naar twee, en precies zo'n verhoging is wat stil kan
   doorgroeien. (5) De scan loopt echt — zonder die tegenproef is "niets
