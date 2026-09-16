@@ -148,7 +148,7 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     }
   });
 
-  it('de byte-inventaris is precies deze TIEN bronnamen — zestien gedraaide tests', () => {
+  it('de byte-inventaris is precies deze ELF bronnamen — zeventien gedraaide tests', () => {
     /* De namen staan hier voluit zodat een toevoeging een BEWUSTE daad is: wie
      * er een tagt, komt hier langs en moet opschrijven wat hij uit CI haalt.
      *
@@ -183,11 +183,20 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
      * merge byte voor byte naast het bestand op schijf, en dat is dezelfde
      * klasse als de zeven andere — geen tuner-run, maar wel fits, een
      * faseontwikkeling en een interpolatie die op drie decimalen worden
-     * weggeschreven. Tien namen, zestien gedraaide tests. */
+     * weggeschreven. Tien namen, zestien gedraaide tests.
+     *
+     * M-3 voegde de ELFDE toe, en om exact dezelfde reden als M-2's drie: de
+     * hermergde mid van casus 1 wordt vers herberekend en op drie decimalen
+     * naast 13 640 weggeschreven rijen gelegd. Elf namen, zeventien gedraaide
+     * tests. De andere tweeënveertig claims van `midM3.test.ts` dragen de tag
+     * NIET en draaien dus wel in CI: zij lezen grootheden met een tolerantie,
+     * en dat is precies de scheiding die deze laag maakt — CI bewaakt de
+     * natuurkunde, de lokale suite bewaakt de bytes. */
     expect(taggedNames(BYTES_TAG)).toEqual([
       `${BYTES_TAG} %s: het geschreven bestand reproduceert byte voor byte`,
       `${BYTES_TAG} %s: het getransformeerde bestand reproduceert byte voor byte`,
       `${BYTES_TAG} casus 1b: the cheapest delivered netlist, by recorded runtime, live through v2ChainOne, byte for byte`,
+      `${BYTES_TAG} de fixture levert byte-identiek het bestand dat op schijf staat`,
       `${BYTES_TAG} de geschreven demoset-bestanden reproduceren byte voor byte`,
       `${BYTES_TAG} seed %i: ALL SIX verdicts reproduce the V50 block minus that row, and the M-1 block in full`,
       `${BYTES_TAG} seed %i: so does the F4b2 shape — the fixture pins both`,

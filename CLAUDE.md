@@ -1794,7 +1794,16 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   tag om dezelfde reden als de andere vijf, en de eerste volle run van V50 viel precies op deze
   inventaris om — de bewaker deed wat hij moet doen. Het aantal overgeslagen tests in `test:ci`
   is daarmee 2 `[live]` + 10 `[bytes]` − 1 die beide draagt = ELF — **sinds E-3 (06-09-2026): 3 `[live]` + 11 `[bytes]` − 2
-  die beide dragen = TWAALF** (de zevende bytes-naam en de derde live-naam zijn dezelfde test: casus 1b door `v2ChainOne`). (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
+  die beide dragen = TWAALF** (de zevende bytes-naam en de derde live-naam zijn dezelfde test: casus 1b door `v2ChainOne`).
+  **SINDS M-2 TIEN bytes-namen en ZESTIEN gedraaide tests** (de drie reproductieclaims van
+  `koan2026_09.test.ts`, waarvan twee een `it.each` over de twee wooferwegen), **en SINDS M-3 ELF
+  namen en ZEVENTIEN** — de byte-identiteit van de hermergde mid. **DIE ELFDE IS BIJ M-3 VERGETEN EN
+  IN DE NAZORG ALSNOG GETAGD, en dat is de derde keer dat deze val toeslaat op dezelfde vorm:** een
+  claim die een merge VERS HERBEREKENT en op drie decimalen naast duizenden weggeschreven rijen legt
+  is per (machine, runtime) byte-identiek en niet daarbuiten (V46). De andere tweeënveertig claims van
+  `midM3.test.ts` dragen de tag NIET en draaien wél in CI: zij lezen grootheden met een tolerantie.
+  Wie een reproductieclaim schrijft, vraagt zich af of zij een FIT of een FFT herberekent — zo ja,
+  dan hoort `[bytes]` erop vóór de commit en niet erna. (4) **SINDS 01-09-2026 een LIVE-inventaris ernaast, in dezelfde
   vorm en om dezelfde reden: precies TWEE blokken, met naam (DRIE sinds E-3).** De splitsing van de twee live
   ketenruns bracht het tagtal van één naar twee, en precies zo'n verhoging is wat stil kan
   doorgroeien. (5) De scan loopt echt — zonder die tegenproef is "niets
@@ -3861,6 +3870,13 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   de gepoorte tak, en `readMergeBlock` slaagt op alle drie. `midM3.test.ts` pint beide helften, zodat
   de dag waarop iemand die volgorde omdraait hier langskomt — en zodat "M-3 deed dit" niet geloofd
   wordt.
+- **DE BYTE-IDENTITEITSCLAIM DRAAGT `[bytes]` EN DAT IS IN DE NAZORG GEREPAREERD, niet bij het
+  schrijven.** `buildM3MidMerge().text` tegen het bestand op schijf herberekent een FFT-cepstrum, een
+  niveaufit, een vertragingsfit en een crossfade, en legt het resultaat op DRIE DECIMALEN naast
+  13 640 rijen — 27 280 afrondingen die op een andere runtime kunnen omklappen (V46). M-2 had precies
+  deze val al gevonden voor de woofermerges en hem in zijn eigen nazorg getagd; M-3 liep er opnieuw
+  in. De tag staat er nu, `ciLayer.test.ts` draagt de elfde naam, en de andere tweeënveertig claims
+  van `midM3.test.ts` draaien wél in CI omdat zij grootheden met een tolerantie lezen.
 - **DE SPLICE-CONTROLE FAALT DE ±0,5 dB-CONVENTIE (p95 1,37 dB), zoals alle drie de merges van dit
   project** (I-2 mat de woofers op 1,53 en 2,58). Het is een CONVENTIE en geen eigenschap (F0), en
   M-3 verandert er niets aan: het is dezelfde merge op één fasewiskunde na. De test pint dat hij

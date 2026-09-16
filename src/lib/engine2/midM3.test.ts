@@ -63,10 +63,20 @@ interface Rd {
 }
 
 describe('M-3 — de merge reproduceert', () => {
-  it('de fixture levert byte-identiek het bestand dat op schijf staat', () => {
+  it('[bytes] de fixture levert byte-identiek het bestand dat op schijf staat', () => {
     /* A3g: het script SCHRIJFT en deze test LEEST, allebei door dezelfde
      * `buildM3MidMerge`. Een tweede implementatie hier zou een tweede antwoord
-     * zijn op de vraag wat de merge is. */
+     * zijn op de vraag wat de merge is.
+     *
+     * `[bytes]` OM DE M-2-REDEN, en zij is V46's precisering: dit herberekent
+     * een FFT-cepstrum, een niveaufit, een vertragingsfit en een crossfade, en
+     * legt het resultaat op DRIE DECIMALEN naast 13 640 weggeschreven rijen.
+     * Byte-identiek geldt per (machine, runtime); een laatste-bit-verschil op
+     * een andere runtime kan een van die 27 280 afrondingen omklappen. Uit CI,
+     * dus — precies zoals de drie reproductieclaims van `koan2026_09.test.ts`.
+     * Wat er WEL portable is staat eronder: de fasedelta per band, de
+     * monotonie, de bit-identiteit boven de splice en elke claim over de
+     * netlists lezen grootheden met een tolerantie, en die draaien in CI. */
     expect(buildM3MidMerge().text).toBe(read(MID_M3_FILE));
   });
 
