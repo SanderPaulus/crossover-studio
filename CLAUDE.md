@@ -1854,6 +1854,12 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (17-09-2026, H-2): 196 bestanden (195 geslaagd, 1 overgeslagen),
+  2535 geslaagd, 19 overgeslagen, 3382 s (56 min) — GROEN.** Negentien is EXACT het H-1-getal, en
+  dat is de claim: H-2 voegt geen enkele getagde test toe, dus de inventaris staat stil. Wat de run
+  daarnaast bewijst is dat de 36 H-2-claims op een ANDERE runtime reproduceren — zij zijn bronscans
+  en zuivere functies over strings, dus daar kan geen float in drijven, en dat is hier nagemeten in
+  plaats van aangenomen (daarom draagt dat bestand terecht geen `[bytes]`).
   **GEMETEN IN CI OP ubuntu/Node 22 (17-09-2026, H-1): 195 bestanden (194 geslaagd, 1 overgeslagen),
   2497 geslaagd, 19 overgeslagen, 3411 s (57 min) — GROEN.** Wat die run bewijst bovenop de
   inventaris is dat de AFLEIDING VAN DE ACTIEVE ZIJDE portable is, en dat is niet vanzelfsprekend:
