@@ -475,6 +475,26 @@ function fileDirs(golden: GoldenRefs, set: Casus1MeasurementSet): Map<string, st
   return out;
 }
 
+/**
+ * M-4 — WAAR ÉÉN BESTAND VAN DEZE SET OP SCHIJF LIGT.
+ *
+ * `casus1Files` laadt ze allemaal en geeft gepárste metingen terug; een lezer
+ * die de KOP van één bestand wil (de merge-fit, bijvoorbeeld) heeft het pad
+ * nodig en niets anders. Sinds M-2b liggen de sets in verschillende mappen —
+ * en twee sessies dragen bestanden met DEZELFDE naam — dus een script dat
+ * `join(CASUS1_DIR, file)` doet leest stilzwijgend de verkeerde meting. Deze
+ * functie is de ene plek die dat weet, en zij is dezelfde `fileDirs` die
+ * `casus1Files` gebruikt.
+ */
+export function casus1FilePath(
+  file: string,
+  manifest: Manifest,
+  golden: GoldenRefs = loadGolden(),
+): string {
+  const dir = fileDirs(golden, casus1SetOf(manifest)).get(file);
+  return dir === undefined ? join(CASUS1_DIR, file) : join(dir, file);
+}
+
 export function casus1Files(manifest: Manifest, golden: GoldenRefs = loadGolden()): MeasurementFile[] {
   const dirs = fileDirs(golden, casus1SetOf(manifest));
   return manifest.entries.map((e) => loadMeasurement(e, dirs.get(e.file)));

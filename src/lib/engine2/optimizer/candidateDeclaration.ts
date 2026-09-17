@@ -55,6 +55,7 @@ import type { NetOptimizeOptions } from '../../netOptimizer.ts';
 import type { Chain3Settings } from '../../threeWayChain.ts';
 import { SYNTHESIS_LEAN_DEFAULT_DB } from '../../synthesis.ts';
 import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../../vfOptimizer.ts';
+import { DEFAULT_PHASE_PRIORITY } from '../../netOptimizer.ts';
 import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
 import { isImplemented as isImplementedCurve, type TargetCurve } from '../requirements/targetCurve.ts';
 import type { ChoiceDeclaration, ChoiceKey } from './choices.ts';
@@ -878,7 +879,7 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
  * thing for both.
  */
 export type StatedByDesignerChain = Partial<
-  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid'>
+  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid' | 'phasePriority'>
 >;
 
 export interface ChainDeclarationInput {
@@ -971,6 +972,17 @@ export function declareCandidateChainChoices(
   const absent: { key: ChainChoiceKey; why: string }[] = [];
   stated.eqBands = s.eqBands ?? DEFAULT_EQ_BANDS_PER_DRIVER;
   stated.leanTargetDb = s.leanTargetDb ?? SYNTHESIS_LEAN_DEFAULT_DB;
+  /* M-4 — the sixth chain key, and the third derivation in this function that
+   * hangs on nothing else, for the same shape of reason as the two above: every
+   * design is weighed by a design step and a synthesis step that split their
+   * budget between amplitude and phase somehow, so there is no design on which
+   * the question has no answer and therefore no honest ABSENT.
+   *
+   * `DEFAULT_PHASE_PRIORITY` is the ENGINE's own midpoint — the 50/50 the app's
+   * slider has always shown and the value `optimizeNetworkValues` reads when
+   * nobody states one — never a casus number (P6). A designer who states the
+   * slider wins over it, which is exactly what M-4's 25/75 arm is. */
+  stated.phasePriority = s.phasePriority ?? DEFAULT_PHASE_PRIORITY;
 
   /* ---- V51: MAY THE LOWEST WAY CARRY LEVEL WORK -------------------------
    *

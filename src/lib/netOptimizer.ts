@@ -81,6 +81,24 @@ import {
  */
 export type BandScope = 'ranking' | 'disqualification';
 
+/**
+ * M-4 — THE SHARE OF THE BUDGET SPENT ON PHASE, when nobody says otherwise.
+ *
+ * A NAMED HOME rather than a destructuring default, for the reason `impedanceFloor.ts`
+ * and `partAudit.ts` give one layer down: since M-4 the value is DECLARED by the
+ * candidate (`CHAIN_CHOICE_KEYS`), so a declaration that has nothing stated has
+ * to read the engine's own default from somewhere. Reading it off a literal in
+ * two files is how "inherited" and "stated" quietly disagree about the same
+ * number.
+ *
+ * NOT A PROJECT NUMBER (P6): it is a WEIGHT, the midpoint of the 0..1 slider the
+ * app has always shown at 50/50, and it predates every casus in this book.
+ * `synthesis.ts` carries the same default for its own absent case; on the chain
+ * route `Chain3Settings.phasePriority` is required, so the value that reaches
+ * the synthesis step is always the declared one.
+ */
+export const DEFAULT_PHASE_PRIORITY = 0.5;
+
 export interface NetOptimizeOptions {
   /** 0..1 share of the budget on phase (same scale as everywhere). Default 0.5. */
   phasePriority?: number;
@@ -1890,7 +1908,7 @@ export function optimizeNetworkValues(
   const parts: readonly VxpPart[] = dcrStamp ? dcrStamp.parts : partsIn;
   const dcrFitById: Record<string, CoilDcrFit> = dcrStamp?.fitById ?? {};
   const {
-    phasePriority = 0.5,
+    phasePriority = DEFAULT_PHASE_PRIORITY,
     maxIterations,
     ampTarget = 'onAxis',
     breakupGuard = false,

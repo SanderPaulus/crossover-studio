@@ -48,6 +48,21 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná M-4 (16-09-2026) gemeten op 524 s — 190 bestanden (189 geslaagd, 1 overgeslagen),
+    2464 tests (2461 geslaagd, 3 overgeslagen), alleen gedraaid.** +1 BESTAND
+    (`engine2/m4PhasePriority.test.ts`, 18 claims) en +19 tests: die achttien plus ÉÉN in
+    `casus1V2Candidates.test.ts` (de wezen-guard van de F-familie). Het corpus is NIET
+    geregenereerd — M-4 voegt één netlist TOE — dus geen enkele `it.each` over het levende corpus
+    beweegt en de delta sluit exact. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan,
+    en 524 tegen M-3's 511 s is dezelfde laag op dezelfde machine met één bestand erbij.
+    **DE EERSTE snelle run had TWEE rode claims en beide deden hun werk**, allebei van de soort die
+    dit boek het vaakst ziet: een GEDATEERDE opname die een nieuwe sleutel niet kan dragen
+    (`casus1bV2Candidates` vergelijkt de ketenverklaring exact met wat de casus-1b-herkomst
+    registreert, en M-4 stelt er `phasePriority` bij — gebrugd in `CHAIN_SINCE_THE_RECORD`, de
+    V15-vorm die `SINCE_THE_RECORD` ernaast al had), en een GEDATEERDE boekhouding tegen een
+    gegroeid casusboek (`midM3` telt bewogen + onbewogen tegen élke rij van `v44_fasematen`, en er
+    kwamen er twee bij — sindsdien geteld tegen de rijen van de netlists van TOEN, met de
+    toegevoegde familie gelezen uit haar eigen herkomst). Geen tolerantie is opgerekt.
     **Ná M-3 (16-09-2026) gemeten op 511 s — 189 bestanden (188 geslaagd, 1 overgeslagen),
     2445 tests (2442 geslaagd, 3 overgeslagen), in één keer groen, alleen gedraaid.** +1 BESTAND
     (`engine2/midM3.test.ts`, 43 claims) en +44 tests: die 43 plus ÉÉN in
@@ -1808,6 +1823,13 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   tests en niet op bronnamen: 17 `[bytes]` + 3 `[live]` − 2 die beide dragen. De TWAALF hierboven is
   de E-3-stand en blijft staan als wat zij toen was; wie de twee getallen naast elkaar legt moet ze
   niet verwarren — het verschil is M-2's drie reproductieclaims (vijf gedraaide tests) en M-3's ene.
+  **GEMETEN IN CI OP ubuntu/Node 22 (16-09-2026, M-4): 190 bestanden (189 geslaagd, 1 overgeslagen),
+  2446 geslaagd, 18 overgeslagen, 3575 s (59 min) — GROEN.** Achttien overgeslagen is EXACT het
+  M-3-getal, en dat is de claim: M-4 voegt geen enkele getagde test toe, dus de inventaris staat stil.
+  Wat de run daarnaast bewijst is dat de achttien M-4-claims op een ANDERE runtime reproduceren — zij
+  vergelijken afgeronde afgeleide getallen (M-K op twee decimalen, RMS en min |Z| op drie) en dat is
+  precies de vorm waarop V46, V49 en B-1 elk één keer zijn omgevallen. Hier is het nagemeten in plaats
+  van aangenomen, en daarom draagt dat bestand terecht geen `[bytes]`.
   **GEMETEN IN CI OP ubuntu/Node 22 (16-09-2026, M-3): 189 bestanden (188 geslaagd, 1 overgeslagen),
   2427 geslaagd, 18 overgeslagen, 3438 s (57 min) — GROEN.** Dat is de eerste CI-run sinds M-2 die de
   inventaris toetst ná een toevoeging, en het getal 18 bevestigt haar van de andere kant: zou de
@@ -3908,6 +3930,123 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   `record-casus1-m3-references.ts`. Het set-script herschrijft het hele `meetset_M3_mid`-blok, dus wat
   de recorder eraan toevoegt zou het weggooien; `KEPT_BY_THE_RECORDER` draagt die sleutels expliciet
   door, zodat de volgorde een VOORKEUR is en geen valstrik. Dat is gevonden doordat het gebeurde.
+
+### M-4-guards (de fase-schuif als gestelde ketensleutel; twee gestelde runs; GEEN regeneratie)
+- **`phasePriority` IS SINDS M-4 DE ZESDE `CHAIN_CHOICE_KEYS`-SLEUTEL, en de eerste die in BEIDE
+  classificaties staat.** Hij was al GREY in `choices.ts` (A3j — een gewicht dat de schaal vormt), en
+  de regel daar is dat een v2-kandidaat hem EXPLICIET stelt; tot M-4 deed hij geen van beide en reed
+  hij mee in de settings-spread van de keten, precies zoals `eqBands` en `leanTargetDb` vóór V41. Hij
+  hoort in de ketenlijst omdat hij DRIE lezers heeft en er twee vóór de tuner draaien:
+  `designThreeWay` (welke uitlijning en polariteit per flank) en `synthesize` (hoe elke tak gefit
+  wordt); pas de derde is `optimizeNetworkValues`. Onvoorwaardelijk verklaard uit
+  `DEFAULT_PHASE_PRIORITY` — de eigen 0,5 van de motor, in `netOptimizer.ts` en géén casusgetal (P6) —
+  en een gestelde waarde wint.
+- **DE DISJUNCTHEID IS NIET VERSOEPELD MAAR OMGEKEERD.** `choiceKeyGuard.test.ts` eiste dat geen
+  ketensleutel in een tuner-lijst staat; dat was een WAARNEMING (de vijf van vóór M-4 bestaan
+  eenvoudigweg niet in `NetOptimizeOptions`) en geen principe. Sinds M-4 staat de uitzondering er als
+  BENOEMDE VERZAMELING (`CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER`, één naam) die op GELIJKHEID wordt
+  getoetst: een nieuwe sleutel die in beide lijsten opduikt valt nog steeds om. Ernaast staat dat
+  `phasePriority` in GREY zit en in CHOICE noch POLISH — verhuist hij daar, dan zegt de ene laag iets
+  anders over hem dan de andere. Ketentelling 5 → 6.
+- **P2 IS GEMETEN EN NIET BEREDENEERD.** De verklaring OVERSCHRIJFT de ketensettings, dus de vraag is
+  niet of zij schrijft maar wát: op elke casus-1-run zonder M-4-optie schrijft zij het getal terug dat
+  er al stond (`CASUS1_V2_SETTINGS.phasePriority` = 0,5 = `DEFAULT_PHASE_PRIORITY`, en
+  `choiceKeyGuard.test.ts` pint dat die twee hetzelfde zijn zodat het een waarde is en geen tweede
+  mening). De twee LIVE ketenarmen in `chainChoices.test.ts` reproduceren de inherited-arm byte voor
+  byte met de sleutel erbij; casus 1b en casus 2 stellen allebei 0,5, dus hun corpora bewegen evenmin.
+- **`casus1Field(report, stated?)` — de gestelde posities ernaast, en absent is de IDENTITEIT.** Zonder
+  `stated` krijgt `buildCandidateField` geen `statedPerAxisHz`, schrijft het veld geen `statedSize` in
+  zijn parameters en keyt `candidateFieldKey` byte-identiek aan élke casus-1-run sinds C-2 (de
+  E-2-regel, één veld verder). `m4PhasePriority.test.ts` assert dat, plus dat er mét posities precies
+  twee kandidaten BIJ komen en er geen verdwijnt.
+- **`SystemSummary.branches` — de takken waarop M-K rustte, uitgedeeld in plaats van weggegooid.**
+  Exact de reden die `sumDb` sinds A5e.2 draagt, één stap eerder in dezelfde keten: een lezer die de
+  RELATIEVE FASE van twee wegen wil, of wat de som doet als één weg omgepoold wordt, moest élke tak
+  opnieuw afleiden — en een tweede afleiding is een tweede ding dat het oneens kan worden met het
+  oordeel dat ernaast staat (de V32-vorm). Gefilterd, ongeknipt, in dB en graden, in
+  `driversLowToHigh`-volgorde; `null` zonder netlist. **De dragende claim is dat zij OPTELLEN tot
+  `sumDb`** (binnen 1e-9): zonder die tegenproef is "dit zijn de takken" niet te onderscheiden van
+  "dit zijn takken". Een LEZING en geen metriek: geen versiestring, geen poort, geen eis.
+- **DE NULDIEPTE MET OMGEPOOLDE MID is een LEZING en staat naast M-K, niet in plaats ervan.** Eén
+  omkering levert BEIDE nullen, want de mid zit in beide paren — dat is waarom je op een drieweg de
+  mid omdraait. De tegenproef draagt de claim: **zonder omkering leest dezelfde meting exact 0,00 dB**,
+  dus zij meet de omkering en niet de rimpel van de som. De ondergrens in de suite is 6 dB en niet
+  scherper: een scherper getal zou een EIS zijn die niemand gesteld heeft (P4).
+- **DE REFERENTIEGETALLEN VAN DE OPDRACHT REPRODUCEREN NIET, en dat staat er als meting.** Gevraagd
+  "~16 en ~13 dB"; gemeten 18,1 en 23,9 dB (set `'m3'`), 19,0 en 24,2 op `'koan677'`, 17,5 en 17,8 exact
+  op het kruispunt, 17,5 en 17,8 met alleen het paar, 18,3 en 20,7 tegen de schouders. Vijf definities,
+  geen enkele op 16 of 13. **De definitie is niet bijgesteld tot de getallen pasten** — de A3h-val van
+  de andere kant — en wat de tabel voert staat in `measure-m4-comparison.ts`.
+- **DE UITKOMST, en zij weerlegt de verwachting waarmee de sessie begon.** 362,3 Hz komt terug als
+  VERWERPING op `budget`: de tuner joeg zijn eigen fasemaat van 9,1° naar 4,51° en verdubbelde zijn
+  evaluaties (152 553 → 321 659), en betaalde het in reactantie in het wooferpad — 1,80 dB
+  opslingering tegen een gesteld M-D-budget van 1,4. **Niets is versoepeld**, dus er is geen netlist
+  (V31) en **`KAND-V2-1F` bestaat niet**. 518,8 Hz levert wél, en is slechter op vrijwel alles waar het
+  om ging: M-K woofer→mid 13,12° → 14,94°, mid→tweeter 5,41° → 5,98°, nuldiepte 23,9 → 17,4 dB, RMS
+  1,001 → 1,076 dB, BOM € 263,87 → € 502,95 (+91 %). Alleen het ±venster verbeterde (2,083 → 1,640 dB),
+  en dat is geen tegenspraak maar het verschil dat A5e.1 bouwde: het venster is de GEGLADDE
+  acceptatievraag en de RMS de RUWE sorteervraag.
+- **HET FASESPOOR LEEST BEIDE NETLISTS OP DEZELFDE FREQUENTIES, en dat is meting en geen opmaak.** De
+  tune verplaatst het akoestische kruispunt (467,4 → 503,4 Hz op dit paar), dus twee sporen die elk rond
+  hún kruispunt lopen delen geen enkele frequentie en zijn niet aftrekbaar. Het venster komt van de
+  50/50-netlist; waar het andere kruispunt ligt staat in de tabel. Uitgedund tot 25 log-gelijkmatige
+  punten — de UITDUNNING IS ALLEEN DE WEERGAVE, elk getal in de tabel en de nuldiepte lezen het volle
+  raster van 1600.
+- **DE FIT-ONZEKERHEID, en zij is groter dan het effect dat gezocht werd.** De fase onder de splice komt
+  uit een MERGE, en de gefitte VERTRAGING daarin is een modelparameter en geen gemeten aankomsttijd
+  (M-2). Twee onafhankelijke schattingen, allebei uit de bestandskoppen: (a) M-1's mid-merge fit 0,5819 ms
+  en M-3's 0,6307 ms — dezelfde NF, dezelfde FF, één modelfactor anders, dus **0,0488 ms is wat een
+  MODELKEUZE alleen al verzet**, goed voor **8,2°** bij 467 Hz; (b) de slechtste splice-fit laat
+  0,0704 ms onverklaard (residu 3,8° rms over 400–550 Hz), goed voor **11,8°**. **Het verschil waar de
+  sessie naar zocht is 1,8°.** Elke M-K-lezing voor woofer→mid in dit boek rust dus op een vertraging die
+  een modelkeuze met acht graden kan verzetten; de in-kast-meting moet de VERTRAGING tussen de wegen
+  beslechten en niet welk ontwerp beter trackt.
+- **BOVEN DE SPLICE GELDT DIE OMREKENING NIET, en het script zegt dat in plaats van een getal.** De
+  mid→tweeter-overname ligt op ~2250 Hz, boven beide splice-banden, waar de merge het verre veld zelf IS
+  (M-3 mat 0,00° boven 800 Hz). De eerste versie van het blok drukte er 39,8° af — een plausibel fout
+  getal, de A3h-val — en dat is gerepareerd vóór het iets beweerde. `m4PhasePriority.test.ts` pint beide
+  helften.
+- **`Merge splice fit` draagt sinds M-4 ook zijn RESIDU** (`splicePhaseResidualDeg`, `parseArtaHeader`,
+  op VELDNAAM zoals de gain en de delay ernaast). Zonder dat veld is de kwaliteit van een fit alleen met
+  de hand uit de kop te lezen, en het is precies wat schatting (b) hierboven nodig heeft.
+- **DE RECORDERKETEN WAS EEN LANDMIJN, en M-4 vond hem door hem uit te proberen vóórdat hij erop
+  vertrouwde.** `record-casus1-v2-references.ts` bouwt élk blok dat hij schrijft VANAF NUL — `kandidaten.*`
+  en élk afgeleid blok — en gooide daarmee de `_waarden_*`-bruggen weg die een LATERE sessie eraan had
+  toegevoegd; op de boom van vandaag zijn dat M-3's `_waarden_M2b_tot_M3`. **Erger dan weg:**
+  `record-casus1-m3-references.ts` schrijft die brug terug zodra hij ontbreekt en bouwt hem uit WAT ER IN
+  HET BLOK STAAT — dus na de herschrijving vulde hij de "M-2b-brug" met M-3-waarden (10,26 werd 10,57) en
+  was M-3's hele bevinding stil uitgewist terwijl beide scripts groen afsloten. Sinds M-4 draagt
+  `carryDatedKeys` élke `_`-sleutel die het schrijvende script zelf niet definieert door, voor
+  `kandidaten.*` (uit een SNAPSHOT van vóór de snoei — de snoei loopt eerder en liet anders niets over om
+  te dragen) en voor élk afgeleid blok (`putDerived`). **Gemeten en niet beredeneerd: drie keer
+  gedraaid, drie keer teruggelezen, en pas de derde keer stonden alle zes de bruggen er onveranderd.**
+- **DE VOLGORDE IS BINDEND** (de C-2-regel), en zij is nu wél zelfherstellend:
+  `measure-m4-phase-priority.ts` → `register-m4-candidates.ts` → `record-casus1-v2-references.ts` →
+  `record-casus1-m3-references.ts`. De laatste stap is geen keuze: hij zet de M-3-zin in
+  `klasse_toelichting` terug, die de v2-recorder wél overschrijft (en idempotent doet).
+- **DE M-4-FAMILIE IS EEN DERDE SOORT NETLIST, met een eigen patroon.** `KAND_V2_<n>F` matcht `LIVE_V2`
+  niet (dat is op het einde verankerd) en `DATED_KAND` evenmin, en dat is precies goed: hij wordt niet
+  weggesnoeid als het veld opnieuw wordt opgewekt, want hij hoort niet bij dat veld. Zijn klasse-B-blok
+  wordt één keer geschreven en daarna met rust gelaten — dezelfde regel die een gedateerd blok draagt.
+  `casus1V2Candidates.test.ts` draagt een EIGEN wezen-guard voor de familie (de bestaande is op een
+  cijfer verankerd en kan hem niet zien), plus de eis dat élke F-netlist een TEGENHANGER heeft die
+  bestaat: het paar is wat de naam betekent.
+- **DE BOM-KOLOM HEEFT SINDS M-4 ÉÉN HUIS** (`scripts/bomColumn.ts`, woordelijk het A5e.3c-blok, met de
+  catalogus als argument in plaats van op module-niveau). Twee tabellen die elk hun eigen prijs
+  uitrekenen zijn twee antwoorden op één vraag, en de vraag van M-4 is juist een AFTREKKING tussen twee
+  tabellen — een cent verschil in de realisatieregel zou als bevinding lezen.
+- **`casus1FilePath` — waar één bestand van deze set op schijf ligt.** Sinds M-2b liggen de sets in
+  verschillende mappen en dragen twee sessies bestanden met DEZELFDE naam, dus een script dat
+  `join(CASUS1_DIR, file)` doet leest stilzwijgend de verkeerde meting. Eén functie, dezelfde `fileDirs`
+  die `casus1Files` gebruikt.
+- **DE VOLLE RUN IS BIJ M-4 NIET GEDRAAID**, met de U-6/I-1/B-1-afweging en zij is hier expliciet omdat
+  M-4 wél een ketensleutel toevoegt. Wat die sleutel op élke bestaande run doet is de IDENTITEIT — hij
+  schrijft 0,5 terug waar 0,5 stond — en dat is gemeten in de twee live ketenarmen van
+  `chainChoices.test.ts` (53 s en 47 s, byte-identiek), niet beredeneerd. Verder: geen poort-, budget-,
+  venster- of corpuswijziging; de twee byte-baselines die de zoektocht bewaken (`f4cRegression`,
+  `workerRouteRegression`) draaien in de snelle laag en reproduceerden, net als `toggleRegression`,
+  `p6Lint` en `ciLayer`. De drie live ketenruns zouden corpora reproduceren die deze sessie niet
+  aangeraakt heeft — M-4 voegt twee runs TOE en verplaatst geen enkele bestaande netlist.
 
 ### E-5c-guards (de prijs van een pas gemeten; één sleutel gewapend, één gebouwd en afgewezen)
 - **`scripts/measure-e5c-prune-anatomy.ts` — DE ANATOMIE, MET TWEE OBSERVATOREN EN NUL REGELS

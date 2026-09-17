@@ -379,6 +379,38 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     expect(onDisk.length).toBe(V2_KEYS.length);
   });
 
+  it('M-4 — NO ORPHANS IN THE PHASE-PRIORITY FAMILY EITHER, and it is named alongside', () => {
+    /* `KAND-V2-<n>F` is the phase-priority variant frozen beside its
+     * counterpart (M-4). The guard above cannot see it: its pattern is ANCHORED
+     * on a digit, which is exactly what keeps the dated corpora out of it — so
+     * a new family needs its own line rather than a looser pattern. Looser
+     * would have swept up every dated corpus and made the claim above vacuous.
+     *
+     * The rule is the same rule: a file no entry names is an orphan, and an
+     * orphan is deleted rather than explained. Empty on both sides is a legal
+     * state and stays one — this family is not regenerated with the field. */
+    const named = new Set(Object.values(golden.manifest_en_geometrie.netlists));
+    const onDisk = readdirSync(CASUS1_DIR).filter((f) => /^KAND-V2-\d+F\.adsfilter\.json$/.test(f));
+    const keys = Object.keys(golden.manifest_en_geometrie.netlists).filter((k) =>
+      /^KAND_V2_\d+F$/.test(k),
+    );
+    for (const f of onDisk) {
+      expect(named, `${f} is on disk but no manifest entry names it — delete it or name it`)
+        .toContain(f);
+    }
+    expect(onDisk.length).toBe(keys.length);
+    /* And each one names a COUNTERPART that exists: the whole point of the `F`
+     * is that it is the same stated crossing with one slider moved, so a
+     * variant whose counterpart has been regenerated away is a comparison with
+     * one half missing. */
+    for (const k of keys) {
+      expect(
+        golden.manifest_en_geometrie.netlists[k.replace(/F$/, '')],
+        `${k} has no counterpart in the case book — the pair is what it means`,
+      ).toBeDefined();
+    }
+  });
+
   it('the provenance block is DOCUMENTATION and says so', () => {
     /* Nothing here is an acceptance value. It exists so a later reader can
      * regenerate these files and know what they are comparing against. */

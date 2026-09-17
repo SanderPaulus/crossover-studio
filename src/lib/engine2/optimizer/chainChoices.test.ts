@@ -42,6 +42,7 @@ import { parseZma } from '../../parsers/zma.ts';
 import { AUTO_STRUCTS } from '../../threeWayDesign.ts';
 import { SYNTHESIS_LEAN_DEFAULT_DB } from '../../synthesis.ts';
 import { DEFAULT_EQ_BANDS_PER_DRIVER } from '../../vfOptimizer.ts';
+import { DEFAULT_PHASE_PRIORITY } from '../../netOptimizer.ts';
 import type { Chain3Input, Chain3Result } from '../../threeWayChain.ts';
 import { stableJson } from './determinism.ts';
 import {
@@ -235,7 +236,17 @@ describe('V41 — the chain-level choice keys', () => {
     // stack exception). E-3 added the fifth (`synthesisGrid`: which grid
     // points the synthesis fits on — the V38-fix reading one stage earlier,
     // stated 'alive' unconditionally).
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork', 'synthesisGrid']);
+    // M-4 added the sixth (`phasePriority`: how the budget is split between
+    // response and phase — read by the design step, the synthesis step and only
+    // then the tuner, stated unconditionally from the engine's own midpoint).
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual([
+      'eqBands',
+      'leanTargetDb',
+      'lowestWayCoilMaxHenry',
+      'lowestWayLevelWork',
+      'phasePriority',
+      'synthesisGrid',
+    ]);
   });
 
   it('A5e.3b — the coil-span key derives from the stated family\'s span, the stack exception suppresses it, an explicit value wins', () => {
@@ -300,7 +311,16 @@ describe('V41 — the chain-level choice keys', () => {
      * byte-identical (the claim below). */
     expect(
       withDeclaredChainChoices(input, declareCandidateChainChoices({ stated: {} })).settings,
-    ).toEqual({ eqBands: DEFAULT_EQ_BANDS_PER_DRIVER, leanTargetDb: SYNTHESIS_LEAN_DEFAULT_DB, synthesisGrid: 'alive' });
+    ).toEqual({
+      eqBands: DEFAULT_EQ_BANDS_PER_DRIVER,
+      leanTargetDb: SYNTHESIS_LEAN_DEFAULT_DB,
+      synthesisGrid: 'alive',
+      /* M-4 — the sixth key is stated unconditionally too, from the ENGINE's
+       * own midpoint. It overwrites nothing on this fixture because the input
+       * carried none; on a caller that carries 0.5 it writes 0.5 back, which is
+       * what keeps the corpus byte-identical (the live claim below). */
+      phasePriority: DEFAULT_PHASE_PRIORITY,
+    });
   });
 
   it('moves the fingerprint ingredient', () => {
@@ -357,6 +377,8 @@ describe('E-3 — the chain declaration in the two-way vocabulary, and the fifth
       leanTargetDb: 1.25,
       lowestWayCoilMaxHenry: 0.034,
       synthesisGrid: 'alive',
+      /* M-4 — the sixth key, same name on both chains. */
+      phasePriority: DEFAULT_PHASE_PRIORITY,
     });
     const capped = declareCandidateChainChoices({ stated: {}, lowestWaySeriesRMaxOhm: 1.0 });
     expect(chainSettingsForTwoWay(capped).lowestWayLevelWork).toEqual({ kind: 'series-r-max', maxOhm: 1.0 });
@@ -370,6 +392,7 @@ describe('E-3 — the chain declaration in the two-way vocabulary, and the fifth
     expect(two.leanTargetDb).toBe(three.leanTargetDb);
     expect(two.lowestWayCoilMaxHenry).toBe(three.lowestWayCoilMaxHenry);
     expect(two.synthesisGrid).toBe(three.synthesisGrid);
+    expect(two.phasePriority).toBe(three.phasePriority);
   });
 
   it('the fifth key is stated \'alive\' unconditionally, an explicit \'full\' wins, and it moves the fingerprint', () => {

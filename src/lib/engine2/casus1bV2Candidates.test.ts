@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { stableJson } from './optimizer/determinism.ts';
+import { DEFAULT_PHASE_PRIORITY } from '../netOptimizer.ts';
 import { handleV2Request, type V2ChainOnePayload, type V2Response } from './optimizer/worker.ts';
 import type { ChainResult } from '../designChain.ts';
 import { synthesize } from '../synthesis.ts';
@@ -101,7 +102,24 @@ describe('E-3 casus 1b — the record of the two-way run agrees with the fixture
     for (const k of SINCE_THE_RECORD) {
       expect(HERKOMST.meetopstelling.beschermingen_via_kandidaat, `${k} is in the record after all`).not.toContain(k);
     }
-    expect(stableJson(decl.chainDeclaration.stated)).toBe(stableJson(HERKOMST.meetopstelling.ketenverklaring.stated));
+    /* M-4 — DEZELFDE BRUG, op de KETENverklaring, en zij had er altijd al een
+     * moeten hebben: `SINCE_THE_RECORD` hierboven dekt de TUNER-sleutels en
+     * deze regel vergeleek de ketensleutels exact, dus de eerste ketensleutel
+     * die ná een corpusopname bijkomt breekt hem. Dat is M-4's `phasePriority`,
+     * onvoorwaardelijk verklaard en door de opname — geschreven vóór de sleutel
+     * bestond — niet te dragen. Exact in beide richtingen, net als hierboven.
+     *
+     * De WAARDE is de motor-standaard (0,5), en dat is wat de opname impliciet
+     * droeg: de ketensettings van die run stelden hem al zo. Vandaar dat de
+     * live tweewegketenrun onderaan dit bestand byte voor byte reproduceert. */
+    const CHAIN_SINCE_THE_RECORD: string[] = ['phasePriority'];
+    const recordedChain = HERKOMST.meetopstelling.ketenverklaring.stated as Record<string, unknown>;
+    for (const k of CHAIN_SINCE_THE_RECORD) {
+      expect(recordedChain, `${k} is in the record after all`).not.toHaveProperty(k);
+    }
+    expect(stableJson(decl.chainDeclaration.stated)).toBe(
+      stableJson({ ...recordedChain, phasePriority: DEFAULT_PHASE_PRIORITY }),
+    );
     /* The two E-3 readings that made this route usable, as the record shows
      * them: the search smoothing is stated (and reaches the vf design step),
      * and the synthesis fits on the alive points. */

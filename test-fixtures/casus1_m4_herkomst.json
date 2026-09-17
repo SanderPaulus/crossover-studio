@@ -1,0 +1,110 @@
+{
+ "_": "M-4 — WAAR DE TWEE FASE-PRIORITEITSNETLISTS VANDAAN KOMEN. DOCUMENTATIE, geen acceptatiewaarde: wat acceptatie is, zijn de bevroren bestanden en hun klasse-B-referenties in golden_refs_casus1.json. Zie scripts/register-m4-candidates.ts.",
+ "gegenereerd_op_commit": "7bac79912edd5c8389d0ec2f4842f67d28c8481a",
+ "gemeten_op": "2026-09-16",
+ "meetset": "m3",
+ "meetset_waarom": "de STANDAARD van vandaag, en niet de `koan677` waarop het M-2b-corpus is opgewekt. M-4 wekt niets opnieuw op maar draait twee NIEUWE kandidaten, en een nieuwe kandidaat hoort op de huidige meetbasis te lopen. Gevolg, en het staat in de entry: de F-netlists en hun tegenhangers zijn op twee verschillende sets GEZOCHT, dus de vergelijkingstabel leest beide helften op één bank (de standaard) en de aftrekking gaat over de netlists en niet over de zoektochten.",
+ "seed": 20260827,
+ "phase_priority": 0.75,
+ "phase_priority_bron": "gesteld door Sander, 2026-09-16 — fase-prioriteit, respons 25 % / fase 75 %",
+ "gestelde_kruispunten_hz": [
+  [
+   362.3,
+   518.8
+  ],
+  [
+   2251.4
+  ]
+ ],
+ "gesteld_op": "2026-09-16",
+ "gesteld_waarom": "beide woofer→mid-posities en de ene mid→tweeter-positie komen uit het M-2b-veld ZELF (KAND-V2-1 en KAND-V2-2 staan erop, en 2251,4 Hz draagt élke kandidaat van dat veld). Zij zijn dus niet nieuw; wat nieuw is, is dat zij bij naam gevraagd worden (U-5) in plaats van uit een raster te vallen, zodat de vergelijking over één factor gaat.",
+ "bestanden": [
+  {
+   "name": "KAND-V2-2F",
+   "key": "KAND_V2_2F",
+   "tegenhanger": "KAND_V2_2",
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated"
+  }
+ ],
+ "kandidaat_uitkomst": {
+  "KAND_V2_1F": {
+   "bevroren": false,
+   "reden": "the delivered network amplifies woofer's reflex peak by 1.80 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "regels": [
+    "budget"
+   ]
+  },
+  "KAND_V2_2F": {
+   "bevroren": true,
+   "tegenhanger": "KAND_V2_2",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "looptijd_s": 1828.635,
+   "onderdelen": 73,
+   "tuner_rimpel_dB": 2.312,
+   "tuner_fase_graden": 9.62,
+   "evaluaties": 135332,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.5095,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.3014,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.5949,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -9.4192,
+     "grens": -8.150609079106106
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -29.5131,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.1722,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 19.5679,
+     "grens": null
+    }
+   ],
+   "herkomst": "woofer→mid at 518.8 Hz, LR4: STATED BY THE DESIGNER (2026-09-16), position 2 of 2 on this handover; cage 489.7–549.6 Hz (one spacing wide, centred on the stated frequency and not clipped to the window); window 147.9–549.7 Hz — the stated position is INSIDE it, so this candidate is treated exactly as a generated one; order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them. | mid→tweeter at 2251.4 Hz, LR4: STATED BY THE DESIGNER (2026-09-16), position 1 of 1 on this handover; cage 2125–2385.3 Hz (one spacing wide, centred on the stated frequency and not clipped to the window); window 2200–2304 Hz — the stated position is INSIDE it, so this candidate is treated exactly as a generated one; order 4: the order the designer stated for this handover. Kept beside the demanded one rather than instead of it — \"what the measurements require\" and \"what you asked for\" are two questions, and there is no weighting here that could merge them."
+  }
+ }
+}

@@ -276,6 +276,27 @@ export interface SystemSummary {
    */
   sumDb: number[] | null;
   /**
+   * M-4 — THE BRANCH RESPONSES THE M-K JUDGEMENT RESTED ON, on `analysisGrid`.
+   *
+   * Exposed for exactly the reason `sumDb` above is, one step earlier in the
+   * same chain: a caller that wants the RELATIVE PHASE of two ways, or what
+   * happens to the sum when one way is reversed, had to re-derive every branch
+   * — interpolate `onAxisFull`, multiply by `analysis.transferByModel`, and
+   * hope it matched. That is a second derivation of the thing `phaseTracking`
+   * was measured on, and a second derivation is a second thing that can
+   * disagree with the one the verdict came from (the V32 shape: one
+   * implementation, more than one reader).
+   *
+   * FILTERED, UNCLIPPED and in the report's own vocabulary (dB and degrees,
+   * like `sumDb`), in `driversLowToHigh` order. Null when no filter is loaded:
+   * there are then no branches, only measurements.
+   *
+   * A READING AND NOT A METRIC. No version string, no gate, no requirement —
+   * this is the same array `summarise` already held, handed out instead of
+   * dropped.
+   */
+  branches: { driver: string; db: number[]; phaseDeg: number[] }[] | null;
+  /**
    * A5e.1 (F3) — the summed response judged against the target curve: the
    * WINDOW (smoothed, the acceptance question), the RMS DEVIATION (raw, the
    * sorting question) and the narrow peaks the smoothing removed.
@@ -1840,6 +1861,19 @@ function summarise(
   return {
     splWindowDb,
     sumDb: sum && grid ? sum.map((z) => dbAmp(cabs(z))) : null,
+    /* M-4 — the same branches `phaseTracking` above was measured on, in
+     * `driversLowToHigh` order, handed out rather than dropped. `order` and
+     * not the map's own insertion order, because a caller reading "the lowest
+     * way" off index 0 must get the lowest way. */
+    branches:
+      grid && branchComplex.size > 0
+        ? order.flatMap((driver) => {
+            const z = branchComplex.get(driver);
+            return z
+              ? [{ driver, db: z.map((p) => dbAmp(cabs(p))), phaseDeg: z.map((p) => cargDeg(p)) }]
+              : [];
+          })
+        : null,
     response,
     splBandHz: band,
     phaseTracking,

@@ -41,6 +41,24 @@ import {
 import { CHAIN_CHOICE_KEYS, chainDeclarationCoverage } from './chainChoices.ts';
 import { withDeclaredSourceLimit } from './worker.ts';
 
+/**
+ * M-4 — DE ENIGE SLEUTEL DIE IN BEIDE CLASSIFICATIES STAAT, met naam.
+ *
+ * Tot M-4 waren `CHAIN_CHOICE_KEYS` en de drie tuner-lijsten DISJUNCT, en die
+ * disjunctheid was geen principe maar een waarneming: de vijf ketensleutels van
+ * toen bestaan eenvoudigweg niet in `NetOptimizeOptions`. `phasePriority`
+ * bestaat er wél in, en hij hoort in béide lijsten omdat hij DRIE lezers heeft
+ * op twee lagen — `designThreeWay` en `synthesize` vóór de tuner,
+ * `optimizeNetworkValues` erin. Eén knop, twee lagen, twee klassen die
+ * hetzelfde zeggen: hij mag niet stil geërfd worden.
+ *
+ * DE UITZONDERING IS EEN VERZAMELING MET NAAM EN GEEN VERSOEPELING (de
+ * V47/V48-les): een NIEUWE sleutel die in beide lijsten opduikt valt hier nog
+ * steeds om, want de verzameling wordt op GELIJKHEID getoetst en niet als
+ * filter gebruikt.
+ */
+const CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER = ['phasePriority'] as const;
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENGINE2 = join(HERE, '..');
 const NET_OPTIMIZER = join(ENGINE2, '..', 'netOptimizer.ts');
@@ -186,8 +204,16 @@ describe('F4c — every tuner option has a class', () => {
     expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(58);
     expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 13]);
     for (const k of CHAIN_CHOICE_KEYS) {
+      if ((CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER as readonly string[]).includes(k)) continue;
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
     }
+    /* M-4 — en de uitzondering is exact de uitzondering: élke sleutel die in
+     * beide lijsten staat moet hierboven met naam en reden staan. */
+    expect(
+      CHAIN_CHOICE_KEYS.filter((k) => (classified as readonly string[]).includes(k)).sort(),
+      'a chain key turned up in the tuner classification without being named as one of the ' +
+        'keys both layers read',
+    ).toEqual([...CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER].sort());
     // V31: instrumentation, never a choice — the key may not silently migrate
     // into the class whose values are only allowed to come from a candidate.
     expect(POLISH_KEYS).toContain('rejectedTuneReport');
@@ -999,8 +1025,16 @@ describe('F4d — a generated candidate declares every choice key', () => {
     });
     expect(holed.complete).toBe(false);
     /* V51 — the third key is missing here as well; a key with an ABSENT state
-     * still has to be declared in one. A5e.3b — and the fourth. */
-    expect(holed.missing).toEqual(['leanTargetDb', 'lowestWayLevelWork', 'lowestWayCoilMaxHenry', 'synthesisGrid']);
+     * still has to be declared in one. A5e.3b — and the fourth. M-4 — and the
+     * sixth, which is exactly why the gap detection is asserted by NAME: a key
+     * added to the list and forgotten in the derivation shows up here. */
+    expect(holed.missing).toEqual([
+      'leanTargetDb',
+      'lowestWayLevelWork',
+      'lowestWayCoilMaxHenry',
+      'synthesisGrid',
+      'phasePriority',
+    ]);
   });
 
   it('V41 — neither chain key may migrate into the tuner\'s own classification', () => {
@@ -1011,10 +1045,20 @@ describe('F4d — a generated candidate declares every choice key', () => {
      * may PROPOSE and `leanTargetDb` whether `synthesize` BUILDS it; the value
      * tune only moves numbers between the components those two chose. */
     for (const k of CHAIN_CHOICE_KEYS) {
+      if ((CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER as readonly string[]).includes(k)) continue;
       expect(CHOICE_KEYS as readonly string[]).not.toContain(k);
       expect(GREY_KEYS as readonly string[]).not.toContain(k);
       expect(POLISH_KEYS as readonly string[]).not.toContain(k);
     }
+    /* M-4 — `phasePriority` is de uitzondering, en hij staat in GREY en nergens
+     * anders. GREY is de juiste klasse één laag lager: een GEWICHT dat de
+     * schaal vormt en dus bepaalt welk deel van het veld de zoektocht ooit
+     * bezoekt (A3j), en de regel daar is dat een v2-kandidaat hem EXPLICIET
+     * stelt. Zou hij ooit naar CHOICE of POLISH verhuizen, dan zegt de ene laag
+     * iets anders over hem dan de andere. */
+    expect(GREY_KEYS).toContain('phasePriority');
+    expect(CHOICE_KEYS as readonly string[]).not.toContain('phasePriority');
+    expect(POLISH_KEYS as readonly string[]).not.toContain('phasePriority');
     // And the list is exactly the list: a new key is a decision somebody has
     // to write down, not something that arrives with a rename. V51 wrote the
     // third down (`lowestWayLevelWork`): whether the LOWEST way may carry level
@@ -1027,6 +1071,20 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // grid points the synthesis fits on — the silent ghost at the grid top is
     // a dead point the two-way chain's fit chased into a degenerate branch, and
     // whether the fit sees it is decided before the tuner exists.
-    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual(['eqBands', 'leanTargetDb', 'lowestWayCoilMaxHenry', 'lowestWayLevelWork', 'synthesisGrid']);
+    // M-4 wrote the sixth down (`phasePriority`): how the budget is split
+    // between response and phase. Its readers are the design step (which
+    // alignment and polarity per flank), the synthesis step (how each branch is
+    // fitted) and only THEN the tuner — so two of the three run before the
+    // topology exists, which is the test every key in this list has to pass.
+    // The first key here that is also classified one layer down; see
+    // `CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER`.
+    expect([...CHAIN_CHOICE_KEYS].sort()).toEqual([
+      'eqBands',
+      'leanTargetDb',
+      'lowestWayCoilMaxHenry',
+      'lowestWayLevelWork',
+      'phasePriority',
+      'synthesisGrid',
+    ]);
   });
 });

@@ -1,0 +1,1222 @@
+{
+ "_": "M-4 — de vergelijkingstabel. Klasse B: elk getal is een functie van de meetset en een netlist-bestand, gemeten door één bank. Geen zoektocht erin. Zie scripts/measure-m4-comparison.ts.",
+ "gemeten_op": "2026-09-16",
+ "meetset": "m3",
+ "spoor_octaven": 1,
+ "paren": [
+  {
+   "kruispunt_hz": 518.8,
+   "basis": {
+    "key": "KAND_V2_2",
+    "file": "KAND-V2-2.adsfilter.json",
+    "phasePriority": 0.5,
+    "crossings": [
+     {
+      "pair": "woofer→mid",
+      "hz": 467.36
+     },
+     {
+      "pair": "mid→tweeter",
+      "hz": 2242.16
+     }
+    ],
+    "mk": [
+     {
+      "pair": "woofer→mid",
+      "hz": 467.36,
+      "deg": 13.12,
+      "n": 182,
+      "band": [
+       396.85,
+       939.11
+      ],
+      "octaveControlDeg": 13,
+      "overlapControlDeg": 19.75
+     },
+     {
+      "pair": "mid→tweeter",
+      "hz": 2242.16,
+      "deg": 5.41,
+      "n": 244,
+      "band": [
+       1354.75,
+       4306.16
+      ],
+      "octaveControlDeg": 5.22,
+      "overlapControlDeg": 5.41
+     }
+    ],
+    "nulls": [
+     {
+      "pair": "woofer→mid",
+      "crossingHz": 467.36241976477083,
+      "atHz": 398.74,
+      "depthDb": 23.85
+     },
+     {
+      "pair": "mid→tweeter",
+      "crossingHz": 2242.162982221201,
+      "atHz": 2243.57,
+      "depthDb": 42.03
+     }
+    ],
+    "traces": [
+     {
+      "pair": "woofer→mid",
+      "points": [
+       {
+        "hz": 234,
+        "relDeg": 52.14,
+        "levelDb": -23.52
+       },
+       {
+        "hz": 247.75,
+        "relDeg": 55.99,
+        "levelDb": -20.73
+       },
+       {
+        "hz": 262.31,
+        "relDeg": 50.63,
+        "levelDb": -17.1
+       },
+       {
+        "hz": 277.73,
+        "relDeg": 42.54,
+        "levelDb": -14.88
+       },
+       {
+        "hz": 294.05,
+        "relDeg": 36.5,
+        "levelDb": -13.42
+       },
+       {
+        "hz": 311.33,
+        "relDeg": 43.36,
+        "levelDb": -10.85
+       },
+       {
+        "hz": 331.2,
+        "relDeg": 32.1,
+        "levelDb": -8.1
+       },
+       {
+        "hz": 350.66,
+        "relDeg": 23.67,
+        "levelDb": -5.36
+       },
+       {
+        "hz": 371.27,
+        "relDeg": 8.93,
+        "levelDb": -2.93
+       },
+       {
+        "hz": 393.09,
+        "relDeg": -1.83,
+        "levelDb": -2.23
+       },
+       {
+        "hz": 416.19,
+        "relDeg": -12.37,
+        "levelDb": -1.32
+       },
+       {
+        "hz": 440.65,
+        "relDeg": -17.85,
+        "levelDb": -1.41
+       },
+       {
+        "hz": 466.55,
+        "relDeg": -14.73,
+        "levelDb": -0.13
+       },
+       {
+        "hz": 496.33,
+        "relDeg": -15.49,
+        "levelDb": 0.35
+       },
+       {
+        "hz": 525.49,
+        "relDeg": -14.79,
+        "levelDb": 1.57
+       },
+       {
+        "hz": 556.38,
+        "relDeg": -9.6,
+        "levelDb": 2.96
+       },
+       {
+        "hz": 589.08,
+        "relDeg": -8.52,
+        "levelDb": 4.37
+       },
+       {
+        "hz": 623.7,
+        "relDeg": -7.95,
+        "levelDb": 6.13
+       },
+       {
+        "hz": 660.35,
+        "relDeg": -7.6,
+        "levelDb": 7.62
+       },
+       {
+        "hz": 699.16,
+        "relDeg": -5.16,
+        "levelDb": 8.86
+       },
+       {
+        "hz": 740.25,
+        "relDeg": -0.01,
+        "levelDb": 10.04
+       },
+       {
+        "hz": 787.49,
+        "relDeg": 9.34,
+        "levelDb": 11.51
+       },
+       {
+        "hz": 833.77,
+        "relDeg": 20.4,
+        "levelDb": 13.61
+       },
+       {
+        "hz": 882.77,
+        "relDeg": 29.35,
+        "levelDb": 16.46
+       },
+       {
+        "hz": 934.65,
+        "relDeg": 34.21,
+        "levelDb": 19.54
+       }
+      ]
+     },
+     {
+      "pair": "mid→tweeter",
+      "points": [
+       {
+        "hz": 1125.26,
+        "relDeg": 10.61,
+        "levelDb": -26.68
+       },
+       {
+        "hz": 1185.74,
+        "relDeg": 3.55,
+        "levelDb": -23.84
+       },
+       {
+        "hz": 1255.42,
+        "relDeg": -0.38,
+        "levelDb": -22.59
+       },
+       {
+        "hz": 1335.55,
+        "relDeg": 9.06,
+        "levelDb": -20.62
+       },
+       {
+        "hz": 1414.04,
+        "relDeg": 11.78,
+        "levelDb": -16.84
+       },
+       {
+        "hz": 1497.14,
+        "relDeg": 0.69,
+        "levelDb": -14.33
+       },
+       {
+        "hz": 1585.13,
+        "relDeg": 0.25,
+        "levelDb": -13.98
+       },
+       {
+        "hz": 1678.28,
+        "relDeg": 11.47,
+        "levelDb": -11.83
+       },
+       {
+        "hz": 1776.91,
+        "relDeg": 12.88,
+        "levelDb": -8.66
+       },
+       {
+        "hz": 1881.34,
+        "relDeg": 13.4,
+        "levelDb": -6.01
+       },
+       {
+        "hz": 2001.41,
+        "relDeg": 8.32,
+        "levelDb": -2.42
+       },
+       {
+        "hz": 2119.03,
+        "relDeg": -3.01,
+        "levelDb": -1.01
+       },
+       {
+        "hz": 2243.57,
+        "relDeg": -0.72,
+        "levelDb": 0.02
+       },
+       {
+        "hz": 2375.42,
+        "relDeg": -2.01,
+        "levelDb": 2.26
+       },
+       {
+        "hz": 2515.03,
+        "relDeg": -5.63,
+        "levelDb": 3.7
+       },
+       {
+        "hz": 2662.83,
+        "relDeg": -3.19,
+        "levelDb": 4.6
+       },
+       {
+        "hz": 2819.33,
+        "relDeg": -0.69,
+        "levelDb": 7.15
+       },
+       {
+        "hz": 2999.26,
+        "relDeg": -0.12,
+        "levelDb": 8.44
+       },
+       {
+        "hz": 3175.52,
+        "relDeg": 1.01,
+        "levelDb": 10.41
+       },
+       {
+        "hz": 3362.15,
+        "relDeg": 0.29,
+        "levelDb": 12.92
+       },
+       {
+        "hz": 3559.74,
+        "relDeg": -2.66,
+        "levelDb": 12.75
+       },
+       {
+        "hz": 3768.94,
+        "relDeg": 8.62,
+        "levelDb": 15.33
+       },
+       {
+        "hz": 3990.44,
+        "relDeg": 8.77,
+        "levelDb": 18.27
+       },
+       {
+        "hz": 4224.96,
+        "relDeg": 6.23,
+        "levelDb": 18.41
+       },
+       {
+        "hz": 4473.26,
+        "relDeg": -1.57,
+        "levelDb": 20.88
+       }
+      ]
+     }
+    ],
+    "rmsFullDb": 1.001,
+    "windowFullDb": 2.083,
+    "rmsFromTweeterGateDb": 0.998,
+    "windowFromTweeterGateDb": 2.083,
+    "resonantDb": -0.936,
+    "liftDb": 1.638,
+    "minZOhm": 2.578,
+    "partCount": 36,
+    "bomEur": 263.87,
+    "bomUnrealised": [
+     "R7",
+     "C·R17"
+    ],
+    "bomItems": [
+     {
+      "id": "L1",
+      "label": "JAZ-AC-000-1506 7.00 mH",
+      "eur": 51.29
+     },
+     {
+      "id": "C2",
+      "label": "JAZ-ELKO-001-6077 = 120.0 µF",
+      "eur": 3.82
+     },
+     {
+      "id": "L3",
+      "label": "JAZ-AC-000-1047 1.04 mH",
+      "eur": 14
+     },
+     {
+      "id": "C4",
+      "label": "JAZ-ELKO-001-6014 + JAZ-ELCO-47 = 7.4 µF",
+      "eur": 1.88
+     },
+     {
+      "id": "C6",
+      "label": "JAZ-ELCO-47 + JAZ-ELKO-001-6032 = 12.9 µF",
+      "eur": 2.34
+     },
+     {
+      "id": "L8",
+      "label": "JAZ-AC-000-1167 6.00 mH",
+      "eur": 50.2
+     },
+     {
+      "id": "C9",
+      "label": "JAZ-ELKO-001-6094 + JAZ-ELKO-001-6097 = 1290.0 µF",
+      "eur": 25.9
+     },
+     {
+      "id": "R10",
+      "label": "JAZ-SUPR-10-0R75 0.75 Ω",
+      "eur": 2.63
+     },
+     {
+      "id": "B·C1",
+      "label": "JAZ-ELKO-001-6071 = 82.0 µF",
+      "eur": 2.84
+     },
+     {
+      "id": "B·L2",
+      "label": "JAZ-AC-000-0272 1.40 mH",
+      "eur": 10.45
+     },
+     {
+      "id": "B·C3",
+      "label": "JAZ-ELCO-470 = 47.0 µF",
+      "eur": 2.22
+     },
+     {
+      "id": "B·L4",
+      "label": "JAZ-AC-000-1959 7.00 mH",
+      "eur": 24.15
+     },
+     {
+      "id": "B·L5",
+      "label": "JAZ-AC-000-0215 0.64 mH",
+      "eur": 6.44
+     },
+     {
+      "id": "B·C6",
+      "label": "JAZ-ELKO-001-6044 = 18.0 µF",
+      "eur": 1.5
+     },
+     {
+      "id": "B·L7",
+      "label": "JAZ-AC-000-1277 0.18 mH",
+      "eur": 4.99
+     },
+     {
+      "id": "B·C8",
+      "label": "JAZ-CC-001-0232 = 1.1 µF",
+      "eur": 1.8
+     },
+     {
+      "id": "B·R9",
+      "label": "JAZ-MOX-10-0R22 + JAZ-MOX-10-2R4 = 2.62 Ω (serie)",
+      "eur": 2.8
+     },
+     {
+      "id": "B·R10",
+      "label": "JAZ-MOX-10-1R1 1.1 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "B·C12",
+      "label": "JAZ-ELCO-470 = 47.0 µF",
+      "eur": 2.22
+     },
+     {
+      "id": "B·R13",
+      "label": "JAZ-MOX-10-10R 10 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·C1",
+      "label": "JAZ-ELKO-001-6014 + JAZ-ELKO-001-6014 = 5.4 µF",
+      "eur": 1.72
+     },
+     {
+      "id": "C·L2",
+      "label": "JAZ-AC-000-0821 0.69 mH",
+      "eur": 6.6
+     },
+     {
+      "id": "C·C3",
+      "label": "JAZ-ELKO-001-6056 = 33.0 µF",
+      "eur": 2.08
+     },
+     {
+      "id": "C·R5",
+      "label": "JAZ-MOX-10-1R0 1 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·R6",
+      "label": "JAZ-MOX-10-1R1 1.1 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·R7",
+      "label": "JAZ-MOX-10-47R0 47 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·C8",
+      "label": "JAZ-ELKO-001-6032 + JAZ-ELKO-001-6041 = 23.2 µF",
+      "eur": 2.64
+     },
+     {
+      "id": "C·L9",
+      "label": "JAZ-AC-000-1401 0.50 mH",
+      "eur": 5.9
+     },
+     {
+      "id": "C·C10",
+      "label": "JAZ-ELCO-1000 = 100.0 µF",
+      "eur": 3.48
+     },
+     {
+      "id": "C·L12",
+      "label": "JAZ-AC-000-1943 1.60 mH",
+      "eur": 11.06
+     },
+     {
+      "id": "C·C13",
+      "label": "JAZ-CC-001-0221 = 0.5 µF",
+      "eur": 1.54
+     },
+     {
+      "id": "C·R14",
+      "label": "JAZ-MOX-10-4R3 4.3 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·L15",
+      "label": "JAZ-AC-000-1009 0.35 mH",
+      "eur": 6.14
+     },
+     {
+      "id": "C·C16",
+      "label": "JAZ-ELKO-001-6071 = 82.0 µF",
+      "eur": 2.84
+     }
+    ],
+    "verdicts": [
+     {
+      "gate": "M-A",
+      "subject": "system",
+      "active": false,
+      "pass": true,
+      "value": 0.508,
+      "limit": null
+     },
+     {
+      "gate": "M-B/EPDR",
+      "subject": "system",
+      "active": false,
+      "pass": true,
+      "value": 1.292,
+      "limit": null
+     },
+     {
+      "gate": "M-B/|Z|",
+      "subject": "system",
+      "active": true,
+      "pass": true,
+      "value": 2.578,
+      "limit": 2.6
+     },
+     {
+      "gate": "M-C",
+      "subject": "mid",
+      "active": true,
+      "pass": true,
+      "value": -47.442,
+      "limit": -3.443
+     },
+     {
+      "gate": "M-C",
+      "subject": "tweeter",
+      "active": true,
+      "pass": true,
+      "value": -33.548,
+      "limit": -20
+     },
+     {
+      "gate": "M-A/part",
+      "subject": "system",
+      "active": true,
+      "pass": true,
+      "value": 3.278,
+      "limit": 5
+     },
+     {
+      "gate": "M-L",
+      "subject": "system",
+      "active": false,
+      "pass": true,
+      "value": 26.713,
+      "limit": null
+     }
+    ]
+   },
+   "fase": {
+    "key": "KAND_V2_2F",
+    "file": "KAND-V2-2F.adsfilter.json",
+    "phasePriority": 0.75,
+    "crossings": [
+     {
+      "pair": "woofer→mid",
+      "hz": 503.39
+     },
+     {
+      "pair": "mid→tweeter",
+      "hz": 2331.24
+     }
+    ],
+    "mk": [
+     {
+      "pair": "woofer→mid",
+      "hz": 503.39,
+      "deg": 14.94,
+      "n": 161,
+      "band": [
+       396.85,
+       849.79
+      ],
+      "octaveControlDeg": 12.54,
+      "overlapControlDeg": 73.61
+     },
+     {
+      "pair": "mid→tweeter",
+      "hz": 2331.24,
+      "deg": 5.98,
+      "n": 187,
+      "band": [
+       1615.59,
+       3915.2
+      ],
+      "octaveControlDeg": 21.21,
+      "overlapControlDeg": 5.98
+     }
+    ],
+    "nulls": [
+     {
+      "pair": "woofer→mid",
+      "crossingHz": 503.3899862850442,
+      "atHz": 503.46,
+      "depthDb": 17.41
+     },
+     {
+      "pair": "mid→tweeter",
+      "crossingHz": 2331.2376600898315,
+      "atHz": 2330.63,
+      "depthDb": 29.86
+     }
+    ],
+    "traces": [
+     {
+      "pair": "woofer→mid",
+      "points": [
+       {
+        "hz": 234,
+        "relDeg": -120.46,
+        "levelDb": -19.07
+       },
+       {
+        "hz": 247.75,
+        "relDeg": -112.94,
+        "levelDb": -18.59
+       },
+       {
+        "hz": 262.31,
+        "relDeg": -112.84,
+        "levelDb": -17.42
+       },
+       {
+        "hz": 277.73,
+        "relDeg": -112.75,
+        "levelDb": -17.8
+       },
+       {
+        "hz": 294.05,
+        "relDeg": -106.7,
+        "levelDb": -18.96
+       },
+       {
+        "hz": 311.33,
+        "relDeg": -82.81,
+        "levelDb": -18.76
+       },
+       {
+        "hz": 331.2,
+        "relDeg": -70.82,
+        "levelDb": -17.76
+       },
+       {
+        "hz": 350.66,
+        "relDeg": -56.46,
+        "levelDb": -15.61
+       },
+       {
+        "hz": 371.27,
+        "relDeg": -51.22,
+        "levelDb": -12.92
+       },
+       {
+        "hz": 393.09,
+        "relDeg": -46.46,
+        "levelDb": -12.51
+       },
+       {
+        "hz": 416.19,
+        "relDeg": -23.06,
+        "levelDb": -9.88
+       },
+       {
+        "hz": 440.65,
+        "relDeg": -20.47,
+        "levelDb": -6.67
+       },
+       {
+        "hz": 466.55,
+        "relDeg": -14.23,
+        "levelDb": -3.22
+       },
+       {
+        "hz": 496.33,
+        "relDeg": -13.95,
+        "levelDb": -0.87
+       },
+       {
+        "hz": 525.49,
+        "relDeg": -13.7,
+        "levelDb": 1.75
+       },
+       {
+        "hz": 556.38,
+        "relDeg": -9.86,
+        "levelDb": 4.31
+       },
+       {
+        "hz": 589.08,
+        "relDeg": -10.83,
+        "levelDb": 6.73
+       },
+       {
+        "hz": 623.7,
+        "relDeg": -12.94,
+        "levelDb": 9.32
+       },
+       {
+        "hz": 660.35,
+        "relDeg": -15.7,
+        "levelDb": 11.51
+       },
+       {
+        "hz": 699.16,
+        "relDeg": -16.77,
+        "levelDb": 13.33
+       },
+       {
+        "hz": 740.25,
+        "relDeg": -15.52,
+        "levelDb": 14.97
+       },
+       {
+        "hz": 787.49,
+        "relDeg": -10.81,
+        "levelDb": 16.75
+       },
+       {
+        "hz": 833.77,
+        "relDeg": -3.94,
+        "levelDb": 19.01
+       },
+       {
+        "hz": 882.77,
+        "relDeg": 0.9,
+        "levelDb": 21.88
+       },
+       {
+        "hz": 934.65,
+        "relDeg": 2,
+        "levelDb": 24.88
+       }
+      ]
+     },
+     {
+      "pair": "mid→tweeter",
+      "points": [
+       {
+        "hz": 1125.26,
+        "relDeg": -141.99,
+        "levelDb": -34.96
+       },
+       {
+        "hz": 1185.74,
+        "relDeg": -123.05,
+        "levelDb": -34.29
+       },
+       {
+        "hz": 1255.42,
+        "relDeg": -96.41,
+        "levelDb": -33.5
+       },
+       {
+        "hz": 1335.55,
+        "relDeg": -62.13,
+        "levelDb": -30.39
+       },
+       {
+        "hz": 1414.04,
+        "relDeg": -44.85,
+        "levelDb": -25.31
+       },
+       {
+        "hz": 1497.14,
+        "relDeg": -45.99,
+        "levelDb": -21.72
+       },
+       {
+        "hz": 1585.13,
+        "relDeg": -38.72,
+        "levelDb": -20.57
+       },
+       {
+        "hz": 1678.28,
+        "relDeg": -20.66,
+        "levelDb": -17.82
+       },
+       {
+        "hz": 1776.91,
+        "relDeg": -12.39,
+        "levelDb": -14.16
+       },
+       {
+        "hz": 1881.34,
+        "relDeg": -4.76,
+        "levelDb": -11
+       },
+       {
+        "hz": 2001.41,
+        "relDeg": -2.05,
+        "levelDb": -6.71
+       },
+       {
+        "hz": 2119.03,
+        "relDeg": -6.75,
+        "levelDb": -4.44
+       },
+       {
+        "hz": 2243.57,
+        "relDeg": 0.75,
+        "levelDb": -2.35
+       },
+       {
+        "hz": 2375.42,
+        "relDeg": 2.83,
+        "levelDb": 1.04
+       },
+       {
+        "hz": 2515.03,
+        "relDeg": 0.46,
+        "levelDb": 3.63
+       },
+       {
+        "hz": 2662.83,
+        "relDeg": 2.24,
+        "levelDb": 5.61
+       },
+       {
+        "hz": 2819.33,
+        "relDeg": 2.54,
+        "levelDb": 9.04
+       },
+       {
+        "hz": 2999.26,
+        "relDeg": -0.48,
+        "levelDb": 11.03
+       },
+       {
+        "hz": 3175.52,
+        "relDeg": -3.08,
+        "levelDb": 13.4
+       },
+       {
+        "hz": 3362.15,
+        "relDeg": -7.43,
+        "levelDb": 16.09
+       },
+       {
+        "hz": 3559.74,
+        "relDeg": -13.53,
+        "levelDb": 15.93
+       },
+       {
+        "hz": 3768.94,
+        "relDeg": -4.75,
+        "levelDb": 18.38
+       },
+       {
+        "hz": 3990.44,
+        "relDeg": -6.31,
+        "levelDb": 21.11
+       },
+       {
+        "hz": 4224.96,
+        "relDeg": -9.65,
+        "levelDb": 21.01
+       },
+       {
+        "hz": 4473.26,
+        "relDeg": -17.22,
+        "levelDb": 23.25
+       }
+      ]
+     }
+    ],
+    "rmsFullDb": 1.076,
+    "windowFullDb": 1.64,
+    "rmsFromTweeterGateDb": 1.068,
+    "windowFromTweeterGateDb": 1.63,
+    "resonantDb": -0.922,
+    "liftDb": 1.246,
+    "minZOhm": 2.595,
+    "partCount": 38,
+    "bomEur": 502.95,
+    "bomUnrealised": [],
+    "bomItems": [
+     {
+      "id": "L1",
+      "label": "JAZ-AC-000-1639 4.10 mH",
+      "eur": 36.38
+     },
+     {
+      "id": "C2",
+      "label": "JAZ-ELKO-001-6071 + JAZ-ELKO-001-6071 = 164.0 µF",
+      "eur": 5.68
+     },
+     {
+      "id": "L3",
+      "label": "JAZ-AC-000-1047 1.04 mH",
+      "eur": 14
+     },
+     {
+      "id": "L5",
+      "label": "JAZ-AC-000-0317 22.00 mH",
+      "eur": 102.97
+     },
+     {
+      "id": "C6",
+      "label": "JAZ-ELKO-001-6077 + JAZ-ELCO-2200 = 340.0 µF",
+      "eur": 9.22
+     },
+     {
+      "id": "R7",
+      "label": "JAZ-MOX-10-1R0 1 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "L8",
+      "label": "JAZ-AC-000-0211 + JAZ-AC-000-0701 = 17.40 mH (stapel)",
+      "eur": 117.28
+     },
+     {
+      "id": "C9",
+      "label": "JAZ-ELCO-1500 + JAZ-ELCO-2200 = 370.0 µF",
+      "eur": 9.72
+     },
+     {
+      "id": "R10",
+      "label": "JAZ-MOX-10-2R4 2.4 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "B·C1",
+      "label": "JAZ-ELKO-001-6059 + JAZ-ELCO-470 = 86.0 µF",
+      "eur": 4.38
+     },
+     {
+      "id": "B·L2",
+      "label": "JAZ-AC-000-0840 18.00 mH",
+      "eur": 39.68
+     },
+     {
+      "id": "B·C3",
+      "label": "JAZ-ELKO-001-6059 + JAZ-ELCO-470 = 86.0 µF",
+      "eur": 4.38
+     },
+     {
+      "id": "B·L4",
+      "label": "JAZ-AC-000-0722 + JAZ-AC-000-1962 = 10.02 mH (stapel)",
+      "eur": 32.12
+     },
+     {
+      "id": "B·L5",
+      "label": "JAZ-AC-000-0927 0.62 mH",
+      "eur": 6.44
+     },
+     {
+      "id": "B·C6",
+      "label": "JAZ-ELKO-001-6050 = 27.0 µF",
+      "eur": 2.07
+     },
+     {
+      "id": "B·L7",
+      "label": "JAZ-AC-000-1270 0.17 mH",
+      "eur": 4.99
+     },
+     {
+      "id": "B·R9",
+      "label": "JAZ-MOX-10-1R0 1 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "B·R10",
+      "label": "JAZ-MOX-10-2R2 2.2 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "B·R11",
+      "label": "JAZ-MOX-10-1R5 1.5 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "B·C12",
+      "label": "JAZ-ELCO-1000 = 100.0 µF",
+      "eur": 3.48
+     },
+     {
+      "id": "B·L13",
+      "label": "JAZ-AC-000-0936 2.30 mH",
+      "eur": 8.84
+     },
+     {
+      "id": "B·C14",
+      "label": "JAZ-ELCO-470 + JAZ-ELKO-001-6065 = 103.0 µF",
+      "eur": 4.56
+     },
+     {
+      "id": "B·R15",
+      "label": "JAZ-SUPR-10-0R75 0.75 Ω",
+      "eur": 2.63
+     },
+     {
+      "id": "B·L16",
+      "label": "JAZ-AC-000-0197 16.80 mH",
+      "eur": 38.44
+     },
+     {
+      "id": "B·C17",
+      "label": "JAZ-ELKO-001-6020 + JAZ-ELCO-47 = 8.6 µF",
+      "eur": 1.99
+     },
+     {
+      "id": "C·C1",
+      "label": "JAZ-ELKO-001-6056 = 33.0 µF",
+      "eur": 2.08
+     },
+     {
+      "id": "C·L2",
+      "label": "JAZ-AC-000-1975 3.50 mH",
+      "eur": 16.74
+     },
+     {
+      "id": "C·C3",
+      "label": "JAZ-ELKO-001-6056 = 33.0 µF",
+      "eur": 2.08
+     },
+     {
+      "id": "C·R5",
+      "label": "JAZ-MOX-10-1R5 1.5 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·R6",
+      "label": "JAZ-MOX-10-2R0 2 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·R7",
+      "label": "JAZ-MOX-10-47R0 47 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·C8",
+      "label": "JAZ-ELCO-22 + JAZ-ELKO-001-6020 = 6.1 µF",
+      "eur": 1.83
+     },
+     {
+      "id": "C·L9",
+      "label": "JAZ-AIR-10-022 0.22 mH",
+      "eur": 7.8
+     },
+     {
+      "id": "C·C10",
+      "label": "JAZ-ELKO-001-6020 = 3.9 µF",
+      "eur": 0.97
+     },
+     {
+      "id": "C·R11",
+      "label": "JAZ-MOX-10-4R7 4.7 Ω",
+      "eur": 1.4
+     },
+     {
+      "id": "C·L12",
+      "label": "JAZ-AC-000-0273 0.30 mH",
+      "eur": 5.86
+     },
+     {
+      "id": "C·C13",
+      "label": "JAZ-ELKO-001-6065 = 56.0 µF",
+      "eur": 2.34
+     },
+     {
+      "id": "C·R14",
+      "label": "JAZ-MOX-10-0R27 0.27 Ω",
+      "eur": 1.4
+     }
+    ],
+    "verdicts": [
+     {
+      "gate": "M-A",
+      "subject": "system",
+      "active": false,
+      "pass": true,
+      "value": 0.509,
+      "limit": null
+     },
+     {
+      "gate": "M-B/EPDR",
+      "subject": "system",
+      "active": false,
+      "pass": true,
+      "value": 1.301,
+      "limit": null
+     },
+     {
+      "gate": "M-B/|Z|",
+      "subject": "system",
+      "active": true,
+      "pass": true,
+      "value": 2.595,
+      "limit": 2.6
+     },
+     {
+      "gate": "M-C",
+      "subject": "mid",
+      "active": true,
+      "pass": true,
+      "value": -9.134,
+      "limit": -7.865
+     },
+     {
+      "gate": "M-C",
+      "subject": "tweeter",
+      "active": true,
+      "pass": true,
+      "value": -29.389,
+      "limit": -20
+     },
+     {
+      "gate": "M-A/part",
+      "subject": "system",
+      "active": true,
+      "pass": true,
+      "value": 1.172,
+      "limit": 5
+     },
+     {
+      "gate": "M-L",
+      "subject": "system",
+      "active": false,
+      "pass": true,
+      "value": 19.568,
+      "limit": null
+     }
+    ]
+   }
+  }
+ ],
+ "fit_onzekerheid": {
+  "_": "De fase onder de splice komt uit een MERGE, en een merge fit een niveau, een PURE VERTRAGING en een offset. Die vertraging is een modelparameter en geen gemeten aankomsttijd, dus een restfasefout van een paar graden bij de overname kan er vandaan komen. Twee onafhankelijke schattingen, allebei uit de bestandskoppen.",
+  "merges": [
+   {
+    "driver": "woofer",
+    "file": "woofer_up_hor_0_koan677_merged.frd",
+    "spliceBandHz": [
+     400,
+     550
+    ],
+    "gainDb": 3.33,
+    "delayMs": -5.5739,
+    "residualDeg": 3.2,
+    "residualDelayMs": 0.0593
+   },
+   {
+    "driver": "woofer",
+    "file": "woofer_down_hor_0_koan677_merged.frd",
+    "spliceBandHz": [
+     400,
+     550
+    ],
+    "gainDb": -0.64,
+    "delayMs": -5.7371,
+    "residualDeg": 3.8,
+    "residualDelayMs": 0.0704
+   },
+   {
+    "driver": "mid",
+    "file": "mid_hor_0_merged.frd",
+    "spliceBandHz": [
+     500,
+     800
+    ],
+    "gainDb": -13.68,
+    "delayMs": 0.6307,
+    "residualDeg": 2.5,
+    "residualDelayMs": 0.0231
+   },
+   {
+    "driver": "mid (M-1)",
+    "file": "Koan_M_merged.frd",
+    "spliceBandHz": [
+     500,
+     800
+    ],
+    "gainDb": -13.68,
+    "delayMs": 0.5819,
+    "residualDeg": 2.5,
+    "residualDelayMs": 0.0231
+   }
+  ],
+  "model_gevoeligheid_ms": 0.0488,
+  "model_gevoeligheid_waarom": "Koan_M_merged.frd (M-1) en mid_hor_0_merged.frd (M-3) zijn dezelfde NF en dezelfde FF met precies één factor anders: de fasewiskunde van het stapmodel. Er is geen nieuwe meting tussen, dus dit verschil is wat een MODELKEUZE alleen al aan de gefitte vertraging verzet.",
+  "residu_gevoeligheid_ms": 0.0704,
+  "graden_bij_overname": [
+   {
+    "paar": "woofer→mid",
+    "hz": 467.36,
+    "van_toepassing": true,
+    "van_toepassing_waarom": "de overname ligt ONDER de splice van minstens één van haar twee wegen, dus de gefitte vertraging draagt er fase",
+    "model_graden": 8.2,
+    "residu_graden": 11.8
+   },
+   {
+    "paar": "mid→tweeter",
+    "hz": 2242.16,
+    "van_toepassing": false,
+    "van_toepassing_waarom": "de overname ligt BOVEN de splice van beide wegen; daar IS de merge het verre veld zelf (M-3 mat 0,00°), dus de fit draagt er niets",
+    "model_graden": null,
+    "residu_graden": null
+   }
+  ]
+ }
+}

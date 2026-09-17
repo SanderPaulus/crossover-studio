@@ -106,6 +106,17 @@ export interface MergeBlock {
   spliceGainDb?: number;
   /** The pure delay fitted and removed from the near-field half, ms. */
   spliceDelayMs?: number;
+  /**
+   * M-4 — how well one gain, one delay and one offset DESCRIBED the splice:
+   * the residual phase error over the fit band, degrees rms.
+   *
+   * Read for the same reason `spliceGainDb` is (I-2): the fitted delay is a
+   * MODEL parameter, not a measured arrival time, and a reader who wants to
+   * know how much of a remaining phase error could be the fit rather than the
+   * loudspeaker needs the fit's own quality beside its value. Absent on a file
+   * whose author did not record it — `null`, never nought (F0).
+   */
+  splicePhaseResidualDeg?: number;
   stepModel?: string;
   portModel?: string;
   prediction?: string;
@@ -296,8 +307,12 @@ export function parseArtaHeader(comments: readonly string[]): ArtaHeader {
       case 'merge splice fit': {
         const gain = value.match(/gain\s*(-?\d+(?:[.,]\d+)?)/i);
         const delay = value.match(/delay\s*(-?\d+(?:[.,]\d+)?)/i);
+        /* M-4 — matched by NAME like the two above, so the day someone writes
+         * the residual first nothing moves. */
+        const residual = value.match(/phase residual\s*(-?\d+(?:[.,]\d+)?)/i);
         if (gain) merge.spliceGainDb = parseLooseNumber(gain[1]);
         if (delay) merge.spliceDelayMs = parseLooseNumber(delay[1]);
+        if (residual) merge.splicePhaseResidualDeg = parseLooseNumber(residual[1]);
         break;
       }
       case 'merge step model':

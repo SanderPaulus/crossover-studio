@@ -4015,6 +4015,28 @@
     "wm_fase_oct_octaafgeknipt_V43": 32.19,
     "wm_fase_overlapvenster_V43": 28.67
    }
+  },
+  "KAND_V2_2F": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "DE FASE-PRIORITEITSVARIANT VAN KAND_V2_2 (M-4). Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2F, een BESTAND in test-fixtures/casus1/. Hetzelfde GESTELDE kruispunt als KAND_V2_2 en één andere schuif — respons/fase 25/75 in plaats van 50/50 — zodat de twee blokken naast elkaar zeggen wat die weging kostte. De referentie hangt aan het bestand en niet aan de run die het opleverde, dus klasse B en geen klasse C; waar hij vandaan komt staat in casus1_m4_herkomst.json. Dit is een ONTWERP en geen meetobject: hij haalt elke gewapende poort, net als zijn tegenhanger.",
+   "minZ": 2.59,
+   "minEPDR": 1.3,
+   "dissipatie_pct": 51,
+   "grootste_R_W_bij_100W": 11.72,
+   "Qes_mult": 1.44,
+   "lf_bult_extra_dB": 0.32,
+   "lf_lift_dB": 1.25,
+   "lf_opslingering_dB": -0.92,
+   "V_tweeter_op_fs_dB": -29.39,
+   "rms_vlakheid_dB": 1.08,
+   "spl_venster_pm_dB": 1.64,
+   "wm_fase_oct": 14.94,
+   "mt_fase_oct": 5.98,
+   "wm_fase_oct_octaafgeknipt_V43": 12.54,
+   "mt_fase_oct_octaafgeknipt_V43": 21.21,
+   "wm_fase_overlapvenster_V43": 73.61,
+   "mt_fase_overlapvenster_V43": 5.98
   }
  },
  "kruisvensters": {
@@ -4553,6 +4575,7 @@
    "C2_KAND_8": "C2-KAND-8.adsfilter.json",
    "C2_KAND_9": "C2-KAND-9.adsfilter.json",
    "C2_KAND_10": "C2-KAND-10.adsfilter.json",
+   "KAND_V2_2F": "KAND-V2-2F.adsfilter.json",
    "KAND_V2_1": "KAND-V2-1.adsfilter.json",
    "KAND_V2_2": "KAND-V2-2.adsfilter.json",
    "KAND_V2_3": "KAND-V2-3.adsfilter.json"
@@ -5344,8 +5367,8 @@
      "verdicht_ohm": 2.5992
     },
     "boven_speling": [],
-    "lezing_gelijk_aan_poortraster": 165,
-    "gemeten": 174,
+    "lezing_gelijk_aan_poortraster": 166,
+    "gemeten": 175,
     "extra_punten_mediaan": 12,
     "extra_punten_max": 13,
     "oordeel_wijkt_af_op": []
@@ -7918,6 +7941,21 @@
      "verdicht_ohm_E1": 2.5983,
      "verschil_verdicht_ohm_E1": 0,
      "verdicht_extra_punten_E1": 12,
+     "zelfde_oordeel_verdicht_E1": true
+    },
+    {
+     "netlist": "KAND_V2_2F",
+     "poortraster_ohm": 2.5949,
+     "poortraster_min_bij_hz": 49.83,
+     "barriereraster_ohm": 2.5954,
+     "_veiligheidsraster_ohm_tot_A5e3b": 2.5954,
+     "binnen_barriere_uitgestrektheid": true,
+     "binnen_veiligheidsraster_tot_A5e3b": true,
+     "verschil_ohm": 0.0005,
+     "zelfde_oordeel": true,
+     "verdicht_ohm_E1": 2.5949,
+     "verschil_verdicht_ohm_E1": 0,
+     "verdicht_extra_punten_E1": 13,
      "zelfde_oordeel_verdicht_E1": true
     },
     {
@@ -13064,6 +13102,35 @@
      }
     },
     {
+     "netlist": "KAND_V2_2F",
+     "dissipatie_pct": 50.95,
+     "grootste_R": "C·R5",
+     "grootste_R_ohm": 1.53,
+     "grootste_R_W_bij_100W": 11.72,
+     "Qes_mult": 1.44,
+     "term_ketenraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.403,
+      "noemer_ohm": 19.44,
+      "ratio": 0.0722,
+      "term": 0.0002605
+     },
+     "term_veiligheidsraster": {
+      "hz": 51.5,
+      "r_source_ohm": 1.401,
+      "noemer_ohm": 19.44,
+      "ratio": 0.0721,
+      "term": 0.0002597
+     },
+     "term_op_R_e": {
+      "hz": 51.5,
+      "r_source_ohm": 1.401,
+      "noemer_ohm": 3.05,
+      "ratio": 0.4593,
+      "term": 0.01055
+     }
+    },
+    {
      "netlist": "KAND_V2_1",
      "dissipatie_pct": 53.43,
      "grootste_R": "B·R9",
@@ -14610,6 +14677,13 @@
      "extra_dB": 1.34,
      "lift_dB": 1.14,
      "opslingering_dB": 0.2
+    },
+    {
+     "netlist": "KAND_V2_2F",
+     "weg": "woofer",
+     "extra_dB": 0.32,
+     "lift_dB": 1.25,
+     "opslingering_dB": -0.92
     },
     {
      "netlist": "KAND_V2_1",
@@ -20599,6 +20673,40 @@
      }
     },
     {
+     "netlist": "KAND_V2_2F",
+     "paar": "woofer|mid",
+     "mk_graden": 14.94,
+     "punten": 161,
+     "band_Hz": [
+      396.85,
+      849.79
+     ],
+     "octaafgeknipt_graden": 12.54,
+     "overlapvenster_graden": 73.61,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 663
+     }
+    },
+    {
+     "netlist": "KAND_V2_2F",
+     "paar": "mid|tweeter",
+     "mk_graden": 5.98,
+     "punten": 187,
+     "band_Hz": [
+      1615.59,
+      3915.2
+     ],
+     "octaafgeknipt_graden": 21.21,
+     "overlapvenster_graden": 5.98,
+     "afgewezen": {
+      "validity": 776,
+      "silence": 0,
+      "level": 637
+     }
+    },
+    {
      "netlist": "KAND_V2_1",
      "paar": "woofer|mid",
      "mk_graden": 10.57,
@@ -25653,6 +25761,17 @@
      "haalt_de_eis": true
     },
     {
+     "netlist": "KAND_V2_2F",
+     "weg": "woofer",
+     "R_e_ohm": 3.05,
+     "R_s_ohm": 1.36,
+     "padweerstand_ohm": 1.03,
+     "q_M_E": 1.44,
+     "q_padweerstand": 1.34,
+     "plafond_ohm": 4.27,
+     "haalt_de_eis": true
+    },
+    {
      "netlist": "KAND_V2_1",
      "weg": "woofer",
      "R_e_ohm": 3.05,
@@ -28565,6 +28684,22 @@
      "f_s_hz": 926,
      "doorlaatband_hz": "1710-20000 Hz (derived from this filter's own crossings)",
      "M_C_dB": -25.1,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2F",
+     "weg": "mid",
+     "f_s_hz": 89,
+     "doorlaatband_hz": "503-2331 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -9.13,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2F",
+     "weg": "tweeter",
+     "f_s_hz": 926,
+     "doorlaatband_hz": "2331-20000 Hz (derived from this filter's own crossings)",
+     "M_C_dB": -29.39,
      "haalt_de_eis": true
     },
     {
@@ -32456,6 +32591,28 @@
      "haalt_de_eis": true
     },
     {
+     "netlist": "KAND_V2_2F",
+     "weg": "mid",
+     "doorlaatband_gem_dB": -9.81,
+     "afgeleide_grens_dB": -7.87,
+     "gestelde_grens_dB": null,
+     "effectieve_grens_dB": -7.865152397018207,
+     "bron": "excursion-derived ceiling (no stated dB figure, V49)",
+     "M_C_dB": -9.13,
+     "haalt_de_eis": true
+    },
+    {
+     "netlist": "KAND_V2_2F",
+     "weg": "tweeter",
+     "doorlaatband_gem_dB": -10.42,
+     "afgeleide_grens_dB": 1.84,
+     "gestelde_grens_dB": -20,
+     "effectieve_grens_dB": -20,
+     "bron": "stated dB figure (stricter than the excursion-derived ceiling)",
+     "M_C_dB": -29.39,
+     "haalt_de_eis": true
+    },
+    {
      "netlist": "KAND_V2_1",
      "weg": "mid",
      "doorlaatband_gem_dB": -13.87,
@@ -34090,6 +34247,15 @@
      "ergste_bij_hz": 44.03
     },
     {
+     "netlist": "KAND_V2_2F",
+     "weg": "woofer",
+     "x_op_f0_mm": 13.72,
+     "fractie_van_limiet": 2.01,
+     "grens_gehaald_vanaf_hz": 10.07,
+     "ergste_mm": 20.02,
+     "ergste_bij_hz": 40.42
+    },
+    {
      "netlist": "KAND_V2_1",
      "weg": "woofer",
      "x_op_f0_mm": 8.12,
@@ -34306,6 +34472,7 @@
     "C2_KAND_8",
     "C2_KAND_9",
     "C2_KAND_10",
+    "KAND_V2_2F",
     "KAND_V2_1",
     "KAND_V2_2",
     "KAND_V2_3"
@@ -36706,6 +36873,20 @@
      "spoel_grens_A": null
     },
     {
+     "netlist": "KAND_V2_2F",
+     "heetste_R": "C·R5",
+     "heetste_R_ohm": 1.533,
+     "heetste_R_W": 1.17,
+     "heetste_R_W_bij_continu": 11.72,
+     "toegestaan_W": 5,
+     "haalt_de_eis": true,
+     "haalt_de_eis_bij_continu": false,
+     "drukste_spoel": "L1",
+     "drukste_spoel_piek_A": 19.57,
+     "drukste_spoel_bij_hz": 50,
+     "spoel_grens_A": null
+    },
+    {
      "netlist": "KAND_V2_1",
      "heetste_R": "B·R9",
      "heetste_R_ohm": 2.47,
@@ -36911,6 +37092,7 @@
     "C2_KAND_8",
     "C2_KAND_9",
     "C2_KAND_10",
+    "KAND_V2_2F",
     "KAND_V2_1",
     "KAND_V2_2",
     "KAND_V2_3"
@@ -41202,6 +41384,25 @@
      "haalt_M_A_part": true
     },
     {
+     "netlist": "KAND_V2_2F",
+     "serie_R": [],
+     "shunt_pad": [],
+     "geen_niveauwerk": true,
+     "serie_R_ohm": 0,
+     "spoel_DCR_ohm": 1.03,
+     "serie_R_totaal_ohm": 1.03,
+     "resonantieloze_shunts": [],
+     "binnen_eis": true,
+     "serie_L_mH_per_weg": {
+      "woofer": 5.34,
+      "mid": 0.81
+     },
+     "opslingering_dB": -0.92,
+     "Qes_mult": 1.44,
+     "heetste_R_W_bij_oordeelvermogen": 1.17,
+     "haalt_M_A_part": true
+    },
+    {
      "netlist": "KAND_V2_1",
      "serie_R": [],
      "shunt_pad": [],
@@ -42359,7 +42560,7 @@
    },
    "rapportraster": "het analyseraster van het rapport (de uitgestrektheid van de responsen, 1600 punten)",
    "dB_klasse": 0.15,
-   "vergeleken_paren": 345,
+   "vergeleken_paren": 347,
    "paren": [
     {
      "netlist": "V28_KAND_1",

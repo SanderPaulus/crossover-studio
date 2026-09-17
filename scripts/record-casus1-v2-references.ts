@@ -153,6 +153,50 @@ const r4 = (v: number | null | undefined): number | null =>
 const raw = JSON.parse(readFileSync(GOLDEN, 'utf-8')) as Record<string, Record<string, unknown>>;
 const netlists = raw.manifest_en_geometrie.netlists as Record<string, string>;
 
+/* ------------------------------------------------------------------ *
+ * M-4 — DE GEDATEERDE BRUGGEN OVERLEVEN EEN HERSCHRIJVING
+ * ------------------------------------------------------------------ */
+
+/**
+ * EEN BRUG IS BEWIJSMATERIAAL, EN DIT SCRIPT BOUWDE ELK BLOK VANAF NUL.
+ *
+ * Gevonden doordat M-4 het uitprobeerde vóór het erop vertrouwde. Elke blok dat
+ * hieronder geschreven wordt — `kandidaten.*` en élk afgeleid blok in
+ * `manifest_en_geometrie` — wordt VERVANGEN, en dat gooit de `_waarden_*`- en
+ * `_gemeten_op`-sleutels weg die een LATERE sessie eraan heeft toegevoegd. Op
+ * de boom van vandaag zijn dat M-3's `_waarden_M2b_tot_M3`-bruggen: de
+ * M-2b-lezing van élk faseveld dat M-3 verplaatste.
+ *
+ * WAT HET ERGER MAAKTE DAN "WEG": `record-casus1-m3-references.ts` schrijft die
+ * brug terug zodra hij ontbreekt, en hij bouwt hem uit WAT ER IN HET BLOK
+ * STAAT. Na een herschrijving staat daar de M-3-lezing, dus de "M-2b-brug" werd
+ * gevuld met M-3-waarden — 10,26 werd 10,57 — en de hele bevinding van M-3 was
+ * stil uitgewist terwijl beide scripts groen afsloten. Gemeten, niet
+ * beredeneerd: M-4 draaide de keten eerst op proefnetlists en las het terug.
+ *
+ * DE REGEL: een sleutel die met `_` begint en die dit script zelf niet schrijft,
+ * hoort bij een ANDERE sessie en wordt doorgedragen. `_` zelf (de omschrijving)
+ * hoort wél bij dit script en wordt dus overschreven — vandaar dat alleen
+ * sleutels worden gedragen die het nieuwe blok NIET definieert.
+ */
+function carryDatedKeys<T extends Record<string, unknown>>(before: unknown, after: T): T {
+  if (!before || typeof before !== 'object') return after;
+  for (const [k, v] of Object.entries(before as Record<string, unknown>)) {
+    if (!k.startsWith('_') || k === '_') continue;
+    if (k in after) continue;
+    (after as Record<string, unknown>)[k] = v;
+  }
+  return after;
+}
+
+/** Hetzelfde, voor een afgeleid blok onder `manifest_en_geometrie`. */
+function putDerived(name: string, block: Record<string, unknown>): void {
+  const man = raw.manifest_en_geometrie as Record<string, unknown>;
+  man[name] = carryDatedKeys(man[name], block);
+}
+
+
+
 /* THE KEY LIST COMES FROM THE GENERATOR'S OWN MANIFEST, not from whatever the
  * reference file happened to list last time.
  *
@@ -187,6 +231,17 @@ for (const map of [netlists, liveNetlists]) {
   for (const k of Object.keys(map)) if (LIVE_V2.test(k)) delete map[k];
   for (const f of herkomst.bestanden) map[f.name.replace(/-/g, '_')] = `${f.name}.adsfilter.json`;
 }
+/* M-4 — DE BLOKKEN WORDEN GESNOEID, DUS DE BRUGGEN WORDEN EERST BEWAARD.
+ *
+ * De snoei hieronder is correct en blijft: een `KAND_V2_n` dat het veld niet
+ * meer oplevert hoort te verdwijnen. Maar hij loopt VÓÓR de lus die de blokken
+ * herschrijft, dus `carryDatedKeys` zou daar niets meer vinden om te dragen —
+ * gemeten, niet beredeneerd: de eerste M-4-poging droeg de bruggen van de
+ * afgeleide blokken wél door en die van `kandidaten` niet, en het verschil was
+ * precies deze regel. */
+const datedKeysBefore = new Map<string, Record<string, unknown>>(
+  Object.entries(raw.kandidaten as Record<string, Record<string, unknown>>).map(([k, v]) => [k, v]),
+);
 for (const k of Object.keys(raw.kandidaten)) if (LIVE_V2.test(k)) delete raw.kandidaten[k];
 const keys = Object.keys(netlists).filter((k) => LIVE_V2.test(k));
 /**
@@ -218,6 +273,23 @@ const keys = Object.keys(netlists).filter((k) => LIVE_V2.test(k));
  * live `KAND_V2_n` and the three baselines can never match. */
 const DATED_KAND = /^[A-Z][A-Z0-9]*_KAND_\d+$/;
 const datedKeys = Object.keys(netlists).filter((k) => DATED_KAND.test(k));
+/**
+ * M-4 — DE DERDE FAMILIE: een netlist die naast het levende corpus is bevroren.
+ *
+ * `KAND_V2_<n>F` is de FASE-PRIORITEITSVARIANT van `KAND_V2_<n>`: hetzelfde
+ * gestelde kruispunt, één andere schuif (`phasePriority`), bevroren naast zijn
+ * tegenhanger in plaats van in zijn plaats. Hij matcht `LIVE_V2` niet (die is
+ * op het einde verankerd) en `DATED_KAND` evenmin, en dat is precies goed: hij
+ * wordt niet weggesnoeid als het veld opnieuw wordt opgewekt, want hij hoort
+ * niet bij dat veld.
+ *
+ * WAT DAT BETEKENT VOOR ZIJN BLOK: het wordt hier geschreven als het er nog
+ * niet is en daarna NOOIT overschreven — dezelfde regel die een gedateerd blok
+ * draagt, en om dezelfde reden. Een regeneratie van het levende corpus zegt
+ * niets over deze netlist.
+ */
+const M4_KAND = /^KAND_V2_\d+F$/;
+const m4Keys = Object.keys(netlists).filter((k) => M4_KAND.test(k));
 /** Grouped by their corpus prefix, in the order the manifest lists them. */
 const datedByCorpus = new Map<string, string[]>();
 for (const k of datedKeys) {
@@ -545,6 +617,14 @@ const DATED_REASON: Record<string, string> = {
 };
 
 const exceptionReason = (key: string, atHz: number | null): string => {
+  if (M4_KAND.test(key)) {
+    return (
+      `DE FASE-PRIORITEITSVARIANT ${key} (M-4) MIST DE GESTELDE VLOER, en dat hoort niet te ` +
+      'kunnen: hij is geleverd door een run met M-B/|Z| gewapend, dus de poort heeft hem ' +
+      'goedgekeurd. Staat hij hier, dan meet de poort iets anders dan deze wandeling — precies ' +
+      'de tegenspraak die V32 opspoorde — en dat is een bevinding en geen uitzondering.'
+    );
+  }
   if (DATED_KAND.test(key)) {
     const prefix = key.replace(/_KAND_\d+$/, '');
     return (
@@ -658,7 +738,12 @@ for (const key of keys) {
       'zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.',
   );
   leaves += Object.keys(block).length - 3; // klasse, afhankelijkheid, toelichting are bookkeeping
-  (raw.kandidaten as Record<string, unknown>)[key] = block;
+  /* M-4 — de gedateerde bruggen van een LATERE sessie overleven deze
+   * herschrijving; zie `carryDatedKeys`. */
+  (raw.kandidaten as Record<string, unknown>)[key] = carryDatedKeys(
+    datedKeysBefore.get(key),
+    block,
+  );
 }
 /* A5e.3-veld — the dated netlists WITHOUT a block: written once, on the same
  * path, and never overwritten afterwards (a dated block is evidence). */
@@ -679,6 +764,24 @@ for (const key of datedKeys) {
       'Meetobject, GEEN ontwerp: mag niet gebouwd worden.',
   );
   console.log(`wrote the class-B block of the dated netlist ${key} (it never lived)`);
+}
+
+/* M-4 — de fase-prioriteitsvarianten: hetzelfde pad, en ook zij worden één keer
+ * geschreven en daarna met rust gelaten. */
+for (const key of m4Keys) {
+  if ((raw.kandidaten as Record<string, unknown>)[key] !== undefined) continue;
+  const counterpart = key.replace(/F$/, '');
+  (raw.kandidaten as Record<string, unknown>)[key] = classBBlock(
+    key,
+    `DE FASE-PRIORITEITSVARIANT VAN ${counterpart} (M-4). Metrieken op de VASTE netlist ` +
+      `manifest_en_geometrie.netlists.${key}, een BESTAND in test-fixtures/casus1/. Hetzelfde ` +
+      `GESTELDE kruispunt als ${counterpart} en één andere schuif — respons/fase 25/75 in plaats ` +
+      'van 50/50 — zodat de twee blokken naast elkaar zeggen wat die weging kostte. De referentie ' +
+      'hangt aan het bestand en niet aan de run die het opleverde, dus klasse B en geen klasse C; ' +
+      'waar hij vandaan komt staat in casus1_m4_herkomst.json. Dit is een ONTWERP en geen ' +
+      'meetobject: hij haalt elke gewapende poort, net als zijn tegenhanger.',
+  );
+  console.log(`wrote the class-B block of the phase-priority netlist ${key}`);
 }
 
 /* The floor walk, over EVERY netlist the manifest names — see the note above. */
@@ -888,7 +991,7 @@ const barrierGrids = (() => {
   };
 })();
 
-raw.manifest_en_geometrie.v33_barriere_raster = barrierGrids;
+putDerived('v33_barriere_raster', barrierGrids as unknown as Record<string, unknown>);
 
 /* ---- E-1: WHERE THE GATE ROUTE AND THE REPORT DERIVE DIFFERENT CROSSINGS ----
  *
@@ -1002,7 +1105,7 @@ const crossingDerivation = (() => {
     bestuurd_door_de_weigering_en_eens: Object.keys(netlists).filter(governed).every((k) => !pairs.some((p) => p.netlist === k)),
   };
 })();
-raw.manifest_en_geometrie.e1_kruispuntafleiding = crossingDerivation;
+putDerived('e1_kruispuntafleiding', crossingDerivation as unknown as Record<string, unknown>);
 
 /* ---- V36: WHAT THE CORPUS BURNS, AND WHAT THE OBJECTIVE MAKES OF IT ------
  *
@@ -1143,7 +1246,7 @@ const dissipationRecord = (() => {
   };
 })();
 
-raw.manifest_en_geometrie.v36_dissipatie = dissipationRecord;
+putDerived('v36_dissipatie', dissipationRecord as unknown as Record<string, unknown>);
 
 /* ------------------------------------------------------------------ *
  * V43 — de LF-bult ONTLEED, over ELKE bevroren netlist
@@ -1184,7 +1287,7 @@ const decompositionRecord = {
   }),
 };
 
-raw.manifest_en_geometrie.v43_ontleding = decompositionRecord;
+putDerived('v43_ontleding', decompositionRecord as unknown as Record<string, unknown>);
 
 /* ------------------------------------------------------------------ *
  * V44 — de drie fasematen op ELKE bevroren netlist
@@ -1233,7 +1336,7 @@ const phaseRecord = {
   ),
 };
 
-raw.manifest_en_geometrie.v44_fasematen = phaseRecord;
+putDerived('v44_fasematen', phaseRecord as unknown as Record<string, unknown>);
 
 /* ------------------------------------------------------------------ *
  * V45 — waar de Q_es-eis elke bevroren netlist laat vallen
@@ -1307,7 +1410,7 @@ const qesRecord = {
   }),
 };
 
-raw.manifest_en_geometrie.v45_qes = qesRecord;
+putDerived('v45_qes', qesRecord as unknown as Record<string, unknown>);
 
 /* ------------------------------------------------------------------ *
  * V47 — M-C tegen de gestelde aandrijfgrens, per bevroren netlist
@@ -1371,7 +1474,7 @@ const driveRecord = (() => {
   };
 })();
 
-raw.manifest_en_geometrie.v47_bescherming = driveRecord;
+putDerived('v47_bescherming', driveRecord as unknown as Record<string, unknown>);
 
 /* ------------------------------------------------------------------ *
  * V49 — M-C v2.0: de excursie-afgeleide grens, klasse A per driver en
@@ -1507,7 +1610,7 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
   const derivedStricter = perWeg.filter(
     (r) => driveCeilingDb !== null && typeof r.afgeleide_grens_dB === 'number' && r.afgeleide_grens_dB < driveCeilingDb,
   );
-  raw.manifest_en_geometrie.v49_excursie = {
+  putDerived('v49_excursie', {
     _:
       'V49 — M-C v2.0: de AFGELEIDE M-C-grens per hoogdoorlaatbeschermde weg van élke bevroren ' +
       'netlist, naast de gestelde. De afgeleide grens is plafond (klasse A, afgeleide_parameters.<driver>) ' +
@@ -1536,7 +1639,7 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     })),
     per_weg: perWeg,
     zwakste_schakel: zwakste,
-  };
+  } as unknown as Record<string, unknown>);
 }
 
 /* ------------------------------------------------------------------ *
@@ -1584,7 +1687,7 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
   const refs = rows.filter((r) => ['HUIDIG', 'KAND_A', 'KAND_B'].includes(String(r.netlist)));
   const first = report('HUIDIG');
   const vPeak = (first.gates.verdicts.find((v) => v.gate === 'M-L')?.parameters?.peak_input_V ?? null) as number | null;
-  raw.manifest_en_geometrie.v50_bouwbaarheid = {
+  putDerived('v50_bouwbaarheid', {
     _:
       'V50 — BOUWBAARHEID op élke bevroren netlist: het vermogen in de HEETSTE discrete weerstand ' +
       '(M-A, IEC-gewogen bij het continue vermogen; de weerstand met de minste marge tegen zijn ' +
@@ -1615,7 +1718,7 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     referentiefilters_eroverheen_bij_continu: refs.filter((r) => r.haalt_de_eis_bij_continu === false).length,
     casusboek_netlists_die_de_eis_halen: rows.filter((r) => r.haalt_de_eis === true).map((r) => r.netlist),
     per_netlist: rows,
-  };
+  } as unknown as Record<string, unknown>);
 }
 
 /* ------------------------------------------------------------------ *
@@ -1698,7 +1801,7 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
   }
   const live = rows.filter((r) => /^KAND_V2_\d+$/.test(String(r.netlist)));
   const refs = rows.filter((r) => ['HUIDIG', 'KAND_A', 'KAND_B'].includes(String(r.netlist)));
-  raw.manifest_en_geometrie.v51_niveauwerk = {
+  putDerived('v51_niveauwerk', {
     _:
       'V51 — NIVEAUWERK OP DE LAAGSTE WEG, op élke bevroren netlist. X is hoeveel dB niveauwerk deze ' +
       'CONFIGURATIE op de laagste weg vraagt: de A5d.4-gap van die weg tot het anker na de doelcurve ' +
@@ -1729,7 +1832,7 @@ raw.manifest_en_geometrie.v47_bescherming = driveRecord;
     levend_corpus_buiten_eis: live.filter((r) => r.binnen_eis === false).length,
     referentiefilters_buiten_eis: refs.filter((r) => r.binnen_eis === false).map((r) => r.netlist),
     per_netlist: rows,
-  };
+  } as unknown as Record<string, unknown>);
 }
 
 /* ------------------------------------------------------------------ *
@@ -1849,7 +1952,7 @@ const coilRecord = (() => {
     referentiefilters: refRows,
   };
 })();
-raw.manifest_en_geometrie.a5e3_spoel_dcr = coilRecord;
+putDerived('a5e3_spoel_dcr', coilRecord as unknown as Record<string, unknown>);
 void casus1CoilFamilyByDriver;
 
 raw.manifest_en_geometrie.v2_herkomst = {

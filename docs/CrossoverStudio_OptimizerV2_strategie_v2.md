@@ -10988,6 +10988,241 @@ in dit boek al volgt, nu één meetset verder.
   het scherpste open punt van deze casus: de bovenkant van de enige legale overnameband van dit
   driverpaar rust op een deler die niemand gemeten heeft.
 
+### M-4 — de fase-prioriteitsschuif wordt een gestelde ketensleutel, en de meting zegt nee (16-09-2026, alleen de v2-route; **additief: niets gesteld = de run van altijd, geen regeneratie**)
+
+**DE VRAAG.** Sander wil de woofer→mid-fase strakker. De app heeft daar een schuif voor — respons tegen
+fase, standaard 50/50 — en deze sessie zet hem op 25/75 op twee GESTELDE kruispunten (U-5) die het
+M-2b-veld zelf al droeg, met élke andere eis onaangeroerd. Twee extra kandidaten naast het corpus, geen
+regeneratie, en de vraag is een aftrekking: wat kosten de fasegraden aan rimpel en aan geld?
+
+**HET ANTWOORD IS NEE, OP BEIDE KRUISPUNTEN, EN OM TWEE VERSCHILLENDE REDENEN.** Dat is de hele
+oplevering, en zij staat vooraan omdat een sessie die haar eigen verwachting weerlegt dat hoort te doen.
+
+---
+
+**EERST DE SLEUTEL, want zonder hem was er niets te vragen.** `phasePriority` reist sinds F4c als GREY-sleutel
+(A3j: een gewicht dat de schaal vormt en dus bepaalt welk deel van het veld de zoektocht ooit bezoekt), en de
+regel daar is dat een v2-kandidaat hem EXPLICIET stelt. Tot M-4 deed hij geen van beide: hij reed mee in de
+settings-spread van de keten, precies zoals `eqBands` en `leanTargetDb` vóór V41. Dat is geen schoonheidsfoutje —
+hij heeft DRIE lezers en twee ervan draaien vóórdat de tuner bestaat:
+
+| lezer | wat hij ermee doet | wanneer |
+| --- | --- | --- |
+| `designThreeWay` | weegt fase tegen amplitude bij de keuze van uitlijning en polariteit per flank | vóór de tuner |
+| `synthesize` | weegt dezelfde twee bij het fitten van elke tak | vóór de tuner |
+| `optimizeNetworkValues` | de doelfunctie van de waardetune | de tuner |
+
+Een waarde die alleen de tuner bereikt komt dus ná de topologie — de toets die élke sleutel in
+`CHAIN_CHOICE_KEYS` moet halen. Hij is daarmee de **ZESDE ketensleutel**, onvoorwaardelijk verklaard uit
+`DEFAULT_PHASE_PRIORITY` (de eigen 0,5 van de motor, géén casusgetal — P6), en een gestelde waarde wint.
+
+**HIJ IS DE EERSTE SLEUTEL DIE IN BEIDE CLASSIFICATIES STAAT, en de guard dwong dat af.** De vijf
+ketensleutels van vóór M-4 bestaan eenvoudigweg niet in `NetOptimizeOptions`, dus hun disjunctheid met de
+drie tuner-lijsten was een WAARNEMING en geen principe. `phasePriority` bestaat er wél in. De assertie is
+niet versoepeld maar **omgekeerd tot een verzameling met naam** (`CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER`),
+op gelijkheid getoetst: een NIEUWE sleutel die in beide lijsten opduikt valt nog steeds om.
+
+---
+
+**DE OPZET, en waarom zij precies één factor verzet.** Twee gestelde woofer→mid-posities — 362,3 en
+518,8 Hz, de kruispunten van `KAND-V2-1` en `KAND-V2-2` — tegen de ene mid→tweeter-positie die élke
+kandidaat van dat veld draagt (2251,4 Hz). Een drieweg heeft beide assen nodig: een deelverzameling is geen
+verzameling (U-5), en de gestelde kandidaten zijn het product, hier 2 × 1 = 2. Alle drie de getallen komen
+uit het veld zelf, dus geen van beide posities valt buiten zijn venster — anders dan bij U-5, waar dat juist
+de bevinding was.
+
+**EEN TWEEDE FACTOR DIE NIET WEGGEPOETST WORDT.** De twee M-2b-netlists zijn GEZOCHT op `'koan677'`; de
+M-4-runs draaien op `'m3'`, de standaard sinds de hermergde mid. Dat is een besluit met een reden — M-4 gaat
+over FASE, en fase optimaliseren tegen een mid waarvan M-3 aantoonde dat zijn fase onder 800 Hz fout was, is
+niet te verdedigen — maar het is een tweede factor en niet nul. Wat het kost heeft M-3 gemeten: M-K op
+woofer→mid beweegt tussen de twee sets −0,33 tot +0,65°, ruim onder het effect waar deze sessie naar zoekt.
+De vergelijkingstabel leest bovendien BEIDE helften op één bank (`corpusBank`, de standaard), dus de
+aftrekking gaat over de netlists en niet over de zoektochten.
+
+---
+
+**362,3 Hz — GEWEIGERD, en de weigering is het interessantste getal van de sessie.**
+
+| | 50/50 (`KAND-V2-1`) | 25/75 |
+| --- | --- | --- |
+| uitkomst | geleverd | **GEWEIGERD op `budget`** |
+| tuner-fase (eigen maat, eigen raster) | 9,1° | **4,51°** |
+| tuner-rimpel | 2,33 dB | 2,31 dB |
+| M-D opslingering | binnen budget | **1,80 dB tegen een gesteld budget van 1,4** |
+| evaluaties | 152 553 | 321 659 |
+| looptijd | 2625 s | 2307 s |
+
+De schuif dééd wat hij belooft: de tuner joeg de fase van 9,1° naar 4,51° en verdubbelde zijn evaluaties om
+er te komen. Hij betaalde het in REACTANTIE in het wooferpad, en dat is precies de as waarop M-D een gesteld
+budget heeft. **Niets is versoepeld** — M-D staat op 1,4 dB en blijft daar — dus er is geen netlist: een tune
+die een gewapende eis niet haalt IS geen netlist (V31), en wat overblijft is de grond, geboekt in
+`casus1_m4_herkomst.json`. Er is dus **geen `KAND-V2-1F`**, en dat is het antwoord van de motor en niet een
+keuze van deze sessie.
+
+**518,8 Hz — GELEVERD, en slechter op vrijwel alles waar het om ging.**
+
+| grootheid | `KAND-V2-2` (50/50) | `KAND-V2-2F` (25/75) | Δ |
+| --- | --- | --- | --- |
+| woofer→mid kruispunt | 467,4 Hz | 503,4 Hz | +36,0 |
+| mid→tweeter kruispunt | 2242,2 Hz | 2331,2 Hz | +89,1 |
+| **M-K woofer→mid** | **13,12°** | **14,94°** | **+1,82 — SLECHTER** |
+| M-K mid→tweeter | 5,41° | 5,98° | +0,57 — slechter |
+| nuldiepte W→M (omgepoolde mid) | 23,9 dB @ 399 Hz | 17,4 dB @ 503 Hz | −6,4 — ondieper |
+| nuldiepte M→T | 42,0 dB @ 2244 Hz | 29,9 dB @ 2331 Hz | −12,2 — ondieper |
+| RMS volle band | 1,001 dB | 1,076 dB | +0,075 — slechter |
+| RMS vanaf de tweeter-gate | 0,998 dB | 1,068 dB | +0,070 — slechter |
+| ±venster (gegladde acceptatie) | 2,083 dB | 1,640 dB | **−0,44 — BETER** |
+| M-D opslingering | −0,936 dB | −0,922 dB | +0,014 |
+| min \|Z\| | 2,578 Ω | 2,595 Ω | +0,017 |
+| onderdelen | 36 | 38 | +2 |
+| **BOM (catalogus, ±5 %)** | **€ 263,87** | **€ 502,95** | **+€ 239,08 (+91 %)** |
+
+**DE TUNER-MAAT EN DE RAPPORT-MAAT ZIJN HET HIER EENS, en dat is belangrijk**: de tuner las 8,6° → 9,62° en
+het rapport 13,12° → 14,94°. Beide slechter. Er is dus geen V44-achtige tegenspraak tussen twee fasematen —
+het ontwerp is gewoon slechter op fase, terwijl het 91 % meer kost.
+
+**DE ENE KOLOM DIE WEL VERBETERDE is het ±venster**, en hij verbeterde terwijl de RMS verslechterde. Dat is
+geen tegenspraak maar het verschil dat A5e.1 bouwde: het venster is de GEGLADDE acceptatievraag en de RMS de
+RUWE sorteervraag. De 25/75-netlist is vlakker in het groot en ruwer in het klein.
+
+---
+
+**HET RELATIEVE FASESPOOR, ±1 octaaf rond de overname.** Beide netlists gelezen op DEZELFDE frequenties —
+het venster komt van de 50/50-netlist — want de tune verplaatst het akoestische kruispunt met tientallen
+hertz en twee sporen die elk rond hun eigen kruispunt lopen delen geen enkele frequentie en zijn niet
+aftrekbaar.
+
+```text
+RELATIEF FASESPOOR — woofer→mid, ±1 octaaf rond de overname van KAND_V2_2 / KAND_V2_2F
+       Hz     50/50    25/75    delta
+     234.0 Hz     52.1°  -120.5°   -172.6  |#                                       |                 . |
+     247.8 Hz     56.0°  -112.9°   -168.9  |   #                                    |                  .|
+     262.3 Hz     50.6°  -112.8°   -163.5  |   #                                    |                .  |
+     277.7 Hz     42.5°  -112.8°   -155.3  |   #                                    |              .    |
+     294.1 Hz     36.5°  -106.7°   -143.2  |     #                                  |           .       |
+     311.3 Hz     43.4°   -82.8°   -126.2  |             #                          |              .    |
+     331.2 Hz     32.1°   -70.8°   -102.9  |                 #                      |          .        |
+     350.7 Hz     23.7°   -56.5°    -80.1  |                     #                  |       .           |
+     371.3 Hz      8.9°   -51.2°    -60.1  |                       #                |  .                |
+     393.1 Hz     -1.8°   -46.5°    -44.6  |                         #              .                   |
+     416.2 Hz    -12.4°   -23.1°    -10.7  |                                 #  .   |                   |
+     440.6 Hz    -17.9°   -20.5°     -2.6  |                                 #.     |                   |
+     466.6 Hz    -14.7°   -14.2°      0.5  |                                   .#   |                   |
+     496.3 Hz    -15.5°   -13.9°      1.5  |                                   .#   |                   |
+     525.5 Hz    -14.8°   -13.7°      1.1  |                                   .#   |                   |
+     556.4 Hz     -9.6°    -9.9°     -0.3  |                                     +  |                   |
+     589.1 Hz     -8.5°   -10.8°     -2.3  |                                     +  |                   |
+     623.7 Hz     -8.0°   -12.9°     -5.0  |                                    # . |                   |
+     660.4 Hz     -7.6°   -15.7°     -8.1  |                                   #  . |                   |
+     699.2 Hz     -5.2°   -16.8°    -11.6  |                                   #   .|                   |
+     740.3 Hz     -0.0°   -15.5°    -15.5  |                                   #    .                   |
+     787.5 Hz      9.3°   -10.8°    -20.1  |                                     #  |  .                |
+     833.8 Hz     20.4°    -3.9°    -24.3  |                                       #|      .            |
+     882.8 Hz     29.4°     0.9°    -28.5  |                                        |#        .         |
+     934.6 Hz     34.2°     2.0°    -32.2  |                                        |#          .       |
+                                              schaal -120° … 56°, '.' = 50/50, '#' = 25/75, '+' = gelijk, '|' = 0°
+```
+
+Vlak rond de overname (466–556 Hz) lopen de twee vrijwel gelijk — daar is niets te winnen geweest. Wat de
+25/75-arm doet is de fase ONDER 400 Hz ver naar beneden trekken, en dat is waar M-K zijn extra graden
+vandaan haalt: zijn band loopt vanaf 396,9 Hz.
+
+```text
+RELATIEF FASESPOOR — mid→tweeter, ±1 octaaf rond de overname van KAND_V2_2 / KAND_V2_2F
+       Hz     50/50    25/75    delta
+    1125.3 Hz     10.6°  -142.0°   -152.6  |#                                                     |   . |
+    1185.7 Hz      3.5°  -123.0°   -126.6  |       #                                              |.    |
+    1255.4 Hz     -0.4°   -96.4°    -96.0  |                 #                                    .     |
+    1335.5 Hz      9.1°   -62.1°    -71.2  |                              #                       |  .  |
+    1414.0 Hz     11.8°   -44.9°    -56.6  |                                     #                |   . |
+    1497.1 Hz      0.7°   -46.0°    -46.7  |                                    #                 .     |
+    1585.1 Hz      0.3°   -38.7°    -39.0  |                                       #              .     |
+    1678.3 Hz     11.5°   -20.7°    -32.1  |                                              #       |   . |
+    1776.9 Hz     12.9°   -12.4°    -25.3  |                                                 #    |    .|
+    1881.3 Hz     13.4°    -4.8°    -18.2  |                                                    # |    .|
+    2001.4 Hz      8.3°    -2.0°    -10.4  |                                                     #|  .  |
+    2119.0 Hz     -3.0°    -6.8°     -3.7  |                                                   # .|     |
+    2243.6 Hz     -0.7°     0.8°      1.5  |                                                      +     |
+    2375.4 Hz     -2.0°     2.8°      4.8  |                                                     .|#    |
+    2515.0 Hz     -5.6°     0.5°      6.1  |                                                    . #     |
+    2662.8 Hz     -3.2°     2.2°      5.4  |                                                     .|#    |
+    2819.3 Hz     -0.7°     2.5°      3.2  |                                                      .#    |
+    2999.3 Hz     -0.1°    -0.5°     -0.4  |                                                      +     |
+    3175.5 Hz      1.0°    -3.1°     -4.1  |                                                     #.     |
+    3362.2 Hz      0.3°    -7.4°     -7.7  |                                                   #  .     |
+    3559.7 Hz     -2.7°   -13.5°    -10.9  |                                                 #   .|     |
+    3768.9 Hz      8.6°    -4.8°    -13.4  |                                                    # |  .  |
+    3990.4 Hz      8.8°    -6.3°    -15.1  |                                                    # |  .  |
+    4225.0 Hz      6.2°    -9.7°    -15.9  |                                                  #   | .   |
+    4473.3 Hz     -1.6°   -17.2°    -15.6  |                                               #     .|     |
+                                              schaal -142° … 13°, '.' = 50/50, '#' = 25/75, '+' = gelijk, '|' = 0°
+```
+
+---
+
+**DE FIT-ONZEKERHEID, en dit is het verwachtingsmanagement waarvoor de opdracht vroeg.**
+
+De fase waarop M-K oordeelt komt onder de splice uit een MERGE, en een merge plakt zijn nabije veld aan zijn
+verre veld met drie gefitte parameters: een niveau, een PURE VERTRAGING en een offset. Die vertraging is geen
+gemeten aankomsttijd — de twee helften stellen verschillende referentietijden en de fit draagt dat verschil
+(M-2) — dus zij is een modelparameter met een onzekerheid. Twee onafhankelijke schattingen, allebei uit de
+bestandskoppen zelf en geen van beide getypt:
+
+| | ms | → graden bij woofer→mid (467 Hz) |
+| --- | --- | --- |
+| **(a) gemeten gevoeligheid** — M-1's mid-merge (0,5819 ms) tegen M-3's (0,6307 ms): dezelfde NF, dezelfde FF, één modelfactor anders | **0,0488** | **8,2°** |
+| **(b) eigen residu** — de slechtste splice-fit (3,8° rms over 400–550 Hz) gedeeld door zijn bandbreedte | **0,0704** | **11,8°** |
+
+**DAT IS DE MAAT VAN HET DING: de onzekerheid van de merge-fit alléén is 8–12° bij de woofer→mid-overname,
+en het verschil waar deze sessie naar zocht is 1,8°.** Anders gezegd — élk M-K-getal dat dit casusboek voor
+woofer→mid draagt, rust onder de splice op een vertraging die een modelkeuze met 8° kan verzetten. De
+in-kast-meting die dit moet beslechten hoeft dus niet te vragen "welk van de twee ontwerpen tracket beter";
+zij moet de VERTRAGING tussen de wegen meten, want die is nu de dominante onzekerheid en geen enkel filter
+kan hem repareren.
+
+**BOVEN DE SPLICE GELDT DIT NIET, en het script zegt dat in plaats van een getal af te drukken.** De
+mid→tweeter-overname ligt op ~2250 Hz, ruim boven beide splice-banden, en daar IS de merge het verre veld
+zelf — M-3 mat dat exact (0,00° boven 800 Hz). Een omrekening daar zou het gevaarlijkste soort getal
+opleveren dat dit project kent: een plausibel verkeerd getal (A3h). De eerste versie van dit blok drukte er
+39,8° af; dat is gerepareerd vóór het iets beweerde.
+
+---
+
+**WAT ER NIET REPRODUCEERT, en het staat er omdat het niet reproduceert.** De opdracht noemt als
+referentiegetallen een nuldiepte van "~16 en ~13 dB" voor de twee M-2b-versies, uit een onafhankelijke
+MNA-nameting van 16-09. Die getallen komen er hier niet uit. Gemeten op `KAND-V2-1` / `KAND-V2-2`, met de
+mid omgepoold en de som over alle drie de wegen:
+
+| definitie | `KAND-V2-1` | `KAND-V2-2` |
+| --- | --- | --- |
+| diepste punt binnen ±1 octaaf, set `'m3'` | 18,1 dB | 23,9 dB |
+| idem, set `'koan677'` | 19,0 dB | 24,2 dB |
+| exact OP het kruispunt | 17,5 dB | 17,8 dB |
+| alleen het PAAR, zonder de derde weg | 17,5 dB | 17,8 dB |
+| tegen de schouders van de omgepoolde kromme | 18,3 dB | 20,7 dB |
+
+Geen enkele van de vijf landt op 16 of 13. De definitie die dit casusboek sindsdien voert staat in
+`measure-m4-comparison.ts` en is de eerste rij: de normale som min de omgepoolde som, op het punt waar dat
+verschil binnen ±1 octaaf het grootst is, met alle wegen erin. **De definitie is niet bijgesteld tot de
+getallen pasten** — dat is de A3h-val van de andere kant — en de tegenproef staat in de suite: zonder
+omkering leest dezelfde meting exact 0,00 dB, dus zij meet de omkering en niet de rimpel van de som.
+
+---
+
+**WAT ER NIET GEDAAN IS, en waarom.**
+
+- **M-D is niet versoepeld.** De opdracht zei het en het is ook de enige eerlijke lezing: een budget dat
+  meeschuift met wat een run toevallig levert bewaakt niets (A5e.1). De 362,3-arm is daarmee een weigering en
+  geen netlist.
+- **`KAND-V2-1F` bestaat niet.** Er valt niets te bevriezen; `register-m4-candidates.ts` boekt de grond en
+  slaat het bestand over. De naam is vrij voor de dag dat een run op 362,3 Hz binnen het budget blijft.
+- **De schuif is NIET op de casus-1-standaard gezet.** `CASUS1_V2_SETTINGS.phasePriority` staat op 0,5 en het
+  levende corpus is daarmee opgewekt. M-4 voegt twee runs toe en verplaatst geen enkele bestaande netlist —
+  de volle suite reproduceert alle drie de corpora.
+- **Er is geen tweede arm op 362,3 Hz gedraaid** met een ruimer budget om te zien wát de weigering kostte.
+  Dat is een run van drie kwartier en een gesteld getal dat niemand gesteld heeft; de weigering draagt haar
+  eigen cijfers (1,80 tegen 1,4 dB) en dat is genoeg om te weten waar het op vastloopt.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

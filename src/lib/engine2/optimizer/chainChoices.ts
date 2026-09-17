@@ -157,6 +157,42 @@ export const CHAIN_CHOICE_KEYS = [
    * honest answer — and an explicit `'full'` still wins, so the E-3 before/after
    * is a run somebody can ask for on either chain. */
   'synthesisGrid',
+  /* --- M-4: HOW THE BUDGET IS SPLIT BETWEEN RESPONSE AND PHASE ---
+   *
+   * The sixth key, and the first one that was already classified ONE LAYER
+   * DOWN: `phasePriority` is a GREY key in `choices.ts` (A3j — a weight that
+   * shapes the scalar and therefore decides which part of the field the search
+   * ever visits), and the rule there is that a v2 candidate states it
+   * EXPLICITLY rather than inheriting it. Until M-4 it did neither: it rode in
+   * the chain's own settings spread, exactly as `eqBands` and `leanTargetDb`
+   * did before V41, and the three steps that read it never heard it from the
+   * candidate.
+   *
+   * WHY IT BELONGS IN *THIS* LIST AND NOT ONLY IN THE GREY ONE. It has THREE
+   * readers and two of them run before the tuner exists: `designThreeWay`
+   * weighs phase against amplitude when it picks the alignment and the
+   * polarity per flank, `synthesize` weighs the same two when it fits each
+   * branch, and only the third is `optimizeNetworkValues`. A value that
+   * reached the tuner alone would arrive after the topology had been chosen —
+   * the test every key in this list has to pass.
+   *
+   * MEASURED AT M-4 ON CASUS 1, which is why the list grew by one rather than
+   * on suspicion (row 11 of the A3j table). Two stated woofer→mid crossings
+   * were run twice, 50/50 against 25/75, with every other requirement held:
+   * the entry carries the table. The value is declared UNCONDITIONALLY, like
+   * `eqBands` and `leanTargetDb` above and for the same reason — every design
+   * is weighed by a step that splits its budget somehow, so there is no design
+   * on which the question has no answer and therefore no honest ABSENT. What a
+   * candidate that states nothing declares is `DEFAULT_PHASE_PRIORITY`, the
+   * engine's own midpoint and not a casus-1 number (P6).
+   *
+   * ABSENT IS STILL THE IDENTITY for every v1 caller, because
+   * `withDeclaredChainChoices` returns an input without a declaration
+   * unchanged — and a declaration that states the value the settings already
+   * carried writes the same number back. That is what keeps the M-2b corpus
+   * byte-identical across this key's arrival, and it is measured rather than
+   * argued (the live chain runs in `casus1V2Candidates.test.ts`). */
+  'phasePriority',
 ] as const;
 
 export type ChainChoiceKey = (typeof CHAIN_CHOICE_KEYS)[number];
@@ -286,7 +322,7 @@ export function withDeclaredChainChoices<I extends { settings: Partial<ChainCand
  */
 export function chainSettingsForTwoWay(
   declaration: ChainChoiceDeclaration | undefined,
-): Partial<Pick<ChainSettings, 'eqBandsPerDriver' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid'>> {
+): Partial<Pick<ChainSettings, 'eqBandsPerDriver' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid' | 'phasePriority'>> {
   if (!declaration) return {};
   const s = declaration.stated;
   return {
@@ -297,6 +333,11 @@ export function chainSettingsForTwoWay(
     /* E-3 — the fifth key, same name on both chains; absent = this chain's own
      * history (the full grid). */
     ...(s.synthesisGrid !== undefined ? { synthesisGrid: s.synthesisGrid } : {}),
+    /* M-4 — the sixth, same name on both chains. `ChainSettings.phasePriority`
+     * is REQUIRED, so absent here leaves whatever the caller carried: the
+     * identity for every v1 caller, and on the v2 route the declaration always
+     * states it. */
+    ...(s.phasePriority !== undefined ? { phasePriority: s.phasePriority } : {}),
   };
 }
 

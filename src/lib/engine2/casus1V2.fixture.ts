@@ -723,13 +723,67 @@ export const CASUS1_FIELD_CHAIN_BUDGET = 16;
  */
 export const CASUS1_FIELD_POSITION_POLICY = 'two-sided' as const;
 
-export function casus1Field(report: EngineV2Report): CandidateFieldResult {
+/**
+ * M-4 — DE GESTELDE SCHUIF: respons 25 % · fase 75 % (`phasePriority` 0,75).
+ *
+ * Sander, 16-09-2026. Een RUN-parameter zoals de seed en het chain-budget, hier
+ * gesteld en gedateerd (A5e.4 / P4) en géén engine-getal: de motor leest
+ * `DEFAULT_PHASE_PRIORITY` (0,5) zodra niemand iets zegt, en dat is wat élke
+ * andere casus-1-run doet — `CASUS1_V2_SETTINGS.phasePriority` staat er nog
+ * steeds op en het levende corpus is ermee opgewekt.
+ *
+ * HIJ STAAT HIER EN NIET IN HET SCRIPT DAT HEM DRAAIT, om de reden die
+ * `CASUS1_V2_SEED` en `CASUS1_FIELD_CHAIN_BUDGET` ernaast dragen: een gestelde
+ * run-parameter van deze casus hoort in het huis van deze casus, zodat de
+ * guards hem kunnen lezen zonder een script te importeren.
+ */
+export const CASUS1_M4_PHASE_PRIORITY = 0.75;
+
+/** Wanneer de ontwerper die schuif en deze kruispunten opschreef. */
+export const CASUS1_M4_STATED_ON = '2026-09-16';
+
+/**
+ * De gestelde kruispunten van M-4 per as, index-gelijk met `windowInputs`.
+ *
+ * ALLE DRIE DE GETALLEN KOMEN UIT HET M-2b-VELD ZELF en zijn hier niet
+ * verzonnen: 362,3 en 518,8 Hz zijn de woofer→mid-posities van `KAND-V2-1` en
+ * `KAND-V2-2`, en 2251,4 Hz is de mid→tweeter-positie die ÉLKE kandidaat van
+ * dat veld draagt. Dat is de hele opzet van de vergelijking — dezelfde
+ * overnames, één andere weging — en het is ook waarom geen van de drie buiten
+ * zijn venster valt (anders dan bij U-5, waar dat juist de bevinding was).
+ *
+ * EEN DRIEWEG HEEFT BEIDE ASSEN NODIG: een deelverzameling is geen verzameling
+ * (U-5), en de gestelde kandidaten zijn het PRODUCT over de overnames — hier
+ * 2 × 1 = 2.
+ */
+export const CASUS1_M4_STATED_PER_AXIS_HZ: readonly (readonly number[])[] = [
+  [362.3, 518.8],
+  [2251.4],
+];
+
+export function casus1Field(
+  report: EngineV2Report,
+  /**
+   * M-4 — STATED CROSSINGS beside the derived field (U-5), when the designer
+   * names positions. Index-aligned with `windowInputs`, one list per handover;
+   * a three-way needs BOTH axes, because a subset is not a set (U-5) and the
+   * stated candidates are the product over the handovers.
+   *
+   * Absent is the identity, and that is asserted rather than described: without
+   * it `buildCandidateField` receives no `statedPerAxisHz`, writes no
+   * `statedSize` into the field's parameters, and therefore keys byte-identical
+   * to the field every casus-1 run has built since C-2 (`candidateFieldKey`,
+   * the E-2 rule one field over).
+   */
+  stated?: { perAxisHz: readonly (readonly number[])[]; on: string },
+): CandidateFieldResult {
   return buildCandidateField({
     windowInputs: report.predesign.windowInputs,
     perPair: report.predesign.windowInputs.map(() => ({ statedOrder: CASUS1_FIELD_STATED_ORDER })),
     alignments: CASUS1_FIELD_ALIGNMENTS,
     chainBudget: CASUS1_FIELD_CHAIN_BUDGET,
     positionPolicy: CASUS1_FIELD_POSITION_POLICY,
+    ...(stated ? { statedPerAxisHz: stated.perAxisHz, statedOn: stated.on } : {}),
   });
 }
 
@@ -762,7 +816,17 @@ export function casus1V2Declaration(
    * they are a PROPOSAL (the measuring arm); default: only a STATED block arms
    * the model, a proposal is declared absent with its reason (P4).
    */
-  opts: { coilDcr?: boolean } = {},
+  opts: {
+    coilDcr?: boolean;
+    /**
+     * M-4 — the share of the budget on PHASE, when this run states one other
+     * than the fixture's. Absent = `CASUS1_V2_SETTINGS.phasePriority`, the
+     * value the chain settings of every casus-1 run already carry, so the
+     * declaration writes back the number that was there and the M-2b corpus
+     * reproduces byte for byte.
+     */
+    phasePriority?: number;
+  } = {},
 ) {
   const armCoilDcr = opts.coilDcr === true || CASUS1_COIL_DCR.stated;
   return {
@@ -852,7 +916,14 @@ export function casus1V2Declaration(
      * declares `{ kind: 'series-r-max', maxOhm }` instead: the narrower
      * statement wins (`declareCandidateChainChoices`). */
     chainDeclaration: declareCandidateChainChoices({
-      stated: {},
+      /* M-4 — the SIXTH chain key is stated here rather than left to the
+       * derivation, for the reason `rSourceProbeSource` is stated in
+       * `CASUS1_V2_SETTINGS`: a before/after measurement has to be a run
+       * somebody can ask for, and the whole of M-4 is one such pair. The
+       * default is the fixture's own 50/50, which is the same number
+       * `DEFAULT_PHASE_PRIORITY` would derive — `choiceKeyGuard.test.ts` pins
+       * that it is, so this states a value rather than a second opinion. */
+      stated: { phasePriority: opts.phasePriority ?? CASUS1_V2_SETTINGS.phasePriority },
       ...(CASUS1_LOWEST_WAY_LEVEL_WORK_FORBIDDEN ? { lowestWayLevelWorkForbidden: true } : {}),
       ...(CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM !== null ? { lowestWaySeriesRMaxOhm: CASUS1_LOWEST_WAY_SERIES_R_MAX_OHM } : {}),
       /* A5e.3b — the coil-span ceiling, derived from the same stated family

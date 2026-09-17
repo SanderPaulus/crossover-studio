@@ -12,8 +12,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseFrd } from '../parsers/frd.ts';
 import { parseTabular } from '../parsers/tabular.ts';
 import { parseArtaHeader } from './ingest/manifest.ts';
@@ -43,6 +44,8 @@ import {
   loadGolden,
 } from './casus1.fixture.ts';
 import { corpusBank } from './casus1Corpora.fixture.ts';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 const read = (name: string): string => readFileSync(join(CASUS1_DIR, name), 'utf8');
 const golden = loadGolden();
@@ -373,11 +376,44 @@ describe('M-3 — de toegelaten puntenverzameling beweegt nergens', () => {
   const nu = new Map(block.per_netlist.map((r) => [key(r), r]));
   const toen = block._waarden_M2b_tot_M3.per_netlist;
 
-  it('de brug telt op: bewogen + onbewogen is elke rij van het blok', () => {
+  /**
+   * M-4 — DE NETLISTS DIE NA M-3 AAN HET CASUSBOEK ZIJN TOEGEVOEGD.
+   *
+   * De brug hieronder is een GEDATEERDE boekhouding: zij telt de rijen die M-3
+   * bewoog en die hij onbewogen liet, en samen waren dat élke rij van het blok
+   * TOEN. `per_netlist` beweegt sindsdien mee met het casusboek, dus de som
+   * hoort tegen de rijen van de netlists van TOEN gelegd te worden en niet
+   * tegen alles — de V47/V48-les, hier op een brug in plaats van op een rang.
+   *
+   * GELEZEN UIT DE HERKOMST van de sessie die ze toevoegde, niet uitgeschreven:
+   * een sessie die netlists bevriest schrijft een herkomst, en die herkomst is
+   * de enige plek die weet welke dat waren. Komt er een derde familie bij, dan
+   * valt deze claim om totdat iemand haar herkomst hier noemt — en dat is het
+   * moment waarop iemand moet kijken.
+   */
+  const SINCE_M3 = (() => {
+    const out = new Set<string>();
+    for (const file of ['casus1_m4_herkomst.json']) {
+      const path = join(HERE, '..', '..', '..', 'test-fixtures', file);
+      if (!existsSync(path)) continue;
+      const h = JSON.parse(readFileSync(path, 'utf-8')) as { bestanden: { key: string }[] };
+      for (const b of h.bestanden) out.add(b.key);
+    }
+    return out;
+  })();
+
+  it('de brug telt op: bewogen + onbewogen is elke rij van de netlists van TOEN', () => {
     const b = block._waarden_M2b_tot_M3;
     expect(b.bewogen_rijen).toBe(toen.length);
-    expect(b.bewogen_rijen + b.onbewogen_rijen).toBe(block.per_netlist.length);
+    const rowsThen = block.per_netlist.filter((r) => !SINCE_M3.has(r.netlist)).length;
+    expect(b.bewogen_rijen + b.onbewogen_rijen).toBe(rowsThen);
     expect(toen.length).toBeGreaterThan(0);
+    /* En de uitgesloten verzameling is precies de familie die zij zegt te zijn:
+     * geen enkele netlist van vóór M-3 mag erin wegvallen. */
+    for (const k of SINCE_M3) expect(k).toMatch(/^KAND_V2_\d+F$/);
+    expect(block.per_netlist.length - rowsThen).toBe(
+      block.per_netlist.filter((r) => SINCE_M3.has(r.netlist)).length,
+    );
   });
 
   it('op GEEN enkele bewogen rij verschuift het puntental, de band of een afwijzing', () => {
