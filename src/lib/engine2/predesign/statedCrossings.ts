@@ -62,6 +62,7 @@ import {
 } from './candidates.ts';
 import { bindingBreakup, crossoverWindow, type XoLimit, type XoWindowResult } from './xoWindow.ts';
 import { formatEdge, roundEdge } from './xoRangeAdvice.ts';
+import { parseFrequencyTokens } from '../../frequencyList.ts';
 
 /**
  * How close two frequencies have to be before they are the same one.
@@ -276,23 +277,20 @@ export function parseStatedCrossings(
   const perAxisHz = pairLabels.map((label, i) => {
     const line = lines[i];
     if (line === undefined) return [];
-    const out: number[] = [];
     /* SPLIT ON SEPARATORS AND VALIDATE THE WHOLE TOKEN, never strip characters
      * out of one. An earlier version pulled the digits out of whatever was
      * typed, which turned “-5” into 5 and “2200Hz” into 2200: the right kind of
      * number, invented out of something the designer did not write (A3h). A
-     * token that is not a positive frequency is REPORTED and used for
-     * nothing. */
-    for (const tok of line.split(/[\s,]+/)) {
-      if (tok === '') continue;
-      const v = Number(tok);
-      if (!Number.isFinite(v) || v <= 0) {
-        problems.push(`${label}: “${tok}” is not a positive frequency and was ignored.`);
-        continue;
-      }
-      out.push(roundEdge(v));
-    }
-    return [...new Set(out)].sort((a, b) => a - b);
+     * token that is not a positive frequency is REPORTED and used for nothing.
+     *
+     * H-2 — ONE IMPLEMENTATION, TWO READERS (`frequencyList.ts`): the active
+     * handover list asks the same question of the same kind of text. What stays
+     * HERE is the ROUNDING, because that is the one place the two differ — a
+     * crossing is a POSITION in a field laid out, labelled and caged in
+     * octaves, and an active handover is a number a processor is set to. */
+    const parsed = parseFrequencyTokens(line, label);
+    problems.push(...parsed.problems);
+    return [...new Set(parsed.hz.map(roundEdge))].sort((a, b) => a - b);
   });
   pairLabels.forEach((label, i) => {
     if (perAxisHz[i].length === 0) {

@@ -214,7 +214,15 @@ export type V2GuidedControl =
   /** The mode select, and its maximum once the mode needs one. */
   | 'level-work'
   /** The design's target curve and, for a plateau, its depth. */
-  | 'voicing';
+  | 'voicing'
+  /**
+   * H-2 — the tick that says a way is actively driven, and the two fields that
+   * only mean anything once it is ticked: the handover LIST and the shape.
+   * Its own control because none of the three is a number — a tick box, a list
+   * of frequencies and a select — and the generic numeric branch would render
+   * all three as one empty number field.
+   */
+  | 'active-side';
 
 /**
  * What skipping this screen means. Fourteen screens are `unjudged`; the
@@ -271,6 +279,23 @@ export interface V2RequirementScreen {
  * and splitting a coil between them would be worse than the order.
  */
 export const V2_REQUIREMENT_SCREENS: readonly V2RequirementScreen[] = Object.freeze([
+  {
+    /* H-2 — FIRST, and it is first because the register puts it first, which is
+     * itself the finding: every screen after this one asks how good the design
+     * has to be, and this one asks WHICH DESIGN IS BEING MADE. A designer who
+     * meets the question after answering fourteen requirements has already
+     * counted their ways as passive. */
+    id: 'active-side',
+    title: 'Is one of the ways driven by its own amplifier and a DSP?',
+    rowIds: ['activeSideOn', 'activeHandoverHz', 'activeHandoverShape'],
+    control: 'active-side',
+    /* ALL: the three state something only together. A tick with no handover is
+     * a question with its input missing and a handover with no shape has no
+     * alignment to meet — which is the state `requires: 'all'` exists to make
+     * visible, exactly as it does for the peak power and its nominal load. */
+    requires: 'all',
+    skip: 'unjudged',
+  },
   {
     id: 'amp-floor',
     title: 'What is the lowest load your amplifier is rated for?',

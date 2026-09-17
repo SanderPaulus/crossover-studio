@@ -56,7 +56,13 @@ const rowById = (id: string): V2InputRow | undefined => V2_INPUT_REGISTER.find((
 const REGION: Record<V2GovernedForm, [string, string]> = {
   cabinet: ["{t('Cabinet & measurement')}", "{t('Driver phase')}"],
   'driver-card': ['const samenvatting = [', '/* ─── Command palette'],
-  'v2-panel': ['{engineV2Enabled && (', '<span className="opt-group-cap">{t(\'Components\')}</span>'],
+  /* H-2 — a MARKER rather than the `engineV2Enabled` guard. That guard is a
+     spelling anyone may legitimately write elsewhere in the file, and when H-2
+     wrote one in the wizard this slice grew to span three thousand lines, two
+     disclosures and a file input — and said so by failing three claims at once,
+     none of which was about the wizard. The marker is in `App.tsx` beside the
+     form it names. */
+  'v2-panel': ['{/* I-1 FORM · V2 PANEL', '<span className="opt-group-cap">{t(\'Components\')}</span>'],
 };
 
 function sliceOf(form: V2GovernedForm): string {

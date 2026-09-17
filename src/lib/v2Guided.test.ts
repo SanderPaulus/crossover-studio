@@ -121,16 +121,20 @@ describe('the screens are the register, grouped', () => {
     }
   });
 
-  it('FOURTEEN screens are requirements and exactly ONE is the neutral voicing', () => {
-    /* The brief asked for "the fourteen I-1 sentences" and the register yields
+  it('FIFTEEN screens are requirements and exactly ONE is the neutral voicing', () => {
+    /* The brief asked for "the fourteen I-1 sentences" and the register yielded
      * fifteen screens; the difference is not a miscount, it is the voicing —
      * where blank is not an absence but flat, the neutral reference stated by
      * being chosen (V45, A5e.2). Pinned as a SET and not only as a count, so a
-     * sixteenth screen cannot arrive as a second "neutral" one. */
+     * further screen cannot arrive as a second "neutral" one.
+     *
+     * H-2 added the sixteenth, and it is `unjudged` like the other fifteen: an
+     * unticked active side is an ABSENCE — every measured way is passive, which
+     * is what every project has always been — and not a neutral choice. */
     const neutral = V2_REQUIREMENT_SCREENS.filter((s) => s.skip === 'neutral');
     expect(neutral.map((s) => s.id)).toEqual(['voicing']);
-    expect(V2_REQUIREMENT_SCREENS.filter((s) => s.skip === 'unjudged')).toHaveLength(14);
-    expect(V2_REQUIREMENT_SCREENS).toHaveLength(15);
+    expect(V2_REQUIREMENT_SCREENS.filter((s) => s.skip === 'unjudged')).toHaveLength(15);
+    expect(V2_REQUIREMENT_SCREENS).toHaveLength(16);
   });
 
   it('the refining rows are rows a screen actually holds', () => {
@@ -251,7 +255,7 @@ describe('reading the project back per screen', () => {
   it('the voicing is never reported as skipped: blank there IS flat', () => {
     const v = stateWith();
     expect(skippedScreens(v).map((s) => s.id)).not.toContain('voicing');
-    expect(skippedScreens(v)).toHaveLength(14);
+    expect(skippedScreens(v)).toHaveLength(15);
     /* …and it still reads `blank` to the wizard, which is the truthful word
      * for a field nobody has touched and what the progress dots show. */
     expect(screenStatus(v, V2_REQUIREMENT_SCREENS.find((s) => s.id === 'voicing')!)).toBe('blank');
@@ -260,7 +264,7 @@ describe('reading the project back per screen', () => {
 
   it('the summary names what went unanswered, and says nothing when nothing did', () => {
     const fresh = describeSkipped(stateWith());
-    expect(fresh).toContain('14 requirements you skipped');
+    expect(fresh).toContain('15 requirements you skipped');
     expect(fresh).toContain('Amplifier min load');
     expect(fresh).toContain('none of them decided anything');
     const half = describeSkipped(stateWith({ amplifierPeakPowerW: '160' }));
@@ -520,10 +524,18 @@ describe('the guided field and the expert field allow the same numbers', () => {
   });
 
   it('every keyed requirement row that takes a number has a bound entry', () => {
-    const selects: V2SettingKey[] = ['lowestWayLevelWork'];
+    /* NAMED, with what each of them is instead of a number — the V47/V48 shape,
+     * because a list of exceptions that only says "select" stops explaining
+     * itself the moment a tick box or a free-text list joins it. */
+    const notNumbers: V2SettingKey[] = [
+      'lowestWayLevelWork', // a select: three stated modes
+      'activeSideOn', // H-2: a tick box — the ACT, not a quantity
+      'activeHandoverShape', // H-2: a select — LR4 or LR2
+      'activeHandoverHz', // H-2: a LIST of frequencies, typed as text (U-5's form)
+    ];
     for (const id of REQUIREMENT_ROW_IDS) {
       const key = V2_INPUT_REGISTER.find((r) => r.id === id)?.key;
-      if (key === undefined || selects.includes(key)) continue;
+      if (key === undefined || notNumbers.includes(key)) continue;
       expect(REQUIREMENT_INPUT[key], id).toBeDefined();
     }
   });

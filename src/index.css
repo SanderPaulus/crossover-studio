@@ -1181,6 +1181,32 @@ svg.legend-key-dash {
   margin-bottom: 0.25rem;
 }
 
+/* H-2 — the DSP target blocks of a hybrid run: the other half of what such a
+   run hands over. Solid border like the stated crossings below, because every
+   block here belongs to a design that exists; a fold, because it is read once a
+   design has been chosen rather than while choosing one. */
+.shortlist-dsp {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.6rem 0;
+}
+.shortlist-dsp > summary {
+  margin: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.dsp-target {
+  margin: 0.4rem 0;
+  padding: 0.4rem 0.6rem;
+  background: var(--panel, rgba(127, 127, 127, 0.08));
+  border-radius: 4px;
+  font-size: 0.82em;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
 /* U-5 — the crossings the DESIGNER stated. Solid border rather than the
    refusals' dashed one, because there IS a design in each of these and it can
    be loaded; kept out of the row table, because it is not in the feasible

@@ -14,6 +14,7 @@ import {
   V2_DEFAULT_GHOST_KEYS,
   V2_GHOSTS,
   V2_JUDGEMENT_KEYS,
+  V2_KEYS_WITHOUT_A_GHOST_FIELD,
   V2_SETTING_KEYS,
   designLevelNote,
   restoreV2Settings,
@@ -76,8 +77,41 @@ describe('no judgement field carries a numeric ghost', () => {
       if (/value=\{engineV2Settings\./.test(above)) offenders.push(`${i + 1}: ${line.trim()}`);
     });
     expect(offenders).toEqual([]);
-    // …and the scan can see: the v2 fields do read their ghost from the one table.
-    expect((APP.match(/placeholder=\{V2_GHOSTS\./g) ?? []).length).toBeGreaterThanOrEqual(V2_JUDGEMENT_KEYS.length - 2);
+  });
+
+  /* H-2 — WHICH JUDGEMENT FIELDS SHOW THEIR GHOST, BY NAME.
+   *
+   * What stood here was a COUNT with two of slack ("at least judgement keys
+   * minus two carry `placeholder={V2_GHOSTS.…}`"). It measured the number of
+   * exceptions and not their identity, so a third select or tick box landed
+   * inside the slack and nothing said which field had stopped showing its ghost.
+   * Both directions now, off the named set (the V47/V48 lesson, on this guard). */
+  it('every judgement field that is a TEXT input reads its ghost from the one table', () => {
+    for (const k of V2_JUDGEMENT_KEYS) {
+      if (V2_KEYS_WITHOUT_A_GHOST_FIELD.includes(k)) continue;
+      expect(APP, `${k} does not read its ghost from V2_GHOSTS`).toContain(`placeholder={V2_GHOSTS.${k}}`);
+    }
+  });
+
+  it('every key on the no-ghost list really is a select or a tick box, and is a judgement key', () => {
+    for (const k of V2_KEYS_WITHOUT_A_GHOST_FIELD) {
+      expect(V2_JUDGEMENT_KEYS, `${k} is not a judgement key`).toContain(k);
+      /* A select binds through `value=`, a tick box through `checked=` — and
+       * the second is the reason this looks for both rather than for one: a
+       * checkbox that is `value`-bound is a checkbox nobody wrote. */
+      const at = ['value', 'checked']
+        .map((attr) => APP.indexOf(`${attr}={engineV2Settings.${k}`))
+        .filter((i) => i > -1)
+        .sort((a, b) => a - b)[0] ?? -1;
+      expect(at, `${k} is not bound to a control`).toBeGreaterThan(-1);
+      /* The control's own tag, looked for in the 400 characters around the
+       * binding: a `<select>` opens above its value, a checkbox carries its
+       * `checked` beside one. Without this the list would be a way to opt a
+       * text field out of the rule above. */
+      const seg = APP.slice(Math.max(0, at - 400), at + 400);
+      expect(/<select|type="checkbox"/.test(seg), `${k} is neither a select nor a tick box`).toBe(true);
+      expect(APP, `${k} shows a ghost it was excused from`).not.toContain(`placeholder={V2_GHOSTS.${k}}`);
+    }
   });
 });
 

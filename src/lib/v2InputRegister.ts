@@ -216,9 +216,65 @@ const REQUIRED: readonly V2InputRow[] = [
  * ==================================================================== */
 
 /** The sub-heading a judgement row sits under. Presentation only. */
-export type V2JudgementBand = 'gates' | 'budgets' | 'requirements' | 'voicing';
+export type V2JudgementBand = 'architecture' | 'gates' | 'budgets' | 'requirements' | 'voicing';
 
 const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
+  /* ---- H-2: WHAT THE DESIGN IS, before anything judges it ----------------
+   *
+   * A band of its own, and first, because these three answer a question that
+   * comes BEFORE every gate and every budget: which ways the passive network
+   * carries at all. A gate says how good a design has to be; this says which
+   * design is being made. Filed as JUDGEMENT rather than NICE because blank is
+   * an absence with consequences a designer has to be told about — with the
+   * tick the lowest way leaves the network, the way above it gains a high-pass
+   * ladder, and every sum the run is judged on contains a branch that is not in
+   * the netlist. `lowestWayLevelWork` is the nearest relative and sits two
+   * bands down for the same reason. */
+  {
+    id: 'activeSideOn',
+    key: 'activeSideOn',
+    label: 'Active side below the lowest passive way',
+    form: 'Filters → Engine v2',
+    travels:
+      'engineV2Settings.activeSideOn → activeSideStatement → ReportSettings.activeHandover AND the ' +
+      'chain declaration’s seventh key (activeSide) → the design step, both searches and the ' +
+      'synthesis',
+    cls: 'judgement',
+    band: 'architecture',
+    emptyMeans:
+      'no active side: every measured way is part of the passive network, nothing is modelled, and ' +
+      'the run is exactly the run it has always been.',
+    source: 'choice',
+  },
+  {
+    id: 'activeHandoverHz',
+    key: 'activeHandoverHz',
+    label: 'Handover(s) to the active side (Hz)',
+    form: 'Filters → Engine v2 (shown once the active side is ticked)',
+    travels:
+      'parsed verbatim → one RUN of the passive field per stated handover, and ActiveHandover.hz in ' +
+      'the report and the chain declaration',
+    cls: 'judgement',
+    band: 'architecture',
+    emptyMeans:
+      'no handover is stated, so nothing can be modelled: the active side realises its filter in a ' +
+      'processor, so the app cannot search for that handover — it has to be told.',
+    source: 'choice',
+  },
+  {
+    id: 'activeHandoverShape',
+    key: 'activeHandoverShape',
+    label: 'Acoustic target shape of the handover',
+    form: 'Filters → Engine v2 (shown once the active side is ticked)',
+    travels:
+      'ActiveHandover.kind and .order → the high-pass the passive way must reach AND the low-pass ' +
+      'the DSP must reach — one stated shape, read twice',
+    cls: 'judgement',
+    band: 'architecture',
+    emptyMeans:
+      'no shape is stated, so neither flank has an alignment to meet and nothing is modelled.',
+    source: 'choice',
+  },
   {
     id: 'ampMinLoadOhm',
     label: 'Amplifier min load',
@@ -1137,6 +1193,7 @@ export const V2_JUDGEMENT_ROWS: readonly (V2InputRow & { band: V2JudgementBand }
 
 /** The sub-headings of the judgement group, in order. */
 export const V2_JUDGEMENT_BANDS: readonly V2JudgementBand[] = [
+  'architecture',
   'gates',
   'budgets',
   'requirements',
@@ -1364,6 +1421,10 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'runBudgetEvals', form: 'v2-panel', control: 'value={engineV2Settings.runBudgetEvals}' },
   { row: 'fieldMode', form: 'v2-panel', control: 'value={fieldModeOf(engineV2Settings.fieldMode)}' },
   { row: 'statedCrossings', form: 'v2-panel', control: 'value={engineV2Settings.statedCrossings}' },
+  // ---- H-2: the stated active side ----
+  { row: 'activeSideOn', form: 'v2-panel', control: "checked={engineV2Settings.activeSideOn === 'on'}" },
+  { row: 'activeHandoverHz', form: 'v2-panel', control: 'value={engineV2Settings.activeHandoverHz}' },
+  { row: 'activeHandoverShape', form: 'v2-panel', control: 'value={engineV2Settings.activeHandoverShape}' },
 ]);
 
 /**

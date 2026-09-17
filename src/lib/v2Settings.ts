@@ -56,6 +56,25 @@ export const V2_SETTING_KEYS = [
   'resistorThermalPowerW',
   'lowestWayLevelWork',
   'lowestWaySeriesRMaxOhm',
+  /**
+   * H-2 — THE STATED ACTIVE SIDE: three fields that together say one thing.
+   *
+   * `activeSideOn` is the ACT — the tick that says this loudspeaker's lowest way
+   * is driven by its own amplifier and a DSP, so the passive network is the ways
+   * above it. `activeHandoverHz` is the list of handovers to run (the U-5 list
+   * form, because the active handover is STATED and never searched: the DSP
+   * realises it, and a search that moved it would be searching a filter this app
+   * does not program). `activeHandoverShape` is the acoustic target of BOTH
+   * flanks — stated once and read twice, so the passive high-pass and the DSP
+   * low-pass cannot disagree about which alignment they are two halves of.
+   *
+   * Three keys and not one, because each is separately absent and each absence
+   * has its own sentence (`v2ActiveSide.ts`). Blank on all three is the app
+   * every project has always had.
+   */
+  'activeSideOn',
+  'activeHandoverHz',
+  'activeHandoverShape',
   /** E-2 — the field mode: '' (exploration, the default), 'exploration' or 'full'. */
   'fieldMode',
   /**
@@ -110,6 +129,33 @@ export const V2_JUDGEMENT_KEYS: readonly V2SettingKey[] = [
   'resistorThermalPowerW',
   'lowestWayLevelWork',
   'lowestWaySeriesRMaxOhm',
+  /* H-2 — the stated active side. It judges by DECIDING WHAT THE DESIGN IS:
+   * with it ticked the lowest way leaves the passive network and the way above
+   * it gains a high-pass ladder, and every sum the run is judged on contains a
+   * branch that is not in the netlist. `lowestWayLevelWork` is the nearest
+   * relative — a stated rule about the lowest way that the design step reads
+   * before the tuner exists — and it is filed here for the same reason. */
+  'activeSideOn',
+  'activeHandoverHz',
+  'activeHandoverShape',
+];
+
+/**
+ * H-2 — the judgement keys the app renders as something OTHER than a text
+ * field, and which therefore carry no placeholder.
+ *
+ * A NAMED SET and not a slack of two, which is what stood here until H-2: a
+ * count tracks the number of exceptions rather than their identity, so the
+ * third one lands silently and nothing says which field stopped showing its
+ * ghost (the V47/V48 lesson, on this guard). Each of these is a select or a
+ * tick box — a control with nothing to place a hint inside — and the guard
+ * checks both directions: everything NOT on this list must read its ghost from
+ * `V2_GHOSTS`, and everything on it must really be one of those two controls.
+ */
+export const V2_KEYS_WITHOUT_A_GHOST_FIELD: readonly V2SettingKey[] = [
+  'lowestWayLevelWork',
+  'activeSideOn',
+  'activeHandoverShape',
 ];
 
 /** The placeholder of a field that holds nothing: a mark, never a number. */

@@ -208,6 +208,20 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
     why: 'Its own fold directly under the list it belongs to, closed by default: these are not near-misses and nobody looked at a design here (V31).',
   },
   {
+    /* H-2 — the other half of what a hybrid run hands over. A passive network
+     * is a bill of materials; a hybrid design is a bill of materials AND four
+     * numbers somebody types into a processor, so this is a RESULT and not a
+     * note about one — which is why it sits under the table with the refusals
+     * rather than in the fold that holds a run's own accounting. Folded because
+     * a reader who is choosing between designs is not yet setting one up. */
+    id: 'dsp-targets',
+    what: 'The DSP target block per delivered design: shape, gain, delay, polarity, and what to measure in the cabinet.',
+    when: 'The run stated an active side and delivered at least one design.',
+    token: '{v2DspTargets.length > 0 && (',
+    placement: 'below-table',
+    why: 'Half of a hybrid run’s deliverable, under the list of designs it belongs to; closed, because it is read once a design has been chosen.',
+  },
+  {
     id: 'to-expert',
     what: 'The hand-over from guided to expert.',
     when: 'Guided mode.',

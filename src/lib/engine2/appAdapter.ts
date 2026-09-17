@@ -178,7 +178,16 @@ export interface AdapterInput {
   filter: { name: string; netlist: Netlist } | null;
   geometry: AdapterGeometry;
   settings: ReportSettings;
+  /**
+   * H-2 — the role whose driver is NOT in the netlist, because its own
+   * amplifier drives it. See `resolveDriverIds`. Absent = every branch is in
+   * the passive network, which is every project before H-2 (P4).
+   */
+  activeRole?: BranchRole;
 }
+
+/** The branch roles, low to high — the order every positional map below uses. */
+const ROLE_ORDER: readonly BranchRole[] = ['low', 'mid', 'high'];
 
 /**
  * Resolve each branch's driver id.
@@ -192,6 +201,22 @@ export interface AdapterInput {
 export function resolveDriverIds(
   branches: readonly AdapterBranch[],
   netlist: Netlist | null,
+  /**
+   * H-2 — THE ROLE WHOSE DRIVER IS NOT IN THE NETLIST.
+   *
+   * On a hybrid the lowest way is driven by its own amplifier and a DSP, so the
+   * netlist holds the ways ABOVE it and its own slots mean one role higher: the
+   * netlist's lowest driver is the lowest PASSIVE way. Without this the slot
+   * picker hands the netlist's lowest driver to the `low` role and the `mid`
+   * role keeps its role-name default — and on a three-branch project with a
+   * two-driver netlist those are THE SAME STRING. Measured in the running app
+   * before it was written down: the DSP target block read "mid (active),
+   * handing over to mid (passive)", a handover of a way with itself, and the
+   * manifest carried two entries under one driver id.
+   *
+   * Absent = the resolution this function has always done, byte for byte.
+   */
+  excludeRole?: BranchRole,
 ): { ids: Partial<Record<BranchRole, string>>; ambiguous: string | null } {
   const ids: Partial<Record<BranchRole, string>> = {};
   for (const b of branches) ids[b.role] = b.role;
@@ -202,9 +227,26 @@ export function resolveDriverIds(
   );
   const slots = pickSlotsN(drivers);
   if (slots.ambiguous) return { ids, ambiguous: slots.ambiguous };
-  if (slots.woofer) ids.low = slots.woofer.model;
-  if (slots.mid) ids.mid = slots.mid.model;
-  if (slots.tweeter) ids.high = slots.tweeter.model;
+  if (excludeRole === undefined) {
+    if (slots.woofer) ids.low = slots.woofer.model;
+    if (slots.mid) ids.mid = slots.mid.model;
+    if (slots.tweeter) ids.high = slots.tweeter.model;
+    return { ids, ambiguous: null };
+  }
+  /* The netlist's slots, low to high, onto the roles this project has, low to
+   * high, MINUS the excluded one. A positional map rather than three named
+   * assignments, because "which role does the netlist's lowest driver belong
+   * to" is exactly the question the exclusion moves. */
+  const netRoles = ROLE_ORDER.filter(
+    (r) => r !== excludeRole && branches.some((b) => b.role === r),
+  );
+  const netSlots = [slots.woofer, slots.mid, slots.tweeter].filter(
+    (d): d is NonNullable<typeof d> => d !== undefined,
+  );
+  netSlots.forEach((d, i) => {
+    const role = netRoles[i];
+    if (role) ids[role] = d.model;
+  });
   return { ids, ambiguous: null };
 }
 
@@ -234,7 +276,11 @@ export interface AdapterResult {
 }
 
 export function buildEngineV2Input(args: AdapterInput): AdapterResult {
-  const { ids, ambiguous } = resolveDriverIds(args.branches, args.filter?.netlist ?? null);
+  const { ids, ambiguous } = resolveDriverIds(
+    args.branches,
+    args.filter?.netlist ?? null,
+    args.activeRole,
+  );
 
   const entries: ManifestEntry[] = [];
   const files: MeasurementFile[] = [];

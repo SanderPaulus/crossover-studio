@@ -177,6 +177,29 @@ import {
   type V2StatedAt,
   type V2StatedBy,
 } from './lib/v2Settings.ts';
+/* H-2 — THE STATED ACTIVE SIDE, read off the form. What the ENGINE does with
+ * the answer was written at H-1 (`activeSide.ts`, `chainChoices.ts`,
+ * `dspTarget.ts`) and is untouched; this is the form's half — which way the app
+ * declares active, what is missing when it cannot be modelled, and the
+ * sentences that say so (`lib/v2ActiveSide.ts`). */
+import { describeDspTarget, dspTargetBlock } from './lib/engine2/dspTarget.ts';
+import type { ActiveHandover, ModelBranchSettings } from './lib/activeSide.ts';
+import {
+  ACTIVE_SIDE_GUIDED_LINE,
+  ACTIVE_SIDE_MODEL_MARK,
+  ACTIVE_SIDE_MODEL_NOTE,
+  ACTIVE_SIDE_SUM_COLUMNS,
+  ACTIVE_SIDE_ROLES,
+  ACTIVE_SIDE_SHAPES,
+  ACTIVE_WAY_MEASURED_NOTE,
+  activeSideStatement,
+  describeActiveSide,
+  describeHybridField,
+  formatHandover,
+  hybridLabel,
+  passiveOnlyNotice,
+  type ActiveSideStatement,
+} from './lib/v2ActiveSide.ts';
 /* U-3 — a demo bundle and the project state it produces. One shape, two demos,
  * and `demoBundleState` is what `applyDemoBundle` below assigns
  * (`lib/demoBundle.ts`). */
@@ -2128,6 +2151,64 @@ export default function App() {
         </label>
       );
     }
+    /* H-2 — THE THREE FIELDS OF THE ACTIVE SIDE. None of them is a number, so
+       none of them can go through the generic numeric branch below: a tick, a
+       LIST of frequencies (U-5's form — the handover is stated, never searched)
+       and a select. The two stated fields appear only once the tick is on,
+       exactly as in the expert panel, and what is missing is named underneath
+       rather than guessed at (P4). */
+    if (rowId === 'activeSideOn') {
+      return (
+        <label key={rowId} className="v2-req-field">
+          <input
+            type="checkbox"
+            checked={engineV2Settings.activeSideOn === 'on'}
+            onChange={(e) => setV2Field('activeSideOn', e.target.checked ? 'on' : '')}
+          />
+          {label}
+        </label>
+      );
+    }
+    if (rowId === 'activeHandoverHz') {
+      if (engineV2Settings.activeSideOn !== 'on') return null;
+      return (
+        <label key={rowId} className="v2-req-field">
+          {label}
+          <input
+            type="text"
+            placeholder={UNSET_GHOST}
+            value={engineV2Settings.activeHandoverHz}
+            onChange={(e) => setV2Field('activeHandoverHz', e.target.value)}
+            style={{ width: '9rem' }}
+          />{' '}
+          Hz
+        </label>
+      );
+    }
+    if (rowId === 'activeHandoverShape') {
+      if (engineV2Settings.activeSideOn !== 'on') return null;
+      return (
+        <span key={rowId} className="v2-req-field">
+          <label className="v2-req-field">
+            {label}
+            <select
+              value={engineV2Settings.activeHandoverShape}
+              onChange={(e) => setV2Field('activeHandoverShape', e.target.value)}
+            >
+              <option value="">{t('not stated')}</option>
+              {ACTIVE_SIDE_SHAPES.map((sh) => (
+                <option key={sh.value} value={sh.value}>
+                  {t(sh.label)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!v2ActiveSide.armed && (
+            <span className="v2-warn"> {v2ActiveSide.off.join(' ')}</span>
+          )}
+        </span>
+      );
+    }
     if (rowId === 'driveOnFsMaxDb-per-way') {
       /* A REFINEMENT, and the screen says so: with nothing here the single dB
          figure above judges every protected way, which is the ordinary case.
@@ -3798,6 +3879,47 @@ export default function App() {
    * scan must judge a design against the same numbers, and two parsers of the
    * same text field is how they come to disagree about a decimal comma.
    */
+  /**
+   * H-2 — THE STATED ACTIVE SIDE, as this project reads it.
+   *
+   * One memo and several readers — the panel, the report settings, the run, the
+   * measurement card's note and the guided line — because "is there a hybrid
+   * here" is one question, and four call sites answering it from three fields
+   * each is how four answers appear. The WAYS and the two measurements come from
+   * the app's own state; everything else is the form (`v2ActiveSide.ts`).
+   */
+  const v2ActiveSide: ActiveSideStatement = useMemo(
+    () =>
+      activeSideStatement({
+        on: engineV2Settings.activeSideOn,
+        handoversRaw: engineV2Settings.activeHandoverHz,
+        shape: engineV2Settings.activeHandoverShape,
+        ways: threeWay ? 3 : woofer && tweeter ? 2 : 1,
+        /* The ACTIVE way is the app's lowest role and the lowest PASSIVE way is
+         * the one above it — `ACTIVE_SIDE_ROLES`, read and never re-typed. */
+        activeWayMeasured: ACTIVE_SIDE_ROLES.active === 'low' ? !!woofer : false,
+        passiveWayMeasured: ACTIVE_SIDE_ROLES.lowestPassive === 'mid' ? !!midDrv : false,
+      }),
+    [
+      engineV2Settings.activeSideOn,
+      engineV2Settings.activeHandoverHz,
+      engineV2Settings.activeHandoverShape,
+      threeWay,
+      woofer,
+      midDrv,
+      tweeter,
+    ],
+  );
+  /**
+   * Is this run a HYBRID — the tick plus everything it needs?
+   *
+   * Read from here down by the run, the report and the result area. `asked`
+   * without `armed` is deliberately NOT this: a run that cannot model the
+   * active side runs the passive ways alone and says so (`passiveOnlyNotice`),
+   * rather than refusing or pretending.
+   */
+  const v2Hybrid = engineV2Enabled && v2ActiveSide.armed;
+
   const engineV2Gates = useMemo(() => {
     const stated = (raw: string, scale = 1): number | undefined => {
       if (raw.trim() === '') return undefined;
@@ -4059,6 +4181,17 @@ export default function App() {
    */
   const buildV2Report = useMemo(() => (
     net: { name: string; parts: readonly VxpPart[] } | null,
+    /**
+     * H-2 — WHICH stated handover this report is about.
+     *
+     * A hybrid run states a LIST, and a report is one object: the derivation of
+     * the DSP settings is class A and therefore per HANDOVER, so a reader who
+     * wants the second one has to ask for it. Absent = the first stated
+     * handover, which is what the panel shows; the run asks for each in turn and
+     * the result area asks for the one a row was built at. One implementation of
+     * the derivation (`report.ts` → `activeSide.ts`), several questions.
+     */
+    activeHandoverHz?: number,
   ) => {
     if (!engineSelection.reporting) return null;
     try {
@@ -4266,7 +4399,14 @@ export default function App() {
         if (vals.length === 0) return undefined;
         return Math.max(1, Math.min(4, Math.round(Math.max(...vals) / 6)));
       };
-      const ids = resolveDriverIds(branches, filter?.netlist ?? null).ids;
+      /* H-2 — the SAME resolution the adapter will do below, exclusion and all:
+       * two answers to "which driver is this role" is how the order-by-pair key
+       * and the manifest end up describing different drivers. */
+      const ids = resolveDriverIds(
+        branches,
+        filter?.netlist ?? null,
+        v2ActiveSide.armed ? ACTIVE_SIDE_ROLES.active : undefined,
+      ).ids;
       const orderByPair: Record<string, number> = {};
       if (threeWay) {
         const lowOrder = orderFrom(acSlopeWoofer, acSlopeMidHp);
@@ -4314,6 +4454,11 @@ export default function App() {
         branches,
         filter,
         geometry,
+        /* H-2 — the netlist of a hybrid holds the PASSIVE ways only, so its
+         * lowest driver belongs to the lowest passive role and not to the
+         * active one. Without this the two collide on a three-branch project
+         * with a two-driver netlist (`resolveDriverIds`). */
+        ...(v2ActiveSide.armed ? { activeRole: ACTIVE_SIDE_ROLES.active } : {}),
         settings: {
           ...(angles.length > 0 ? { verticalWindowDeg: angles } : {}),
           ...(engineV2Settings.amplifierPowerW !== '' && Number.isFinite(power) && power > 0
@@ -4332,6 +4477,31 @@ export default function App() {
            * way can be resolved to a DCR model in the report. Only when some
            * way states one: without a family there is nothing to resolve. */
           ...(coilDcrFits.length > 0 ? { coilDcrFits } : {}),
+          /* H-2 — THE STATED ACTIVE SIDE reaches the report, and from there the
+           * modelled branch joins every acoustic composition and no electrical
+           * one (H-1, `report.ts`). The driver IDS come from the same resolver
+           * every other per-way figure is re-keyed through, so the handover
+           * names the ways the report itself names. Absent = no active side and
+           * the report is byte for byte what it always was (P4). */
+          ...((): { activeHandover?: ActiveHandover } => {
+            const hz = activeHandoverHz ?? v2ActiveSide.handoversHz[0];
+            if (!v2ActiveSide.armed || !v2ActiveSide.shape || hz === undefined) return {};
+            const activeWay = ids[ACTIVE_SIDE_ROLES.active];
+            const passiveWay = ids[ACTIVE_SIDE_ROLES.lowestPassive];
+            if (!activeWay || !passiveWay) return {};
+            return {
+              activeHandover: {
+                activeWay,
+                passiveWay,
+                hz,
+                kind: v2ActiveSide.shape.kind,
+                order: v2ActiveSide.shape.order,
+                statedBy: engineV2StatedAt.activeHandoverHz
+                  ? `you on ${engineV2StatedAt.activeHandoverHz}`
+                  : 'you (date not recorded)',
+              },
+            };
+          })(),
         },
       });
       return {
@@ -4379,11 +4549,13 @@ export default function App() {
     acSlopeWoofer,
     acSlopeMidHp,
     engineV2Settings,
+    engineV2StatedAt,
     engineV2Gates,
     ampMinLoadOhm,
     xoName,
     v2Meas,
     activeTargetCurve,
+    v2ActiveSide,
   ]);
 
   /** The panel's report: the function above, applied to the design on screen. */
@@ -7999,7 +8171,19 @@ export default function App() {
     // + measured level trims per (low, high) handover candidate, per-branch
     // synthesis on each branch's own band, assembled TWO-PAIR tune, and the
     // amplifier-load verdict as a ranking gate. Runs over the worker pool.
-    if (threeWay && sim && sim.mid && midDrv && result) {
+    /* H-2 — A HYBRID TAKES THE TWO-WAY ROUTE, and that is the whole of the
+     * routing change.
+     *
+     * With an active side stated, the lowest way is driven by its own amplifier
+     * and the PASSIVE network is the ways above it — on a three-way project that
+     * is two ways, which is the two-way chain (`v2ChainOne`), the same shape
+     * casus 1h runs. The three-way branch below would design a passive network
+     * for all three, which is a different loudspeaker. Falling through rather
+     * than branching again is deliberate: everything the two-way route already
+     * does — the field, the facts, the gates, the shortlist, the export — is
+     * exactly what a hybrid needs, and a third copy of it is what `scanRequest.ts`
+     * exists to prevent. */
+    if (!v2Hybrid && threeWay && sim && sim.mid && midDrv && result) {
       if (Object.keys(impedances).length < 3) {
         setVfError('3-way design needs all three measured impedances (.ZMA per driver).');
         return;
@@ -8086,6 +8270,15 @@ export default function App() {
                * of a stated plateau failed to arrive. */
               `Voicing (A5e.2): ${describeTargetCurve(activeTargetCurve)}. Every window, RMS and ` +
                 'amplitude term in this run is measured against it.',
+              /* H-2 — AN ACTIVE SIDE THAT WAS ASKED FOR AND COULD NOT BE
+               * MODELLED lands HERE, on the three-way route, because that is
+               * where the run goes when it is not a hybrid: a passive network
+               * for every loaded way, including the one the designer said is
+               * driven actively. A tick that produced a different loudspeaker
+               * without a word is the failure F0 exists to prevent. */
+              ...(v2ActiveSide.asked && !v2ActiveSide.armed
+                ? [passiveOnlyNotice(v2ActiveSide.off)]
+                : []),
               ...pinsRaw.notes,
             ]
           : [],
@@ -8970,6 +9163,9 @@ export default function App() {
               /* E-2 — which mode made this field, said by the field itself. */
               field: v2Generated ? { mode: fieldMode, description: describeFieldMode(v2Generated.field) } : null,
               export: v2RunExport,
+              /* H-2 — a three-way PASSIVE run has no active side by
+               * construction: a hybrid falls through to the two-way route. */
+              activeHandoverByLabel: {},
             });
             setV2Shortlist(shortlist);
             setShortlistPick(null);
@@ -9354,6 +9550,37 @@ export default function App() {
       return;
     }
     if (!woofer || !tweeter || !result) return;
+    /* ================================================================
+     * H-2 — WHICH TWO WAYS THIS RUN DESIGNS FOR.
+     *
+     * On an ordinary two-way they are the woofer and the tweeter, and every
+     * line below reads exactly what it always read. On a HYBRID the lowest way
+     * has its own amplifier and a DSP, so the passive network is the two ways
+     * ABOVE it: the mid becomes the lowest PASSIVE way and the woofer travels
+     * as `activeMeasured` — a measurement with no branch, which is what a
+     * hybrid is (casus 1h's own shape).
+     *
+     * Three bindings and not a second copy of the branch. Everything that
+     * follows — the field, the facts, the gates, the declaration, the
+     * shortlist, the export — asks the same questions of whichever two ways
+     * these are, which is the whole reason `scanRequest.ts` exists.
+     * ================================================================ */
+    const hybrid = v2Hybrid && !!midDrv;
+    /** The lowest way the PASSIVE network carries. */
+    const passiveLow: Loaded = hybrid && midDrv ? midDrv : woofer;
+    /** Its role, in the app's own vocabulary — read, never re-typed. */
+    const passiveLowRole: BranchRole = hybrid
+      ? ACTIVE_SIDE_ROLES.lowestPassive
+      : ACTIVE_SIDE_ROLES.active;
+    /** The way the DSP drives, or null when there is no active side. */
+    const activeLoaded: Loaded | null = hybrid ? woofer : null;
+    /**
+     * The MODEL the active way is keyed by everywhere downstream. Its impedance
+     * is deliberately withheld from the chain below: the amplifier this network
+     * is designed for never sees it, and a driver impedance in the map is an
+     * invitation for the solver to find a branch for it (casus 1h).
+     */
+    const activeModel = hybrid ? canonicalModelForRole(ACTIVE_SIDE_ROLES.active, threeWay) : null;
     setVfBusy(true);
     setVfError(null);
     setVfProgress(null);
@@ -9391,8 +9618,10 @@ export default function App() {
      * reach below one of them, so it has to be asked (`bandedOnGrid`). */
     const onChainGrid = (l: Loaded) =>
       grid === simGrid ? resample(l.frd.freq, l.frd.spl, l.frd.phase, grid) : bandedOnGrid(l, grid);
-    const w = onChainGrid(woofer);
+    const w = onChainGrid(passiveLow);
     const t = onChainGrid(tweeter);
+    /* H-2 — the ACTIVE way on the chain grid, banded like the other two. */
+    const activeMeasured = activeLoaded ? onChainGrid(activeLoaded) : null;
     const angleData = angleResponsesOn(grid) ?? undefined;
     // The optimizer targets what you look at: the view range is the
     // evaluation band (top edge backed off 2.5% from the grid edge).
@@ -9439,23 +9668,44 @@ export default function App() {
      * chain — design rounds → synthesis → assembled tune — and the final
      * results compete. Deterministic: same input → same output. ---- */
     if (Object.keys(impedances).length > 0) {
-      const zOnGrid = zGridWithSlots(impedances, grid);
+      /* H-2 — the active way's impedance is WITHHELD from the passive chain.
+       * Not tidiness: `measurementFacts` walks this map, and a way the main
+       * amplifier never drives has no business in a gate, a budget inversion or
+       * an EPDR reading (casus 1h withholds it for the same reason). Identity
+       * on every non-hybrid run — nothing is dropped when nothing is active. */
+      const passiveZ = (z: Record<string, readonly Complex[]>) => {
+        if (!activeModel) return z;
+        const out = { ...z };
+        delete out[activeModel];
+        return out;
+      };
+      const zOnGrid = passiveZ(zGridWithSlots(impedances, grid));
       const safety = (() => {
-        const lo = Math.max(200, woofer.frd.freq[0], tweeter.frd.freq[0]);
+        const lo = Math.max(200, passiveLow.frd.freq[0], tweeter.frd.freq[0]);
         const hi = Math.min(
           20000,
-          woofer.frd.freq[woofer.frd.freq.length - 1],
+          passiveLow.frd.freq[passiveLow.frd.freq.length - 1],
           tweeter.frd.freq[tweeter.frd.freq.length - 1],
         );
         if (!(hi > lo * 1.5)) return undefined;
         const sGrid = logspace(lo, hi, 240);
+        const onSafety = (l: Loaded) => resample(l.frd.freq, l.frd.spl, l.frd.phase, sGrid);
         return {
           freqs: sGrid,
-          w: resample(woofer.frd.freq, woofer.frd.spl, woofer.frd.phase, sGrid),
-          t: resample(tweeter.frd.freq, tweeter.frd.spl, tweeter.frd.phase, sGrid),
-          z: zGridWithSlots(impedances, sGrid),
+          w: onSafety(passiveLow),
+          t: onSafety(tweeter),
+          z: passiveZ(zGridWithSlots(impedances, sGrid)),
         };
       })();
+      /* H-2 — the modelled branch on the SAFETY grid, so the full-band pass
+       * sees the same three branches the search was steered by. It rides beside
+       * the safety set rather than inside it, because that is the shape
+       * `ChainInput` carries (`activeMeasuredSafety`). Null without an active
+       * side, and then nothing anywhere behaves differently (P4). */
+      const activeMeasuredSafety =
+        activeLoaded && safety
+          ? resample(activeLoaded.frd.freq, activeLoaded.frd.spl, activeLoaded.frd.phase, safety.freqs)
+          : null;
       const targets = stagedOn
         ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) }
         : undefined;
@@ -9588,6 +9838,15 @@ export default function App() {
            * how the first version of this shipped and what the browser run
            * caught. */
           ...twoWayFrame.notes,
+          /* H-2 — AN ACTIVE SIDE THAT WAS ASKED FOR AND COULD NOT BE MODELLED
+           * is said here, at the top, before any number below it is read. The
+           * run still happens — over the PASSIVE ways alone — and the sentence
+           * names what was missing, because judging a hybrid's sum without the
+           * way that plays its bass and printing the answer unmarked is the
+           * failure F0 exists to prevent. */
+          ...(v2ActiveSide.asked && !v2ActiveSide.armed
+            ? [passiveOnlyNotice(v2ActiveSide.off)]
+            : []),
         ]);
         /* E-2 — THE FIELD MODE this run uses: the "Run the full field" button
          * passes it explicitly (state has not landed yet in that tick), every
@@ -9596,7 +9855,18 @@ export default function App() {
         /* E-2 — the field REQUEST, kept apart from the field so the run export
          * can carry exactly what the generator was handed (`runExport.ts`). */
         const v2FieldRequest = (() => {
-          const wis = engineV2Report?.report?.predesign.windowInputs ?? [];
+          /* H-2 — THE PASSIVE HANDOVERS ONLY.
+           *
+           * The report derives one window per ADJACENT PAIR, so on a hybrid the
+           * first of them is the pair the ACTIVE side owns — and that handover
+           * is stated, not searched: the processor realises it, and a field
+           * that generated positions for it would be searching a filter this
+           * app does not program. Dropped by the LOWER way's name (casus 1h's
+           * own rule), never by counting to one. On every other run this
+           * filters nothing and `wis` is exactly what it always was. */
+          const allWis = engineV2Report?.report?.predesign.windowInputs ?? [];
+          const activeWayId = hybrid ? engineV2Report?.driverIds?.[ACTIVE_SIDE_ROLES.active] : undefined;
+          const wis = activeWayId ? allWis.filter((x) => x.lower !== activeWayId) : allWis;
           if (wis.length === 0) {
             /* NO WINDOWS, SO NO FIELD — and the fallback to the v1 generator is
              * said out loud rather than taken quietly, exactly as on the
@@ -9617,7 +9887,11 @@ export default function App() {
            * from here rather than through a second lookup. */
           const curveOfDriver = (driver: string) => {
             const role = v2Roles.find((r) => engineV2Report?.driverIds?.[r] === driver);
-            const g = role === 'low' ? w : role === 'high' ? t : null;
+            /* H-2 — `w` is the lowest PASSIVE way, which on a hybrid is the mid.
+             * Read through `passiveLowRole` rather than the literal 'low', so
+             * the curve the natural-slope fit gets is the curve the chain
+             * actually designs for. */
+            const g = role === passiveLowRole ? w : role === ACTIVE_SIDE_ROLES.highest ? t : null;
             return g ? { freq: g.freq, db: g.spl } : null;
           };
           const fieldSettings = fieldModeSettings(fieldMode, {
@@ -9734,19 +10008,66 @@ export default function App() {
             return;
           }
         }
-        /* V41/V51/V51b — the CHAIN-level half of the declaration, built once
-         * because it is a property of the RUN and not of one handover. The
-         * two-way chain names its EQ budget `eqBandsPerDriver`; the declaration
-         * speaks the three-way key and the worker translates
+        /* H-2 — THE CLASS-A DSP SETTINGS, ONE DERIVATION PER STATED HANDOVER.
+         *
+         * Read off a report WITHOUT a netlist, which is the whole point: the
+         * derivation is measurements plus the stated shape, so it is the same
+         * answer for every candidate at that handover and no search can move it
+         * (H-1). One implementation — `report.ts` → `activeSide.ts` — and the
+         * app asks it the same way the fixture does, rather than fitting a gain
+         * and a delay of its own.
+         *
+         * A handover the derivation cannot answer is REPORTED and dropped, by
+         * name and with its reason; it never becomes a run with a guessed
+         * alignment (P4). */
+        const activeRuns: { hz: number; active: { handover: ActiveHandover; settings: ModelBranchSettings } }[] = [];
+        if (hybrid) {
+          for (const hz of v2ActiveSide.handoversHz) {
+            const built = buildV2Report(null, hz);
+            const a = built?.report?.activeSide ?? null;
+            if (a?.settings) activeRuns.push({ hz, active: { handover: a.stated, settings: a.settings } });
+            else {
+              setV2RunNotes((prev) => [
+                ...prev,
+                `The active handover at ${formatHandover(hz)} could not be modelled and was not run: ` +
+                  `${a ? a.off.join('; ') : 'the report states no active side'}.`,
+              ]);
+            }
+          }
+          if (activeRuns.length === 0) {
+            setV2RunNotes((prev) => [...prev, passiveOnlyNotice(v2ActiveSide.off)]);
+          }
+        }
+        /* V41/V51/V51b — the CHAIN-level half of the declaration. The two-way
+         * chain names its EQ budget `eqBandsPerDriver`; the declaration speaks
+         * the three-way key and the worker translates
          * (`withDeclaredChainChoicesTwoWay`, E-3), so it is handed over under
-         * the name the declaration uses. */
-        const chainDecl = declareCandidateChainChoices({
-          stated: { eqBands: settings.eqBandsPerDriver },
-          ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
-          ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
-            ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
-            : {}),
-        });
+         * the name the declaration uses.
+         *
+         * H-2 — built per RUN rather than once, because the SEVENTH key is a
+         * property of the handover this run states and not of the field.
+         * Everything else in it is the same object for every run of one scan. */
+        const chainDeclFor = (
+          active?: { handover: ActiveHandover; settings: ModelBranchSettings },
+        ) =>
+          declareCandidateChainChoices({
+            stated: { eqBands: settings.eqBandsPerDriver },
+            ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
+            ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
+              ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
+              : {}),
+            ...(active ? { activeSide: active } : {}),
+          });
+        /* THE ONE THE FINGERPRINT AND THE EXPORT READ.
+         *
+         * H-2 — the FIRST run's on a hybrid, and not a declaration with the
+         * seventh key absent: a stamp that recorded "no active side" for a run
+         * that had one would describe a different loudspeaker. Which of the
+         * stated handovers this is does not have to be settled here, because
+         * the handovers themselves ride in `designKey` below — this half only
+         * has to say that there WAS one and what shape it had. Without an
+         * active side it is `chainDeclFor()`, byte for byte what it was. */
+        const chainDecl = chainDeclFor(activeRuns[0]?.active);
         /* A5e.3 — the coil family per way keyed by MODEL. On a two-way the LOW
          * role is the model `mid` (`canonicalModelForRole`), which is what the
          * worker's `v2ChainOne` branch keys its `driverZ` by. */
@@ -9760,11 +10081,18 @@ export default function App() {
         const chainInputFor = (
           v: { label: string; xoRange?: [number, number] },
           cand?: GeneratedCandidate,
+          active?: { handover: ActiveHandover; settings: ModelBranchSettings },
         ): ChainInput => ({
           grid: [...grid],
           w,
           t,
           driverZ: zOnGrid,
+          /* H-2 — the measurement the modelled branch is built from. It has no
+           * branch in the netlist and no entry in `driverZ`; what it has is a
+           * response, and that is exactly what a way somebody else's amplifier
+           * drives contributes to the sum. Absent without an active side. */
+          ...(active && activeMeasured ? { activeMeasured } : {}),
+          ...(active && activeMeasuredSafety ? { activeMeasuredSafety } : {}),
           adjust: tAdjust,
           seed: defaultVFilters(),
           settings: cand
@@ -9793,12 +10121,35 @@ export default function App() {
                 ? { floorHz: measuredFree[0], ceilHz: measuredFree[1] }
                 : null,
         });
-        const items: V2ChainItem[] = v2Variants.map((v, i) => {
+        /* H-2 — THE RUN LIST IS A PRODUCT, and the multiplication is said out
+         * loud rather than discovered in a progress bar.
+         *
+         * The passive positions the generator derived, times the handovers the
+         * designer stated. The active handover is not in the field and cannot
+         * be — it is realised in a processor, so a search that moved it would
+         * be searching a filter this app does not program (casus 1h's own
+         * note) — so each stated handover is a separate RUN of the whole field.
+         * Without an active side the list is one pass over the variants, which
+         * is exactly what it was before H-2. */
+        const runPasses: ({ hz: number; active: { handover: ActiveHandover; settings: ModelBranchSettings } } | null)[] =
+          hybrid && activeRuns.length > 0 ? activeRuns : [null];
+        if (hybrid && activeRuns.length > 0) {
+          setV2RunNotes((prev) => [
+            ...prev,
+            describeActiveSide(v2ActiveSide),
+            describeHybridField(v2ActiveSide, v2Variants.length),
+            ACTIVE_SIDE_MODEL_NOTE,
+          ]);
+        }
+        const items: V2ChainItem[] = runPasses.flatMap((pass) => v2Variants.map((v, i) => {
           const cand = v2Candidates[i];
-          const input = chainInputFor(v, cand);
+          const input = chainInputFor(v, cand, pass?.active);
+          /* Every label has to stay unique: the scan table, the shortlist and
+           * the load-into-Working button all key on it. */
+          const label = pass ? hybridLabel(v.label, pass.hz) : v.label;
           return {
             input,
-            label: v.label,
+            label,
             ...(cand
               ? {
                   candidate: {
@@ -9815,7 +10166,7 @@ export default function App() {
                       coilDcrCatalogLabel: coilCatalogLabel,
                       multiWay: true,
                     }),
-                    chainDeclaration: chainDecl,
+                    chainDeclaration: chainDeclFor(pass?.active),
                     provenance: cand.provenance,
                     /* U-5 — see the three-way route: the designer's mark, with
                      * its subjects re-keyed to the worker's model names. */
@@ -9831,7 +10182,16 @@ export default function App() {
                 }
               : {}),
           };
-        });
+        }));
+        /* H-2 — which handover each row was run at, by LABEL. The result area
+         * reads it to build that row's DSP target block; without it a finished
+         * shortlist could not say which of several stated handovers a design
+         * belongs to, and the block is half the deliverable of a hybrid run. */
+        const activeHandoverByLabel: Record<string, number> = {};
+        for (const pass of runPasses) {
+          if (!pass) continue;
+          for (const v of v2Variants) activeHandoverByLabel[hybridLabel(v.label, pass.hz)] = pass.hz;
+        }
         const v2ScanSettings: V2ScanSettings = {
           /* E-3b — gates, budgets, determinism, facts, voicing, judged band and
            * reporting power: the same assembly the three-way route uses
@@ -9849,7 +10209,15 @@ export default function App() {
           }),
           // Stable identities for the fingerprint. Each is a hash INPUT, so
           // what matters is that it changes when the thing it names changes.
-          designKey: stableJson({ variants: v2Variants.map((v) => [v.label, v.xoRange ?? null]) }),
+          designKey: stableJson({
+            variants: v2Variants.map((v) => [v.label, v.xoRange ?? null]),
+            /* H-2 — the stated handovers are part of WHICH DESIGNS this run
+             * made: two runs over the same passive field at two handovers are
+             * two different loudspeakers, and a key that could not tell them
+             * apart would stamp them identically. Absent without an active
+             * side, so every earlier run keys byte for byte as before. */
+            ...(hybrid ? { activeHandoversHz: activeRuns.map((r) => r.hz) } : {}),
+          }),
           measurementKey: stableJson({
             grid: [grid[0], grid[grid.length - 1], grid.length],
             w: w.spl,
@@ -9995,6 +10363,7 @@ export default function App() {
                 ? { mode: fieldMode, description: describeFieldMode(v2Generated.field) }
                 : null,
               export: v2RunExport,
+              activeHandoverByLabel: { ...activeHandoverByLabel },
             });
             setV2Shortlist(shortlist);
             setShortlistPick(null);
@@ -10568,6 +10937,16 @@ export default function App() {
     field: { mode: FieldMode; description: string } | null;
     /** E-2 — the run as an exportable block (`runExport.ts`); null when there was no v2 field. */
     export: RunExport | null;
+    /**
+     * H-2 — WHICH STATED HANDOVER each row was run at, keyed by label. Empty on
+     * every run without an active side.
+     *
+     * A hybrid run is the product of the passive field and the stated
+     * handovers, so "which handover is this row" is not recoverable from the
+     * row — and the DSP target block, which is half of what a hybrid run hands
+     * over, is a different block per handover.
+     */
+    activeHandoverByLabel: Record<string, number>;
   } | null>(null);
   /**
    * F3 — the SHORTLIST the last v2 scan produced: the feasible region, spread
@@ -10588,6 +10967,54 @@ export default function App() {
    * like a run that was told to use it.
    */
   const [v2RunNotes, setV2RunNotes] = useState<string[]>([]);
+  /**
+   * H-2 — THE DSP TARGET BLOCK PER SHORTLISTED DESIGN.
+   *
+   * THE OTHER HALF OF WHAT A HYBRID RUN HANDS OVER. A passive network is a bill
+   * of materials; a hybrid design is a bill of materials AND four numbers
+   * somebody types into a processor, and a run that produced only the first
+   * half has not produced a design (H-1's own words, in `dspTarget.ts`).
+   *
+   * ONE REPORT PER ROW, and it is worth the cost rather than an extravagance:
+   * the gain a designer dials in is a property of the network that was BUILT,
+   * not of the ideal the handover states — a real high-pass ladder into a real
+   * driver impedance is lossy where an ideal filter is not, and H-1 measured
+   * 2.3 to 3.2 dB of it — so the block is re-fitted on the delivered parts.
+   * That needs a report on those parts at THAT row's handover, and there is no
+   * cheaper honest way to get one. It runs once, after a scan that took
+   * minutes.
+   *
+   * Empty on every run without an active side, so nothing renders and nothing
+   * is computed (P2).
+   */
+  const v2DspTargets = useMemo((): { label: string; hz: number; lines: string[] }[] => {
+    const byLabel = v2Run?.activeHandoverByLabel ?? {};
+    if (!v2Shortlist || Object.keys(byLabel).length === 0) return [];
+    const out: { label: string; hz: number; lines: string[] }[] = [];
+    for (const row of v2Shortlist.rows) {
+      const hz = byLabel[row.label];
+      if (hz === undefined) continue;
+      const parts = row.result.parts;
+      if (!parts || parts.length === 0) continue;
+      const rep = buildV2Report({ name: row.label, parts }, hz)?.report;
+      if (!rep) continue;
+      /* NO MERGE-FIT UNCERTAINTY IS STATED IN THE APP, so the block reports the
+       * polarity margin and judges it not at all — which is what `dspTarget.ts`
+       * does with an absent input, and what P4 asks of it. Casus 1h states one
+       * because its own measurements were measured for it. */
+      const block = dspTargetBlock(rep);
+      if (block) out.push({ label: row.label, hz, lines: describeDspTarget(block) });
+    }
+    return out;
+  }, [v2Run, v2Shortlist, buildV2Report]);
+  /**
+   * H-2 — DID THE RUN ON SCREEN MODEL AN ACTIVE SIDE?
+   *
+   * Read off the RUN and not off the form: the form is what the next run will
+   * do, and a shortlist on screen was made by the run that made it. Change the
+   * tick after a hybrid run and the table still shows what it measured.
+   */
+  const v2HybridRun = Object.keys(v2Run?.activeHandoverByLabel ?? {}).length > 0;
   /** Which shortlist column the table is sorted on. Presentation only. */
   const [shortlistSort, setShortlistSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   /**
@@ -11527,6 +11954,37 @@ export default function App() {
    * was made from plus its stamp and its shortlist, so the repository can
    * replay the field (`scripts/replay-app-run.ts`).
    */
+  /**
+   * H-2 — THE DSP TARGET BLOCKS AS A FILE.
+   *
+   * The same anchor-download idiom as `exportV2Run` below, on the other half of
+   * a hybrid's deliverable: the stuck-together lines a person reads AND the
+   * block a machine reads, because a designer setting a processor wants the
+   * first and a project archive wants the second.
+   */
+  function exportDspTargets() {
+    if (v2DspTargets.length === 0) return;
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            format: 'crossover-studio-dsp-targets/1',
+            exportedAt: new Date().toISOString(),
+            fingerprint: v2Run?.stamp.fingerprint ?? null,
+            designs: v2DspTargets,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: 'application/json' },
+    );
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${new Date().toISOString().slice(0, 10)}-dsp-targets.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
   function exportV2Run() {
     if (!v2Run?.export) return;
     const block: RunExport = {
@@ -14543,6 +15001,17 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              {/* H-2 — ONE SENTENCE AT THE WAYS QUESTION, and it belongs here
+                  rather than three steps later: whether a way is actively
+                  driven changes what a way IS, and a designer who only meets
+                  the question at the requirement list has already counted their
+                  ways as passive. It states the shape and points at the tick;
+                  it decides nothing (`v2ActiveSide.ts`). */}
+              {engineV2Enabled && (
+                <p className="sub" style={{ marginBottom: '0.4rem' }}>
+                  {t(ACTIVE_SIDE_GUIDED_LINE)}
+                </p>
+              )}
               <p className="sub" style={{ marginBottom: '0.4rem' }}>
                 <strong>{t('Measurements')}</strong>{' '}
                 {t('— load a 0° FRD per driver; include the .ZMA impedance and any angle files in the SAME pick to unlock more (recognised by extension and filename).')}
@@ -16305,6 +16774,20 @@ export default function App() {
                           >
                             ✕
                           </button>
+                        </span>
+                      )}
+                      {/* H-2 — WHAT THIS MEASUREMENT IS FOR, on the card of the
+                          way the DSP drives. It is the only slot in this tab
+                          whose file does NOT become a branch of the network,
+                          and a response that is loaded, judged and absent from
+                          every electrical figure is exactly the thing a reader
+                          will otherwise take for a fault. It also says what its
+                          ABSENCE costs, which is the half a run cannot recover
+                          from (P4/F0). */}
+                      {v2ActiveSide.asked && role === ACTIVE_SIDE_ROLES.active && (
+                        <span className={loadedDrv ? 'derived' : 'v2-warn'}>
+                          {t(ACTIVE_WAY_MEASURED_NOTE)}
+                          {!loadedDrv && ` ${t('Without it nothing that judges a SUM can see this way, and the run is judged over the passive ways alone.')}`}
                         </span>
                       )}
                       {role !== 'high' &&
@@ -18780,6 +19263,13 @@ export default function App() {
                 <span className="derived" style={{ flexBasis: '100%' }}>
                   {t('Engine v2 runs every optimisation: the measurement-ingest pass, the metric library, the pre-design blocks and the hard gates (M-A dissipation, M-B EPDR beside the plain |Z| floor, M-C drive on a driver’s resonance). It arms no limit by itself — every gate and every budget below is blank until you state one.')}
                 </span>
+                {/* I-1 FORM · V2 PANEL — the landmark `v2InputPlacement.test.ts`
+                    slices this governed form by. It used to slice on the
+                    `engineV2Enabled` guard below, which is a spelling that can
+                    legitimately occur anywhere in the file: H-2 added one in the
+                    wizard and the slice silently grew to span three thousand
+                    lines and a file input. A marker cannot be written by
+                    accident. */}
                 {engineV2Enabled && (
                   <>
                     {/* ---- I-1: THE PANEL IS ORDERED BY WHAT A FIELD DOES ----------------
@@ -18809,6 +19299,77 @@ export default function App() {
                     <span className="derived" style={{ flexBasis: '100%' }}>
                       {t('Every field here is blank until you fill it in, and blank means NOT JUDGED — the value is still measured and shown, and the gate row says "no limit set". Nothing below has a default (P4).')}
                     </span>
+                    {/* ---- H-2: WHAT THE DESIGN IS, before anything judges it ----
+                      * Three fields and one statement: this loudspeaker's LOWEST
+                      * way is driven by its own amplifier and a DSP, so the
+                      * passive network is the ways above it. The handover is
+                      * STATED and never searched — the processor realises it, and
+                      * a search that moved it would be searching a filter this app
+                      * does not program — and the shape is stated ONCE for both
+                      * flanks, so the passive high-pass and the DSP low-pass
+                      * cannot disagree about which alignment they are halves of.
+                      * Unticked is the app every project has always had (P4). */}
+                    <span className="v2-subcap">{t('what the design is — which ways the passive network carries at all')}</span>
+                    <label title={t('H-1/H-2 — tick this when the lowest way has its own amplifier and DSP. The app then designs the PASSIVE network of the ways above it and hands you the DSP numbers (shape, gain, delay, polarity). The active way is still measured and still judged: its response joins every acoustic sum, and it joins nothing electrical, because the amplifier this network is designed for does not drive it.')}>
+                      <input
+                        type="checkbox"
+                        checked={engineV2Settings.activeSideOn === 'on'}
+                        onChange={(e) => setV2Field('activeSideOn', e.target.checked ? 'on' : '')}
+                      />
+                      {t('Active side below the lowest passive way')}
+                      {v2Stated('activeSideOn')}
+                      {v2Empty('activeSideOn')}
+                    </label>
+                    {engineV2Settings.activeSideOn === 'on' && (
+                      <>
+                        <label title={t('The acoustic handover(s) to the active side, Hz — a LIST, space or comma separated, exactly as you would type crossings you state. Each one is a separate run of the whole passive field, so three handovers do not add three runs: they multiply the field by three. Stated verbatim; nothing is rounded.')}>
+                          {t('Handover(s) to the active side (Hz)')}
+                          <input
+                            type="text"
+                            value={engineV2Settings.activeHandoverHz}
+                            placeholder={V2_GHOSTS.activeHandoverHz}
+                            onChange={(e) => setV2Field('activeHandoverHz', e.target.value)}
+                            style={{ width: '9rem' }}
+                          />
+                          {v2Stated('activeHandoverHz')}
+                          {v2Empty('activeHandoverHz')}
+                        </label>
+                        <label title={t('The ACOUSTIC target of BOTH flanks at the handover: the high-pass the passive way must arrive at, and the low-pass mirror the DSP must realise. Stated once and read twice, so the two halves cannot disagree.')}>
+                          {t('Acoustic target shape of the handover')}
+                          <select
+                            value={engineV2Settings.activeHandoverShape}
+                            onChange={(e) => setV2Field('activeHandoverShape', e.target.value)}
+                          >
+                            <option value="">{t('not stated')}</option>
+                            {ACTIVE_SIDE_SHAPES.map((sh) => (
+                              <option key={sh.value} value={sh.value}>
+                                {t(sh.label)}
+                              </option>
+                            ))}
+                          </select>
+                          {v2Stated('activeHandoverShape')}
+                          {v2Empty('activeHandoverShape')}
+                        </label>
+                        {/* WHAT IS MISSING, BY NAME — never a silent refusal to
+                          * model, and never a guess at the missing input (P4). */}
+                        {!v2ActiveSide.armed && (
+                          <span className="v2-warn" style={{ flexBasis: '100%' }}>
+                            {t('No active side is modelled yet:')}{' '}
+                            {v2ActiveSide.off.join(' ')}
+                          </span>
+                        )}
+                        {v2ActiveSide.problems.length > 0 && (
+                          <span className="v2-warn" style={{ flexBasis: '100%' }}>
+                            {v2ActiveSide.problems.join(' ')}
+                          </span>
+                        )}
+                        {v2ActiveSide.armed && (
+                          <span className="derived" style={{ flexBasis: '100%' }}>
+                            {describeActiveSide(v2ActiveSide)}
+                          </span>
+                        )}
+                      </>
+                    )}
                     <span className="v2-subcap">{t('hard gates — they protect the hardware and are never relaxed')}</span>
                     {/* ---- F2: the GATES (A4 M-A/M-B/M-C, spec A2 P2/P4) ----
                       * Every one of these is blank by default and blank means
@@ -20277,6 +20838,15 @@ export default function App() {
                                 title={t('Sort by this column. Sorting is presentation — it never changes which designs are on the shortlist.')}
                               >
                                 {caption}
+                                {/* H-2 — the MODEL mark on every column that
+                                    reads the SUM, and on no column that reads
+                                    the netlist. On a hybrid the sum contains a
+                                    branch nobody has built yet; a reader who
+                                    cannot tell the two kinds of number apart
+                                    will take the first for a measurement. */}
+                                {v2HybridRun && ACTIVE_SIDE_SUM_COLUMNS.includes(key)
+                                  ? ` (${ACTIVE_SIDE_MODEL_MARK})`
+                                  : ''}
                                 {shortlistSort?.key === key ? (shortlistSort.dir === 1 ? ' ▲' : ' ▼') : ''}
                               </th>
                             ))}
@@ -20386,6 +20956,32 @@ export default function App() {
                     already stated over there. A route that ended by asking the
                     designer to re-enter their requirements would have proved
                     the opposite. */}
+                {/* H-2 — THE DSP TARGET BLOCKS, one per design the run delivered.
+                    The deliverable a hybrid run adds to the bill of materials,
+                    and the export beside it so the numbers can leave the app
+                    the way the run itself can (`exportV2Run`'s idiom). Absent
+                    on every run without an active side. */}
+                {v2DspTargets.length > 0 && (
+                  <details className="shortlist-dsp">
+                    <summary>
+                      {t('DSP targets — what to set the active side to')}{' '}
+                      <span className="derived">
+                        {t('{n} design(s)', { n: String(v2DspTargets.length) })}
+                      </span>
+                    </summary>
+                    <p className="sub">{t(ACTIVE_SIDE_MODEL_NOTE)}</p>
+                    <p className="sub">
+                      <button type="button" onClick={exportDspTargets} title={t('Download every DSP target block of this run as JSON.')}>
+                        {t('Export DSP targets (JSON)')}
+                      </button>
+                    </p>
+                    {v2DspTargets.map((d) => (
+                      <pre key={d.label} className="dsp-target">
+                        {d.lines.join('\n')}
+                      </pre>
+                    ))}
+                  </details>
+                )}
                 {uiMode === 'guided' && (
                   <p className="sub v2-to-expert">
                     <button type="button" onClick={() => setUiMode('expert')}>

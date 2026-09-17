@@ -48,6 +48,18 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná H-2 (17-09-2026) gemeten op 524 s — 196 bestanden (195 geslaagd, 1 overgeslagen),
+    2554 tests (2550 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de
+    browsercontrole met de dev-server en de headless Chrome gestopt.** +1 BESTAND
+    (`v2ActiveSide.test.ts`, 36 claims) en +38 tests: die 36 plus TWEE in `v2Settings.test.ts`
+    (13 → 15), waar de spookregel van één telling in twee benoemde claims uiteenviel. Het corpus is
+    NIET aangeraakt, dus geen enkele `it.each` over een levend corpus beweegt en de delta sluit
+    exact (geteld met `grep -cE '^\s+it\('` per bestand tegen dezelfde telling op HEAD). GEEN
+    nieuwe referentie: de V43-waarde van 289 s blijft staan, en 524 tegen H-1's 554 s is dezelfde
+    laag op dezelfde machine met één bestand erbij. **DE EERSTE POGING IS WEGGEGOOID EN NIET
+    GERAPPORTEERD**, en dat is de regel die dit boek al kent in een andere vorm: zij liep terwijl
+    `App.tsx` nog twee keer bewerkt werd, dus haar bronscans lazen een boom die niet gecommit wordt.
+    Een suite-uitslag beschrijft de boom die zij gemeten heeft of zij beschrijft niets.
     **Ná H-1 (17-09-2026) gemeten op 554 s — 195 bestanden (194 geslaagd, 1 overgeslagen),
     2516 tests (2512 geslaagd, 4 overgeslagen), alleen gedraaid.** +5 BESTANDEN
     (`activeSide.test.ts` 10 claims, `h1ActiveSide.test.ts` 14, `h1Step0.test.ts` 6,
@@ -6274,3 +6286,201 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   een sterkere reden dan die van casus 1 en 1b: **er BESTAAT geen v1-hybride**, dus er is geen
   eerdere enginetoestand waarvan de uitkomst hier gedateerd naast gelegd kan worden.
   `ciLayer.test.ts` — twaalf `[bytes]`-namen en VIER `[live]`-blokken.
+
+### H-2-guards (de hybride als aanvinkbare route; alleen app/UI op de H-1-machinerie)
+
+- **WAT H-1 OPENLIET, EN WAT DIT SLUIT.** H-1 bouwde de hele hybride route — de gestelde overname,
+  de gemodelleerde tak die élke AKOESTISCHE samenstelling meedoet en géén ELEKTRISCHE, de
+  klasse-A-DSP-afleiding, het doelblok — en eindigde met "de app kent de hybride niet": de enige
+  weg erdoorheen was een fixture en een script. H-2 is de FORMULIER-helft van die zin. **Er is
+  geen engine-wijziging**: `activeSide.ts`, `chainChoices.ts`, `report.ts` en `dspTarget.ts` zijn
+  onaangeraakt, en wat erbij komt is wie ze aanroept.
+- **DE VORM, EN DE BESLISSING DIE ERONDER LIGT: een hybride is een DRIEWEGPROJECT waarvan de
+  LAAGSTE weg actief verklaard wordt.** Deze app kent precies drie rollen (`low | mid | high`), en
+  een hybride heeft één gemeten weg nodig die NIET in het passieve netwerk zit. Casus 1h is die
+  vorm: de woofer is gemeten, geoordeeld en door zijn eigen versterker aangedreven, terwijl het
+  passieve netwerk de twee wegen erboven is. Dus verhuist er niets — manifest, ingest, rapport en
+  geometrie zijn onveranderd, en wat verandert is wie de laagste weg aandrijft en welke wegen de
+  passieve keten krijgt. **WAT DAARMEE NIET UITDRUKBAAR IS, en het staat er als benoemde grens in
+  plaats van half gebouwd: een hybride met DRIE passieve wegen.** Dat vraagt een vierde
+  `BranchRole`, en die raakt de adapter, het rapport en élk per-rol-record in de app — een
+  engine-wijziging, en precies wat deze sessie niet is. Een TWEEWEGproject kan het evenmin: de
+  laagste weg actief verklaren laat daar één passieve weg over, en dat is geen overname.
+  `activeSideStatement` zegt beide bij naam.
+- **`src/lib/v2ActiveSide.ts` — HET GESTELDE BLOK, GELEZEN.** Drie velden en één vraag: is hier een
+  hybride, en zo niet, WELKE invoer ontbreekt. `ACTIVE_SIDE_ROLES` is DATA (`active: 'low'`,
+  `lowestPassive: 'mid'`) en niet drie `if`s in de component, om dezelfde reden als de
+  plaatsingsregel: de vraag "welke weg verklaart de app actief" heeft één antwoord en vier lezers —
+  de run, de rapportinstellingen, het kaartbriefje en de zin in het paneel — en drie daarvan die
+  hem uit een literal lezen is hoe de vier uiteenlopen. **P4 doorheen:** niet aangevinkt is geen
+  waarde maar de AFWEZIGHEID van een uitspraak, en dan is élke weg passief zoals altijd; een
+  aangevinkt vakje zonder inhoud is een vraag met ontbrekende invoer, en die worden bij NAAM
+  genoemd in plaats van er één te raden. **Geen engine-import** (de toggle-regressiescan laat
+  alleen de UI-instappunten in `engine2/`).
+- **`src/lib/frequencyList.ts` — DE LIJST, ÉÉN KEER GEPARSEERD.** U-5 schreef die parse en betaalde
+  er eerst voor: een eerdere versie trok de CIJFERS uit wat er getypt stond, dus "-5" werd 5 en
+  "2200Hz" werd 2200 — het juiste soort getal, verzonnen uit iets dat de ontwerper niet schreef
+  (A3h). Een tweede kopie van een regel waarvoor dit project al betaald heeft is precies de drift
+  die A3g benoemt, dus de lus woont hier met twee lezers. **Wat er NIET in zit is de AFRONDING**, en
+  dat is het ene punt waarop de twee verschillen: U-5 rondt elke kruising af op een afdrukbare rand
+  omdat een kruising een POSITIE is in een veld dat in octaven wordt uitgelegd, en een actieve
+  overname is een getal waar een processor op gezet wordt — die reist VERBATIM (casus 1h stelt
+  362,3 Hz). De extractie is byte-neutraal: `statedCrossings.test.ts` en `statedRange.test.ts`
+  reproduceren onveranderd.
+- **DE DRIE VELDEN STAAN IN HET v2-PANEEL, IN EEN EIGEN BAND.** `activeSideOn` (de DAAD),
+  `activeHandoverHz` (de lijst, het U-5-veld) en `activeHandoverShape` (LR4 of LR2, de akoestische
+  doelvorm van BEIDE flanken — één keer gesteld en twee keer gelezen, zodat de passieve
+  hoogdoorlaat en de DSP-laagdoorlaat het niet oneens kunnen zijn). Drie `V2SettingKey`s, drie
+  OORDEEL-WAPENENDE registerrijen, en een VIJFDE oordeelsband: `architecture` — "wat het ontwerp
+  IS, vóórdat iets het beoordeelt". Een poort zegt hoe goed een ontwerp moet zijn; dit zegt welk
+  ontwerp gemaakt wordt, en dat komt eerder. `lowestWayLevelWork` is de naaste verwant (een
+  gestelde regel over de laagste weg die de ontwerpstap leest vóór de tuner bestaat) en staat twee
+  banden lager om dezelfde reden.
+- **DE ROUTING IS ÉÉN REGEL, EN DAT IS HET HELE PUNT: een hybride VALT DOOR naar de tweewegtak.**
+  `if (!v2Hybrid && threeWay && …)`. Met een gestelde actieve zijde is het passieve netwerk de
+  wegen BOVEN de laagste, en op een driewegproject zijn dat er twee — dus de tweewegketen
+  (`v2ChainOne`), dezelfde vorm die casus 1h draait. De driewegtak zou een passief netwerk voor
+  alle drie ontwerpen, en dat is een andere luidspreker. **Doorvallen in plaats van een derde keer
+  vertakken is opzettelijk:** alles wat de tweewegroute al doet — het veld, de feiten, de poorten,
+  de shortlist, de export — is precies wat een hybride nodig heeft, en een derde kopie daarvan is
+  wat `scanRequest.ts` voorkomt. Drie bindingen (`passiveLow`, `passiveLowRole`, `activeLoaded`)
+  dragen het verschil; élke regel eronder leest wat hij altijd las zodra er geen actieve zijde is.
+- **DE IMPEDANTIE VAN DE ACTIEVE WEG BEREIKT DE PASSIEVE KETEN NIET, en dat is geen netheid.**
+  `measurementFacts` loopt die map af, dus een weg die de hoofdversterker nooit aandrijft zou een
+  poort, een budget-inversie en een EPDR-aflezing halen. `passiveZ` verwijdert precies het MODEL
+  van de actieve weg uit `driverZ` en uit de veiligheidsset — dezelfde onthouding die casus 1h met
+  zoveel woorden doet — en is de identiteit op élke run zonder actieve zijde.
+- **HET VELD DRAAGT ALLEEN DE PASSIEVE OVERNAMES, GEDROPT OP NAAM.** Het rapport leidt één venster
+  per AANGRENZEND PAAR af, dus op een hybride is het eerste het paar dat de actieve zijde bezit —
+  en die overname is GESTELD en wordt nooit gezocht: de processor realiseert hem, en een veld dat
+  er posities voor genereerde zou zoeken in een filter dat deze app niet programmeert. Gefilterd op
+  de naam van de ONDERSTE weg (casus 1h's eigen regel), nooit door tot één te tellen.
+- **DE RUNLIJST IS EEN PRODUCT, EN DE VERMENIGVULDIGING WORDT HARDOP GEZEGD.** De passieve posities
+  die de generator afleidde, maal de overnames die de ontwerper stelde. Drie overnames voegen geen
+  drie runs toe — zij vermenigvuldigen het veld met drie, en dat is het getal dat een ontwerper het
+  minst verwacht. Het FORMULIER zegt de rekensom zonder het getal (het kent de venstergrootte nog
+  niet — F0: een telling die niemand heeft is geen telling); de RUNNOTITIE zegt het getal zodra het
+  veld bestaat. Elk label draagt zijn overname (`hybridLabel`), want de scantabel, de shortlist en
+  de laadknop sleutelen er alle drie op. En de VINGERAFDRUK kent de overnames
+  (`activeHandoversHz`): twee runs over hetzelfde passieve veld op twee overnames zijn twee
+  luidsprekers, en een sleutel die dat niet kon onderscheiden zou ze identiek stempelen — afwezig
+  zonder actieve zijde, dus élke eerdere run stempelt byte voor byte als vroeger. **En de
+  ketenverklaring die de vingerafdruk en de export lezen is die van de EERSTE run en niet een met
+  de zevende sleutel ABSENT:** een stempel die "geen actieve zijde" noteert voor een run die er een
+  had, beschrijft een andere luidspreker. Wélke van de gestelde overnames dat is hoeft daar niet
+  beslecht te worden, want de overnames zelf reizen in `designKey`.
+- **DE DSP-INSTELLINGEN WORDEN ÉÉN KEER PER OVERNAME AFGELEID, DOOR HET RAPPORT.** Klasse A:
+  metingen plus de gestelde vorm, dus hetzelfde antwoord voor élke kandidaat op die overname en
+  geen zoektocht die het kan verplaatsen (H-1). `buildV2Report(null, hz)` — één implementatie,
+  dezelfde die de fixture aanroept — en nooit een gain en een delay die de app zelf fit. Een
+  overname die de afleiding niet kan beantwoorden wordt GEMELD en niet gedraaid, bij naam en met
+  haar reden.
+- **HET DSP-DOELBLOK PER GELEVERD ONTWERP, MET EEN EXPORT.** Een passief netwerk is een stuklijst;
+  een hybride ontwerp is een stuklijst PLUS vier getallen die iemand in een processor typt. Eén
+  rapport per rij — op de GELEVERDE onderdelen, want de gain die je instelt is een eigenschap van
+  wat gebouwd is en niet van het ideaal dat de overname stelt (H-1 mat 2,3–3,2 dB) — en dat is de
+  kost waard: het draait één keer, ná een scan van minuten. **De app stelt geen
+  merge-fit-onzekerheid**, dus het blok RAPPORTEERT de polariteitsmarge en oordeelt haar niet (P4,
+  wat `dspTarget.ts` met een afwezige invoer doet); casus 1h stelt er een omdat zijn eigen metingen
+  ervoor gemeten zijn.
+- **DE MODEL-MARKERING STAAT OP ELKE SOM-KOLOM EN OP GEEN ENKELE ELEKTRISCHE.**
+  `ACTIVE_SIDE_SUM_COLUMNS` is een BENOEMDE VERZAMELING en geen complement — de V47/V48-les, op een
+  lijst die anders élke later toegevoegde kolom opslokt. Élke sleutel erin leest de SOM, die op een
+  hybride de actieve weg bevat; élke sleutel erbuiten (`zmin`, `epdr`, `diss`, `rmax`, `vfs`, `bom`)
+  leest de netlist en alleen de netlist. Die scheiding is STRUCTUREEL in `report.ts` (H-1) en niet
+  onthouden; deze lijst zegt alleen aan welke kant elke kolom staat. **Gelezen van de RUN en niet
+  van het formulier:** verzet het vinkje ná een hybride run en de tabel beschrijft nog steeds wat
+  zij gemeten heeft.
+- **DE PROJECT-TAB ZEGT WAARVOOR DIE METING IS.** Het is het enige slot in die tab waarvan het
+  bestand GEEN tak van het netwerk wordt, en een respons die geladen is, geoordeeld wordt en in élk
+  elektrisch getal ontbreekt is precies wat een lezer anders voor een fout aanziet. Het briefje
+  zegt ook wat zijn AFWEZIGHEID kost.
+- **WAT EEN GEVRAAGDE MAAR ONMODELLEERBARE ACTIEVE ZIJDE OPLEVERT, EN DE EERSTE FORMULERING WAS
+  FOUT.** Er stond "élk somoordeel wordt over de PASSIEVE WEGEN ALLEEN gemeten", en dat is in
+  BEIDE richtingen onwaar: de weg die actief zou worden zit gewoon in die som (als een gewone
+  passieve tak), en er is helemaal geen hybride ontworpen. Wat de run WEL is, is de run die hij
+  zonder het vinkje geweest zou zijn — een passief netwerk voor élke geladen weg, die ene
+  inbegrepen — en dat is een andere luidspreker dan er gevraagd werd. De zin staat op BEIDE
+  routes, en de tweede is degene die telt: met het vinkje aan en iets ontbrekends gaat de run door
+  de DRIEWEGtak, dus een notitie die alleen in de tweewegtak stond zou nooit gedrukt worden op
+  precies het project dat haar nodig had (F0).
+- **DE ENE `engine2/`-WIJZIGING VAN DEZE SESSIE, EN DE BROWSERCONTROLE VOND HAAR.**
+  `resolveDriverIds` gaf de LAAGSTE netlist-driver aan de rol `low` en liet de rol `mid` op haar
+  rolnaam-default staan — en op een DRIEBRANCH-project met een TWEEDRIVER-netlist zijn dat
+  dezelfde string. Gemeten in de draaiende app, vóórdat het opgeschreven werd: het DSP-doelblok las
+  **"DSP target — mid (active), handing over to mid (passive)"**, een overname van een weg met
+  zichzelf, met gain −4,03 dB en delay −0,001 ms — precies de getallen die een zelf-fit oplevert.
+  En één laag dieper droeg het MANIFEST twee ingangen onder één driver-id. Sinds H-2 neemt
+  `resolveDriverIds` een `excludeRole`: de slots van de netlist worden POSITIONEEL op de rollen
+  gelegd die dit project heeft, mínus de uitgesloten — dus de laagste netlist-driver is de laagste
+  PASSIEVE weg en de actieve weg houdt haar rolnaam, want zij staat in geen enkele netlist.
+  **Afwezig is byte-identiek** aan wat deze functie altijd deed, en dat is nagemeten: de
+  golden-suites van casus 1, 1b en 1h reproduceren onveranderd. Dit is het enige bestand in
+  `engine2/` dat H-2 aanraakt, en het is de APP-ADAPTER — de laag die app-state in
+  rapport-invoer vertaalt — en geen engine-gedrag.
+- **GUIDED KRIJGT ÉÉN SCHERM EN ÉÉN ZIN.** Het scherm staat EERST, omdat het register het eerst
+  zet, en dat is zelf de bevinding: elk scherm erna vraagt hoe góed het ontwerp moet zijn en dit
+  vraagt WELK ONTWERP gemaakt wordt. Een ontwerper die de vraag pas na veertien eisen tegenkomt
+  heeft zijn wegen al als passief geteld. De ZIN staat bij de wegenvraag van de wizard (stap 0,
+  "System type"), waar het aantal wegen gekozen wordt — drie stappen eerder dan het scherm, en om
+  dezelfde reden. Zestien schermen nu, waarvan er vijftien `unjudged` zijn: een niet-aangevinkte
+  actieve zijde is een AFWEZIGHEID en geen neutrale keuze, anders dan de voicing.
+- **TWEE GUARDS ZIJN VERSTERKT, EN BEIDE OMDAT H-2 ZE BRAK.**
+  (1) **De E-2-spookregel telde en telt nu NAMEN.** Er stond "minstens het aantal oordeelsleutels
+  minus twee draagt `placeholder={V2_GHOSTS.…}`": dat meet het AANTAL uitzonderingen en niet hun
+  identiteit, dus een derde select of vakje landt binnen de speling en niets zegt welk veld gestopt
+  is zijn spook te tonen. `V2_KEYS_WITHOUT_A_GHOST_FIELD` is de benoemde verzameling, en de guard
+  toetst hem van beide kanten: alles wat er niet op staat MOET zijn spook uit de ene tabel lezen,
+  en alles wat er wél op staat moet werkelijk een select of een vakje zijn.
+  (2) **De v2-paneelregio wordt gesneden op een MARKER en niet meer op `{engineV2Enabled && (`.**
+  Die spelling mag overal in het bestand legitiem voorkomen; H-2 schreef er een in de wizard en de
+  snede groeide stil tot drieduizend regels, twee uitklappen en een bestandsinvoer — en zei dat
+  door drie claims tegelijk te laten falen, waarvan er geen enkele over de wizard ging. Een marker
+  kan niet per ongeluk geschreven worden.
+- **DE BROWSERCONTROLE (headless Chrome op de dev-server, 17-09-2026), en zij is de reden dat dit
+  als af geldt — én de reden dat er een bug gerepareerd is.** Verse localStorage, de DRIEWEGDEMO
+  geladen, Expert → Filters → ⚙ Settings.
+  **Vóór de tik:** de band `wat het ontwerp is` staat EERST van vijf, het vakje staat er met zijn
+  leeg-betekenis eronder, en de twee gestelde velden bestaan niet. **Ná de tik zonder inhoud:**
+  beide velden verschijnen en de waarschuwing noemt allebei de ontbrekende invoeren bij naam.
+  **Volledig gesteld (400 450 500, LR4):** drie `stated by you on 2026-09-17`-markeringen en de zin
+  *"Hybrid: … at 400 Hz, 450 Hz, 500 Hz, acoustic LR4 on both flanks … the runs multiply rather
+  than add."* Op de Project-tab draagt ALLEEN de wooferkaart het briefje.
+  **De run: 180 s, 15 runs (3 × 5), 10 op de shortlist**, met labels als
+  `mid→tweeter 1532,6 LR4 · active 400 Hz` — de passieve overname is mid→tweeter, dus het
+  woofer→mid-venster is er inderdaad uit gefilterd — en de veldregel *"Exploration field — 5 of 5
+  derived candidates"*. **De MODEL-markering staat op RMS, window, phase, phase (overlap window),
+  peak en vert. dip, en op Z min, EPDR, dissipation, largest R, V@fs en BOM niet.** De runnotities
+  dragen de hybride-zin, `3 stated handover(s) × 5 passive candidate(s) = 15 run(s)` en de
+  MODEL-uitleg. Het doelblok van de eerste rij leest
+  **`DSP target — low (active), handing over to mid (passive)` · LR4 @ 400,0 Hz · gain −6,06 dB ·
+  delay +0,151 ms · polarity normal**, met de gejudgede waarden ernaast (−6,08 dB / −0,384 ms) —
+  **+0,536 ms verschil tussen de delay die STUURDE en de delay die je INSTELT**, precies het open
+  punt dat H-1 opschreef, nu op een tweede casus zichtbaar. En de polariteitsmarge wordt
+  gerapporteerd en niet geoordeeld, want de app stelt geen merge-fit-onzekerheid (P4).
+  **Met het vakje UIT:** beide velden weg, de zin weg, het kaartbriefje weg, en Optimize start een
+  DRIEWEGrun (de voortgangskaart verschijnt) in plaats van de tweewegtak.
+- **WAT OPEN BLIJFT, met de meting erbij en niet als voornemen.**
+  (1) **EEN HYBRIDE MET DRIE PASSIEVE WEGEN IS NIET UITDRUKBAAR** — zie de vormbeslissing
+  hierboven: dat vraagt een vierde `BranchRole` en daarmee de adapter, het rapport en élk
+  per-rol-record in de app.
+  (2) **DE DELAY DIE STUURT IS NOG STEEDS NIET DE DELAY DIE JE INSTELT**, H-1's eigen open punt, nu
+  op de demoset gemeten: +0,536 ms verschil op de eerste rij. H-1 noteerde 0,93 ms op casus 1h en
+  schreef de weg op (een gesloten-vorm tijdmatch per evaluatie, O(n)); H-2 raakt de zoektocht niet
+  en verandert daar dus niets aan.
+  (3) **DE APP STELT GEEN MERGE-FIT-ONZEKERHEID**, dus het doelblok rapporteert de polariteitsmarge
+  en oordeelt haar niet (P4). Casus 1h stelt er een omdat M-4 hem voor die metingen gemeten heeft;
+  een projectveld ervoor is een eigen beslissing.
+  (4) **DE DOELBLOKKEN WORDEN GEBOUWD VOOR DE ROWS VAN DE SHORTLIST**, niet voor de verwerpingen —
+  die dragen per constructie geen netwerk (V31), dus er is niets om op te herfitten.
+  (5) **DE EXPORT IS EEN DOWNLOAD EN GEEN KLEMBORD-KOPIE.** `App.tsx` kent nergens
+  `navigator.clipboard`; élke bestaande export is een anker-download, en H-2 volgt dat idioom in
+  plaats van er een tweede naast te zetten.
+- **DE VOLLE RUN IS BIJ H-2 NIET GEDRAAID**, met de U-6/U-3/I-1-afweging. Geen engine-, poort-,
+  budget-, venster-, metriek- of corpuswijziging: `activeSide.ts`, `chainChoices.ts`, `report.ts`,
+  `dspTarget.ts` en `worker.ts` zijn onaangeraakt, en élke sleutel die H-2 laat reizen is ABSENT
+  zonder een gestelde actieve zijde. De twee byte-baselines die de zoektocht bewaken
+  (`f4cRegression`, `workerRouteRegression`) draaien in de snelle laag en reproduceerden, net als
+  `toggleRegression`, `p6Lint`, `ciLayer` en `chainChoices` (die laatste mét zijn twee live
+  ketenarmen). De vier live ketenruns zouden corpora reproduceren die deze sessie niet aangeraakt
+  heeft.

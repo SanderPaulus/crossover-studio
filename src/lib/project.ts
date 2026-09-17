@@ -378,6 +378,19 @@ export interface ProjectDesign {
      * a number binds nothing) and the form says so.
      */
     lowestWaySeriesRMaxOhm?: string;
+    /**
+     * H-2 — THE STATED ACTIVE SIDE. `activeSideOn` is the ACT ('on', or empty):
+     * this loudspeaker's lowest way has its own amplifier and DSP, so the
+     * passive network is the ways above it. `activeHandoverHz` is the list of
+     * acoustic handovers to run, verbatim and never searched — the processor
+     * realises that filter, so the app has to be told where it is.
+     * `activeHandoverShape` is the acoustic target of BOTH flanks ('LR4' or
+     * 'LR2'), stated once and read twice. Empty on all three = no active side,
+     * and a project written before H-2 opens exactly as it always did (P4).
+     */
+    activeSideOn?: string;
+    activeHandoverHz?: string;
+    activeHandoverShape?: string;
   };
   /**
    * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by
