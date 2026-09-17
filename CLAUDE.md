@@ -1838,7 +1838,19 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   tests en niet op bronnamen: 17 `[bytes]` + 3 `[live]` − 2 die beide dragen. De TWAALF hierboven is
   de E-3-stand en blijft staan als wat zij toen was; wie de twee getallen naast elkaar legt moet ze
   niet verwarren — het verschil is M-2's drie reproductieclaims (vijf gedraaide tests) en M-3's ene.
-  **GEMETEN IN CI OP ubuntu/Node 22 (16-09-2026, M-4): 190 bestanden (189 geslaagd, 1 overgeslagen),
+  **HET AANTAL OVERGESLAGEN TESTS IN `test:ci` IS SINDS H-1 NEGENTIEN**, en die ene erbij is de
+  hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
+  reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
+  was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (17-09-2026, H-1): 195 bestanden (194 geslaagd, 1 overgeslagen),
+  2497 geslaagd, 19 overgeslagen, 3411 s (57 min) — GROEN.** Wat die run bewijst bovenop de
+  inventaris is dat de AFLEIDING VAN DE ACTIEVE ZIJDE portable is, en dat is niet vanzelfsprekend:
+  `goldenCasus1h.test.ts` legt een gefitte delay op vier decimalen en een genivelleerde gain op drie
+  naast de opname, en dat is exact de vorm waarop dit project bij V46, V49 en B-1 elk één keer is
+  omgevallen. Hij houdt omdat de delay een RASTERPUNT is (een discrete zoektocht van 4000 stappen
+  per periode) en geen iteratieve fit — maar dat is hier nagemeten en niet aangenomen, en wie de
+  zoektocht ooit door een continue optimalisatie vervangt komt langs deze regel.
+    **GEMETEN IN CI OP ubuntu/Node 22 (16-09-2026, M-4): 190 bestanden (189 geslaagd, 1 overgeslagen),
   2446 geslaagd, 18 overgeslagen, 3575 s (59 min) — GROEN.** Achttien overgeslagen is EXACT het
   M-3-getal, en dat is de claim: M-4 voegt geen enkele getagde test toe, dus de inventaris staat stil.
   Wat de run daarnaast bewijst is dat de achttien M-4-claims op een ANDERE runtime reproduceren — zij
