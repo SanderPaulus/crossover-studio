@@ -60,7 +60,8 @@ import { SEARCH_SMOOTHING_OCTAVES } from '../constants.ts';
 import { isImplemented as isImplementedCurve, type TargetCurve } from '../requirements/targetCurve.ts';
 import type { ChoiceDeclaration, ChoiceKey } from './choices.ts';
 import { coilDcrModelFor, type CoilDcrFit } from '../../coilDcr.ts';
-import type { ChainChoiceDeclaration, ChainChoiceKey } from './chainChoices.ts';
+import type { ChainCandidateChoices, ChainChoiceDeclaration, ChainChoiceKey } from './chainChoices.ts';
+import type { ActiveHandover, ModelBranchSettings } from '../../activeSide.ts';
 
 /** The values the designer (or the app) has settled, in the tuner's own names. */
 export type StatedByDesigner = Partial<
@@ -921,6 +922,16 @@ export interface ChainDeclarationInput {
    * with this reason rather than deriving a cap the designer lifted.
    */
   coilStackAllowed?: boolean;
+  /**
+   * H-1 — THE PROJECT'S STATED HANDOVER TO AN ACTIVE SIDE, together with the
+   * DSP settings derived for it.
+   *
+   * Resolved by the CALLER, because deriving the settings needs the measured
+   * responses and this layer must not read measurements — the same boundary
+   * `lowestWayCoilSpanH` draws around the catalogue. Absent = no active side
+   * and the seventh key is declared ABSENT with that reason (P4).
+   */
+  activeSide?: { handover: ActiveHandover; settings: ModelBranchSettings };
 }
 
 /**
@@ -965,7 +976,7 @@ export function declareCandidateChainChoices(
   input: ChainDeclarationInput,
 ): ChainChoiceDeclaration {
   const s = input.stated;
-  const stated: Partial<Pick<Chain3Settings, ChainChoiceKey>> = {};
+  const stated: Partial<ChainCandidateChoices> = {};
   /* Empty until V51, and kept as a state for exactly the third key that now
    * uses it: `lowestWayLevelWork` has an honest absent case, the two above do
    * not. */
@@ -1078,5 +1089,29 @@ export function declareCandidateChainChoices(
    * every exploration candidate (`chainChoices.ts`, the key's own note). An
    * explicit `'full'` wins, so the before/after is a run somebody can ask for. */
   stated.synthesisGrid = s.synthesisGrid ?? 'alive';
+
+  /* ---- H-1: THE STATED HANDOVER TO AN ACTIVE SIDE ------------------------
+   *
+   * DERIVED from the project's own stated block and from NOTHING ELSE, and it
+   * has a genuine ABSENT: a fully passive design states no active side, and
+   * then the lowest way has no high-pass and the sum has no modelled branch —
+   * which is every casus in this book but 1h.
+   *
+   * The DSP settings travel inside the value because a handover without them
+   * models nothing (see the key's own note). They are class A and computed by
+   * `activeSide.ts` from the measurements and the stated shape, so this
+   * function never fits them: a declaration that fitted its own gain and delay
+   * would be a second opinion about the number the report publishes. */
+  if (input.activeSide) {
+    stated.activeSide = input.activeSide;
+  } else {
+    absent.push({
+      key: 'activeSide',
+      why:
+        'this project states no handover to an active side, so the lowest way carries no ' +
+        'high-pass and the sum holds no modelled branch — the design, synthesis and tune steps ' +
+        'read exactly what they always read (P4)',
+    });
+  }
   return { stated, absent };
 }

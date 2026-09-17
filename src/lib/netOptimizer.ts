@@ -3,6 +3,7 @@ import { bandMedian, powerShape, smoothDbGaussian, type PowerMetricMode } from '
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
 import { applyTransfer, combine, combineN, type BranchAdjust, type CombineResult, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { levelMatchDb } from './activeSide.ts';
 import { pickSlotsN } from './driverSlots.ts';
 import { computeIntegration, DEFAULT_OVERLAP_WINDOW_DB } from './integration.ts';
 import { admitPhasePoints } from './phaseAdmission.ts';
@@ -795,8 +796,36 @@ export interface NetOptimizeOptions {
     t: GriddedResponse;
     /** 3-way: the middle branch on the safety grid. */
     m?: GriddedResponse;
+    /** H-1: the modelled active branch on the safety grid — see `activeBranch`. */
+    active?: GriddedResponse;
     z: Record<string, readonly Complex[]>;
   };
+  /**
+   * H-1 — THE MODELLED ACTIVE BRANCH: a branch that joins the SUM and holds no
+   * element of this netlist.
+   *
+   * On a hybrid the lowest way is driven by its own amplifier through a DSP
+   * filter, so the sum a listener hears contains a branch the tuner cannot
+   * touch. It has to be in the AMPLITUDE terms — without it the tuner reads the
+   * lowest passive way's stated high-pass as a droop and spends its budget
+   * fighting it — and it is deliberately NOT in the phase term, which is what
+   * STEERS the search: the phase across that handover is set by a DSP delay
+   * this design cannot trade against anything. M-K on that pair is MEASURED
+   * afterwards by the report and reported per candidate.
+   *
+   * It touches nothing electrical. The amplifier this tuner designs for does
+   * not drive it, so |Z|, EPDR, the dissipation term, the part audit and every
+   * gate keep reading the netlist and only the netlist.
+   *
+   * Given PER GRID, already measured-times-its-DSP-transfer: this one is on the
+   * main grid and `safety.active` on the safety grid. Absent = byte-identical.
+   */
+  activeBranch?: GriddedResponse;
+  /**
+   * H-1 — the band the modelled branch is LEVELLED against the lowest passive
+   * way over, per evaluation (`levelMatchDb`). Absent = summed as handed in.
+   */
+  activeLevelBandHz?: readonly [number, number];
   /** 3-WAY (phase-4 trede 4): the MIDDLE branch — its base response on the
    *  same grid as wBase/tBase, plus its own adjust. When set, the tuner runs
    *  the two-pair path: branch transfers resolve by SLOT (pickSlotsN, so
@@ -2609,6 +2638,20 @@ export function optimizeNetworkValues(
   const optW = pick(smoothMag(wBase));
   const optT = pick(smoothMag(tBase));
   const optM = midB ? pick(smoothMag(midB.response)) : null;
+  /* H-1 — the modelled active branch on each grid this tuner evaluates on.
+   * SMOOTHED and decimated exactly as the measured branches are, because it
+   * enters the same amplitude term and a term whose operands are smoothed
+   * differently is a term that measures two things. */
+  const optActive = opts.activeBranch ? pick(smoothMag(opts.activeBranch)) : null;
+  const activeFull = opts.activeBranch ?? null;
+  /* H-1 — the modelled branch at the level of the lowest passive way over the
+   * handover band, recomputed for the branch it is handed (`levelMatchDb`). */
+  const levelledActive = (active: GriddedResponse, against: GriddedResponse): GriddedResponse => {
+    const band = opts.activeLevelBandHz;
+    if (!band) return active;
+    const d = levelMatchDb(active, against, band);
+    return d === null || d === 0 ? active : { ...active, spl: active.spl.map((v) => v + d) };
+  };
   /** Full-grid middle branch for the report/gate call sites. */
   const midFull = midB ? midB.response : null;
   const optZ = Object.fromEntries(
@@ -2810,6 +2853,8 @@ export function optimizeNetworkValues(
     m: GriddedResponse | null,
     z: Record<string, readonly Complex[]>,
     angles: { woofer: AngleResponse[]; tweeter: AngleResponse[]; mid?: AngleResponse[] } | null,
+    /** H-1 — the modelled active branch ON THIS GRID, or null (see `activeBranch`). */
+    active: GriddedResponse | null = null,
   ): {
     /** Std-dev flatness — the smooth term the SEARCH objective minimizes. */
     rippleDb: number;
@@ -3086,7 +3131,19 @@ export function optimizeNetworkValues(
         silentFloorDb: phaseAdmissionFacts?.silentFloorDb ?? null,
       }).admitted;
     });
-    const r = { freq: rFreq, combinedSpl: rCombinedSpl };
+    /* H-1 — the sum the AMPLITUDE terms judge. With a modelled active branch it
+     * gets one more term; without one it is `rCombinedSpl`, the same array as
+     * before, so every run without an active side is byte-identical. The PAIRS
+     * above are untouched either way: they carry the phase term, and the phase
+     * across the active handover is a fixed DSP delay this search cannot trade. */
+    const sumSpl = active
+      ? combineN([
+          { response: levelledActive(active, wF) },
+          ...(m ? [{ response: wF }, { response: mF!, adjust: midAdj }] : [{ response: wF }]),
+          { response: tF, adjust },
+        ]).combinedSpl
+      : rCombinedSpl;
+    const r = { freq: rFreq, combinedSpl: sumSpl };
     // Both phase metrics (see vfOptimizer): weighted classic and the panel's
     // uniform avg + bucket-P95 — 3-way sums the pairs' overlap windows.
     let wSum = 0;
@@ -3730,7 +3787,7 @@ export function optimizeNetworkValues(
   const quickFx = (ps: readonly VxpPart[]): number => {
     const { work } = buildWork(ps);
     tick();
-    return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles));
+    return fxOf(metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive));
   };
   /** Same evaluation, but keeping the impedance minimum the metrics already
    *  computed. The catalog snap needs it and a second solve would be pure
@@ -3871,7 +3928,7 @@ export function optimizeNetworkValues(
     }
     const { work, free } = buildWork(ps);
     if (free.length === 0) {
-      const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
+      const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
       return remember(memoKey, { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m, cappedEarly: false });
     }
     /* A5e.3 — THE DCR THAT MOVES WITH THE INDUCTANCE. A free coil on a way
@@ -4076,7 +4133,7 @@ export function optimizeNetworkValues(
     let protRef = Infinity;
     if (barrier) {
       try {
-        protRef = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles).protSqDb + 0.5;
+        protRef = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive).protSqDb + 0.5;
       } catch {
         protRef = Infinity;
       }
@@ -4101,7 +4158,7 @@ export function optimizeNetworkValues(
       refreshDcr();
       let m;
       try {
-        m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
+        m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
       } catch {
         return 1e9;
       }
@@ -4244,7 +4301,7 @@ export function optimizeNetworkValues(
     // hold everywhere except in the answer.
     projectSums();
     refreshDcr();
-    const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles);
+    const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
     const valueOf = new Map(free.map((e) => [e.id, e.value]));
     const out = cloneParts(ps).map((q) => {
       if (q.partId === undefined || !valueOf.has(q.partId) || q.open || q.shorted) return q;
@@ -4290,6 +4347,7 @@ export function optimizeNetworkValues(
     midFull,
     driverZ,
     angleData ?? null,
+    activeFull,
   );
   /** Solo sensitivity gate: the network may not spend more than the budget of
    *  the driver's own median level. Always true for two-driver designs (level
@@ -4383,7 +4441,7 @@ export function optimizeNetworkValues(
     }
     if (opts.staged && alt.fx <= base.fx * 1.1 && cheaper()) {
       const full = (ps: readonly VxpPart[]): Metrics =>
-        metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+        metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
       const mAlt = full(alt.parts);
       const mBase = full(base.parts);
       if (
@@ -4476,7 +4534,7 @@ export function optimizeNetworkValues(
     });
     if (!rep) return null;
     const fullOf = (qs: readonly VxpPart[]): Metrics =>
-      metricsOn(buildWork(qs).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+      metricsOn(buildWork(qs).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
     let partsNow: VxpPart[] = [...ps];
     let ref = fullOf(partsNow);
     let anyApplied = false;
@@ -4554,7 +4612,7 @@ export function optimizeNetworkValues(
    * `tuned` beside these numbers.
    */
   const asIs = (ps: readonly VxpPart[]): TuneOut => {
-    const m = metricsOn(buildWork(ps).work, optW.freq, optW, optT, optM, optZ, optAngles);
+    const m = metricsOn(buildWork(ps).work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
     return { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m };
   };
 
@@ -4619,7 +4677,7 @@ export function optimizeNetworkValues(
     // decimated inner grid drives the search but its (integration-weighted)
     // phase metric can differ visibly from the full-grid one.
     const fullM = (ps: readonly VxpPart[]): Metrics =>
-      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
     const meets = (m: Metrics): boolean =>
       m.rippleStopPeakDb <= tgt.rippleDb && phaseGate(m) <= tgt.phaseDeg;
     // Steer INTO the target region from the fx-optimum: the barrier is a
@@ -4868,7 +4926,7 @@ export function optimizeNetworkValues(
       return bestV;
     };
     const fullOf = (ps: readonly VxpPart[]): Metrics =>
-      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+      metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
     const posOfCur = busPositions(cur.parts);
     const freeCaps = cur.parts.filter(
       (q) =>
@@ -4983,7 +5041,7 @@ export function optimizeNetworkValues(
    *  check at the end can use the same predicate. */
   let ampFloorSeedShort = 0;
   const fullOf = (ps: readonly VxpPart[]): Metrics =>
-    metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+    metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
   /** Worst dip over the evaluation grid AND the safety grid — hoisted for the
    *  same reason: detection, acceptance and the delivered verdict must all use
    *  the one measure. */
@@ -4992,7 +5050,7 @@ export function optimizeNetworkValues(
     let min = m.zMinOhm;
     if (opts.safety) {
       const sg = opts.safety;
-      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null);
+      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null, sg.active ?? null);
       if (ms.zShortOhm > short) {
         short = ms.zShortOhm;
         min = ms.zMinOhm;
@@ -5326,7 +5384,7 @@ export function optimizeNetworkValues(
      * about the network that ships. */
     const snapFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
       tick();
-      const m = metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+      const m = metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
       return { fx: fxOf(m), zMin: m.zMinOhm };
     };
     const zPre = snapFxZ(cur.parts).zMin;
@@ -5552,7 +5610,7 @@ export function optimizeNetworkValues(
     outParts = outParts.filter((q) => !un.has(debrisKey(q)));
     outParts = trimStubs(outParts);
   }
-  const after = metricsOn(buildWork(outParts).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null);
+  const after = metricsOn(buildWork(outParts).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
   // The peak the SEARCH saw (error-smoothed magnitudes on the full grid) —
   // reported beside the raw peak so a scan row does not look worse than the
   // loudspeaker is; targets and gates keep judging the raw number.
@@ -5566,6 +5624,7 @@ export function optimizeNetworkValues(
           midFull ? smoothMag(midFull) : null,
           driverZ,
           null,
+          activeFull ? smoothMag(activeFull) : null,
         ).ripplePeakDb
       : after.ripplePeakDb;
 
@@ -5583,7 +5642,7 @@ export function optimizeNetworkValues(
     let min = m.zMinOhm;
     if (opts.safety) {
       const sg = opts.safety;
-      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null);
+      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null, sg.active ?? null);
       if (ms.zMinOhm < min) min = ms.zMinOhm;
     }
     return min;
@@ -5755,8 +5814,8 @@ export function optimizeNetworkValues(
    * crossing, valley crossing, unprotected tweeter) loses to the seed. ---- */
   if (opts.safety) {
     const s = opts.safety;
-    const seedS = metricsOn(buildWork(parts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
-    const resS = metricsOn(buildWork(outParts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null);
+    const seedS = metricsOn(buildWork(parts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null, s.active ?? null);
+    const resS = metricsOn(buildWork(outParts).work, s.freqs, s.w, s.t, s.m ?? null, s.z, null, s.active ?? null);
     const reasons: string[] = [];
     /* The CATEGORY is recorded where the reason is decided, never re-derived
      * from the sentence afterwards — the sentence is for a human and may be
@@ -5975,6 +6034,7 @@ export function optimizeNetworkValues(
         midFull,
         driverZ,
         angleData ?? null,
+        activeFull,
       );
       const dR = after.ripplePeakDb - freeFull.ripplePeakDb;
       const dP = after.phaseDeg - freeFull.phaseDeg;

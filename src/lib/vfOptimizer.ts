@@ -4,8 +4,10 @@ import {
   isActive,
   type DriverFilterSpec,
   type FilterKind,
+  type HpLpSpec,
 } from './filters.ts';
-import { applyTransfer, combine, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { applyTransfer, combine, combineN, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
+import { levelMatchDb } from './activeSide.ts';
 import { computeIntegration } from './integration.ts';
 import { powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
 import type { AngleResponse } from './directivity.ts';
@@ -256,6 +258,50 @@ export interface VfOptimizeOptions {
    */
   cutOnly?: boolean;
   /**
+   * H-1 — THE STATED HIGH-PASS OF THE LOWEST WAY.
+   *
+   * Until H-1 `baseSpecs` wrote `woofer.hp = { enabled: false }` literally and
+   * `baseHandles` gave the lowest way no high-pass freedom at all, so a seed
+   * that carried one was OVERWRITTEN in silence — measured at H-1 step 0: asked
+   * for LR4 at 450 Hz, delivered disabled at 200 Hz, with no message anywhere
+   * (F0). That was right for as long as the lowest way was the woofer; on a
+   * hybrid it is the way that hands over to an active side and it needs one.
+   *
+   * STATED AND NOT SEARCHED: the corner and the alignment come from the active
+   * handover the project stated, and the knee gets no handle. A knee the search
+   * could move is a handover the search could move, and the active side cannot
+   * follow it — its filter lives in a processor this app does not program.
+   *
+   * Absent = the historical behaviour, byte for byte.
+   */
+  lowHighPass?: HpLpSpec;
+  /**
+   * H-1 — A BRANCH THAT JOINS THE SUM AND CARRIES NO FREE PARAMETER: the
+   * modelled active side, already measured-times-its-DSP-transfer, on THIS
+   * grid.
+   *
+   * It has to be here, and the reason is not subtle: without it the design step
+   * flattens the passive ways alone, sees the lowest way's new high-pass as a
+   * droop, and spends its whole budget fighting the thing the project asked
+   * for. With it, the amplitude terms judge the sum a listener hears.
+   *
+   * WHAT IT DELIBERATELY DOES NOT DO is enter the PHASE term. The phase metric
+   * is what STEERS this search, and the phase across the active handover is set
+   * by the DSP delay — a fixed number this design cannot trade against
+   * anything. Steering on it would be steering on a constant. It is MEASURED
+   * afterwards (M-K, per pair, in the report) and reported per candidate, which
+   * is the difference between judged and steered.
+   *
+   * Absent = byte-identical.
+   */
+  activeBranch?: GriddedResponse;
+  /**
+   * H-1 — the band the modelled branch is LEVELLED against the lowest passive
+   * way over, per evaluation (`levelMatchDb`). Absent = the branch is summed at
+   * the level it arrives with.
+   */
+  activeLevelBandHz?: readonly [number, number];
+  /**
    * E-3 (V51 on the two-way chain) — the greedy EQ proposes NO shelf band on
    * the woofer (the lowest way): a shelf cut is synthesised as a pad with a
    * bypass, which a project that forbids level work on its lowest way may not
@@ -389,12 +435,23 @@ export function optimizeVirtualFilters(
     fixedStructure,
     targets,
     phaseMetric = 'band',
+    lowHighPass,
+    activeBranch,
+    activeLevelBandHz,
   } = opts;
   const acSlopes =
     opts.acousticSlopes && (opts.acousticSlopes.mid || opts.acousticSlopes.tweeter)
       ? opts.acousticSlopes
       : null;
   const gainHi = cutOnly ? 0 : 6;
+  /* H-1 — the modelled branch at the level of the lowest passive way, over the
+   * handover band, recomputed for the branch it is handed. See `levelMatchDb`
+   * for why this is a normalisation and not a search parameter. */
+  const levelled = (active: GriddedResponse, against: GriddedResponse): GriddedResponse => {
+    if (!activeLevelBandHz) return active;
+    const d = levelMatchDb(active, against, activeLevelBandHz);
+    return d === null || d === 0 ? active : { ...active, spl: active.spl.map((v) => v + d) };
+  };
   // Sanitised crossover range: ordered, inside sanity bounds, non-degenerate.
   const xo: [number, number] | null = (() => {
     if (!opts.xoRange) return null;
@@ -498,6 +555,17 @@ export function optimizeVirtualFilters(
     const tF = hT ? applyTransfer(t, hT) : t;
     const r = combine(wF, tF, { ...adjust, inverted });
     const integ = computeIntegration(r);
+    /* H-1 — the sum the AMPLITUDE terms judge. With a modelled active branch it
+     * is the three-branch sum; without one it is `r.combinedSpl`, the same
+     * array as before, so every v1 run is byte-identical. The PAIR above is
+     * untouched either way: `integ` is the phase term and it steers. */
+    const sumSpl = activeBranch
+      ? combineN([
+          { response: levelled(activeBranch, wF) },
+          { response: wF },
+          { response: tF, adjust: { ...adjust, inverted } },
+        ]).combinedSpl
+      : r.combinedSpl;
 
     let powerStdDb: number | null = null;
     let powerDbArr: number[] | null = null;
@@ -533,7 +601,7 @@ export function optimizeVirtualFilters(
     }
 
     const responseStdDb =
-      useLw && lwStd !== null ? lwStd : bandStd(r.freq, r.combinedSpl);
+      useLw && lwStd !== null ? lwStd : bandStd(r.freq, sumSpl);
 
     // Both phase metrics from the same points (|ΔdB| ≤ 20 window):
     // weighted (classic, centre-heavy) and uniform + P95 (the panel's avg —
@@ -590,11 +658,11 @@ export function optimizeVirtualFilters(
       let maxHi = -Infinity;
       for (let i = 0; i < r.freq.length; i++) {
         const f = r.freq[i];
-        if (f >= xoHzV / 4 && f <= xoHzV / 1.3) maxLo = Math.max(maxLo, r.combinedSpl[i]);
-        else if (f >= xoHzV * 1.3 && f <= xoHzV * 4) maxHi = Math.max(maxHi, r.combinedSpl[i]);
+        if (f >= xoHzV / 4 && f <= xoHzV / 1.3) maxLo = Math.max(maxLo, sumSpl[i]);
+        else if (f >= xoHzV * 1.3 && f <= xoHzV * 4) maxHi = Math.max(maxHi, sumSpl[i]);
       }
       if (Number.isFinite(maxLo) && Number.isFinite(maxHi)) {
-        xoDipDb = Math.max(0, Math.min(maxLo, maxHi) - r.combinedSpl[xi] - 6);
+        xoDipDb = Math.max(0, Math.min(maxLo, maxHi) - sumSpl[xi] - 6);
       }
     }
 
@@ -637,8 +705,8 @@ export function optimizeVirtualFilters(
         for (let i = 0; i < r.freq.length; i++) {
           const f = r.freq[i];
           let margin: number | null = null;
-          if (f >= xoF * 1.6 && f <= xoF * 4) margin = r.combinedSpl[i] - wF.spl[i];
-          else if (f >= xoF / 4 && f <= xoF / 1.6) margin = r.combinedSpl[i] - tF.spl[i];
+          if (f >= xoF * 1.6 && f <= xoF * 4) margin = sumSpl[i] - wF.spl[i];
+          else if (f >= xoF / 4 && f <= xoF / 1.6) margin = sumSpl[i] - tF.spl[i];
           if (margin !== null) {
             const d = Math.max(0, 20 - margin);
             acc += d * d;
@@ -662,7 +730,7 @@ export function optimizeVirtualFilters(
     }
     return {
       responseStdDb,
-      responseRipplePeakDb: bandPeak(r.freq, r.combinedSpl),
+      responseRipplePeakDb: bandPeak(r.freq, sumSpl),
       avgPhaseErrDeg,
       phaseP95Deg,
       integrationScore: integ.score,
@@ -771,7 +839,10 @@ export function optimizeVirtualFilters(
   const baseSpecs = (lp: StructChoice, hp: StructChoice): VfSpecs => ({
     woofer: {
       gainDb: 0,
-      hp: { enabled: false, kind: 'LR', order: 2, freq: 200 },
+      /* H-1 — the stated high-pass of the lowest way, or the historical
+       * disabled block. Spread so that an absent statement leaves the literal
+       * that stood here byte for byte. */
+      hp: lowHighPass ? { ...lowHighPass } : { enabled: false, kind: 'LR', order: 2, freq: 200 },
       lp: {
         enabled: true,
         kind: lp.kind,
@@ -936,11 +1007,22 @@ export function optimizeVirtualFilters(
   ): { freq: number; devDb: number; meanBelowDb: number; meanAboveDb: number } => {
     const { wF, tF } = filtered(optW, optT, cand);
     const r = combine(wF, tF, { ...adjust, inverted });
+    /* H-1 — WHERE a greedy band goes is decided on the sum a listener hears.
+     * Without the modelled branch this stage would read the lowest way's stated
+     * high-pass as the largest deviation in the band and spend its first band
+     * cancelling it. Absent = `r.combinedSpl`, byte for byte. */
+    const sumSpl = activeBranch
+      ? combineN([
+          { response: levelled(activeBranch, wF) },
+          { response: wF },
+          { response: tF, adjust: { ...adjust, inverted } },
+        ]).combinedSpl
+      : r.combinedSpl;
     let sum = 0;
     let n = 0;
     for (let i = 0; i < r.freq.length; i++) {
       if (r.freq[i] < band[0] || r.freq[i] > band[1]) continue;
-      sum += r.combinedSpl[i];
+      sum += sumSpl[i];
       n++;
     }
     const mean = sum / n;
@@ -948,7 +1030,7 @@ export function optimizeVirtualFilters(
     let bestAbs = -1;
     for (let i = 0; i < r.freq.length; i++) {
       if (r.freq[i] < band[0] || r.freq[i] > band[1]) continue;
-      const dev = Math.abs(r.combinedSpl[i] - mean);
+      const dev = Math.abs(sumSpl[i] - mean);
       if (dev > bestAbs) {
         bestAbs = dev;
         bestI = i;
@@ -960,7 +1042,7 @@ export function optimizeVirtualFilters(
     let nAbove = 0;
     for (let i = 0; i < r.freq.length; i++) {
       if (r.freq[i] < band[0] || r.freq[i] > band[1]) continue;
-      const dev = r.combinedSpl[i] - mean;
+      const dev = sumSpl[i] - mean;
       if (i < bestI) {
         below += dev;
         nBelow++;
@@ -971,7 +1053,7 @@ export function optimizeVirtualFilters(
     }
     return {
       freq: r.freq[bestI],
-      devDb: r.combinedSpl[bestI] - mean,
+      devDb: sumSpl[bestI] - mean,
       meanBelowDb: nBelow ? below / nBelow : 0,
       meanAboveDb: nAbove ? above / nAbove : 0,
     };

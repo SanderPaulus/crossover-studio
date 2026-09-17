@@ -1,0 +1,1316 @@
+{
+ "casus": "KOAN 2951 HYBRIDE — de mid/tweeter passief, het wooferpaar actief (H-1, 17-09-2026)",
+ "meetdata": "De 'koan677'-set van casus 1, ONGEWIJZIGD en via casus 1's eigen loader gelezen (test-fixtures/casus1/ en test-fixtures/koan_2026-09_testkast/). Geen kopie: een kopie van een meting is een tweede bestand dat kan wegdrijven (I-2). Waarom koan677 en niet de standaard 'm3': het LEVENDE casus-1-corpus (KAND_V2_1..3) is op koan677 opgewekt en de vergelijking van H-1 loopt daartegen, dus beide helften moeten door dezelfde meetset. Wat M-3 aan de mid repareerde staat in `meetset_niet_m3` en is een bekende, gedateerde afwijking en geen verzuim.",
+ "vastgesteld": "Claude (H-1, 17-09-2026), met Sander Somers als steller van elke eis en van de actieve overname.",
+ "waarom": "WAAROM DEZE CASUS BESTAAT. Sander zet de woofers actief (Hypex FA251) en houdt mid en tweeter passief. De mid wordt daarmee de ONDERSTE PASSIEVE weg en krijgt een hoogdoorlaat richting de actieve zijde. Dat is een vorm die dit casusboek nog niet kende: de som die een ontwerp beoordeelt bevat een tak die NIET in de netlist staat, dus elk getal dat een SOM oordeelt (rimpel, M-K, lobing, de doelcurve) moet die tak kunnen zien, terwijl elk ELEKTRISCH getal (de vloer, EPDR, M-A, M-L, M-M) uitsluitend mag lezen wat de HOOFDVERSTERKER ziet. Casus 1h is dezelfde luidspreker en dezelfde metingen als casus 1, op een andere scheiding — zodat een verschil tussen hybride en volpassief een ROUTE-verschil is en geen data-verschil (de casus-1b-regel).",
+ "classificatie": "R1 van de casus-skill: elk referentieblok draagt `klasse` en `afhankelijkheid`. A = functie van de metingen alleen; B = functie van de metingen en een BEVROREN netlist-bestand; C = functie van een zoektocht, en die staat alleen onder v1_baseline. Casus 1h heeft geen enkele klasse-C-referentie, om dezelfde reden als casus 1 en 1b: elke kandidaat wordt als .adsfilter.json bevroren.",
+ "toleranties": {
+  "frequenties_pct": 2,
+  "dB": 0.15,
+  "graden": 0.3,
+  "ohm": 0.03,
+  "Q_pct": 7,
+  "exponent_pct": 5,
+  "watt_pct": 2,
+  "lambda_pct": 4,
+  "procentpunten": 1,
+  "fit_kwaliteit_pct": 5
+ },
+ "toleranties_toelichting": "ONGEWIJZIGD overgenomen van casus 1 (dezelfde drivers, dezelfde meetsessies, dezelfde schatters). Een tolerantie is een besluit met een motivering en draagt zelf geen klasse; waar casus 1h een klasse niet haalt is dat een BEVINDING over de hybride route en geen tolerantie die opgerekt moet worden.",
+ "afgeleide_parameters": {
+  "woofer": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "Functies van de METINGEN alleen — gerecordeerd op een rapport zónder netlist, dus dezelfde waarde op elke H_KAND. De ACTIEVE weg staat erbij omdat haar meting de MODEL-tak voedt; haar eigen excursie- en vermogensgrenzen horen bij de actieve versterker en worden hier niet geoordeeld.",
+   "rol": "ACTIEF — gemodelleerde tak, geen element in enige netlist",
+   "Re": 3,
+   "Re_herkomst": "motional fit over 10.1–157 Hz (2 resonances, relative RMS residual 0.0285, band sensitivity ±0.076 Ω), extrapolated to DC. The direct low-frequency reading is 4.148 Ω and carries 0.910 Ω (21.9 % of the reading) of motional impedance at 10.1 Hz, computed from the fitted resonance itself",
+   "Re_direct": 4.15,
+   "Re_fit_residu": 0.0285,
+   "Re_fit_band_hz": [
+    10.1,
+    157.1
+   ],
+   "Re_fit_model": "second-order-plus-leak",
+   "fp": 52.4,
+   "Zmax": 12.03,
+   "kast": "reflex",
+   "semi_inductantie_n": 0.82,
+   "breakups": [
+    [
+     1396,
+     3.24
+    ],
+    [
+     5248,
+     3.36
+    ],
+    [
+     7307,
+     8.33
+    ],
+    [
+     8273,
+     4.87
+    ],
+    [
+     9628,
+     4.74
+    ],
+    [
+     9897,
+     3.71
+    ],
+    [
+     10459,
+     3.24
+    ],
+    [
+     11052,
+     5.5
+    ],
+    [
+     11841,
+     2.64
+    ],
+    [
+     13041,
+     5.82
+    ],
+    [
+     14167,
+     3.71
+    ],
+    [
+     17423,
+     10.36
+    ],
+    [
+     19726,
+     3.31
+    ]
+   ],
+   "breakup_scanband_hz": [
+    20.5,
+    19999.5
+   ],
+   "dir_m6_30": null,
+   "NF_fmax": 567,
+   "FF_vloer": 20.5,
+   "FF_vloer_bron": "merge-block",
+   "excursie_x_per_V_op_f0_mm_per_V": 0.4169,
+   "excursie_toegestane_spanning_V": 16.4,
+   "excursie_plafond_re_ingang_dB": -9.78,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical, klasse A — dezelfde getallen als casus 1 (dezelfde kaart, dezelfde sweep). Route 2: acoustic route off for woofer: the drive voltage and mic distance of the on-axis response are not documented. OP DE ACTIEVE WEG IS DIT EEN LEZING EN GEEN EIS: haar versterker en DSP begrenzen haar, niet dit netwerk."
+  },
+  "mid": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "Functies van de METINGEN alleen — gerecordeerd op een rapport zónder netlist, dus dezelfde waarde op elke H_KAND. De ACTIEVE weg staat erbij omdat haar meting de MODEL-tak voedt; haar eigen excursie- en vermogensgrenzen horen bij de actieve versterker en worden hier niet geoordeeld.",
+   "rol": "PASSIEF",
+   "Re": 3.36,
+   "Re_herkomst": "motional fit over 20.0–266 Hz (1 resonance, relative RMS residual 0.0128, band sensitivity ±0.082 Ω), extrapolated to DC. The direct low-frequency reading is 3.381 Ω and carries 0.040 Ω (1.2 % of the reading) of motional impedance at 20.0 Hz, computed from the fitted resonance itself",
+   "Re_direct": 3.38,
+   "Re_fit_residu": 0.0128,
+   "Re_fit_band_hz": [
+    20,
+    266.4
+   ],
+   "Re_fit_model": "second-order-plus-leak",
+   "fc": 88.8,
+   "Zmax": 44.22,
+   "kast": "sealed",
+   "semi_inductantie_n": 0.6,
+   "breakups": [
+    [
+     5688,
+     2.81
+    ],
+    [
+     9062,
+     3.81
+    ],
+    [
+     12265,
+     3.13
+    ],
+    [
+     14436,
+     2.97
+    ],
+    [
+     14949,
+     3.17
+    ],
+    [
+     17596,
+     3.73
+    ],
+    [
+     19768,
+     3.89
+    ]
+   ],
+   "breakup_scanband_hz": [
+    60,
+    19999.5
+   ],
+   "dir_m6_30": 5388,
+   "NF_fmax": 1078,
+   "FF_vloer": 60,
+   "FF_vloer_bron": "merge-block",
+   "excursie_x_per_V_op_f0_mm_per_V": 0.3628,
+   "excursie_toegestane_spanning_V": 6.61,
+   "excursie_plafond_re_ingang_dB": -17.67,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical, klasse A — dezelfde getallen als casus 1 (dezelfde kaart, dezelfde sweep). Route 2: acoustic route off for mid: the drive voltage and mic distance of the on-axis response are not documented."
+  },
+  "tweeter": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "Functies van de METINGEN alleen — gerecordeerd op een rapport zónder netlist, dus dezelfde waarde op elke H_KAND. De ACTIEVE weg staat erbij omdat haar meting de MODEL-tak voedt; haar eigen excursie- en vermogensgrenzen horen bij de actieve versterker en worden hier niet geoordeeld.",
+   "rol": "PASSIEF",
+   "Re": 5.23,
+   "Re_herkomst": "motional fit over 200.0–2773 Hz (1 resonance, relative RMS residual 0.0180, band sensitivity ±0.010 Ω), extrapolated to DC. The direct low-frequency reading is 5.587 Ω and carries 0.260 Ω (4.7 % of the reading) of motional impedance at 200.0 Hz, computed from the fitted resonance itself",
+   "Re_direct": 5.59,
+   "Re_fit_residu": 0.018,
+   "Re_fit_band_hz": [
+    200,
+    2772.9
+   ],
+   "Re_fit_model": "second-order-plus-leak",
+   "fs": 924.3,
+   "Zmax": 16.63,
+   "kast": "sealed",
+   "semi_inductantie_n": null,
+   "breakups": [],
+   "breakup_scanband_hz": [
+    396.7,
+    19999.5
+   ],
+   "dir_m6_30": null,
+   "NF_fmax": null,
+   "FF_vloer": 396.7,
+   "FF_vloer_bron": "header",
+   "excursie_x_per_V_op_f0_mm_per_V": 0.0424,
+   "excursie_toegestane_spanning_V": 18.85,
+   "excursie_plafond_re_ingang_dB": -8.58,
+   "excursie_toelichting": "M-C v2.0 (V49), route electromechanical, klasse A — dezelfde getallen als casus 1 (dezelfde kaart, dezelfde sweep). Route 2: acoustic route off for tweeter: the drive voltage and mic distance of the on-axis response are not documented."
+  },
+  "actieve_zijde_afgeleid": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "klasse_toelichting": "De DRIE DSP-instellingen per gestelde overname, AFGELEID uit de metingen en de gestelde doelvorm en uit niets anders — dus dezelfde waarde op elke netlist, en vastgezet vóór de zoektocht draait. Dat laatste is geen detail: een gain en een delay die op het GELEVERDE netwerk gefit worden zijn knoppen die de zoektocht kan verzetten, en dan hangt de som waarop een kandidaat beoordeeld is af van een getal dat die kandidaat zelf gekozen heeft.",
+   "versie": "active-handover/1.0",
+   "actieve_weg": "woofer",
+   "onderste_passieve_weg": "mid",
+   "doelvorm": "LR4",
+   "fitmaat": "de REVERSED-POLARITY NULL MARGE: hoeveel de som boven het niveau uitkomt dat dezelfde twee takken maken met de gemodelleerde tak omgepoold, gemiddeld over de fitband. Diep = in fase, en het is dezelfde meting die de eindwaarde in de kast vaststelt.",
+   "per_overname": [
+    {
+     "hz": 362.3,
+     "gain_dB": 0.391,
+     "delay_ms": 0.8073,
+     "omgekeerd": true,
+     "nul_marge_dB": 12.67,
+     "andere_polariteit_nul_marge_dB": 12.27,
+     "andere_polariteit_delay_ms": -0.5644,
+     "polariteit_marge_dB": 0.41,
+     "spl_venster_over_de_fitband_dB": 2.396,
+     "andere_polariteit_spl_venster_dB": 2.614,
+     "fitband_hz": [
+      256.2,
+      512.4
+     ]
+    },
+    {
+     "hz": 400,
+     "gain_dB": -0.198,
+     "delay_ms": -0.4706,
+     "omgekeerd": false,
+     "nul_marge_dB": 13.28,
+     "andere_polariteit_nul_marge_dB": 12.5,
+     "andere_polariteit_delay_ms": 0.745,
+     "polariteit_marge_dB": 0.78,
+     "spl_venster_over_de_fitband_dB": 2.72,
+     "andere_polariteit_spl_venster_dB": 2.635,
+     "fitband_hz": [
+      282.8,
+      565.7
+     ]
+    },
+    {
+     "hz": 450,
+     "gain_dB": -0.655,
+     "delay_ms": -0.4444,
+     "omgekeerd": false,
+     "nul_marge_dB": 12.53,
+     "andere_polariteit_nul_marge_dB": 11.26,
+     "andere_polariteit_delay_ms": 0.6289,
+     "polariteit_marge_dB": 1.27,
+     "spl_venster_over_de_fitband_dB": 2.173,
+     "andere_polariteit_spl_venster_dB": 2.257,
+     "fitband_hz": [
+      318.2,
+      636.4
+     ]
+    },
+    {
+     "hz": 500,
+     "gain_dB": -1.049,
+     "delay_ms": -0.414,
+     "omgekeerd": false,
+     "nul_marge_dB": 12.62,
+     "andere_polariteit_nul_marge_dB": 11.1,
+     "andere_polariteit_delay_ms": 0.558,
+     "polariteit_marge_dB": 1.52,
+     "spl_venster_over_de_fitband_dB": 2.217,
+     "andere_polariteit_spl_venster_dB": 2.302,
+     "fitband_hz": [
+      353.6,
+      707.1
+     ]
+    }
+   ],
+   "bevinding_polariteit": "Op 400, 450 en 500 Hz is de polariteit NORMAAL met een marge van 0,8-1,5 dB; op 362,3 Hz wint OMGEKEERD met 0,4 dB — onder wat de merge-fit-onzekerheid alleen al waard is (M-4 mat 8,2-11,8° modelonzekerheid in de mid-merge). Op die positie is de polariteit dus NIET door de data beslist, en het DSP-doelblok zegt dat in plaats van een zelfverzekerde boolean af te drukken."
+  }
+ },
+ "verankerde_gaps_dB": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "anker": "woofer",
+  "anker_reden": "woofer is the lowest way and the quietest, so it is the anchor: attenuating it costs source resistance, low-frequency lift and dissipation",
+  "gaps_tov_anker": {
+   "mid": 2.17,
+   "tweeter": 5.481
+  },
+  "budgetten": {
+   "mid": 2.17,
+   "tweeter": 5.481
+  },
+  "anker_wissel_waarschuwing": null,
+  "notities": [
+   "Levels are compared AS MEASURED, against the flat reference. A5d.4(a) takes the anchor after baffle step in the intended setup, which is a property of the target-curve object (A5e.2); this design either states no curve or states the flat one, and flat is the neutral reference rather than a missing answer. A design with a voicing supplies a per-way shift and these levels move with it."
+  ],
+  "doelcurve": "flat — the neutral reference; no voicing applied",
+  "klasse_toelichting": "Anker en gap zijn functies van de gemeten niveaus en de A5d.3-vensters (casus 1's V45/M-1-regel), over ALLE DRIE de wegen — de actieve erbij, want zij speelt mee. Op een hybride is het gap van de ACTIEVE weg geen pad-opdracht maar de DSP-gain: het is precies de grootheid die actieve_zijde_afgeleid per overname uitrekent, en dat die twee dezelfde vraag beantwoorden is de reden dat zij hier naast elkaar staan."
+ },
+ "kruisvensters": {
+  "woofer_mid_orde4": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "venster": [
+    147.9,
+    549.7
+   ],
+   "vloer_bindend": "drive",
+   "plafond_bindend": "breakup",
+   "grenzen": [
+    {
+     "kant": "floor",
+     "hz": 60,
+     "regel": "validity",
+     "bron": "measurement validity (mid far field)"
+    },
+    {
+     "kant": "floor",
+     "hz": 124.3,
+     "regel": "fs",
+     "bron": "1.4x f_s of mid (89 Hz) at order 4 - a steeper flank may sit closer to the resonance"
+    },
+    {
+     "kant": "floor",
+     "hz": 147.9,
+     "regel": "drive",
+     "bron": "17.7 dB of attenuation at mid's resonance (89 Hz) takes 0.74 octaves at order 4 (6 dB/oct per order) - the excursion ceiling of M-C v2.0 (driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; the ceiling the M-C gate judges the way against), read as A5d.3(ii) inverted, with the passband at the input"
+    },
+    {
+     "kant": "ceiling",
+     "hz": 549.7,
+     "regel": "breakup",
+     "bron": "first significant breakup of woofer at 1396 Hz (+3.2 dB) divided by 2.54"
+    }
+   ],
+   "spanningen": [
+    "The favourable lobing zone (1314-1840 Hz) lies entirely ABOVE the ceiling (550 Hz, breakup). Lobing and the ceiling want opposite things here - that is a real tension of this driver combination, not something the filter can resolve.",
+    "The breakup divisor is the ramp, not a measurement: at 2.54 this window holds 12 position(s), at the mild endpoint 2.00 it would hold 14. Drive this driver alone with a single tone at the breakup divided by two and measure the SECOND harmonic at the breakup itself; then at the breakup divided by three and measure the THIRD. The lowest harmonic order whose product rises out of the noise floor at the breakup is the divisor: the third silent means 2.0 (only the second reaches the resonance, so a handover an octave below it keeps the resonance out of the passband), the third audible means 3.0. A value in between is only a measurement if BOTH orders were measured and you interpolated between them — then it is your number and the app attributes it to you, never to the ramp it replaces."
+   ],
+   "leeg": false,
+   "f_s_boven_hz": 88.8,
+   "k_fs_hz": 124.3,
+   "excursievloer_hz": 147.9,
+   "ctc_mm": 261,
+   "ctc_bron": "casebook geometry (golden_refs_casus1h.json, from casus 1)",
+   "gestelde_posities_hz": [
+    362.3,
+    400,
+    450,
+    500
+   ],
+   "gestelde_posities_binnen_venster": [
+    {
+     "hz": 362.3,
+     "binnen": true
+    },
+    {
+     "hz": 400,
+     "binnen": true
+    },
+    {
+     "hz": 450,
+     "binnen": true
+    },
+    {
+     "hz": 500,
+     "binnen": true
+    }
+   ],
+   "klasse_toelichting": "DE OVERNAME VAN DE ACTIEVE ZIJDE, en zij wordt NIET gezocht: de vier posities zijn gesteld en de actieve zijde realiseert ze in een processor. Het venster staat erbij omdat het de gestelde posities toetsbaar maakt vóór er iets draait — en alle vier liggen erbinnen. Dat het venster bestaat is zelf de eerste winst van H-1: op een tweeweg zonder gestelde actieve zijde bestaat de overname niet en is er niets om een venster van af te leiden (stap 0, c)."
+  },
+  "mid_tweeter_orde4": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "venster": [
+    2200,
+    2304
+   ],
+   "vloer_bindend": "stated-min",
+   "plafond_bindend": "breakup",
+   "grenzen": [
+    {
+     "kant": "floor",
+     "hz": 396.7,
+     "regel": "validity",
+     "bron": "measurement validity (tweeter far field)"
+    },
+    {
+     "kant": "floor",
+     "hz": 1294,
+     "regel": "fs",
+     "bron": "1.4x f_s of tweeter (924 Hz) at order 4 - a steeper flank may sit closer to the resonance"
+    },
+    {
+     "kant": "floor",
+     "hz": 1184.2,
+     "regel": "drive",
+     "bron": "8.6 dB of attenuation at tweeter's resonance (924 Hz) takes 0.36 octaves at order 4 (6 dB/oct per order) - the excursion ceiling of M-C v2.0 (driver card, amplifier peak and measured sweep - metrics/driveExcursion.ts, V49; the ceiling the M-C gate judges the way against), read as A5d.3(ii) inverted, with the passband at the input"
+    },
+    {
+     "kant": "floor",
+     "hz": 1646.9,
+     "regel": "drive-stated",
+     "bron": "20.0 dB of attenuation at tweeter's resonance (924 Hz) takes 0.83 octaves at order 4 (6 dB/oct per order) - the STATED M-C figure (the stated maximum drive on the driver's own resonance (gestelde_eisen, V47b/V50), passband-relative, through statedDriveLimitDb - the same rule the M-C gate reads), read as A5d.3(ii) inverted with the passband at the input. Deliberately strict: a pad on the way can meet the stated figure below this floor, and the floor assumes no pad (A5e.3b)"
+    },
+    {
+     "kant": "floor",
+     "hz": 2200,
+     "regel": "stated-min",
+     "bron": "the manufacturer's recommended minimum crossover for tweeter, 2200 Hz at order 2 (BlieSMa, datasheet T25T-6, opgehaald 10-09-2026 van https://www.bliesma.de/Datasheet%20T25T-6.pdf) - taken verbatim; a steeper flank does not buy a lower handover here, because a recommended range bundles distortion and directivity with excursion and only the last of those follows the slope at f_s (U-3g)"
+    },
+    {
+     "kant": "ceiling",
+     "hz": 2304,
+     "regel": "breakup",
+     "bron": "first significant breakup of mid at 5688 Hz (+2.8 dB) divided by 2.47"
+    },
+    {
+     "kant": "ceiling",
+     "hz": 5387.6,
+     "regel": "directivity",
+     "bron": "-6 dB at 30 deg of mid (5388 Hz)"
+    }
+   ],
+   "spanningen": [
+    "The favourable lobing zone (2655-3717 Hz) lies entirely ABOVE the ceiling (2304 Hz, breakup). Lobing and the ceiling want opposite things here - that is a real tension of this driver combination, not something the filter can resolve.",
+    "The datasheet's minimum crossover (2200 Hz) is STRICTER than every floor the measurements imply (highest: 1647 Hz, drive-stated); the strictest binds, and here that is stated-min (U-3g).",
+    "The breakup divisor is the ramp, not a measurement: at 2.47 this window holds 1 position(s), at the mild endpoint 2.00 it would hold 3. Drive this driver alone with a single tone at the breakup divided by two and measure the SECOND harmonic at the breakup itself; then at the breakup divided by three and measure the THIRD. The lowest harmonic order whose product rises out of the noise floor at the breakup is the divisor: the third silent means 2.0 (only the second reaches the resonance, so a handover an octave below it keeps the resonance out of the passband), the third audible means 3.0. A value in between is only a measurement if BOTH orders were measured and you interpolated between them — then it is your number and the app attributes it to you, never to the ramp it replaces."
+   ],
+   "leeg": false,
+   "f_s_boven_hz": 924.3,
+   "k_fs_hz": 1294,
+   "excursievloer_hz": 1184.2,
+   "ctc_mm": 129.2,
+   "ctc_bron": "casebook geometry (golden_refs_casus1h.json, from casus 1)",
+   "veld_verkenning": {
+    "_": "Het A5d-veld in de VERKENNINGSMODUS op de ENE passieve overname.",
+    "posities_hz": [
+     2251.4
+    ],
+    "orden": [
+     4
+    ],
+    "bibliotheek": [
+     "LR2",
+     "LR4"
+    ],
+    "afgeleid": 1,
+    "budget": 8,
+    "kandidaten": 1
+   },
+   "klasse_toelichting": "DE ENE PASSIEVE OVERNAME. Hetzelfde venster als casus 1 en casus 1b: het is een functie van de twee drivers, de gestelde orde, het gestelde tweetergetal en de c-t-c, en die vier deelt casus 1h met beide. Dat de woofer actief is verandert er niets aan — nagemeten in de generator, die stopt als dit venster met de actieve overname meebeweegt."
+  }
+ },
+ "kandidaten": {
+  "H_KAND_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.H_KAND_1, een BESTAND in test-fixtures/casus1h/. Het netwerk komt uit een hybride v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — daarom klasse B en geen klasse C. ELKE SOM hieronder draagt de gemodelleerde actieve tak; elke ELEKTRISCHE waarde leest uitsluitend de mid/tweeter-netlist.",
+   "actieve_overname_hz": 362.3,
+   "minZ": 4.22,
+   "minZ_bij_hz": 853.8,
+   "minEPDR": 2.14,
+   "dissipatie_pct": 21,
+   "grootste_R_W_bij_100W": 18.65,
+   "Qes_mult": 1.42,
+   "V_tweeter_op_fs_dB": -27.75,
+   "V_mid_op_fs_dB": -25.95,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "rms_vlakheid_dB": 0.62,
+   "spl_venster_pm_dB": 1.15,
+   "wm_fase_oct": 35.86,
+   "wm_fase_kruispunt_hz": 339.3,
+   "mt_fase_oct": 4.4,
+   "mt_fase_kruispunt_hz": 2258.1,
+   "lobing_eind_dip_dB": -3.16,
+   "poorten": [
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "waarde": -25.946,
+     "grens": -12.757143248758933,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "waarde": -27.746,
+     "grens": -20,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "waarde": 1.865,
+     "grens": 5,
+     "geslaagd": true
+    }
+   ],
+   "dsp_doel": {
+    "_": "H-1 — HET DSP-DOELBLOK van deze netlist: de getallen die in de processor gaan. DELAY en POLARITEIT zijn klasse A (afgeleid vóór de zoektocht, gelijk op elke netlist); de GAIN is een NIVEAUMATCH op de tak die gebouwd is — `klasse_A_gain_dB` is wat de gestelde vorm alleen zou vragen, en het verschil is wat de realisatie aan niveau kost.",
+    "laagdoorlaat": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 362.3
+    },
+    "hoogdoorlaat_passief": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 362.3
+    },
+    "geleverd": {
+     "gain_dB": -1.319,
+     "klasse_A_gain_dB": 0.391,
+     "delay_ms": 0.8073,
+     "omgekeerd": true
+    },
+    "delivered_refit": {
+     "gain_dB": -1.337,
+     "delay_ms": -0.1208,
+     "spl_venster_dB": 3.179
+    },
+    "polariteit": {
+     "nul_marge_dB": 12.67,
+     "andere_polariteit_nul_marge_dB": 12.27,
+     "marge_dB": 0.41
+    },
+    "fitband_hz": [
+     256.2,
+     512.4
+    ],
+    "notities": [
+     "THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+     "The delay to dial in is NEGATIVE (-0.121 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.121 ms — or add one whole period (2.760 ms at 362.3 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+     "The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 362 Hz is 0.090 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+     "The DELIVERED network would prefer -0.121 ms and -1.34 dB (-0.928 ms, -0.02 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+     "The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+    ]
+   }
+  },
+  "H_KAND_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.H_KAND_2, een BESTAND in test-fixtures/casus1h/. Het netwerk komt uit een hybride v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — daarom klasse B en geen klasse C. ELKE SOM hieronder draagt de gemodelleerde actieve tak; elke ELEKTRISCHE waarde leest uitsluitend de mid/tweeter-netlist.",
+   "actieve_overname_hz": 400,
+   "minZ": 4.4,
+   "minZ_bij_hz": 833.8,
+   "minEPDR": 2.26,
+   "dissipatie_pct": 24,
+   "grootste_R_W_bij_100W": 22.38,
+   "Qes_mult": 1.4,
+   "V_tweeter_op_fs_dB": -27.79,
+   "V_mid_op_fs_dB": -27.88,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "rms_vlakheid_dB": 0.71,
+   "spl_venster_pm_dB": 1.38,
+   "wm_fase_oct": 77.33,
+   "wm_fase_kruispunt_hz": 366.5,
+   "mt_fase_oct": 4.52,
+   "mt_fase_kruispunt_hz": 2258.2,
+   "lobing_eind_dip_dB": -4.7,
+   "poorten": [
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "waarde": -27.881,
+     "grens": -12.477967346223759,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "waarde": -27.786,
+     "grens": -20,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "waarde": 2.238,
+     "grens": 5,
+     "geslaagd": true
+    }
+   ],
+   "dsp_doel": {
+    "_": "H-1 — HET DSP-DOELBLOK van deze netlist: de getallen die in de processor gaan. DELAY en POLARITEIT zijn klasse A (afgeleid vóór de zoektocht, gelijk op elke netlist); de GAIN is een NIVEAUMATCH op de tak die gebouwd is — `klasse_A_gain_dB` is wat de gestelde vorm alleen zou vragen, en het verschil is wat de realisatie aan niveau kost.",
+    "laagdoorlaat": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 400
+    },
+    "hoogdoorlaat_passief": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 400
+    },
+    "geleverd": {
+     "gain_dB": -2.155,
+     "klasse_A_gain_dB": -0.198,
+     "delay_ms": -0.4706,
+     "omgekeerd": false
+    },
+    "delivered_refit": {
+     "gain_dB": -2.143,
+     "delay_ms": -0.0669,
+     "spl_venster_dB": 2.971
+    },
+    "polariteit": {
+     "nul_marge_dB": 13.28,
+     "andere_polariteit_nul_marge_dB": 12.5,
+     "marge_dB": 0.78
+    },
+    "fitband_hz": [
+     282.8,
+     565.7
+    ],
+    "notities": [
+     "THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+     "The delay to dial in is NEGATIVE (-0.067 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.067 ms — or add one whole period (2.500 ms at 400.0 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+     "The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 400 Hz is 0.082 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+     "The DELIVERED network would prefer -0.067 ms and -2.14 dB (+0.404 ms, +0.01 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+     "The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+    ]
+   }
+  },
+  "H_KAND_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.H_KAND_3, een BESTAND in test-fixtures/casus1h/. Het netwerk komt uit een hybride v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — daarom klasse B en geen klasse C. ELKE SOM hieronder draagt de gemodelleerde actieve tak; elke ELEKTRISCHE waarde leest uitsluitend de mid/tweeter-netlist.",
+   "actieve_overname_hz": 450,
+   "minZ": 4.41,
+   "minZ_bij_hz": 1991.9,
+   "minEPDR": 2.3,
+   "dissipatie_pct": 47,
+   "grootste_R_W_bij_100W": 28.11,
+   "Qes_mult": 1.48,
+   "V_tweeter_op_fs_dB": -28.44,
+   "V_mid_op_fs_dB": -45.98,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "rms_vlakheid_dB": 0.64,
+   "spl_venster_pm_dB": 1.15,
+   "wm_fase_oct": 77.5,
+   "wm_fase_kruispunt_hz": 450.5,
+   "mt_fase_oct": 3.81,
+   "mt_fase_kruispunt_hz": 2258.1,
+   "lobing_eind_dip_dB": -5.42,
+   "poorten": [
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "waarde": -45.977,
+     "grens": -10.935113393254797,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "waarde": -28.442,
+     "grens": -20,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "waarde": 2.811,
+     "grens": 5,
+     "geslaagd": true
+    }
+   ],
+   "dsp_doel": {
+    "_": "H-1 — HET DSP-DOELBLOK van deze netlist: de getallen die in de processor gaan. DELAY en POLARITEIT zijn klasse A (afgeleid vóór de zoektocht, gelijk op elke netlist); de GAIN is een NIVEAUMATCH op de tak die gebouwd is — `klasse_A_gain_dB` is wat de gestelde vorm alleen zou vragen, en het verschil is wat de realisatie aan niveau kost.",
+    "laagdoorlaat": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 450
+    },
+    "hoogdoorlaat_passief": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 450
+    },
+    "geleverd": {
+     "gain_dB": -3.852,
+     "klasse_A_gain_dB": -0.655,
+     "delay_ms": -0.4444,
+     "omgekeerd": false
+    },
+    "delivered_refit": {
+     "gain_dB": -3.861,
+     "delay_ms": -0.0111,
+     "spl_venster_dB": 1.921
+    },
+    "polariteit": {
+     "nul_marge_dB": 12.53,
+     "andere_polariteit_nul_marge_dB": 11.26,
+     "marge_dB": 1.27
+    },
+    "fitband_hz": [
+     318.2,
+     636.4
+    ],
+    "notities": [
+     "THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+     "The delay to dial in is NEGATIVE (-0.011 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.011 ms — or add one whole period (2.222 ms at 450.0 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+     "The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 450 Hz is 0.073 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+     "The DELIVERED network would prefer -0.011 ms and -3.86 dB (+0.433 ms, -0.01 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+     "The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+    ]
+   }
+  },
+  "_parameters": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "_": "V15 — waarop de klasse-B-blokken gemeten zijn: casus1hReport met de actieve overname van DIE netlist (casus1hSettingsAt), het rapportraster (de poortsweep) en het versterkervermogen van casus 1.",
+   "doelcurve": "flat — the neutral reference; no voicing applied",
+   "fasemaat": "M-K (V44): gemiddelde |Δφ| over de TOEGELATEN punten. Op het WOOFER→MID-paar is de onderste tak de GEMODELLEERDE actieve tak — de maat oordeelt dus de hybride overname en niet een passieve.",
+   "actieve_overname_per_netlist": {
+    "H_KAND_1": 362.3,
+    "H_KAND_2": 400,
+    "H_KAND_3": 450,
+    "H_KAND_4": 500
+   }
+  },
+  "H_KAND_4": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.H_KAND_4, een BESTAND in test-fixtures/casus1h/. Het netwerk komt uit een hybride v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — daarom klasse B en geen klasse C. ELKE SOM hieronder draagt de gemodelleerde actieve tak; elke ELEKTRISCHE waarde leest uitsluitend de mid/tweeter-netlist.",
+   "actieve_overname_hz": 500,
+   "minZ": 3.05,
+   "minZ_bij_hz": 1963.7,
+   "minEPDR": 1.54,
+   "dissipatie_pct": 49,
+   "grootste_R_W_bij_100W": 48.87,
+   "Qes_mult": 1.36,
+   "V_tweeter_op_fs_dB": -29.77,
+   "V_mid_op_fs_dB": -33.12,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "rms_vlakheid_dB": 0.64,
+   "spl_venster_pm_dB": 1.05,
+   "wm_fase_oct": 76.43,
+   "wm_fase_kruispunt_hz": 500,
+   "mt_fase_oct": 3.16,
+   "mt_fase_kruispunt_hz": 2217,
+   "lobing_eind_dip_dB": -6.42,
+   "poorten": [
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "waarde": -33.115,
+     "grens": -10.729111761222224,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "waarde": -29.767,
+     "grens": -20,
+     "geslaagd": true
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "waarde": 4.887,
+     "grens": 5,
+     "geslaagd": true
+    }
+   ],
+   "dsp_doel": {
+    "_": "H-1 — HET DSP-DOELBLOK van deze netlist: de getallen die in de processor gaan. DELAY en POLARITEIT zijn klasse A (afgeleid vóór de zoektocht, gelijk op elke netlist); de GAIN is een NIVEAUMATCH op de tak die gebouwd is — `klasse_A_gain_dB` is wat de gestelde vorm alleen zou vragen, en het verschil is wat de realisatie aan niveau kost.",
+    "laagdoorlaat": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 500
+    },
+    "hoogdoorlaat_passief": {
+     "kind": "LR",
+     "order": 4,
+     "hz": 500
+    },
+    "geleverd": {
+     "gain_dB": -4.128,
+     "klasse_A_gain_dB": -1.049,
+     "delay_ms": -0.414,
+     "omgekeerd": false
+    },
+    "delivered_refit": {
+     "gain_dB": -4.124,
+     "delay_ms": -0.0085,
+     "spl_venster_dB": 2.735
+    },
+    "polariteit": {
+     "nul_marge_dB": 12.62,
+     "andere_polariteit_nul_marge_dB": 11.1,
+     "marge_dB": 1.52
+    },
+    "fitband_hz": [
+     353.6,
+     707.1
+    ],
+    "notities": [
+     "THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+     "The delay to dial in is NEGATIVE (-0.008 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.008 ms — or add one whole period (2.000 ms at 500.0 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+     "The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 500 Hz is 0.066 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+     "The DELIVERED network would prefer -0.008 ms and -4.12 dB (+0.406 ms, +0.00 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+     "The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+    ]
+   }
+  }
+ },
+ "v1_baseline": {
+  "klasse": "C",
+  "afhankelijkheid": "meting+zoektocht",
+  "_": "R2 van de casus-skill: klasse C staat ALLEEN hier, en casus 1h heeft er geen. Dat is deze keer geen keuze maar een feit over de route: er BESTAAT geen v1-hybride. De v1-ketens kennen geen gestelde actieve overname, dus er is geen eerdere enginetoestand waarvan de uitkomst hier als gedateerd record naast gelegd kan worden. Elke kandidaat staat als .adsfilter.json in de fixtures, dus elke kandidaatmetriek is klasse B.",
+  "v1_commit": "5cfc1aa5e9446c5e33fd0ae99dfba42d6fe709b6",
+  "referenties": {}
+ },
+ "manifest_en_geometrie": {
+  "klasse": "A",
+  "afhankelijkheid": "meting",
+  "klasse_toelichting": "Het manifest, de geometrie, de gestelde eisen, de driverkaart en het blok `actieve_zijde` zijn PROJECTINVOER: zij zijn een functie van de metingen en van wat de ontwerper heeft gesteld, nooit van een zoektocht.",
+  "opmerking": "DE BESTANDEN LIGGEN NIET HIER. `bestanden_map` zegt welke map casus 1h leest en de fixture roept casus 1's eigen `casus1Manifest(golden1, 'koan677')` aan — één manifest, twee casussen. Wat casus 1h eigen heeft is dit referentiebestand, zijn netlists en zijn herkomst.",
+  "bestanden_map": "casus1",
+  "meetset": "koan677",
+  "meetset_herkomst": "casus1Manifest(loadGolden(), 'koan677') — de M-2b-set: de wooferhelft is de hermeting van 11-09-2026 getransformeerd naar 67,7 L, mid en tweeter zijn de M-1-set ongewijzigd.",
+  "meetset_niet_m3": "DE STANDAARD VAN CASUS 1 IS SINDS M-3 'm3' EN CASUS 1h LEEST HEM NIET, en dat is een besluit met een prijs. M-3 hermergde de mid met de gecorrigeerde fasewiskunde; onder de splice (dus ONDER 800 Hz, en de hele actieve overname ligt daar) verschilt de fase van de mid 1,9–7,0° rms over de W-M-kruisband. Casus 1h leest 'koan677' omdat zijn hele bestaansreden een VERGELIJKING met KAND_V2_1..3 is en die op koan677 zijn opgewekt; twee helften door twee meetsets is geen vergelijking. Wat dat kost is bekend en gemeten (casus1_m3_hermeting.json): M-K beweegt in BEIDE richtingen, 0,23–0,65° op het W-M-paar, en GEEN enkel poortoordeel wisselt. De eerstvolgende regeneratie van casus 1h is de plek om beide naar 'm3' te brengen.",
+  "ff_headers": {
+   "referentietijd_ms": 2.5,
+   "rechter_venster_ms": 5.021,
+   "effectieve_venstertijd_ms": 2.521
+  },
+  "geometrie": {
+   "D_inch": {
+    "woofer": 7.6,
+    "mid": 4
+   },
+   "z_offset_mm": {
+    "tweeter": 64.6,
+    "mid": -64.6,
+    "woofer_boven": -325.9,
+    "woofer_onder": -601.6
+   },
+   "ctc_mm": {
+    "woofer_woofer": 275.8,
+    "woofer_mid": 261,
+    "mid_tweeter": 129.2
+   },
+   "baffle_mm": {
+    "_": "DE VOORPLAAT VAN DE KAST, mm. Een GEMETEN kastafmeting en geen gestelde eis: hij hoort in dit blok om dezelfde reden als ctc_mm en z_offset_mm. Hij staat hier sinds A5e.2, want de baffle-step-frequentie is de enige plek waar de doelcurve een frequentie vandaan mag halen (P6: afgeleid uit projectdata, nooit een literal in engine-code). Tot A5e.2 las niets in de engine deze maat en stond zij alleen in de projectinvoer van de app (src/demo3way.ts, 'front 260 x 1124 mm').",
+    "breedte": 260,
+    "hoogte": 1124,
+    "herkomst": "Sanders kastinvoer voor de KOAN-prototypekast (src/demo3way.ts, cabinet.baffleWidthMm / baffleHeightMm) - dezelfde kast waarop de meetset van 22-08-2026 is opgenomen. De HOOGTE leest in het andere app-project 1150; die 26 mm raakt geen enkele afgeleide grootheid hier, want de baffle-step hangt aan de BREEDTE.",
+    "baffle_step_hz": "AFGELEID en niet opgeschreven: baffleStepHz(breedte) = 115 / W[m] uit src/lib/cabinet.ts, de vorm van Rod Elliott. Op 260 mm is dat 442,3 Hz. Dat getal staat NERGENS in dit bestand als constante, want dan waren er twee huizen voor een afleiding."
+   },
+   "rotatiesymmetrisch": {
+    "mid": true,
+    "tweeter": true
+   }
+  },
+  "netlists": {
+   "H_KAND_1": "H-KAND-1.adsfilter.json",
+   "H_KAND_2": "H-KAND-2.adsfilter.json",
+   "H_KAND_3": "H-KAND-3.adsfilter.json",
+   "H_KAND_4": "H-KAND-4.adsfilter.json"
+  },
+  "netlists_toelichting": "De netlists van casus 1h houden ALLEEN de passieve wegen (mid en tweeter). De actieve tak staat niet in een netlist en kan daar niet in staan: zij is een DSP-doel en geen onderdeel. Wat zij per kandidaat moet worden staat in het DSP-doelblok van diezelfde kandidaat.",
+  "actieve_zijde": {
+   "_": "H-1 — DE GESTELDE OVERNAME NAAR DE ACTIEVE ZIJDE. Eén blok, en het is het enige nieuwe BEGRIP van deze sessie: onder `hz` draait de actieve zijde, erboven de passieve wegen, en `doelvorm` is het AKOESTISCHE doel van BEIDE flanken. Eén keer gesteld en twee keer gelezen (de hoogdoorlaat die de mid moet halen en de laagdoorlaat die de DSP moet halen), zodat de twee helften het niet oneens kunnen worden. Niets hier heeft een default (P4): een project dat geen actieve zijde stelt krijgt exact de app die het altijd had.",
+   "gesteld_door": "Sander Somers, 17-09-2026",
+   "actieve_weg": "woofer",
+   "passieve_weg": "mid",
+   "doelvorm": {
+    "kind": "LR",
+    "orde": 4
+   },
+   "doelvorm_gesteld_door": "Sander Somers — dezelfde orde die casus 1 op elke overname stelt (kruisvensters.parameters.orde = 4, A5e.3-veld, 04-09-2026), hier overgenomen zodat de hybride en de volpassieve route op dezelfde flankorde vergeleken worden.",
+   "posities_hz": [
+    362.3,
+    400,
+    450,
+    500
+   ],
+   "posities_gesteld_door": "Sander Somers, 17-09-2026",
+   "posities_motivering": "Het beoogde gebied is 400–500 Hz, om twee redenen die Sander in die volgorde noemt. (1) MEETBAARHEID: daar is het verre veld eenvoudig te meten — de FF-vloer van deze set ligt op 397–455 Hz — en de omgepoolde-nul-verificatie van de DSP-delay is daar binnenshuis routine. (2) VERPLAATSINGSVOLUME: het wooferpaar verplaatst ~436 cm³ tegen ~21 cm³ voor de mid (S_d × X_max × aantal, uit de driverkaart), dus het paar hoort het vermogenszwaartepunt van 100–500 Hz te dragen. 362,3 Hz is de ONDERBEUGEL en geen voorkeur: het is het W-M-kruispunt van KAND_V2_2, zodat de hybride tegen een volpassieve kandidaat op exact dezelfde overname gelegd kan worden.",
+   "posities_zijn_gesteld_en_geen_veld": "Deze vier zijn GESTELDE posities (U-5) en geen afgeleid veld: de generator legt ze waar zij staan, de kooi is één spacing breed en elke positie wordt volledig geoordeeld. Wat het VENSTER van het woofer→mid-paar erover zegt staat in `kruisvensters`; ligt een positie erbuiten, dan komt het oordeel per grens ernaast te staan in plaats van dat de positie verdwijnt.",
+   "wat_de_actieve_zijde_zelf_niet_leest": "De excursie-, thermische en beschermingsgrenzen van de ACTIEVE weg horen bij de actieve versterker en zijn DSP, niet bij het passieve netwerk dat deze app ontwerpt. Casus 1h stelt ze daarom niet en de engine leidt ze niet af: M-C, M-A/part, M-L en M-M oordelen uitsluitend op wat de HOOFDVERSTERKER ziet (de mid/tweeter-netlist). De zwakste-schakel-rapportage van de woofer blijft staan als LEZING."
+  },
+  "gestelde_eisen": {
+   "_": "PROJECTINVOER — wat de ONTWERPER voor casus 1h heeft gesteld, in de vorm en met de sleutelnamen van casus 1, zodat casus 1's eigen lezerfuncties dit blok lezen (één lezer per eis, drie casusbestanden).",
+   "versterkervloer_ohm": 2.6,
+   "versterkervloer_gesteld_door": "Sander Somers, 27-08-2026 (casus 1) — overgenomen bij H-1. DE MOTIVERING VERANDERT VAN ONDERWERP EN HET GETAL NIET: op casus 1 is 2,6 Ω gemotiveerd op het wooferpaar (3,17 Ω kaal, de laagste kale belasting van de drie). Op casus 1h ziet de HOOFDVERSTERKER dat paar niet meer — mid (3,63 Ω) en tweeter (5,63 Ω) blijven over, en mid||tweeter meet 2,55 Ω. De gestelde 2,6 is daarmee op deze casus STRENGER dan de casus-1-motivering vraagt, en dat is de veilige kant; hij is niet versoepeld omdat versoepelen op grond van een weg die verdwijnt precies de stille verruiming is die dit boek verbiedt.",
+   "versterkervloer_op_casus_1h": "NAGEMETEN BIJ H-1 op dezelfde manier als V30/V32 het voor casus 1 deden: zie `h1_vloer_nameting` in dit manifest, door de recorder geschreven.",
+   "versterker_piekvermogen_W": 160,
+   "versterker_nominale_last_ohm": 8,
+   "versterker_continu_vermogen_W": 100,
+   "xmax_marge": 0.8,
+   "tweeter_drive_op_fs_max_dB": -20,
+   "drive_op_fs_max_dB_per_weg": {
+    "tweeter": -20,
+    "mid": null
+   },
+   "weerstandsklasse_W": 10,
+   "weerstandsmarge": 0.5,
+   "spoelklasse_A": null,
+   "thermisch_ontwerpvermogen_W": 10,
+   "basplateau_offset_dB": 0,
+   "qes_vermenigvuldiging_max": 2.4,
+   "rimpel_stopdoel_band": "from-lowest-crossing",
+   "rimpel_stopdoel_band_marge_octaaf": 0.5,
+   "versterker_piek_gesteld_door": "Sander Somers, 02-09-2026 (casus 1) — overgenomen bij H-1.",
+   "versterker_continu_gesteld_door": "Sander Somers, 02-09-2026 (casus 1) — overgenomen bij H-1.",
+   "xmax_marge_gesteld_door": "Sander Somers, 02-09-2026 (casus 1) — overgenomen bij H-1.",
+   "drive_op_fs_max_per_weg_gesteld_door": "Sander Somers, 03-09-2026 (casus 1) — overgenomen bij H-1, en op deze casus is de MID-regel voor het eerst van betekenis: op casus 1 en 1b draagt de mid geen hoogdoorlaat richting beneden (casus 1) of helemaal geen (casus 1b), dus M-C oordeelde haar op het W-M-kruispunt respectievelijk niet. Op casus 1h IS de mid de beschermde weg van de actieve overname en leest M-C haar door de gestelde hoogdoorlaat.",
+   "weerstandsklasse_gesteld_door": "Sander Somers, 03-09-2026 (casus 1) — overgenomen bij H-1.",
+   "spoelklasse_gesteld_door": "NIET GESTELD: het Jantzen-blad noemt geen verzadigingsstroom (casus 1, V50). M-L rapporteert de stroom en oordeelt niets (P4).",
+   "thermisch_ontwerpvermogen_gesteld_door": "Sander Somers, 03-09-2026 (casus 1) — overgenomen bij H-1.",
+   "basplateau_offset_gesteld_door": "Sander Somers, 04-09-2026 (M-1, casus 1): 0 dB, de vlakke referentie. Overgenomen bij H-1. Op een hybride is de basplateaudiepte bovendien een DSP-instelling en geen passieve ontwerpvraag; hij staat hier op 0 zodat de doelcurve van beide routes dezelfde is en een verschil een routeverschil is.",
+   "qes_vermenigvuldiging_max_gesteld_door": "Sander Somers, 17-09-2026 — GESTELD OP DE MID, en dat is een BESLUIT dat afwijkt van casus 1b. Casus 1b nam deze eis NIET over met de reden 'op de R_e van het wooferpaar afgeleid (V45); niet op de mid gesteld'. Op casus 1h is de mid de onderste PASSIEVE weg en draagt zij de serieweerstand die M-E vermenigvuldigt, dus de vraag die de eis stelt — hoeveel mag het netwerk de elektrische demping van de onderste weg verslechteren — is hier wél de vraag. Het GETAL is casus 1's 2,4 en is niet opnieuw afgeleid; of de eis op deze casus bijt of inert is, is een MEETRESULTAAT en staat in `h1_qes` (recorder). Een inerte eis is geen reden om haar niet te stellen (P4).",
+   "qes_vermenigvuldiging_max_afwijking_van_casus_1b": "Expliciet genoteerd in plaats van stil overgenomen: casus 1b's `niet_overgenomen.qes_vermenigvuldiging_max` zegt het tegenovergestelde voor diezelfde mid. Het verschil is de ROL van de weg — op casus 1b is de mid de onderste weg van een tweeweg ZONDER hoogdoorlaat, op casus 1h de onderste passieve weg MET een gestelde hoogdoorlaat, en pas dan draagt haar pad de seriecomponenten waar M-E over gaat.",
+   "rimpel_stopdoel_band_gesteld_door": "Sander Somers, 13-09-2026 (casus 1, E-5b) — overgenomen bij H-1.",
+   "bouwbaarheid_op_de_zoektocht": {
+    "gewapend": true,
+    "besluit_gesteld_door": "Sander Somers, 03-09-2026 (V51) - het hangende V50-besluit, genomen",
+    "waarom": "De weerstandseis (klasse 10 W, marge 0,5) is sinds V51 GEWAPEND op de v2-zoektocht van casus 1, geoordeeld bij het THERMISCH ONTWERPVERMOGEN van 10 W (thermisch_ontwerpvermogen_W) en niet bij het continue vermogen van 100 W waarbij V50 haar mat. Dat is de eerste van de vier uitwegen die V50 noemde (een ander continu vermogen), met een reden: thermiek is een gemiddelde over de luistertijd, en 10 W gemiddeld is wat deze luidsprekers in deze kamer krijgen. Bij dat vermogen haalt elk bekend ontwerp de eis (HUIDIG 2,6 W in R8 tegen 5 W toegestaan), dus zij leegt het veld niet - en zij staat er omdat V51 tegelijk het wooferpad VERBIEDT (geen_niveauwerk_op_laagste_weg), waardoor de weerstanden verhuizen naar de mid en de tweeter en de eis dáár oordeelt. De sanity van V50 (weerstandsklasse_sanity_HUIDIG) blijft staan als meting bij 100 W. De fixture leest dit veld (casus1BuildabilityOnSearch) en CASUS1_V2_GATES spreidt de klasse, de marge en het thermische vermogen zodra het true is.",
+    "besluit_V50": "V50 liet het veld op false staan met vier uitwegen: (a) klasse, marge of continu vermogen anders stellen; (b) de serie/parallel-bank als topologie-element; (c) de anker-verzwakking in een actieve LF-tak (hybride); (d) rapporteis laten. V51 kiest (a) via een apart gesteld thermisch ontwerpvermogen, en snijdt tegelijk de oorzaak weg (het wooferpad) in plaats van de eis te versoepelen."
+   },
+   "niet_overgenomen": {
+    "_": "Eisen van casus 1 die op de HYBRIDE niets meer te oordelen hebben. Niet overgenomen is een besluit en geen weglating: elk staat hier met zijn reden, en P4 zegt wat een niet-gestelde eis doet (niets).",
+    "lf_opslingering_budget_dB": "1,4 dB op casus 1 (M-D): het maximale extra niveau dat de REACTANTIES van het passieve filter rond de BOVENSTE REFLEXPIEK van het wooferpaar mogen opslingeren. Op casus 1h staat er geen enkele passieve seriespoel meer tussen de versterker en dat paar — het paar hangt aan zijn eigen versterker — dus de grootheid die de eis begrenst BESTAAT NIET op deze casus. Dat is de scherpste vorm van vervallen die er is, en het rapport zegt het met zoveel woorden in plaats van de rij leeg te laten (zie `h1_md_vervalt`). De A5d.6-inversie levert daarmee ook geen spoelplafond meer op de onderste weg.",
+    "geen_niveauwerk_op_laagste_weg": "casus 1's motivering is de vuistregel 'nooit een pad op de WOOFER (warmte, impedantie, demping); pad de mid of de tweeter' (V51). Op casus 1h is de woofer actief en de mid de laagste PASSIEVE weg — juist de weg die volgens die regel gepad mag worden — dus de eis is niet van toepassing: `lowestWayLevelWork` blijft ABSENT (P4). Dezelfde lezing als casus 1b.",
+    "max_serie_R_laagste_weg_ohm": "de V51b-variant van dezelfde wooferregel; niet van toepassing, zie hierboven.",
+    "versterker_nad_min_last_ohm": "4,0 Ω, de fabrieksopgave van de NAD T758 (A5e.3-veld). Op casus 1h drijft de NAD alleen nog mid en tweeter en de FA251 het wooferpaar; welke versterker welke weg draagt is een ontwerpbesluit dat Sander op 17-09 nog niet heeft gesteld, dus de tweede vloer wordt niet overgenomen. De GESTELDE 2,6 Ω blijft de vloer die oordeelt."
+   }
+  },
+  "driverkaart": {
+   "_": "OVERGENOMEN van casus 1 (dezelfde drie drivers, dezelfde bladen). De WOOFER staat erin omdat zijn meting de MODEL-tak voedt en zijn kaart de zwakste-schakel-lezing; zijn excursie- en vermogensgrenzen horen bij de actieve versterker en worden hier niet geoordeeld.",
+   "gesteld_door": "Sander Somers, 02-09-2026 (V49), uit de datasheets van Bliesma en SB Acoustics",
+   "woofer": {
+    "model": "SB Acoustics WO24TX-8 (paar, parallel)",
+    "X_max_mm": 8.55,
+    "S_d_cm2": 255,
+    "Bl_Tm": 10.45,
+    "M_ms_g": 44.2,
+    "Re_datasheet_ohm": 5.8,
+    "parallel_aantal": 2,
+    "aanbevolen_kruisband": {
+     "_": "U-4 (10-09-2026) — zie de tweeter voor wat dit blok is.",
+     "gelezen_door": "NIET GELEZEN in deze sessie, en dat wordt hier gezegd in plaats van als leeg doorgegeven.",
+     "bron": "SB Acoustics, datasheet 9.5in SATORI WO24TX-8 (https://sbacoustics.com/wp-content/uploads/2024/11/9.5in-SATORI-WO24TX-8.pdf) — het PDF draagt geen tekstlaag (CorelDRAW-export met de tekst als curven), dus er viel niets uit te lezen zonder de pagina te renderen, en dat viel buiten U-4.",
+     "ondergrens_hz": null,
+     "bovengrens_hz": null,
+     "bevinding": "Onbekend, dus niet gevoed: het woofer→mid-plafond blijft de breakup-afleiding (549,7 Hz, deler 2,5395 geïnterpoleerd, UNCALIBRATED). Zou het blad een bovengrens noemen die daaronder ligt, dan zou zij dat plafond WEL verplaatsen en een regeneratie vragen — daarom staat hier wat er niet gelezen is en niet een stilzwijgende null.",
+     "overrule_breakup": false
+    },
+    "context": "PER DRIVER; het paar telt dubbel in S_d en verplaatst volume, en de gemeten impedantie (woofers_parallel__1_.lim) is de PARALLELSCHAKELING, dus de spoelstroom per driver is V/(2·Z_gemeten). Alleen voor de zwakste-schakel-rapportage: de woofer draagt geen hoogdoorlaat en krijgt geen eis (V49).",
+    "schakeling": {
+     "_": "V51 - de SCHAKELING van de weg: aantal gelijke drivers, zoals GEMETEN en zoals GEWENST. De meting is de parallelschakeling als twee losse bestanden (woofer_up_hor_0, woofer_down_hor_0), complex gesommeerd door de opnamepas (V13); de impedantie (woofers_parallel__1_.lim) is de parallelschakeling. Gewenst: parallel, geen pad (Sanders besluit, V51). De afleiding parallel<->serie voor N gelijke drivers (SPL -/+20 log N, fase gelijk, Z x/: N^2) bestaat in ingest/wiring.ts en wordt op deze casus NIET toegepast: gemeten = gewenst.",
+     "aantal": 2,
+     "gemeten": "parallel",
+     "gewenst": "parallel",
+     "meetgeometrie": "woofer_down meet op deze mic-positie 4-5 dB zachter dan woofer_up (afstand en hoek: mic op tweeterhoogte op korte afstand); op luisterafstand telt hij vrijwel volledig mee, dus het gemeten paar onderschat het werkelijke paar vermoedelijk met 1-3 dB. NIET gecorrigeerd (geen meting); wel een onzekerheid op X en de reden voor een hermeting op afstand of groundplane."
+    },
+    "vermogensopgave": null
+   },
+   "mid": {
+    "model": "SB Acoustics MR13TX-4",
+    "X_max_mm": 3,
+    "S_d_cm2": 69,
+    "Bl_Tm": 4.9,
+    "M_ms_g": 7.2,
+    "Re_datasheet_ohm": 3.4,
+    "context": "Datasheet-Re als context; de engine leest R_e uit de sweep (motionele fit 3,358 Ω).",
+    "aanbevolen_kruisband": {
+     "_": "U-4 (10-09-2026) — hetzelfde blok als bij de tweeter, en het antwoord is NIETS. De mid is op casus 1 de ONDERSTE weg van het mid→tweeter-paar, dus dít is de driver wiens bovengrens het M-T-plafond zou kunnen binden. Het blad noemt er geen.",
+     "gelezen_door": "Claude (U-4, 10-09-2026)",
+     "bron": "SB Acoustics, datasheet 5\" SATORI MR13TX-4, REV. 0 (09.02.2024), 'Preliminary Data', opgehaald 10-09-2026 van https://sbacoustics.com/wp-content/uploads/2024/05/5in-SATORI-MR13TX-4.pdf",
+     "ondergrens_hz": null,
+     "bovengrens_hz": null,
+     "bevinding": "HET BLAD NOEMT GEEN AANBEVOLEN FREQUENTIEBEREIK — geen ondergrens, geen bovengrens, geen aanbevolen kruispunt. Wat er wél staat is de gewone T/S-lijst (Fs 44 Hz, Re 3,4 Ω, Sd 69 cm², Bl 4,9 Tm, M_ms 7,2 g, Q_ms 4,98, Q_es 0,28) plus één vermogensregel: 'Rated power handling* 30 W' met als enige voetnoot '* IEC 268-5, T/S parameters measured on drive units that are broken in.' — geen filterconditie, dus M-M blijft op deze weg UIT om precies de reden die vermogensopgave: null al noemt (een watt zonder de conditie waaronder hij geldt is geen grens op iets). DE VERWACHTING WAS ANDERS: de opdracht van U-4 rekende op een bovengrens boven de 2308 Hz die de breakup-afleiding oplevert, en dus op 'staat er, bindt niet'. Het antwoord is 'staat er niet', en dat is de reden dat hij gelezen is in plaats van gegokt. GEVOLG: het mid→tweeter-plafond blijft de breakup-afleiding — 5688 Hz gedeeld door een geïnterpoleerde 2,4689, dus 2304,0 Hz, en die deler draagt sinds V9 het UNCALIBRATED-merk. Er is niets te overrulen en er beweegt geen venster.",
+     "overrule_breakup": false
+    },
+    "schakeling": {
+     "aantal": 1,
+     "gemeten": "parallel",
+     "gewenst": "parallel"
+    },
+    "vermogensopgave": null
+   },
+   "tweeter": {
+    "model": "Bliesma T25T-6",
+    "X_max_mm": 1,
+    "S_d_cm2": 5.7,
+    "Bl_Tm": 2.6,
+    "M_ms_g": 0.15,
+    "Re_datasheet_ohm": 5.2,
+    "aanbevolen_ondergrens_hz": 2200,
+    "aanbevolen_kruisband": {
+     "_": "U-4 (10-09-2026) — DE AANBEVOLEN KRUISBAND ALS PAAR. Eén regel op het blad met TWEE einden, en de app leest ze allebei: de ONDERGRENS bindt het venster waarin deze driver de BOVENSTE van een paar is (U-3g), de BOVENGRENS het venster waarin hij de ONDERSTE is (U-4). Beide verbatim. Alleen de ondergrens wordt ooit OPGETILD, en alleen voor een flank die ondieper is dan die waarbij het blad haar stelt; op de bovengrens staat met opzet GEEN orde, want een aanbevolen bovenkant gaat over conusbreakup en bundeling, geen blad in dit project drukt er een helling bij, en er een verzinnen is precies de A3h-val (het juiste getal, van het juiste blad, over het verkeerde ding).",
+     "gelezen_door": "Claude (U-4, 10-09-2026)",
+     "bron": "BlieSMa, datasheet T25T-6, opgehaald 10-09-2026 van https://www.bliesma.de/Datasheet%20T25T-6.pdf",
+     "letterlijk": "Recommended frequency range 2.2kHz - 30kHz",
+     "ondergrens_hz": 2200,
+     "ondergrens_orde": 2,
+     "ondergrens_orde_herkomst": "NIET van de bereikregel maar van de voetnoot bij de vermogensopgave ('* IEC 268-5, 2nd order high-pass Butterworth filter'). Die twee regels samenlezen is een AANNAME en zij reist als zodanig mee (A3h).",
+     "bovengrens_hz": 30000,
+     "bovengrens_bindt_hier_niets": "De tweeter is op casus 1 van geen enkel paar de ONDERSTE weg, dus haar bovengrens bereikt geen enkel plafond. Gemeten en niet aangenomen: de fixture voert hem wél in (casus1MaxCrossovers) en elk kruisvenster reproduceert onveranderd.",
+     "overrule_breakup": false,
+     "ondergrens_wordt_GEVOED": "SINDS M-2b (13-09-2026) GEVOED, en dat is het besluit dat U-4 hier openliet. U-4 schreef: \"de ondergrens is een VLOER, en op casus 1 zou zij de mid-tweeter-vloer van 1646,9 Hz (drive-stated, A5e.3b) naar 2200 Hz tillen — een ander veld en dus een regeneratie\". Sander stelde de vloer op 12-09-2026 en M-2b is de regeneratie. De fixture leest hem met casus1MinCrossovers() en voert hem in als settings.driverMinCrossoverByDriver; het venster leest sindsdien 2200-2304 Hz met vloer stated-min (kruisvensters.mid_tweeter_orde4, met de afgeleide vloer als brug)."
+    },
+    "context": "100 W gespecificeerd met 2e-orde BW op 2,5 kHz. De aanbevolen ondergrens en de Re van de datasheet zijn CONTEXT en geen engine-invoer: de engine leest R_e uit de A5c.1-hiërarchie en de ondergrens is een vervormingsgrens die M-C niet kan zien (V49, wat de grens NIET dekt).",
+    "schakeling": {
+     "aantal": 1,
+     "gemeten": "parallel",
+     "gewenst": "parallel"
+    },
+    "vermogensopgave": {
+     "_": "M-M (10-09-2026) — de eigen vermogensopgave van de driver EN de testconditie waaronder zij geldt, letterlijk van het datasheet. Zonder de conditie is een watt geen grens op iets: dezelfde 100 W betekent iets anders achter een 2e orde op 2200 Hz dan achter een 4e orde op 1400. De FREQUENTIE staat er niet expliciet - het blad noemt in zijn voetnoot alleen de orde - en is AFGELEID uit 'Recommended frequency range 2.2kHz-30kHz'; dat is een aanname over wat er getest is en zij reist als zodanig mee (A3h).",
+     "gesteld_door": "BlieSMa, datasheet T25T-6, opgehaald 10-09-2026 van https://www.bliesma.de/Datasheet%20T25T-6.pdf",
+     "rated_power_W": 100,
+     "testfilter_orde": 2,
+     "testfilter_hz": 2200,
+     "testfilter_hz_herkomst": "afgeleid uit de aanbevolen kruisband 2,2-30 kHz; het blad noemt de frequentie van het testfilter niet",
+     "voetnoot_letterlijk": "* IEC 268-5, 2nd order high-pass Butterworth filter",
+     "opmerking_fs": "Het blad geeft f_s 940 Hz; de gemeten sweep van dit exemplaar leest 924,3 Hz. Anderhalf procent, en precies de drift waarvoor de 18+2-conventie haar marge draagt."
+    }
+   },
+   "ff_meetspanning_V": null,
+   "ff_mic_afstand_mm": 1000,
+   "ff_meetspanning_toelichting": "NIET GEDOCUMENTEERD, en dat is een bevinding en geen vergissing. De ARTA-headers van de FF-bestanden dragen geen meetspanning ('Scale type = Pa', 'Scale = 0.0 dB', kalibratiebestand MM1CDU) en de dBSPL-kolom leest 135–141 dB in de doorlaatband — geen absolute SPL bij een bekende spanning. De ACOUSTISCHE route van M-C v2.0 (route 2) en de SPL-bij-P-regel hebben allebei een gedocumenteerde meetspanning EN micafstand nodig (nota A5d: 'absolute max-SPL/excursiegrenzen vereisen gedocumenteerde meetspanning en -afstand plus Sd/Xmax'). De micafstand is Sanders kastinvoer (1 m, src/demo3way.ts); de spanning ontbreekt, dus route 2 staat op casus 1 UIT met die reden, route 1 draagt de grens, en de route-1/route-2-tegenproef wacht op een hermeting met gedocumenteerde spanning. Leeg = geen afleiding (P4), nooit een aangenomen 2,83 V.",
+   "breakup_deler": {
+    "_": "U-4 (10-09-2026) — DE GEMETEN BREAKUPDELER PER WEG, en vandaag is hij op elke weg NIET gemeten. A5d.3's plafond is de eerste significante breakup van de ONDERSTE driver gedeeld door een getal tussen twee gepubliceerde eindpunten (f/2 mild, f/3 ernstig); de engine interpoleert daartussen op de piekhoogte boven de trend, en die helling draagt sinds V9 het UNCALIBRATED-merk omdat niets haar ooit gemeten heeft. Leeg = de helling, gemerkt (P4); een gemeten waarde vervangt haar voor die driver en neemt het merk mee.",
+    "gemeten_door": null,
+    "protocol": "De twee eindpunten zijn HARMONISCHE ORDES en daarmee meetbaar. Drijf de driver alleen aan met één toon op f_breakup/2 en meet H2 op f_breakup; dan op f_breakup/3 en meet H3 op dezelfde f_breakup. De LAAGSTE orde waarvan het product boven de ruisvloer uitkomt zet de deler: H3 stil = 2,0, H3 hoorbaar = 3,0. Een tussenwaarde is alleen een meting als BEIDE ordes gemeten zijn en de ontwerper zelf geïnterpoleerd heeft — dan is het zíjn getal en schrijft de app het aan hem toe.",
+    "wat_de_meting_waard_is": "Gemeten 10-09-2026 met de vensters van dit manifest (orde 4 op beide assen). WOOFER→MID: deler 2,0 geeft plafond 698,0 Hz (2,238 oct, 14 posities), de geïnterpoleerde 2,5395 geeft 549,7 Hz (1,894 oct, 12), deler 3,0 geeft 465,4 Hz (1,653 oct, 10). MID→TWEETER: 2,0 geeft 2844,2 Hz (0,788 oct, 5 posities), de geïnterpoleerde 2,4689 geeft 2304,0 Hz (0,484 oct, 3), 3,0 geeft 1896,1 Hz (0,203 oct, 2). Op casus 1B, waar de vloer de aanbevolen 2200 Hz van de tweeter is, is het verschil scherper: 2,0 laat 0,371 octaaf en DRIE posities over, de geïnterpoleerde 2,4689 laat 0,067 octaaf en ÉÉN, en 3,0 laat een LEEG venster. Het rapport drukt die tabel per paar af, zodat de waarde van de meting zichtbaar is vóór iemand hem doet.",
+    "per_weg": {
+     "woofer": null,
+     "mid": null,
+     "tweeter": null
+    }
+   },
+   "spoelfamilie": {
+    "_": "A5e.3 (04-09-2026) — DE SPOELFAMILIE PER WEG: welk koper elke weg gewikkeld wordt (merk, serie, draaddikte), de sleutel waarop coilDcr.ts per familie DCR = A·(L/mH)^k fit uit de catalogus. PROJECTINVOER van de ontwerper, dezelfde soort als de driverkaart zelf; geen meting, geen afleiding en NERGENS een default (P6): een weg zonder familie houdt verliesvrije spoelen en elke lezer meldt dat als afwijking van de bouw. De familie-id is de sleutel die fitCoilDcrFamilies() uit de catalogus maakt: '<merk>|<serie>|<draaddikte>' in kleine letters.",
+    "status": "GESTELD (04-09-2026, A5e.3-veld). De v2-route van casus 1 leest dit blok: casus1V2Declaration wapent coilDcrModel op elke run, het veld is ermee opnieuw opgewekt (v2_herkomst.meetopstelling.spoel_dcr_model) en frozenNetlistGates oordeelt elke levende netlist met DCR als gemodelleerd. Tot 04-09-2026 stond hier VOORSTEL (gesteld_door null): de route verklaarde de sleutel ABSENT met de P4-reden en alleen de A5e.3-meetscripts en de arm m1+dcr lazen het voorstel expliciet.",
+    "gesteld_door": "Sander Somers, 04-09-2026",
+    "gesteld_motivering": "Seriecomponenten van hoge kwaliteit (de wooferspoel; de seriecondensatoren van mid en tweeter, die buiten dit model vallen), parallelle componenten mogen eenvoudig zijn - en in de HP-ladders van mid en tweeter zijn de spoelen de SHUNTS: hun koper is precies de demping die de ladderresonantie en de opslingering nodig hebben (A5e.3-arm m1+dcr: 1,32 -> 2,62 ohm zonder R op de woofer). Dikker draad in de shunts zou die demping weghalen. Wooferweg lucht 1,4 mm; mid en tweeter lucht 1,0 mm.",
+    "gedempte_shunt_pool": "NIET toegevoegd als synthese-element: met deze families is hij op de arm m1+dcr overbodig gebleken (het koper van de shunt-spoel draagt de 0,24 ohm die de M-1-diagnose zocht). De aanbeveling van de M-1-diagnose blijft genoteerd als optie voor wie lage-DCR-shunts (dikker draad, folie, P-Core) kiest.",
+    "voorgesteld_door": "Claude (A5e.3, 04-09-2026), op grond van de M-1-diagnose: de wooferweg draagt het meeste koper (1,4 mm, de familie waarop coilDcr(1.4 mm) van de app al gefit was en waarop HUIDIG's spoelen 0,28–0,52 Ω lezen), mid en tweeter 1,0 mm.",
+    "catalogus": "src/lib/parsers/fixtures/gemini-catalog-v8.json",
+    "catalogus_toelichting": "De v8-catalogus (2388 SKU's, 2116 spoelen met gemeten DCR en draaddikte): 11 luchtspoel-families (Jantzen Air Core Wire Coil 0,3–1,8 mm), 11 P-Core-families, Wax Coil 1,6 mm, Mundorf Aronit 1,4 mm en Zero-Ohm N270 1,8 mm. Fits (log-log, coil-dcr-fit/1.0): k 0,58–0,61 voor lucht bij vaste draaddikte (verwacht 0,5–0,7), A op 1,4 mm 0,306 Ω @ 1 mH, residu rms 5–10 % en max 22–53 % (dezelfde L komt binnen één familie met meer dan één DCR voor: 449 gevallen — verschillende wikkelvormen onder één gauge).",
+    "per_weg": {
+     "woofer": "jantzen|air core wire coil|1.4",
+     "mid": "jantzen|air core wire coil|1",
+     "tweeter": "jantzen|air core wire coil|1"
+    },
+    "per_weg_toelichting": "woofer: 1,4 mm lucht — 0,010–22 mH als enkel onderdeel, 170 SKU's, k 0,592, 0,306 Ω @ 1 mH, rms 6,2 %. mid en tweeter: 1,0 mm lucht — 0,016–34 mH, 250 SKU's, k 0,587, 0,523 Ω @ 1 mH, rms 6,8 %. Buiten het enkel-onderdeel-bereik wordt de machtswet voortgezet en GEVLAGD (geen enkel onderdeel dekt de waarde; een stapel van twee in serie wel) — nooit op nul gezet, want een DCR die aan de rand van het bereik wegvalt beloont de zoektocht voor het verlaten van de catalogus."
+   }
+  },
+  "h1_md_vervalt": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "DE MEETING DAT M-D OP DEZE CASUS GEEN GROOTHEID MEER HEEFT, en zij staat hier omdat \"de rij is leeg\" en \"de eis is niet van toepassing\" er in een rapport hetzelfde uitzien. M-D begrenst wat de REACTANTIES van het passieve filter met de bovenste reflexpiek van het wooferpaar doen; op een hybride staat er geen passieve seriespoel meer tussen de versterker en dat paar, dus er is niets om te begrenzen. De A5d.6-inversie levert daarmee ook geen spoelplafond meer op de onderste weg.",
+   "m_d_op_de_actieve_weg": null,
+   "waarom_dat_getal_geen_eis_is": "Zonder netlist is er geen tak en dus geen M-D; met een H_KAND-netlist is de actieve weg er nog steeds niet in, dus de metriek heeft geen tak van deze weg om te lezen. De eis staat in gestelde_eisen.niet_overgenomen met deze reden.",
+   "budget_niet_gewapend": true
+  },
+  "h1_qes": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "WAT DE VAN CASUS 1b AFWIJKEND WÉL GESTELDE Q_es-EIS HIER DOET. Op casus 1b is zij niet overgenomen omdat zij op de R_e van het wooferpaar is afgeleid; op casus 1h is de mid de onderste PASSIEVE weg en draagt zij de serieweerstand die M-E vermenigvuldigt, dus de vraag die de eis stelt is hier wél de vraag. Of zij BIJT is een meetresultaat en staat hieronder.",
+   "gestelde_max": 2.4,
+   "gesteld_op_weg": "mid",
+   "per_netlist": {
+    "H_KAND_1": {
+     "actieve_overname_hz": 362.3,
+     "Qes_mult": 1.42,
+     "binnen_eis": true
+    },
+    "H_KAND_2": {
+     "actieve_overname_hz": 400,
+     "Qes_mult": 1.4,
+     "binnen_eis": true
+    },
+    "H_KAND_3": {
+     "actieve_overname_hz": 450,
+     "Qes_mult": 1.48,
+     "binnen_eis": true
+    },
+    "H_KAND_4": {
+     "actieve_overname_hz": 500,
+     "Qes_mult": 1.36,
+     "binnen_eis": true
+    }
+   }
+  },
+  "h1_vloer_nameting": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "WAT DE HOOFDVERSTERKER OP EEN HYBRIDE NOG ZIET — de V30/V32-nameting, op de wegen die overblijven. De gestelde vloer van 2,6 Ω is op casus 1 gemotiveerd op het WOOFERPAAR (3,17 Ω kaal, de laagste kale belasting van de drie); dat paar hangt hier aan zijn eigen versterker. Wat overblijft staat hieronder, en de eis is NIET versoepeld: versoepelen op grond van een weg die verdwijnt is de stille verruiming die dit boek verbiedt.",
+   "kale_minima_ohm": {
+    "woofer": {
+     "min_ohm": 3.25,
+     "bij_hz": 152.7,
+     "rol": "ACTIEF — de hoofdversterker ziet deze weg niet meer"
+    },
+    "mid": {
+     "min_ohm": 3.63,
+     "bij_hz": 20,
+     "rol": "PASSIEF"
+    },
+    "tweeter": {
+     "min_ohm": 5.63,
+     "bij_hz": 6587.2,
+     "rol": "PASSIEF"
+    },
+    "mid_parallel_tweeter": {
+     "min_ohm": 2.55,
+     "bij_hz": 325
+    }
+   }
+  },
+  "v2_herkomst": {
+   "_": "De hybride v2-run waaruit de H-KAND-bestanden komen: test-fixtures/casus1h_v2_herkomst.json. DOCUMENTATIE — de acceptatie zit in kandidaten.H_KAND_*.",
+   "bestand": "test-fixtures/casus1h_v2_herkomst.json",
+   "gegenereerd_op_commit": "5cfc1aa5e9446c5e33fd0ae99dfba42d6fe709b6",
+   "run_vingerafdruk": "engine=2.0.0-F1 estimators=1d3f5c3c seed=20260917 budget=tuner starts=1 status=completed design=7441ccd7 measurements=b4c00a7f gates=b6002604 bounds=ea97865d tuning=a2d6bd0e facts=502715fd choices=6078c25f",
+   "opgenomen_op": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.8.1",
+    "v8": "14.6.202.34-node.28",
+    "_": "A5e.4 is byte-identiek PER (machine, runtime) — V46."
+   },
+   "shortlist": {
+    "overwogen": 4,
+    "geweigerd_door_een_poort": 0,
+    "leverde_geen_netwerk": 0,
+    "bevroren": 4
+   },
+   "actieve_zijde": {
+    "_": "GESTELD, niet gezocht. De DSP-instellingen per overname zijn klasse A (metingen + gestelde vorm) en vastgezet vóór de zoektocht.",
+    "actieve_weg": "woofer",
+    "onderste_passieve_weg": "mid",
+    "doelvorm": "LR4",
+    "gesteld_door": "Sander Somers, 17-09-2026",
+    "per_overname": [
+     {
+      "hz": 362.3,
+      "gain_dB": 0.391,
+      "delay_ms": 0.8073,
+      "omgekeerd": true,
+      "nul_marge_dB": 12.67,
+      "andere_polariteit_nul_marge_dB": 12.27,
+      "andere_polariteit_delay_ms": -0.5644,
+      "fitband_hz": [
+       256.18478682388616,
+       512.3695736477724
+      ]
+     },
+     {
+      "hz": 400,
+      "gain_dB": -0.198,
+      "delay_ms": -0.4706,
+      "omgekeerd": false,
+      "nul_marge_dB": 13.28,
+      "andere_polariteit_nul_marge_dB": 12.5,
+      "andere_polariteit_delay_ms": 0.745,
+      "fitband_hz": [
+       282.84271247461896,
+       565.685424949238
+      ]
+     },
+     {
+      "hz": 450,
+      "gain_dB": -0.655,
+      "delay_ms": -0.4444,
+      "omgekeerd": false,
+      "nul_marge_dB": 12.53,
+      "andere_polariteit_nul_marge_dB": 11.26,
+      "andere_polariteit_delay_ms": 0.6289,
+      "fitband_hz": [
+       318.19805153394634,
+       636.3961030678928
+      ]
+     },
+     {
+      "hz": 500,
+      "gain_dB": -1.049,
+      "delay_ms": -0.414,
+      "omgekeerd": false,
+      "nul_marge_dB": 12.62,
+      "andere_polariteit_nul_marge_dB": 11.1,
+      "andere_polariteit_delay_ms": 0.558,
+      "fitband_hz": [
+       353.5533905932737,
+       707.1067811865476
+      ]
+     }
+    ]
+   },
+   "uitkomsten": [
+    {
+     "label": "H362.3 · mid→tweeter 2251.4 LR4",
+     "geleverd": true,
+     "looptijd_s": 882.895,
+     "actieve_overname_hz": 362.3
+    },
+    {
+     "label": "H400 · mid→tweeter 2251.4 LR4",
+     "geleverd": true,
+     "looptijd_s": 447.042,
+     "actieve_overname_hz": 400
+    },
+    {
+     "label": "H450 · mid→tweeter 2251.4 LR4",
+     "geleverd": true,
+     "looptijd_s": 963.695,
+     "actieve_overname_hz": 450
+    },
+    {
+     "label": "H500 · mid→tweeter 2251.4 LR4",
+     "geleverd": true,
+     "looptijd_s": 875.806,
+     "actieve_overname_hz": 500
+    }
+   ],
+   "veld": {
+    "modus": "exploration",
+    "bibliotheek": [
+     "LR2",
+     "LR4"
+    ],
+    "gestelde_orde": 4,
+    "actieve_overnames_hz": [
+     362.3,
+     400,
+     450,
+     500
+    ],
+    "per_as": [
+     {
+      "paar": "mid→tweeter",
+      "orden": [
+       4
+      ],
+      "posities_per_orde": [
+       {
+        "orde": 4,
+        "aantal": 1,
+        "hz": [
+         2251.4
+        ]
+       }
+      ],
+      "venster": {
+       "4": {
+        "vloer_hz": 2200,
+        "plafond_hz": 2304.026472037768,
+        "vloer_door": "stated-min",
+        "plafond_door": "breakup"
+       }
+      }
+     }
+    ],
+    "_": "Het PRODUCT van de gestelde actieve overnames en de kandidaten van de ene passieve overname; de passieve vensters zijn over de vier gecontroleerd en identiek."
+   }
+  },
+  "v2_route": {
+   "_": "H-1 — de HYBRIDE route: handleV2Request kind v2ChainOne → runDesignChain, met een gestelde actieve overname. De onderste passieve weg krijgt de gestelde hoogdoorlaat, de som draagt de gemodelleerde actieve tak, en elke elektrische grootheid leest uitsluitend de passieve netlist.",
+   "raster": {
+    "van_hz": 20.5,
+    "tot_hz": 20000,
+    "punten": 143
+   },
+   "oordeelband_hz": [
+    52.4,
+    19500
+   ],
+   "oordeelband_bron": {
+    "lowest": "woofer",
+    "validityFloorHz": 20.5078,
+    "fpHz": 52.3681640625,
+    "floorHz": 52.3681640625,
+    "provenance": "merge-block"
+   },
+   "gestelde_orde": 4,
+   "excursie_invoer": {
+    "piek_W": 160,
+    "nominale_last_ohm": 8,
+    "xmax_marge": 0.8
+   },
+   "gerecordeerd_op_commit": "5cfc1aa5e9446c5e33fd0ae99dfba42d6fe709b6"
+  },
+  "merge_fit_onzekerheid": {
+   "klasse": "A",
+   "afhankelijkheid": "meting",
+   "_": "H-1 — HOEVEEL VAN DE FASE OP DE OVERNAME VAN DE MEETING IS EN NIET VAN DE LUIDSPREKER, graden. De on-axis respons van de mid en die van het wooferpaar zijn MERGES, en de fase onder de splice rust daarin op een GEFITTE vertraging: een modelparameter en geen gemeten aankomsttijd. M-4 mat twee onafhankelijke schattingen van hoe ver die fit kan lopen en dit blok draagt de GROOTSTE, want een onzekerheid die je halveert door de gunstigste schatting te kiezen is geen onzekerheid. Het getal staat HIER en niet in engine-code (P6): een ander project heeft andere merges.",
+   "graden": 11.8,
+   "gemeten_door": "Claude (M-4, 16-09-2026) — casusboek M-4, \"de fit-onzekerheid\"",
+   "twee_schattingen": {
+    "modelkeuze_graden": 8.2,
+    "modelkeuze_waarom": "M-1's mid-merge fit 0,5819 ms en M-3's 0,6307 ms — dezelfde NF, dezelfde FF, één modelfactor anders; 0,0488 ms is 8,2° bij 467 Hz.",
+    "splice_residu_graden": 11.8,
+    "splice_residu_waarom": "de slechtste splice-fit laat 0,0704 ms onverklaard (residu 3,8° rms over 400-550 Hz), goed voor 11,8° bij 467 Hz."
+   },
+   "waar_hij_gelezen_wordt": "dspTarget.ts: polarityDecisiveDb(graden) levert de marge waaronder een gekozen polariteit door de merge-fit beslist is in plaats van door de luidspreker. Zonder dit blok oordeelt het doelblok de polariteitsmarge niet (P4)."
+  }
+ }
+}

@@ -200,9 +200,16 @@ describe('F4c — every tuner option has a class', () => {
     // by the chain from the candidate's own handover positions). A pair in the
     // V33/V34/V37/V44/V45 shape: the decision and the data it needs, filed
     // apart. Split becomes 38/5/13.
-    expect(keys.length).toBe(58);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(58);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 13]);
+    // 60 since H-1 added `activeBranch` and `activeLevelBandHz` (both polish —
+    // the MODELLED ACTIVE BRANCH already sampled onto this run's grids, and the
+    // band it is LEVELLED over). Neither has a choice companion in this file on
+    // purpose, and that is the point of the entry: the decision they realise is
+    // `activeSide`, a CHAIN-level choice one layer up (`chainChoices.ts`),
+    // because the design and synthesis steps read it before the tuner exists.
+    // Split becomes 40/5/15.
+    expect(keys.length).toBe(60);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(60);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 15]);
     for (const k of CHAIN_CHOICE_KEYS) {
       if ((CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER as readonly string[]).includes(k)) continue;
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
@@ -337,7 +344,7 @@ describe('F4c — every tuner option has a class', () => {
     expect(CHOICE_KEYS).toContain('safety');
     expect(CHOICE_KEYS.length).toBe(40); // E-5c: structureRetune, repeatedTune
     expect(GREY_KEYS.length).toBe(5);
-    expect(POLISH_KEYS.length).toBe(13); // E-5b: rippleTargetBandHz
+    expect(POLISH_KEYS.length).toBe(15); // H-1: activeBranch, activeLevelBandHz
   });
 
   /* V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES, and it may
@@ -1034,6 +1041,7 @@ describe('F4d — a generated candidate declares every choice key', () => {
       'lowestWayCoilMaxHenry',
       'synthesisGrid',
       'phasePriority',
+      'activeSide',
     ]);
   });
 
@@ -1078,7 +1086,13 @@ describe('F4d — a generated candidate declares every choice key', () => {
     // topology exists, which is the test every key in this list has to pass.
     // The first key here that is also classified one layer down; see
     // `CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER`.
+    // H-1 — the SEVENTH: `activeSide`, the stated handover to an active side.
+    // It decides the topology most bluntly of the seven (with it the lowest
+    // passive way gets a high-pass ladder and without it that way has none),
+    // and it is the only one of the seven that lives on the TWO-WAY chain's
+    // settings alone — `CHAIN_KEYS_THE_THREE_WAY_CHAIN_DOES_NOT_READ` names it.
     expect([...CHAIN_CHOICE_KEYS].sort()).toEqual([
+      'activeSide',
       'eqBands',
       'leanTargetDb',
       'lowestWayCoilMaxHenry',

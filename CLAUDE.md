@@ -48,6 +48,21 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná H-1 (17-09-2026) gemeten op 554 s — 195 bestanden (194 geslaagd, 1 overgeslagen),
+    2516 tests (2512 geslaagd, 4 overgeslagen), alleen gedraaid.** +5 BESTANDEN
+    (`activeSide.test.ts` 10 claims, `h1ActiveSide.test.ts` 14, `h1Step0.test.ts` 6,
+    `goldenCasus1h.test.ts` 11, `casus1hV2Candidates.test.ts` 7 waarvan één `[live]`) en +52 tests:
+    die 48 plus VIER in `goldenClassification.test.ts` (de casus-1h-describe). Geteld met
+    `grep -cE '^\s+it\('` per bestand tegen dezelfde telling op HEAD; het corpus van casus 1, 1b en 2
+    is NIET aangeraakt, dus geen enkele `it.each` over een levend corpus beweegt en de delta sluit
+    exact. **Het vierde overgeslagen TEST is nieuw en klopt:** de vierde live ketenrun (casus 1h door
+    de hybride route). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan, en 554 tegen
+    M-4's 524 s is dezelfde laag op dezelfde machine met vijf bestanden erbij.
+    **DE EERSTE snelle run had TWEE rode claims en beide deden hun werk**, allebei van een soort die
+    dit boek kent: de sleuteltelling van `choiceKeyGuard` (H-1 voegt twee tuner-sleutels toe en de
+    telling is per constructie een DAAD, niet een gevolg — `activeLevelBandHz` was geclassificeerd
+    noch geteld), en een GEDATEERDE precisie (de opname schrijft de delay op vier decimalen en de
+    claim vergeleek er zes). Geen tolerantie is opgerekt.
     **Ná M-4 (16-09-2026) gemeten op 524 s — 190 bestanden (189 geslaagd, 1 overgeslagen),
     2464 tests (2461 geslaagd, 3 overgeslagen), alleen gedraaid.** +1 BESTAND
     (`engine2/m4PhasePriority.test.ts`, 18 claims) en +19 tests: die achttien plus ÉÉN in
@@ -6005,3 +6020,245 @@ de V33-entry en in `compare-corpora.ts v32 v33`; wat V34 ermee deed in de V34-en
 De vloer is sinds F0 uitsluitend het getal dat de ONTWERPER invult (`ampMinLoadOhm`, geen default):
 leeg veld = geen oordeel. Eén regel, één plek: `meetsAmpFloor` in `src/lib/impedanceFloor.ts`.
 Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
+
+### H-1-guards (de hybride: een gestelde overname naar een actieve zijde; alleen de v2-route)
+
+- **WAT DE VORM IS, EN WAAROM ZIJ NIEUW IS.** Sander zet de woofers actief (Hypex FA251) en houdt
+  mid en tweeter passief. De mid wordt daarmee de ONDERSTE PASSIEVE weg en krijgt een hoogdoorlaat
+  richting de actieve zijde. Dit casusboek kende die vorm niet: **de som die een ontwerp beoordeelt
+  bevat een tak die NIET in de netlist staat.** Elk getal dat een SOM oordeelt — rimpel, M-K,
+  lobing, de doelcurve — moet die tak zien; elk ELEKTRISCH getal — de vloer, EPDR, M-A, M-L, M-M en
+  élke poort — mag uitsluitend lezen wat de HOOFDVERSTERKER ziet. Die scheiding is STRUCTUREEL
+  gemaakt en niet onthouden: de gemodelleerde tak wordt in `report.ts` toegevoegd aan
+  `branchComplex` ná de passieve lus, en `analysis.transferByModel` — waar élke elektrische metriek
+  uit leest — wordt nergens aangeraakt. `h1ActiveSide.test.ts` meet het van beide kanten: élke
+  elektrische waarde en élk poortoordeel byte-identiek mét en zonder de actieve zijde, en de som,
+  de takken, de kruispunten en de fasetracking aantoonbaar anders (V23).
+- **STAP 0 — WAT DE MACHINERIE DEED, GEMETEN VÓÓR ER IETS VERANDERDE**
+  (`scripts/measure-h1-step0.ts`, `test-fixtures/casus1h_stap0.json`, `h1Step0.test.ts`). De vraag
+  van een gebruiker — "een HP op de mid" — via het zaad van de tweewegketen: **gevraagd LR4 op
+  450 Hz, geleverd `enabled: false` op 200 Hz, zonder één melding.** `baseSpecs` in
+  `vfOptimizer.ts` schreef `woofer.hp = { enabled: false, kind: 'LR', order: 2, freq: 200 }`
+  LETTERLIJK en `baseHandles` gaf de onderste weg geen enkele vrijheidsgraad voor een
+  hoogdoorlaat — er is een handle voor haar laagdoorlaat, één voor de HP van de tweeter en één voor
+  het niveau van de tweeter. Het zaadveld werd dus niet afgewezen maar OVERSCHREVEN: F0 in de
+  zuiverste vorm. **De SYNTHESE kon het al wel** (8 onderdelen met een volledige HP-ladder tegen 4
+  zonder), dus het gat zat uitsluitend in de ontwerpstap. Verder gemeten: er is geen VENSTER voor de
+  onderkant van de onderste weg (een kruisvenster is een eigenschap van een PAAR, en zonder gestelde
+  actieve zijde bestaat dat paar niet), `highPassProtected` is leeg zonder netwerk dus M-C oordeelt
+  niets, en de app kende maar twee toestanden — de woofer doet passief mee, of hij bestaat niet.
+  **De derde toestand, "hij speelt mee maar staat niet in de netlist", IS de hybride.**
+- **`src/lib/activeSide.ts` — HET NIEUWE BEGRIP, ÉÉN HUIS, VIER LEZERS** (de ontwerpstap, de tuner,
+  het rapport en de worker). Woont in `src/lib/` en niet in `engine2/` om de reden die
+  `impedanceFloor.ts`, `phaseAdmission.ts`, `targetLevel.ts` en `rippleTargetBand.ts` al dragen: de
+  KETEN moet hem lezen en niets buiten de UI-instappunten mag `engine2/` importeren. Hij bezit het
+  GESTELDE blok (welke weg, welke overname, welke akoestische doelvorm, door wie gesteld — niets
+  heeft een default, P4), de twee doelvormen die eruit volgen (de hoogdoorlaat die de onderste
+  passieve weg moet halen en de laagdoorlaat die de DSP moet halen, ÉÉN keer gesteld en twee keer
+  gelezen), de overdracht van de gemodelleerde tak, en de afleiding van de drie DSP-instellingen.
+  Hij bezit NIET de excursie-, thermische of beschermingsgrenzen van de actieve weg: die horen bij
+  haar eigen versterker en DSP, en ze hier verzinnen zou een tweede ontwerp verzinnen.
+- **WAAROP DE DELAY GEFIT WORDT, EN DE EERSTE VERSIE IS DOOR DE METING VERWORPEN.** De fitmaat is de
+  **omgepoolde-nul-marge**: hoeveel de som uitkomt boven het niveau dat dezelfde twee takken maken
+  met de gemodelleerde tak omgepoold, gemiddeld over de fitband. Diep = in fase — en het is exact de
+  meting waarmee Sander de eindwaarde in de kast vaststelt, dus de fit en de verificatie zijn één
+  criterium. **De eerste versie minimaliseerde de piek-tot-piek van de SOM** en de data gooide haar
+  eruit: het antwoord sprong van −0,905 ms op 362,3 Hz naar +0,140 ms op 400 Hz, een derde van een
+  periode tussen twee aangrenzende overnames, omdat een vlakheidsmaat over één octaaf ondiep is en
+  een lichte kanteling haar minimum ver verschuift. Een nul is scherp waar een som vlak is.
+  **Het zoekbereik is EEN HALVE PERIODE en niet meer**, en die grens is een uitspraak: een delay van
+  één hele periode meer sommeert op de as identiek en overal daarbuiten anders, en niets in een
+  on-axis fit over één octaaf kan die twee scheiden.
+- **DE GAIN IS EEN NIVEAUMATCH EN GEEN ZOEKPARAMETER — en dat is de zwaarste bevinding van deze
+  sessie, want zij is er in drie stappen gekomen.** (1) Eerst stond de gain, net als de delay, VAST
+  vóór de zoektocht: klasse A, tegen de passieve weg op de vorm die de overname STELT, zodat geen
+  kandidaat de som kon verzetten waarop hij beoordeeld wordt. (2) De meting daarna: de GELEVERDE
+  passieve tak zit **2,3 tot 3,2 dB** onder die gestelde vorm — een echte hoogdoorlaatladder in een
+  echte driverimpedantie is verliesgevend waar een ideaal filter dat niet is — en een som die de
+  actieve zijde 3 dB te luid beoordeelt gaat over een luidspreker die niemand bouwt (het geleverde
+  kruispunt landde 60 Hz te hoog). (3) De lus één keer sluiten met een TWEEDE PAS hielp niet en het
+  cijfer zegt waarom: **pas 1 vroeg −0,66 dB, zijn geleverde netwerk vroeg −3,87, en het netwerk van
+  pas 2 vroeg −5,69** — de tuner neemt elke ronde een deel van de niveaufout in de passieve takken
+  op, dus de iteratie jaagt haar eigen staart. **Een niveaumatch hoort IN de evaluatie**, en sinds
+  H-1 zit hij daar: `levelMatchDb` wordt per evaluatie toegepast, in de ontwerpstap én in de tuner,
+  tegen de tak die op dát moment bestaat. Dat is dezelfde normalisatie die `bandStd` al op de som
+  uitvoert — absoluut niveau is niet waar een filter op beoordeeld wordt — toegepast op de ene tak
+  wiens niveau in een processor woont in plaats van in de netlist. **DE DELAY EN DE POLARITEIT
+  WORDEN NIET GENIVELLEERD en blijven klasse A:** díé zou een zoektocht werkelijk kunnen misbruiken,
+  en zij zijn de fysieke uitlijning. Het rapport publiceert daarom een gain die per netlist
+  verschilt, met `classAGainDb` ernaast, zodat wat de realisatie aan niveau kost afleesbaar is.
+- **DE ZEVENDE KETENSLEUTEL, `activeSide`** (`chainChoices.ts`). Zij beslist de topologie het
+  botst van alle zeven: mét haar krijgt de onderste passieve weg een hoogdoorlaatladder en zonder
+  haar heeft die weg er geen, en geen waardetune maakt van de een de ander. De WAARDE draagt haar
+  eigen DSP-instellingen mee, om de reden dat V51b's maximum binnen `lowestWayLevelWork` reist: een
+  overname zonder gain en delay modelleert niets, en een gain en delay zonder overname betekenen
+  niets. **Alleen de TWEEWEGketen leest hem vandaag**, en dat staat hardop in
+  `CHAIN_KEYS_THE_THREE_WAY_CHAIN_DOES_NOT_READ` in plaats van gladgestreken: een sleutel in
+  settings schrijven die niemand leest is wat V19 decoratie noemt. In de tuner staat er één sleutel
+  naast, `activeBranch`, en die is POLISH — de gemodelleerde tak al bemonsterd op de rasters van
+  deze run, de vorm die `zFloorBarrierImpedance` (V33) en `amplitudeTargetDb` (V45) al dragen: de
+  BESLISSING is de ketensleutel, dit is de data die eruit volgt. 59 tunersleutels, 40/5/14.
+- **HET DSP-DOELBLOK IS DE OPLEVERING** (`engine2/dspTarget.ts`, per kandidaat in het casusboek en
+  als tekst uit `measure-h1-decision.ts`). Een passief netwerk is een stuklijst; een hybride ontwerp
+  is een stuklijst PLUS vier getallen die iemand in een processor typt, en een run die alleen de
+  eerste helft oplevert heeft geen ontwerp opgeleverd. Wat er in staat: de laagdoorlaatvorm en
+  -frequentie, de gain, de delay in ms, de polariteit — en de zinnen die het eerlijk houden. **De
+  DELAY IS NEGATIEF op drie van de vier overnames (−0,41 tot −0,47 ms), en geen processor kan
+  vervroegen**: het blok zegt dat met zoveel woorden en noemt de twee uitwegen (de passieve wegen
+  even ver vertragen, of één hele periode bij de actieve zijde optellen — wat op de as hetzelfde
+  sommeert en daarbuiten niet). **De polariteit wordt geoordeeld tegen de ONZEKERHEID VAN DE EIGEN
+  MERGES**: twee takken θ uit fase sommeren tot 2·cos(θ/2), dus de nul-marge verliest
+  −20·log10(cos(θ/2)); casus 1h stelt M-4's gemeten 11,8° en krijgt daarmee 0,047 dB. Op 400, 450 en
+  500 Hz wint NORMAAL met 0,8-1,5 dB; op 362,3 Hz wint OMGEKEERD met 0,41 dB, en dat is ruim boven
+  de drempel maar het blok drukt de tegenproef hoe dan ook af. Het getal 11,8° staat in het
+  casusbestand en niet in engine-code (P6): een ander project heeft andere merges.
+- **CASUS 1h — dezelfde luidspreker, dezelfde metingen, een andere scheiding.**
+  `test-fixtures/casus1h/golden_refs_casus1h.json` en `src/lib/engine2/casus1h.fixture.ts`. De
+  meetbestanden zijn CASUS 1's, via casus 1's eigen manifest op de set `'koan677'` — een kopie van
+  een meting is een tweede bestand dat kan wegdrijven (I-2) — en de gestelde eisen worden gelezen
+  door casus 1's eigen lezerfuncties: één lezer per eis, drie casusbestanden. **`'koan677'` en niet
+  de standaard `'m3'`**, en dat is een besluit met een prijs die in het manifest staat: de hele
+  bestaansreden van casus 1h is een vergelijking met het LEVENDE casus-1-corpus, en dat is op
+  koan677 opgewekt; twee helften door twee meetsets is geen vergelijking. Wat het kost is bekend
+  (M-3 bewoog M-K 0,23-0,65° op het W-M-paar en wisselde geen enkel oordeel).
+- **WELKE EISEN MEE GAAN EN WELKE NIET, en de ene afwijking van casus 1b staat er met de reden.**
+  Mee: de vloer (2,6 Ω), piek 160 W in 8 Ω, continu 100 W, X_max-marge 0,8, de tweetereis −20 dB,
+  weerstandsklasse 10 W × 0,5, thermisch ontwerpvermogen 10 W, spoelfamilies lucht 1,0 mm, de
+  BlieSMa-ondergrens 2200 Hz, plateau 0 dB en de rimpel-stopband. **M-D VERVALT AANTOONBAAR**, en
+  het rapport zegt dát in plaats van de rij leeg te laten (`h1_md_vervalt`): het budget begrenst wat
+  de REACTANTIES van het passieve filter met de bovenste reflexpiek van het wooferpaar doen, en op
+  een hybride staat er geen passieve seriespoel meer tussen de versterker en dat paar — de
+  grootheid die de eis begrenst BESTAAT niet. Daarmee levert de A5d.6-inversie ook geen spoelplafond
+  meer op de onderste weg. **Q_es 2,4 gaat WEL mee, anders dan op casus 1b**, en dat is een besluit
+  van Sander met zijn eigen motivering in het manifest: op casus 1b is de mid de onderste weg van
+  een tweeweg ZONDER hoogdoorlaat en is zij op de R_e van het wooferpaar afgeleid; op casus 1h is
+  zij de onderste PASSIEVE weg MET een gestelde hoogdoorlaat en draagt haar pad de
+  seriecomponenten waar M-E over gaat. Het getal is casus 1's 2,4 en is niet opnieuw afgeleid; of
+  de eis BIJT is een meetresultaat en staat in `h1_qes`.
+- **HET VELD IS EEN PRODUCT, EN DE ACTIEVE OVERNAME ZIT ER NIET IN.** De actieve overname is
+  GESTELD: de actieve zijde realiseert haar in een processor, en een zoektocht die haar verplaatst
+  zoekt in een filter dat deze app niet programmeert. Wat de generator doorloopt is het product van
+  (a) de vier gestelde overnames en (b) de kandidaten van de ENE passieve overname. **Dat de
+  passieve vensters over de vier gelijk zijn wordt GECONTROLEERD en niet aangenomen** — het
+  mid→tweeter-venster hangt aan de twee driverbladen en de breakup van de mid, niet aan waar de
+  woofer overgeeft — en de generator STOPT als zij bewegen. `scripts/generate-casus1h-v2-candidates.ts`,
+  `scripts/record-casus1h-references.ts`, `scripts/measure-h1-decision.ts`; de volgorde is bindend
+  (generator → recorder → beslistabel), zoals bij casus 2.
+- **EEN TWEEDE SONDE DIE VERGETEN WAS, gevonden doordat de kolom leeg bleef.** De verticale
+  lobing-synthese (M-F-eind) weigerde te rekenen: zij bouwt haar bronnen uit de wegen die een
+  TAK IN DE NETLIST hebben, en de actieve weg heeft die per definitie niet. Zij krijgt sinds H-1 de
+  gemodelleerde overdracht — een weg die door haar eigen versterker wordt aangestuurd straalt uit
+  haar eigen akoestisch centrum zoals elke andere, en haar weglaten zou een tweewegversie van een
+  driewegluidspreker beschrijven, precies het defect waarvoor die `missing`-lijst geschreven is.
+  Diezelfde vergissing zat in `casus1hGeometry`: het akoestisch centrum van de actieve weg stond er
+  niet in, en dan zegt het rapport terecht dat het niet kan rekenen.
+- **DE BESLISTABEL** (`scripts/measure-h1-decision.ts`, `test-fixtures/casus1h_beslistabel.json`;
+  seconden, geen ketenrun en geen tune). Beide helften door DEZELFDE meetbank en dezelfde meetset,
+  dus het enige verschil is de SCHEIDING. De drie kolommen die de overname kiezen staan vooraan, in
+  Sanders eigen volgorde — M-C van de mid mét hoogdoorlaat, de lobing-dip, de BOM — en de
+  M-K-kolom staat er TWEE keer, en die verdubbeling is de belangrijkste meting van deze sessie:
+
+  | actieve overname | M-C mid (grens) | lobing-dip | BOM (geprijsd) | M-K W→M **gesteld** | M-K W→M **ingesteld** | geleverd kruispunt | rms | ± | min \|Z\| | dissipatie |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 362,3 Hz | −25,95 (−12,76) | **−3,16** @405 | **€59,20** (14) | 35,9° | **9,15°** | 339 Hz | 0,67 | 1,33 | 4,22 | **20,8 %** |
+  | 400 Hz | −27,88 (−12,48) | −4,70 @482 | €64,08 (15) | 77,3° | 11,08° | 367 Hz | 0,73 | 1,46 | 4,40 | 24,2 % |
+  | 450 Hz | −45,98 (−10,94) | −5,42 @528 | €90,29 (18) | 77,5° | 16,61° | 451 Hz | 0,85 | 1,54 | 4,41 | 47,2 % |
+  | 500 Hz | −33,12 (−10,73) | −6,42 @581 | €63,70 (15) | 76,4° | 14,48° | 500 Hz | 0,95 | 1,68 | 3,05 | 49,4 % |
+
+  **DE TWEE M-K-KOLOMMEN ZIJN DEZELFDE LUIDSPREKER MET TWEE VERSCHILLENDE DSP-DELAYS.** De linker
+  is de delay waarmee de ZOEKTOCHT gestuurd is (klasse A, afgeleid vóór er een netwerk was); de
+  rechter is de delay die het doelblok zegt IN TE STELLEN, geherfit op wat gebouwd is. 36–78° tegen
+  9–17°, en het geleverde kruispunt landt pas met de tweede op de gestelde overname. Een tabel die
+  alleen de linker afdrukte zou een hybride op fase veel slechter melden dan de volpassieve
+  kandidaten, en dat is precies het omgekeerde van wat hij doet. Wat er OPEN blijft staat hieronder.
+- **WAT DE HYBRIDE KOOPT EN KOST, tegen KAND_V2_1..3 op dezelfde meetset.** Koopt: **14–18 geprijsde
+  onderdelen tegen 40–43**, **€59–90 tegen €331–719**, dissipatie **21–49 % tegen 51–53 %**, min |Z|
+  **3,05–4,41 Ω tegen 2,58–2,61** (de hoofdversterker ziet een veel makkelijker last), rms
+  **0,67–0,95 tegen 0,91–1,23**, ±venster **1,33–1,68 tegen 1,47–2,08**, en **M-C op de mid als
+  echte bescherming** — waar KAND_V2_1 volpassief op −8,77 dB staat. Kost: **de verticale
+  lobing-dip**, −3,16 tot −6,42 dB tegen −3,26 tot −3,57 volpassief, en die groeit MONOTOON met de
+  overname. En natuurlijk een tweede versterker plus DSP, die geen enkele kolom hierboven telt.
+- **DE λ/2-KNIK IS AFGELEID EN HET ZIJN ER DRIE** (`lobing_knik`). De woofer is een PAAR bronnen
+  (V20), dus een enkele afstand die die weg samenvat bestaat niet: dichtstbij 261,3 mm → 656,3 Hz,
+  zwaartepunt 399,1 mm → **429,7 Hz**, verst 537,0 mm → 319,4 Hz. Sanders vuistregel (38 cm →
+  451,3 Hz) ligt tussen het zwaartepunt en de dichtstbijzijnde bron in; het verschil is genoteerd en
+  niet weggerekend. De gemeten lobing-dip volgt het zwaartepunt: onder 429,7 Hz blijft hij op het
+  niveau van de volpassieve kandidaten, erboven loopt hij weg.
+- **WAT DE TABEL ZEGT, en het is niet wat de sessie verwachtte: 362,3 Hz wint op alle drie de
+  kolommen** — de ondiepste lobing-dip, de goedkoopste BOM met de minste onderdelen, en de beste
+  fasetracking — en daarbij de laagste dissipatie en de beste rms. Dat is de positie die Sander als
+  ONDERBEUGEL in de lijst zette om tegen KAND_V2_2 te kunnen leggen, niet als voorkeur. **Zijn twee
+  redenen voor 400–500 Hz staan in GEEN van deze kolommen**: de meetbaarheid van het verre veld en
+  het verplaatsingsvolume van het wooferpaar zijn argumenten over de MEETSESSIE en over de
+  vermogensverdeling, en deze tabel meet de overdracht. De keuze is daarmee een afweging tussen twee
+  soorten argument en niet een uitkomst van dit script; wat dit script doet is de ene soort meten.
+- **WAT OPEN BLIJFT, met de meting erbij en niet als voornemen.**
+  (1) **DE DELAY WAARMEE GESTUURD WORDT IS NIET DE DELAY DIE INGESTELD WORDT**, en het verschil is
+  op één kandidaat 0,93 ms. De gain is dat probleem al niet meer — die wordt per evaluatie
+  genivelleerd — en de delay kan langs dezelfde weg: een gesloten-vorm tijdmatch per evaluatie
+  (een gewogen fit van Δφ tegen f over de fitband) is O(n) en dus betaalbaar, waar de
+  nul-marge-zoektocht van nu 8000 evaluaties per punt kost. Dat is de eerstvolgende sessie, en zij
+  vraagt een regeneratie. Wat het vandaag kost is GEMETEN en staat in de tabel: de zoektocht is
+  gestuurd op een som die op de actieve overname tot 68° uit fase stond.
+  (2) **DE APP KENT DE HYBRIDE NIET.** Deze route loopt door `handleV2Request` kind `v2ChainOne`
+  met een gestelde actieve zijde in de ketenverklaring; er is geen formulierveld waarin een
+  ontwerper haar stelt, geen registerrij en geen paneelregel. Dezelfde open post die E-3 voor de
+  tweewegroute noteerde, één vorm verder.
+  (3) **HET DSP-DOELBLOK IS TEKST EN JSON IN HET CASUSBOEK, GEEN EXPORTBESTAND VAN DE APP.**
+  `dspTargetBlock` levert het object en `describeDspTarget` de regels; wie er een `.txt` of een
+  Hypex-projectbestand van wil maken schrijft één lezer erbij.
+  (4) **DE MEETSET IS `'koan677'` EN NIET `'m3'`**, om de vergelijking heel te houden; de
+  eerstvolgende regeneratie van casus 1h is de plek om beide naar `'m3'` te brengen.
+  (5) **DE ACTIEVE ZIJDE WORDT NERGENS BEGRENSD.** Haar excursie, haar warmte en haar bescherming
+  horen bij de FA251 en zijn DSP; dit casusboek stelt er niets over en de engine leidt er niets af.
+  De zwakste-schakel-lezing van de woofer blijft staan als LEZING.
+- **DE VOLLE RUN IS BIJ H-1 NIET GEDRAAID**, en de afweging staat er expliciet omdat H-1 de tuner
+  wél aanraakt. Wat er aan `netOptimizer.ts` en `vfOptimizer.ts` veranderde is in beide gevallen
+  door één afwezige sleutel bewaakt: zonder `activeBranch` is `sumSpl` letterlijk `r.combinedSpl`
+  respectievelijk `rCombinedSpl` — dezelfde array, dezelfde rekenkunde, dezelfde volgorde — en
+  zonder `lowHighPass` schrijft `baseSpecs` het literal dat er stond. Dat is niet beredeneerd maar
+  NAGEMETEN: de twee byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren, en
+  `toggleRegression` staat. De drie bestaande live ketenruns zouden corpora reproduceren die deze
+  sessie niet aangeraakt heeft — casus 1, 1b en 2 stellen geen actieve zijde, dus élke sleutel die
+  H-1 toevoegt is daar ABSENT. De VIERDE live ketenrun is nieuw en hoort bij dit corpus.
+- **DRIE GEMETEN BLOKKEN DIE GEEN OORDEEL DRAGEN, en zij staan er omdat een lege rij en een
+  niet-van-toepassing-zijnde eis er in een rapport hetzelfde uitzien.**
+  `h1_md_vervalt`: M-D op de actieve weg is `null` — de metriek leest een TAK van de netlist en die
+  weg heeft er geen. Dat is de scherpste vorm van vervallen die er is, en het budget is niet
+  gewapend. `h1_qes`: de eis die casus 1b NIET overnam en casus 1h wél is op alle vier de netlists
+  INERT (Q_es× 1,36–1,48 tegen een maximum van 2,4) — een inerte eis is geen reden om haar niet te
+  stellen (P4), en dat zij inert is, is een meetresultaat en geen aanname. `h1_vloer_nameting`: wat
+  de HOOFDVERSTERKER op een hybride nog ziet — mid 3,63 Ω, tweeter 5,63 Ω, mid‖tweeter **2,55 Ω @
+  325 Hz** — en de GESTELDE vloer van 2,6 Ω is daarmee op deze casus iets STRENGER dan zijn eigen
+  casus-1-motivering vraagt (die hangt aan het wooferpaar, 3,25 Ω, dat hier aan zijn eigen
+  versterker hangt). **Niet versoepeld:** versoepelen op grond van een weg die verdwijnt is precies
+  de stille verruiming die dit boek verbiedt, en de vier geleverde netwerken staan er met
+  3,05–4,41 Ω ruim boven.
+
+- **DE GUARDS, en welke bevinding elk draagt.**
+  `src/lib/activeSide.test.ts` (10 claims) — de vier soorten van de metriek-skill op één bank die
+  LOG-SYMMETRISCH om de overname ligt, zodat elke handberekening een handberekening blijft: de
+  LR-eigenschap (beide flanken −6,0206 dB op de hoek en hun som exact 1), de fitband, de overdracht
+  (een delay is een fasehelling en geen niveau), de gain als exact gemeten niveauverschil, **de
+  scherpste claim van het bestand — een delay die IN de meting gestopt is komt er als antwoord weer
+  uit** (0,2 / −0,2 / 0,35 ms), de polariteit met haar tegenproef, P4 per ontbrekende invoer, en de
+  gelijkheid van de twee lezers van `fitModelBranch`.
+  `src/lib/engine2/h1ActiveSide.test.ts` (14 claims) — de STRUCTURELE scheiding, en zij vond haar
+  eigen uitzondering: élke puur elektrische poort byte-identiek mét en zonder de actieve zijde, en
+  precies ÉÉN die beweegt (M-C op de mid), bij naam, omdat haar doorlaatband van onderen door de
+  actieve overname begrensd wordt — dat is de bescherming die de overname koopt en geen lek. Plus
+  de passief-alleen-som als dezelfde rekenkunde, de gemodelleerde tak als meting × overdracht, de
+  klasse-A/klasse-B-splitsing van delay en gain, de ingestelde delay, en de polariteitsdrempel als
+  AFLEIDING uit een gestelde onzekerheid.
+  `src/lib/engine2/h1Step0.test.ts` (6 claims) — het gedateerde record van stap 0, en de ENE claim
+  die moest bewegen staat er in haar nieuwe vorm: zonder de gestelde sleutel valt de HP nog steeds
+  weg (P2, de default is onaangeroerd), mét hem komt hij eruit zoals gevraagd.
+  `src/lib/engine2/goldenCasus1h.test.ts` (11 claims) — de acceptatie-autoriteit.
+  `src/lib/engine2/casus1hV2Candidates.test.ts` (6 claims + de vierde live ketenrun) — de opname
+  tegen de fixture, en de claim die H-1 draagt: **élke geleverde kandidaat draagt de gestelde
+  hoogdoorlaat op de onderste passieve weg, op haar eigen overname**, afgelezen van wat de
+  ONTWERPSTAP leverde en niet van een netlist.
+  `goldenClassification.test.ts` — casus 1h als VIERDE casusbestand; zijn `v1_baseline` is leeg met
+  een sterkere reden dan die van casus 1 en 1b: **er BESTAAT geen v1-hybride**, dus er is geen
+  eerdere enginetoestand waarvan de uitkomst hier gedateerd naast gelegd kan worden.
+  `ciLayer.test.ts` — twaalf `[bytes]`-namen en VIER `[live]`-blokken.

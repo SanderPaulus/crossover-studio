@@ -1,0 +1,338 @@
+{
+ "_": "H-1 — DE BESLISTABEL. Geschreven door scripts/measure-h1-decision.ts; h1ActiveSide.test.ts reproduceert de dragende getallen. Beide helften gaan door DEZELFDE meetset (koan677) en hetzelfde rapportpad; het enige verschil tussen de twee tabellen is de SCHEIDING — hybride tegen volpassief.",
+ "gemeten_op": {
+  "set": "koan677",
+  "sessie_id": "koan2951-2026-09-11-67L"
+ },
+ "gestelde_overnames_hz": [
+  362.3,
+  400,
+  450,
+  500
+ ],
+ "lobing_knik": {
+  "_": "DE λ/2-KNIK VAN HET WOOFER→MID-PAAR, AFGELEID uit de manifestgeometrie en nergens getypt (P6). DRIE getallen en geen keuze, want de woofer is een PAAR bronnen (V20): een enkele afstand die een weg met twee bronnen samenvat bestaat niet. Sanders eigen vuistregel (\"c-t-c 38 cm → λ/2 op ~449 Hz\") ligt tussen het zwaartepunt en de dichtstbijzijnde bron in; het verschil is genoteerd en niet weggerekend.",
+  "c_m_per_s": 343,
+  "dichtstbij": {
+   "mm": 261.3,
+   "halve_golf_hz": 656.3
+  },
+  "zwaartepunt": {
+   "mm": 399.1,
+   "halve_golf_hz": 429.7
+  },
+  "verst": {
+   "mm": 537,
+   "halve_golf_hz": 319.4
+  },
+  "sanders_vuistregel": {
+   "mm": 380,
+   "halve_golf_hz": 451.3
+  }
+ },
+ "hybride": [
+  {
+   "netlist": "H_KAND_1",
+   "actieve_overname_hz": 362.3,
+   "m_c_mid_dB": -25.95,
+   "m_c_mid_grens_dB": -12.76,
+   "m_c_mid_gewapend": true,
+   "m_c_mid_geslaagd": true,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "m_c_tweeter_dB": -27.75,
+   "lobing_eind_dip_dB": -3.16,
+   "lobing_dip_in_kruisgebied_dB": -3.16,
+   "lobing_dip_bij_hz": 404.5,
+   "lobing_dip_bij_graden": -15,
+   "lobing_puntbron_aanname_veilig": false,
+   "lobing_uit_reden": null,
+   "bom_eur": 59.2,
+   "bom_onderdelen": 14,
+   "bom_zonder_realisatie": [],
+   "onderdelen": 17,
+   "dissipatie_pct": 20.8,
+   "min_z_ohm": 4.22,
+   "rms_vlakheid_dB": 0.62,
+   "spl_venster_pm_dB": 1.15,
+   "m_k_wm_graden": 35.86,
+   "m_k_wm_graden_op_de_ingestelde_delay": 9.15,
+   "m_k_mt_graden": 4.4,
+   "kruispunt_wm_hz": 339.3,
+   "kruispunt_wm_hz_op_de_ingestelde_delay": 339.1,
+   "kruispunt_mt_hz": 2258.1,
+   "rms_op_de_ingestelde_delay_dB": 0.67,
+   "spl_venster_op_de_ingestelde_delay_pm_dB": 1.33,
+   "dsp": {
+    "gain_dB": -1.319,
+    "delay_ms": 0.807,
+    "omgekeerd": true
+   },
+   "dsp_in_te_stellen": {
+    "gain_dB": -1.337,
+    "delay_ms": -0.121,
+    "omgekeerd": false
+   }
+  },
+  {
+   "netlist": "H_KAND_2",
+   "actieve_overname_hz": 400,
+   "m_c_mid_dB": -27.88,
+   "m_c_mid_grens_dB": -12.48,
+   "m_c_mid_gewapend": true,
+   "m_c_mid_geslaagd": true,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "m_c_tweeter_dB": -27.79,
+   "lobing_eind_dip_dB": -4.7,
+   "lobing_dip_in_kruisgebied_dB": -4.7,
+   "lobing_dip_bij_hz": 482.4,
+   "lobing_dip_bij_graden": -15,
+   "lobing_puntbron_aanname_veilig": false,
+   "lobing_uit_reden": null,
+   "bom_eur": 64.08,
+   "bom_onderdelen": 15,
+   "bom_zonder_realisatie": [],
+   "onderdelen": 18,
+   "dissipatie_pct": 24.2,
+   "min_z_ohm": 4.4,
+   "rms_vlakheid_dB": 0.71,
+   "spl_venster_pm_dB": 1.38,
+   "m_k_wm_graden": 77.33,
+   "m_k_wm_graden_op_de_ingestelde_delay": 11.08,
+   "m_k_mt_graden": 4.52,
+   "kruispunt_wm_hz": 366.5,
+   "kruispunt_wm_hz_op_de_ingestelde_delay": 367,
+   "kruispunt_mt_hz": 2258.2,
+   "rms_op_de_ingestelde_delay_dB": 0.73,
+   "spl_venster_op_de_ingestelde_delay_pm_dB": 1.46,
+   "dsp": {
+    "gain_dB": -2.155,
+    "delay_ms": -0.471,
+    "omgekeerd": false
+   },
+   "dsp_in_te_stellen": {
+    "gain_dB": -2.143,
+    "delay_ms": -0.067,
+    "omgekeerd": false
+   }
+  },
+  {
+   "netlist": "H_KAND_3",
+   "actieve_overname_hz": 450,
+   "m_c_mid_dB": -45.98,
+   "m_c_mid_grens_dB": -10.94,
+   "m_c_mid_gewapend": true,
+   "m_c_mid_geslaagd": true,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "m_c_tweeter_dB": -28.44,
+   "lobing_eind_dip_dB": -5.42,
+   "lobing_dip_in_kruisgebied_dB": -5.42,
+   "lobing_dip_bij_hz": 528,
+   "lobing_dip_bij_graden": -15,
+   "lobing_puntbron_aanname_veilig": false,
+   "lobing_uit_reden": null,
+   "bom_eur": 90.29,
+   "bom_onderdelen": 18,
+   "bom_zonder_realisatie": [],
+   "onderdelen": 21,
+   "dissipatie_pct": 47.2,
+   "min_z_ohm": 4.41,
+   "rms_vlakheid_dB": 0.64,
+   "spl_venster_pm_dB": 1.15,
+   "m_k_wm_graden": 77.5,
+   "m_k_wm_graden_op_de_ingestelde_delay": 16.61,
+   "m_k_mt_graden": 3.81,
+   "kruispunt_wm_hz": 450.5,
+   "kruispunt_wm_hz_op_de_ingestelde_delay": 450.5,
+   "kruispunt_mt_hz": 2258.1,
+   "rms_op_de_ingestelde_delay_dB": 0.85,
+   "spl_venster_op_de_ingestelde_delay_pm_dB": 1.54,
+   "dsp": {
+    "gain_dB": -3.852,
+    "delay_ms": -0.444,
+    "omgekeerd": false
+   },
+   "dsp_in_te_stellen": {
+    "gain_dB": -3.861,
+    "delay_ms": -0.011,
+    "omgekeerd": false
+   }
+  },
+  {
+   "netlist": "H_KAND_4",
+   "actieve_overname_hz": 500,
+   "m_c_mid_dB": -33.12,
+   "m_c_mid_grens_dB": -10.73,
+   "m_c_mid_gewapend": true,
+   "m_c_mid_geslaagd": true,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "m_c_tweeter_dB": -29.77,
+   "lobing_eind_dip_dB": -6.42,
+   "lobing_dip_in_kruisgebied_dB": -6.42,
+   "lobing_dip_bij_hz": 580.7,
+   "lobing_dip_bij_graden": -15,
+   "lobing_puntbron_aanname_veilig": false,
+   "lobing_uit_reden": null,
+   "bom_eur": 63.7,
+   "bom_onderdelen": 15,
+   "bom_zonder_realisatie": [],
+   "onderdelen": 18,
+   "dissipatie_pct": 49.4,
+   "min_z_ohm": 3.05,
+   "rms_vlakheid_dB": 0.64,
+   "spl_venster_pm_dB": 1.05,
+   "m_k_wm_graden": 76.43,
+   "m_k_wm_graden_op_de_ingestelde_delay": 14.48,
+   "m_k_mt_graden": 3.16,
+   "kruispunt_wm_hz": 500,
+   "kruispunt_wm_hz_op_de_ingestelde_delay": 500.1,
+   "kruispunt_mt_hz": 2217,
+   "rms_op_de_ingestelde_delay_dB": 0.95,
+   "spl_venster_op_de_ingestelde_delay_pm_dB": 1.68,
+   "dsp": {
+    "gain_dB": -4.128,
+    "delay_ms": -0.414,
+    "omgekeerd": false
+   },
+   "dsp_in_te_stellen": {
+    "gain_dB": -4.124,
+    "delay_ms": -0.008,
+    "omgekeerd": false
+   }
+  }
+ ],
+ "volpassief": [
+  {
+   "netlist": "KAND_V2_1",
+   "onderdelen": 43,
+   "bom_eur": 684.33,
+   "dissipatie_pct": 53.4,
+   "min_z_ohm": 2.61,
+   "rms_vlakheid_dB": 0.91,
+   "spl_venster_pm_dB": 1.47,
+   "m_k_wm_graden": 10.26,
+   "m_k_mt_graden": 8.41,
+   "kruispunt_wm_hz": 394.4,
+   "kruispunt_mt_hz": 2264.3,
+   "lobing_eind_dip_dB": -3.57,
+   "lobing_dip_in_kruisgebied_dB": -3.57,
+   "m_c_mid_dB": -8.77,
+   "m_c_tweeter_dB": -30.57,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ]
+  },
+  {
+   "netlist": "KAND_V2_2",
+   "onderdelen": 40,
+   "bom_eur": 331.47,
+   "dissipatie_pct": 50.8,
+   "min_z_ohm": 2.58,
+   "rms_vlakheid_dB": 1,
+   "spl_venster_pm_dB": 2.08,
+   "m_k_wm_graden": 12.89,
+   "m_k_mt_graden": 5.41,
+   "kruispunt_wm_hz": 467.4,
+   "kruispunt_mt_hz": 2242.2,
+   "lobing_eind_dip_dB": -3.26,
+   "lobing_dip_in_kruisgebied_dB": -3.26,
+   "m_c_mid_dB": -47.44,
+   "m_c_tweeter_dB": -33.55,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ]
+  },
+  {
+   "netlist": "KAND_V2_3",
+   "onderdelen": 43,
+   "bom_eur": 719.33,
+   "dissipatie_pct": 51.7,
+   "min_z_ohm": 2.58,
+   "rms_vlakheid_dB": 1.23,
+   "spl_venster_pm_dB": 2.03,
+   "m_k_wm_graden": 31.37,
+   "m_k_mt_graden": 8.05,
+   "kruispunt_wm_hz": 231.5,
+   "kruispunt_mt_hz": 2269.2,
+   "lobing_eind_dip_dB": -3.43,
+   "lobing_dip_in_kruisgebied_dB": -3.43,
+   "m_c_mid_dB": -26.78,
+   "m_c_tweeter_dB": -38.57,
+   "hoogdoorlaatbeschermde_wegen": [
+    "mid",
+    "tweeter"
+   ]
+  }
+ ],
+ "dsp_doelblokken": {
+  "H_KAND_1": [
+   "DSP target — woofer (active), handing over to mid (passive).",
+   "  low-pass   LR4 @ 362.3 Hz",
+   "  gain       -1.34 dB",
+   "  delay      -0.121 ms",
+   "  polarity   normal",
+   "  (re-fitted on the DELIVERED network; the run was JUDGED with -1.32 dB / +0.807 ms / reversed — see the notes)",
+   "  (the passive network realises LR4 @ 362.3 Hz on mid; fitted over 256.2–512.4 Hz; stated by Sander Somers, 17-09-2026)",
+   "  · THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+   "  · The delay to dial in is NEGATIVE (-0.121 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.121 ms — or add one whole period (2.760 ms at 362.3 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+   "  · The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 362 Hz is 0.090 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+   "  · The DELIVERED network would prefer -0.121 ms and -1.34 dB (-0.928 ms, -0.02 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+   "  · The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+  ],
+  "H_KAND_2": [
+   "DSP target — woofer (active), handing over to mid (passive).",
+   "  low-pass   LR4 @ 400.0 Hz",
+   "  gain       -2.14 dB",
+   "  delay      -0.067 ms",
+   "  polarity   normal",
+   "  (re-fitted on the DELIVERED network; the run was JUDGED with -2.16 dB / -0.471 ms / normal — see the notes)",
+   "  (the passive network realises LR4 @ 400.0 Hz on mid; fitted over 282.8–565.7 Hz; stated by Sander Somers, 17-09-2026)",
+   "  · THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+   "  · The delay to dial in is NEGATIVE (-0.067 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.067 ms — or add one whole period (2.500 ms at 400.0 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+   "  · The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 400 Hz is 0.082 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+   "  · The DELIVERED network would prefer -0.067 ms and -2.14 dB (+0.404 ms, +0.01 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+   "  · The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+  ],
+  "H_KAND_3": [
+   "DSP target — woofer (active), handing over to mid (passive).",
+   "  low-pass   LR4 @ 450.0 Hz",
+   "  gain       -3.86 dB",
+   "  delay      -0.011 ms",
+   "  polarity   normal",
+   "  (re-fitted on the DELIVERED network; the run was JUDGED with -3.85 dB / -0.444 ms / normal — see the notes)",
+   "  (the passive network realises LR4 @ 450.0 Hz on mid; fitted over 318.2–636.4 Hz; stated by Sander Somers, 17-09-2026)",
+   "  · THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+   "  · The delay to dial in is NEGATIVE (-0.011 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.011 ms — or add one whole period (2.222 ms at 450.0 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+   "  · The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 450 Hz is 0.073 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+   "  · The DELIVERED network would prefer -0.011 ms and -3.86 dB (+0.433 ms, -0.01 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+   "  · The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+  ],
+  "H_KAND_4": [
+   "DSP target — woofer (active), handing over to mid (passive).",
+   "  low-pass   LR4 @ 500.0 Hz",
+   "  gain       -4.12 dB",
+   "  delay      -0.008 ms",
+   "  polarity   normal",
+   "  (re-fitted on the DELIVERED network; the run was JUDGED with -4.13 dB / -0.414 ms / normal — see the notes)",
+   "  (the passive network realises LR4 @ 500.0 Hz on mid; fitted over 353.6–707.1 Hz; stated by Sander Somers, 17-09-2026)",
+   "  · THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the gain and the shape, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through the handover; that null is what this fit maximised, so the two are the same measurement and the cabinet one is the one that counts.",
+   "  · The delay to dial in is NEGATIVE (-0.008 ms): it asks for the ACTIVE side to arrive EARLIER, which no processor can do. Realise it on the other side — delay the passive ways by 0.008 ms — or add one whole period (2.000 ms at 500.0 Hz) to the active side, which sums the same on axis at the handover and NOT the same off it.",
+   "  · The delay carries the uncertainty of the merges these measurements rest on — this project states 11.8° of it, which at 500 Hz is 0.066 ms. Read the differences between the stated handovers against that before taking any of them as decisive.",
+   "  · The DELIVERED network would prefer -0.008 ms and -4.12 dB (+0.406 ms, +0.00 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
+   "  · The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
+  ]
+ }
+}

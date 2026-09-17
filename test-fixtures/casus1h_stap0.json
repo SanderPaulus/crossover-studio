@@ -1,0 +1,128 @@
+{
+ "_": "H-1 STAP 0 — de machinerie zoals zij was, gemeten op de koan677-set. Geschreven door scripts/measure-h1-step0.ts; h1Step0.test.ts reproduceert elk getal.",
+ "gemeten_op": {
+  "set": "koan677",
+  "sessie_id": "koan2951-2026-09-11-67L"
+ },
+ "gevraagde_hoogdoorlaat": {
+  "hz": 450,
+  "kind": "LR",
+  "orde": 4
+ },
+ "a_ontwerpstap": {
+  "_": "De tweewegketen krijgt de HP in haar ZAAD en levert hem niet. `baseSpecs` in vfOptimizer.ts schrijft `woofer.hp = { enabled: false }` LETTERLIJK, en `baseHandles` geeft de onderste weg geen enkele vrijheidsgraad voor een hoogdoorlaat: er is een handle voor haar laagdoorlaat, een voor de HP van de tweeter en een voor het niveau van de tweeter, en dat is alles. Het zaadveld wordt dus niet afgewezen maar overschreven — F0: er komt geen melding, geen waarschuwing en geen probleemregel. De ontwerper vult een hoogdoorlaat in en krijgt er een ontwerp zonder terug dat er precies zo uitziet als een ontwerp waar hij er nooit om vroeg.",
+  "gevraagd": {
+   "enabled": true,
+   "kind": "LR",
+   "orde": 4,
+   "hz": 450
+  },
+  "geleverd": {
+   "enabled": false,
+   "kind": "LR",
+   "orde": 2,
+   "hz": 200
+  },
+  "stil": true,
+  "aantal_meldingen": 0
+ },
+ "b_synthese": {
+  "_": "De SYNTHESE kan het wel, en dat is wat de bevinding scherp maakt: `deriveTopology` bouwt een volledige HP-ladder zodra `spec.hp.enabled` waar is (serie-C en shunt-L per sectie), plus de Fs-val en de beschermingsterm die alleen bestaan voor een hoogdoorlaatweg. Het gat zit dus uitsluitend in de ONTWERPSTAP van de tweewegketen, niet in de realisatie.",
+  "met_hp": {
+   "onderdelen": 8,
+   "hp_serie_condensatoren": 2,
+   "rollen": [
+    "HP section 1 series C",
+    "HP section 1 shunt L",
+    "HP section 2 series C",
+    "HP section 2 shunt L",
+    "LP section 1 series L",
+    "LP section 1 shunt C",
+    "LP section 2 series L",
+    "LP section 2 shunt C"
+   ]
+  },
+  "zonder_hp": {
+   "onderdelen": 4,
+   "hp_serie_condensatoren": 0,
+   "rollen": [
+    "LP section 1 series L",
+    "LP section 1 shunt C",
+    "LP section 2 series L",
+    "LP section 2 shunt C"
+   ]
+  }
+ },
+ "c_voor_ontwerp": {
+  "_": "ER IS GEEN VENSTER VOOR DE ONDERKANT VAN DE ONDERSTE WEG, en dat is geen tekortkoming van xoWindow.ts maar van de vraag: een kruisvenster is een eigenschap van een PAAR aangrenzende wegen, en de onderste weg van een tweeweg heeft er geen onder zich. Zonder een gestelde actieve zijde bestaat de overname niet en is er dus niets om een venster van af te leiden. De beoordeelde band begint daarmee bij de eigen bandvloer van de mid en er is niets dat zegt dat zij daar niet meer alleen speelt.",
+  "vensters": [
+   {
+    "paar": "mid->tweeter",
+    "vloer_hz": 2200,
+    "plafond_hz": 2304.026,
+    "vloer_regel": "stated-min"
+   }
+  ],
+  "aantal_vensters": 1,
+  "venster_voor_de_onderkant_van_de_onderste_weg": null,
+  "beoordeelde_band_vloer_hz": 88.806,
+  "beoordeelde_band_vloer_door": "f_p",
+  "laagste_weg": "mid"
+ },
+ "d_oordeel": {
+  "_": "M-C oordeelt uitsluitend een HOOGDOORLAATBESCHERMDE weg, en dat wordt AFGELEID uit de takoverdracht (V47/M-1) en nooit uit een wegnaam. Zonder netwerk is er geen tak en dus geen afleiding; met een tweewegnetwerk dat de mid geen hoogdoorlaat geeft is de mid geen beschermde weg en oordeelt M-C haar niet — terwijl het project WEL een getal voor haar stelt (drive_op_fs_max_dB_per_weg.mid). Een gestelde eis die niets oordeelt omdat de machinerie de weg niet als beschermd ziet, is precies de stille toestand die H-1 opheft.",
+  "hoogdoorlaatbeschermde_wegen_zonder_netwerk": [],
+  "m_c_oordelen_zonder_netwerk": [],
+  "gestelde_m_c_per_weg": {
+   "tweeter": -20
+  }
+ },
+ "e_som": {
+  "_": "Zonder gestelde actieve zijde kent de app maar twee toestanden: de woofer doet mee als PASSIEVE weg (het driewegrapport) of hij bestaat niet (het tweewegrapport). Er is geen derde toestand \"hij speelt mee maar staat niet in de netlist\", en precies die derde toestand IS de hybride. Het verschil hieronder is wat er met de beoordeelde band gebeurt als de woofer verdwijnt: van de merge-vloer van het wooferpaar naar de f_c van de mid-pod.",
+  "drieweg": {
+   "wegen": [
+    "woofer",
+    "mid",
+    "tweeter"
+   ],
+   "beoordeelde_band_vloer_hz": 52.368,
+   "aantal_vensters": 2
+  },
+  "tweeweg": {
+   "wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "beoordeelde_band_vloer_hz": 88.806,
+   "aantal_vensters": 1
+  },
+  "derde_toestand_bestond_niet": true
+ },
+ "f_gestelde_posities_tegen_het_venster": {
+  "_": "Het woofer→mid-venster van casus 1 beschrijft precies de overname die de actieve zijde overneemt, dus de vier gestelde posities kunnen ertegen gelegd worden vóór er iets draait.",
+  "venster_hz": [
+   147.946,
+   549.745
+  ],
+  "vloer_regel": "drive",
+  "plafond_regel": "breakup",
+  "posities": [
+   {
+    "hz": 362.3,
+    "binnen_venster": true
+   },
+   {
+    "hz": 400,
+    "binnen_venster": true
+   },
+   {
+    "hz": 450,
+    "binnen_venster": true
+   },
+   {
+    "hz": 500,
+    "binnen_venster": true
+   }
+  ]
+ }
+}

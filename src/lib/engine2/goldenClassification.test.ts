@@ -582,6 +582,84 @@ describe('E-3 — casus 1b: every golden reference says what it is a function of
 });
 
 /* ================================================================== *
+ * H-1 — the same rule on the FOURTH casus file: casus 1h (the hybrid)
+ * ================================================================== */
+
+import { loadGolden1h } from './casus1h.fixture.ts';
+
+describe('H-1 — casus 1h: every golden reference says what it is a function of', () => {
+  const golden1h = loadGolden1h() as unknown as Record<string, unknown>;
+  const at1h = (path: string): Record<string, unknown> => {
+    let node: unknown = golden1h;
+    for (const key of path.split('.')) {
+      expect(node, `casus 1h ${path}: missing at "${key}"`).toBeTruthy();
+      node = (node as Record<string, unknown>)[key];
+    }
+    expect(node, `casus 1h ${path}: not an object`).toBeTypeOf('object');
+    return node as Record<string, unknown>;
+  };
+  const CLASSED_1H: readonly string[] = [
+    'afgeleide_parameters.woofer',
+    'afgeleide_parameters.mid',
+    'afgeleide_parameters.tweeter',
+    /* The block this casus owns: the active side's three DSP settings per
+     * stated handover. Class A — a function of the measurements and the stated
+     * shape, and of nothing a search did. */
+    'afgeleide_parameters.actieve_zijde_afgeleid',
+    'verankerde_gaps_dB',
+    'kruisvensters.woofer_mid_orde4',
+    'kruisvensters.mid_tweeter_orde4',
+    'kandidaten._parameters',
+    'manifest_en_geometrie',
+    'manifest_en_geometrie.h1_md_vervalt',
+    'manifest_en_geometrie.h1_qes',
+    'manifest_en_geometrie.h1_vloer_nameting',
+    'v1_baseline',
+  ];
+  const UNCLASSED_1H: readonly string[] = ['casus', 'meetdata', 'vastgesteld', 'waarom', 'classificatie', 'toleranties', 'toleranties_toelichting'];
+  const NETLIST_KEYS_1H = Object.keys((golden1h.manifest_en_geometrie as { netlists: Record<string, string> }).netlists);
+  const ALL_1H = [...CLASSED_1H, ...NETLIST_KEYS_1H.map((k) => `kandidaten.${k}`)];
+
+  it('each classed block carries a klasse and the afhankelijkheid that class implies', () => {
+    for (const path of ALL_1H) {
+      const block = at1h(path);
+      const klasse = block.klasse as string;
+      expect(Object.keys(DEPENDENCY_OF_CLASS), `casus 1h ${path}: klasse`).toContain(klasse);
+      expect(block.afhankelijkheid, `casus 1h ${path}: afhankelijkheid does not match klasse ${klasse}`).toBe(DEPENDENCY_OF_CLASS[klasse]);
+    }
+    expect(NETLIST_KEYS_1H.some((k) => /^H_KAND_\d+$/.test(k)), 'casus 1h names no frozen netlist').toBe(true);
+  });
+
+  it('a NEW top-level block without a class fails here', () => {
+    const parents = new Set(ALL_1H.map((p) => p.split('.')[0]));
+    const stray = Object.keys(golden1h).filter((k) => !parents.has(k) && !UNCLASSED_1H.includes(k));
+    expect(stray, `casus 1h: top-level blocks with no klasse and no exemption: ${stray.join(', ')}`).toEqual([]);
+  });
+
+  it('class C lives ONLY under the baseline block, and there IS no v1 hybrid', () => {
+    for (const path of ALL_1H) {
+      if (path === 'v1_baseline') continue;
+      expect(at1h(path).klasse, `casus 1h ${path} is class C outside a baseline block`).not.toBe('C');
+    }
+    const baseline = at1h('v1_baseline');
+    expect(baseline.klasse).toBe('C');
+    /* Empty, and for a REASON that is stronger than casus 1's and casus 1b's:
+     * there is no v1 route that knows what a stated active handover is, so
+     * there is no earlier engine state whose outcome could be filed here. */
+    expect(baseline.referenties).toEqual({});
+    expect(String(baseline.v1_commit)).toMatch(/^[0-9a-f]{7,40}$/);
+    expect(String(baseline._)).toMatch(/geen v1-hybride/);
+  });
+
+  it('the ACTIVE way is classed like any other, and its excursion row says it judges nothing', () => {
+    const w = at1h('afgeleide_parameters.woofer');
+    expect(w.klasse).toBe('A');
+    expect(String(w.rol)).toMatch(/ACTIEF/);
+    expect(String(w.excursie_toelichting)).toMatch(/LEZING EN GEEN EIS/);
+  });
+});
+
+/* ================================================================== *
  * C-2 — the same rule on the THIRD casus file: casus 2 (synthetic)
  * ================================================================== */
 

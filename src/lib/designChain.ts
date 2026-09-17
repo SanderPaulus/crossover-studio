@@ -36,6 +36,13 @@ import {
   DEFAULT_R_SOURCE_TIER_OHM,
 } from './partAudit.ts';
 import { evalDriverFilter, type DriverFilterSpec } from './filters.ts';
+import {
+  activeHighPass,
+  handoverBandHz,
+  modelBranchResponse,
+  type ActiveHandover,
+  type ModelBranchSettings,
+} from './activeSide.ts';
 
 export interface ChainSettings {
   phasePriority: number; // 0..1
@@ -136,6 +143,81 @@ export interface ChainSettings {
    * chain-level choice key (`chainChoices.ts`); byte-identical when absent.
    */
   synthesisGrid?: 'alive' | 'full';
+  /**
+   * H-1 — THE STATED HANDOVER TO AN ACTIVE SIDE, and the DSP settings derived
+   * for it. The SIXTH chain-level choice key (`chainChoices.ts`).
+   *
+   * It is read before the tuner exists, three times over: the design step gives
+   * the lowest way the stated high-pass, the amplitude terms of BOTH searches
+   * sum against the modelled branch, and the synthesis fits a high-pass ladder
+   * that would otherwise not be there. That is what makes it a chain CHOICE and
+   * not a tuner one.
+   *
+   * `settings` is DERIVED from the measurements and the stated shape (class A,
+   * `activeSide.ts`) and travels beside the block rather than being re-derived
+   * here: a gain and a delay the chain fitted for itself would be a second
+   * opinion about the thing the report publishes.
+   *
+   * ABSENT = no active side (P4), and this chain reads exactly what it always
+   * read, byte for byte, for every caller.
+   */
+  activeSide?: { handover: ActiveHandover; settings: ModelBranchSettings };
+}
+
+
+export interface ChainInput {
+  grid: readonly number[];
+  w: GriddedResponse;
+  t: GriddedResponse;
+  /**
+   * H-1 — the ACTIVE way's measured response, banded like `w` and `t`, on the
+   * same grid. Required by `settings.activeSide` and meaningless without it:
+   * the modelled branch is this measurement times the stated DSP transfer.
+   */
+  activeMeasured?: GriddedResponse;
+  /** The same over the safety grid, when the caller supplies a safety set. */
+  activeMeasuredSafety?: GriddedResponse;
+  driverZ: Record<string, readonly Complex[]>;
+  adjust: TweeterAdjust;
+  seed: VfSpecs;
+  settings: ChainSettings;
+  xoRange?: [number, number];
+  /** What the DELIVERED crossing is judged against in the ranking: the pin
+   *  when the designer pinned it (a promise), else the measured physics
+   *  window (2xFs / excursion floor, beaming / lobing ceiling). Distinct
+   *  from xoRange, which is scan bookkeeping — the three-way lesson: a
+   *  candidate drifting inside the window is fine, leaving it is not. */
+  judgeWindow?: { floorHz?: number | null; ceilHz?: number | null } | null;
+}
+
+export interface ChainResult {
+  label: string;
+  xoRange?: [number, number];
+  vf: VfOptimizeResult;
+  rounds: number;
+  evaluations: number;
+  synthWoofer: SynthesisResult;
+  synthTweeter: SynthesisResult;
+  /** The assembled, TUNED network. */
+  parts: VxpPart[];
+  net: NetOptimizeResult;
+  /** Catalog BOM total (€) of the tuned network; null without priced catalog. */
+  bomTotalEur: number | null;
+  /** Disqualification reasons; empty = in the race. Same shape and same
+   *  meaning as the three-way chain: a disqualified candidate stays visible
+   *  and clickable, it just cannot win. */
+  disqualified: string[];
+  /** Amplifier-load verdict of the DELIVERED network: false when the tune was
+   *  rejected on the Z floor or the dip could not be repaired. RELATIVE — it
+   *  says the tune did not make things worse, NOT that the load is sane. */
+  zOk: boolean;
+  /** Minimum system |Zin| the amplifier actually sees, ohms. The absolute
+   *  companion to {@link zOk}, ranked as a CLASS. */
+  zMinOhm: number | null;
+  /** Delivered crossing inside its window/pin (null = nothing to judge). */
+  xoWindowOk: boolean | null;
+  /** Delivered phase-coherent overlap width, octaves. */
+  overlapOct: number | null;
 }
 
 /**
@@ -155,6 +237,14 @@ export interface ChainInput {
   grid: readonly number[];
   w: GriddedResponse;
   t: GriddedResponse;
+  /**
+   * H-1 — the ACTIVE way's measured response, banded like `w` and `t`, on the
+   * same grid. Required by `settings.activeSide` and meaningless without it:
+   * the modelled branch is this measurement times the stated DSP transfer.
+   */
+  activeMeasured?: GriddedResponse;
+  /** The same over the safety grid, when the caller supplies a safety set. */
+  activeMeasuredSafety?: GriddedResponse;
   driverZ: Record<string, readonly Complex[]>;
   adjust: TweeterAdjust;
   seed: VfSpecs;
@@ -219,6 +309,33 @@ export function runDesignChain(
   hooks?: ChainEngineHooks,
 ): ChainResult {
   const { grid, w, t, driverZ, adjust, settings: s } = input;
+  /* ---------------- H-1: the modelled active branch, built once ----------- *
+   * The measured active way times its stated DSP transfer, on each grid this
+   * chain evaluates on. Built HERE and not inside the searches, because it is
+   * the same fixed curve for every candidate of every round: a branch with no
+   * free parameter is data, and rebuilding data inside a loop is how two
+   * copies of one curve come to disagree. */
+  const activeSide = s.activeSide ?? null;
+  const modelSpec = activeSide
+    ? { ...activeSide.settings, kind: activeSide.handover.kind, order: activeSide.handover.order, hz: activeSide.handover.hz }
+    : null;
+  const activeBranch = activeSide && modelSpec && input.activeMeasured
+    ? modelBranchResponse(input.activeMeasured, modelSpec)
+    : null;
+  const activeBranchSafety = activeSide && modelSpec && input.activeMeasuredSafety
+    ? modelBranchResponse(input.activeMeasuredSafety, modelSpec)
+    : null;
+  if (activeSide && !input.activeMeasured) {
+    /* P4's visible half: a stated active side without the measurement it needs
+     * is a statement this chain cannot honour, and honouring it silently with
+     * "no branch" would design the passive network against a sum that does not
+     * exist. */
+    throw new Error(
+      `designChain: an active handover is stated for "${activeSide.handover.activeWay}" but no measured ` +
+        'response was supplied for it (ChainInput.activeMeasured).',
+    );
+  }
+
   const vfOpts = {
     phasePriority: s.phasePriority,
     eqBandsPerDriver: s.eqBandsPerDriver,
@@ -250,6 +367,11 @@ export function runDesignChain(
      * shelf EQ band as a pad with a bypass. Spread, so an unstated rule leaves
      * the key absent and the design step reads exactly what it always read. */
     ...(forbidsPads(s.lowestWayLevelWork) ? { noShelfOnWoofer: true } : {}),
+    /* H-1 — the stated high-pass of the lowest way, and the modelled branch the
+     * amplitude terms sum against. Spread: without an active side neither key
+     * exists and the design step is byte-identical. */
+    ...(activeSide ? { lowHighPass: activeHighPass(activeSide.handover) } : {}),
+    ...(activeBranch ? { activeBranch, activeLevelBandHz: handoverBandHz(activeSide!.handover.hz) } : {}),
   };
   // Round loop (was App-side): re-seed from the best while a round pays ≥1%.
   // Round 1 is a PRIORITY CLUSTER (setpoint ±5%) — a 5% priority nudge kicks
@@ -441,7 +563,12 @@ export function runDesignChain(
       catalogSnap: s.catalogSnap,
       snapPrefs: s.snapPrefs,
       band: s.band,
-      safety: s.safety,
+      /* H-1 — the safety set gains the modelled branch on its own grid, so the
+       * full-band safety pass judges the same sum the main grid does. */
+      ...(s.safety
+        ? { safety: activeBranchSafety ? { ...s.safety, active: activeBranchSafety } : s.safety }
+        : {}),
+      ...(activeBranch ? { activeBranch, activeLevelBandHz: handoverBandHz(activeSide!.handover.hz) } : {}),
       onStage: (detail, ev) => onProgress?.({ stage: 'tune', evals: evaluations + (ev ?? 0), detail }),
       // F2b: merged LAST, so a v2 run's gate and bound options cannot be
       // overwritten by anything above. Absent = byte-identical.

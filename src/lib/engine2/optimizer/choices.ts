@@ -425,6 +425,27 @@ export const POLISH_KEYS = [
    * the curve hangs on the design rather than on the project is so that two
    * voicings can be COMPARED instead of toggled. */
   'amplitudeTargetDb',
+  /* H-1 — the MODELLED ACTIVE BRANCH, evaluated by the caller that already
+   * holds it. Polish for exactly the reason the four entries above are: it
+   * carries no decision. WHETHER there is an active side at all, at which
+   * frequency, in which shape and with which gain, delay and polarity is
+   * `activeSide` — a CHAIN-level choice (`chainChoices.ts`), stated by the
+   * project and derived from the measurements before any search runs. What
+   * arrives here is that decision already sampled onto this run's own grids: a
+   * fixed curve with no free parameter in it.
+   *
+   * IT MAY NEVER BECOME A CHOICE. A candidate that brought its own modelled
+   * branch would be a second opinion about a handover the project stated, and
+   * worse, it would let the search move the sum it is judged against — which is
+   * precisely why the gain and the delay are fixed before the search rather
+   * than fitted on the network that comes out of it. */
+  'activeBranch',
+  /* H-1 — the band that modelled branch is LEVELLED over, derived by the CHAIN
+   * from the candidate's own stated handover. Polish for the reason
+   * `rippleTargetBandHz` is (E-5b): WHETHER there is an active side and where
+   * it hands over is the chain-level choice; this is that decision already in
+   * hertz, computed once by the caller that holds it. */
+  'activeLevelBandHz',
   /* E-5b — the band the choice above names, in hertz, derived by the CHAIN
    * from the handover positions it already holds. Polish for the same reason:
    * it carries no decision. The tuner knows a crossing only after it has solved

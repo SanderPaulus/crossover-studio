@@ -40,6 +40,7 @@ import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from '../..
 import { coilDcrInventory, describeCoilDcrModel, stampCoilDcr, type CoilDcrInventory, type CoilDcrModel } from '../../coilDcr.ts';
 import type { Complex } from '../../complex.ts';
 import { runDesignChain, type ChainInput, type ChainResult, type ChainStageProgress } from '../../designChain.ts';
+import { handoverBandHz, levelMatchDb, modelBranchResponse } from '../../activeSide.ts';
 import { runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
 import { busTopology, busTopologyOfNetlist, type NetOptimizeOptions } from '../../netOptimizer.ts';
 import type { NetElement, Netlist } from '../../network.ts';
@@ -447,6 +448,32 @@ export type V2Post = (m: V2Response) => void;
 
 const netlistOf = (parts: readonly VxpPart[]) =>
   crossoverToNetlist({ name: 'v2-candidate', parts: [...parts] } as VxpCrossover).netlist;
+
+/**
+ * H-1 — the modelled active branch of a two-way chain input, on its own grid.
+ *
+ * The same `modelBranchResponse` the chain uses, read here so the REQUIREMENT
+ * is judged on the same three branches the search was steered by. Empty without
+ * a stated active side, and then every call is byte-identical.
+ */
+function activeBranchOf(input: ChainInput): GriddedResponse[] {
+  const a = input.settings.activeSide;
+  if (!a || !input.activeMeasured) return [];
+  const model = modelBranchResponse(input.activeMeasured, {
+    ...a.settings,
+    kind: a.handover.kind,
+    order: a.handover.order,
+    hz: a.handover.hz,
+  });
+  /* LEVELLED against the lowest passive way's MEASURED response over the
+   * handover band, the same rule the searches apply per evaluation
+   * (`levelMatchDb`). Against the measurement and not against the delivered
+   * branch, because this sum is built before the netlist is solved here; the
+   * report re-levels against the delivered branch and publishes THAT as the
+   * DSP gain, which is the number a designer types in. */
+  const d = levelMatchDb(model, input.w, handoverBandHz(a.handover.hz));
+  return [d === null || d === 0 ? model : { ...model, spl: model.spl.map((v) => v + d) }];
+}
 
 /** |Z| and phase of a gridded complex impedance, as the extractors want it. */
 function curveOf(grid: readonly number[], z: readonly Complex[]) {
@@ -1747,6 +1774,13 @@ function summedResponse(
   grid: readonly number[],
   branches: { model: string; response: GriddedResponse }[],
   driverZ: Record<string, readonly Complex[]>,
+  /**
+   * H-1 — branches that are ALREADY filtered and hold no element of this
+   * netlist: the modelled active side. They join the sum and nothing else, so
+   * the requirement is judged on the sum a listener hears rather than on the
+   * passive network alone. Empty = byte-identical.
+   */
+  extra: readonly GriddedResponse[] = [],
 ): GriddedResponse | null {
   let sol;
   try {
@@ -1767,6 +1801,7 @@ function summedResponse(
     if (!h) continue;
     filtered.push({ response: applyTransfer(b.response, h) });
   }
+  for (const e of extra) filtered.push({ response: e });
   if (filtered.length === 0) return null;
   const combined = combineN(filtered);
   return {
@@ -3111,6 +3146,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
                 { model: 'tweeter', response: input.t },
               ],
               input.driverZ,
+              activeBranchOf(chainInput),
             );
             const band = judgeBandOf(v2, input.grid);
             return {
@@ -3153,6 +3189,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
                 { model: 'tweeter', response: input.t },
               ],
               input.driverZ,
+              activeBranchOf(chainInput),
             );
             return sum
               ? judgeResponse(

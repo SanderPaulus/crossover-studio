@@ -1,0 +1,666 @@
+{
+ "format": "acoustic-design-studio-filter",
+ "version": 1,
+ "savedAt": "2026-09-17T17:18:31.452Z",
+ "name": "H-KAND-4",
+ "parts": [
+  {
+   "type": "Generator",
+   "partId": "G",
+   "params": [
+    {
+     "name": "Eg",
+     "value": 2.83,
+     "unit": "V"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 3,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C1",
+   "params": [
+    {
+     "name": "C",
+     "value": 30.37,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 10,
+     "y": 6
+    }
+   ],
+   "locked": false
+  },
+  {
+   "type": "Inductor",
+   "partId": "L2",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.633,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.6978,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 6
+    },
+    {
+     "x": 10,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C3",
+   "params": [
+    {
+     "name": "C",
+     "value": 36.96,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 6
+    },
+    {
+     "x": 17,
+     "y": 6
+    }
+   ],
+   "locked": false
+  },
+  {
+   "type": "Inductor",
+   "partId": "L5",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.5504,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.3678,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 17,
+     "y": 6
+    },
+    {
+     "x": 24,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 24,
+     "y": 6
+    },
+    {
+     "x": 30,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 6
+    },
+    {
+     "x": 30,
+     "y": 11
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C8",
+   "params": [
+    {
+     "name": "C",
+     "value": 20.55,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 11
+    },
+    {
+     "x": 30,
+     "y": 16
+    }
+   ],
+   "locked": false
+  },
+  {
+   "type": "Resistor",
+   "partId": "R9",
+   "params": [
+    {
+     "name": "R",
+     "value": 5.245,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 16
+    },
+    {
+     "x": 30,
+     "y": 21
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 30,
+     "y": 21
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "L10",
+   "params": [
+    {
+     "name": "L",
+     "value": 1.201,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.5823,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 30,
+     "y": 6
+    },
+    {
+     "x": 37,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "C11",
+   "params": [
+    {
+     "name": "C",
+     "value": 10.86,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 37,
+     "y": 6
+    },
+    {
+     "x": 37,
+     "y": 13
+    }
+   ],
+   "locked": false
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 37,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 37,
+     "y": 6
+    },
+    {
+     "x": 44,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 44,
+     "y": 6
+    },
+    {
+     "x": 50,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 50,
+     "y": 6
+    },
+    {
+     "x": 57,
+     "y": 6
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "D",
+   "model": "mid",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 57,
+     "y": 6
+    },
+    {
+     "x": 57,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 57,
+     "y": 13
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C1",
+   "params": [
+    {
+     "name": "C",
+     "value": 2.27,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 3,
+     "y": 26
+    },
+    {
+     "x": 10,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L2",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.9146,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.496,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 26
+    },
+    {
+     "x": 10,
+     "y": 33
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 10,
+     "y": 33
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C3",
+   "params": [
+    {
+     "name": "C",
+     "value": 4.984,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 10,
+     "y": 26
+    },
+    {
+     "x": 17,
+     "y": 26
+    }
+   ],
+   "locked": false
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 17,
+     "y": 26
+    },
+    {
+     "x": 23,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L5",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.9696,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.5134,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 26
+    },
+    {
+     "x": 23,
+     "y": 31
+    }
+   ]
+  },
+  {
+   "type": "Capacitor",
+   "partId": "B·C6",
+   "params": [
+    {
+     "name": "C",
+     "value": 6.8,
+     "unit": "uF"
+    }
+   ],
+   "wires": [
+    {
+     "x": 23,
+     "y": 31
+    },
+    {
+     "x": 23,
+     "y": 36
+    }
+   ],
+   "locked": false
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 36
+    },
+    {
+     "x": 23,
+     "y": 41
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 41
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 23,
+     "y": 26
+    },
+    {
+     "x": 29,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Inductor",
+   "partId": "B·L8",
+   "params": [
+    {
+     "name": "L",
+     "value": 0.5718,
+     "unit": "mH"
+    },
+    {
+     "name": "DCR",
+     "value": 0.3762,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 29,
+     "y": 26
+    },
+    {
+     "x": 29,
+     "y": 31
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 29,
+     "y": 31
+    },
+    {
+     "x": 29,
+     "y": 36
+    }
+   ]
+  },
+  {
+   "type": "Resistor",
+   "partId": "B·R10",
+   "params": [
+    {
+     "name": "R",
+     "value": 4.298,
+     "unit": "Ω"
+    }
+   ],
+   "wires": [
+    {
+     "x": 29,
+     "y": 36
+    },
+    {
+     "x": 29,
+     "y": 41
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 29,
+     "y": 41
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 29,
+     "y": 26
+    },
+    {
+     "x": 36,
+     "y": 26
+    }
+   ]
+  },
+  {
+   "type": "Driver",
+   "partId": "B·D",
+   "model": "tweeter",
+   "inverted": false,
+   "params": [],
+   "wires": [
+    {
+     "x": 36,
+     "y": 26
+    },
+    {
+     "x": 36,
+     "y": 33
+    }
+   ]
+  },
+  {
+   "type": "Ground",
+   "params": [],
+   "wires": [
+    {
+     "x": 36,
+     "y": 33
+    }
+   ]
+  },
+  {
+   "type": "Wire",
+   "params": [],
+   "wires": [
+    {
+     "x": 3,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 6
+    },
+    {
+     "x": 1,
+     "y": 26
+    },
+    {
+     "x": 3,
+     "y": 26
+    }
+   ]
+  }
+ ]
+}

@@ -185,6 +185,10 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
      * faseontwikkeling en een interpolatie die op drie decimalen worden
      * weggeschreven. Tien namen, zestien gedraaide tests.
      *
+     * H-1 voegde de TWAALFDE toe: casus 1h's live reproductie door de HYBRIDE
+     * route — een live ketenrun die een netwerk byte voor byte naast een
+     * bevroren bestand legt, dus beide tags, om beide redenen.
+     *
      * M-3 voegde de ELFDE toe, en om exact dezelfde reden als M-2's drie: de
      * hermergde mid van casus 1 wordt vers herberekend en op drie decimalen
      * naast 13 640 weggeschreven rijen gelegd. Elf namen, zeventien gedraaide
@@ -196,6 +200,7 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
       `${BYTES_TAG} %s: het geschreven bestand reproduceert byte voor byte`,
       `${BYTES_TAG} %s: het getransformeerde bestand reproduceert byte voor byte`,
       `${BYTES_TAG} casus 1b: the cheapest delivered netlist, by recorded runtime, live through v2ChainOne, byte for byte`,
+      `${BYTES_TAG} casus 1h: the cheapest delivered netlist, by recorded runtime, live through the hybrid route, byte for byte`,
       `${BYTES_TAG} de fixture levert byte-identiek het bestand dat op schijf staat`,
       `${BYTES_TAG} de geschreven demoset-bestanden reproduceren byte voor byte`,
       `${BYTES_TAG} seed %i: ALL SIX verdicts reproduce the V50 block minus that row, and the M-1 block in full`,
@@ -207,7 +212,7 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     ]);
   });
 
-  it('de live-inventaris is precies deze DRIE blokken', () => {
+  it('de live-inventaris is precies deze VIER blokken', () => {
     /* Sinds 01-09-2026 zijn de twee live ketenruns twee BESTANDEN: `[live]` is
      * planning, en een synchrone `handleV2Request` laat twee van hen binnen één
      * bestand niet naast elkaar draaien. De splitsing verandert dus WAAR zij
@@ -223,6 +228,7 @@ describe('V45 — de CI-laag bewaakt de natuurkunde, de lokale suite de bytes', 
     expect(taggedNames(LIVE_TAG)).toEqual([
       `${LIVE_TAG} a wholesale refusal comes back as a refusal`,
       `${LIVE_TAG} casus 1b: the two-way route still delivers the frozen netlist`,
+      `${LIVE_TAG} casus 1h: the hybrid route still delivers the frozen netlist`,
       `${LIVE_TAG} the run still delivers the frozen netlist`,
     ]);
   });

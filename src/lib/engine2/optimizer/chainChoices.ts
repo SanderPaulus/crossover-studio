@@ -193,6 +193,41 @@ export const CHAIN_CHOICE_KEYS = [
    * byte-identical across this key's arrival, and it is measured rather than
    * argued (the live chain runs in `casus1V2Candidates.test.ts`). */
   'phasePriority',
+  /* --- H-1: THE STATED HANDOVER TO AN ACTIVE SIDE ---
+   *
+   * The seventh key, and the one that decides the topology most bluntly of all
+   * seven: with it stated the lowest PASSIVE way gets a high-pass ladder, and
+   * without it that way has no high-pass at all. There is no value tune that
+   * turns one into the other — a tuner moves numbers between the parts the
+   * design and synthesis steps chose, and this key decides which parts those
+   * steps propose.
+   *
+   * MEASURED AT H-1 STEP 0, and the measurement is why the key exists rather
+   * than a settings field: asked for an LR4 high-pass at 450 Hz through the
+   * two-way chain's own seed, the design step delivered `enabled: false` at
+   * 200 Hz — the literal in `baseSpecs` — with no message, no warning and no
+   * problem line anywhere (F0). The synthesis, handed the same specification
+   * directly, built the full ladder (8 components against 4). The gap was in
+   * the design step alone, and it was silent.
+   *
+   * THE VALUE CARRIES ITS OWN DSP SETTINGS, for the reason V51b's maximum
+   * travels inside `lowestWayLevelWork`: a handover without its gain and delay
+   * models nothing, and a gain and delay without a handover mean nothing. Both
+   * halves are DERIVED — the handover from the project's stated block, the
+   * three DSP settings from the measurements and the stated shape
+   * (`activeSide.ts`, class A) — so the chain never fits them for itself, and
+   * the sum a candidate is judged on cannot depend on a number that candidate
+   * chose.
+   *
+   * ONLY THE TWO-WAY CHAIN READS IT TODAY, and that is said out loud rather
+   * than smoothed over: a hybrid's passive network is the ways ABOVE the active
+   * handover, and on this casebook that is two. `withDeclaredChainChoices`
+   * therefore skips it BY NAME on the three-way route instead of writing a key
+   * into settings nobody reads — decoration is what V19 calls that.
+   *
+   * ABSENT = no active side (P4), and every chain reads exactly what it always
+   * read, byte for byte. */
+  'activeSide',
 ] as const;
 
 export type ChainChoiceKey = (typeof CHAIN_CHOICE_KEYS)[number];
@@ -205,7 +240,18 @@ export type ChainChoiceKey = (typeof CHAIN_CHOICE_KEYS)[number];
  * knob is a translation layer, and a translation layer is where two
  * descriptions of one thing drift apart.
  */
-export type ChainCandidateChoices = Pick<Chain3Settings, ChainChoiceKey>;
+type ChainSettingsVocabulary = Chain3Settings & Pick<ChainSettings, 'activeSide'>;
+export type ChainCandidateChoices = Pick<ChainSettingsVocabulary, ChainChoiceKey>;
+
+/**
+ * H-1 — the chain-level keys the THREE-WAY chain does not read.
+ *
+ * A BENOEMDE VERZAMELING and not a filter on a type: a key that appears here
+ * has to be named, which is the cheapest way to keep "this chain has not
+ * learned it yet" from turning into "this chain silently ignores it". When the
+ * three-way chain learns one, it leaves this list and the guard notices.
+ */
+export const CHAIN_KEYS_THE_THREE_WAY_CHAIN_DOES_NOT_READ = ['activeSide'] as const;
 
 /**
  * What the candidate says about each chain-level choice key.
@@ -288,6 +334,8 @@ export function withDeclaredChainChoices<I extends { settings: Partial<ChainCand
   if (!declaration) return input;
   const stated: Partial<ChainCandidateChoices> = {};
   for (const k of CHAIN_CHOICE_KEYS) {
+    /* H-1 — skipped BY NAME, not by type: see the list's own comment. */
+    if ((CHAIN_KEYS_THE_THREE_WAY_CHAIN_DOES_NOT_READ as readonly string[]).includes(k)) continue;
     const v = declaration.stated[k];
     if (v !== undefined) (stated as Record<string, unknown>)[k] = v;
   }
@@ -322,7 +370,12 @@ export function withDeclaredChainChoices<I extends { settings: Partial<ChainCand
  */
 export function chainSettingsForTwoWay(
   declaration: ChainChoiceDeclaration | undefined,
-): Partial<Pick<ChainSettings, 'eqBandsPerDriver' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid' | 'phasePriority'>> {
+): Partial<
+  Pick<
+    ChainSettings,
+    'eqBandsPerDriver' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid' | 'phasePriority' | 'activeSide'
+  >
+> {
   if (!declaration) return {};
   const s = declaration.stated;
   return {
@@ -338,6 +391,9 @@ export function chainSettingsForTwoWay(
      * identity for every v1 caller, and on the v2 route the declaration always
      * states it. */
     ...(s.phasePriority !== undefined ? { phasePriority: s.phasePriority } : {}),
+    /* H-1 — the seventh, and the only one of the seven that exists on THIS
+     * chain's settings alone. Absent = no active side, byte-identical. */
+    ...(s.activeSide !== undefined ? { activeSide: s.activeSide } : {}),
   };
 }
 

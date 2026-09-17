@@ -239,7 +239,10 @@ describe('V41 — the chain-level choice keys', () => {
     // M-4 added the sixth (`phasePriority`: how the budget is split between
     // response and phase — read by the design step, the synthesis step and only
     // then the tuner, stated unconditionally from the engine's own midpoint).
+    // H-1 — the SEVENTH: `activeSide`, the stated handover to an active side,
+    // with a genuine ABSENT (every fully passive design states none).
     expect([...CHAIN_CHOICE_KEYS].sort()).toEqual([
+      'activeSide',
       'eqBands',
       'leanTargetDb',
       'lowestWayCoilMaxHenry',

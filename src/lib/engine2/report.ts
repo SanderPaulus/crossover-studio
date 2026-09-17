@@ -26,7 +26,7 @@
 
 import type { Complex } from '../complex.ts';
 import { fromPolar } from '../complex.ts';
-import { toComplex } from '../dsp.ts';
+import { logspace, toComplex } from '../dsp.ts';
 import type { Netlist } from '../network.ts';
 import { unwrapPhaseDeg } from '../timing.ts';
 import { DEG_PER_HALF_TURN, MM_PER_M, H_PER_MH } from './constants.ts';
@@ -167,6 +167,21 @@ import { engineV2Mark } from './facade.ts';
  * and whether anything is judging it. A limit that only existed while an
  * optimisation was running would be invisible exactly when it matters.
  */
+import {
+  ACTIVE_SIDE_VERSION,
+  HANDOVER_MATCH_OCTAVES,
+  activeHighPass,
+  activeLowPass,
+  deriveModelBranch,
+  fitModelBranch,
+  levelMatchDb,
+  modelBranchResponse,
+  handoverBandHz,
+  modelBranchTransfer,
+  type ActiveHandover,
+  type ModelBranchSettings,
+} from '../activeSide.ts';
+
 export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSettings {
   /**
    * Measured DC resistance per driver, ohms. A4 lists R_e as M-E's DATA NEED,
@@ -214,6 +229,32 @@ export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSet
    * stated one means.
    */
   targetCurve?: TargetCurve;
+  /**
+   * H-1 — THE STATED HANDOVER TO AN ACTIVE SIDE.
+   *
+   * With it, the way it names as active is judged as a MODELLED branch: the
+   * measured way times the stated low-pass, at a gain, delay and polarity
+   * derived from the measurements alone. That branch joins every ACOUSTIC
+   * composition — the sum, the crossings, the ordering, the phase tracking, the
+   * lobing — and joins NOTHING electrical: the amplifier this app designs for
+   * does not drive it, so M-A, M-B, M-L, M-M and every gate keep reading the
+   * netlist and only the netlist.
+   *
+   * Absent = no active side (P4), and every report is byte-identical to what it
+   * always was.
+   */
+  activeHandover?: ActiveHandover;
+  /**
+   * H-1 — STATED DSP settings for the active side, instead of the derived ones.
+   *
+   * Absent = derived (`activeSide.ts`), which is what every run does. It exists
+   * for ONE question, and it is a question a reader of a finished design has to
+   * be able to ask: what does this loudspeaker do with the delay the target
+   * block tells me to dial in, rather than with the one the search was steered
+   * by? Answering it any other way would mean a second implementation of M-K
+   * beside the report's, and that is the drift this project keeps paying for.
+   */
+  activeSideSettings?: Partial<ModelBranchSettings>;
 }
 
 export interface FilterInput {
@@ -396,6 +437,78 @@ export interface LevelWorkAnalysis {
   notes: string[];
 }
 
+/**
+ * H-1 — WHAT THE ACTIVE SIDE IS, AND WHAT THE PASSIVE DESIGN OWES IT.
+ *
+ * Present only when the project STATES an active handover. Everything in it is
+ * derived from the measurements and the stated shapes — class A — and fixed
+ * before any search runs, so that the sum a candidate is judged on cannot
+ * depend on a number the candidate chose.
+ */
+export interface ActiveSideReport {
+  /** The stated block, verbatim. */
+  stated: ActiveHandover;
+  /** Version of the derivation, for the cache (A5e.5). */
+  version: string;
+  /**
+   * THE THREE DSP SETTINGS — the numbers that go into the processor.
+   *
+   * The DELAY and the POLARITY are class A: derived from the measurements and
+   * the stated shape before any search runs, so no candidate can move the sum
+   * it is judged on. The GAIN is class B when a netlist is loaded — it is
+   * LEVELLED against the branch that was actually built, because a real
+   * high-pass ladder into a real driver impedance is lossy where an ideal
+   * filter is not, and a level match is a normalisation rather than a search
+   * parameter (`levelMatchDb`). `classAGainDb` beside it is what the stated
+   * shape alone would have asked for, so the distance is readable.
+   */
+  settings: ModelBranchSettings | null;
+  /** The gain the STATED shape alone asks for — class A, and the same on every netlist. */
+  classAGainDb: number | null;
+  /** The band the level match and the delay fit were read over, and its width. */
+  fitBandHz: [number, number];
+  fitOctaves: number;
+  /** Peak-to-peak of the ideal-shape sum over that band, and what the other polarity scored. */
+  handoverWindowDb: number | null;
+  otherPolarityWindowDb: number | null;
+  /**
+   * THE QUANTITY THE DELAY AND THE POLARITY WERE FITTED ON: how far the summed
+   * level sits above what the same two branches make with the modelled one
+   * REVERSED, averaged over the handover band. Deep = in phase, and it is the
+   * same measurement the cabinet verification makes.
+   */
+  nullMarginDb: number | null;
+  /** The same for the polarity that was NOT chosen, at its own best delay — the
+   *  tegenproef, so a reader can see by how much the choice was made. */
+  otherPolarityNullMarginDb: number | null;
+  otherPolarityDelayMs: number | null;
+  /** The high-pass the lowest PASSIVE way must realise, in words. */
+  passiveTarget: string;
+  /** The low-pass the ACTIVE side must realise, in words. */
+  activeTarget: string;
+  /** Empty when everything derived; otherwise what was missing, by name (P4). */
+  off: string[];
+  /**
+   * WHAT THE DELIVERED NETWORK WOULD PREFER, re-fitted on it with the same
+   * function that produced `settings`.
+   *
+   * A READING beside the number that was judged, never in place of it — and on
+   * a hybrid it is also the input of the SECOND PASS: a passive high-pass
+   * ladder into a real driver impedance is not a lossless ideal high-pass, so
+   * the delivered branch sits a few dB under the shape the handover states and
+   * the active side has to be levelled against what was BUILT. Measured at H-1
+   * on casus 1h: 2.3 to 3.2 dB, which is far too much to judge a sum with.
+   * Null without a netlist.
+   */
+  deliveredRefit: { settings: ModelBranchSettings; handoverWindowDb: number; nullMarginDb: number | null } | null;
+  /**
+   * The sum of the PASSIVE ways only, dB on `analysisGrid` — what the main
+   * amplifier alone produces. Beside the full sum rather than instead of it: a
+   * reader who wants to see what the model contributes needs both.
+   */
+  passiveOnlySumDb: number[] | null;
+}
+
 export interface EngineV2Report {
   engine: { label: string; version: string; mark: string };
   ingest: IngestResult;
@@ -520,6 +633,11 @@ export interface EngineV2Report {
   };
   system: SystemSummary;
   /**
+   * H-1 — the stated active side and everything derived for it, or null when
+   * the project states none (P4).
+   */
+  activeSide: ActiveSideReport | null;
+  /**
    * UI-1 — WHAT this report is about: the NETWORK it was built on, by name,
    * or null when none was loaded.
    *
@@ -538,6 +656,21 @@ export interface EngineV2Report {
 
 /** How close a way has to be to the sum to count as "contributing" (indicator a). */
 const CONTRIBUTING_WITHIN_DB = 10;
+
+/**
+ * H-1 — resolution of the grid the active side's gain and delay are fitted on.
+ *
+ * A PROBE resolution and not a project number (P6): the fit reads one level
+ * mean and one phase alignment over one octave, and what decides the delay's
+ * precision is the delay search's own step, not this. It is stated so the fit
+ * is reproducible, and `h1ActiveSide.test.ts` measures that halving or doubling
+ * it does not move the answer beyond the degree class.
+ */
+const HANDOVER_FIT_POINTS = 121; // P6-OK: probe resolution over one octave
+
+/** The grid the active side's fit is read on — derived from its own band. */
+const fitGridOf = (a: { fitBandHz: [number, number] }): number[] =>
+  logspace(a.fitBandHz[0], a.fitBandHz[1], HANDOVER_FIT_POINTS);
 
 export function buildReport(input: EngineV2ReportInput): EngineV2Report {
   /* R_e's THREE SOURCES resolve inside the derivation pass, not here.
@@ -628,6 +761,155 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       branchDb.push({ driver: d.driver, grid, db: filtered.map((z) => dbAmp(cabs(z))) });
     }
   }
+  /* ---------------- H-1: the MODELLED branch of the active side ----------- *
+   * A stated active handover puts one more branch in the ACOUSTIC composition
+   * and nothing at all in the electrical one. It is added HERE, after the
+   * passive loop and before the ordering, for exactly that reason: everything
+   * below this point reads `branchComplex`/`branchDb` and is a statement about
+   * the sum, while every electrical metric reads `analysis.transferByModel`,
+   * which this never touches. The separation is structural rather than
+   * remembered.
+   *
+   * THE DERIVATION RUNS WITHOUT A NETLIST, on its own grid over the handover
+   * band, because it has to be class A: a gain and a delay fitted on the
+   * delivered network would be knobs the search could move, and then the sum a
+   * candidate was judged on would depend on a number the candidate chose. Fixed
+   * first, judged after; what the delivered network would have preferred is a
+   * READING and rides along as `deliveredRefit`. */
+  const activeSide: ActiveSideReport | null = (() => {
+    const stated = input.settings.activeHandover;
+    if (!stated) return null;
+    const fitBandHz = handoverBandHz(stated.hz);
+    const fitGrid = logspace(fitBandHz[0], fitBandHz[1], HANDOVER_FIT_POINTS);
+    const onGrid = (driver: string, g: readonly number[]) => {
+      const src = ingest.drivers.find((x) => x.driver === driver)?.onAxisFull;
+      if (!src) return null;
+      return {
+        freq: [...g],
+        spl: g.map((f) => interpLog(src.grid, src.db, f)),
+        phaseDeg: g.map((f) => interpLog(src.grid, src.phaseDeg, f)),
+      };
+    };
+    const d = deriveModelBranch(stated, onGrid(stated.activeWay, fitGrid), onGrid(stated.passiveWay, fitGrid));
+    const shape = `${stated.kind}${stated.order} at ${stated.hz.toFixed(1)} Hz`;
+    return {
+      stated,
+      version: ACTIVE_SIDE_VERSION,
+      settings: d.settings,
+      classAGainDb: d.settings ? d.settings.gainDb : null,
+      fitBandHz,
+      fitOctaves: 2 * HANDOVER_MATCH_OCTAVES,
+      handoverWindowDb: d.handoverWindowDb,
+      otherPolarityWindowDb: d.otherPolarityWindowDb,
+      nullMarginDb: d.nullMarginDb ?? null,
+      otherPolarityNullMarginDb: d.otherPolarityNullMarginDb ?? null,
+      otherPolarityDelayMs: d.otherPolarityDelayMs ?? null,
+      passiveTarget: `${stated.passiveWay}: acoustic high-pass, ${shape} (${activeHighPass(stated).order}th order ${activeHighPass(stated).kind})`,
+      activeTarget: `${stated.activeWay}: acoustic low-pass, ${shape} (${activeLowPass(stated).order}th order ${activeLowPass(stated).kind}), realised in DSP`,
+      off: d.off,
+      deliveredRefit: null,
+      passiveOnlySumDb: null,
+    };
+  })();
+  /* The passive-only sum is taken BEFORE the model branch joins, so the two
+   * sums are the same arithmetic on two branch sets rather than one derived
+   * from the other. */
+  const passiveOnlySum = sumBranches(branchComplex, grid);
+  if (activeSide && grid && activeSide.settings) {
+    const src = ingest.drivers.find((x) => x.driver === activeSide.stated.activeWay)?.onAxisFull;
+    if (src) {
+      /* THE GAIN IS LEVELLED AGAINST WHAT WAS BUILT. Measured at H-1: the
+       * delivered passive branch sits 2.3-3.2 dB under the stated shape, and a
+       * report that published the class-A gain would hand a designer a number
+       * three dB wrong for the network in front of them. The delay and the
+       * polarity are NOT touched — those stay the class-A answer. */
+      /* A STATED override wins over the derivation, and over the level match
+       * below it: a caller that says what the DSP is set to is not asking for
+       * an estimate of it. */
+      const stated = input.settings.activeSideSettings;
+      if (stated) activeSide.settings = { ...activeSide.settings, ...stated };
+      const deliveredPassive0 = stated ? null : branchComplex.get(activeSide.stated.passiveWay);
+      if (deliveredPassive0) {
+        const model0 = modelBranchResponse(
+          {
+            freq: [...grid],
+            spl: grid.map((f) => interpLog(src.grid, src.db, f)),
+            phaseDeg: grid.map(() => 0),
+          },
+          { ...activeSide.settings, kind: activeSide.stated.kind, order: activeSide.stated.order, hz: activeSide.stated.hz },
+        );
+        const d0 = levelMatchDb(
+          model0,
+          { freq: [...grid], spl: deliveredPassive0.map((z) => dbAmp(cabs(z))), phaseDeg: grid.map(() => 0) },
+          activeSide.fitBandHz,
+        );
+        if (d0 !== null) activeSide.settings = { ...activeSide.settings, gainDb: activeSide.settings.gainDb + d0 };
+      }
+      const h = modelBranchTransfer(
+        { ...activeSide.settings, kind: activeSide.stated.kind, order: activeSide.stated.order, hz: activeSide.stated.hz },
+        grid,
+      );
+      const filtered = grid.map((f, i) => {
+        const p = toComplex(interpLog(src.grid, src.db, f), interpLog(src.grid, src.phaseDeg, f));
+        return { re: p.re * h[i].re - p.im * h[i].im, im: p.re * h[i].im + p.im * h[i].re };
+      });
+      branchComplex.set(activeSide.stated.activeWay, filtered);
+      branchDb.push({ driver: activeSide.stated.activeWay, grid, db: filtered.map((z) => dbAmp(cabs(z))) });
+      activeSide.passiveOnlySumDb = passiveOnlySum ? passiveOnlySum.map((z) => dbAmp(cabs(z))) : null;
+      /* WHAT THE DELIVERED NETWORK WOULD HAVE PREFERRED — the same fit, on the
+       * branch the netlist actually produces instead of on the stated ideal.
+       * A reading and never a replacement: what was JUDGED is the class-A
+       * answer above, and the distance between the two is what says how far the
+       * realisation sits from its target. */
+      const deliveredPassive = branchComplex.get(activeSide.stated.passiveWay);
+      if (deliveredPassive) {
+        const fg = fitGridOf(activeSide);
+        const pick = (f: number) => {
+          /* Nearest grid point in log distance: the analysis grid is dense over
+           * this octave and interpolating a wrapped phase would be a second
+           * convention where this module already has one. */
+          let best = 0;
+          let bestD = Infinity;
+          for (let i = 0; i < grid.length; i++) {
+            const dd = Math.abs(Math.log(grid[i] / f));
+            if (dd < bestD) {
+              bestD = dd;
+              best = i;
+            }
+          }
+          return best;
+        };
+        const idx = fg.map(pick);
+        const passiveOnFit = {
+          freq: [...fg],
+          spl: idx.map((i) => dbAmp(cabs(deliveredPassive[i]))),
+          phaseDeg: idx.map((i) => cargDeg(deliveredPassive[i])),
+        };
+        const activeOnFit = {
+          freq: [...fg],
+          spl: fg.map((f) => interpLog(src.grid, src.db, f)),
+          phaseDeg: fg.map((f) => interpLog(src.grid, src.phaseDeg, f)),
+        };
+        const re = fitModelBranch(activeSide.stated, activeOnFit, passiveOnFit);
+        activeSide.deliveredRefit =
+          re.settings && re.handoverWindowDb !== null
+            ? { settings: re.settings, handoverWindowDb: re.handoverWindowDb, nullMarginDb: re.nullMarginDb ?? null }
+            : null;
+      }
+    } else {
+      problems.push(
+        `The active side names "${activeSide.stated.activeWay}", which has no measured on-axis response: ` +
+          'the modelled branch is absent from the sum and every sum below is the passive network alone.',
+      );
+    }
+  }
+  if (activeSide && activeSide.off.length > 0) {
+    problems.push(
+      `The stated active handover could not be modelled: ${activeSide.off.join('; ')}. ` +
+        'Every sum below is the passive network alone.',
+    );
+  }
+
   const order = branchDb.length
     ? orderDriversLowToHigh(branchDb)
     : orderByMeasuredCentroid(ingest);
@@ -975,9 +1257,24 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
      * would report the coplanar 0.0 dB. Every drop is recorded and turned into
      * a stated reason below. */
     const missing: string[] = [];
+    /* H-1 — the MODELLED branch's transfer, so the vertical synthesis sees the
+     * whole loudspeaker. A way driven by its own amplifier radiates from its
+     * own acoustic centre like any other, and leaving it out would describe a
+     * two-way version of a three-way speaker — the exact defect this loop's own
+     * `missing` list was written to stop. It is the ACOUSTIC composition, so it
+     * gets the model; nothing electrical below reads this. */
+    const modelTransfer: Record<string, readonly Complex[]> =
+      activeSide?.settings && grid
+        ? {
+            [activeSide.stated.activeWay]: modelBranchTransfer(
+              { ...activeSide.settings, kind: activeSide.stated.kind, order: activeSide.stated.order, hz: activeSide.stated.hz },
+              grid,
+            ),
+          }
+        : {};
     for (const driver of order) {
       const d = ingest.drivers.find((x) => x.driver === driver);
-      const h = analysis.transferByModel[driver];
+      const h = analysis.transferByModel[driver] ?? modelTransfer[driver];
       const z = input.geometry.zOffsetMm?.[driver];
       if (z === undefined) missing.push(`${driver} (no acoustic-centre offset entered)`);
       else if (!d?.onAxis) missing.push(`${driver} (no on-axis far-field measurement)`);
@@ -1572,6 +1869,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       highPassProtected,
     },
     system,
+    activeSide,
     subject: { network: input.filter?.name ?? null },
     problems,
   };
