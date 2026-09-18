@@ -29,6 +29,37 @@ describe('resample', () => {
   it('refuses to extrapolate', () => {
     expect(() => resample([100, 200], [80, 90], [0, 0], [50])).toThrow(/extrapolate/);
   });
+
+  /* 18-09-2026 — the black screen at f min 35 Hz. The simulation grid is
+   * `logspace(fMin, measuredTop, 600)`, and logspace lands its last point on
+   * `lo · (hi/lo)`: for 35 → 19999.51 that is one rounding step ABOVE the
+   * measurement's own last sample, and the guard read it as extrapolation.
+   * The premise is asserted first so the claim stays falsifiable — a logspace
+   * that ever lands exactly would make the second half vacuous. */
+  it('tolerates the rounding of logspace on the measurement edge (the 35 Hz crash)', () => {
+    const top = 19999.51;
+    const meas = [20.508, 100, 1000, 10000, top];
+    const grid = logspace(35, top, 600);
+    expect(grid[grid.length - 1]).toBeGreaterThan(top); // the premise: rounding, not equality
+    expect(grid[grid.length - 1] - top).toBeLessThan(top * 1e-12);
+    const r = resample(meas, [80, 82, 84, 86, 88], [0, 0, 0, 0, 0], grid);
+    expect(r.spl[r.spl.length - 1]).toBeCloseTo(88, 9); // the edge sample, clamped
+    expect(r.freq.length).toBe(600);
+  });
+
+  it('a symmetric rounding step below the first sample is tolerated too', () => {
+    const meas = [20.508, 100, 1000];
+    const grid = [20.508 * (1 - 1e-12), 50, 1000];
+    expect(() => resample(meas, [80, 82, 84], [0, 0, 0], grid)).not.toThrow();
+  });
+
+  it('still refuses anything beyond rounding at either edge', () => {
+    const meas = [20.508, 100, 1000, 10000, 19999.51];
+    const spl = [80, 82, 84, 86, 88];
+    const ph = [0, 0, 0, 0, 0];
+    expect(() => resample(meas, spl, ph, [35, 19999.51 * (1 + 1e-6)])).toThrow(/extrapolate/);
+    expect(() => resample(meas, spl, ph, [20.508 * (1 - 1e-6), 1000])).toThrow(/extrapolate/);
+  });
 });
 
 describe('combine', () => {

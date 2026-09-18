@@ -48,6 +48,12 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná de Setup-bereik-guard (18-09-2026) gemeten op 526 s — 200 bestanden (199 geslaagd,
+    1 overgeslagen), 2641 tests (2637 geslaagd, 4 overgeslagen), in één keer groen, alleen
+    gedraaid met de dev-server gestopt.** GEEN nieuw bestand; +3 tests, exact de drie
+    dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
+    staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
+    voor de twee weggegooide runs die ernaast liepen.
     **Ná H-3b (18-09-2026) gemeten op 724 s — 200 bestanden (199 geslaagd, 1 overgeslagen),
     2638 tests (2634 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de drie
     gerichte achtergrondruns en zonder dev-server.** +1 BESTAND (`engine2/h3bFlankBudget.test.ts`,
@@ -6951,3 +6957,39 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   gesteld getal en dus Sanders keuze, en het levert een regeneratie van dat corpus op. (3) Het
   budget is een eis op de FLANK en niet op de delay: H-1's open punt (de sturende tegen de
   ingestelde delay) staat nog. (4) De volle run is niet gedraaid — zie de meetregel bij `test:fast`.
+
+### Setup-bereik-guard (18-09-2026: f min 35 Hz gaf een zwart scherm; alleen `dsp.ts`)
+- **DE BEVINDING, gereproduceerd in de browser vóór er iets veranderde.** Tweewegdemo, Setup →
+  f min 200 → 35, blur: de hele boom unmount (zwart scherm, geen error boundary boven `<App>`) op
+  `resample: grid [35, 19999.510000000002] exceeds measurement range [20.508, 19999.51] — refusing
+  to extrapolate`. De simulatie bouwt haar raster als `logspace(fMin, meetplafond, 600)` en
+  `logspace` legt zijn laatste punt op `lo · (hi/lo)` — dat landt voor 35 → 19999,51 één
+  afrondingsstap BOVEN het laatste meetpunt en voor 30, 40, 50 en 200 exact erop (nagemeten in
+  node). De tweewegtak resamplet zonder `clampEdges` en de guard las die ulp als extrapolatie.
+- **DE REPARATIE ZIT IN DE GUARD EN NIET IN `logspace`, met opzet.** `resample` staat sinds deze
+  fix een relatieve speling van `EDGE_ROUNDING_TOLERANCE` (1e-9, een precisieconstante en geen
+  projectgetal) toe aan beide randen; de lus klemde élk punt al op de meetuitgestrektheid, dus
+  binnen die speling wordt het randmonster gelezen. **Dat verandert GEEN enkele bestaande uitkomst:**
+  een run die niet gooide krijgt byte voor byte hetzelfde raster en dezelfde interpolatie, alleen
+  een run die gooide gooit niet meer. `logspace` zelf exact op `hi` laten landen zou het laatste
+  rasterpunt van élk raster met een niet-exacte verhouding met een ulp verplaatsen — de
+  fixture-rasters (20,508–20 000/143, 200–20 000/96 en /600) landen vandaag exact, maar de
+  veiligheids- en app-rasters op gemeten plafonds niet allemaal, en een ulp in een raster is een
+  ander zaad voor de simplex (V46). Dat is een regeneratiebesluit en geen bugfix.
+- `src/lib/dsp.test.ts` — +3 claims (8 → 11): de premisse (logspace 35 → 19999,51 landt erboven,
+  binnen 1e-12 relatief — zonder die assert is de rest vacuüm) en de toleratie mét het gelezen
+  randmonster; de symmetrische stap onder het eerste monster; en dat ALLES voorbij afronding aan
+  beide randen nog steeds `extrapolate` gooit. Nagemeten in de draaiende app: f min 200 → 35 →
+  blur rendert, de SPL-grafiek loopt vanaf 35 Hz, geen nieuwe console-fout.
+- **Geen error boundary toegevoegd** — dat is een structurele UI-beslissing (wat toont de app als
+  een memo gooit) en geen onderdeel van deze reparatie; het zwarte scherm blijft het gedrag van
+  élke andere ongevangen `throw` in een render.
+- **`npm run test:fast` ná de fix: 526 s, 200 bestanden (199 geslaagd, 1 overgeslagen), 2641 tests (2637 geslaagd,
+  4 overgeslagen), in één keer groen, ALLEEN gedraaid met de dev-server gestopt — +3 tests op
+  H-3b's 2638, exact de drie dsp-claims. **Twee eerdere runs in deze sessie zijn WEGGEGOOID en
+  hier alleen als les genoteerd:** de eerste liep op de boom van vóór de comment-verplaatsing en
+  een `pkill -f "vitest run"` raakte hem niet (de vitest-processen heten `node (vitest N)`), dus
+  de herstart liep er tien minuten NAAST (14:00:44 / 660 s en 14:02:32 / 617 s, beide groen, één
+  log met twee samenvattingen). Wacht op de PID van `npm run test:fast` en niet op een naam.** Geen volle run: geen enkele uitkomst van
+  een niet-gooiende run beweegt, en de twee byte-baselines (`f4cRegression`,
+  `workerRouteRegression`) plus `toggleRegression` draaien in de snelle laag.

@@ -30,6 +30,24 @@ export interface GriddedResponse {
 }
 
 /**
+ * Relative slack on the extrapolation guard of `resample` — FLOATING-POINT
+ * ROUNDING and nothing more. `logspace(lo, hi, n)` lands its last point on
+ * `lo · (hi/lo)`, which sits a few ulp beside `hi` for some pairs and dead on
+ * it for others: 35 → 19999.51 lands on 19999.510000000002, 200 → 19999.51
+ * lands exactly. A grid built ON the measurement's own edge is not asking to
+ * extrapolate, and the loop below clamps every point to the measured extent
+ * anyway, so within this slack the edge sample is what gets read. 1e-9
+ * relative is 20 µHz at 20 kHz — orders below any sweep's resolution — and a
+ * precision constant, not a project number.
+ *
+ * Measured in the app (18-09-2026): f min 35 Hz on the two-way demo (tweeter
+ * measured to 19999.51 Hz) threw here from the simulation memo and unmounted
+ * the whole tree — a black screen, there being no error boundary above <App>.
+ * 30, 40, 50 and 200 Hz all happened to land exactly and never showed it.
+ */
+const EDGE_ROUNDING_TOLERANCE = 1e-9;
+
+/**
  * Resample a measurement onto `grid` (linear interpolation in log-frequency).
  * Phase is unwrapped before interpolation so wrap seams cannot corrupt values
  * between samples. `grid` must lie inside the measurement's frequency range —
@@ -44,10 +62,14 @@ export function resample(
   grid: readonly number[],
   opts: { clampEdges?: boolean } = {},
 ): GriddedResponse {
-  if (!opts.clampEdges && (grid[0] < freq[0] || grid[grid.length - 1] > freq[freq.length - 1])) {
+  const lo = freq[0];
+  const hi = freq[freq.length - 1];
+  const below = grid[0] < lo - Math.abs(lo) * EDGE_ROUNDING_TOLERANCE;
+  const above = grid[grid.length - 1] > hi + Math.abs(hi) * EDGE_ROUNDING_TOLERANCE;
+  if (!opts.clampEdges && (below || above)) {
     throw new Error(
       `resample: grid [${grid[0]}, ${grid[grid.length - 1]}] exceeds measurement range ` +
-        `[${freq[0]}, ${freq[freq.length - 1]}] — refusing to extrapolate.`,
+        `[${lo}, ${hi}] — refusing to extrapolate.`,
     );
   }
   const unwrapped = unwrapPhaseDeg(phaseDeg);
