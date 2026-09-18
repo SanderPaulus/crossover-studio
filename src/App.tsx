@@ -183,7 +183,17 @@ import {
  * declares active, what is missing when it cannot be modelled, and the
  * sentences that say so (`lib/v2ActiveSide.ts`). */
 import { describeDspTarget, dspTargetBlock } from './lib/engine2/dspTarget.ts';
-import { complementSettings, handoverBandHz, type ActiveHandover, type ModelBranchSettings } from './lib/activeSide.ts';
+import { complementSettings, leanJudgedBand, type ActiveHandover, type ModelBranchSettings } from './lib/activeSide.ts';
+/* H-3 — the Network tab reads Hybrid mode: the strip's band, the flank chip,
+ * the Q_es sentence and the template seed (`lib/hybridNetwork.ts`). */
+import {
+  TEMPLATE_NOMINAL_NOTE,
+  describeFlank,
+  describeQesFactor,
+  hybridStripNote,
+  hybridStripRange,
+  seedLowestPassiveWay,
+} from './lib/hybridNetwork.ts';
 import {
   ACTIVE_SIDE_FLANK_COLUMN,
   ACTIVE_SIDE_GUIDED_LINE,
@@ -269,6 +279,7 @@ import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import {
   declareCandidateChainChoices,
+  declareCandidateChoices,
 } from './lib/engine2/optimizer/candidateDeclaration.ts';
 /* E-3b — the N-neutral half of the v2 scan door: what the app hands the worker,
  * for two ways exactly as for three. One implementation, two callers. */
@@ -316,6 +327,7 @@ import { CatalogManager } from './components/CatalogManager.tsx';
 import { helpSectionForTab } from './lib/help.ts';
 import { fileSafeName } from './lib/filenames.ts';
 import {
+  TEMPLATE_REFERENCE,
   filterTemplate,
   supportsWayCount,
   TEMPLATE_ORDERS,
@@ -350,6 +362,7 @@ import {
   runChainScan,
   runChainScanV2,
   runNetOptimizeTask,
+  runTuneNetlistV2,
   runMinimizeTask,
   runSoloChainTask,
   runVfRoundsTask,
@@ -7170,12 +7183,54 @@ export default function App() {
     return visibleLo < floor / 1.05 ? floor : null;
   }, [result, splViewX]);
 
+  /**
+   * H-3 — THE STATED HANDOVER THE NETWORK TAB READS: the first stated one, the
+   * panel's rule, with the form it runs in. Null without an armed Hybrid mode,
+   * and then every figure below is byte for byte what it always was.
+   */
+  const hybridStrip = useMemo(() => {
+    if (!v2Hybrid || !v2ActiveSide.shape || !v2ActiveSide.form) return null;
+    const hz = v2ActiveSide.handoversHz[0];
+    if (hz === undefined) return null;
+    return { hz, form: v2ActiveSide.form, kind: v2ActiveSide.shape.kind, order: v2ActiveSide.shape.order };
+  }, [v2Hybrid, v2ActiveSide]);
+  /**
+   * H-3 — WHERE THE STRIP JUDGES ON A HYBRID: the visible range with its floor
+   * lifted to the bottom of the handover band (`hybridStripRange` →
+   * `leanJudgedBand`, the run's own rule). Below it the sum is the passive
+   * network alone and reads NOT JUDGED. Null without Hybrid mode.
+   */
+  const hybridStripBand = useMemo(() => {
+    if (!result || !hybridStrip) return null;
+    const lo = splViewX ? splViewX[0] : result.freq[0];
+    const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
+    return hybridStripRange([lo, hi], hybridStrip.hz);
+  }, [result, splViewX, hybridStrip]);
   const combinedFlat = useMemo(() => {
     if (!result) return null;
     const lo = splViewX ? splViewX[0] : result.freq[0];
     const hi = splViewX ? splViewX[1] : result.freq[result.freq.length - 1];
+    /* H-3 — in Hybrid mode the strip judges from the handover band's floor; a
+     * visible range that ends below it judges nothing (the chip says so). */
+    if (hybridStripBand) {
+      return hybridStripBand.range
+        ? computeResponseStats(result.freq, result.combinedSpl, hybridStripBand.range[0], hybridStripBand.range[1])
+        : null;
+    }
     return computeResponseStats(result.freq, result.combinedSpl, lo, hi);
-  }, [result, splViewX]);
+  }, [result, splViewX, hybridStripBand]);
+  /**
+   * H-3 — the flank of the drawn network, READ from the v2 report of the active
+   * design (`report.activeSide.flankError`, H-2b): `flankErrorDb` there is the
+   * function the shortlist's worker judges its rows with, so this is one
+   * number and not a second measurement.
+   */
+  const hybridFlank = useMemo(
+    () => (hybridStrip ? (engineV2Report?.report?.activeSide?.flankError ?? null) : null),
+    [hybridStrip, engineV2Report],
+  );
+  /** H-3 — the stated Q_es maximum the source-resistance rule names; absent off the v2 route. */
+  const v2QesStatedMax = engineV2Enabled ? engineV2Gates.qesMultiplierMax : undefined;
 
   /** Model vs measurement (VALIDATIE.md loop): the loaded verification FRD
    *  against the simulated combined, level-aligned and delay-fitted over the
@@ -8186,6 +8241,48 @@ export default function App() {
    * `runOpts.acknowledgedWindowNotice` — the designer has already seen the
    * pre-start estimate for this run and said start anyway (F3b, deliverable 3).
    */
+  /**
+   * H-3 — THE TWO-WAY CHAIN SETTINGS as this app states them, in ONE place with
+   * two readers: the two-way scan (`runVfOptimize`) and the tune of a DRAWN
+   * network in Hybrid mode (`runNetOptimizeHybrid`). Moved verbatim out of the
+   * scan; nothing here changed value. Two literals of one settings object are
+   * how a scan and a button come to tune the same design differently.
+   */
+  const twoWayChainSettings = (args: {
+    band: [number, number];
+    angleData: ChainSettings['angleData'];
+    safety: ChainSettings['safety'];
+    targets: ChainSettings['targets'];
+  }): ChainSettings => ({
+    phasePriority: phasePriority / 100,
+    eqBandsPerDriver: vfEqBands,
+    angleData: args.angleData,
+    directivityWeight: dirWeight / 100,
+    powerMetric,
+    powerFoldWeight,
+    errorSmoothOct,
+    costWeight,
+    dissipationWeight,
+    ampMinLoadOhm: ampMinLoadOhm ?? undefined,
+    audit: {
+      thresholds: { rSourceOhm: rSourceLimitOhm },
+      fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
+    },
+    ampTarget,
+    cutOnly: true, // passive-only: EQ may never boost
+    breakupGuard,
+    structurePreference: parseHpLpPref(hpLpPref),
+    targets: args.targets,
+    hpFloorHz: tweeterHpFloor ?? undefined,
+    phaseMetric: phaseMetricMode,
+    acousticSlopes: acousticSlopesValue() ?? undefined,
+    band: args.band,
+    synthMode,
+    catalogSnap: catalogSnap && hasImportedCatalog(),
+    snapPrefs: snapPrefsValue(),
+    safety: args.safety,
+  });
+
   async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean; fieldMode?: FieldMode } = {}) {
     const refusal = refuseIfUnverified();
     if (refusal) {
@@ -9740,35 +9837,9 @@ export default function App() {
       const targets = stagedOn
         ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) }
         : undefined;
-      const settings: ChainSettings = {
-        phasePriority: phasePriority / 100,
-        eqBandsPerDriver: vfEqBands,
-        angleData,
-        directivityWeight: dirWeight / 100,
-        powerMetric,
-        powerFoldWeight,
-        errorSmoothOct,
-      costWeight,
-        dissipationWeight,
-        ampMinLoadOhm: ampMinLoadOhm ?? undefined,
-        audit: {
-          thresholds: { rSourceOhm: rSourceLimitOhm },
-          fbHz: Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined,
-        },
-        ampTarget,
-        cutOnly: true, // passive-only: EQ may never boost
-        breakupGuard,
-        structurePreference: parseHpLpPref(hpLpPref),
-        targets,
-        hpFloorHz: tweeterHpFloor ?? undefined,
-        phaseMetric: phaseMetricMode,
-        acousticSlopes: acousticSlopesValue() ?? undefined,
-        band: opts.band,
-        synthMode,
-        catalogSnap: catalogSnap && hasImportedCatalog(),
-        snapPrefs: snapPrefsValue(),
-        safety,
-      };
+      /* H-3 — the settings literal has ONE home (`twoWayChainSettings`), read
+       * here and by the tune of a drawn network in Hybrid mode. */
+      const settings: ChainSettings = twoWayChainSettings({ band: opts.band, angleData, safety, targets });
       // Mutable on purpose: an unpinned run starts as one free chain and, once
       // its crossing is known, appends two pinned follow-ups around it — a
       // single chain has no competition and one bad basin then simply wins
@@ -10122,8 +10193,9 @@ export default function App() {
          * the sum below the handover is real and the band stays. */
         const leanBandFor = (active?: { handover: ActiveHandover }): [number, number] | null => {
           if (!active?.handover.unmeasured || !settings.band) return null;
-          const floor = Math.max(settings.band[0], handoverBandHz(active.handover.hz)[0]);
-          return floor < settings.band[1] ? [floor, settings.band[1]] : null;
+          /* H-3 — the one rule (`leanJudgedBand`), read by the run here and by
+           * the Network tab's strip. */
+          return leanJudgedBand(settings.band, active.handover.hz);
         };
         const chainInputFor = (
           v: { label: string; xoRange?: [number, number] },
@@ -10938,8 +11010,67 @@ export default function App() {
         order = 0;
       }
     }
+    /* H-3 — IN HYBRID MODE THE TEMPLATE IS THE PASSIVE PAIR, and its lowest
+     * way is seeded from the STATED handover by the app's own acoustic
+     * synthesis on the measured way (`seedLowestPassiveWay`, the H-2b route's
+     * spec) — not a textbook ladder against a nominal 8 Ω. The other branch
+     * keeps the textbook ladder at the template's reference, and the note says
+     * which half is which. A synthesis that refuses (a degenerate load) falls
+     * back to the textbook template and says why (F0). */
+    const hybridSeed = ((): { xo: VxpCrossover; note: string } | { fallback: string } | null => {
+      if (!v2Hybrid || !v2ActiveSide.roles || !v2ActiveSide.shape || !result) return null;
+      const hz = v2ActiveSide.handoversHz[0];
+      if (hz === undefined) return null;
+      const roles = v2ActiveSide.roles;
+      const lowModel = canonicalModelForRole(roles.lowestPassive, threeWay);
+      const highModel = canonicalModelForRole(roles.highest, threeWay);
+      const lowLoaded = roles.lowestPassive === 'low' ? woofer : roles.lowestPassive === 'mid' ? midDrv : tweeter;
+      const z = impedances[lowModel];
+      if (order === 0) return { xo: filterTemplate({ order: 0, wayCount: 2, models: [lowModel, highModel] }), note: 'blank scaffold over the passive pair' };
+      if (!lowLoaded || !z) return { fallback: `no measured response or impedance for the lowest passive way (${lowModel})` };
+      try {
+        const grid = result.freq;
+        const seed = seedLowestPassiveWay({
+          handover: { hz, kind: v2ActiveSide.shape.kind, order: v2ActiveSide.shape.order },
+          grid,
+          driverZ: resampleImpedance(z.freq, z.magnitude, z.phase, grid).z,
+          driverSplDb: resample(lowLoaded.frd.freq, lowLoaded.frd.spl, lowLoaded.frd.phase, grid).spl,
+          upperKnee: { enabled: true, kind: 'BW', order, freq: TEMPLATE_REFERENCE.fcHz },
+          phasePriority: phasePriority / 100,
+          label: lowModel,
+        });
+        const xo = filterTemplate({
+          order,
+          wayCount: 2,
+          models: [lowModel, highModel],
+          lowBranch: { components: seed.components, label: `hybrid ${formatHandover(hz)}` },
+        });
+        return {
+          xo,
+          note:
+            `${seed.note}; the ${highModel} branch is the textbook ladder at ${TEMPLATE_REFERENCE.fcHz} Hz / ` +
+            `${TEMPLATE_REFERENCE.rOhm} Ω — run ⚙ Optimize components to fit the assembly to the stated handover and every stated requirement.`,
+        };
+      } catch (e) {
+        return { fallback: `the acoustic seed was refused (${e instanceof Error ? e.message : String(e)})` };
+      }
+    })();
+    if (hybridSeed && 'xo' in hybridSeed) {
+      addDesign(hybridSeed.xo.name || 'New network', normalizeOrigin(hybridSeed.xo.parts));
+      setNetOptNote(`New from template (Hybrid mode): ${hybridSeed.note}`);
+      return;
+    }
     const xo = filterTemplate({ order, wayCount: threeWay ? 3 : templateWays, models });
     addDesign(xo.name || 'New network', normalizeOrigin(xo.parts));
+    /* H-3 — a textbook template SAYS what it is instead of breaking an
+     * expectation silently. Only on the v2 route: with the flag off the app
+     * is what it always was. */
+    if (engineV2Enabled) {
+      setNetOptNote(
+        `New from template — ${TEMPLATE_NOMINAL_NOTE}` +
+          (hybridSeed && 'fallback' in hybridSeed ? ` (Hybrid mode: ${hybridSeed.fallback})` : ''),
+      );
+    }
   }
 
   /** Manual "Build passive filter" runs the synchronous synthesis — the
@@ -11650,6 +11781,15 @@ export default function App() {
     // busy, but a second overlapping run would interleave stage labels).
     if (netOptBusy) return;
     if (!activeDesign || !sim || Object.keys(impedances).length === 0) return;
+    /* H-3 — IN HYBRID MODE THE DRAWN NETWORK IS TUNED ON THE CHAIN'S OWN
+     * TERMS: the stated active side, the lean band, every stated requirement as
+     * a gate or a budget — through the v2 worker (`v2TuneNetlist`), on the
+     * same option assembly the scan's chain uses. The v1 tune below knows none
+     * of that and would tune the drawing to a sum without the active side. */
+    if (v2Hybrid) {
+      runNetOptimizeHybrid();
+      return;
+    }
     const seedParts = [...activeDesign.parts];
     setNetOptBusy(true);
     setNetOptNote(null);
@@ -11725,14 +11865,228 @@ export default function App() {
                 (r.audit && r.audit.entries.some((e) => e.applied)
                   ? ` · audit removed inert: ${r.audit.entries.filter((e) => e.applied).map((e) => e.label).join(', ')}`
                   : '') +
-                (r.audit?.rSourceWarn && r.audit.rSourceTunedOhm !== null
-                  ? ` · ⚠ source R at the low driver ${r.audit.rSourceTunedOhm.toFixed(2)} Ω @ ${Math.round(r.audit.rSourceAtHz ?? 0)} Hz (Qes ×${(r.audit.qesFactor ?? 1).toFixed(2)})`
-                  : '') +
+                /* H-3 — the source-R sentence names the stated Q_es maximum
+                 * (`describeQesFactor`); a failed stated requirement warns even
+                 * where the v1 ohm limit does not. */
+                ((): string => {
+                  const qes = describeQesFactor(r.audit?.qesFactor ?? null, v2QesStatedMax);
+                  if (!r.audit || r.audit.rSourceTunedOhm === null || !(r.audit.rSourceWarn || qes?.failed)) return '';
+                  return ` · ⚠ source R at the low driver ${r.audit.rSourceTunedOhm.toFixed(2)} Ω @ ${Math.round(r.audit.rSourceAtHz ?? 0)} Hz (${qes?.text ?? `Qes ×${(r.audit.qesFactor ?? 1).toFixed(2)}`})`;
+                })() +
                 (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
                 (r.valueWindowNote ? ` · ${r.valueWindowNote}` : '') +
                 (r.ampFloorNote ? ` · ⚠ ${r.ampFloorNote}` : ''),
         );
+      })
+      .catch((e) => {
+        if (!(e instanceof CancelledError)) setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => setNetOptBusy(false));
+  }
+
+  /**
+   * H-3 — ⚙ OPTIMIZE COMPONENTS IN HYBRID MODE: the drawn network through the
+   * v2 worker's `v2TuneNetlist` route.
+   *
+   * What crosses is what the two-way SCAN crosses for one candidate — the chain
+   * frame (`v2ChainFrame`), the measured ways on it, the passive impedances
+   * (the active way's WITHHELD, H-2), the chain settings (`twoWayChainSettings`,
+   * the same literal), the stated active side with its class-A DSP settings
+   * (derived by the report, one implementation) or the lean form's complement,
+   * the lean band (`leanJudgedBand`), the run settings (`v2RunSettingsFor`) and
+   * the declaration — minus a generated candidate, because the network is the
+   * designer's. The worker then runs the chain's own tune step on the drawn
+   * parts (`assembledTuneOptions`, `runCandidate`), so the flank target, the
+   * gates and the budgets are the ones the scan judges by and not a second
+   * assembly of them.
+   *
+   * A refused tune (a gate, a budget, the stated topology rule) applies
+   * NOTHING and says which rule refused (V31): the drawing stays as it was.
+   */
+  function runNetOptimizeHybrid() {
+    if (!activeDesign || !sim || !result || !v2ActiveSide.roles || !v2ActiveSide.shape) return;
+    const roles = v2ActiveSide.roles;
+    const loadedOf = (r: BranchRole): Loaded | null => (r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter);
+    const passiveLow = loadedOf(roles.lowestPassive);
+    const high = loadedOf(roles.highest);
+    const hz = v2ActiveSide.handoversHz[0];
+    if (!passiveLow || !high || hz === undefined) return;
+    /* The DSP settings of the active side: derived ONCE, by the report — the
+     * same derivation the run reads (H-2) — or the lean form's complement. */
+    const built = buildV2Report(null, hz);
+    const a = built?.report?.activeSide ?? null;
+    const active: { handover: ActiveHandover; settings: ModelBranchSettings } | null = a?.settings
+      ? { handover: a.stated, settings: a.settings }
+      : a?.form === 'unmeasured'
+        ? { handover: a.stated, settings: complementSettings(a.stated) }
+        : null;
+    if (!active) {
+      setNetOptNote(
+        `⚠ ${t('Cannot tune yet')} — the active handover at ${formatHandover(hz)} could not be modelled: ` +
+          `${a ? a.off.join('; ') : 'the report states no active side'}.`,
+      );
+      return;
+    }
+    const activeLoaded = roles.active && v2ActiveSide.form === 'measured' ? loadedOf(roles.active) : null;
+    const activeModel = activeLoaded && roles.active ? canonicalModelForRole(roles.active, threeWay) : null;
+    const seedParts = [...activeDesign.parts];
+    setNetOptBusy(true);
+    setNetOptNote(null);
+    setNetOptDiff(null);
+    setNetOptStages([]);
+    setNetOptPlan(['value tune', ...(stagedOn ? ['prune sweep', 'escalation'] : []), 'drift check', 'cap shrink ladder', 'amp-load floor', ...(catalogSnap && hasImportedCatalog() ? ['catalog snap'] : [])]);
+    setChainScan(null);
+    const simGrid = result.freq;
+    const v1Band: [number, number] = evalBand
+      ? [evalBand.fromHz, evalBand.toHz]
+      : [Math.max(300, simGrid[0]), Math.min(simGrid[simGrid.length - 1] * 0.975, num(fMax, 20000))];
+    const frame = v2ChainFrame({ report: engineV2Report?.report, simGrid, fallbackBand: v1Band });
+    const grid = frame.grid;
+    const onChainGrid = (l: Loaded) =>
+      grid === simGrid ? resample(l.frd.freq, l.frd.spl, l.frd.phase, grid) : bandedOnGrid(l, grid);
+    const w = onChainGrid(passiveLow);
+    const tt = onChainGrid(high);
+    const activeMeasured = activeLoaded ? onChainGrid(activeLoaded) : null;
+    /* H-2 — the active way's impedance is WITHHELD from the passive chain. */
+    const passiveZ = (z: Record<string, Complex[]>) => {
+      if (!activeModel) return z;
+      const out = { ...z };
+      delete out[activeModel];
+      return out;
+    };
+    const zOnGrid = passiveZ(zGridWithSlots(impedances, grid));
+    const safety = (() => {
+      const lo = Math.max(200, passiveLow.frd.freq[0], high.frd.freq[0]);
+      const hi = Math.min(20000, passiveLow.frd.freq[passiveLow.frd.freq.length - 1], high.frd.freq[high.frd.freq.length - 1]);
+      if (!(hi > lo * 1.5)) return undefined;
+      const sGrid = logspace(lo, hi, 240);
+      const onSafety = (l: Loaded) => resample(l.frd.freq, l.frd.spl, l.frd.phase, sGrid);
+      return { freqs: sGrid, w: onSafety(passiveLow), t: onSafety(high), z: passiveZ(zGridWithSlots(impedances, sGrid)) };
+    })();
+    const activeMeasuredSafety =
+      activeLoaded && safety ? resample(activeLoaded.frd.freq, activeLoaded.frd.spl, activeLoaded.frd.phase, safety.freqs) : null;
+    const targets = stagedOn ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) } : undefined;
+    const settings = twoWayChainSettings({ band: frame.band, angleData: angleResponsesOn(grid) ?? undefined, safety, targets });
+    /* H-2b — the lean form's judged band starts at the handover band's floor. */
+    const leanBand = active.handover.unmeasured && settings.band ? leanJudgedBand(settings.band, hz) : null;
+    const input: ChainInput = {
+      grid: [...grid],
+      w,
+      t: tt,
+      driverZ: zOnGrid,
+      ...(activeMeasured ? { activeMeasured } : {}),
+      ...(activeMeasuredSafety ? { activeMeasuredSafety } : {}),
+      adjust: branchAdj.tweeter,
+      seed: defaultVFilters(),
+      settings: { ...settings, ...(leanBand ? { band: leanBand } : {}), activeSide: active },
+    };
+    const chainDeclaration = declareCandidateChainChoices({
+      stated: { eqBands: settings.eqBandsPerDriver },
+      ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
+      ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
+        ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
+        : {}),
+      activeSide: active,
+    });
+    const coilFamilyByModel: Record<string, string> = Object.fromEntries(
+      (Object.entries(coilFamilyByRole) as [BranchRole, string][]).map(([r, v]) => [canonicalModelForRole(r, threeWay), v]),
+    );
+    /* The declaration of a DRAWN network: no cage and no window floor (it was
+     * generated by nobody), every designer-stated key exactly as the scan
+     * declares it. */
+    const declaration = declareCandidateChoices({
+      cages: [null],
+      windowFloorsHz: [null],
+      multiWay: true,
+      rippleStopFromLowestCrossing: true,
+      stated: {
+        band: input.settings.band,
+        acousticSlopes: settings.acousticSlopes,
+        staged: settings.targets,
+        ampTarget: settings.ampTarget,
+        powerMetric: settings.powerMetric,
+        phaseMetric: settings.phaseMetric,
+        catalogSnap: settings.catalogSnap,
+        snapPrefs: settings.snapPrefs,
+        breakupGuard: settings.breakupGuard,
+        safety: settings.safety,
+        audit: settings.audit,
+        ampMinLoadOhm: settings.ampMinLoadOhm,
+        zFloorStrict: true,
+      },
+      targetCurve: activeTargetCurve,
+      ...(engineV2Gates.maxDriveOnFsDb !== undefined ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb } : {}),
+      ...(Object.keys(driveOnFsMaxDbByModel).length > 0 ? { driveOnFsLimitDbByDriver: { ...driveOnFsMaxDbByModel } } : {}),
+      ...((engineV2Report?.report?.metrics.driveExcursion.length ?? 0) > 0 ? { driveCeilingDerived: true } : {}),
+      ...(engineV2Gates.lfBumpBudgetDb !== undefined ? { lfBumpBudgetDb: engineV2Gates.lfBumpBudgetDb } : {}),
+      ...(Object.keys(coilFamilyByModel).length > 0
+        ? { coilDcrFamilyByWay: coilFamilyByModel, ...(coilDcrFits.length > 0 ? { coilDcrFits } : {}), coilDcrCatalogLabel: coilCatalogLabel }
+        : {}),
+    });
+    const v2 = v2RunSettingsFor({
+      limits: engineV2Gates,
+      driveOnFsMaxDbByModel,
+      ampMinLoadOhm,
+      facts: v2MeasuredFacts,
+      targetCurve: activeTargetCurve,
+      judgeBandHz: input.settings.band ?? frame.band,
+      ...(reportingPowerW(engineV2Settings.amplifierPowerW) !== undefined
+        ? { amplifierPowerW: reportingPowerW(engineV2Settings.amplifierPowerW)! }
+        : {}),
+    });
+    const flankBefore = engineV2Report?.report?.activeSide?.flankError ?? null;
+    runTuneNetlistV2(
+      {
+        input,
+        parts: seedParts,
+        label: activeDesign.name,
+        v2,
+        candidate: {
+          declaration,
+          chainDeclaration,
+          provenance: 'drawn network — ⚙ Optimize components on the Network tab in Hybrid mode (H-3)',
+        },
+      },
+      (stage) => setNetOptStages((p) => [...p, stage]),
+    )
+      .then((r) => {
+        const net = r.result.net;
+        const gatesFailed = r.gates.filter((g) => g.active && !g.pass).map((g) => g.gate);
+        if (r.rejection) {
+          /* V31 — refused wholesale: nothing is applied and the rule is named. */
+          setNetOptNote(
+            `⚠ ${t('Hybrid mode: the tune was refused and nothing was applied')} — ${r.rejection.reason}` +
+              (r.rejection.kinds.length > 0 ? ` [${r.rejection.kinds.join(', ')}]` : ''),
+          );
+          setNetOptAudit(null);
+          return;
+        }
+        commitSchematic(r.result.parts);
+        setNetworkActive(true);
+        setNetOptDiff(diffTunedParts(seedParts, r.result.parts));
+        setNetOptAudit(net.audit ?? null);
+        const flank = r.measurements.flankError ?? null;
+        const qes = describeQesFactor(net.audit?.qesFactor ?? null, v2QesStatedMax);
+        setNetOptNote(
+          `${t('Hybrid mode')} (${active.handover.unmeasured ? t('lean form') : t('measured form')}, ` +
+            `${active.handover.kind}${active.handover.order} @ ${formatHandover(hz)}): ` +
+            `${net.tuned} components tuned (${net.evaluations.toLocaleString('nl-NL')} sims)` +
+            (flank
+              ? ` — ${t('target-flank error')} ${flankBefore ? `${flankBefore.rmsDb.toFixed(2)} → ` : ''}${flank.rmsDb.toFixed(2)} dB rms (level ${flank.levelDb >= 0 ? '+' : ''}${flank.levelDb.toFixed(2)} dB, absorbed by the DSP gain)`
+              : ` — ${t('target-flank error')}: ${t('not read')}`) +
+            (active.handover.unmeasured ? ` · ${t('sum')}: ${t(ACTIVE_SIDE_NOT_JUDGED)}` : ` · peak ${net.before.rippleDb.toFixed(2)} → ${net.after.rippleDb.toFixed(2)} dB`) +
+            ` · phase ${net.before.phaseDeg.toFixed(1)}° → ${net.after.phaseDeg.toFixed(1)}°` +
+            (r.violation ? ` · ⚠ ${t('gate')}: ${r.violation}` : gatesFailed.length === 0 ? ` · ${t('every armed gate inside')}` : '') +
+            (qes ? ` · ${qes.failed ? '⚠ ' : ''}${qes.text}` : '') +
+            (net.removed.length > 0 ? ` · pruned: ${net.removed.join(', ')}` : '') +
+            (net.snapNote ? ` · ${net.snapNote}` : '') +
+            (net.ampFloorNote ? ` · ⚠ ${net.ampFloorNote}` : ''),
+        );
+        setV2RunNotes((prev) => {
+          const seen = new Set(prev);
+          return [...prev, ...r.notes.filter((n) => !seen.has(n))];
+        });
       })
       .catch((e) => {
         if (!(e instanceof CancelledError)) setError(e instanceof Error ? e.message : String(e));
@@ -11890,8 +12244,14 @@ export default function App() {
         `${Math.round(combinedFlat.score)} / 100`,
         `avg ±${combinedFlat.avgDevDb.toFixed(2)} · P95 ±${combinedFlat.p95DevDb.toFixed(
           2,
-        )} · peak ±${combinedFlat.peak.devDb.toFixed(2)} dB`,
+        )} · peak ±${combinedFlat.peak.devDb.toFixed(2)} dB` +
+          /* H-3 — on a hybrid the figure is read from the handover band's floor upward. */
+          (hybridStripBand ? ` · hybrid: judged from ${hybridStripBand.floorHz.toFixed(0)} Hz` : ''),
       );
+    if (hybridStrip) {
+      const d = describeFlank(hybridFlank, hybridStrip.hz);
+      push('Target-flank error', d.value, `against the stated ${hybridStrip.kind}${hybridStrip.order} high-pass at ${hybridStrip.hz.toFixed(1)} Hz (H-2b)`);
+    }
     if (pairScores) {
       const pp = (n: string, p: typeof pairScores.low) =>
         push(
@@ -16451,11 +16811,28 @@ export default function App() {
                   ? 'chip-neutral'
                   : combinedFlat.score >= 85 ? 'chip-ok' : combinedFlat.score >= 70 ? 'chip-warn' : 'chip-bad'
               }`}
-              title={`${!designShaped ? (emptyNetworkLoaded ? t('NO NETWORK LOADED — the design tab that is active holds no components, so this figure describes the unfiltered drivers and judges nothing. A score on nothing is not a verdict.') : t('RAW DRIVERS — no crossover is shaping the sum yet, so this is just where you start from, not a problem. It colours once a design exists.')) + '\n\n' : ''}${t("Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)")}`}
+              title={`${!designShaped ? (emptyNetworkLoaded ? t('NO NETWORK LOADED — the design tab that is active holds no components, so this figure describes the unfiltered drivers and judges nothing. A score on nothing is not a verdict.') : t('RAW DRIVERS — no crossover is shaping the sum yet, so this is just where you start from, not a problem. It colours once a design exists.')) + '\n\n' : ''}${t("Whole-range flatness of the combined response, 0–100 — from the AVERAGE deviation over the visible range, so one narrow dip can't dominate the verdict (the peak ±dB in the SPL strip still shows it)")}${hybridStripBand ? '\n\n' + t(hybridStripNote(hybridStripBand.floorHz, true, ACTIVE_SIDE_NOT_JUDGED)) : ''}`}
             >
               {t('Response')} <strong>{combinedFlat.score.toFixed(0)}</strong>
             </span>
           )}
+          {/* H-3 — HYBRID MODE ON THE STRIP. The sum below the handover reads
+              NOT JUDGED (the pinned sentence), and the flank of the drawn
+              network against its stated target stands beside the response —
+              the lean form's own judgement, read from the report. */}
+          {hybridStripBand && !combinedFlat && !simStale && (
+            <span className="status-chip chip-neutral" title={t(hybridStripNote(hybridStripBand.floorHz, false, ACTIVE_SIDE_NOT_JUDGED))}>
+              {t('Response')} <strong>{t('not judged')}</strong>
+            </span>
+          )}
+          {hybridStrip && !simStale && (() => {
+            const d = describeFlank(hybridFlank, hybridStrip.hz);
+            return (
+              <span className="status-chip chip-neutral hybrid-flank" title={t(d.title)}>
+                {t('Flank')} <strong>{t(d.value)}</strong>
+              </span>
+            );
+          })()}
           {integration?.overlapCentreHz != null && !simStale && (
             <span
               className="status-chip"
@@ -21562,17 +21939,21 @@ export default function App() {
                     e: netOptAudit.entries.filter((e) => e.verdict === 'earned').length,
                     g: netOptAudit.entries.filter((e) => e.verdict === 'grey').length,
                   })}
-                  {netOptAudit.rSourceTunedOhm !== null && (
-                    <span className={netOptAudit.rSourceWarn ? 'audit-warn' : 'audit-ok'}>
+                  {netOptAudit.rSourceTunedOhm !== null && (() => {
+                    /* H-3 — the stated Q_es maximum beside the reading, not a bare number. */
+                    const qes = describeQesFactor(netOptAudit.qesFactor, v2QesStatedMax);
+                    return (
+                    <span className={netOptAudit.rSourceWarn || qes?.failed ? 'audit-warn' : 'audit-ok'}>
                       {' · '}
                       {t('source R at the low driver {r} Ω @ {f} Hz', {
                         r: netOptAudit.rSourceTunedOhm.toFixed(2),
                         f: Math.round(netOptAudit.rSourceAtHz ?? 0),
                       })}
-                      {netOptAudit.qesFactor !== null ? ` (Qes ×${netOptAudit.qesFactor.toFixed(2)})` : ''}
+                      {qes ? ` (${qes.text})` : ''}
                       {netOptAudit.rSourceAtGridEdge ? ` — ${t('taken at the grid edge — the box tuning lies below the view range; widen it for the value at resonance')}` : ''}
                     </span>
-                  )}
+                    );
+                  })()}
                 </summary>
                 <p className="derived" style={{ margin: '0.3rem 0 0.5rem' }}>
                   {t('Each part opened/shorted WITHOUT retuning, measured against the full network: max |ΔSPL| of the sum (200 Hz–15 kHz, 1/6-oct smoothed), the P95 change of the relative phase where the drivers hand over, and the change of the system Z minimum. Inert = removable whether or not the targets are met (locked parts are only reported); earned = it demonstrably works; grey = the numbers are yours to judge. The ratio is |Z of the part| against |Z it sees| over the band where its branch is within 12 dB of the sum — a shunt part is inert when ≫ 1, a series part when ≪ 1.')}

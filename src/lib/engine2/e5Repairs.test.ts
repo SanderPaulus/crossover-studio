@@ -246,15 +246,22 @@ describe('E-5 — the app says which limits collided', () => {
   });
 
   it('the chain frame is read on BOTH v2 routes, and only when v2 is the engine', () => {
-    /* Two call sites — the three-way run and the two-way one — and each of them
-     * behind the engine decision as a ternary, so a v1 run is handed its own
-     * grid and its own band and the toggle invariant is untouched. */
-    expect(APP.split('v2ChainFrame({').length - 1).toBe(2);
+    /* Two SCAN call sites — the three-way run and the two-way one — each of
+     * them behind the engine decision as a ternary, so a v1 run is handed its
+     * own grid and its own band and the toggle invariant is untouched. H-3
+     * added a THIRD reader: the tune of a drawn network in Hybrid mode, which
+     * is reached only through `v2Hybrid` (`engineV2Enabled && armed`), so it
+     * needs no ternary of its own — the guard is the branch that enters it. */
+    expect(APP.split('v2ChainFrame({').length - 1).toBe(3);
     for (const name of ['v2Frame', 'twoWayFrame']) {
       const at = APP.indexOf(`const ${name} = useV2`);
       expect(at, name).toBeGreaterThan(0);
       expect(APP.slice(at, at + 160), name).toContain('? v2ChainFrame({');
     }
+    const hybrid = APP.slice(APP.indexOf('function runNetOptimizeHybrid() {'), APP.indexOf('/** User-imported catalog series survive across sessions and projects. */'));
+    expect(hybrid.split('v2ChainFrame({').length - 1).toBe(1);
+    expect(APP).toContain('    if (v2Hybrid) {\n      runNetOptimizeHybrid();\n      return;\n    }');
+    expect(APP).toContain('const v2Hybrid = engineV2Enabled && v2ActiveSide.armed;');
     // And the chain input reads the frame rather than the plot grid.
     expect(APP).toContain('grid: [...chainGrid]');
     expect(APP).toContain('driverZ: chainBranches.z');

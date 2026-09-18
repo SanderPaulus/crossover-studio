@@ -39,10 +39,23 @@
 import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from '../../catalog.ts';
 import { coilDcrInventory, describeCoilDcrModel, stampCoilDcr, type CoilDcrInventory, type CoilDcrModel } from '../../coilDcr.ts';
 import type { Complex } from '../../complex.ts';
-import { runDesignChain, type ChainInput, type ChainResult, type ChainStageProgress } from '../../designChain.ts';
+import {
+  activeSideBranches,
+  assembledTuneOptions,
+  runDesignChain,
+  type ChainInput,
+  type ChainResult,
+  type ChainStageProgress,
+} from '../../designChain.ts';
 import { flankErrorDb, handoverBandHz, levelMatchDb, modelBranchResponse, type FlankError } from '../../activeSide.ts';
 import { runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
-import { busTopology, busTopologyOfNetlist, type NetOptimizeOptions } from '../../netOptimizer.ts';
+import {
+  busTopology,
+  busTopologyOfNetlist,
+  optimizeNetworkValues,
+  type NetOptimizeOptions,
+  type NetOptimizeResult,
+} from '../../netOptimizer.ts';
 import type { NetElement, Netlist } from '../../network.ts';
 import type { VxpPart } from '../../parsers/vxp.ts';
 import type { VxpCrossover } from '../../parsers/vxp.ts';
@@ -256,6 +269,39 @@ export interface V2ChainOnePayload {
 }
 
 /**
+ * H-3 — TUNE A DRAWN NETWORK on the two-way chain's own terms.
+ *
+ * The Network tab's ⚙ button in Hybrid mode. Until H-3 it ran the v1 worker's
+ * `netOptimize` on the app's ⚙ settings alone: no modelled branch, no lean
+ * band, no stop-goal band, no gate hook, no budget box — the drawing was tuned
+ * to a sum without the active side and judged against nothing the project
+ * stated. This route takes the same `ChainInput` the two-way scan builds
+ * (grid, measured ways, impedances, chain settings WITH the stated active side
+ * and the lean band) and the same `V2RunSettings` (gates, budgets, facts,
+ * voicing, judged band), and runs the chain's OWN tune step on the given parts
+ * instead of on a synthesis: `assembledTuneOptions` (`designChain.ts`) for the
+ * options, `runCandidate` for the gates, the budgets, the declaration and the
+ * judgement. No design step, no synthesis — the network is the designer's.
+ *
+ * `input.seed` is the type's requirement and is read by nothing here.
+ */
+export interface V2TuneNetlistPayload {
+  input: ChainInput;
+  /** The drawn network, as the editor holds it. */
+  parts: VxpPart[];
+  label: string;
+  v2: V2RunSettings;
+  candidate?: V2CandidatePayload;
+}
+
+/** What the tune of a drawn network hands back, inside `V2CandidateResult`. */
+export interface V2TuneNetlistResult {
+  label: string;
+  parts: VxpPart[];
+  net: NetOptimizeResult;
+}
+
+/**
  * V31 — WHAT A CANDIDATE RETURNS WHEN ITS TUNE WAS THROWN AWAY WHOLESALE.
  *
  * THE FINDING. Four of fifteen v2 candidates came back byte-identical to their
@@ -431,6 +477,7 @@ export interface V2LevelWorkColumn {
 export type V2Request = { id: number; catalog?: V2CatalogPayload | null } & (
   | { kind: 'v2Chain3One'; payload: V2Chain3Payload }
   | { kind: 'v2ChainOne'; payload: V2ChainOnePayload }
+  | { kind: 'v2TuneNetlist'; payload: V2TuneNetlistPayload }
 );
 
 export type V2Response =
@@ -1851,6 +1898,158 @@ function leanFlankErrorOf(input: ChainInput, parts: readonly VxpPart[]): FlankEr
 }
 
 /**
+ * H-3 — THE TWO-WAY MEASUREMENTS of a delivered network, shared by the chain
+ * route (`v2ChainOne`) and the drawn-network route (`v2TuneNetlist`).
+ *
+ * The sum through the netlist (with the modelled branch, H-1), judged against
+ * the voicing on the judged band; in the LEAN form no sum (the sum a listener
+ * hears does not exist here — `response` is null, reported as NOT JUDGED and
+ * never blank, F0) and the flank error instead; the passive pair's own phase
+ * tracking from the tune. One function, so a scan row and a tuned drawing are
+ * measured by the same words.
+ */
+function twoWayMeasurements(
+  chainInput: ChainInput,
+  v2: V2RunSettings,
+  parts: readonly VxpPart[],
+  after: NetOptimizeResult['after'],
+): CandidateMeasurements {
+  const sum = summedResponse(
+    parts,
+    chainInput.grid,
+    [
+      { model: 'mid', response: chainInput.w },
+      { model: 'tweeter', response: chainInput.t },
+    ],
+    chainInput.driverZ,
+    activeBranchOf(chainInput),
+  );
+  const band = judgeBandOf(v2, chainInput.grid);
+  /* H-2b — THE LEAN FORM JUDGES NO SUM. With the active side unmeasured the
+   * sum a listener hears does not exist here, and a ripple figure over the
+   * passive ways alone would be a number about a loudspeaker nobody builds —
+   * so `response` is null (reported as NOT JUDGED, never blank: F0) and the
+   * flank error is what the candidate offers instead. Absent on every other
+   * run (P2). */
+  const flank = leanFlankErrorOf(chainInput, parts);
+  const lean = flank !== undefined;
+  return {
+    response: !lean && sum ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band) : null,
+    ...(lean ? { flankError: flank } : {}),
+    phaseTracking: Number.isFinite(after.phaseDeg)
+      ? [
+          {
+            subject: 'low|high',
+            meanAbsDeg: after.phaseDeg,
+            ...(Number.isFinite(after.pairPhaseControlDeg?.[0])
+              ? { controlDeg: after.pairPhaseControlDeg![0] }
+              : {}),
+          },
+        ]
+      : [],
+  };
+}
+
+/** V31 — how a REFUSED two-way tune is measured; shared by both two-way routes. */
+function measureRejectedTwoWay(chainInput: ChainInput, v2: V2RunSettings, parts: readonly VxpPart[]): ResponseJudgement | null {
+  /* H-2b — a refused tune on a lean-form run has no judged sum either; the
+   * flank is not measured on a refusal (nobody looked). */
+  if (chainInput.settings.activeSide?.handover.unmeasured === true) return null;
+  const sum = summedResponse(
+    parts,
+    chainInput.grid,
+    [
+      { model: 'mid', response: chainInput.w },
+      { model: 'tweeter', response: chainInput.t },
+    ],
+    chainInput.driverZ,
+    activeBranchOf(chainInput),
+  );
+  return sum ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, judgeBandOf(v2, chainInput.grid)) : null;
+}
+
+/**
+ * H-3 — THE NETWORK FACTS AND THE DECLARED CHAIN INPUT of a two-way payload,
+ * shared by both two-way routes: the F4c read-back of the search choices, the
+ * candidate's declaration when there is one, and V34/E-3's three overlays on
+ * the chain input. One function, so the drawn-network route cannot read a
+ * candidate differently from the scan.
+ */
+function twoWayNetworkFacts(
+  input: ChainInput,
+  candidate: V2CandidatePayload | undefined,
+): { network: NetworkFacts; chainInput: ChainInput } {
+  /* Two-way: the low way is called `woofer` in the seed and `mid` in the
+   * impedance map — `canonicalModelForRole` is the reason, and the mapping here
+   * is the same one `branchDb` makes. The candidate states a RANGE rather than
+   * a point on this route, so the handover above the low way is its centre;
+   * F4c makes that explicit. */
+  const xoCentre =
+    input.xoRange && input.xoRange[1] > input.xoRange[0]
+      ? Math.sqrt(input.xoRange[0] * input.xoRange[1])
+      : undefined;
+  const network: NetworkFacts = {
+    orderByModel: pruneUndefined({
+      tweeter: declaredHpOrder(input.seed.tweeter),
+      ...(candidate?.orderByModel ?? {}),
+    }),
+    crossingAboveByModel: pruneUndefined({ mid: xoCentre }),
+    /* F4c — the search choices this candidate carries, read back out of the
+     * settings the chain was handed. Nothing is decided here: the point is
+     * that they cross the hook NAMED instead of riding along in the chain's
+     * own spread. */
+    choices: pruneUndefinedValues({
+      band: input.settings.band,
+      acousticSlopes: input.settings.acousticSlopes,
+      catalogSnap: input.settings.catalogSnap,
+      ampTarget: input.settings.ampTarget,
+      phaseMetric: input.settings.phaseMetric,
+      powerMetric: input.settings.powerMetric,
+      breakupGuard: input.settings.breakupGuard,
+      ampMinLoadOhm: input.settings.ampMinLoadOhm,
+      rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
+    }),
+    weights: pruneUndefinedValues({
+      phasePriority: input.settings.phasePriority,
+      directivityWeight: input.settings.directivityWeight,
+      powerFoldWeight: input.settings.powerFoldWeight,
+      dissipationWeight: input.settings.dissipationWeight,
+      costWeight: input.settings.costWeight,
+    }),
+    ...(candidate
+      ? {
+          declaration: candidate.declaration,
+          /* E-3 — the chain-level half of the declaration is READ on this
+           * route now (below), so it is reported and judged here too: the
+           * V51 refusal, the stated series-R maximum and the coil-span box
+           * all key off `network.chainDeclaration`. */
+          chainDeclaration: candidate.chainDeclaration,
+          /* U-5 — see the three-way branch: absent on a generated candidate,
+           * and then nothing behaves differently (P2). */
+          ...(candidate.stated ? { stated: candidate.stated } : {}),
+        }
+      : {}),
+  };
+  /* V34 — see the three-way branch; same rule, same reason.
+   *
+   * E-3 — V41 IS APPLIED HERE SINCE E-3, in the two-way chain's own vocabulary
+   * (`withDeclaredChainChoicesTwoWay`: `eqBands` → `eqBandsPerDriver`, and the
+   * three keys `designChain.ts` learned at E-3). And the declared SEARCH
+   * SMOOTHING reaches the design step (`withDeclaredSearchSmoothing`):
+   * `vfOptimizer.ts` is the second reader of `errorSmoothOct` on this chain,
+   * the one V38-fix left outside its repair. Both are the identity without a
+   * candidate, so a payload without one runs exactly the route it ran before. */
+  const chainInput = withDeclaredSearchSmoothing(
+    withDeclaredChainChoicesTwoWay(
+      withDeclaredSourceLimit(input, candidate?.declaration),
+      candidate?.chainDeclaration,
+    ),
+    candidate?.declaration,
+  );
+  return { network, chainInput };
+}
+
+/**
  * The topology class of a delivered candidate, from the specs the DESIGN step
  * settled — never from the tuned component values.
  *
@@ -3088,77 +3287,10 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           { mid: input.w.spl, tweeter: input.t.spl },
           v2,
         );
-        /* Two-way: the low way is called `woofer` in the seed and `mid` in the
-         * impedance map — `canonicalModelForRole` is the reason, and the
-         * mapping here is the same one `branchDb` above already makes. The
-         * candidate states a RANGE rather than a point on this route, so the
-         * handover above the low way is its centre; F4c makes that explicit. */
-        const xoCentre =
-          input.xoRange && input.xoRange[1] > input.xoRange[0]
-            ? Math.sqrt(input.xoRange[0] * input.xoRange[1])
-            : undefined;
-        const network: NetworkFacts = {
-          orderByModel: pruneUndefined({
-            tweeter: declaredHpOrder(input.seed.tweeter),
-            ...(candidate?.orderByModel ?? {}),
-          }),
-          crossingAboveByModel: pruneUndefined({ mid: xoCentre }),
-          /* F4c — the search choices this candidate carries, read back out of
-           * the settings the chain was handed. Nothing is decided here: the
-           * point is that they cross the hook NAMED instead of riding along in
-           * the chain's own spread. */
-          choices: pruneUndefinedValues({
-            band: input.settings.band,
-            acousticSlopes: input.settings.acousticSlopes,
-            catalogSnap: input.settings.catalogSnap,
-            ampTarget: input.settings.ampTarget,
-            phaseMetric: input.settings.phaseMetric,
-            powerMetric: input.settings.powerMetric,
-            breakupGuard: input.settings.breakupGuard,
-            ampMinLoadOhm: input.settings.ampMinLoadOhm,
-            rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
-          }),
-          weights: pruneUndefinedValues({
-            phasePriority: input.settings.phasePriority,
-            directivityWeight: input.settings.directivityWeight,
-            powerFoldWeight: input.settings.powerFoldWeight,
-            dissipationWeight: input.settings.dissipationWeight,
-            costWeight: input.settings.costWeight,
-          }),
-          ...(candidate
-            ? {
-                declaration: candidate.declaration,
-                /* E-3 — the chain-level half of the declaration is READ on this
-                 * route now (below), so it is reported and judged here too: the
-                 * V51 refusal, the stated series-R maximum and the coil-span
-                 * box all key off `network.chainDeclaration`. */
-                chainDeclaration: candidate.chainDeclaration,
-                /* U-5 — see the three-way branch: absent on a generated
-                 * candidate, and then nothing behaves differently (P2). */
-                ...(candidate.stated ? { stated: candidate.stated } : {}),
-              }
-            : {}),
-        };
-        /* V34 — see the three-way branch above; same rule, same reason.
-         *
-         * E-3 — V41 IS APPLIED HERE SINCE E-3, in the two-way chain's own
-         * vocabulary (`withDeclaredChainChoicesTwoWay`: `eqBands` →
-         * `eqBandsPerDriver`, and the three keys `designChain.ts` learned at
-         * E-3). V41 declined to write that mapping while the two-way route was
-         * v1 in full; the E-3 map measured the cost — four declared decisions
-         * that the design and synthesis steps never read. And the declared
-         * SEARCH SMOOTHING reaches the design step (`withDeclaredSearchSmoothing`):
-         * `vfOptimizer.ts` is the second reader of `errorSmoothOct` on this
-         * chain, the one V38-fix left outside its repair. Both are the identity
-         * without a candidate, so a payload without one runs exactly the route
-         * it ran before. */
-        const chainInput = withDeclaredSearchSmoothing(
-          withDeclaredChainChoicesTwoWay(
-            withDeclaredSourceLimit(input, candidate?.declaration),
-            candidate?.chainDeclaration,
-          ),
-          candidate?.declaration,
-        );
+        /* H-3 — the network facts and the declared chain input come from ONE
+         * function shared with the drawn-network route (`twoWayNetworkFacts`),
+         * so the two routes cannot read a candidate differently. */
+        const { network, chainInput } = twoWayNetworkFacts(input, candidate);
         data = runCandidate<ChainInput, ChainResult>(
           chainInput,
           v2,
@@ -3176,81 +3308,92 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
              * leaves the chain. */
             return foldDriverPolarity(r, { tweeter: r.vf.inverted });
           },
-          (r) => {
-            const sum = summedResponse(
-              r.parts,
-              input.grid,
-              [
-                { model: 'mid', response: input.w },
-                { model: 'tweeter', response: input.t },
-              ],
-              input.driverZ,
-              activeBranchOf(chainInput),
-            );
-            const band = judgeBandOf(v2, input.grid);
-            /* H-2b — THE LEAN FORM JUDGES NO SUM. With the active side
-             * unmeasured the sum a listener hears does not exist here, and a
-             * ripple figure over the passive ways alone would be a number about
-             * a loudspeaker nobody builds — so `response` is null (reported as
-             * NOT JUDGED, never blank: F0) and the flank error is what the
-             * candidate offers instead. Absent on every other run (P2). */
-            const flank = leanFlankErrorOf(chainInput, r.parts);
-            const lean = flank !== undefined;
-            return {
-              measurements: {
-                response: !lean && sum
-                  ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band)
-                  : null,
-                ...(lean ? { flankError: flank } : {}),
-                phaseTracking: Number.isFinite(r.net.after.phaseDeg)
-                  ? [
-                      {
-                        subject: 'low|high',
-                        meanAbsDeg: r.net.after.phaseDeg,
-                        ...(Number.isFinite(r.net.after.pairPhaseControlDeg?.[0])
-                          ? { controlDeg: r.net.after.pairPhaseControlDeg![0] }
-                          : {}),
-                      },
-                    ]
-                  : [],
-              },
-              /* E-3 — the topology class from the specs the vf DESIGN STEP
-               * settled, exactly as the three-way branch reads its `specs`:
-               * the woofer slot is the low way (`mid` in this chain's
-               * impedance map, `canonicalModelForRole`) and the tweeter is the
-               * high way; a disabled flank is its absence. Until E-3 this was
-               * an empty descriptor, so every two-way candidate fell into ONE
-               * topology class and the shortlist could not spread (A5e.1). */
-              topology: topologyOf(
-                { mid: r.vf.specs.woofer, tweeter: r.vf.specs.tweeter },
-                r.vf.inverted ? ['tweeter'] : [],
-              ),
-            };
-          },
+          (r) => ({
+            /* H-3 — the measurements by the function both two-way routes share. */
+            measurements: twoWayMeasurements(chainInput, v2, r.parts, r.net.after),
+            /* E-3 — the topology class from the specs the vf DESIGN STEP
+             * settled, exactly as the three-way branch reads its `specs`:
+             * the woofer slot is the low way (`mid` in this chain's
+             * impedance map, `canonicalModelForRole`) and the tweeter is the
+             * high way; a disabled flank is its absence. Until E-3 this was
+             * an empty descriptor, so every two-way candidate fell into ONE
+             * topology class and the shortlist could not spread (A5e.1). */
+            topology: topologyOf(
+              { mid: r.vf.specs.woofer, tweeter: r.vf.specs.tweeter },
+              r.vf.inverted ? ['tweeter'] : [],
+            ),
+          }),
           /* V31 — see the three-way branch: measured here, not handed out. */
-          (parts) => {
-            /* H-2b — a refused tune on a lean-form run has no judged sum
-             * either; the flank is not measured on a refusal (nobody looked). */
-            if (chainInput.settings.activeSide?.handover.unmeasured === true) return null;
-            const sum = summedResponse(
-              parts,
-              input.grid,
-              [
-                { model: 'mid', response: input.w },
-                { model: 'tweeter', response: input.t },
-              ],
-              input.driverZ,
-              activeBranchOf(chainInput),
+          (parts) => measureRejectedTwoWay(chainInput, v2, parts),
+          candidate?.provenance,
+        );
+        break;
+      }
+      case 'v2TuneNetlist': {
+        /* H-3 — THE DRAWN NETWORK, on the chain's own terms. The same facts,
+         * the same declared chain input, the same options assembly and the
+         * same judgement as `v2ChainOne` — minus the design and synthesis
+         * steps, because the network is the designer's. */
+        const { input, parts: drawn, label, v2: v2Wire, candidate } = req.payload;
+        const v2 = withDerivedDriveCeiling(v2Wire);
+        const facts = measurementFacts(
+          input.grid,
+          input.driverZ,
+          { mid: input.w.spl, tweeter: input.t.spl },
+          v2,
+        );
+        const { network, chainInput } = twoWayNetworkFacts(input, candidate);
+        const branches = activeSideBranches(chainInput);
+        if (branches.missingMeasurement && branches.activeSide) {
+          /* H-1's P4 condition, in this route's own words: a measured-form
+           * handover without the measurement is refused, not modelled away. */
+          throw new Error(
+            `v2TuneNetlist: an active handover is stated for "${branches.activeSide.handover.activeWay}" but no ` +
+              'measured response was supplied for it (ChainInput.activeMeasured).',
+          );
+        }
+        data = runCandidate<ChainInput, V2TuneNetlistResult>(
+          chainInput,
+          v2,
+          facts,
+          network,
+          (hooks) => {
+            const net = optimizeNetworkValues(
+              drawn,
+              chainInput.grid,
+              chainInput.w,
+              chainInput.t,
+              chainInput.driverZ,
+              chainInput.adjust,
+              assembledTuneOptions(
+                chainInput,
+                drawn,
+                {
+                  activeBranch: branches.activeBranch,
+                  activeBranchSafety: branches.activeBranchSafety,
+                  onStage: (detail, ev) =>
+                    post({ id: req.id, kind: 'progress', data: { stage: 'tune', evals: ev ?? 0, detail, variant: label } }),
+                },
+                hooks,
+              ),
             );
-            return sum
-              ? judgeResponse(
-                  sum.freq,
-                  sum.spl,
-                  v2.targetCurve ?? FLAT_TARGET,
-                  judgeBandOf(v2, input.grid),
-                )
-              : null;
+            return { label, parts: net.parts, net };
           },
+          (r) => ({
+            measurements: twoWayMeasurements(chainInput, v2, r.parts, r.net.after),
+            /* A DRAWN network states no flank orders: its topology class is
+             * read off nothing but the polarity its own driver parts carry.
+             * Nothing shortlists a single tune, so the class decides nothing;
+             * it is filled honestly rather than invented from tuned values. */
+            topology: {
+              flanks: [],
+              inverted: r.parts
+                .filter((p) => p.type === 'Driver' && p.inverted === true && p.model !== undefined)
+                .map((p) => p.model!)
+                .sort(),
+            },
+          }),
+          (parts) => measureRejectedTwoWay(chainInput, v2, parts),
           candidate?.provenance,
         );
         break;

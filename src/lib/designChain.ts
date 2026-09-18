@@ -28,7 +28,7 @@ import { synthesize, type SynthesisResult } from './synthesis.ts';
 import { forbidsPads, seriesRMaxOhmOf, type LowestWayLevelWork } from './levelWork.ts';
 import { mergeSynthesizedSchematics } from './schematicEdit.ts';
 import { rippleStopBand } from './rippleTargetBand.ts';
-import { optimizeNetworkValues, type NetOptimizeResult } from './netOptimizer.ts';
+import { optimizeNetworkValues, type NetOptimizeOptions, type NetOptimizeResult } from './netOptimizer.ts';
 import { ALIVE_DB, type ChainEngineHooks } from './threeWayChain.ts';
 import { bomFor, type SnapPrefs } from './catalog.ts';
 import {
@@ -300,6 +300,144 @@ export interface ChainStageProgress {
   detail?: string;
 }
 
+/**
+ * H-1/H-2b/H-3 — THE ACTIVE SIDE'S BRANCHES of one chain input, built once.
+ *
+ * The measured active way times its stated DSP transfer (H-1), or — in the
+ * LEAN form, `handover.unmeasured` — the lowest PASSIVE way's OWN measurement
+ * times the mirror low-pass at the textbook polarity (H-2b; `complementSettings`
+ * in `activeSide.ts` says why that is the statement "the flank meets its
+ * target" and not a model of the active driver). On the main grid and on the
+ * safety grid, from the same spec. Built HERE and not inside the searches,
+ * because it is the same fixed curve for every candidate of every round: a
+ * branch with no free parameter is data, and rebuilding data inside a loop is
+ * how two copies of one curve come to disagree.
+ *
+ * H-3 — EXPORTED, because the tune of a DRAWN network (the Network tab's
+ * ⚙ button in Hybrid mode) sums against the same branch. One construction, two
+ * callers; `missingMeasurement` is H-1's P4 condition, which each caller
+ * turns into its own refusal. Without an active side every field is null and
+ * `missingMeasurement` is false — the identity, for every caller before H-1.
+ */
+export function activeSideBranches(
+  input: Pick<ChainInput, 'w' | 'activeMeasured' | 'activeMeasuredSafety' | 'settings'>,
+): {
+  activeSide: { handover: ActiveHandover; settings: ModelBranchSettings } | null;
+  lean: boolean;
+  activeBranch: GriddedResponse | null;
+  activeBranchSafety: GriddedResponse | null;
+  /** A measured-form handover with no measured active response: the caller refuses (P4). */
+  missingMeasurement: boolean;
+} {
+  const s = input.settings;
+  const activeSide = s.activeSide ?? null;
+  const modelSpec = activeSide
+    ? { ...activeSide.settings, kind: activeSide.handover.kind, order: activeSide.handover.order, hz: activeSide.handover.hz }
+    : null;
+  /* H-2b — THE DESIGN-STEP CONDITION, and it is the one engine change of the
+   * lean form. With the active way MEASURED (H-1) the branch is its measurement
+   * times the stated DSP transfer. With the active way UNMEASURED
+   * (`handover.unmeasured`) there is nothing to model it from, and the branch
+   * is the lowest PASSIVE way's OWN measurement times the mirror low-pass at
+   * the textbook polarity. The source differs; everything downstream is the
+   * same code. */
+  const lean = activeSide?.handover.unmeasured === true;
+  const activeSource = lean ? input.w : input.activeMeasured;
+  const activeSourceSafety = lean ? s.safety?.w : input.activeMeasuredSafety;
+  const activeBranch = activeSide && modelSpec && activeSource
+    ? modelBranchResponse(activeSource, modelSpec)
+    : null;
+  const activeBranchSafety = activeSide && modelSpec && activeSourceSafety
+    ? modelBranchResponse(activeSourceSafety, modelSpec)
+    : null;
+  return {
+    activeSide,
+    lean,
+    activeBranch,
+    activeBranchSafety,
+    missingMeasurement: !!activeSide && !lean && !input.activeMeasured,
+  };
+}
+
+/**
+ * H-3 — THE ASSEMBLED TUNE'S OPTIONS, from a chain input: one function, two
+ * callers.
+ *
+ * `runDesignChain` reads it for the network its own synthesis produced; the
+ * Network tab's ⚙ button (through the v2 worker's `v2TuneNetlist` route) reads
+ * it for a network the designer DREW. Until H-3 the second tune assembled its
+ * own options from the app's ⚙ settings and knew nothing of the chain's — no
+ * modelled branch, no lean band, no stop-goal band, no gate hook — so a drawn
+ * network in Hybrid mode was tuned to a sum that does not exist. A second
+ * assembly of the same tune is a second truth about what the tune judges; this
+ * is the one.
+ *
+ * `hooks.tuneOptionsFor(seedParts)` is merged LAST (F2b): a v2 run's gate and
+ * bound options cannot be overwritten by anything above, and absent it is the
+ * identity. `branchTargets` exists only where a design step produced one (the
+ * leash); a drawn network has none and the key is then absent, not undefined.
+ */
+export function assembledTuneOptions(
+  input: ChainInput,
+  seedParts: readonly VxpPart[],
+  extras: {
+    branchTargets?: NetOptimizeOptions['branchTargets'];
+    activeBranch: GriddedResponse | null;
+    activeBranchSafety: GriddedResponse | null;
+    onStage?: NetOptimizeOptions['onStage'];
+  },
+  hooks?: ChainEngineHooks,
+): NetOptimizeOptions {
+  const s = input.settings;
+  const activeSide = s.activeSide ?? null;
+  const { activeBranch, activeBranchSafety } = extras;
+  return {
+    phasePriority: s.phasePriority,
+    ...(extras.branchTargets ? { branchTargets: extras.branchTargets } : {}),
+    // The seed here is OUR OWN synthesis (or the designer's own drawing), so
+    // the seed-relative amp-load bar has nothing to respect and everything to
+    // hide behind (see zFloorStrict — the three-way lesson, which applies
+    // verbatim).
+    zFloorStrict: true,
+    angleData: s.angleData,
+    directivityWeight: s.directivityWeight,
+    powerMetric: s.powerMetric,
+    powerFoldWeight: s.powerFoldWeight,
+    errorSmoothOct: s.errorSmoothOct,
+    costWeight: s.costWeight,
+    ampTarget: s.ampTarget,
+    breakupGuard: s.breakupGuard,
+    staged: s.targets,
+    /* E-5b — the band the stop-goal may be read on. This chain has ONE
+     * handover and no `xoLow`: what it holds is the candidate's CAGE, whose
+     * geometric centre is the position it was generated at (every cage since
+     * C-2 is centred on its position, two-sided). No cage, no band, and the
+     * stop-goal stays on the judged band. POLISH throughout: the choice that
+     * reads it is the candidate's (`rippleTargetBand.ts`). */
+    ...(rippleStopBand([cageCentreHz(input.xoRange)], s.band) !== null
+      ? { rippleTargetBandHz: rippleStopBand([cageCentreHz(input.xoRange)], s.band)! }
+      : {}),
+    xoRange: input.xoRange,
+    phaseMetric: s.phaseMetric,
+    acousticSlopes: s.acousticSlopes,
+    catalogSnap: s.catalogSnap,
+    snapPrefs: s.snapPrefs,
+    band: s.band,
+    /* H-1 — the safety set gains the modelled branch on its own grid, so the
+     * full-band safety pass judges the same sum the main grid does. */
+    ...(s.safety
+      ? { safety: activeBranchSafety ? { ...s.safety, active: activeBranchSafety } : s.safety }
+      : {}),
+    ...(activeBranch && activeSide
+      ? { activeBranch, activeLevelBandHz: handoverBandHz(activeSide.handover.hz) }
+      : {}),
+    ...(extras.onStage ? { onStage: extras.onStage } : {}),
+    // F2b: merged LAST, so a v2 run's gate and bound options cannot be
+    // overwritten by anything above. Absent = byte-identical.
+    ...(hooks?.tuneOptionsFor ? hooks.tuneOptionsFor(seedParts) : {}),
+  };
+}
+
 /** One full chain for one crossover-range candidate. */
 export function runDesignChain(
   input: ChainInput,
@@ -315,28 +453,10 @@ export function runDesignChain(
    * the same fixed curve for every candidate of every round: a branch with no
    * free parameter is data, and rebuilding data inside a loop is how two
    * copies of one curve come to disagree. */
-  const activeSide = s.activeSide ?? null;
-  const modelSpec = activeSide
-    ? { ...activeSide.settings, kind: activeSide.handover.kind, order: activeSide.handover.order, hz: activeSide.handover.hz }
-    : null;
-  /* H-2b — THE DESIGN-STEP CONDITION, and it is the one engine change of the
-   * lean form. With the active way MEASURED (H-1) the branch is its measurement
-   * times the stated DSP transfer. With the active way UNMEASURED
-   * (`handover.unmeasured`) there is nothing to model it from, and the branch
-   * is the lowest PASSIVE way's OWN measurement times the mirror low-pass at
-   * the textbook polarity — `complementSettings` in `activeSide.ts` says why
-   * that is the statement "the flank meets its target" and not a model of the
-   * active driver. The source differs; everything downstream is the same code. */
-  const lean = activeSide?.handover.unmeasured === true;
-  const activeSource = lean ? w : input.activeMeasured;
-  const activeSourceSafety = lean ? s.safety?.w : input.activeMeasuredSafety;
-  const activeBranch = activeSide && modelSpec && activeSource
-    ? modelBranchResponse(activeSource, modelSpec)
-    : null;
-  const activeBranchSafety = activeSide && modelSpec && activeSourceSafety
-    ? modelBranchResponse(activeSourceSafety, modelSpec)
-    : null;
-  if (activeSide && !lean && !input.activeMeasured) {
+  /* H-3 — built by ONE function shared with the tune of a drawn network
+   * (`activeSideBranches`); the same construction, the same P4 condition. */
+  const { activeSide, activeBranch, activeBranchSafety, missingMeasurement } = activeSideBranches(input);
+  if (missingMeasurement && activeSide) {
     /* P4's visible half: a stated active side without the measurement it needs
      * is a statement this chain cannot honour, and honouring it silently with
      * "no branch" would design the passive network against a sum that does not
@@ -537,6 +657,10 @@ export function runDesignChain(
 
   // Assembled tune — the only stage that judges the interplay.
   onProgress?.({ stage: 'tune', evals: evaluations });
+  /* H-3 — the option object is ONE function (`assembledTuneOptions`), shared
+   * with the tune of a drawn network on the Network tab: the same keys from the
+   * same settings, the hooks merged last. Two assemblies of one tune are how a
+   * button and a scan come to judge the same design differently. */
   const net = optimizeNetworkValues(
     merged,
     grid,
@@ -544,48 +668,17 @@ export function runDesignChain(
     t,
     driverZ,
     { ...adjust, inverted: b.inverted },
-    {
-      phasePriority: s.phasePriority,
-      branchTargets,
-      // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
-      // has nothing to respect and everything to hide behind (see
-      // zFloorStrict — the three-way lesson, which applies verbatim).
-      zFloorStrict: true,
-      angleData: s.angleData,
-      directivityWeight: s.directivityWeight,
-    powerMetric: s.powerMetric,
-    powerFoldWeight: s.powerFoldWeight,
-    errorSmoothOct: s.errorSmoothOct,
-    costWeight: s.costWeight,
-      ampTarget: s.ampTarget,
-      breakupGuard: s.breakupGuard,
-      staged: s.targets,
-      /* E-5b — the band the stop-goal may be read on. This chain has ONE
-       * handover and no `xoLow`: what it holds is the candidate's CAGE, whose
-       * geometric centre is the position it was generated at (every cage since
-       * C-2 is centred on its position, two-sided). No cage, no band, and the
-       * stop-goal stays on the judged band. POLISH throughout: the choice that
-       * reads it is the candidate's (`rippleTargetBand.ts`). */
-      ...(rippleStopBand([cageCentreHz(input.xoRange)], s.band) !== null
-        ? { rippleTargetBandHz: rippleStopBand([cageCentreHz(input.xoRange)], s.band)! }
-        : {}),
-      xoRange: input.xoRange,
-      phaseMetric: s.phaseMetric,
-      acousticSlopes: s.acousticSlopes,
-      catalogSnap: s.catalogSnap,
-      snapPrefs: s.snapPrefs,
-      band: s.band,
-      /* H-1 — the safety set gains the modelled branch on its own grid, so the
-       * full-band safety pass judges the same sum the main grid does. */
-      ...(s.safety
-        ? { safety: activeBranchSafety ? { ...s.safety, active: activeBranchSafety } : s.safety }
-        : {}),
-      ...(activeBranch ? { activeBranch, activeLevelBandHz: handoverBandHz(activeSide!.handover.hz) } : {}),
-      onStage: (detail, ev) => onProgress?.({ stage: 'tune', evals: evaluations + (ev ?? 0), detail }),
-      // F2b: merged LAST, so a v2 run's gate and bound options cannot be
-      // overwritten by anything above. Absent = byte-identical.
-      ...(hooks?.tuneOptionsFor ? hooks.tuneOptionsFor(merged) : {}),
-    },
+    assembledTuneOptions(
+      input,
+      merged,
+      {
+        branchTargets,
+        activeBranch,
+        activeBranchSafety,
+        onStage: (detail, ev) => onProgress?.({ stage: 'tune', evals: evaluations + (ev ?? 0), detail }),
+      },
+      hooks,
+    ),
   );
   /* A3g: the pass OUTCOME, not a string match on its prose. `zOk` stays
    * RELATIVE (the tune did not make the load worse); the absolute verdict is

@@ -152,6 +152,26 @@ export function handoverBandHz(hz: number): [number, number] {
 }
 
 /**
+ * H-2b/H-3 — THE JUDGED BAND OF A LEAN-FORM PASS starts at the bottom of the
+ * handover band, and this is the one rule for it.
+ *
+ * Below that floor the complemented sum is the passive way's own raw response
+ * — a flank fourteen dB and more down cannot move it — and a search judged
+ * there would shape the high-pass to the pod's roll-off instead of to its
+ * target (H-2b, `leanBandFor` in the app). H-3 gives the Network tab's strip the
+ * same floor, because a flatness figure read below the handover on a hybrid is
+ * a figure about a loudspeaker nobody builds. One implementation, two readers:
+ * the run and the strip.
+ *
+ * Null when the floor reaches the top of the band: then nothing is judged,
+ * and the caller says so rather than judging an empty band (F0).
+ */
+export function leanJudgedBand(band: readonly [number, number], handoverHz: number): [number, number] | null {
+  const floor = Math.max(band[0], handoverBandHz(handoverHz)[0]);
+  return floor < band[1] ? [floor, band[1]] : null;
+}
+
+/**
  * THE MODELLED BRANCH'S TRANSFER — one implementation, several readers.
  *
  * `LP(f) · 10^(g/20) · e^(−j2πfτ) · (inverted ? −1 : +1)`, which is exactly

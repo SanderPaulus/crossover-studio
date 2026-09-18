@@ -28,6 +28,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseFrequencyTokens, parseHandoverList } from './frequencyList.ts';
+import { handoverBandHz, leanJudgedBand } from './activeSide.ts';
 import {
   ACTIVE_HANDOVER_LABEL,
   ACTIVE_LATENCY_LABEL,
@@ -391,7 +392,11 @@ describe('H-2 / H-2b — App.tsx routes a hybrid', () => {
   });
 
   it('a lean-form pass is judged from the bottom of the handover band; every other run keeps its band', () => {
-    expect(APP).toContain('const floor = Math.max(settings.band[0], handoverBandHz(active.handover.hz)[0]);');
+    /* H-3 — the body moved into the ONE rule (`leanJudgedBand`, `activeSide.ts`):
+     * the run reads it here and the Network tab's strip reads the same function. */
+    expect(APP).toContain('return leanJudgedBand(settings.band, active.handover.hz);');
+    expect(leanJudgedBand([250, 18000], 800)).toEqual([Math.max(250, handoverBandHz(800)[0]), 18000]);
+    expect(leanJudgedBand([250, 500], 800)).toBeNull();
     expect(APP).toContain('...(leanBandFor(active) ? { band: leanBandFor(active)! } : {}),');
     /* Option OFF is byte-identical: the override is spread on a condition that
      * is false without an unmeasured active side, and the settings object is

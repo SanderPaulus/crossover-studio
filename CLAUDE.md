@@ -48,6 +48,25 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná H-3 (18-09-2026) gemeten op 515 s — 199 bestanden (197 geslaagd, 1 rood, 1 overgeslagen),
+    2619 tests (2614 geslaagd, 1 rood, 4 overgeslagen), alleen gedraaid met `nohup` VÓÓR de
+    browsercontrole; ná de reparatie van die ene claim groen.** +2 BESTANDEN (`hybridNetwork.test.ts`
+    21 claims, `engine2/h3NetworkTab.test.ts` 9) en +30 tests, en die twee getallen zijn HETZELFDE
+    getal: het corpus is NIET aangeraakt (geteld met `grep -cE '^\s+it\('` per bestand tegen HEAD).
+    De ene rode claim was de E-5-bronscan die PRECIES TWEE `v2ChainFrame(`-aanroepen pint — H-3 voegt
+    er een derde toe (de tune van een getekend netwerk) en de scan deed haar werk; zij pint sindsdien
+    drie, met de derde achter `if (v2Hybrid)`. Een tweede scan ging al vóór de volle laag rood
+    (`v2ActiveSide.test.ts` pinde de closure-body van `leanBandFor`, die naar `leanJudgedBand`
+    verhuisde) en is vóór de run bijgewerkt. GEEN nieuwe referentie: de V43-waarde van 289 s blijft
+    staan, en 515 tegen H-2b's 517 s is dezelfde laag op dezelfde machine met twee bestanden erbij.
+    **DE VOLLE RUN IS BIJ H-3 NIET GEDRAAID, maar de ENE live ketenrun die de refactor raakt WEL,
+    apart en alleen:** `assembledTuneOptions`/`activeSideBranches` zijn uit `runDesignChain` gelicht
+    (de tweewegketen), dus `casus1bV2Candidates.test.ts` — de byte-reproductie van casus 1b door
+    `v2ChainOne` — is in zijn geheel gedraaid ná de snelle laag: **5 tests, 240 s, groen, de
+    goedkoopste geleverde netlist byte voor byte.** `f4cRegression`, `workerRouteRegression`,
+    `toggleRegression` en de twee live arms van `chainChoices` reproduceerden in de snelle laag. Geen
+    poort-, budget-, venster-, metriek- of corpuswijziging; de drieweg- en casus-1-routes lezen
+    `assembledTuneOptions` niet.
     **Ná H-2b (18-09-2026) gemeten op 517 s — 197 bestanden (196 geslaagd, 1 overgeslagen),
     2589 tests (2585 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de
     browsercontrole met de dev-server gestopt.** +1 BESTAND (`engine2/h2bLeanForm.test.ts`,
@@ -6655,3 +6674,141 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   waarden, en de tuner's budget is superlineair daarin (V41). (4) De gemeten vorm is bij H-2b niet
   opnieuw in de browser gedraaid; haar acceptatie is `goldenCasus1h` + `h1ActiveSide` (groen) en de
   DSP-blokclaim op casus 1h in `h2bLeanForm.test.ts`.
+
+### H-3-guards (de Network-tab leest Hybrid mode: oordeel, tuner en sjabloon tegen de gestelde overdracht; alleen app/rapportlaag op H-1/H-2b)
+
+- **STAP 1 — GEMETEN VÓÓR ER IETS VERANDERDE (18-09-2026): wat de Network-tab in Hybrid mode las.**
+  Sander zag het in de browser op de tweewegset met een gestelde overdracht: "New from template ·
+  2nd order" leverde een textbook-ladder tegen 8 Ω / 2,5 kHz, de oordeelstrip rekende de som af
+  tegen vlak-over-de-volle-band, de source-R-regel meldde "Qes ×2,93" zonder de gestelde 2,4 te
+  noemen, en ⚙ Optimize components tuned de tekening zonder actieve zijde. De tabel, per element:
+
+  | element | leest architecture (Hybrid mode)? | leest gestelde eisen? | bestand:regel (HEAD `3c7a882`) |
+  | --- | --- | --- | --- |
+  | "Response"-chip / "Response flatness" in de samenvatting | NEE — `computeResponseStats` over het zichtbare bereik van de passieve som | NEE — vlak, volle band | `App.tsx:7180` (`combinedFlat`), `:16447` (chip), `:11889` (samenvatting) |
+  | Part audit · source-R-regel | NEE | NEE — alleen de v1-ohmgrens `rSourceLimitOhm` (`:7509`); `qesFactor` kaal afgedrukt | `partAudit.ts:961`; `App.tsx:21565` (audit-summary), `:11729` (tune-noot) |
+  | ⚙ Optimize components | NEE — `buildNetOptOpts` kent geen `activeBranch`, geen magere band; v1-worker `netOptimize` | NEE — geen poort, geen budget, geen declaratie; alleen `ampMinLoadOhm` en de v1-audittier | `App.tsx:11582` (`runNetOptimize`), `:11530` (`buildNetOptOpts`), `optimClient.ts:795`, `optimWorker.ts:191` |
+  | "New from template" | NEE | NEE — textbook Butterworth tegen `R_REF` 8 Ω / `FC_REF` 2,5 kHz | `App.tsx:10923`, `filterTemplates.ts:123` |
+  | het v2-paneel / rapport (ter vergelijking) | JA — `activeHandover` bereikt het rapport; `activeSide.flankError` op de geladen netlist | JA | `App.tsx:4505`, `report.ts:990` |
+
+  Vier oppervlakken, één statement, geen van de vier las hem; het rapport wél — en niets op de tab
+  las het rapport.
+- **`src/lib/hybridNetwork.ts` — DE LEZINGEN, geen enkel eigen oordeel en geen engine-import** (de
+  toggle-regressiescan laat alleen de UI-instappunten in `engine2/`). `hybridStripRange` (de band
+  van de strip: het zichtbare bereik met de vloer op de onderkant van de overnameband —
+  `leanJudgedBand`, dezelfde functie als de run), `hybridStripNote` (de zin, mét de gepinde
+  `ACTIVE_SIDE_NOT_JUDGED` erin voor wat ónder de overdracht ligt), `describeQesFactor` ("Qes ×2.93
+  against stated 2.4 — requirement FAILED" / "within stated 2.4"; zonder gesteld maximum het kale
+  getal en `failed: null`, niet `false` — niemand oordeelde, P4), `describeFlank` (de chip:
+  rms-vormfout, in de tooltip band, punten en het niveau dat de DSP-gain absorbeert),
+  `seedLowestPassiveWay` (stap 4) en `TEMPLATE_NOMINAL_NOTE`.
+- **`leanJudgedBand` in `activeSide.ts` — ÉÉN REGEL, TWEE LEZERS.** De H-2b-regel "de geoordeelde
+  band van een magere pass begint op de onderkant van de overnameband" woonde als closure
+  (`leanBandFor`) in `runVfOptimize`; sinds H-3 is het één functie die de run én de strip lezen.
+  De H-2b-bronscan die de closure-body pinde ging daarop rood — zij deed haar werk — en pint nu de
+  aanroep plus de functie zelf.
+- **STAP 2 — DE STRIP.** `combinedFlat` leest in Hybrid mode `hybridStripBand.range` (vloer
+  282,8 Hz bij 400 Hz LR4); een zichtbaar bereik dat eronder eindigt oordeelt NIETS en de chip zegt
+  "Response · not judged" met de gepinde zin (F0, geen sliver). De "Flank"-chip staat ernaast op
+  Working en leest `engineV2Report.report.activeSide.flankError` — het rapport oordeelt de geladen
+  netlist sinds H-2b met `flankErrorDb`, de functie waarmee de worker zijn shortlistrijen oordeelt;
+  **de app meet geen eigen flank** (`flankErrorDb(` komt in `App.tsx` niet voor, gepind). De
+  samenvatting draagt "Target-flank error" als eigen regel. De source-R-regel noemt op BEIDE
+  plaatsen (audit-summary en tune-noot) het gestelde Q_es-maximum via `describeQesFactor`, en een
+  gefaalde gestelde eis kleurt/waarschuwt óók waar de v1-ohmgrens dat niet doet;
+  `v2QesStatedMax = engineV2Enabled ? engineV2Gates.qesMultiplierMax : undefined` (toggle-guard).
+- **STAP 3 — DE TUNER: ÉÉN OPTIE-ASSEMBLAGE, TWEE AANROEPERS.** `designChain.ts` exporteert sinds
+  H-3 `activeSideBranches(input)` (de H-1/H-2b-constructie van de gemodelleerde/complement-tak op
+  beide rasters, mét de P4-conditie als veld) en `assembledTuneOptions(input, seedParts, extras,
+  hooks)` — het optie-object van de assembled tune, letterlijk uit `runDesignChain` gelicht, hooks
+  als laatste gespreid (F2b). `runDesignChain` leest ze zelf (identiteit: de twee live ketenarmen van
+  `chainChoices.test.ts` blijven byte-identiek, `f4cRegression` en `workerRouteRegression`
+  reproduceren). De v2-worker kent een DERDE kind, **`v2TuneNetlist`** (`V2TuneNetlistPayload`:
+  `input: ChainInput`, `parts`, `label`, `v2`, `candidate?`): dezelfde feiten, dezelfde
+  `twoWayNetworkFacts` (de F4c-read-back en de drie overlays, sinds H-3 één functie voor beide
+  tweewegroutes), `runCandidate` met de poorten, de budgetten en de declaratie — en in plaats van
+  ontwerp + synthese `optimizeNetworkValues` op de GETEKENDE onderdelen met `assembledTuneOptions`.
+  De meting is óók gedeeld: `twoWayMeasurements` en `measureRejectedTwoWay` (uit de
+  `v2ChainOne`-closures gelicht, byte-identiek). `optimizeNetworkValues(` komt in de worker precies
+  één keer voor, gepind. **In de app** gaat `runNetOptimize` in Hybrid mode (`v2Hybrid`) naar
+  `runNetOptimizeHybrid`: het ketenframe (`v2ChainFrame`), de gemeten wegen erop, de passieve
+  impedanties (de actieve WEGGEHOUDEN, H-2), de ketensettings uit **`twoWayChainSettings`** — het
+  settings-literal van de tweewegscan, verbatim uit `runVfOptimize` gelicht, twee aanroepers, gepind
+  op precies twee — de klasse-A-DSP-afleiding via `buildV2Report(null, hz)` of het complement, de
+  magere band, `v2RunSettingsFor` en `declareCandidateChoices` (kooi `[null]`, vensterbodem
+  `[null]`: door niemand gegenereerd). Een geweigerde tune (`rejection`) past NIETS toe en noemt de
+  regel (V31); een geleverde commit via `commitSchematic` en de noot draagt de flankfout vóór → ná,
+  het |Z|-oordeel, elke gewapende poort, en de Q_es-zin.
+- **DE BEVINDING VAN STAP 3, EN ZIJ IS DE BELANGRIJKSTE MEETING VAN DEZE SESSIE: DE MAGERE TUNE
+  HOUDT DE FLANK NIET.** Gemeten in `h3NetworkTab.test.ts` op casus 1b (de data van de
+  tweewegdemo), LR4 @ 400 Hz, het sjabloonzaad van stap 4 (mid akoestisch gezaaid, tweeter
+  textbook): het zaad staat op **0,836 dB rms** flankfout; de tune door de echte route levert onder
+  élke gewapende poort (|Z| 1,88 → 2,73 Ω boven de 2,6 Ω-vloer), haalt zijn EIGEN doel (rimpel van
+  de gecomplementeerde som 11,08 → 2,79 dB) en zet de flank op **3,69 dB rms** (max 7,55, niveau
+  +4,40). Drie armen om het toe te schrijven: zónder versterkervloer 5,74 dB rms, met fasegewicht 0
+  3,10, met de trapmethode uit identiek 3,69. Het is dus niet de poort en niet de fase: **de
+  amplitudeterm weegt de overnameband als één octaaf van zes en de zoektocht geeft haar uit** aan
+  het mid/tweeter-gebied, waar het textbook-zaad op 11 dB rimpel begint. De acceptatie van de
+  opdracht ("haalt het flankdoel binnen tolerantie") is op deze data NIET gehaald en de tolerantie
+  is niet opgerekt: de claim staat als **"flank ná > flank vóór"** — de V30-vorm, boekhouding die
+  rood hoort te worden — en een reparatie die de flank vasthoudt draait die regel om. Wat er
+  waarschijnlijk nodig is (niet gedaan, eigen sessie): de flankfout als term of als poort in de
+  magere tune, of de tweeter óók akoestisch zaaien zodat de tune niet met 11 dB rimpel begint.
+- **STAP 4 — HET SJABLOON.** `filterTemplate` kent `lowBranch` (alleen tweeweg): de componenten van
+  de laagste tak komen van de aanroeper, de andere blijft textbook, de naam zegt het
+  (`2-way · 2nd order · hybrid 400 Hz`); zonder `lowBranch` byte-identiek, `TEMPLATE_REFERENCE`
+  (8 Ω / 2,5 kHz) staat als export zodat de noot het getal citeert waarop de ladder gebouwd is.
+  `seedLowestPassiveWay` zaait de laagste passieve weg via `synthesize` in AKOESTISCHE modus op de
+  gemeten weg (respons én impedantie), spec `hp: activeHighPass(overdracht)` + de referentieknie als
+  LP — de H-2b-route's eigen spec (`designChain.ts`, `lowHighPass`) zonder ontwerpstap: correcties
+  UIT (een kale ladder, zoals elk sjabloon), geen catalogus-snap. Handberekening in
+  `hybridNetwork.test.ts`: vlakke driver in 8 Ω → LR4-ladder op 400 Hz (−6 dB op de hoek, < −40 dB
+  twee octaven lager), en dezelfde hoek in 4 Ω halveert élke spoel en verdubbelt élke C. In de app
+  neemt `startNetworkFromTemplate` in Hybrid mode het PASSIEVE PAAR (nooit het driewegsjabloon),
+  zaait de laagste weg en noteert welke helft textbook is; zonder overdracht blijft het sjabloon wat
+  het is en ZEGT het dat (`TEMPLATE_NOMINAL_NOTE`: "built against nominal impedance — state a
+  handover or run Optimize for an acoustic design"), alleen op de v2-route; een geweigerde synthese
+  valt terug op textbook mét de reden (F0).
+- **DE GUARDS.** `src/lib/hybridNetwork.test.ts` (21 claims): de strip-band met de hand, de
+  Q_es-zin in drie toestanden, de flank-chip, het zaad (hand + 4 Ω-tegenproef + `lowBranch`), en de
+  bronscans op `App.tsx`, `designChain.ts` en `worker.ts` (de vier oppervlakken, de ene
+  optie-assemblage, `twoWayChainSettings` precies tweemaal, `optimizeNetworkValues(` in de worker
+  precies eenmaal, geen `flankErrorDb(` in de app). `src/lib/engine2/h3NetworkTab.test.ts`
+  (9 claims, 23 s): `assembledTuneOptions`/`activeSideBranches` in drie toestanden (P2: zonder
+  actieve zijde geen enkele hybride sleutel; hooks winnen), het zaad op casus 1b met het rapport als
+  lezer, de tune door de echte route (levert, poorten, geen som, flank, het rapport leest hetzelfde
+  getal binnen 0,5 dB over twee rasters, en de bevinding), P2 zonder actieve zijde (geen flankkolom;
+  de plain tune wordt op dit zaad door de vloer geweigerd — het textbook-zaad zit op 1,88 Ω — of
+  levert met de som geoordeeld), P4 (gemeten vorm zonder meting weigert bij naam), V31 (200 Ω-vloer:
+  lege onderdelen, `kinds: ['gate']`). De tune-claims dragen bewust geen `[live]`: 23 s op het
+  ketenraster van casus 1b, en zij zijn wat de route bewijst.
+- **NIET GEDAAN, met naam.** (1) De flank vasthouden in de magere tune (zie de bevinding). (2) De
+  driewegvorm van het sjabloon in Hybrid mode: het passieve paar is een tweeweg en dat is wat
+  gebouwd wordt. (3) De strip in de GEMETEN vorm: de sim van de tab draagt de actieve weg niet als
+  tak (hij zit niet in de netlist), dus ook daar geldt "onder de overdracht niet geoordeeld" — één
+  regel voor beide vormen, en de MODEL-markering van de shortlist komt niet op de tab. (4) De
+  "Optimize components"-route in Hybrid mode gaat door de v2-worker en niet meer door
+  `runNetOptimizeTask`; de minimaliseer-pas (`runMinimizeTask`) is niet aangeraakt en tuned nog v1.
+- **DE BROWSERCONTROLE (Browser-pane op de dev-server, 18-09-2026, ná de snelle laag en de
+  casus-1b-reproductie, met de suite gestopt), en zij is de reden dat dit als af geldt.** Verse
+  localStorage, de TWEEWEGDEMO, Expert → Filters → ⚙ Settings: Hybrid mode aan, `400`, LR4, Max Q_es
+  2,4, versterkervloer 2,6 Ω → de statement leest *"Hybrid mode, LEAN FORM: … (low) is designed to an
+  acoustic LR4 high-pass at 400 Hz"*. Network → **New from template · 2nd order**: de tab heet
+  `2-way · 2nd order · hybrid 400 Hz`, de noot *"lowest passive way seeded to the stated acoustic LR4
+  high-pass at 400.0 Hz on the measured way (acoustic synthesis, bare ladder, fit 0.71 dB rms); upper
+  knee BW2 @ 2500 Hz (template reference); the tweeter branch is the textbook ladder at 2500 Hz / 8 Ω
+  — run ⚙ Optimize components …"*, de BOM draagt C1 99 µF · L2 0,701 mH · C3 116 µF · L4 2,78 mH
+  (de LR4-ladder op 400 Hz in de gemeten mid) naast de textbook B·C1 5,63 µF · B·L1 0,72 mH. De strip:
+  **`Flank 0.60 dB rms`** ernaast, en de Response-chip draagt in zijn titel *"HYBRID MODE — judged
+  from 283 Hz (the bottom of the handover band, the lean form's rule) upward. Below it: not judged —
+  active side unmeasured …"*. **⚙ Optimize components (30 s, in de v2-worker):** de noot
+  *"Hybrid mode (lean form, LR4 @ 400 Hz): 8 components tuned (12.092 sims) — target-flank error
+  0.60 → 2.95 dB rms (level -0.31 dB, absorbed by the DSP gain) · sum: not judged — active side
+  unmeasured … · phase 134.5° → 29.8° · every armed gate inside · Qes ×1.04 within stated 2.4"*, de
+  audit-summary *"source R at the low driver 0.14 Ω @ 200 Hz (Qes ×1.04 within stated 2.4)"*, Z min
+  3,0 Ω, de Flank-chip 2,99 dB rms — **de bevinding van stap 3 reproduceert in de browser: de tune
+  haalt élke poort en laat de flank los.** Hybrid mode UIT → New from template: `2-way · 2nd order`,
+  géén Flank-chip, Response op het volle bereik, en de noot *"New from template — built against
+  nominal impedance — state a handover or run Optimize for an acoustic design"*. Geen console-fout,
+  geen `page reload` in het vite-log.
+

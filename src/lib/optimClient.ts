@@ -72,6 +72,8 @@ import type {
   V2Response,
   V2RunSettings,
   V2CandidatePayload,
+  V2TuneNetlistPayload,
+  V2TuneNetlistResult,
 } from './engine2/optimizer/worker.ts';
 
 export class CancelledError extends Error {
@@ -214,7 +216,7 @@ function workerAtV2(slot: number): Worker {
 
 function runV2<T>(
   slot: number,
-  kind: 'v2Chain3One' | 'v2ChainOne',
+  kind: 'v2Chain3One' | 'v2ChainOne' | 'v2TuneNetlist',
   payload: unknown,
   onProgress?: (d: unknown) => void,
 ): Promise<T> {
@@ -765,6 +767,26 @@ export function runChainScanV2(
     ({ input, label, candidate }) => ({ input, label, v2, ...(candidate ? { candidate } : {}) }),
     onProgress,
   );
+}
+
+/**
+ * H-3 — TUNE A DRAWN NETWORK on the v2 worker, on the two-way chain's own
+ * terms (`v2TuneNetlist`): the Network tab's ⚙ button in Hybrid mode.
+ *
+ * One request, one worker, no pool — the tune of one network is one job. The
+ * progress callback carries the tuner's stage labels exactly as the v1
+ * `netOptimize` route does, so the busy card reads the same.
+ */
+export function runTuneNetlistV2(
+  payload: V2TuneNetlistPayload,
+  onStage?: (label: string) => void,
+): Promise<V2CandidateResult<V2TuneNetlistResult>> {
+  stoppedEarly = false;
+  return runV2<V2CandidateResult<V2TuneNetlistResult>>(0, 'v2TuneNetlist', payload, (d) => {
+    const m = d as { detail?: string; stage?: string };
+    if (m.detail) onStage?.(m.detail);
+    else if (m.stage) onStage?.(m.stage);
+  });
 }
 
 export function runVfRoundsTask(

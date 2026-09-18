@@ -27,11 +27,27 @@ export interface TemplateSpec {
   wayCount: WayCount;
   /** Driver models for the slots (LP first, HP last). */
   models: readonly string[];
+  /**
+   * H-3 — the LOWEST branch of a two-way template, already synthesised by the
+   * caller (Hybrid mode: the stated high-pass on the measured way, seeded by
+   * `seedLowestPassiveWay`). Replaces the textbook low-pass ladder of the
+   * first model; the other branch stays the textbook ladder. Two-way only —
+   * a three-way template in Hybrid mode is not a shape this module has (the
+   * passive network is then a two-way over the ways above the active one, and
+   * the caller says so). Absent = the template as it always was.
+   */
+  lowBranch?: { components: readonly SynthesizedComponent[]; label: string };
 }
 
 /** Neutral reference the generic seed values are computed at. */
 const R_REF = 8; // Ω
 const FC_REF = 2500; // Hz — the 2-way crossover reference (unchanged)
+/**
+ * H-3 — the reference stated in one place, for the caller that seeds the
+ * lowest branch acoustically and keeps the other at this corner: the note it
+ * prints quotes the number the ladder was actually built on.
+ */
+export const TEMPLATE_REFERENCE = { rOhm: R_REF, fcHz: FC_REF } as const;
 /** 3-way neutral crossover references: low and high transition. */
 const FC_LOW_3W = 600; // Hz
 const FC_HIGH_3W = 3000; // Hz
@@ -142,10 +158,13 @@ export function filterTemplate(spec: TemplateSpec): VxpCrossover {
   const lpModel = slots[0];
   const hpModel = slots[slots.length - 1];
   const xo = mergeSynthesizedSchematics([
-    { components: branchComponents(order, false), model: lpModel },
+    /* H-3 — a caller-seeded lowest branch replaces the textbook ladder of the
+     * first model only; the textbook high-pass ladder of the last model is
+     * untouched, and the name says which half is which. */
+    { components: spec.lowBranch ? spec.lowBranch.components : branchComponents(order, false), model: lpModel },
     { components: branchComponents(order, true), model: hpModel },
   ]);
-  return { ...xo, name: `2-way · ${ordinal} order` };
+  return { ...xo, name: spec.lowBranch ? `2-way · ${ordinal} order · ${spec.lowBranch.label}` : `2-way · ${ordinal} order` };
 }
 
 /** UI descriptor: the orders on offer, most-used first. */
