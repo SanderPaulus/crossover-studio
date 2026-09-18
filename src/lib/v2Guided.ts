@@ -286,7 +286,7 @@ export const V2_REQUIREMENT_SCREENS: readonly V2RequirementScreen[] = Object.fre
      * meets the question after answering fourteen requirements has already
      * counted their ways as passive. */
     id: 'active-side',
-    title: 'Is one of the ways driven by its own amplifier and a DSP?',
+    title: 'Hybrid mode — is one of the ways driven by its own amplifier and a DSP?',
     rowIds: ['activeSideOn', 'activeHandoverHz', 'activeHandoverShape'],
     control: 'active-side',
     /* ALL: the three state something only together. A tick with no handover is

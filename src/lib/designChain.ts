@@ -319,17 +319,29 @@ export function runDesignChain(
   const modelSpec = activeSide
     ? { ...activeSide.settings, kind: activeSide.handover.kind, order: activeSide.handover.order, hz: activeSide.handover.hz }
     : null;
-  const activeBranch = activeSide && modelSpec && input.activeMeasured
-    ? modelBranchResponse(input.activeMeasured, modelSpec)
+  /* H-2b — THE DESIGN-STEP CONDITION, and it is the one engine change of the
+   * lean form. With the active way MEASURED (H-1) the branch is its measurement
+   * times the stated DSP transfer. With the active way UNMEASURED
+   * (`handover.unmeasured`) there is nothing to model it from, and the branch
+   * is the lowest PASSIVE way's OWN measurement times the mirror low-pass at
+   * the textbook polarity — `complementSettings` in `activeSide.ts` says why
+   * that is the statement "the flank meets its target" and not a model of the
+   * active driver. The source differs; everything downstream is the same code. */
+  const lean = activeSide?.handover.unmeasured === true;
+  const activeSource = lean ? w : input.activeMeasured;
+  const activeSourceSafety = lean ? s.safety?.w : input.activeMeasuredSafety;
+  const activeBranch = activeSide && modelSpec && activeSource
+    ? modelBranchResponse(activeSource, modelSpec)
     : null;
-  const activeBranchSafety = activeSide && modelSpec && input.activeMeasuredSafety
-    ? modelBranchResponse(input.activeMeasuredSafety, modelSpec)
+  const activeBranchSafety = activeSide && modelSpec && activeSourceSafety
+    ? modelBranchResponse(activeSourceSafety, modelSpec)
     : null;
-  if (activeSide && !input.activeMeasured) {
+  if (activeSide && !lean && !input.activeMeasured) {
     /* P4's visible half: a stated active side without the measurement it needs
      * is a statement this chain cannot honour, and honouring it silently with
      * "no branch" would design the passive network against a sum that does not
-     * exist. */
+     * exist. The lean form is the one exception, and it says so by name
+     * (`unmeasured`) rather than by leaving the measurement out. */
     throw new Error(
       `designChain: an active handover is stated for "${activeSide.handover.activeWay}" but no measured ` +
         'response was supplied for it (ChainInput.activeMeasured).',

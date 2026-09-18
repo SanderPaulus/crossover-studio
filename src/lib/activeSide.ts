@@ -104,6 +104,21 @@ export interface ActiveHandover {
   order: 1 | 2 | 3 | 4;
   /** Who stated it and when. Never derived, never defaulted. */
   statedBy: string;
+  /**
+   * H-2b — THE LEAN FORM: the active way has NO measured response and is NOT
+   * modelled.
+   *
+   * With three measured ways (H-1) the active side is a modelled branch: its
+   * measurement times the stated low-pass, at a gain, delay and polarity
+   * derived from the measurements. With TWO measured ways there is nothing to
+   * model it from, and this flag says so instead of the chain refusing: the
+   * lowest PASSIVE way still gets its acoustic high-pass target (stated f and
+   * shape), the flank it realises is judged against that target
+   * (`flankErrorDb`), and every figure that needs the SUM — ripple, window,
+   * lobing, the DSP gain — is reported as NOT JUDGED rather than left blank
+   * (F0). Absent = the measured form, byte for byte (P2).
+   */
+  unmeasured?: true;
 }
 
 /** The three DSP settings the modelled branch carries. */
@@ -458,4 +473,150 @@ export function fitModelBranch(
     bandHz,
     off,
   };
+}
+
+/* ==================================================================== *
+ * H-2b — THE LEAN FORM: two measured ways, the active side unmeasured
+ * ==================================================================== */
+
+/**
+ * Speed of sound, m/s — the one physical constant this module carries, and
+ * the same value the rest of the app uses (`cabinet.ts`, `engine2/constants.ts`).
+ */
+const SPEED_OF_SOUND_M_S = 343;
+
+/**
+ * THE TEXTBOOK COMPLEMENT'S POLARITY for a Linkwitz-Riley alignment.
+ *
+ * An LR of order 2m is a squared Butterworth of order m. At the corner each
+ * flank sits at −6 dB with phase ±m·90°, so their sum is `2·cos(m·90°)` times
+ * the half-level: unity for m even (LR4, LR8 — normal polarity), ZERO for m
+ * odd (LR2, LR6 — one side must be reversed to sum to an all-pass). That is
+ * the textbook rule, and it is the rule for the ideal shapes only: H-1
+ * measured that a real pair with a fitted delay does not always agree with it
+ * (casus 1h at 362.3 Hz chose reversed under LR4). Here it is used for the
+ * COMPLEMENT that stands in for an unmeasured active side, where the ideal
+ * shape is all there is.
+ *
+ * Only LR is defined here, because it is the only kind the form offers; any
+ * other kind reads normal polarity and says nothing.
+ */
+export function textbookComplementInverted(kind: FilterKind, order: 1 | 2 | 3 | 4): boolean {
+  if (kind !== 'LR') return false;
+  return (order / 2) % 2 === 1;
+}
+
+/**
+ * THE COMPLEMENT SETTINGS of the lean form: no gain, no delay, the textbook
+ * polarity.
+ *
+ * WHAT THE COMPLEMENT IS, AND WHY THE SEARCH NEEDS ONE. Without a branch
+ * below the handover the amplitude terms of both searches read the lowest
+ * passive way's stated high-pass as a droop and spend their budget fighting
+ * the thing the project asked for — H-1 measured exactly that, which is why
+ * the modelled branch exists. With the active way UNMEASURED there is nothing
+ * to model it from, so the lean form uses the passive way's OWN measurement
+ * times the mirror low-pass as the stand-in: for an LR alignment
+ * `HP + LP` (with the textbook polarity) is an all-pass of unit magnitude, so
+ * the complemented sum is flat exactly where the REALISED flank equals the
+ * TARGET flank. No property of the active driver enters it — it is the
+ * statement "the flank meets its target", written as a sum the existing
+ * machinery can judge.
+ *
+ * Gain 0 and delay 0 are EXACT here, not defaults: the complement is built
+ * from the same measurement as the branch it is summed with, so it shares its
+ * level and its time reference by construction. The per-evaluation level
+ * match (`levelMatchDb`) still applies, exactly as in the measured form.
+ */
+export function complementSettings(h: Pick<ActiveHandover, 'kind' | 'order'>): ModelBranchSettings {
+  return { gainDb: 0, delayMs: 0, inverted: textbookComplementInverted(h.kind, h.order) };
+}
+
+/** The lean form's judgement of the realised flank against its target. */
+export interface FlankError {
+  /** RMS of the level-matched difference (realised − target) over the flank band, dB. */
+  rmsDb: number;
+  /** Largest |level-matched difference| over the band, dB. */
+  maxAbsDb: number;
+  /**
+   * How far the realised flank sits from the target on average, dB: negative
+   * = under it. REPORTED and removed before the RMS, because a real high-pass
+   * ladder into a real driver impedance is lossy where the ideal shape is not
+   * (H-1 measured 2.3–3.2 dB of it) and the DSP gain absorbs a level offset;
+   * what it cannot absorb is a different SHAPE, and that is what the RMS is.
+   */
+  levelDb: number;
+  /** The band the error was read over, Hz — half an octave either side of the handover. */
+  bandHz: [number, number];
+  /** How many grid points carried the reading. */
+  points: number;
+}
+
+/**
+ * H-2b — THE TARGET-FLANK ERROR: the measured way times the delivered network,
+ * against the measured way times the stated high-pass, over the handover band.
+ *
+ * `realised` and `measured` are on the same grid; the target is
+ * `measured × HP_stated` point for point, so the comparison is between two
+ * curves that share every property of the driver and differ only in what the
+ * network did to it. Level-matched with the plain mean of the dB difference
+ * (the offset that minimises the RMS), then the RMS and the largest residual.
+ *
+ * MAGNITUDE ONLY, on purpose. The phase of the realised flank matters for the
+ * sum with the active side, but a phase SLOPE is a delay and the delay is
+ * settled in the cabinet on the reversed-polarity null (the block says so);
+ * what would be left is a phase SHAPE error, and a flank of the right
+ * magnitude shape from a minimum-phase network has the right phase shape too.
+ *
+ * Null when the band holds no usable point, never 0 (F0).
+ */
+export function flankErrorDb(
+  realised: GriddedResponse,
+  measured: GriddedResponse,
+  h: Pick<ActiveHandover, 'hz' | 'kind' | 'order'>,
+): FlankError | null {
+  if (realised.freq.length !== measured.freq.length) return null;
+  const bandHz = handoverBandHz(h.hz);
+  const hp = activeHighPass(h);
+  const diff: number[] = [];
+  for (let i = 0; i < realised.freq.length; i++) {
+    const f = realised.freq[i];
+    if (f < bandHz[0] || f > bandHz[1]) continue;
+    if (!Number.isFinite(realised.spl[i]) || !Number.isFinite(measured.spl[i])) continue;
+    const t = evalHpLp(hp, 'hp', f);
+    const target = measured.spl[i] + 20 * Math.log10(Math.max(Math.hypot(t.re, t.im), 1e-30));
+    diff.push(realised.spl[i] - target);
+  }
+  if (diff.length === 0) return null;
+  const levelDb = diff.reduce((a, b) => a + b, 0) / diff.length;
+  let acc = 0;
+  let maxAbs = 0;
+  for (const d of diff) {
+    const r = d - levelDb;
+    acc += r * r;
+    if (Math.abs(r) > maxAbs) maxAbs = Math.abs(r);
+  }
+  return { rmsDb: Math.sqrt(acc / diff.length), maxAbsDb: maxAbs, levelDb, bandHz, points: diff.length };
+}
+
+/**
+ * H-2b — THE DELAY START VALUE FROM THE POSITIONS: how much later the active
+ * way's acoustic centre arrives than the lowest passive way's, from their
+ * entered depths behind the baffle plane.
+ *
+ * `positive = the active side is DELAYED relative to the passive ways`, the
+ * same sign as `ModelBranchSettings.delayMs`: an active way whose centre sits
+ * DEEPER already arrives later, so the processor has to delay it LESS — which
+ * is why a woofer behind a mid comes out negative here, exactly as H-1's fit
+ * did on casus 1h. Geometry only: no driver's own minimum-phase, no room. A
+ * START value for the cabinet measurement and never its answer; the block
+ * says so beside it. Null when either depth is not stated (P4).
+ */
+export function geometryDelayStartMs(
+  depths: { activeMm: number | null | undefined; passiveMm: number | null | undefined },
+): number | null {
+  const a = depths.activeMm;
+  const p = depths.passiveMm;
+  if (typeof a !== 'number' || typeof p !== 'number' || !Number.isFinite(a) || !Number.isFinite(p)) return null;
+  return ((p - a) / 1000 / SPEED_OF_SOUND_M_S) * 1000; // mm → m → s → ms
 }

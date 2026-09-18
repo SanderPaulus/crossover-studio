@@ -233,46 +233,49 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
   {
     id: 'activeSideOn',
     key: 'activeSideOn',
-    label: 'Active side below the lowest passive way',
+    label: 'Hybrid mode',
     form: 'Filters → Engine v2',
     travels:
       'engineV2Settings.activeSideOn → activeSideStatement → ReportSettings.activeHandover AND the ' +
       'chain declaration’s seventh key (activeSide) → the design step, both searches and the ' +
-      'synthesis',
+      'synthesis. H-2b: the FORM follows from what is measured — three measured ways model the ' +
+      'active side (H-1), two measured ways give the lowest passive way its flank target and judge ' +
+      'no sum (the lean form)',
     cls: 'judgement',
     band: 'architecture',
     emptyMeans:
-      'no active side: every measured way is part of the passive network, nothing is modelled, and ' +
-      'the run is exactly the run it has always been.',
+      'no hybrid: every measured way is part of the passive network, nothing is modelled, and the ' +
+      'run is exactly the run it has always been.',
     source: 'choice',
   },
   {
     id: 'activeHandoverHz',
     key: 'activeHandoverHz',
     label: 'Handover(s) to the active side (Hz)',
-    form: 'Filters → Engine v2 (shown once the active side is ticked)',
+    form: 'Filters → Engine v2 (shown once Hybrid mode is ticked)',
     travels:
-      'parsed verbatim → one RUN of the passive field per stated handover, and ActiveHandover.hz in ' +
-      'the report and the chain declaration',
+      'parsed under the H-2b grammar (decimal comma or point; semicolon or space between values; an ' +
+      'ambiguous comma is refused) → one RUN of the passive field per stated handover, and ' +
+      'ActiveHandover.hz in the report and the chain declaration',
     cls: 'judgement',
     band: 'architecture',
     emptyMeans:
-      'no handover is stated, so nothing can be modelled: the active side realises its filter in a ' +
-      'processor, so the app cannot search for that handover — it has to be told.',
+      'no handover is stated, so there is nothing to design towards: the active side realises its ' +
+      'filter in a processor, so the app cannot search for that handover — it has to be told.',
     source: 'choice',
   },
   {
     id: 'activeHandoverShape',
     key: 'activeHandoverShape',
     label: 'Acoustic target shape of the handover',
-    form: 'Filters → Engine v2 (shown once the active side is ticked)',
+    form: 'Filters → Engine v2 (shown once Hybrid mode is ticked)',
     travels:
       'ActiveHandover.kind and .order → the high-pass the passive way must reach AND the low-pass ' +
       'the DSP must reach — one stated shape, read twice',
     cls: 'judgement',
     band: 'architecture',
     emptyMeans:
-      'no shape is stated, so neither flank has an alignment to meet and nothing is modelled.',
+      'no shape is stated, so neither flank has an alignment to meet and nothing is designed towards.',
     source: 'choice',
   },
   {
@@ -679,6 +682,29 @@ const NICE: readonly V2InputRow[] = [
       'says of itself that the ramp between them is uncalibrated (V9). ' +
       BREAKUP_DIVISOR_PROTOCOL,
     source: 'measurement',
+  },
+  {
+    /* H-2b — the processor's latency on the active side. NICE: a hybrid run
+     * happens without it and the DSP block then prints the delay unsubtracted
+     * and says the latency is not stated; with it, the delay to dial in has it
+     * taken off and named apart. CONDITIONAL: only while Hybrid mode is ticked,
+     * because a latency field on a fully passive project answers a case that
+     * does not exist. */
+    id: 'activeProcessorLatencyMs',
+    key: 'activeProcessorLatencyMs',
+    label: 'Processor latency on the active side (ms)',
+    form: 'Filters → Engine v2 (shown once Hybrid mode is ticked)',
+    travels: 'dspTargetBlock({ processorLatencyMs }) → subtracted from the delay to dial in, named apart',
+    cls: 'nice',
+    emptyMeans:
+      'the delay in the DSP target block is printed WITHOUT the processor’s own latency, and the block ' +
+      'says so; the FA251 with an analogue input is about 0.35 ms.',
+    source: 'nameplate',
+    placement: 'conditional',
+    placementWhy:
+      'it only means anything beside a stated active side; on a fully passive project a latency field ' +
+      'answers a case that does not exist.',
+    condition: 'only while Hybrid mode is ticked',
   },
   {
     id: 'driveVoltageV',
@@ -1425,6 +1451,7 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'activeSideOn', form: 'v2-panel', control: "checked={engineV2Settings.activeSideOn === 'on'}" },
   { row: 'activeHandoverHz', form: 'v2-panel', control: 'value={engineV2Settings.activeHandoverHz}' },
   { row: 'activeHandoverShape', form: 'v2-panel', control: 'value={engineV2Settings.activeHandoverShape}' },
+  { row: 'activeProcessorLatencyMs', form: 'v2-panel', control: 'value={engineV2Settings.activeProcessorLatencyMs}' },
 ]);
 
 /**

@@ -91,6 +91,20 @@ export interface CandidateMeasurements {
    * read on the same network. Optional and read by nothing that judges — the
    * requirement below uses `meanAbsDeg` and only that. */
   phaseTracking: { subject: string; meanAbsDeg: number; controlDeg?: number }[];
+  /**
+   * H-2b — THE TARGET-FLANK ERROR of the lean hybrid form: the lowest passive
+   * way times the delivered network against its stated acoustic high-pass,
+   * over the handover band (`flankErrorDb`, `activeSide.ts`).
+   *
+   * OPTIONAL, and the two empty states mean different things: ABSENT is a run
+   * with no unmeasured active side, which is every run before H-2b; `null` is
+   * a lean-form candidate whose flank could not be read. Read by nothing that
+   * judges a REQUIREMENT — no A5e.1 requirement is stated on it — and by the
+   * shortlist's sort only where `response` is null, which on a lean-form run
+   * it always is: the sum is not judged there (F0), so the flank is what the
+   * rows are ordered on.
+   */
+  flankError?: import('../../activeSide.ts').FlankError | null;
 }
 
 /**

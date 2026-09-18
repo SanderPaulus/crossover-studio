@@ -174,11 +174,14 @@ import {
   activeLowPass,
   deriveModelBranch,
   fitModelBranch,
+  flankErrorDb,
+  geometryDelayStartMs,
   levelMatchDb,
   modelBranchResponse,
   handoverBandHz,
   modelBranchTransfer,
   type ActiveHandover,
+  type FlankError,
   type ModelBranchSettings,
 } from '../activeSide.ts';
 
@@ -450,6 +453,32 @@ export interface ActiveSideReport {
   stated: ActiveHandover;
   /** Version of the derivation, for the cache (A5e.5). */
   version: string;
+  /**
+   * H-2b — WHICH FORM this is. `measured`: the active way has a measured
+   * response and joins every acoustic sum as a modelled branch (H-1).
+   * `unmeasured`: the LEAN form — nothing is modelled, the lowest passive way
+   * is judged on its FLANK against the stated high-pass, and every sum figure
+   * in this report is the passive network alone and is NOT a judgement of the
+   * loudspeaker (the panel and the shortlist say so, F0).
+   */
+  form: 'measured' | 'unmeasured';
+  /**
+   * H-2b — the realised flank of the lowest passive way against its target,
+   * on the loaded netlist. Null without a netlist, or when the band held no
+   * point. Present in BOTH forms: in the measured form it is a reading beside
+   * the sum, in the lean form it is the judgement.
+   */
+  flankError: FlankError | null;
+  /**
+   * H-2b — the delay START value from the entered acoustic-centre depths
+   * (`geometryDelayStartMs`), or null when either depth is not entered. A
+   * start for the cabinet measurement, never its answer. In the measured form
+   * it stands beside the fitted delay as a cross-check; in the lean form it is
+   * the only delay figure there is.
+   */
+  delayStartMs: number | null;
+  /** Where the start value came from, or why there is none. */
+  delayStartSource: string;
   /**
    * THE THREE DSP SETTINGS — the numbers that go into the processor.
    *
@@ -790,11 +819,55 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         phaseDeg: g.map((f) => interpLog(src.grid, src.phaseDeg, f)),
       };
     };
-    const d = deriveModelBranch(stated, onGrid(stated.activeWay, fitGrid), onGrid(stated.passiveWay, fitGrid));
     const shape = `${stated.kind}${stated.order} at ${stated.hz.toFixed(1)} Hz`;
+    /* H-2b — the delay start value from the entered depths, both forms. */
+    const depthActive = input.geometry.depthMm?.[stated.activeWay];
+    const depthPassive = input.geometry.depthMm?.[stated.passiveWay];
+    const delayStartMs = geometryDelayStartMs({ activeMm: depthActive, passiveMm: depthPassive });
+    const delayStartSource =
+      delayStartMs !== null
+        ? `from the entered acoustic-centre depths: ${stated.passiveWay} ${depthPassive!.toFixed(1)} mm, ` +
+          `${stated.activeWay} ${depthActive!.toFixed(1)} mm behind the baffle plane — pure geometry, no driver phase`
+        : `no start value: the acoustic-centre depth is not entered for ` +
+          `${[depthActive === undefined ? stated.activeWay : null, depthPassive === undefined ? stated.passiveWay : null]
+            .filter((x): x is string => x !== null)
+            .join(' and ')}`;
+    if (stated.unmeasured) {
+      /* H-2b — THE LEAN FORM. Nothing is derived, because there is nothing to
+       * derive it from, and nothing is MISSING either: the absence of the
+       * active way's measurement is the form, not a defect. The flank error is
+       * filled in below once the delivered branch exists. */
+      return {
+        stated,
+        version: ACTIVE_SIDE_VERSION,
+        form: 'unmeasured',
+        flankError: null,
+        delayStartMs,
+        delayStartSource,
+        settings: null,
+        classAGainDb: null,
+        fitBandHz,
+        fitOctaves: 2 * HANDOVER_MATCH_OCTAVES,
+        handoverWindowDb: null,
+        otherPolarityWindowDb: null,
+        nullMarginDb: null,
+        otherPolarityNullMarginDb: null,
+        otherPolarityDelayMs: null,
+        passiveTarget: `${stated.passiveWay}: acoustic high-pass, ${shape} (${activeHighPass(stated).order}th order ${activeHighPass(stated).kind}) — judged on its FLANK against this target`,
+        activeTarget: `active side (unmeasured): acoustic low-pass, ${shape} (${activeLowPass(stated).order}th order ${activeLowPass(stated).kind}), realised in DSP — not modelled, not judged here`,
+        off: [],
+        deliveredRefit: null,
+        passiveOnlySumDb: null,
+      };
+    }
+    const d = deriveModelBranch(stated, onGrid(stated.activeWay, fitGrid), onGrid(stated.passiveWay, fitGrid));
     return {
       stated,
       version: ACTIVE_SIDE_VERSION,
+      form: 'measured',
+      flankError: null,
+      delayStartMs,
+      delayStartSource,
       settings: d.settings,
       classAGainDb: d.settings ? d.settings.gainDb : null,
       fitBandHz,
@@ -908,6 +981,31 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       `The stated active handover could not be modelled: ${activeSide.off.join('; ')}. ` +
         'Every sum below is the passive network alone.',
     );
+  }
+  /* H-2b — THE FLANK, on the delivered branch, in both forms; and the lean
+   * form's own sentence about what the sums below are. The delivered branch of
+   * the lowest passive way is `branchComplex` BEFORE the model joins (in the
+   * measured form the model has been added above, under the ACTIVE way's id,
+   * so the passive way's entry is untouched). */
+  if (activeSide && grid) {
+    const delivered = branchComplex.get(activeSide.stated.passiveWay);
+    const src = ingest.drivers.find((x) => x.driver === activeSide.stated.passiveWay)?.onAxisFull;
+    if (delivered && src) {
+      activeSide.flankError = flankErrorDb(
+        { freq: [...grid], spl: delivered.map((z) => dbAmp(cabs(z))), phaseDeg: grid.map(() => 0) },
+        { freq: [...grid], spl: grid.map((f) => interpLog(src.grid, src.db, f)), phaseDeg: grid.map(() => 0) },
+        activeSide.stated,
+      );
+    }
+    if (activeSide.form === 'unmeasured') {
+      problems.push(
+        'Hybrid mode, lean form: the active side is UNMEASURED, so nothing here models it. Every sum ' +
+          'figure in this report (ripple, window, M-K on the active handover, lobing) is the passive ' +
+          'network alone and is NOT a judgement of the loudspeaker — the processor realises its half; ' +
+          'verify with the reversed-polarity null measurement in the cabinet. What IS judged is the ' +
+          `flank of ${activeSide.stated.passiveWay} against its stated high-pass (the target-flank error).`,
+      );
+    }
   }
 
   const order = branchDb.length

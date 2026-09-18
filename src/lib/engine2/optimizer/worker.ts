@@ -40,7 +40,7 @@ import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from '../..
 import { coilDcrInventory, describeCoilDcrModel, stampCoilDcr, type CoilDcrInventory, type CoilDcrModel } from '../../coilDcr.ts';
 import type { Complex } from '../../complex.ts';
 import { runDesignChain, type ChainInput, type ChainResult, type ChainStageProgress } from '../../designChain.ts';
-import { handoverBandHz, levelMatchDb, modelBranchResponse } from '../../activeSide.ts';
+import { flankErrorDb, handoverBandHz, levelMatchDb, modelBranchResponse, type FlankError } from '../../activeSide.ts';
 import { runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
 import { busTopology, busTopologyOfNetlist, type NetOptimizeOptions } from '../../netOptimizer.ts';
 import type { NetElement, Netlist } from '../../network.ts';
@@ -1812,6 +1812,45 @@ function summedResponse(
 }
 
 /**
+ * H-2b — ONE FILTERED BRANCH of a delivered network: the measured way times
+ * the transfer the netlist gives it, on the chain grid.
+ *
+ * The same solve `summedResponse` does, read for one model instead of summed
+ * — the lean hybrid form judges the lowest passive way's FLANK against its
+ * stated target (`flankErrorDb`), and that needs the branch alone. Null when
+ * the network cannot be solved or the model has no transfer.
+ */
+function filteredBranchResponse(
+  parts: readonly VxpPart[],
+  grid: readonly number[],
+  model: string,
+  response: GriddedResponse,
+  driverZ: Record<string, readonly Complex[]>,
+): GriddedResponse | null {
+  let sol;
+  try {
+    sol = solveNetwork(netlistOf(parts), grid, driverZ);
+  } catch {
+    return null;
+  }
+  const d = sol.drivers.find((x) => x.model === model);
+  const h = d ? sol.transfers[d.id] : null;
+  return h ? applyTransfer(response, h) : null;
+}
+
+/**
+ * H-2b — the lean form's per-candidate judgement: the flank of the lowest
+ * passive way (model `mid` on this chain) against the stated high-pass.
+ * Null without a solvable network; ABSENT (undefined) without a lean form.
+ */
+function leanFlankErrorOf(input: ChainInput, parts: readonly VxpPart[]): FlankError | null | undefined {
+  const a = input.settings.activeSide;
+  if (!a || a.handover.unmeasured !== true) return undefined;
+  const realised = filteredBranchResponse(parts, input.grid, 'mid', input.w, input.driverZ);
+  return realised ? flankErrorDb(realised, input.w, a.handover) : null;
+}
+
+/**
  * The topology class of a delivered candidate, from the specs the DESIGN step
  * settled — never from the tuned component values.
  *
@@ -3149,11 +3188,20 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
               activeBranchOf(chainInput),
             );
             const band = judgeBandOf(v2, input.grid);
+            /* H-2b — THE LEAN FORM JUDGES NO SUM. With the active side
+             * unmeasured the sum a listener hears does not exist here, and a
+             * ripple figure over the passive ways alone would be a number about
+             * a loudspeaker nobody builds — so `response` is null (reported as
+             * NOT JUDGED, never blank: F0) and the flank error is what the
+             * candidate offers instead. Absent on every other run (P2). */
+            const flank = leanFlankErrorOf(chainInput, r.parts);
+            const lean = flank !== undefined;
             return {
               measurements: {
-                response: sum
+                response: !lean && sum
                   ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band)
                   : null,
+                ...(lean ? { flankError: flank } : {}),
                 phaseTracking: Number.isFinite(r.net.after.phaseDeg)
                   ? [
                       {
@@ -3181,6 +3229,9 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           },
           /* V31 — see the three-way branch: measured here, not handed out. */
           (parts) => {
+            /* H-2b — a refused tune on a lean-form run has no judged sum
+             * either; the flank is not measured on a refusal (nobody looked). */
+            if (chainInput.settings.activeSide?.handover.unmeasured === true) return null;
             const sum = summedResponse(
               parts,
               input.grid,

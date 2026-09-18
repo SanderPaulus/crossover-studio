@@ -183,13 +183,16 @@ import {
  * declares active, what is missing when it cannot be modelled, and the
  * sentences that say so (`lib/v2ActiveSide.ts`). */
 import { describeDspTarget, dspTargetBlock } from './lib/engine2/dspTarget.ts';
-import type { ActiveHandover, ModelBranchSettings } from './lib/activeSide.ts';
+import { complementSettings, handoverBandHz, type ActiveHandover, type ModelBranchSettings } from './lib/activeSide.ts';
 import {
+  ACTIVE_SIDE_FLANK_COLUMN,
   ACTIVE_SIDE_GUIDED_LINE,
+  ACTIVE_SIDE_LEAN_NOTE,
+  ACTIVE_SIDE_LEAN_UNJUDGED_COLUMNS,
   ACTIVE_SIDE_MODEL_MARK,
   ACTIVE_SIDE_MODEL_NOTE,
+  ACTIVE_SIDE_NOT_JUDGED,
   ACTIVE_SIDE_SUM_COLUMNS,
-  ACTIVE_SIDE_ROLES,
   ACTIVE_SIDE_SHAPES,
   ACTIVE_WAY_MEASURED_NOTE,
   activeSideStatement,
@@ -2182,6 +2185,8 @@ export default function App() {
             style={{ width: '9rem' }}
           />{' '}
           Hz
+          {/* H-2b — THE LIST READ BACK, exactly as the app understood it. */}
+          {v2ActiveSide.read && <span className="derived"> {t(v2ActiveSide.read)}</span>}
         </label>
       );
     }
@@ -3894,16 +3899,22 @@ export default function App() {
         on: engineV2Settings.activeSideOn,
         handoversRaw: engineV2Settings.activeHandoverHz,
         shape: engineV2Settings.activeHandoverShape,
-        ways: threeWay ? 3 : woofer && tweeter ? 2 : 1,
-        /* The ACTIVE way is the app's lowest role and the lowest PASSIVE way is
-         * the one above it — `ACTIVE_SIDE_ROLES`, read and never re-typed. */
-        activeWayMeasured: ACTIVE_SIDE_ROLES.active === 'low' ? !!woofer : false,
-        passiveWayMeasured: ACTIVE_SIDE_ROLES.lowestPassive === 'mid' ? !!midDrv : false,
+        latencyRaw: engineV2Settings.activeProcessorLatencyMs,
+        /* H-2b — THE FORM FOLLOWS FROM WHAT IS MEASURED. The project's ways,
+         * low to high, each with whether its response is loaded: three loaded
+         * is the measured form (the lowest way modelled), the top two loaded
+         * is the lean form (the active side unmeasured). The roles come out of
+         * the statement, read and never re-typed. */
+        ways: (threeWay ? (['low', 'mid', 'high'] as const) : (['low', 'high'] as const)).map((role) => ({
+          role,
+          measured: role === 'low' ? !!woofer : role === 'mid' ? !!midDrv : !!tweeter,
+        })),
       }),
     [
       engineV2Settings.activeSideOn,
       engineV2Settings.activeHandoverHz,
       engineV2Settings.activeHandoverShape,
+      engineV2Settings.activeProcessorLatencyMs,
       threeWay,
       woofer,
       midDrv,
@@ -4388,6 +4399,14 @@ export default function App() {
           high: countOf('high'),
         },
         baffleWidthMm: mm(cabinet.baffleWidthMm),
+        /* H-2b — the acoustic-centre DEPTH per way, for the delay start value
+         * of a hybrid's DSP block (`geometryDelayStartMs`). Only where a
+         * number was entered; a blank stays absent (P4). */
+        depthMm: {
+          low: mm(cabinet.drivers.low?.depthMm),
+          mid: mm(cabinet.drivers.mid?.depthMm),
+          high: mm(cabinet.drivers.high?.depthMm),
+        },
       };
 
       // The assumed acoustic order per handover, from the slope settings the
@@ -4402,11 +4421,12 @@ export default function App() {
       /* H-2 — the SAME resolution the adapter will do below, exclusion and all:
        * two answers to "which driver is this role" is how the order-by-pair key
        * and the manifest end up describing different drivers. */
-      const ids = resolveDriverIds(
-        branches,
-        filter?.netlist ?? null,
-        v2ActiveSide.armed ? ACTIVE_SIDE_ROLES.active : undefined,
-      ).ids;
+      /* H-2b — the exclusion only where the active way HAS a role that is
+       * not in the netlist (the measured form, or a lean form under a
+       * three-slot project); in the two-slot lean form every branch is in
+       * the netlist and nothing is excluded. */
+      const activeRole = v2ActiveSide.armed ? (v2ActiveSide.roles?.active ?? undefined) : undefined;
+      const ids = resolveDriverIds(branches, filter?.netlist ?? null, activeRole).ids;
       const orderByPair: Record<string, number> = {};
       if (threeWay) {
         const lowOrder = orderFrom(acSlopeWoofer, acSlopeMidHp);
@@ -4458,7 +4478,7 @@ export default function App() {
          * lowest driver belongs to the lowest passive role and not to the
          * active one. Without this the two collide on a three-branch project
          * with a two-driver netlist (`resolveDriverIds`). */
-        ...(v2ActiveSide.armed ? { activeRole: ACTIVE_SIDE_ROLES.active } : {}),
+        ...(activeRole !== undefined ? { activeRole } : {}),
         settings: {
           ...(angles.length > 0 ? { verticalWindowDeg: angles } : {}),
           ...(engineV2Settings.amplifierPowerW !== '' && Number.isFinite(power) && power > 0
@@ -4485,9 +4505,13 @@ export default function App() {
            * the report is byte for byte what it always was (P4). */
           ...((): { activeHandover?: ActiveHandover } => {
             const hz = activeHandoverHz ?? v2ActiveSide.handoversHz[0];
-            if (!v2ActiveSide.armed || !v2ActiveSide.shape || hz === undefined) return {};
-            const activeWay = ids[ACTIVE_SIDE_ROLES.active];
-            const passiveWay = ids[ACTIVE_SIDE_ROLES.lowestPassive];
+            const roles = v2ActiveSide.roles;
+            if (!v2ActiveSide.armed || !v2ActiveSide.shape || !roles || hz === undefined) return {};
+            /* H-2b — in the lean form the active way is not in the project:
+             * it gets a NAME and the `unmeasured` mark, and the report models
+             * nothing under it. */
+            const activeWay = roles.active ? ids[roles.active] : 'active (unmeasured)';
+            const passiveWay = ids[roles.lowestPassive];
             if (!activeWay || !passiveWay) return {};
             return {
               activeHandover: {
@@ -4499,6 +4523,7 @@ export default function App() {
                 statedBy: engineV2StatedAt.activeHandoverHz
                   ? `you on ${engineV2StatedAt.activeHandoverHz}`
                   : 'you (date not recorded)',
+                ...(v2ActiveSide.form === 'unmeasured' ? { unmeasured: true as const } : {}),
               },
             };
           })(),
@@ -9166,6 +9191,7 @@ export default function App() {
               /* H-2 — a three-way PASSIVE run has no active side by
                * construction: a hybrid falls through to the two-way route. */
               activeHandoverByLabel: {},
+              activeSideForm: null,
             });
             setV2Shortlist(shortlist);
             setShortlistPick(null);
@@ -9565,22 +9591,27 @@ export default function App() {
      * shortlist, the export — asks the same questions of whichever two ways
      * these are, which is the whole reason `scanRequest.ts` exists.
      * ================================================================ */
-    const hybrid = v2Hybrid && !!midDrv;
-    /** The lowest way the PASSIVE network carries. */
-    const passiveLow: Loaded = hybrid && midDrv ? midDrv : woofer;
+    const hybridRoles = v2Hybrid ? v2ActiveSide.roles : null;
+    const hybrid = hybridRoles !== null;
+    const loadedOf = (r: BranchRole): Loaded | null => (r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter);
+    /** The lowest way the PASSIVE network carries — the statement's, never re-typed. */
+    const passiveLow: Loaded = (hybridRoles ? loadedOf(hybridRoles.lowestPassive) : null) ?? woofer;
     /** Its role, in the app's own vocabulary — read, never re-typed. */
-    const passiveLowRole: BranchRole = hybrid
-      ? ACTIVE_SIDE_ROLES.lowestPassive
-      : ACTIVE_SIDE_ROLES.active;
-    /** The way the DSP drives, or null when there is no active side. */
-    const activeLoaded: Loaded | null = hybrid ? woofer : null;
+    const passiveLowRole: BranchRole = hybridRoles ? hybridRoles.lowestPassive : 'low';
+    /**
+     * The way the DSP drives, or null when there is no active side — and null
+     * in the LEAN form (H-2b), where the active side is unmeasured and the
+     * chain builds its complement from the passive way's own measurement.
+     */
+    const activeLoaded: Loaded | null =
+      hybridRoles && hybridRoles.active && v2ActiveSide.form === 'measured' ? loadedOf(hybridRoles.active) : null;
     /**
      * The MODEL the active way is keyed by everywhere downstream. Its impedance
      * is deliberately withheld from the chain below: the amplifier this network
      * is designed for never sees it, and a driver impedance in the map is an
      * invitation for the solver to find a branch for it (casus 1h).
      */
-    const activeModel = hybrid ? canonicalModelForRole(ACTIVE_SIDE_ROLES.active, threeWay) : null;
+    const activeModel = activeLoaded && hybridRoles?.active ? canonicalModelForRole(hybridRoles.active, threeWay) : null;
     setVfBusy(true);
     setVfError(null);
     setVfProgress(null);
@@ -9865,7 +9896,7 @@ export default function App() {
            * own rule), never by counting to one. On every other run this
            * filters nothing and `wis` is exactly what it always was. */
           const allWis = engineV2Report?.report?.predesign.windowInputs ?? [];
-          const activeWayId = hybrid ? engineV2Report?.driverIds?.[ACTIVE_SIDE_ROLES.active] : undefined;
+          const activeWayId = hybridRoles?.active ? engineV2Report?.driverIds?.[hybridRoles.active] : undefined;
           const wis = activeWayId ? allWis.filter((x) => x.lower !== activeWayId) : allWis;
           if (wis.length === 0) {
             /* NO WINDOWS, SO NO FIELD — and the fallback to the v1 generator is
@@ -9891,7 +9922,7 @@ export default function App() {
              * Read through `passiveLowRole` rather than the literal 'low', so
              * the curve the natural-slope fit gets is the curve the chain
              * actually designs for. */
-            const g = role === passiveLowRole ? w : role === ACTIVE_SIDE_ROLES.highest ? t : null;
+            const g = role === passiveLowRole ? w : role === (hybridRoles?.highest ?? 'high') ? t : null;
             return g ? { freq: g.freq, db: g.spl } : null;
           };
           const fieldSettings = fieldModeSettings(fieldMode, {
@@ -10026,6 +10057,11 @@ export default function App() {
             const built = buildV2Report(null, hz);
             const a = built?.report?.activeSide ?? null;
             if (a?.settings) activeRuns.push({ hz, active: { handover: a.stated, settings: a.settings } });
+            /* H-2b — THE LEAN FORM: nothing is derived, the chain gets the
+             * textbook complement (`complementSettings`) and builds it from
+             * the passive way's own measurement. One function, the same one
+             * the engine test reads. */
+            else if (a?.form === 'unmeasured') activeRuns.push({ hz, active: { handover: a.stated, settings: complementSettings(a.stated) } });
             else {
               setV2RunNotes((prev) => [
                 ...prev,
@@ -10078,6 +10114,17 @@ export default function App() {
           ]),
         );
         const tAdjust = branchAdj.tweeter;
+        /* H-2b — THE JUDGED BAND OF A LEAN-FORM PASS starts at the bottom of
+         * the handover band. Below it the complemented sum is the passive
+         * way's own raw response — a flank fourteen dB and more down cannot
+         * move it — and a search judged there would shape the high-pass to
+         * the pod's roll-off instead of to its target. In the measured form
+         * the sum below the handover is real and the band stays. */
+        const leanBandFor = (active?: { handover: ActiveHandover }): [number, number] | null => {
+          if (!active?.handover.unmeasured || !settings.band) return null;
+          const floor = Math.max(settings.band[0], handoverBandHz(active.handover.hz)[0]);
+          return floor < settings.band[1] ? [floor, settings.band[1]] : null;
+        };
         const chainInputFor = (
           v: { label: string; xoRange?: [number, number] },
           cand?: GeneratedCandidate,
@@ -10095,19 +10142,23 @@ export default function App() {
           ...(active && activeMeasuredSafety ? { activeMeasuredSafety } : {}),
           adjust: tAdjust,
           seed: defaultVFilters(),
-          settings: cand
-            ? {
-                ...settings,
-                /* The candidate's alignment binds the design step's structure
-                 * enumeration (V26 row 39 on the two-way chain:
-                 * `structurePreference` is the BINDING choice of
-                 * `vfOptimizer`). */
-                structurePreference: {
-                  kind: cand.crossings[0].alignment.kind as 'LR' | 'BW' | 'BS',
-                  order: cand.crossings[0].alignment.order as 1 | 2 | 3 | 4,
-                },
-              }
-            : settings,
+          settings: {
+            ...(cand
+              ? {
+                  ...settings,
+                  /* The candidate's alignment binds the design step's structure
+                   * enumeration (V26 row 39 on the two-way chain:
+                   * `structurePreference` is the BINDING choice of
+                   * `vfOptimizer`). */
+                  structurePreference: {
+                    kind: cand.crossings[0].alignment.kind as 'LR' | 'BW' | 'BS',
+                    order: cand.crossings[0].alignment.order as 1 | 2 | 3 | 4,
+                  },
+                }
+              : settings),
+            /* H-2b — absent on every run that is not a lean-form pass. */
+            ...(leanBandFor(active) ? { band: leanBandFor(active)! } : {}),
+          },
           ...(v.xoRange ? { xoRange: v.xoRange } : {}),
           /* A pin is the designer's promise; the A5d.3 window is the drivers'.
            * A generated candidate is judged against its OWN window — audit
@@ -10138,7 +10189,8 @@ export default function App() {
             ...prev,
             describeActiveSide(v2ActiveSide),
             describeHybridField(v2ActiveSide, v2Variants.length),
-            ACTIVE_SIDE_MODEL_NOTE,
+            /* H-2b — which sentence depends on the FORM: modelled, or not judged. */
+            v2ActiveSide.form === 'unmeasured' ? ACTIVE_SIDE_LEAN_NOTE : ACTIVE_SIDE_MODEL_NOTE,
           ]);
         }
         const items: V2ChainItem[] = runPasses.flatMap((pass) => v2Variants.map((v, i) => {
@@ -10364,6 +10416,8 @@ export default function App() {
                 : null,
               export: v2RunExport,
               activeHandoverByLabel: { ...activeHandoverByLabel },
+              /* H-2b — which form the run was, read off the run afterwards. */
+              activeSideForm: hybrid && activeRuns.length > 0 ? v2ActiveSide.form : null,
             });
             setV2Shortlist(shortlist);
             setShortlistPick(null);
@@ -10947,6 +11001,13 @@ export default function App() {
      * over, is a different block per handover.
      */
     activeHandoverByLabel: Record<string, number>;
+    /**
+     * H-2b — WHICH FORM the run modelled: `measured` (the active side as a
+     * modelled branch, every sum column marked MODEL), `unmeasured` (the lean
+     * form: the sum columns NOT JUDGED and the flank column judged), or null.
+     * On the RUN and not on the form, for the reason `activeHandoverByLabel` is.
+     */
+    activeSideForm: 'measured' | 'unmeasured' | null;
   } | null>(null);
   /**
    * F3 — the SHORTLIST the last v2 scan produced: the feasible region, spread
@@ -11002,11 +11063,15 @@ export default function App() {
        * polarity margin and judges it not at all — which is what `dspTarget.ts`
        * does with an absent input, and what P4 asks of it. Casus 1h states one
        * because its own measurements were measured for it. */
-      const block = dspTargetBlock(rep);
+      const block = dspTargetBlock(rep, {
+        /* H-2b — the stated processor latency, subtracted from the delay to
+         * dial in and named apart; absent = printed without it, said so. */
+        ...(v2ActiveSide.processorLatencyMs !== null ? { processorLatencyMs: v2ActiveSide.processorLatencyMs } : {}),
+      });
       if (block) out.push({ label: row.label, hz, lines: describeDspTarget(block) });
     }
     return out;
-  }, [v2Run, v2Shortlist, buildV2Report]);
+  }, [v2Run, v2Shortlist, buildV2Report, v2ActiveSide.processorLatencyMs]);
   /**
    * H-2 — DID THE RUN ON SCREEN MODEL AN ACTIVE SIDE?
    *
@@ -11015,6 +11080,8 @@ export default function App() {
    * tick after a hybrid run and the table still shows what it measured.
    */
   const v2HybridRun = Object.keys(v2Run?.activeHandoverByLabel ?? {}).length > 0;
+  /** H-2b — the run on screen was the LEAN form: sum columns not judged, the flank column judged. */
+  const v2LeanRun = v2HybridRun && v2Run?.activeSideForm === 'unmeasured';
   /** Which shortlist column the table is sorted on. Presentation only. */
   const [shortlistSort, setShortlistSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   /**
@@ -16784,7 +16851,7 @@ export default function App() {
                           will otherwise take for a fault. It also says what its
                           ABSENCE costs, which is the half a run cannot recover
                           from (P4/F0). */}
-                      {v2ActiveSide.asked && role === ACTIVE_SIDE_ROLES.active && (
+                      {v2ActiveSide.asked && v2ActiveSide.roles?.active === role && v2ActiveSide.form === 'measured' && (
                         <span className={loadedDrv ? 'derived' : 'v2-warn'}>
                           {t(ACTIVE_WAY_MEASURED_NOTE)}
                           {!loadedDrv && ` ${t('Without it nothing that judges a SUM can see this way, and the run is judged over the passive ways alone.')}`}
@@ -19310,19 +19377,19 @@ export default function App() {
                       * cannot disagree about which alignment they are halves of.
                       * Unticked is the app every project has always had (P4). */}
                     <span className="v2-subcap">{t('what the design is — which ways the passive network carries at all')}</span>
-                    <label title={t('H-1/H-2 — tick this when the lowest way has its own amplifier and DSP. The app then designs the PASSIVE network of the ways above it and hands you the DSP numbers (shape, gain, delay, polarity). The active way is still measured and still judged: its response joins every acoustic sum, and it joins nothing electrical, because the amplifier this network is designed for does not drive it.')}>
+                    <label title={t('H-1/H-2/H-2b — tick this when the lowest way has its own amplifier and DSP. The app then designs the PASSIVE network of the ways above it and hands you the DSP numbers. The FORM follows from what is measured: with the active way measured beside the others it is modelled and every acoustic sum contains it (nothing electrical does); with only the passive pair measured — the LEAN form — nothing is modelled, the lowest passive way is designed to the stated high-pass and judged on its target-flank error, and every sum figure reads NOT JUDGED.')}>
                       <input
                         type="checkbox"
                         checked={engineV2Settings.activeSideOn === 'on'}
                         onChange={(e) => setV2Field('activeSideOn', e.target.checked ? 'on' : '')}
                       />
-                      {t('Active side below the lowest passive way')}
+                      {t('Hybrid mode')}
                       {v2Stated('activeSideOn')}
                       {v2Empty('activeSideOn')}
                     </label>
                     {engineV2Settings.activeSideOn === 'on' && (
                       <>
-                        <label title={t('The acoustic handover(s) to the active side, Hz — a LIST, space or comma separated, exactly as you would type crossings you state. Each one is a separate run of the whole passive field, so three handovers do not add three runs: they multiply the field by three. Stated verbatim; nothing is rounded.')}>
+                        <label title={t('The acoustic handover(s) to the active side, Hz — a LIST. A comma is a DECIMAL comma (362,3 = 362.3 Hz); separate frequencies with a semicolon or a space (“362,3; 400”). A comma that could be either is refused with an explanation. Each handover is a separate run of the whole passive field, so three handovers multiply the field by three. Stated verbatim; nothing is rounded.')}>
                           {t('Handover(s) to the active side (Hz)')}
                           <input
                             type="text"
@@ -19331,6 +19398,8 @@ export default function App() {
                             onChange={(e) => setV2Field('activeHandoverHz', e.target.value)}
                             style={{ width: '9rem' }}
                           />
+                          {/* H-2b — THE LIST READ BACK, exactly as the app understood it. */}
+                          {v2ActiveSide.read && <span className="derived"> {t(v2ActiveSide.read)}</span>}
                           {v2Stated('activeHandoverHz')}
                           {v2Empty('activeHandoverHz')}
                         </label>
@@ -19350,11 +19419,37 @@ export default function App() {
                           {v2Stated('activeHandoverShape')}
                           {v2Empty('activeHandoverShape')}
                         </label>
+                        {/* H-2b — THE PROCESSOR'S OWN LATENCY on the active side. A
+                          * stated number, subtracted from the delay to dial in and
+                          * named apart in the DSP block; blank = printed without it,
+                          * and the block says so (P4). The hint lives in the title
+                          * and the empty-field sentence, never in the placeholder
+                          * (E-2: a number in a field reads as a number in the field). */}
+                        <label title={t('The processor’s own latency on the active side, ms — from its spec sheet (the Hypex FA251 with an analogue input is about 0.35 ms). The DSP target block subtracts it from the delay to dial in and names it apart. Blank = the delay is printed without it, and the block says so.')}>
+                          {t('Processor latency on the active side (ms)')}
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={engineV2Settings.activeProcessorLatencyMs}
+                            placeholder={V2_GHOSTS.activeProcessorLatencyMs}
+                            onChange={(e) => setV2Field('activeProcessorLatencyMs', e.target.value)}
+                            style={{ width: '5rem' }}
+                          />
+                          {v2Stated('activeProcessorLatencyMs')}
+                          {v2Empty('activeProcessorLatencyMs')}
+                        </label>
+                        {/* H-2b — WHICH FORM what is measured admits, said before
+                          * anything runs. */}
+                        {v2ActiveSide.armed && (
+                          <span className="derived" style={{ flexBasis: '100%' }}>
+                            {t(describeActiveSide(v2ActiveSide))}
+                          </span>
+                        )}
                         {/* WHAT IS MISSING, BY NAME — never a silent refusal to
                           * model, and never a guess at the missing input (P4). */}
                         {!v2ActiveSide.armed && (
                           <span className="v2-warn" style={{ flexBasis: '100%' }}>
-                            {t('No active side is modelled yet:')}{' '}
+                            {t('Hybrid mode is not assembled yet:')}{' '}
                             {v2ActiveSide.off.join(' ')}
                           </span>
                         )}
@@ -20747,7 +20842,7 @@ export default function App() {
                 )}
                 {/* U-6 RESULT · TABLE */}
                 {v2Shortlist.rows.length > 0 && (() => {
-                  const COLS = [
+                  const COLS_ALL = [
                     ['rms', t('RMS'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.rmsDeviationDb ?? null, (v: number) => `${v.toFixed(2)} dB`],
                     ['window', t('window'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.response?.windowPlusMinusDb ?? null, (v: number) => `±${v.toFixed(2)} dB`],
                     /* M-K since V44 — the WORST handover, on the admitted
@@ -20794,6 +20889,12 @@ export default function App() {
                        row's own chain result — the same number the v1 table
                        prints — and it sorts like every other column. */
                     ['bom', 'BOM', (r: (typeof v2Shortlist.rows)[number]) => r.result.bomTotalEur, (v: number) => `€${Math.round(v)}`],
+                    /* H-2b — THE TARGET-FLANK ERROR, the lean form's own
+                       judgement: the lowest passive way times the delivered
+                       network against its stated high-pass, dB rms over the
+                       handover band (`flankErrorDb`). Rendered only on a
+                       lean-form run, where it is also the sort key. */
+                    [ACTIVE_SIDE_FLANK_COLUMN, t('target-flank error'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.flankError?.rmsDb ?? null, (v: number) => `${v.toFixed(2)} dB`],
                   ] as const;
                   /* U-6 — ONE ROW PER ANSWER, AND THE STATUS WORD BESIDE IT.
                      `groupShortlistRows` is a READING and never a thinning: it
@@ -20805,6 +20906,10 @@ export default function App() {
                      printed nine times (F0). */
                   const view = groupShortlistRows(v2Shortlist.rows, v2Shortlist.stated);
                   const sorted = [...view];
+                  /* H-2b — the flank column exists on a lean-form run and on
+                     no other; the sum columns of such a run read NOT JUDGED. */
+                  const COLS = COLS_ALL.filter(([key]) => v2LeanRun || key !== ACTIVE_SIDE_FLANK_COLUMN);
+                  const notJudged = (key: string) => v2LeanRun && ACTIVE_SIDE_LEAN_UNJUDGED_COLUMNS.includes(key);
                   if (shortlistSort) {
                     const col = COLS.find((c) => c[0] === shortlistSort.key);
                     if (col) {
@@ -20844,9 +20949,10 @@ export default function App() {
                                     branch nobody has built yet; a reader who
                                     cannot tell the two kinds of number apart
                                     will take the first for a measurement. */}
-                                {v2HybridRun && ACTIVE_SIDE_SUM_COLUMNS.includes(key)
+                                {v2HybridRun && !v2LeanRun && ACTIVE_SIDE_SUM_COLUMNS.includes(key)
                                   ? ` (${ACTIVE_SIDE_MODEL_MARK})`
                                   : ''}
+                                {notJudged(key) ? ` (${t('not judged')})` : ''}
                                 {shortlistSort?.key === key ? (shortlistSort.dir === 1 ? ' ▲' : ' ▼') : ''}
                               </th>
                             ))}
@@ -20888,6 +20994,15 @@ export default function App() {
                                 <td title={r.topologyClass} className="derived">{r.orderSignature}</td>
                                 {COLS.map(([key, , read, fmt]) => {
                                   const v = read(r);
+                                  /* H-2b — REPORTED, NOT BLANK (F0): a lean-form
+                                     sum cell says why it holds no number. */
+                                  if (notJudged(key)) {
+                                    return (
+                                      <td key={key} className="derived" title={t(ACTIVE_SIDE_NOT_JUDGED)}>
+                                        {t('not judged')}
+                                      </td>
+                                    );
+                                  }
                                   return <td key={key}>{v === null ? '—' : fmt(v)}</td>;
                                 })}
                               </tr>
@@ -20969,7 +21084,7 @@ export default function App() {
                         {t('{n} design(s)', { n: String(v2DspTargets.length) })}
                       </span>
                     </summary>
-                    <p className="sub">{t(ACTIVE_SIDE_MODEL_NOTE)}</p>
+                    <p className="sub">{t(v2LeanRun ? ACTIVE_SIDE_LEAN_NOTE : ACTIVE_SIDE_MODEL_NOTE)}</p>
                     <p className="sub">
                       <button type="button" onClick={exportDspTargets} title={t('Download every DSP target block of this run as JSON.')}>
                         {t('Export DSP targets (JSON)')}

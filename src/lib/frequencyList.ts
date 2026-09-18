@@ -59,3 +59,71 @@ export function parseFrequencyTokens(line: string, label: string): ParsedFrequen
   }
   return { hz, problems };
 }
+
+/* ==================================================================== *
+ * H-2b — THE HANDOVER LIST: a second grammar, and why it is not the first
+ * ==================================================================== */
+
+/**
+ * H-2b — ONE LINE OF HANDOVERS TO AN ACTIVE SIDE, under the grammar the
+ * designer was promised.
+ *
+ * WHY THIS IS A SECOND FUNCTION AND NOT A FLAG ON THE FIRST. The two lists a
+ * designer can type in this app mean their punctuation DIFFERENTLY, by
+ * statement and not by accident:
+ *
+ *   · U-5's stated crossings: a COMMA separates values and a SEMICOLON (or a
+ *     newline) separates AXES — "400, 450; 2200, 2400" is two handovers of a
+ *     three-way (`statedCrossings.ts`, pinned by its own tests).
+ *   · H-2b's handover list: a COMMA is a DECIMAL comma ("362,3" is 362.3 Hz,
+ *     which is how Sander writes it), a SEMICOLON or a SPACE separates values,
+ *     and a comma that cannot be a decimal comma is REFUSED with an
+ *     explanation rather than read as a separator.
+ *
+ * A comma cannot be a value separator in one field and a decimal mark in the
+ * other through one function, and a flag that swaps the meaning of a
+ * character is the "one function wearing two names" the header above warns
+ * about. So this is its own reader, with the U-5 rules it does share — split
+ * on separators, validate the WHOLE token, report what could not be used and
+ * use it for nothing (A3h) — written out rather than borrowed.
+ *
+ * The one thing this grammar does NOT do is guess. "362,3, 400" could mean
+ * two values with a stray comma or a decimal comma with a separator after it;
+ * it is refused, and the message says how to write what was probably meant.
+ */
+export interface ParsedHandoverList extends ParsedFrequencyList {
+  /** Every token that was refused for being AMBIGUOUS about its comma. */
+  ambiguous: string[];
+}
+
+/** A whole token that is one frequency: digits, optionally one decimal mark and digits. */
+const HANDOVER_TOKEN = /^\d+(?:[.,]\d+)?$/;
+
+export function parseHandoverList(line: string, label: string): ParsedHandoverList {
+  const hz: number[] = [];
+  const problems: string[] = [];
+  const ambiguous: string[] = [];
+  for (const tok of line.split(/[\s;]+/)) {
+    if (tok === '') continue;
+    if (HANDOVER_TOKEN.test(tok)) {
+      const v = Number(tok.replace(',', '.'));
+      if (Number.isFinite(v) && v > 0) {
+        hz.push(v);
+        continue;
+      }
+      problems.push(`${label}: “${tok}” is not a positive frequency and was ignored.`);
+      continue;
+    }
+    if (tok.includes(',')) {
+      ambiguous.push(tok);
+      problems.push(
+        `${label}: “${tok}” is ambiguous and was ignored — a comma is read as a DECIMAL comma here ` +
+          '(362,3 is 362.3 Hz), so a comma between two frequencies cannot be told from one inside a ' +
+          'frequency. Separate frequencies with a semicolon or a space: “362,3; 400” or “362,3 400”.',
+      );
+      continue;
+    }
+    problems.push(`${label}: “${tok}” is not a positive frequency and was ignored.`);
+  }
+  return { hz, problems, ambiguous };
+}

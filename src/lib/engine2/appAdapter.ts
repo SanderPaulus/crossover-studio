@@ -168,6 +168,12 @@ export interface AdapterGeometry {
   /** Whether a branch radiates rotationally symmetrically. */
   rotationallySymmetric?: Partial<Record<BranchRole, boolean>>;
   baffleWidthMm?: number;
+  /**
+   * H-2b — the acoustic-centre DEPTH behind the baffle plane per branch, mm
+   * (the cabinet form's `depthMm`). Only read for the delay start value of a
+   * hybrid's DSP block; absent = not entered (P4).
+   */
+  depthMm?: Partial<Record<BranchRole, number>>;
 }
 
 export interface AdapterInput {
@@ -361,10 +367,13 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
   const arrays: Record<string, number> = {};
   const sources: Record<string, WaySourcePosition[]> = {};
   const symmetric: Record<string, boolean> = {};
+  const depth: Record<string, number> = {};
   for (const b of args.branches) {
     const driver = ids[b.role] ?? b.role;
     const v = args.geometry.verticalMm[b.role];
     if (v !== undefined) z[driver] = v;
+    const dp = args.geometry.depthMm?.[b.role];
+    if (dp !== undefined && Number.isFinite(dp)) depth[driver] = dp;
     const a = args.geometry.arraySpacingMm[b.role];
     if (a !== undefined && a > 0) arrays[driver] = a;
     /* THE ARRAY, AS POSITIONS (V20).
@@ -382,6 +391,7 @@ export function buildEngineV2Input(args: AdapterInput): AdapterResult {
     if (s !== undefined) symmetric[driver] = s;
   }
   if (Object.keys(z).length) geometry.zOffsetMm = z;
+  if (Object.keys(depth).length) geometry.depthMm = depth;
   if (Object.keys(arrays).length) geometry.arraySpacingMm = arrays;
   if (Object.keys(sources).length) geometry.waySources = sources;
   if (Object.keys(symmetric).length) geometry.rotationallySymmetric = symmetric;

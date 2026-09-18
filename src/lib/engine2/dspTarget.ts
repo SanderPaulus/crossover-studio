@@ -18,7 +18,7 @@
  */
 
 import type { EngineV2Report } from './report.ts';
-import type { ModelBranchSettings } from '../activeSide.ts';
+import { textbookComplementInverted, type ModelBranchSettings } from '../activeSide.ts';
 
 /** The block, as it goes to a file. */
 export interface DspTargetBlock {
@@ -40,6 +40,35 @@ export interface DspTargetBlock {
   deliveredRefit: { gainDb: number; delayMs: number; inverted: boolean; handoverWindowDb: number } | null;
   /** The band the level match and the delay fit were read over. */
   fitBandHz: [number, number];
+  /**
+   * H-2b — WHICH FORM: `measured` (H-1: the active way is a modelled branch)
+   * or `unmeasured` (the lean form: nothing is modelled; the gain is NOT
+   * JUDGED, the delay is a geometric start value, the polarity the textbook's).
+   */
+  form: 'measured' | 'unmeasured';
+  /**
+   * H-2b — the delay START value from the entered acoustic-centre depths, and
+   * where it came from (or why there is none). Present in both forms.
+   */
+  delayStart: { ms: number; source: string } | null;
+  /**
+   * H-2b — the processor's own latency on the active side, ms, as STATED by
+   * the designer (the FA251 with an analogue input is about 0.35 ms). Null
+   * when not stated: the dial-in delay then carries it unsubtracted, and the
+   * block says so.
+   */
+  processorLatencyMs: number | null;
+  /**
+   * H-2b — WHAT TO DIAL IN, after the latency: `delayMs` is the fitted (or
+   * geometric) delay MINUS the stated latency; null when neither a fit nor a
+   * start value exists. `gainDb` is null in the lean form (not judged).
+   */
+  dial: { gainDb: number | null; delayMs: number | null; inverted: boolean | null };
+  /**
+   * H-2b — the lean form's judgement of the lowest passive way's flank against
+   * its stated high-pass, on the loaded netlist; null without one.
+   */
+  flankError: { rmsDb: number; maxAbsDb: number; levelDb: number; bandHz: [number, number] } | null;
   /** How decisive the polarity was, and what the alternative was. */
   polarity: {
     /** How big a margin this project's own measurement uncertainty makes meaningful; null when unstated. */
@@ -91,6 +120,13 @@ export function dspTargetBlock(
      * default. Absent = the polarity margin is reported and not judged (P4).
      */
     mergeFitUncertaintyDeg?: number;
+    /**
+     * H-2b — the processor's own latency on the active side, ms, STATED by
+     * the designer. Subtracted from the dial-in delay and named apart; absent
+     * = the delay is printed unsubtracted and the block says the latency is
+     * not stated (P4).
+     */
+    processorLatencyMs?: number;
   } = {},
 ): DspTargetBlock | null {
   const a = report.activeSide;
@@ -99,14 +135,63 @@ export function dspTargetBlock(
     opts.mergeFitUncertaintyDeg !== undefined && opts.mergeFitUncertaintyDeg > 0
       ? polarityDecisiveDb(opts.mergeFitUncertaintyDeg)
       : null;
+  const latency =
+    opts.processorLatencyMs !== undefined && Number.isFinite(opts.processorLatencyMs) && opts.processorLatencyMs >= 0
+      ? opts.processorLatencyMs
+      : null;
   const shape = { kind: a.stated.kind, order: a.stated.order, hz: a.stated.hz };
   const notes: string[] = [];
   const margin =
     a.nullMarginDb !== null && a.otherPolarityNullMarginDb !== null
       ? a.nullMarginDb - a.otherPolarityNullMarginDb
       : null;
+  const delayStart = a.delayStartMs !== null ? { ms: a.delayStartMs, source: a.delayStartSource } : null;
+  const flankError = a.flankError
+    ? { rmsDb: a.flankError.rmsDb, maxAbsDb: a.flankError.maxAbsDb, levelDb: a.flankError.levelDb, bandHz: a.flankError.bandHz }
+    : null;
+  /* THE DELAY BEFORE THE LATENCY: the re-fit on the delivered network where
+   * there is one, the class-A fit otherwise (measured form); the geometric
+   * start value in the lean form; null when there is nothing. */
+  const rawDelayMs =
+    a.form === 'unmeasured'
+      ? (delayStart?.ms ?? null)
+      : a.settings
+        ? (a.deliveredRefit ? a.deliveredRefit.settings.delayMs : a.settings.delayMs)
+        : null;
+  const dial = {
+    gainDb: a.form === 'unmeasured' || !a.settings ? null : (a.deliveredRefit?.settings.gainDb ?? a.settings.gainDb),
+    delayMs: rawDelayMs === null ? null : rawDelayMs - (latency ?? 0),
+    inverted:
+      a.form === 'unmeasured'
+        ? textbookComplementInverted(a.stated.kind, a.stated.order)
+        : a.settings
+          ? (a.deliveredRefit?.settings.inverted ?? a.settings.inverted)
+          : null,
+  };
 
-  if (!a.settings) {
+  if (a.form === 'unmeasured') {
+    /* H-2b — THE LEAN FORM: reported, never guessed (F0). */
+    notes.push(
+      'LEAN FORM: the active side is UNMEASURED and nothing here models it. The GAIN is not judged — ' +
+        'the processor realises its half; set it by ear-and-microphone against the passive ways. The ' +
+        'POLARITY is the textbook one for this alignment and not a measurement. Verify both with the ' +
+        'reversed-polarity null measurement in the cabinet.',
+    );
+    notes.push(
+      'THE FINAL DELAY IS MEASURED IN THE CABINET, not typed from this block. Set the shape and a ' +
+        'starting gain, reverse the polarity of ONE way, and sweep the delay for the DEEPEST NULL through ' +
+        'the handover; the start value above (where there is one) is geometry and nothing more.',
+    );
+    if (flankError) {
+      notes.push(
+        `What IS judged here is the flank of ${a.stated.passiveWay}: ${flankError.rmsDb.toFixed(2)} dB rms ` +
+          `from its stated ${shape.kind}${shape.order} high-pass over ${flankError.bandHz[0].toFixed(0)}–` +
+          `${flankError.bandHz[1].toFixed(0)} Hz (largest residual ${flankError.maxAbsDb.toFixed(2)} dB), ` +
+          `sitting ${flankError.levelDb >= 0 ? '+' : ''}${flankError.levelDb.toFixed(2)} dB from the target on ` +
+          'average — the level offset the DSP gain absorbs, the shape error it cannot.',
+      );
+    }
+  } else if (!a.settings) {
     notes.push(`The active side could not be modelled: ${a.off.join('; ')}.`);
   } else {
     notes.push(
@@ -115,8 +200,9 @@ export function dspTargetBlock(
         'handover; that null is what this fit maximised, so the two are the same measurement and the ' +
         'cabinet one is the one that counts.',
     );
-    /* THE SIGN, and it is the first thing that will trip somebody up. */
-    const dialMs = a.deliveredRefit ? a.deliveredRefit.settings.delayMs : a.settings.delayMs;
+    /* THE SIGN, and it is the first thing that will trip somebody up. Read
+     * AFTER the latency: that is the number somebody types. */
+    const dialMs = dial.delayMs ?? (a.deliveredRefit ? a.deliveredRefit.settings.delayMs : a.settings.delayMs);
     if (dialMs < 0) {
       notes.push(
         `The delay to dial in is NEGATIVE (${dialMs.toFixed(3)} ms): it asks for the ACTIVE side ` +
@@ -164,6 +250,32 @@ export function dspTargetBlock(
         'the model\'s own best estimate of where that sweep lands.',
     );
   }
+  /* H-2b — THE PROCESSOR LATENCY, named apart from the delay it is taken off. */
+  if (latency !== null) {
+    notes.push(
+      `The processor's own latency on the active side is stated at ${latency.toFixed(3)} ms and has been ` +
+        'SUBTRACTED from the delay to dial in: the processor already delays the active way by that much ' +
+        'before any delay you set. ' +
+        (rawDelayMs !== null
+          ? `Before the subtraction the delay was ${rawDelayMs >= 0 ? '+' : ''}${rawDelayMs.toFixed(3)} ms.`
+          : 'There is no delay to subtract it from here.'),
+    );
+  } else {
+    notes.push(
+      'No processor latency is stated for the active side, so the delay above is printed WITHOUT it: a ' +
+        'processor delays the active way by its own latency before any delay you set (the FA251 with an ' +
+        'analogue input is about 0.35 ms), and that comes off the number to dial in. State it in Hybrid mode.',
+    );
+  }
+  /* H-2b — THE GEOMETRIC START VALUE beside a fitted delay, as a cross-check. */
+  if (a.form === 'measured' && delayStart && a.settings) {
+    notes.push(
+      `Geometry alone says ${delayStart.ms >= 0 ? '+' : ''}${delayStart.ms.toFixed(3)} ms (${delayStart.source}); ` +
+        'the fitted delay above carries the drivers\' own phase as well, which is why the two differ.',
+    );
+  } else if (a.form === 'measured' && !delayStart) {
+    notes.push(`No geometric start value beside the fit: ${a.delayStartSource}.`);
+  }
   notes.push(
     'The active side\'s own excursion, thermal and protection limits belong to its amplifier and its DSP. ' +
       'This app designs the passive network and judges what the main amplifier sees; nothing here is a ' +
@@ -186,6 +298,11 @@ export function dspTargetBlock(
         }
       : null,
     fitBandHz: a.fitBandHz,
+    form: a.form,
+    delayStart,
+    processorLatencyMs: latency,
+    dial,
+    flankError,
     polarity: {
       decisiveDb,
       nullMarginDb: a.nullMarginDb,
@@ -209,14 +326,32 @@ export function dspTargetBlock(
  * on and a reader comparing candidates needs it.
  */
 export function describeDspTarget(b: DspTargetBlock): string[] {
-  const dial = b.deliveredRefit ?? { gainDb: b.judged.gainDb, delayMs: b.judged.delayMs, inverted: b.judged.inverted };
   const dB = (v: number) => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(2)} dB` : '—');
   const ms = (v: number) => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(3)} ms` : '—');
+  const latencyTag = b.processorLatencyMs !== null ? ` (processor latency ${b.processorLatencyMs.toFixed(3)} ms subtracted)` : '';
+  if (b.form === 'unmeasured') {
+    /* H-2b — THE LEAN FORM leads with what it can and cannot say (F0). */
+    return [
+      `DSP target — active side (unmeasured), handing over to ${b.passiveWay} (passive). LEAN FORM.`,
+      `  low-pass   ${b.lowPass.kind}${b.lowPass.order} @ ${b.lowPass.hz.toFixed(1)} Hz`,
+      `  gain       ${ACTIVE_SIDE_NOT_JUDGED}`,
+      b.dial.delayMs !== null && b.delayStart
+        ? `  delay      start value ${ms(b.dial.delayMs)}${latencyTag} — ${b.delayStart.source}; measured in the cabinet`
+        : '  delay      no start value — the acoustic-centre depths of the active side and the passive way are not ' +
+          'both entered; measured in the cabinet',
+      `  polarity   textbook for ${b.lowPass.kind}${b.lowPass.order}: ${b.dial.inverted ? 'REVERSED' : 'normal'} — verify in the cabinet`,
+      `  (the passive network realises ${b.passiveHighPass.kind}${b.passiveHighPass.order} @ ${b.passiveHighPass.hz.toFixed(1)} Hz on ${b.passiveWay}; ` +
+        `flank judged over ${b.fitBandHz[0].toFixed(1)}–${b.fitBandHz[1].toFixed(1)} Hz; stated by ${b.statedBy})`,
+      ...b.notes.map((n) => `  · ${n}`),
+    ];
+  }
+  const dial = b.deliveredRefit ?? { gainDb: b.judged.gainDb, delayMs: b.judged.delayMs, inverted: b.judged.inverted };
+  const dialMs = b.dial.delayMs ?? dial.delayMs;
   return [
     `DSP target — ${b.activeWay} (active), handing over to ${b.passiveWay} (passive).`,
     `  low-pass   ${b.lowPass.kind}${b.lowPass.order} @ ${b.lowPass.hz.toFixed(1)} Hz`,
     `  gain       ${dB(dial.gainDb)}`,
-    `  delay      ${ms(dial.delayMs)}`,
+    `  delay      ${ms(dialMs)}${latencyTag}`,
     `  polarity   ${dial.inverted ? 'REVERSED' : 'normal'}`,
     b.deliveredRefit
       ? `  (re-fitted on the DELIVERED network; the run was JUDGED with ${dB(b.judged.gainDb)} / ` +
@@ -227,3 +362,12 @@ export function describeDspTarget(b: DspTargetBlock): string[] {
     ...b.notes.map((n) => `  · ${n}`),
   ];
 }
+
+/**
+ * H-2b — THE SENTENCE ON EVERY SUM FIGURE OF A LEAN-FORM RUN. One home, several
+ * readers: the DSP block's gain line, the shortlist's sum columns, the run
+ * notes. Reported and never blank (F0).
+ */
+export const ACTIVE_SIDE_NOT_JUDGED =
+  'not judged — active side unmeasured; the processor realises its half, verify with the ' +
+  'reversed-polarity null measurement';

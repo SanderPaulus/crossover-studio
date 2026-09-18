@@ -391,6 +391,8 @@ export interface ProjectDesign {
     activeSideOn?: string;
     activeHandoverHz?: string;
     activeHandoverShape?: string;
+    /** H-2b — the processor's own latency on the active side, ms, as stated. */
+    activeProcessorLatencyMs?: string;
   };
   /**
    * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by

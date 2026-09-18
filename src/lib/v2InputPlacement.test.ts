@@ -113,6 +113,9 @@ describe('U-3b — the placement rule', () => {
      * permanently visible stand-in invites someone to fill it in over the
      * thing it stands in for (A3h). */
     expect(V2_INPUT_REGISTER.filter((r) => placementOf(r) === 'conditional').map((r) => r.id).sort()).toEqual([
+      /* H-2b — the fifth: the processor latency of the active side, which
+       * only means anything beside a stated active side. */
+      'activeProcessorLatencyMs',
       'cabinetDepth',
       'gateOverride',
       'manualWindow',
@@ -409,6 +412,10 @@ describe('U-3b — the app puts each control where its placement says', () => {
       /* U-4 — the condition IS the register's: "only while this driver states
        * a maximum crossover". Without one there is nothing to overrule. */
       maxCrossoverOverride: "v2Meas[role].maxCrossoverHz.trim() !== '' &&",
+      /* H-2b — the processor latency of the active side: only while Hybrid
+       * mode is ticked. On a fully passive project a latency field answers a
+       * case that does not exist. */
+      activeProcessorLatencyMs: "engineV2Settings.activeSideOn === 'on' &&",
     };
     for (const f of V2_FORM_FIELDS) {
       const p = placementOf(rowById(f.row)!);

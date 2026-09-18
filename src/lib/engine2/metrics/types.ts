@@ -96,6 +96,14 @@ export interface Geometry {
   /** Acoustic-centre position along the VERTICAL axis, mm, per driver. */
   zOffsetMm?: Record<string, number>;
   /**
+   * H-2b — how far each way's acoustic centre sits BEHIND the baffle plane,
+   * mm, per driver: the cabinet form's `depthMm`. Read by exactly one thing —
+   * the delay START value of a hybrid's DSP block (`geometryDelayStartMs`),
+   * where the difference between the active way and the lowest passive way is
+   * pure geometry. Absent = no depth entered for that way (P4).
+   */
+  depthMm?: Record<string, number>;
+  /**
    * Internal centre-to-centre spacing of an ARRAY inside one way, mm, per
    * driver id. A dual-woofer way measured as a single source still radiates
    * from two places, and that separation makes a lobe of its own.

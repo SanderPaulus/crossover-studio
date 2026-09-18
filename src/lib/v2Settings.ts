@@ -75,6 +75,14 @@ export const V2_SETTING_KEYS = [
   'activeSideOn',
   'activeHandoverHz',
   'activeHandoverShape',
+  /**
+   * H-2b — the processor's own latency on the active side, ms, as the designer
+   * states it (the FA251 with an analogue input is about 0.35 ms). NOT a
+   * judgement key: it judges, bounds and filters nothing — the DSP target block
+   * subtracts it from the delay to dial in and names it apart. Blank = the
+   * delay is printed unsubtracted and the block says the latency is not stated.
+   */
+  'activeProcessorLatencyMs',
   /** E-2 — the field mode: '' (exploration, the default), 'exploration' or 'full'. */
   'fieldMode',
   /**

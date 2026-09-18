@@ -330,7 +330,15 @@ export interface ShortlistSettings {
  */
 function sortKeyOf(m: CandidateMeasurements): number {
   const v = m.response?.rmsDeviationDb;
-  return typeof v === 'number' && Number.isFinite(v) ? v : Number.MAX_VALUE;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  /* H-2b — on a lean-form hybrid run the SUM is not judged (the active side
+   * is unmeasured), so `response` is null on every row and the rows would all
+   * tie. The flank error is the one per-candidate judgement such a run has,
+   * and it is the same kind of number: dB of deviation from a target, lower
+   * is better. Read only where the response is absent, so every other run
+   * sorts exactly as it always did (P2). */
+  const f = m.flankError?.rmsDb;
+  return typeof f === 'number' && Number.isFinite(f) ? f : Number.MAX_VALUE;
 }
 
 export function buildShortlist<T>(

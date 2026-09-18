@@ -48,6 +48,19 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná H-2b (18-09-2026) gemeten op 517 s — 197 bestanden (196 geslaagd, 1 overgeslagen),
+    2589 tests (2585 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de
+    browsercontrole met de dev-server gestopt.** +1 BESTAND (`engine2/h2bLeanForm.test.ts`,
+    20 claims) en +35 tests: die twintig plus VIJFTIEN in `v2ActiveSide.test.ts` (36 → 51: de
+    grammatica-drie, de vorm-uit-de-meting, de latency, en de herschreven bronscans). Het corpus is
+    NIET aangeraakt, dus geen enkele `it.each` over een levend corpus beweegt en de delta sluit exact
+    (geteld met `grep -cE '^\s+it\('` per bestand tegen dezelfde telling op HEAD). GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 517 tegen H-2's 524 s is dezelfde laag op
+    dezelfde machine met één bestand erbij. De live lean-run in het nieuwe bestand kost 17 s op de
+    kleine parsers-fixture en draagt bewust geen `[live]`: hij hoort in de snelle laag, want hij is
+    wat de magere vorm bewijst. **Twee dingen zijn tijdens deze sessie NIET gebeurd, en dat is de
+    regel van dit boek:** er is geen bronbestand bewerkt terwijl de suite liep (de bronscans lazen de
+    boom die gecommit wordt), en de suite liep niet naast de browserrun.
     **Ná H-2 (17-09-2026) gemeten op 524 s — 196 bestanden (195 geslaagd, 1 overgeslagen),
     2554 tests (2550 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de
     browsercontrole met de dev-server en de headless Chrome gestopt.** +1 BESTAND
@@ -6490,3 +6503,155 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   `toggleRegression`, `p6Lint`, `ciLayer` en `chainChoices` (die laatste mét zijn twee live
   ketenarmen). De vier live ketenruns zouden corpora reproduceren die deze sessie niet aangeraakt
   heeft.
+
+### H-2b-guards (Hybrid mode, en de magere vorm: twee gemeten wegen volstaan; alleen app/UI + de ontwerpstap-conditie)
+
+- **DE NAAM IS "HYBRID MODE", overal.** Het vinkje, de registerrij (`activeSideOn`, label `Hybrid mode`),
+  het guided-scherm (`Hybrid mode — is one of the ways driven by its own amplifier and a DSP?`) en de
+  wizardzin bij de wegenvraag. `v2ActiveSide.test.ts` scant dat de oude zin
+  ("Active side below the lowest passive way") nergens meer in `App.tsx` staat.
+- **DE VORM VOLGT UIT WAT ER GEMETEN IS — geen extra knop.** `activeSideRolesFor(ways)` leest de wegen van
+  het project laag-naar-hoog met per weg of haar respons geladen is: DRIE gemeten = de GEMETEN vorm (H-1:
+  de laagste weg actief, gemodelleerd als tak; de twee erboven passief), de BOVENSTE TWEE gemeten = de
+  MAGERE vorm (`form: 'unmeasured'`: de actieve zijde is ONGEMETEN en zit in een tweeslotsproject
+  nergens in — `roles.active` is dan `null`; in een drieslotsproject met de woofer ongeladen is zij de
+  rol `low`). Twee gemeten wegen die niet de bovenste twee zijn, of één, is géén vorm, bij naam.
+  `ACTIVE_SIDE_ROLES` blijft de constante van de gemeten vorm en is nu wat `activeSideRolesFor` op drie
+  gemeten wegen teruggeeft — gepind, zodat H-2's app-koppelingen niet stil van betekenis veranderen.
+- **DE MAGERE VORM: GEEN MODEL-TAK, GEEN BLOKKADE, en precies ÉÉN engine-wijziging.**
+  `ActiveHandover.unmeasured?: true` is het merk; `designChain.ts` gooit sinds H-2b alleen nog op een
+  gestelde actieve zijde ZONDER dat merk en zonder `activeMeasured` (de H-1-conditie staat, gemeten:
+  dezelfde payload zonder het merk gooit "no measured response was supplied"). Mét het merk bouwt de
+  keten de `activeBranch` uit de EIGEN meting van de laagste passieve weg maal de spiegel-laagdoorlaat
+  op de tekstboekpolariteit (`complementSettings`: gain 0, delay 0 — EXACT, want dezelfde meting deelt
+  niveau en tijdreferentie per constructie — en `textbookComplementInverted`: LR2 omgekeerd, LR4 normaal).
+  **Waarom een complement en geen lege som:** zonder tak onder de overname lezen de amplitudetermen van
+  beide zoektochten de gestelde hoogdoorlaat als een droop en vechten er hun budget tegen (H-1 mat dat;
+  daarom bestaat de gemodelleerde tak). Voor een LR-uitlijning is `HP + LP` op de tekstboekpolariteit
+  een allpass van eenheidsmagnitude, dus de gecomplementeerde som is vlak PRECIES waar de gerealiseerde
+  flank de doelflank is — geen enkele eigenschap van de actieve driver komt erin. `h2bLeanForm.test.ts`
+  rekent het met de hand na op 400 rasterpunten (|HP+LP| = 1 tot 1e-9; de verkeerde polariteit is een
+  NUL op de hoek) en pint dat de sleutel `activeSide` hetzelfde waardetype houdt (geen achtste sleutel;
+  `choiceKeyGuard` en `chainChoices` staan ongewijzigd).
+- **DE GEOORDEELDE BAND VAN EEN MAGERE PASS BEGINT OP DE ONDERKANT VAN DE OVERNAMEBAND**
+  (`leanBandFor` in `App.tsx`: `max(band[0], handoverBandHz(hz)[0])`, per pass gespreid — afwezig op élke
+  andere run). Daaronder is de gecomplementeerde som de rauwe respons van de passieve weg zelf (een flank
+  van veertien dB en meer omlaag beweegt hem niet) en een zoektocht die dáár oordeelt vormt de
+  hoogdoorlaat naar de roll-off van de pod in plaats van naar haar doel. In de gemeten vorm is de som
+  onder de overname echt en blijft de band staan. De marge is `HANDOVER_MATCH_OCTAVES` (bestaand), geen
+  nieuw getal.
+- **HET OORDEEL PER KANDIDAAT: DE DOELFLANK-FOUT** (`flankErrorDb` in `activeSide.ts`,
+  `CandidateMeasurements.flankError`). Gemeten weg × geleverd netwerk tegen gemeten weg × gestelde
+  hoogdoorlaat, over de overnameband (±0,5 oct): het NIVEAU (het gemiddelde dB-verschil — de offset die
+  de DSP-gain absorbeert; H-1 mat 2,3–3,2 dB verlies van een echte ladder) wordt GERAPPORTEERD en vóór
+  de RMS verwijderd; de RMS is de VORMfout die de gain niet kan absorberen. Magnitude alleen, met
+  reden: een fasehelling is een delay en die wordt in de kast gemeten. Handberekening in de test: een
+  flank die het doel IS leest 0; twee dB eronder is niveau −2 en RMS 0; de verkeerde ORDE is een
+  vormfout > 0,5 dB; buiten de band `null` en nooit 0 (F0). De worker leest het via
+  `filteredBranchResponse` (dezelfde solve als `summedResponse`, één tak) en zet in de magere vorm
+  `response: null` — de som wordt niet geoordeeld — mét de flankfout ernaast; `shortlist.ts` sorteert
+  dan op de flankfout (`sortKeyOf`: alleen waar `response` ontbreekt; waar een som geoordeeld is beslist
+  de RMS en wordt de flank nooit gelezen — gepind).
+- **NIET BEOORDEELD IS GEMELD, NIET LEEG (F0).** `ACTIVE_SIDE_NOT_JUDGED` — "not judged — active side
+  unmeasured; the processor realises its half, verify with the reversed-polarity null measurement" —
+  staat in TWEE huizen (`dspTarget.ts` voor de engine, `v2ActiveSide.ts` voor het formulier dat de engine
+  niet mag importeren) en de test pint ze gelijk. Op een magere run: de kolommen `rms`, `window`, `peak`
+  en `lobing` (`ACTIVE_SIDE_LEAN_UNJUDGED_COLUMNS`, een BENOEMDE deelverzameling van de somkolommen)
+  lezen `not judged` met de zin als tooltip; `phase`/`phase-ctl` blijven geoordeeld — de tuner's eigen
+  M-K op het PASSIEVE paar, dat in de netlist zit; de kolom `flank` ("target-flank error") verschijnt
+  alléén op zo'n run; de MODEL-markering staat alleen op een run van de GEMETEN vorm. Welke vorm de run
+  was staat op de RUN (`v2Run.activeSideForm`) en niet op het formulier. Het rapport zegt het in
+  `problems` ("Hybrid mode, lean form: … NOT a judgement …") en meldt NIET "could not be modelled": de
+  afwezigheid van de meting is de vorm, geen gebrek (`off: []`).
+- **HET HANDOVER-LIJSTVELD: EEN TWEEDE GRAMMATICA, EN WAAROM HET GEEN VLAG OP DE EERSTE IS.**
+  `parseHandoverList` in `frequencyList.ts`: decimale KOMMA én punt ("362,3" = 362,3 Hz, zoals Sander
+  schrijft), PUNTKOMMA of SPATIE tussen waarden, en een komma die geen decimale komma kan zijn ("362,3,
+  400", "362,3,400", "362.3,400") wordt GEWEIGERD met uitleg hoe het bedoelde te schrijven — nooit
+  geraden. U-5's lijst (`parseFrequencyTokens`) leest de komma als WAARDEscheider en de puntkomma als
+  AS-scheider ("400, 450; 2200, 2400", gepind door `statedCrossings.test.ts`), dus één functie kan één
+  teken niet twee dingen laten betekenen; de twee lezers delen de U-5-regels (splits op scheiders,
+  valideer het HELE token, meld wat niet bruikbaar is en gebruik het nergens — "2200Hz" wordt geen
+  2200) en niet de grammatica. **Bevinding, gemeld en niet gerepareerd:** in U-5's veld leest "362,3"
+  als de twee kruisingen 362 en 3 — de A3h-val op een decimale komma, en zij staat er sinds U-5.
+  De lijst wordt TERUGGETOOND ("read: 362.3 · 400 Hz", `formatHandoverList`, in het paneel én in
+  guided) en is beschrijfbaar ongeacht wat er gemeten is: met één gemeten weg is er geen vorm, en de
+  echo en de problemen staan er toch.
+- **HET GESTELDE VELD "Processor latency on the active side (ms)"** (`activeProcessorLatencyMs`: een
+  `V2SettingKey` en GEEN oordeelssleutel; registerrij klasse `nice`, plaatsing `conditional` — alleen
+  terwijl Hybrid mode aan staat, met de guard in `v2InputPlacement.test.ts`; de vijfde conditionele rij,
+  bij naam). De hint (FA251 analoog ≈ 0,35 ms) staat in de tooltip en in de leeg-betekenis en NOOIT in
+  de placeholder (E-2). `dspTargetBlock(report, { processorLatencyMs })` trekt hem af van de in te
+  stellen delay en noemt hem apart (`dial.delayMs = ruw − latency`, de noot "SUBTRACTED …", de kopregel
+  "(processor latency 0.350 ms subtracted)"); zonder latency wordt de delay ONafgetrokken gedrukt en zegt
+  het blok dat (P4). In de GEMETEN vorm beweegt de latency uitsluitend `dial` en de noten: `judged`,
+  `deliveredRefit` en `polarity` zijn met en zonder latency hetzelfde objectwaarde — gepind op casus 1h,
+  dus de H-1-goldens staan onaangeroerd (`goldenCasus1h`, `h1ActiveSide`: groen, ongewijzigd).
+- **DE DELAY-STARTWAARDE UIT DE POSITIES** (`geometryDelayStartMs`, `Geometry.depthMm`,
+  `AdapterGeometry.depthMm` ← `cabinet.drivers[role].depthMm`): `(diepte_passief − diepte_actief)/c`,
+  hetzelfde teken als `ModelBranchSettings.delayMs` — een dieper zittende actieve weg komt al later aan
+  en hoeft dus MINDER vertraagd te worden (negatief, zoals H-1's fit op casus 1h). Zuivere geometrie,
+  een STARTwaarde voor de kastmeting en nooit haar antwoord; de meet-in-kast-zin ("THE FINAL DELAY IS
+  MEASURED IN THE CABINET … DEEPEST NULL") staat in beide vormen. In de magere vorm is het de enige
+  delay die er is; in de gemeten vorm staat hij als kruiscontrole naast de gefitte delay. **In de app is
+  hij in de magere vorm per constructie NIET afleidbaar:** een tweeslotsproject heeft geen kaart en dus
+  geen diepte voor de actieve zijde, en het blok zegt dat ("no start value — the acoustic-centre depths …
+  are not both entered") in plaats van er een te verzinnen; casus 1h stelt geen dieptes en het blok zegt
+  dat naast de fit. De test meet hem op casus 1b met gestelde dieptes (−100/343 ms bij 100 mm dieper).
+- **P2 GEMETEN:** zonder `unmeasured` en zonder actieve zijde is `designChain.ts` letterlijk de
+  H-1-code (de bron van de tak is `input.activeMeasured`, de gooi-conditie dezelfde), de per-pass band
+  is een spread op een voorwaarde die zonder onmeten actieve zijde vals is, `sortKeyOf` leest de flank
+  alleen waar `response` ontbreekt, en `Geometry.depthMm` is optioneel en wordt door niets anders gelezen.
+  `toggleRegression`, `p6Lint` (beide scopes), `ciLayer` (geen nieuwe tag: de live lean-run van
+  `h2bLeanForm.test.ts` kost 17 s op de kleine fixture en draagt bewust geen `[live]`), `chainChoices`
+  (mét zijn twee live ketenarmen), `choiceKeyGuard`, `casus1hV2Candidates` (de snelle claims),
+  `goldenClassification`, `versionAndCapability`, `wholesaleRejection`, `shortlist`: alle groen,
+  ongewijzigd. De volle run is NIET gedraaid, met de H-2-afweging: geen poort-, budget-, venster-,
+  metriek- of corpuswijziging, en élke sleutel die H-2b laat reizen is ABSENT zonder een gestelde
+  onmeten actieve zijde; beide byte-baselines draaien in de snelle laag.
+- **DE GUARDS.** `src/lib/engine2/h2bLeanForm.test.ts` (20 claims, nieuw): het complement als
+  allpass met de tegenproef, de flankfout met de hand, de startwaarde met teken, de
+  ontwerpstap-conditie door de ECHTE route (`handleV2Request` kind `v2ChainOne` op de kleine
+  parsers-fixture, budget 80: gemarkeerd levert de gestelde HP met `response: null` en een eindige
+  flankfout in 17 s; ongemarkeerd gooit; zonder actieve zijde is `response` geoordeeld en `flankError`
+  afwezig), het rapport in de magere vorm op casus 1b (`system.sumDb` byte-gelijk aan het kale
+  rapport, geen tak onder de actieve naam, de flank geoordeeld, de eigen zin), het DSP-blok in beide
+  vormen mét latency, en de shortlist-sortering. `src/lib/v2ActiveSide.test.ts` (51 claims, was 36):
+  de grammatica-drie (komma/punt; puntkomma/spatie; ambigu geweigerd), de vorm-uit-de-meting, de
+  latency-lezing, de naam overal, en de bronscans op `App.tsx` (roles uit de statement, de actieve
+  weg alleen geladen in de gemeten vorm, het complement door de ene functie, de per-pass band, de
+  `unmeasured`-markering naar het rapport, de vorm op de run, de not-judged-cellen en de flankkolom,
+  de latency in het blok, de echo op twee plaatsen). `v2InputPlacement.test.ts` draagt de vijfde
+  conditionele rij met haar guard.
+- **DE BROWSERCONTROLE (Browser-pane op de dev-server, 18-09-2026), en zij is de reden dat dit als
+  af geldt.** Verse localStorage, de TWEEWEGDEMO (casus 1b's mid + tweeter), Expert → Filters → ⚙
+  Settings. Het vinkje heet `Hybrid mode` met zijn leeg-betekenis eronder; ná de tik staan de drie
+  velden er. **De grammatica-drie, live:** `362,3; 400` → `read: 362.3 · 400 Hz`; `362,3, 400` → de
+  weigering met uitleg (`“362,3,” is ambiguous … Separate frequencies with a semicolon or a space`) en
+  `read: 400 Hz` — de bruikbare helft wordt gelezen, de ambigue niet; `0,35` in het latency-veld met de
+  placeholder `—` en vier `stated by you on 2026-09-18`-markeringen. De vormzin zegt vóór de run
+  *"Hybrid mode, LEAN FORM: the active side is unmeasured. The lowest measured way (low) is designed
+  to an acoustic LR4 high-pass at 400 Hz …"*. **De run: één overname (400 Hz LR4) × de verkenning
+  van vijf = 5 runs, 5 van 5 geleverd, 301 s** (de vóórstart-melding "3 of 5 candidates lie inside
+  the window but outside the recommended band" vroeg eerst om `Start anyway`; de labels dragen
+  `· active 400 Hz`). **De tabel:** `RMS (not judged)`, `window (not judged)`, `peak (not judged)`,
+  `vert. dip (not judged)` met de zin als tooltip in élke cel, `phase` en `phase (overlap window)`
+  gewoon geoordeeld (6,2–11,4°), Z min/EPDR/dissipation/V@fs/BOM gewoon gelezen, en de kolom
+  `target-flank error` als laatste — **en de rijen staan erop gesorteerd: 1,62 / 2,24 / 2,45 / 2,61 /
+  2,78 dB**, met de 2177,6 Hz-kandidaat bovenaan. Geen MODEL-markering. **Het DSP-blok:** `DSP target
+  — active side (unmeasured), handing over to mid (passive). LEAN FORM.` · `gain not judged — …` ·
+  `delay no start value — the acoustic-centre depths … are not both entered; measured in the cabinet`
+  · `polarity textbook for LR4: normal — verify in the cabinet` · de flank van de geladen rij
+  (1,66 dB rms over 283–566 Hz, −3,78 dB onder het doel op gemiddelde — het niveau dat de DSP-gain
+  absorbeert) · de latency-noot (0,350 ms, "SUBTRACTED … There is no delay to subtract it from
+  here"). De runnotities dragen `1 stated handover(s) × 5 passive candidate(s) = 5 run(s).` en de
+  LEAN-FORM-zin; de console is leeg. **Twee lezingen van één flank naast elkaar, en zij verschillen
+  bewust:** de kolom (1,62 dB) is de worker's lezing op het KETENraster, het blok (1,66 dB) die van
+  het rapport op het analyseraster — dezelfde functie op twee rasters, geen tweede definitie.
+- **WAT OPEN BLIJFT, met de meting erbij.** (1) De startwaarde van de delay is in de app's magere
+  vorm nooit afleidbaar: een tweeslotsproject heeft geen kaart voor de actieve zijde; een veld voor
+  haar diepte is een eigen beslissing. (2) U-5's veld leest een decimale komma als twee kruisingen
+  (zie boven) — gemeld. (3) Een magere run kost in de browser meer per kandidaat dan H-2's gemeten
+  vorm (301 s voor 5 tegen 180 s voor 15): de hoogdoorlaatladder op de laagste weg is meer vrije
+  waarden, en de tuner's budget is superlineair daarin (V41). (4) De gemeten vorm is bij H-2b niet
+  opnieuw in de browser gedraaid; haar acceptatie is `goldenCasus1h` + `h1ActiveSide` (groen) en de
+  DSP-blokclaim op casus 1h in `h2bLeanForm.test.ts`.
