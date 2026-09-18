@@ -175,6 +175,7 @@ import {
   deriveModelBranch,
   fitModelBranch,
   flankErrorDb,
+  flankVerdict,
   geometryDelayStartMs,
   levelMatchDb,
   modelBranchResponse,
@@ -182,6 +183,7 @@ import {
   modelBranchTransfer,
   type ActiveHandover,
   type FlankError,
+  type FlankVerdict,
   type ModelBranchSettings,
 } from '../activeSide.ts';
 
@@ -469,6 +471,12 @@ export interface ActiveSideReport {
    * the sum, in the lean form it is the judgement.
    */
   flankError: FlankError | null;
+  /**
+   * H-3b — the flank against the STATED BUDGET (`stated.flankBudgetDbRms`), by
+   * the one comparison the worker refuses on (`flankVerdict`). Null when no
+   * budget is stated: then `flankError` is a reading and nothing judges it.
+   */
+  flankVerdict: FlankVerdict | null;
   /**
    * H-2b — the delay START value from the entered acoustic-centre depths
    * (`geometryDelayStartMs`), or null when either depth is not entered. A
@@ -842,6 +850,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         version: ACTIVE_SIDE_VERSION,
         form: 'unmeasured',
         flankError: null,
+        flankVerdict: null,
         delayStartMs,
         delayStartSource,
         settings: null,
@@ -866,6 +875,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       version: ACTIVE_SIDE_VERSION,
       form: 'measured',
       flankError: null,
+      flankVerdict: null,
       delayStartMs,
       delayStartSource,
       settings: d.settings,
@@ -996,6 +1006,16 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         { freq: [...grid], spl: grid.map((f) => interpLog(src.grid, src.db, f)), phaseDeg: grid.map(() => 0) },
         activeSide.stated,
       );
+    }
+    /* H-3b — the verdict against the stated budget, on the loaded netlist,
+     * by the same function the worker refuses on. Null without a budget; NOT
+     * JUDGED (never a pass) when a budget is stated and no flank could be
+     * read. A failed budget is a problem the panel has to say. */
+    if (delivered) {
+      activeSide.flankVerdict = flankVerdict(activeSide.flankError, activeSide.stated.flankBudgetDbRms);
+      if (activeSide.flankVerdict && activeSide.flankVerdict.pass === false) {
+        problems.push(`Hybrid mode: ${activeSide.flankVerdict.sentence} (stated by ${activeSide.stated.statedBy}).`);
+      }
     }
     if (activeSide.form === 'unmeasured') {
       problems.push(

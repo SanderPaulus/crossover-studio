@@ -30,6 +30,13 @@
  *      name, not modelled away.
  *   6. V31: a tune a gate refuses delivers NOTHING — empty parts, the rule
  *      named — so the app has nothing to apply.
+ *   7. H-3b — THE REGRESSION ON THE FINDING: the same seed, the same route,
+ *      with a stated flank-error budget of 1.5 dB rms on the handover. The
+ *      budget reaches the tuner as a wall (`assembledTuneOptions` →
+ *      `flankBudget`) and the worker as the refusal (`runCandidate`,
+ *      `flankVerdict`): the tune either HOLDS the flank inside the budget or
+ *      is REFUSED with the number — never delivered above it. Claim 3 stays
+ *      as the unbudgeted finding; this is what a stated budget makes of it.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -145,6 +152,26 @@ describe('H-3 — the assembled tune has one option assembly', () => {
     const o = assembledTuneOptions(base(), [], { activeBranch: null, activeBranchSafety: null }, { tuneOptionsFor: () => ({ band: [1, 2] }) });
     expect(o.band).toEqual([1, 2]);
   });
+
+  it('H-3b — a stated flank-error budget reaches the tuner as `flankBudget`, in both forms; without one the key is absent (P2)', () => {
+    const budgeted: ActiveHandover = { ...HANDOVER, flankBudgetDbRms: 1.5 };
+    const lean = base();
+    lean.settings = { ...lean.settings, activeSide: { handover: budgeted, settings: complementSettings(budgeted) } };
+    const b = activeSideBranches(lean);
+    const o = assembledTuneOptions(lean, [], { activeBranch: b.activeBranch, activeBranchSafety: b.activeBranchSafety });
+    expect(o.flankBudget).toEqual({ handover: { hz: 400, kind: 'LR', order: 4 }, maxRmsDb: 1.5 });
+    /* The measured form carries it too: the flank exists whether the active side is modelled or not. */
+    const { unmeasured: _u, ...measuredBudgeted } = budgeted;
+    void _u;
+    const measured = { ...base(), activeMeasured: flat };
+    measured.settings = { ...measured.settings, activeSide: { handover: measuredBudgeted, settings: { gainDb: 0, delayMs: 0, inverted: false } } };
+    const bm = activeSideBranches(measured);
+    expect(assembledTuneOptions(measured, [], { activeBranch: bm.activeBranch, activeBranchSafety: bm.activeBranchSafety }).flankBudget?.maxRmsDb).toBe(1.5);
+    /* And absent without one — every run before H-3b is byte-identical. */
+    const plain = base();
+    plain.settings = { ...plain.settings, activeSide: { handover: HANDOVER, settings: complementSettings(HANDOVER) } };
+    expect(assembledTuneOptions(plain, [], { activeBranch: null, activeBranchSafety: null })).not.toHaveProperty('flankBudget');
+  });
 });
 
 /* ==================================================================== *
@@ -167,6 +194,11 @@ function seededTemplate(): { parts: VxpPart[]; seedRmsDb: number } {
 
 /** The flank of a netlist as the REPORT reads it — the function the app's chip reads. */
 function reportFlank(parts: VxpPart[]) {
+  return buildReportOn(parts, HANDOVER)?.flankError ?? null;
+}
+
+/** H-3b — the report's active-side block on a netlist, at a given (possibly budgeted) handover. */
+function buildReportOn(parts: VxpPart[], handover: ActiveHandover) {
   const { netlist } = crossoverToNetlist({ name: 'h3', parts: [...parts] } as VxpCrossover);
   const driverZ: Record<string, { freq: readonly number[]; magnitude: readonly number[]; phaseDeg: readonly number[] }> = {};
   for (const e of manifest.entries) {
@@ -179,9 +211,9 @@ function reportFlank(parts: VxpPart[]) {
     files,
     filter: { name: 'h3', netlist, driverZ },
     geometry: casus1bGeometry(G),
-    settings: { ...CASUS1B_REPORT_SETTINGS, activeHandover: HANDOVER },
+    settings: { ...CASUS1B_REPORT_SETTINGS, activeHandover: handover },
   });
-  return rep.activeSide?.flankError ?? null;
+  return rep.activeSide ?? null;
 }
 
 const LEAN_BAND = leanJudgedBand(CASUS1B_V2_BAND_HZ, HANDOVER.hz)!;
@@ -296,6 +328,10 @@ describe('H-3 — the seed and the tune of a drawn network on casus 1b', () => {
     const goal = CASUS1B_V2_SETTINGS.targets!.rippleDb;
     console.log(`[h3] seed flank ${before.rmsDb.toFixed(3)} dB rms → tuned ${after.rmsDb.toFixed(3)} (max ${after.maxAbsDb.toFixed(2)}, level ${after.levelDb.toFixed(2)}); complemented-sum ripple ${r.result.net.before.rippleDb.toFixed(2)} → ${r.result.net.after.rippleDb.toFixed(2)} dB, |Z| ${r.result.net.before.zMinOhm?.toFixed(2)} → ${r.result.net.after.zMinOhm?.toFixed(2)} Ω, ${r.result.net.evaluations} evals; stated goal ${goal} dB`);
     expect(after.rmsDb).toBeGreaterThan(before.rmsDb);
+    /* H-3b, P2: with no budget stated the tuner carries no flank of its own
+     * and nothing refuses on it — this run is what it was before H-3b. */
+    expect(r.result.net.after).not.toHaveProperty('flankRmsDb');
+    expect(r.notes.some((n) => /Flank budget \(H-3b\)/.test(n))).toBe(false);
     /* The passive pair's own phase is still measured, and the audit ran. */
     expect(r.measurements.phaseTracking.length).toBeGreaterThan(0);
     expect(r.result.net.audit).toBeDefined();
@@ -323,6 +359,40 @@ describe('H-3 — the seed and the tune of a drawn network on casus 1b', () => {
     } else {
       expect(r.measurements.response).not.toBeNull();
     }
+  }, 600_000);
+
+  it('H-3b — with a STATED flank-error budget of 1.5 dB rms the same tune HOLDS the flank or is REFUSED with the number, never delivered above it', () => {
+    const budgeted: ActiveHandover = { ...HANDOVER, flankBudgetDbRms: 1.5 };
+    const before = reportFlank(seeded.parts)!;
+    const r = through(tuneInput(seeded.parts, budgeted));
+    /* The budget reached the TUNER: its own before/after carry the flank it
+     * read (present only with a stated budget — the V30 shape). */
+    expect(Number.isFinite(r.result.net.before.flankRmsDb ?? Number.NaN)).toBe(true);
+    if (r.rejection === null) {
+      /* DELIVERED: inside the budget, by the one comparison the chip reads,
+       * and the tune still moved (it is not the seed handed back). */
+      expect(r.result.parts.length).toBeGreaterThan(0);
+      expect(r.result.net.tuned).toBeGreaterThan(0);
+      const after = r.measurements.flankError!;
+      expect(after).not.toBeNull();
+      expect(after.rmsDb).toBeLessThanOrEqual(1.5);
+      expect(Number.isFinite(r.result.net.after.flankRmsDb ?? Number.NaN)).toBe(true);
+      expect(r.notes.some((n) => /Flank budget \(H-3b\): .*within the stated budget of ≤ 1\.50 dB rms/.test(n))).toBe(true);
+      /* The report on the delivered parts judges it the same way. */
+      const rep = buildReportOn(r.result.parts, budgeted);
+      expect(rep!.flankVerdict).not.toBeNull();
+      expect(rep!.flankVerdict!.pass).toBe(true);
+      console.log(`[h3b] seed flank ${before.rmsDb.toFixed(3)} → tuned ${after.rmsDb.toFixed(3)} dB rms, HELD inside 1.5 (tuner read ${r.result.net.after.flankRmsDb?.toFixed(3)}); complemented-sum ripple ${r.result.net.before.rippleDb.toFixed(2)} → ${r.result.net.after.rippleDb.toFixed(2)} dB, ${r.result.net.evaluations} evals`);
+    } else {
+      /* REFUSED: on the flank budget, by name and number, with nothing applied (V31). */
+      expect(r.rejection.kinds).toEqual(['budget']);
+      expect(r.rejection.reason).toMatch(/target-flank error [\d.]+ dB rms against the stated budget of ≤ 1\.50 dB rms — requirement FAILED/);
+      expect(r.result.parts).toEqual([]);
+      expect(r.measurements.response).toBeNull();
+      console.log(`[h3b] seed flank ${before.rmsDb.toFixed(3)} dB rms; the budgeted tune was REFUSED: ${r.rejection.reason}`);
+    }
+    /* Either way: nothing above the budget was delivered. */
+    expect(r.rejection !== null || r.measurements.flankError!.rmsDb <= 1.5).toBe(true);
   }, 600_000);
 
   it('a measured-form handover without the measurement is refused by name (P4)', () => {

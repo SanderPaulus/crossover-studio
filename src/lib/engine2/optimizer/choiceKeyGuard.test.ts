@@ -207,9 +207,16 @@ describe('F4c — every tuner option has a class', () => {
     // `activeSide`, a CHAIN-level choice one layer up (`chainChoices.ts`),
     // because the design and synthesis steps read it before the tuner exists.
     // Split becomes 40/5/15.
-    expect(keys.length).toBe(60);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(60);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 15]);
+    // 61 since H-3b added `flankBudget` (polish — the STATED FLANK-ERROR BUDGET
+    // of the lowest passive way, handed to the tuner as a wall in its
+    // objective). No choice companion here on purpose, for the H-1 reason: the
+    // decision it realises is `activeSide`, the chain-level choice, and the
+    // budget rides ON that stated block (`ActiveHandover.flankBudgetDbRms`);
+    // the REQUIREMENT is judged by the worker on the delivered network. Split
+    // becomes 40/5/16.
+    expect(keys.length).toBe(61);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(61);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 16]);
     for (const k of CHAIN_CHOICE_KEYS) {
       if ((CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER as readonly string[]).includes(k)) continue;
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
@@ -344,7 +351,7 @@ describe('F4c — every tuner option has a class', () => {
     expect(CHOICE_KEYS).toContain('safety');
     expect(CHOICE_KEYS.length).toBe(40); // E-5c: structureRetune, repeatedTune
     expect(GREY_KEYS.length).toBe(5);
-    expect(POLISH_KEYS.length).toBe(15); // H-1: activeBranch, activeLevelBandHz
+    expect(POLISH_KEYS.length).toBe(16); // H-1: activeBranch, activeLevelBandHz; H-3b: flankBudget
   });
 
   /* V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES, and it may

@@ -119,6 +119,27 @@ export interface ActiveHandover {
    * (F0). Absent = the measured form, byte for byte (P2).
    */
   unmeasured?: true;
+  /**
+   * H-3b — THE STATED BUDGET ON THE TARGET-FLANK ERROR, dB rms over the
+   * handover band (`flankErrorDb`).
+   *
+   * Absent = the flank is measured and REPORTED on every hybrid run and judged
+   * by nothing (P4). Stated = a hard requirement on every network a hybrid run
+   * delivers or tunes — the scan's shortlist rows and the Network tab's ⚙ tune
+   * alike, through ONE reader (`flankVerdict`, applied in `runCandidate`): a
+   * network whose flank sits above it is REFUSED with the number, never
+   * delivered quietly (V31's shape). The tuner reads the same number as a
+   * barrier in its objective (`NetOptimizeOptions.flankBudget`), so the search
+   * is steered away from the region the requirement forbids before the
+   * requirement decides — the A5d.6 arrangement: the box shapes, the
+   * requirement decides.
+   *
+   * It lives ON the stated block and not beside it because it is a statement
+   * about this handover: one carrier reaches the report (the chip), the chain
+   * declaration (the tuner) and the worker (the refusal), and one carrier
+   * cannot disagree with itself.
+   */
+  flankBudgetDbRms?: number;
 }
 
 /** The three DSP settings the modelled branch carries. */
@@ -617,6 +638,65 @@ export function flankErrorDb(
     if (Math.abs(r) > maxAbs) maxAbs = Math.abs(r);
   }
   return { rmsDb: Math.sqrt(acc / diff.length), maxAbsDb: maxAbs, levelDb, bandHz, points: diff.length };
+}
+
+/**
+ * H-3b — THE FLANK VERDICT: the measured target-flank error against the stated
+ * budget, in ONE comparison with three readers (the worker's refusal, the
+ * report's chip, the Network tab's tune note).
+ */
+export interface FlankVerdict {
+  /** The stated budget, dB rms over the handover band. */
+  budgetDbRms: number;
+  /** The measured rms shape error, or null when the flank could not be read. */
+  rmsDb: number | null;
+  /**
+   * The verdict. `null` is NOT a pass: the flank could not be read (no solvable
+   * network under the band, or no grid point in it), so nothing was judged and
+   * the sentence says so (F0). A budget that is judged against nothing must not
+   * read as met.
+   */
+  pass: boolean | null;
+  /** rms − budget, dB rms: positive = over the budget. Null when not read. */
+  overDb: number | null;
+  /** One sentence, for a chip, a note or a refusal. */
+  sentence: string;
+}
+
+/**
+ * Null when no budget is stated: the flank is then a READING and no verdict
+ * exists — the caller prints the number and says nothing judges it (P4). With
+ * a budget the comparison is `rms ≤ budget`, exact, no tolerance: a budget is a
+ * stated requirement in the unit the flank is measured in, and the barrier in
+ * the tuner keeps its own margin on the search side (`netOptimizer.ts`).
+ */
+export function flankVerdict(e: FlankError | null, budgetDbRms: number | undefined): FlankVerdict | null {
+  if (budgetDbRms === undefined || !Number.isFinite(budgetDbRms) || budgetDbRms < 0) return null;
+  const budget = `≤ ${budgetDbRms.toFixed(2)} dB rms`;
+  if (!e || !Number.isFinite(e.rmsDb)) {
+    return {
+      budgetDbRms,
+      rmsDb: null,
+      pass: null,
+      overDb: null,
+      sentence:
+        `target-flank error NOT JUDGED against the stated budget of ${budget}: the flank could not be read ` +
+        '(no solvable network under the handover band, or the band holds no grid point)',
+    };
+  }
+  const over = e.rmsDb - budgetDbRms;
+  const pass = over <= 0;
+  return {
+    budgetDbRms,
+    rmsDb: e.rmsDb,
+    pass,
+    overDb: over,
+    sentence: pass
+      ? `target-flank error ${e.rmsDb.toFixed(2)} dB rms within the stated budget of ${budget} ` +
+        `(${(-over).toFixed(2)} dB rms to spare over ${e.bandHz[0].toFixed(0)}–${e.bandHz[1].toFixed(0)} Hz)`
+      : `target-flank error ${e.rmsDb.toFixed(2)} dB rms against the stated budget of ${budget} — ` +
+        `requirement FAILED by ${over.toFixed(2)} dB rms over ${e.bandHz[0].toFixed(0)}–${e.bandHz[1].toFixed(0)} Hz`,
+  };
 }
 
 /**

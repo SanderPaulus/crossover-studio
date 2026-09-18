@@ -279,6 +279,33 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     source: 'choice',
   },
   {
+    /* H-3b — THE FLANK-ERROR BUDGET. Judgement, in the architecture band with
+     * the three fields it refines: it is a requirement ON the stated handover
+     * (how far the lowest passive way's realised flank may stray from the
+     * stated shape), and a hybrid without it is the hybrid H-3 measured — the
+     * tune reaches its own ripple goal and moves the flank 0.84 → 3.7 dB rms
+     * away from its target, with nothing to say no. Stated, it is a hard
+     * requirement on every delivered or tuned network of a hybrid run, on the
+     * shortlist and on the Network tab's ⚙ tune through ONE reader; the tuner
+     * carries the same number as a wall in its objective. */
+    id: 'activeFlankBudgetDbRms',
+    key: 'activeFlankBudgetDbRms',
+    label: 'Flank-error budget (dB rms over the handover band)',
+    form: 'Filters → Engine v2 (shown once Hybrid mode is ticked)',
+    travels:
+      'activeSideStatement.flankBudgetDbRms → ActiveHandover.flankBudgetDbRms (the stated block, one ' +
+      'carrier) → the report’s flankVerdict (the Flank chip), the chain declaration’s activeSide value → ' +
+      'NetOptimizeOptions.flankBudget (a wall in the tuner’s objective) and runCandidate’s refusal ' +
+      '(by: stated-flank-budget, kinds: budget) on every delivered or tuned network',
+    cls: 'judgement',
+    band: 'architecture',
+    emptyMeans:
+      'no budget: the target-flank error is measured and reported on every hybrid run, and nothing ' +
+      'judges it — a tune may move the flank away from the stated shape while meeting its own ripple goal ' +
+      '(H-3 measured 0.84 → 3.7 dB rms).',
+    source: 'choice',
+  },
+  {
     id: 'ampMinLoadOhm',
     label: 'Amplifier min load',
     form: 'Filters → Goals & weighting',
@@ -1451,6 +1478,8 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'activeSideOn', form: 'v2-panel', control: "checked={engineV2Settings.activeSideOn === 'on'}" },
   { row: 'activeHandoverHz', form: 'v2-panel', control: 'value={engineV2Settings.activeHandoverHz}' },
   { row: 'activeHandoverShape', form: 'v2-panel', control: 'value={engineV2Settings.activeHandoverShape}' },
+  // ---- H-3b: the flank-error budget, behind the same tick ----
+  { row: 'activeFlankBudgetDbRms', form: 'v2-panel', control: 'value={engineV2Settings.activeFlankBudgetDbRms}' },
   { row: 'activeProcessorLatencyMs', form: 'v2-panel', control: 'value={engineV2Settings.activeProcessorLatencyMs}' },
 ]);
 

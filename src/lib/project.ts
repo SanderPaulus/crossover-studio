@@ -391,6 +391,12 @@ export interface ProjectDesign {
     activeSideOn?: string;
     activeHandoverHz?: string;
     activeHandoverShape?: string;
+    /**
+     * H-3b — the flank-error budget, dB rms over the handover band, as stated:
+     * a hard requirement on every delivered or tuned network of a hybrid run.
+     * Empty = the flank is reported and nothing judges it.
+     */
+    activeFlankBudgetDbRms?: string;
     /** H-2b — the processor's own latency on the active side, ms, as stated. */
     activeProcessorLatencyMs?: string;
   };

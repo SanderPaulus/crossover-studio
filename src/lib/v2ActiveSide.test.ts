@@ -30,9 +30,11 @@ import { fileURLToPath } from 'node:url';
 import { parseFrequencyTokens, parseHandoverList } from './frequencyList.ts';
 import { handoverBandHz, leanJudgedBand } from './activeSide.ts';
 import {
+  ACTIVE_FLANK_BUDGET_LABEL,
   ACTIVE_HANDOVER_LABEL,
   ACTIVE_LATENCY_LABEL,
   ACTIVE_SIDE_FLANK_COLUMN,
+  ACTIVE_SIDE_FLANK_UNJUDGED,
   ACTIVE_SIDE_GUIDED_LINE,
   ACTIVE_SIDE_LEAN_NOTE,
   ACTIVE_SIDE_LEAN_UNJUDGED_COLUMNS,
@@ -259,6 +261,38 @@ describe('H-2b — which form what is measured admits', () => {
      * delay is printed without it). */
     expect(bad.armed).toBe(true);
   });
+
+  /* H-3b — THE FLANK-ERROR BUDGET, read under the same grammar. A JUDGEMENT
+   * input: blank means the flank is reported and nothing judges it, a number
+   * means every delivered or tuned network is held to it. It never arms or
+   * disarms the hybrid itself — a budget without a hybrid judges nothing, and
+   * a hybrid without a budget is the hybrid H-3 measured. */
+  it('the flank-error budget is read as dB rms, with either decimal mark, and never arms or disarms the hybrid', () => {
+    expect(activeSideStatement({ ...ARMED, flankBudgetRaw: '1,5' }).flankBudgetDbRms).toBeCloseTo(1.5, 12);
+    expect(activeSideStatement({ ...ARMED, flankBudgetRaw: '1.5' }).flankBudgetDbRms).toBeCloseTo(1.5, 12);
+    expect(activeSideStatement({ ...ARMED, flankBudgetRaw: '' }).flankBudgetDbRms).toBeNull();
+    expect(activeSideStatement(ARMED).flankBudgetDbRms).toBeNull();
+    const bad = activeSideStatement({ ...ARMED, flankBudgetRaw: '1,5dB' });
+    expect(bad.flankBudgetDbRms).toBeNull();
+    expect(bad.problems.join(' ')).toContain(ACTIVE_FLANK_BUDGET_LABEL);
+    expect(bad.armed).toBe(true);
+    /* And it is no reason to arm: a budget on a project that states no hybrid is a number about nothing. */
+    expect(activeSideStatement({ ...ARMED, on: '', flankBudgetRaw: '1.5' }).armed).toBe(false);
+  });
+
+  it('the statement says what holds the flank: a STATED budget, or nothing (P4)', () => {
+    const none = describeActiveSide(activeSideStatement(ARMED));
+    expect(none).toContain(ACTIVE_SIDE_FLANK_UNJUDGED);
+    expect(none).not.toMatch(/STATED budget/);
+    const held = describeActiveSide(activeSideStatement({ ...ARMED, flankBudgetRaw: '1.5' }));
+    expect(held).toMatch(/STATED budget of 1\.50 dB rms/);
+    expect(held).toMatch(/refused, never delivered quietly/);
+    expect(held).not.toContain(ACTIVE_SIDE_FLANK_UNJUDGED);
+    /* Both forms carry the sentence: the flank exists whether the active side is modelled or not. */
+    const lean = describeActiveSide(activeSideStatement({ ...ARMED, ways: TWO, flankBudgetRaw: '1.5' }));
+    expect(lean).toMatch(/LEAN FORM/);
+    expect(lean).toMatch(/STATED budget of 1\.50 dB rms/);
+  });
 });
 
 /* ==================================================================== *
@@ -453,7 +487,9 @@ describe('H-2 / H-2b — App.tsx routes a hybrid', () => {
   });
 
   it('on a lean-form run the sum columns read NOT JUDGED (never blank) and the flank column appears; on a measured run they are marked MODEL', () => {
-    expect(APP).toContain('const COLS = COLS_ALL.filter(([key]) => v2LeanRun || key !== ACTIVE_SIDE_FLANK_COLUMN);');
+    /* H-3b — the flank column on EVERY hybrid run: the worker reads the flank
+     * in both forms since a stated budget can judge it in both. */
+    expect(APP).toContain('const COLS = COLS_ALL.filter(([key]) => v2HybridRun || key !== ACTIVE_SIDE_FLANK_COLUMN);');
     expect(APP).toContain('const notJudged = (key: string) => v2LeanRun && ACTIVE_SIDE_LEAN_UNJUDGED_COLUMNS.includes(key);');
     expect(APP).toContain("{notJudged(key) ? ` (${t('not judged')})` : ''}");
     expect(APP).toContain('<td key={key} className="derived" title={t(ACTIVE_SIDE_NOT_JUDGED)}>');
@@ -477,6 +513,34 @@ describe('H-2 / H-2b — App.tsx routes a hybrid', () => {
     expect(APP).toContain('value={engineV2Settings.activeProcessorLatencyMs}');
     expect(APP).toContain('placeholder={V2_GHOSTS.activeProcessorLatencyMs}');
     expect(APP).toContain("latencyRaw: engineV2Settings.activeProcessorLatencyMs,");
+  });
+
+  /* H-3b — THE FLANK-ERROR BUDGET IN THE APP: one field behind the tick, read
+   * by the one statement, carried ON the stated handover that reaches the
+   * report and (through the report) the run and the ⚙ tune, and judged on the
+   * chip by the REPORT's verdict — the app compares nothing itself. */
+  it('the flank-error budget is a stated field behind the tick, read by the statement, and rides on the handover', () => {
+    expect(APP).toContain('value={engineV2Settings.activeFlankBudgetDbRms}');
+    expect(APP).toContain('placeholder={V2_GHOSTS.activeFlankBudgetDbRms}');
+    expect(APP).toContain('flankBudgetRaw: engineV2Settings.activeFlankBudgetDbRms,');
+    expect(APP).toContain('...(v2ActiveSide.flankBudgetDbRms !== null ? { flankBudgetDbRms: v2ActiveSide.flankBudgetDbRms } : {}),');
+    /* Behind the tick: the field sits inside the `activeSideOn === 'on'` guard of the panel. */
+    const at = APP.indexOf('value={engineV2Settings.activeFlankBudgetDbRms}');
+    const guard = APP.lastIndexOf("{engineV2Settings.activeSideOn === 'on' && (", at);
+    expect(guard).toBeGreaterThan(-1);
+    expect(APP.indexOf('value={engineV2Settings.activeProcessorLatencyMs}', guard)).toBeGreaterThan(at);
+    /* In guided it exists only while the tick is on — a flank to hold, or no field. */
+    expect(APP).toContain("if (key === 'activeFlankBudgetDbRms' && engineV2Settings.activeSideOn !== 'on') return null;");
+  });
+
+  it('the chip judges by the REPORT’s verdict and colours only once a budget judges it; the app compares nothing of its own', () => {
+    expect(APP).toContain("() => (hybridStrip ? (engineV2Report?.report?.activeSide?.flankVerdict ?? null) : null),");
+    expect(APP).toContain('const d = describeFlank(hybridFlank, hybridStrip.hz, hybridFlankVerdict);');
+    expect(APP).toContain("d.tone === 'ok' ? 'chip-ok' : d.tone === 'bad' ? 'chip-bad' : 'chip-neutral'");
+    /* The ⚙ note reads the same one comparison, and says so when nothing judges. */
+    expect(APP).toContain('const flankJudged = flankVerdict(flank, active.handover.flankBudgetDbRms);');
+    expect(APP).toContain('t(ACTIVE_SIDE_FLANK_UNJUDGED)');
+    expect(APP).not.toContain('flankErrorDb(');
   });
 
   it('the acoustic-centre depth reaches the report geometry, for the delay start value', () => {

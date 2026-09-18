@@ -287,7 +287,11 @@ export const V2_REQUIREMENT_SCREENS: readonly V2RequirementScreen[] = Object.fre
      * counted their ways as passive. */
     id: 'active-side',
     title: 'Hybrid mode — is one of the ways driven by its own amplifier and a DSP?',
-    rowIds: ['activeSideOn', 'activeHandoverHz', 'activeHandoverShape'],
+    /* H-3b — the flank-error budget rides on this screen as a REFINING row
+     * (`REFINING_ROW_IDS`): stated, it holds the lowest passive way's flank to
+     * a budget on every delivered network; blank, the hybrid is still fully
+     * stated and the flank is reported and not judged. */
+    rowIds: ['activeSideOn', 'activeHandoverHz', 'activeHandoverShape', 'activeFlankBudgetDbRms'],
     control: 'active-side',
     /* ALL: the three state something only together. A tick with no handover is
      * a question with its input missing and a handover with no shape has no
@@ -546,6 +550,9 @@ export const REFINING_ROW_IDS: readonly string[] = Object.freeze([
   'resistorThermalPowerW',
   /* A flat curve has no depth to be missing. */
   'plateauDepthDb',
+  /* H-3b — a hybrid is fully stated without a flank-error budget: blank means
+   * the flank is reported and nothing judges it (P4), not half an answer. */
+  'activeFlankBudgetDbRms',
 ]);
 
 /** The rows of a screen that must be answered for the screen to state anything. */
@@ -764,6 +771,8 @@ export const REQUIREMENT_INPUT: Readonly<Partial<Record<V2SettingKey, V2Requirem
     dampingMarginDb: { min: 0, step: 0.1, unit: 'dB' },
     splWindowPlusMinusDb: { min: 0, step: 0.1, unit: 'dB' },
     maxPhaseTrackingDeg: { min: 0, step: 0.5, unit: '°' },
+    /* H-3b — the flank-error budget, dB rms over the handover band. */
+    activeFlankBudgetDbRms: { min: 0, step: 0.1, unit: 'dB rms' },
   });
 
 /** The three modes of the level-work rule, in the order the form offers them. */

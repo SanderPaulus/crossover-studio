@@ -47,7 +47,7 @@ import {
   type ChainResult,
   type ChainStageProgress,
 } from '../../designChain.ts';
-import { flankErrorDb, handoverBandHz, levelMatchDb, modelBranchResponse, type FlankError } from '../../activeSide.ts';
+import { flankErrorDb, flankVerdict, handoverBandHz, levelMatchDb, modelBranchResponse, type FlankError } from '../../activeSide.ts';
 import { runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
 import {
   busTopology,
@@ -1886,13 +1886,19 @@ function filteredBranchResponse(
 }
 
 /**
- * H-2b — the lean form's per-candidate judgement: the flank of the lowest
- * passive way (model `mid` on this chain) against the stated high-pass.
- * Null without a solvable network; ABSENT (undefined) without a lean form.
+ * H-2b/H-3b — the per-candidate flank of the lowest passive way (model `mid`
+ * on this chain) against the stated high-pass. Null without a solvable
+ * network; ABSENT (undefined) without a stated active side.
+ *
+ * BOTH FORMS SINCE H-3b. Until then only the lean form measured it (there it
+ * is the judgement); the measured form has the same flank on the same way, and
+ * a stated budget (`flankBudgetDbRms`) is a requirement on every hybrid run,
+ * so the reading exists wherever the requirement can. One function, two
+ * readers: the measurements column and the refusal in `runCandidate`.
  */
-function leanFlankErrorOf(input: ChainInput, parts: readonly VxpPart[]): FlankError | null | undefined {
+function hybridFlankErrorOf(input: ChainInput, parts: readonly VxpPart[]): FlankError | null | undefined {
   const a = input.settings.activeSide;
-  if (!a || a.handover.unmeasured !== true) return undefined;
+  if (!a) return undefined;
   const realised = filteredBranchResponse(parts, input.grid, 'mid', input.w, input.driverZ);
   return realised ? flankErrorDb(realised, input.w, a.handover) : null;
 }
@@ -1931,11 +1937,13 @@ function twoWayMeasurements(
    * so `response` is null (reported as NOT JUDGED, never blank: F0) and the
    * flank error is what the candidate offers instead. Absent on every other
    * run (P2). */
-  const flank = leanFlankErrorOf(chainInput, parts);
-  const lean = flank !== undefined;
+  const flank = hybridFlankErrorOf(chainInput, parts);
+  const lean = chainInput.settings.activeSide?.handover.unmeasured === true;
   return {
     response: !lean && sum ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band) : null,
-    ...(lean ? { flankError: flank } : {}),
+    /* H-3b — on EVERY hybrid run (both forms), so a stated budget has a
+     * reading to judge wherever it applies; absent without an active side. */
+    ...(flank !== undefined ? { flankError: flank } : {}),
     phaseTracking: Number.isFinite(after.phaseDeg)
       ? [
           {
@@ -2417,6 +2425,14 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
   measureRejected: (parts: readonly VxpPart[]) => ResponseJudgement | null,
   /** F4d — where the candidate came from, when A5d generated it. */
   provenance?: string,
+  /**
+   * H-3b — the target-flank error of a set of parts on this chain, when the
+   * route has a lowest passive way to read one from (the two-way routes; the
+   * three-way route has no expressible hybrid and passes none). ABSENT
+   * (undefined) from the function means no stated active side; null means it
+   * could not be read.
+   */
+  flankOf?: (parts: readonly VxpPart[]) => FlankError | null | undefined,
 ): V2CandidateResult<R> {
   const collect: {
     reference: GateReference | null;
@@ -2576,6 +2592,52 @@ function runCandidate<I, R extends { parts: VxpPart[]; net: { gateRefusals?: str
           rejectedParts: [...delivered.parts],
         },
       };
+    }
+  }
+
+  /* ---- H-3b: THE STATED FLANK-ERROR BUDGET, tested on the network that is OFFERED --
+   *
+   * The V45 shape, one requirement along: a hybrid run may state how far the
+   * lowest passive way's realised flank may stray from the stated high-pass
+   * (dB rms over the handover band, `ActiveHandover.flankBudgetDbRms`). The
+   * tuner carries the same number as a wall in its objective (`flankBudget`),
+   * which SHAPES the search; what is decided HERE is whether the network that
+   * is actually offered meets it, by the ONE comparison `flankVerdict` — the
+   * same function the report's chip and the Network tab's note read. Both
+   * two-way routes reach this block through `runCandidate`, so a shortlist
+   * row and a ⚙ tune of a drawn network are judged by the same words.
+   *
+   * `by: 'stated-flank-budget'`, `kinds: ['budget']`: a stated dB budget on a
+   * measured quantity, refused with the number, never delivered quietly
+   * (V31). A flank that could not be read is NOT a pass: the note says nothing
+   * was judged, and the candidate is not refused on a reading nobody has (F0
+   * both ways — a budget judged against nothing must neither pass nor fail).
+   * Only when nothing else refused; absent budget = this block does nothing. */
+  const flankBudgetDbRms = network.chainDeclaration?.stated.activeSide?.handover.flankBudgetDbRms;
+  if (!refused && flankBudgetDbRms !== undefined && flankOf) {
+    const got = flankOf(delivered.parts);
+    const v = flankVerdict(got ?? null, flankBudgetDbRms);
+    if (v) {
+      collect.notes.push(`Flank budget (H-3b): ${v.sentence}.`);
+      if (v.pass === false) {
+        refused = {
+          by: 'stated-flank-budget',
+          kinds: ['budget'],
+          reason: `${v.sentence} (H-3b — a stated requirement on the lowest passive way's flank)`,
+          note:
+            'The tune COMPLETED and the flank of the lowest passive way it delivered lies further from the ' +
+            'stated high-pass than the budget allows. The tuner carried the budget as a wall in its objective ' +
+            "(zero inside it, stiff outside), so a delivered network above it means the wall was traded " +
+            'against the rest of the objective or the flank was read differently on the search grid than on ' +
+            "the chain grid; either way the requirement decides and this candidate delivers nothing (V31). " +
+            'H-3 measured the unbudgeted tune moving the flank from 0.84 to 3.7 dB rms on the demo seed — ' +
+            'this refusal is what a stated budget makes of that.',
+          fields: {
+            ...(delivered.net as WholesaleRejectionFields),
+            rejectedParts: [...delivered.parts],
+          },
+        };
+      }
     }
   }
 
@@ -3326,6 +3388,9 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           /* V31 — see the three-way branch: measured here, not handed out. */
           (parts) => measureRejectedTwoWay(chainInput, v2, parts),
           candidate?.provenance,
+          /* H-3b — the flank the stated budget is judged on: the one function
+           * the measurements column reads. */
+          (parts) => hybridFlankErrorOf(chainInput, parts),
         );
         break;
       }
@@ -3395,6 +3460,8 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           }),
           (parts) => measureRejectedTwoWay(chainInput, v2, parts),
           candidate?.provenance,
+          /* H-3b — the same reader as the scan: one verdict for both routes. */
+          (parts) => hybridFlankErrorOf(chainInput, parts),
         );
         break;
       }

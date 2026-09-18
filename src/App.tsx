@@ -183,7 +183,7 @@ import {
  * declares active, what is missing when it cannot be modelled, and the
  * sentences that say so (`lib/v2ActiveSide.ts`). */
 import { describeDspTarget, dspTargetBlock } from './lib/engine2/dspTarget.ts';
-import { complementSettings, leanJudgedBand, type ActiveHandover, type ModelBranchSettings } from './lib/activeSide.ts';
+import { complementSettings, flankVerdict, leanJudgedBand, type ActiveHandover, type ModelBranchSettings } from './lib/activeSide.ts';
 /* H-3 — the Network tab reads Hybrid mode: the strip's band, the flank chip,
  * the Q_es sentence and the template seed (`lib/hybridNetwork.ts`). */
 import {
@@ -196,6 +196,7 @@ import {
 } from './lib/hybridNetwork.ts';
 import {
   ACTIVE_SIDE_FLANK_COLUMN,
+  ACTIVE_SIDE_FLANK_UNJUDGED,
   ACTIVE_SIDE_GUIDED_LINE,
   ACTIVE_SIDE_LEAN_NOTE,
   ACTIVE_SIDE_LEAN_UNJUDGED_COLUMNS,
@@ -2347,6 +2348,9 @@ export default function App() {
       );
     if (key === 'lowestWaySeriesRMaxOhm' && engineV2Settings.lowestWayLevelWork !== 'series-r-max')
       return null;
+    /* H-3b — the flank-error budget refines the hybrid statement: without the
+       tick there is no flank to hold, so the field does not exist. */
+    if (key === 'activeFlankBudgetDbRms' && engineV2Settings.activeSideOn !== 'on') return null;
     const spec = REQUIREMENT_INPUT[key] ?? {};
     return (
       <label key={rowId} className="v2-req-field">
@@ -3913,6 +3917,9 @@ export default function App() {
         handoversRaw: engineV2Settings.activeHandoverHz,
         shape: engineV2Settings.activeHandoverShape,
         latencyRaw: engineV2Settings.activeProcessorLatencyMs,
+        /* H-3b — the flank-error budget, read by the same statement so the
+         * handover that reaches the report and the run carries it. */
+        flankBudgetRaw: engineV2Settings.activeFlankBudgetDbRms,
         /* H-2b — THE FORM FOLLOWS FROM WHAT IS MEASURED. The project's ways,
          * low to high, each with whether its response is loaded: three loaded
          * is the measured form (the lowest way modelled), the top two loaded
@@ -3928,6 +3935,7 @@ export default function App() {
       engineV2Settings.activeHandoverHz,
       engineV2Settings.activeHandoverShape,
       engineV2Settings.activeProcessorLatencyMs,
+      engineV2Settings.activeFlankBudgetDbRms,
       threeWay,
       woofer,
       midDrv,
@@ -4537,6 +4545,10 @@ export default function App() {
                   ? `you on ${engineV2StatedAt.activeHandoverHz}`
                   : 'you (date not recorded)',
                 ...(v2ActiveSide.form === 'unmeasured' ? { unmeasured: true as const } : {}),
+                /* H-3b — the stated flank-error budget rides ON the stated
+                 * block: one carrier for the report's verdict, the tuner's
+                 * wall and the worker's refusal. Absent when not stated. */
+                ...(v2ActiveSide.flankBudgetDbRms !== null ? { flankBudgetDbRms: v2ActiveSide.flankBudgetDbRms } : {}),
               },
             };
           })(),
@@ -7227,6 +7239,16 @@ export default function App() {
    */
   const hybridFlank = useMemo(
     () => (hybridStrip ? (engineV2Report?.report?.activeSide?.flankError ?? null) : null),
+    [hybridStrip, engineV2Report],
+  );
+  /**
+   * H-3b — the flank AGAINST THE STATED BUDGET, read from the same report
+   * (`activeSide.flankVerdict`, the one comparison the worker refuses on).
+   * Null without a stated budget: then the chip prints the number alone and
+   * says nothing judges it.
+   */
+  const hybridFlankVerdict = useMemo(
+    () => (hybridStrip ? (engineV2Report?.report?.activeSide?.flankVerdict ?? null) : null),
     [hybridStrip, engineV2Report],
   );
   /** H-3 — the stated Q_es maximum the source-resistance rule names; absent off the v2 route. */
@@ -12067,14 +12089,20 @@ export default function App() {
         setNetOptDiff(diffTunedParts(seedParts, r.result.parts));
         setNetOptAudit(net.audit ?? null);
         const flank = r.measurements.flankError ?? null;
+        /* H-3b — against the stated budget, by the one comparison the worker
+         * refused on (a delivered tune is inside it by construction; the
+         * sentence says by how much). Null without a budget. */
+        const flankJudged = flankVerdict(flank, active.handover.flankBudgetDbRms);
         const qes = describeQesFactor(net.audit?.qesFactor ?? null, v2QesStatedMax);
         setNetOptNote(
           `${t('Hybrid mode')} (${active.handover.unmeasured ? t('lean form') : t('measured form')}, ` +
             `${active.handover.kind}${active.handover.order} @ ${formatHandover(hz)}): ` +
             `${net.tuned} components tuned (${net.evaluations.toLocaleString('nl-NL')} sims)` +
             (flank
-              ? ` — ${t('target-flank error')} ${flankBefore ? `${flankBefore.rmsDb.toFixed(2)} → ` : ''}${flank.rmsDb.toFixed(2)} dB rms (level ${flank.levelDb >= 0 ? '+' : ''}${flank.levelDb.toFixed(2)} dB, absorbed by the DSP gain)`
-              : ` — ${t('target-flank error')}: ${t('not read')}`) +
+              ? ` — ${t('target-flank error')} ${flankBefore ? `${flankBefore.rmsDb.toFixed(2)} → ` : ''}${flank.rmsDb.toFixed(2)} dB rms (level ${flank.levelDb >= 0 ? '+' : ''}${flank.levelDb.toFixed(2)} dB, absorbed by the DSP gain)` +
+                (flankJudged ? ` · ${flankJudged.pass ? '' : '⚠ '}${flankJudged.sentence}` : ` · ${t(ACTIVE_SIDE_FLANK_UNJUDGED)}`)
+              : ` — ${t('target-flank error')}: ${t('not read')}` +
+                (flankJudged ? ` · ⚠ ${flankJudged.sentence}` : '')) +
             (active.handover.unmeasured ? ` · ${t('sum')}: ${t(ACTIVE_SIDE_NOT_JUDGED)}` : ` · peak ${net.before.rippleDb.toFixed(2)} → ${net.after.rippleDb.toFixed(2)} dB`) +
             ` · phase ${net.before.phaseDeg.toFixed(1)}° → ${net.after.phaseDeg.toFixed(1)}°` +
             (r.violation ? ` · ⚠ ${t('gate')}: ${r.violation}` : gatesFailed.length === 0 ? ` · ${t('every armed gate inside')}` : '') +
@@ -12249,7 +12277,7 @@ export default function App() {
           (hybridStripBand ? ` · hybrid: judged from ${hybridStripBand.floorHz.toFixed(0)} Hz` : ''),
       );
     if (hybridStrip) {
-      const d = describeFlank(hybridFlank, hybridStrip.hz);
+      const d = describeFlank(hybridFlank, hybridStrip.hz, hybridFlankVerdict);
       push('Target-flank error', d.value, `against the stated ${hybridStrip.kind}${hybridStrip.order} high-pass at ${hybridStrip.hz.toFixed(1)} Hz (H-2b)`);
     }
     if (pairScores) {
@@ -16826,9 +16854,11 @@ export default function App() {
             </span>
           )}
           {hybridStrip && !simStale && (() => {
-            const d = describeFlank(hybridFlank, hybridStrip.hz);
+            /* H-3b — measured against stated, coloured only once a budget
+             * judges it: neutral without one (nothing judged), ok/bad with. */
+            const d = describeFlank(hybridFlank, hybridStrip.hz, hybridFlankVerdict);
             return (
-              <span className="status-chip chip-neutral hybrid-flank" title={t(d.title)}>
+              <span className={`status-chip ${d.tone === 'ok' ? 'chip-ok' : d.tone === 'bad' ? 'chip-bad' : 'chip-neutral'} hybrid-flank`} title={t(d.title)}>
                 {t('Flank')} <strong>{t(d.value)}</strong>
               </span>
             );
@@ -19796,6 +19826,29 @@ export default function App() {
                           {v2Stated('activeHandoverShape')}
                           {v2Empty('activeHandoverShape')}
                         </label>
+                        {/* H-3b — THE FLANK-ERROR BUDGET: how far the lowest passive
+                          * way's realised flank may stray from the stated high-pass,
+                          * dB rms over the handover band. A JUDGEMENT: stated, every
+                          * delivered or tuned network of a hybrid run is held to it
+                          * and refused with the number when it lies above; blank, the
+                          * flank is measured and reported and nothing judges it (P4).
+                          * The tuner carries the same number as a wall in its
+                          * objective, so the search is kept out of the region the
+                          * requirement would refuse. */}
+                        <label title={t('H-3b — the target-flank error of the lowest passive way (its measured response times the delivered network, against the same response times the stated high-pass, level-matched, dB rms over half an octave either side of the handover) must stay at or under this. A hard requirement on every delivered or tuned network in Hybrid mode: above it the network is REFUSED with the number, on the shortlist and on the Network tab’s ⚙ tune alike. Blank = the flank is measured and reported, and nothing judges it. H-3 measured the unbudgeted tune moving the flank from 0.84 to 3.7 dB rms on the two-way demo.')}>
+                          {t('Flank-error budget (dB rms over the handover band)')}
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={engineV2Settings.activeFlankBudgetDbRms}
+                            placeholder={V2_GHOSTS.activeFlankBudgetDbRms}
+                            onChange={(e) => setV2Field('activeFlankBudgetDbRms', e.target.value)}
+                            style={{ width: '5rem' }}
+                          />
+                          {v2Stated('activeFlankBudgetDbRms')}
+                          {v2Empty('activeFlankBudgetDbRms')}
+                        </label>
                         {/* H-2b — THE PROCESSOR'S OWN LATENCY on the active side. A
                           * stated number, subtracted from the delay to dial in and
                           * named apart in the DSP block; blank = printed without it,
@@ -21269,8 +21322,9 @@ export default function App() {
                     /* H-2b — THE TARGET-FLANK ERROR, the lean form's own
                        judgement: the lowest passive way times the delivered
                        network against its stated high-pass, dB rms over the
-                       handover band (`flankErrorDb`). Rendered only on a
-                       lean-form run, where it is also the sort key. */
+                       handover band (`flankErrorDb`). Rendered on a hybrid
+                       run (both forms since H-3b); on a lean-form run it is
+                       also the sort key. */
                     [ACTIVE_SIDE_FLANK_COLUMN, t('target-flank error'), (r: (typeof v2Shortlist.rows)[number]) => r.measurements.flankError?.rmsDb ?? null, (v: number) => `${v.toFixed(2)} dB`],
                   ] as const;
                   /* U-6 — ONE ROW PER ANSWER, AND THE STATUS WORD BESIDE IT.
@@ -21283,9 +21337,11 @@ export default function App() {
                      printed nine times (F0). */
                   const view = groupShortlistRows(v2Shortlist.rows, v2Shortlist.stated);
                   const sorted = [...view];
-                  /* H-2b — the flank column exists on a lean-form run and on
-                     no other; the sum columns of such a run read NOT JUDGED. */
-                  const COLS = COLS_ALL.filter(([key]) => v2LeanRun || key !== ACTIVE_SIDE_FLANK_COLUMN);
+                  /* H-2b/H-3b — the flank column exists on a HYBRID run (both
+                     forms since H-3b: the worker reads the flank wherever a
+                     stated budget can judge it) and on no other; the sum
+                     columns of a lean-form run read NOT JUDGED. */
+                  const COLS = COLS_ALL.filter(([key]) => v2HybridRun || key !== ACTIVE_SIDE_FLANK_COLUMN);
                   const notJudged = (key: string) => v2LeanRun && ACTIVE_SIDE_LEAN_UNJUDGED_COLUMNS.includes(key);
                   if (shortlistSort) {
                     const col = COLS.find((c) => c[0] === shortlistSort.key);

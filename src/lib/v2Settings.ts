@@ -76,6 +76,14 @@ export const V2_SETTING_KEYS = [
   'activeHandoverHz',
   'activeHandoverShape',
   /**
+   * H-3b — THE FLANK-ERROR BUDGET, dB rms over the handover band: how far the
+   * lowest passive way's realised flank may stray from the stated high-pass. A
+   * JUDGEMENT key: stated, it is a hard requirement on every network a hybrid
+   * run delivers or tunes (refused with the number); blank, the flank is
+   * measured and reported and nothing judges it (P4).
+   */
+  'activeFlankBudgetDbRms',
+  /**
    * H-2b — the processor's own latency on the active side, ms, as the designer
    * states it (the FA251 with an analogue input is about 0.35 ms). NOT a
    * judgement key: it judges, bounds and filters nothing — the DSP target block
@@ -146,6 +154,9 @@ export const V2_JUDGEMENT_KEYS: readonly V2SettingKey[] = [
   'activeSideOn',
   'activeHandoverHz',
   'activeHandoverShape',
+  /* H-3b — the flank-error budget: a stated dB figure that REFUSES a network
+   * above it, on the shortlist and on the Network tab's ⚙ tune alike. */
+  'activeFlankBudgetDbRms',
 ];
 
 /**

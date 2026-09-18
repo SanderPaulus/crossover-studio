@@ -8,10 +8,12 @@ import {
   activeLowPass,
   deriveModelBranch,
   fitModelBranch,
+  flankVerdict,
   handoverBandHz,
   modelBranchResponse,
   modelBranchTransfer,
   type ActiveHandover,
+  type FlankError,
 } from './activeSide.ts';
 
 /* ------------------------------------------------------------------ *
@@ -190,5 +192,49 @@ describe('H-1 — the stated handover to an active side', () => {
 
   it('carries a version string (A5e.5)', () => {
     expect(ACTIVE_SIDE_VERSION).toMatch(/^active-handover\/\d+\.\d+$/);
+  });
+});
+
+/* ==================================================================== *
+ * H-3b — THE FLANK VERDICT: one comparison, three readers
+ * ==================================================================== */
+
+describe('H-3b — the flank verdict against a stated budget', () => {
+  const e: FlankError = { rmsDb: 2.1, maxAbsDb: 4.0, levelDb: -3.2, bandHz: handoverBandHz(400), points: 21 };
+
+  it('no budget stated: no verdict at all — the flank is a reading and nothing judges it (P4)', () => {
+    expect(flankVerdict(e, undefined)).toBeNull();
+    expect(flankVerdict(null, undefined)).toBeNull();
+    /* A budget that is not a non-negative number is no budget either. */
+    expect(flankVerdict(e, Number.NaN)).toBeNull();
+    expect(flankVerdict(e, -1)).toBeNull();
+  });
+
+  it('inside the budget: pass, with the margin to spare, by hand', () => {
+    const v = flankVerdict(e, 2.5)!;
+    expect(v.pass).toBe(true);
+    expect(v.rmsDb).toBe(2.1);
+    expect(v.budgetDbRms).toBe(2.5);
+    expect(v.overDb).toBeCloseTo(-0.4, 12);
+    expect(v.sentence).toMatch(/2\.10 dB rms within the stated budget of ≤ 2\.50 dB rms/);
+    expect(v.sentence).toMatch(/0\.40 dB rms to spare over 283–566 Hz/);
+    /* ON the budget is inside it: the comparison is ≤, exact, no tolerance. */
+    expect(flankVerdict(e, 2.1)!.pass).toBe(true);
+  });
+
+  it('over the budget: FAILED, by how much, in the unit the flank is measured in', () => {
+    const v = flankVerdict(e, 1.5)!;
+    expect(v.pass).toBe(false);
+    expect(v.overDb).toBeCloseTo(0.6, 12);
+    expect(v.sentence).toMatch(/2\.10 dB rms against the stated budget of ≤ 1\.50 dB rms — requirement FAILED by 0\.60 dB rms/);
+  });
+
+  it('a budget with no reading is NOT JUDGED — pass is null, never true (F0 both ways)', () => {
+    const v = flankVerdict(null, 1.5)!;
+    expect(v.pass).toBeNull();
+    expect(v.rmsDb).toBeNull();
+    expect(v.overDb).toBeNull();
+    expect(v.budgetDbRms).toBe(1.5);
+    expect(v.sentence).toMatch(/NOT JUDGED against the stated budget of ≤ 1\.50 dB rms/);
   });
 });

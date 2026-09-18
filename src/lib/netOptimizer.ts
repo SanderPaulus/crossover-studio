@@ -3,7 +3,7 @@ import { bandMedian, powerShape, smoothDbGaussian, type PowerMetricMode } from '
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
 import { applyTransfer, combine, combineN, type BranchAdjust, type CombineResult, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
-import { levelMatchDb } from './activeSide.ts';
+import { flankErrorDb, levelMatchDb, type ActiveHandover } from './activeSide.ts';
 import { pickSlotsN } from './driverSlots.ts';
 import { computeIntegration, DEFAULT_OVERLAP_WINDOW_DB } from './integration.ts';
 import { admitPhasePoints } from './phaseAdmission.ts';
@@ -826,6 +826,38 @@ export interface NetOptimizeOptions {
    * way over, per evaluation (`levelMatchDb`). Absent = summed as handed in.
    */
   activeLevelBandHz?: readonly [number, number];
+  /**
+   * H-3b — THE STATED FLANK-ERROR BUDGET of the lowest passive way, as a
+   * BARRIER in the objective.
+   *
+   * H-3 measured what the tune does to that flank without one: on the two-way
+   * demo's own data it reached its own ripple goal and moved the flank from
+   * 0.84 to 3.7 dB rms away from the stated high-pass — the handover band is
+   * one octave of six in the amplitude term, and the search spends it. With a
+   * budget stated this term is ZERO inside it and a stiff wall outside
+   * (`FLANK_BUDGET_BARRIER_WEIGHT`, the amplifier-floor stiffness), so the
+   * search path through the region the requirement allows is untouched and the
+   * region it forbids is walled off — the same argument that makes the
+   * source-resistance constraint and the solo sensitivity wall safe. The wall
+   * starts at `FLANK_BUDGET_BARRIER_MARGIN` × budget because the search reads
+   * the flank on the decimated, error-smoothed grid and the verdict on the full
+   * raw grid (the staged barrier's own 0.92 reason).
+   *
+   * The flank is `flankErrorDb` — the ONE function the worker's refusal and the
+   * report's chip read — on the LOWEST way's branch (`w`) against the same
+   * way's measurement times the stated high-pass. Level-invariant, like the
+   * amplitude term: the DSP gain absorbs an offset, not a shape.
+   *
+   * It decides nothing: the REQUIREMENT is judged by the worker on the
+   * delivered network (`runCandidate`, the V45 shape), and a tune that ends
+   * above the budget anyway is refused there with the number. Absent =
+   * byte-identical (P2). Polish (`choices.ts`): the decision is the chain-level
+   * `activeSide` key, and this is that decision's number handed to the tuner.
+   */
+  flankBudget?: {
+    handover: Pick<ActiveHandover, 'hz' | 'kind' | 'order'>;
+    maxRmsDb: number;
+  };
   /** 3-WAY (phase-4 trede 4): the MIDDLE branch — its base response on the
    *  same grid as wBase/tBase, plus its own adjust. When set, the tuner runs
    *  the two-pair path: branch transfers resolve by SLOT (pickSlotsN, so
@@ -1124,6 +1156,8 @@ export interface NetOptimizeResult {
     powerStdDb?: number;
     /** Source resistance at the low driver of THESE parts (the seed). */
     rSourceOhm?: number | null;
+    /** H-3b — the target-flank error the tuner read on the seed, dB rms; present only with a stated `flankBudget`. */
+    flankRmsDb?: number | null;
   };
   /** Full-grid metrics of the delivered network; `xoHz` = its acoustic
    *  crossing (used by the no-pin scan to derive follow-up candidates). */
@@ -1177,6 +1211,13 @@ export interface NetOptimizeResult {
      * built measures 1.64 Ω — inside the 2.0 Ω limit.
      */
     rSourceOhm?: number | null;
+    /**
+     * H-3b — the target-flank error the tuner read on the delivered parts, dB
+     * rms over the handover band, on its own full grid; present only with a
+     * stated `flankBudget`. The VERDICT is the worker's (`flankVerdict` on the
+     * chain grid); this is the tuner's own reading, for the before/after note.
+     */
+    flankRmsDb?: number | null;
   };
   /** How many component values were free to move (final network). */
   tuned: number;
@@ -1453,6 +1494,25 @@ export type SafetyKind = 'crossing' | 'valley' | 'protection' | 'load';
  * floor.
  */
 export const AMP_FLOOR_BARRIER_WEIGHT = 1200;
+
+/**
+ * H-3b — the stiffness of the flank-budget wall (`flankBudget`). The
+ * amplifier-floor stiffness, for the same reason that one is what it is: a
+ * quadratic that is weak near its edge lets a small amplitude gain buy a
+ * requirement violation, and the requirement is then refused at the end
+ * instead of avoided during the search. Inside the budget the term is exactly
+ * zero, so no run that stays inside it is perturbed by the weight at all.
+ */
+export const FLANK_BUDGET_BARRIER_WEIGHT = AMP_FLOOR_BARRIER_WEIGHT;
+
+/**
+ * H-3b — where the flank wall starts, as a fraction of the stated budget. The
+ * search reads the flank on the decimated, error-smoothed evaluation grid and
+ * the verdict reads it on the full raw grid; the staged barrier keeps the same
+ * 8 % for the same offset, and a wall that started exactly at the budget would
+ * deliver networks a hair over it to be refused a moment later.
+ */
+export const FLANK_BUDGET_BARRIER_MARGIN = 0.92;
 
 /**
  * V47 — how far above the SEED's protection deficit the full-band safety gate
@@ -2924,6 +2984,10 @@ export function optimizeNetworkValues(
     /** The same probe's Thevenin resistance in ohms — what the ranking
      *  disqualifies on. Null when it could not be measured. */
     rSourceOhm: number | null;
+    /** H-3b — the target-flank error of the lowest way's branch on this grid,
+     *  dB rms over the handover band (`flankErrorDb`); null without a stated
+     *  `flankBudget` or without a point in the band. */
+    flankRmsDb: number | null;
   } => {
     const sol = solveNetwork(net, freqs, z);
     // Dissipation ratio of the LOWEST branch (fix 3a): Rs/Re at the level
@@ -3033,6 +3097,15 @@ export function optimizeNetworkValues(
     const wF = hW ? applyTransfer(w, hW) : w;
     const tF = hT ? applyTransfer(t, hT) : t;
     const mF = m ? (hM ? applyTransfer(m, hM) : m) : null;
+    /* H-3b — the target-flank error of the LOWEST way's branch on this grid,
+     * by the one function the worker and the report read; null without a
+     * stated budget (then nothing below reads it) or without a point in the
+     * band. `w` here is the measurement as this grid carries it (smoothed and
+     * decimated on the search grid), so the target it is compared against is
+     * built from the same operand. */
+    const flankRmsDb: number | null = opts.flankBudget
+      ? (flankErrorDb(wF, w, opts.flankBudget.handover)?.rmsDb ?? null)
+      : null;
 
     // Branch-target corridor (see opts.branchTargets). Interpolated in log-f
     // because this evaluates on decimated and safety grids too; a NaN
@@ -3594,6 +3667,8 @@ export function optimizeNetworkValues(
       medianDb: medianOf(r.freq, r.combinedSpl),
       dissRatio,
       rSourceOhm,
+      /** H-3b — see `flankBudget`; null whenever no budget is stated. */
+      flankRmsDb,
     };
   };
 
@@ -3665,9 +3740,20 @@ export function optimizeNetworkValues(
         }
       }
     }
+    /* H-3b — the flank-budget wall: zero inside the stated budget, stiff
+     * outside it (see `flankBudget`). A flank that could not be read on this
+     * grid adds nothing — the term drops out rather than scoring zero, and the
+     * requirement is judged on the delivered network by the worker. */
+    const flankWall = (() => {
+      const fb = opts.flankBudget;
+      if (!fb || m.flankRmsDb === null || !(fb.maxRmsDb > 0)) return 0;
+      const over = Math.max(0, m.flankRmsDb - FLANK_BUDGET_BARRIER_MARGIN * fb.maxRmsDb) / fb.maxRmsDb;
+      return FLANK_BUDGET_BARRIER_WEIGHT * over * over;
+    })();
     return (
       2 * (1 - p) * amp +
       2 * p * phase +
+      flankWall +
       (breakupGuard ? 0.02 * m.leakSqDb : 0) +
       0.02 * m.protSqDb +
       // Dead-spot crossing (always on): a 19 dB-deep crossing hole costs
@@ -5752,6 +5838,9 @@ export function optimizeNetworkValues(
       : {}),
     ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
     ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
+    /* H-3b — the flank the tuner itself read, only when a budget was stated
+     * (the V30 `zFloorSourceNote` shape: every other run is byte-identical). */
+    ...(opts.flankBudget ? { flankRmsDb: m.flankRmsDb } : {}),
   });
 
   /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that

@@ -431,6 +431,17 @@ export function assembledTuneOptions(
     ...(activeBranch && activeSide
       ? { activeBranch, activeLevelBandHz: handoverBandHz(activeSide.handover.hz) }
       : {}),
+    /* H-3b — the stated flank-error budget, as the tuner's wall. Both forms:
+     * the flank of the lowest passive way exists whether the active side is
+     * modelled or not. Absent budget = absent key (P2). */
+    ...(activeSide && activeSide.handover.flankBudgetDbRms !== undefined
+      ? {
+          flankBudget: {
+            handover: { hz: activeSide.handover.hz, kind: activeSide.handover.kind, order: activeSide.handover.order },
+            maxRmsDb: activeSide.handover.flankBudgetDbRms,
+          },
+        }
+      : {}),
     ...(extras.onStage ? { onStage: extras.onStage } : {}),
     // F2b: merged LAST, so a v2 run's gate and bound options cannot be
     // overwritten by anything above. Absent = byte-identical.

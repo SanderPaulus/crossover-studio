@@ -35,10 +35,10 @@
 import type { Complex } from './complex.ts';
 import { defaultHpLp, type DriverFilterSpec, type FilterKind, type HpLpSpec } from './filters.ts';
 import { synthesize, type SynthesisResult, type SynthesizedComponent } from './synthesis.ts';
-import { activeHighPass, handoverBandHz, leanJudgedBand, type FlankError } from './activeSide.ts';
+import { activeHighPass, handoverBandHz, leanJudgedBand, type FlankError, type FlankVerdict } from './activeSide.ts';
 
 /** Versiestring — a behaviour change here is a version bump (A5e.5). */
-export const HYBRID_NETWORK_VERSION = 'hybrid-network-tab/1.0';
+export const HYBRID_NETWORK_VERSION = 'hybrid-network-tab/1.1';
 
 /** The stated shape the tab reads, in the terms `activeSide.ts` speaks. */
 export interface StatedHandoverShape {
@@ -109,24 +109,47 @@ export function describeQesFactor(
  * 3 — the flank chip
  * ==================================================================== */
 
-/** The flank chip's words: the rms shape error and the level offset the DSP gain absorbs. */
-export function describeFlank(e: FlankError | null, handoverHz: number): { value: string; title: string } {
+/**
+ * The flank chip's words: the rms shape error and the level offset the DSP
+ * gain absorbs — and, since H-3b, the reading AGAINST THE STATED BUDGET the way
+ * every requirement is printed ("2.10 / ≤ 1.50 dB rms — FAILED"). The verdict
+ * is the REPORT's (`flankVerdict`, the same comparison the worker refuses on);
+ * this only chooses the words and the tone. Without a stated budget the number
+ * stands alone and the tone is neutral: nothing judged it (P4).
+ */
+export function describeFlank(
+  e: FlankError | null,
+  handoverHz: number,
+  verdict: FlankVerdict | null = null,
+): { value: string; title: string; tone: 'neutral' | 'ok' | 'bad' } {
+  const judged = verdict
+    ? verdict.pass === null
+      ? ` Stated budget ≤ ${verdict.budgetDbRms.toFixed(2)} dB rms: NOT JUDGED — ${verdict.sentence}.`
+      : ` ${verdict.sentence}.`
+    : ' No flank-error budget is stated, so this figure is reported and nothing judges it.';
   if (!e) {
     return {
-      value: 'not read',
+      value: verdict ? `not read / ≤ ${verdict.budgetDbRms.toFixed(2)} — not judged` : 'not read',
+      tone: 'neutral',
       title:
         `Target-flank error of the lowest passive way against the stated high-pass at ${handoverHz.toFixed(1)} Hz: ` +
-        'not read — no solvable network under the handover band, or the band holds no grid point.',
+        'not read — no solvable network under the handover band, or the band holds no grid point.' +
+        judged,
     };
   }
+  const value = verdict
+    ? `${e.rmsDb.toFixed(2)} / ≤ ${verdict.budgetDbRms.toFixed(2)} dB rms — ${verdict.pass ? 'met' : 'FAILED'}`
+    : `${e.rmsDb.toFixed(2)} dB rms`;
   return {
-    value: `${e.rmsDb.toFixed(2)} dB rms`,
+    value,
+    tone: verdict ? (verdict.pass ? 'ok' : 'bad') : 'neutral',
     title:
       `Target-flank error (H-2b): the measured lowest passive way times THIS network against the same way ` +
       `times the stated high-pass at ${handoverHz.toFixed(1)} Hz, over ${e.bandHz[0].toFixed(0)}–${e.bandHz[1].toFixed(0)} Hz ` +
       `(${e.points} points). Shape error ${e.rmsDb.toFixed(2)} dB rms, largest ${e.maxAbsDb.toFixed(2)} dB; ` +
       `level ${e.levelDb >= 0 ? '+' : ''}${e.levelDb.toFixed(2)} dB against the target, which the DSP gain absorbs. ` +
-      'The same function the shortlist judges its rows on, read from the v2 report of this design.',
+      'The same function the shortlist judges its rows on, read from the v2 report of this design.' +
+      judged,
   };
 }
 

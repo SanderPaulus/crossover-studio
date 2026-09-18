@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { logspace } from './dsp.ts';
 import { cplx } from './complex.ts';
 import { evalHpLp } from './filters.ts';
-import { handoverBandHz, leanJudgedBand, type FlankError } from './activeSide.ts';
+import { flankVerdict, handoverBandHz, leanJudgedBand, type FlankError } from './activeSide.ts';
 import { ACTIVE_SIDE_NOT_JUDGED } from './v2ActiveSide.ts';
 import { TEMPLATE_REFERENCE, filterTemplate } from './filterTemplates.ts';
 import {
@@ -128,7 +128,35 @@ describe('H-3 — the flank chip', () => {
   it('with no reading it says NOT READ and why, never a number', () => {
     const d = describeFlank(null, 400);
     expect(d.value).toBe('not read');
+    expect(d.tone).toBe('neutral');
     expect(d.title).toMatch(/no solvable network|no grid point/);
+  });
+
+  /* H-3b — MEASURED AGAINST STATED, the way every requirement is printed. The
+   * verdict is the report's (`flankVerdict`); the chip only chooses words. */
+  it('without a stated budget the number stands alone, the tone is neutral, and the title says nothing judges it (P4)', () => {
+    const d = describeFlank(e, 400);
+    expect(d.value).toBe('1.62 dB rms');
+    expect(d.tone).toBe('neutral');
+    expect(d.title).toMatch(/nothing judges it/);
+  });
+
+  it('with a stated budget it prints measured / ≤ stated and the verdict, and colours ok or FAILED', () => {
+    const met = describeFlank(e, 400, flankVerdict(e, 2));
+    expect(met.value).toBe('1.62 / ≤ 2.00 dB rms — met');
+    expect(met.tone).toBe('ok');
+    expect(met.title).toMatch(/within the stated budget/);
+    const failed = describeFlank(e, 400, flankVerdict(e, 1.5));
+    expect(failed.value).toBe('1.62 / ≤ 1.50 dB rms — FAILED');
+    expect(failed.tone).toBe('bad');
+    expect(failed.title).toMatch(/requirement FAILED by 0\.12 dB rms/);
+  });
+
+  it('a stated budget with no reading is NOT JUDGED — never met, never a number', () => {
+    const d = describeFlank(null, 400, flankVerdict(null, 1.5));
+    expect(d.value).toBe('not read / ≤ 1.50 — not judged');
+    expect(d.tone).toBe('neutral');
+    expect(d.title).toMatch(/NOT JUDGED/);
   });
 });
 
@@ -239,7 +267,7 @@ describe('H-3 — App.tsx reads Hybrid mode on the Network tab', () => {
 
   it('the flank chip renders on Working, read from the REPORT — one measurement, never a second one in the app', () => {
     expect(APP).toContain("() => (hybridStrip ? (engineV2Report?.report?.activeSide?.flankError ?? null) : null),");
-    expect(APP).toContain('const d = describeFlank(hybridFlank, hybridStrip.hz);');
+    expect(APP).toContain('const d = describeFlank(hybridFlank, hybridStrip.hz, hybridFlankVerdict);');
     expect(APP).toContain("{t('Flank')} <strong>{t(d.value)}</strong>");
     expect(APP).toContain("push('Target-flank error', d.value,");
     /* The app measures no flank of its own: `flankErrorDb` is the report's and

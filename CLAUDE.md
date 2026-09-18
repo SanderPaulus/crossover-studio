@@ -48,6 +48,25 @@
     referentie:** `threeWayChain` alléén kostte in diezelfde run 361 s tegen de 289 s van V43, dus
     wat er beweegt is de machine en niet de laag. Het overgeslagen BESTAND is nieuw en klopt: de
     verhuisde verwerpingsrun is een bestand dat volledig uit `[live]` bestaat.
+    **Ná H-3b (18-09-2026) gemeten op 724 s — 200 bestanden (199 geslaagd, 1 overgeslagen),
+    2638 tests (2634 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de drie
+    gerichte achtergrondruns en zonder dev-server.** +1 BESTAND (`engine2/h3bFlankBudget.test.ts`,
+    6 claims) en +19 tests, en die telling sluit exact: die zes plus VIER in `activeSide.test.ts`
+    (het flankoordeel met de hand), DRIE in `hybridNetwork.test.ts` (de chip met en zonder budget),
+    VIER in `v2ActiveSide.test.ts` (51 → 55: de lezer, de statementzin, het veld achter het vinkje,
+    de chip op het rapportoordeel) en TWEE in `h3NetworkTab.test.ts` (9 → 11: de assemblage en de
+    gebudgetteerde regressie). Het corpus is NIET aangeraakt (geen casus stelt een budget). GEEN
+    nieuwe referentie: de V43-waarde van 289 s blijft staan, en 724 tegen H-3's 515 s is de MACHINE
+    en niet de laag — `threeWayChain` alléén kostte in deze run 498 s tegen 289 s bij V43, zonder
+    dat H-3b dat bestand raakt (de post-splitsingsles van 01-09-2026, opnieuw). **DE VOLLE RUN IS
+    BIJ H-3b NIET GEDRAAID**, met de H-3-afweging: de tuner is aangeraakt (`fxOf` telt een term op,
+    `metricsOn` leest een flank), maar élke regel ervan hangt aan één afwezige sleutel — zonder
+    `flankBudget` is `flankRmsDb` null, de wand exact nul en `report()` byte-identiek — en dat is
+    NAGEMETEN: `toggleRegression`, `f4cRegression` en `workerRouteRegression` reproduceren in de
+    snelle laag, `chainChoices` mét zijn twee live ketenarmen ook. Geen casus stelt een budget, dus
+    de vier live ketenruns zouden corpora reproduceren waar de sleutel ABSENT is; casus 1b's
+    goedkoopste netlist is niet apart nagedraaid omdat `casus1bV2Candidates` op de M-2b-set draait
+    en H-3b geen enkele bestaande run een sleutel geeft.
     **Ná H-3 (18-09-2026) gemeten op 515 s — 199 bestanden (197 geslaagd, 1 rood, 1 overgeslagen),
     2619 tests (2614 geslaagd, 1 rood, 4 overgeslagen), alleen gedraaid met `nohup` VÓÓR de
     browsercontrole; ná de reparatie van die ene claim groen.** +2 BESTANDEN (`hybridNetwork.test.ts`
@@ -6812,3 +6831,123 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   nominal impedance — state a handover or run Optimize for an acoustic design"*. Geen console-fout,
   geen `page reload` in het vite-log.
 
+
+### H-3b-guards (de flank wordt een gestelde eis: budget als poort én als wand in het objectief; alleen v2-route/rapportlaag op H-3)
+
+- **WAT H-3 OPENLIET, EN WAT DIT SLUIT.** H-3 mat dat de magere tune op de tweewegdemo zijn eigen
+  rimpeldoel haalt en de flank van de laagste passieve weg van 0,84 naar 3,69 dB rms van de gestelde
+  hoogdoorlaat wegduwt — de overnameband is één octaaf van zes in de amplitudeterm en de zoektocht
+  geeft haar uit, en niets zei nee. H-3b maakt de flank een GESTELDE EIS: één veld in het
+  architecture-blok (`activeFlankBudgetDbRms`, "Flank-error budget (dB rms over the handover
+  band)"), leeg = de flank wordt gemeten en gerapporteerd en niets oordeelt haar (P4), gesteld = een
+  harde eis op élk geleverd of getuned netwerk in Hybrid mode. **Geen engine-getal, geen poort in
+  `gates.ts`, geen regeneratie:** casus 1, 1b, 1h en 2 stellen geen budget, dus élke bestaande run
+  is byte-identiek (P2, nagemeten hieronder).
+- **ÉÉN DRAGER, ÉÉN LEZER.** Het budget rijdt OP het gestelde blok (`ActiveHandover.flankBudgetDbRms`,
+  `activeSide.ts`) en niet ernaast: dezelfde `ActiveHandover` bereikt het rapport (de chip), de
+  ketenverklaring (de zevende sleutel `activeSide`, dus de tuner) en de worker (de weigering), en één
+  drager kan het niet met zichzelf oneens zijn. De VERGELIJKING is één functie, `flankVerdict(e,
+  budget)` — `rms ≤ budget`, exact, zonder tolerantie; `null` zonder budget (geen oordeel), en
+  `pass: null` mét budget zonder lezing (NIET beoordeeld, nooit een pass: een budget dat tegen niets
+  gehouden wordt mag niet als gehaald lezen, F0 beide kanten op). Drie lezers: `runCandidate`
+  (de weigering), `report.ts` (`activeSide.flankVerdict`, de chip) en de ⚙-noot. **`v2ActiveSide.ts`
+  leest het veld onder de H-2b-grammatica** (decimale komma of punt; "1,5dB" wordt geen 1,5 maar een
+  benoemd probleem — A3h) via `readNonNegative`, de ene lezer die sinds H-3b ook de latency draagt.
+- **DE WEIGERING, in de V45-vorm.** `runCandidate` kreeg een achtste argument, `flankOf` — de
+  flanklezer van de route — en BEIDE tweewegroutes (`v2ChainOne`, `v2TuneNetlist`) geven dezelfde
+  `hybridFlankErrorOf` mee; de driewegroute geeft niets (een drieweg-hybride is niet uitdrukbaar,
+  H-2). Alleen als niets anders al weigerde, alleen met een gesteld budget: het geleverde netwerk
+  wordt gelezen, en boven het budget is het `by: 'stated-flank-budget'`, `kinds: ['budget']`, de
+  zin van `flankVerdict` als reden, onderdelen geblankt (V31). Een flank die niet gelezen kon worden
+  weigert NIET en slaagt NIET: de noot zegt dat niets beoordeeld is. `h3bFlankBudget.test.ts` pint
+  met een bronscan dat `flankVerdict(` precies één keer in de worker staat, binnen `runCandidate`,
+  en dat precies twee aanroepplaatsen de lezer meegeven — een shortlistrij en een ⚙-tune worden
+  door dezelfde woorden beoordeeld.
+- **DE FLANK WORDT SINDS H-3b IN BEIDE VORMEN GELEZEN.** `leanFlankErrorOf` heette hij, en hij las
+  alleen de magere vorm (daar is hij het oordeel); `hybridFlankErrorOf` leest hem op élke run met een
+  gestelde actieve zijde, want een gesteld budget is een eis waar een hybride ook loopt. De magere
+  vorm wordt sindsdien van de HANDOVER afgelezen (`unmeasured === true`) en niet meer van "is er een
+  flank" — dat was H-2b's proxy en zij zou na deze verbreding elke gemeten vorm mager hebben
+  genoemd. Gevolg voor de tabel: de flankkolom staat op élke hybride run (`v2HybridRun`) en niet
+  alleen op een magere; de sorteersleutel blijft alleen waar geen som geoordeeld is
+  (`sortKeyOf`, ongewijzigd). De H-1-familie (`h1ActiveSide`, `goldenCasus1h`, `casus1hV2Candidates`
+  snel) reproduceert onveranderd: de klasse-B-blokken van casus 1h lezen het rapport, niet de
+  `measurements`.
+- **DE TUNER KRIJGT DE FLANK IN ZIJN DOEL, MET HET BUDGET ALS WAND — de A5d.6-vorm.** Eén
+  POLISH-sleutel erbij, `flankBudget: { handover: {hz, kind, order}, maxRmsDb }` (61 sleutels,
+  40/5/16; `choiceKeyGuard` bijgewerkt), zonder CHOICE-tweeling om de H-1-reden: de beslissing is
+  `activeSide`, de ketensleutel, en dit is haar getal. `assembledTuneOptions` (`designChain.ts`)
+  stelt hem in beide vormen zodra de handover een budget draagt, dus de ketenroute én de ⚙-route
+  lezen hem uit dezelfde assemblage. In `metricsOn` wordt per evaluatie `flankErrorDb(wF, w,
+  handover)` gelezen — de ENE functie, op de tak van de laagste weg zoals dit raster haar draagt —
+  en `fxOf` telt `FLANK_BUDGET_BARRIER_WEIGHT · (max(0, rms − 0,92·budget)/budget)²` op: EXACT NUL
+  binnen het budget (de zoekweg door toegestaan gebied is onaangeroerd, het argument dat de
+  R_source-constraint en de solo-wand veilig maakt) en stijf erbuiten (de stijfheid van de
+  versterkervloer, `AMP_FLOOR_BARRIER_WEIGHT`, om dezelfde reden: een zwakke quadratic laat een
+  kleine amplitudewinst een eisschending kopen). De marge 0,92 is die van de staged-barrière en om
+  dezelfde reden: de zoektocht leest op het gedecimeerde, gegladde raster en het oordeel op het volle.
+  **De wand beslist niets** — de eis beslist, in de worker; de wand houdt de zoektocht uit het gebied
+  dat de eis zou weigeren. `report()` van de tuner draagt `flankRmsDb` alleen mét gesteld budget (de
+  V30-vorm), zodat élke andere run byte-identiek is: `toggleRegression`, `f4cRegression` en
+  `workerRouteRegression` reproduceren.
+- **DE REGRESSIE OP DE GEPINDE BREUK, EN DE UITKOMST IS DE BESTE VAN DE TWEE TOEGESTANE:
+  DE TUNE HOUDT DE FLANK.** `h3NetworkTab.test.ts` draait dezelfde ⚙-tune op casus 1b (het
+  sjabloonzaad van H-3, LR4 @ 400 Hz, magere vorm) nu ook met `flankBudgetDbRms: 1.5` op de
+  handover, en accepteert twee uitkomsten — gehouden binnen 1,5, of geweigerd met het getal — en
+  nooit een derde. **Gemeten 18-09-2026: zaad 0,836 → getuned 1,380 dB rms, gehouden binnen 1,5 (de
+  tuner las zelf 1,380), en het eigen rimpeldoel van de tune wordt nog steeds gehaald: de
+  gecomplementeerde som 11,08 → 2,79 dB, 11 324 evaluaties (tegen 3,692 dB rms flank en 14 241
+  evaluaties zonder budget, in dezelfde run gemeten).** De onbudgetteerde claim blijft staan als de
+  H-3-bevinding (3,69 > 0,84, met de P2-tegenproef dat de tuner dan geen `flankRmsDb` draagt en
+  niets op de flank weigert); de gebudgetteerde is de reparatie. Dat de flank binnen het budget
+  landt zonder dat de rimpel iets inlevert zegt wat H-3 al vermoedde: de zoektocht GAF de flank uit
+  omdat niets haar iets kostte, niet omdat het doel het vroeg.
+- **DE SHORTLISTROUTE, dezelfde eis door `v2ChainOne`** (`h3bFlankBudget.test.ts`, de kleine
+  parsers-fixture van H-2b, budget 80 evaluaties): het budget wordt uit de VRIJE tune's eigen
+  geleverde flank gezet (de helft ervan), zodat de eis aantoonbaar bijt — een met de hand gekozen
+  budget kan te ruim zijn om iets te toetsen. Gehouden of geweigerd, nooit erboven; P2 op de vrije
+  run (geen `flankRmsDb`, geen noot); een ruim budget verandert het oordeel en niet de uitkomst; en
+  de vingerafdruk beweegt met het budget (`chainDeclarationKey` draagt de zevende sleutel met haar
+  waarde) en niet zonder. **Gemeten 18-09-2026: de vrije tune levert 0,546 dB rms; het budget van
+  0,273 wordt GEHOUDEN op 0,235 dB rms (29 602 evaluaties tegen de ~10 000 van de vrije run — de wand
+  kost zoektijd en geen uitkomst).** Twee routes, twee fixtures, dezelfde uitkomst: gehouden, niet
+  geweigerd. De weigeringstak is daarmee op geen van beide gemeten en staat als tak in de test — een
+  budget dat de zoektocht niet kán halen is de eerste run die hem toont.
+- **HET RAPPORT EN DE APP.** `ActiveSideReport.flankVerdict` (null zonder budget), en een gefaald
+  budget is een `problems`-regel. De Flank-chip (`describeFlank(e, hz, verdict)`) drukt
+  "1,38 / ≤ 1,50 dB rms — met" of "… — FAILED" en kleurt ok/bad ALLEEN zodra een budget oordeelt;
+  zonder budget staat het getal alleen, neutraal, met "nothing judges it" in de titel; "not read /
+  ≤ 1,50 — not judged" is de vierde toestand. De ⚙-noot leest dezelfde `flankVerdict` (een geleverde
+  tune staat per constructie binnen het budget; de zin zegt met hoeveel), en zonder budget de
+  gepinde zin `ACTIVE_SIDE_FLANK_UNJUDGED`. **De app meet geen eigen flank** (`flankErrorDb(` komt in
+  `App.tsx` niet voor, gepind sinds H-3) en vergelijkt geen eigen budget: het oordeel is het rapport.
+  `describeActiveSide` zegt welke van de twee toestanden geldt. Het veld staat in het architecture-blok
+  achter het Hybrid-mode-vinkje, met `min={0} step={0.1}` (de guided-grens leest de expert-JSX terug),
+  `placeholder={V2_GHOSTS.…}`, `v2Stated`/`v2Empty`; registerrij OORDEEL-WAPENEND in de band
+  `architecture`, `V2_FORM_FIELDS`-token, `V2_JUDGEMENT_KEYS`, projectveld `engineV2.activeFlankBudgetDbRms`
+  (additief: een ouder project opent leeg). In guided rijdt hij op het Hybrid-mode-scherm als
+  VERFIJNENDE rij (`REFINING_ROW_IDS`): zonder hem is de hybride volledig gesteld en de flank
+  gerapporteerd-niet-beoordeeld, niet half een antwoord; het veld bestaat alleen terwijl het vinkje
+  aan staat. Zestien schermen, vijftien `unjudged` — ongewijzigd.
+- **DE GUARDS.** `activeSide.test.ts` +4 (het oordeel met de hand: geen budget → geen oordeel; op het
+  budget is binnen, `≤` exact; over het budget FAILED met hoeveel; geen lezing → `pass: null`).
+  `hybridNetwork.test.ts` +3 (de chip: neutraal zonder budget, "met"/"FAILED" met, "not judged"
+  zonder lezing). `v2ActiveSide.test.ts` +4 (de lezer onder de grammatica, de statementzin in beide
+  vormen, het veld achter het vinkje op de handover, de chip op het rapportoordeel) en de
+  kolom-pin op `v2HybridRun`. `h3NetworkTab.test.ts` +2 (de assemblage draagt `flankBudget` in
+  beide vormen en niet zonder; de gebudgetteerde regressie) en de P2-tegenproef in de H-3-claim.
+  `h3bFlankBudget.test.ts` (nieuw, 6 claims): de bronscans op de ene lezer, de vingerafdruk, de
+  shortlistroute. `choiceKeyGuard` 61 / 40-5-16. `versionAndCapability`, `p6Lint` (beide scopes),
+  `ciLayer`, `toggleRegression`, `chainChoices` (mét zijn twee live ketenarmen), `demoBundle`,
+  `v2Settings`, `v2Guided`, `v2InputRegister`, `v2InputPlacement`, `v2ResultLayout`, `e5Repairs`,
+  `h1ActiveSide`, `h2bLeanForm`, `h1Step0`, `goldenCasus1h`, `selection`: groen, ongewijzigd.
+  `ACTIVE_SIDE_VERSION` blijft 1.0 (de afleiding van gain/delay/polariteit is niet aangeraakt en
+  het getal staat in twee fixtures — de H-2b-precedent voor een additief veld);
+  `HYBRID_NETWORK_VERSION` 1.0 → 1.1 (de chip drukt iets anders af).
+- **NIET GEDAAN, met naam.** (1) Geen browsercontrole: H-3b raakt één veld en één chip die beide
+  door bronscans en door het rapport gedragen worden, en de ⚙-route is door de echte handler
+  gemeten; de eerstvolgende browsersessie op de tweewegdemo hoort het veld met 1,5 te zetten en
+  de chip "1,38 / ≤ 1,50 — met" te zien staan. (2) De eis is niet gewapend op casus 1h: dat is een
+  gesteld getal en dus Sanders keuze, en het levert een regeneratie van dat corpus op. (3) Het
+  budget is een eis op de FLANK en niet op de delay: H-1's open punt (de sturende tegen de
+  ingestelde delay) staat nog. (4) De volle run is niet gedraaid — zie de meetregel bij `test:fast`.

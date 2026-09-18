@@ -453,6 +453,17 @@ export const POLISH_KEYS = [
    * that moves as you approach it — so the band is a property of the CANDIDATE
    * and the party that knows the candidate hands it over. */
   'rippleTargetBandHz',
+  /* H-3b — the STATED FLANK-ERROR BUDGET of the lowest passive way, handed to
+   * the tuner as a barrier in its objective. Polish for the reason
+   * `activeLevelBandHz` is: it carries no decision of its own. WHETHER there is
+   * an active side, where it hands over and what budget its flank is held to
+   * is `activeSide` — the chain-level choice, stated by the project (the budget
+   * rides on the stated block, `ActiveHandover.flankBudgetDbRms`); what
+   * arrives here is that number beside the shape it is measured against. The
+   * REQUIREMENT is judged by the worker on the delivered network
+   * (`runCandidate`, the V45 shape); this term only keeps the search out of the
+   * region that verdict would refuse. */
+  'flankBudget',
 ] as const;
 
 export type PolishKey = (typeof POLISH_KEYS)[number];

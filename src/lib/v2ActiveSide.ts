@@ -124,6 +124,8 @@ export interface ActiveSideFormInput {
   shape: string;
   /** The processor latency exactly as typed; '' = not stated. */
   latencyRaw?: string;
+  /** H-3b — the flank-error budget exactly as typed (dB rms); '' = not stated, the flank is reported and not judged. */
+  flankBudgetRaw?: string;
   /** The project's ways, LOW TO HIGH, with whether each has a measured response. */
   ways: readonly ActiveSideWay[];
 }
@@ -143,6 +145,15 @@ export interface ActiveSideStatement {
   shape: ActiveSideShape | null;
   /** The stated processor latency, ms, or null when not stated or unreadable. */
   processorLatencyMs: number | null;
+  /**
+   * H-3b — the stated flank-error budget, dB rms over the handover band, or
+   * null when not stated or unreadable. A JUDGEMENT input and not a nice one:
+   * stated, it is a hard requirement on every delivered or tuned network of a
+   * hybrid run (`ActiveHandover.flankBudgetDbRms`); blank, the flank is
+   * measured and reported and nothing judges it (P4). It arms and disarms
+   * nothing about the hybrid itself.
+   */
+  flankBudgetDbRms: number | null;
   /**
    * H-2b — WHICH FORM what is measured admits: `measured` (three ways, the
    * active side modelled), `unmeasured` (two ways, the lean form), or null
@@ -164,6 +175,17 @@ export const ACTIVE_HANDOVER_LABEL = 'active handover';
 
 /** The label the latency is parsed under. */
 export const ACTIVE_LATENCY_LABEL = 'processor latency';
+
+/** H-3b — the label the flank-error budget is parsed under. */
+export const ACTIVE_FLANK_BUDGET_LABEL = 'flank-error budget';
+
+/**
+ * H-3b — the sentence beside a flank figure on a hybrid run that states NO
+ * budget: reported, judged by nothing (P4). One home, two readers (the panel's
+ * statement and the result area).
+ */
+export const ACTIVE_SIDE_FLANK_UNJUDGED =
+  'the target-flank error is measured and reported on every hybrid run; no flank-error budget is stated, so nothing judges it';
 
 /**
  * H-2b — WHICH FORM the measured ways admit, and the roles of it.
@@ -219,6 +241,8 @@ export function activeSideStatement(f: ActiveSideFormInput): ActiveSideStatement
   const problems = [...parsed.problems];
   const latency = readLatency(f.latencyRaw ?? '');
   if (latency.problem) problems.push(latency.problem);
+  const flankBudget = readNonNegative(f.flankBudgetRaw ?? '', ACTIVE_FLANK_BUDGET_LABEL, 'a number of dB rms');
+  if (flankBudget.problem) problems.push(flankBudget.problem);
   const which = activeSideRolesFor(f.ways);
   const off: string[] = [];
   const base = {
@@ -227,6 +251,7 @@ export function activeSideStatement(f: ActiveSideFormInput): ActiveSideStatement
     read,
     shape,
     processorLatencyMs: latency.ms,
+    flankBudgetDbRms: flankBudget.value,
     form: which?.form ?? null,
     roles: which?.roles ?? null,
     problems,
@@ -262,16 +287,24 @@ export function activeSideStatement(f: ActiveSideFormInput): ActiveSideStatement
 
 /** The latency field, read: a non-negative number of milliseconds, or nothing, or a named problem. */
 function readLatency(raw: string): { ms: number | null; problem: string | null } {
+  const r = readNonNegative(raw, ACTIVE_LATENCY_LABEL, 'a number of milliseconds');
+  return { ms: r.value, problem: r.problem };
+}
+
+/**
+ * H-3b — ONE reader for a stated non-negative number (decimal comma or point,
+ * the H-2b grammar): the latency and the flank budget read through it. Blank
+ * is nothing; anything else that is not a number is a NAMED problem and is
+ * used nowhere (A3h — "1,5dB" does not become 1.5).
+ */
+function readNonNegative(raw: string, label: string, unit: string): { value: number | null; problem: string | null } {
   const t = raw.trim();
-  if (t === '') return { ms: null, problem: null };
+  if (t === '') return { value: null, problem: null };
   if (!/^\d+(?:[.,]\d+)?$/.test(t)) {
-    return {
-      ms: null,
-      problem: `${ACTIVE_LATENCY_LABEL}: “${t}” is not a number of milliseconds and was ignored.`,
-    };
+    return { value: null, problem: `${label}: “${t}” is not ${unit} and was ignored.` };
   }
   const v = Number(t.replace(',', '.'));
-  return Number.isFinite(v) && v >= 0 ? { ms: v, problem: null } : { ms: null, problem: `${ACTIVE_LATENCY_LABEL}: “${t}” was ignored.` };
+  return Number.isFinite(v) && v >= 0 ? { value: v, problem: null } : { value: null, problem: `${label}: “${t}” was ignored.` };
 }
 
 /**
@@ -419,19 +452,28 @@ export function passiveOnlyNotice(off: readonly string[]): string {
 export function describeActiveSide(s: ActiveSideStatement): string {
   if (!s.armed || !s.shape || !s.roles) return passiveOnlyNotice(s.off);
   const list = formatHandoverList(s.handoversHz);
+  /* H-3b — what holds the flank: a stated budget (a hard requirement on every
+   * delivered or tuned network, refused with the number) or nothing (P4). */
+  const flank =
+    s.flankBudgetDbRms !== null
+      ? ` The target-flank error is held to a STATED budget of ${s.flankBudgetDbRms.toFixed(2)} dB rms over the ` +
+        'handover band: a network above it is refused, never delivered quietly.'
+      : ` No flank-error budget is stated: ${ACTIVE_SIDE_FLANK_UNJUDGED}.`;
   if (s.form === 'unmeasured') {
     return (
       `Hybrid mode, LEAN FORM: the active side is unmeasured. The lowest measured way (${s.roles.lowestPassive}) ` +
       `is designed to an acoustic ${s.shape.value} high-pass at ${list} and judged on its target-flank error; ` +
       'nothing that needs the sum with the active side is judged. Each stated handover is a separate run of ' +
-      'the WHOLE passive field, so the runs multiply rather than add.'
+      'the WHOLE passive field, so the runs multiply rather than add.' +
+      flank
     );
   }
   return (
     `Hybrid mode: the lowest way (${s.roles.active}) is driven actively and hands over to the passive network at ` +
     `${list}, acoustic ${s.shape.value} on both flanks. The passive network is the ways above it; ` +
     'the active side is judged as a MODELLED branch and never as an electrical load. Each stated ' +
-    'handover is a separate run of the WHOLE passive field, so the runs multiply rather than add.'
+    'handover is a separate run of the WHOLE passive field, so the runs multiply rather than add.' +
+    flank
   );
 }
 
