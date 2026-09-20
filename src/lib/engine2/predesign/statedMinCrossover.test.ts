@@ -30,7 +30,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { crossoverWindow } from './xoWindow.ts';
+import { crossoverWindow, fsConventionDbRange } from './xoWindow.ts';
+import { casus1MinCrossovers, loadGolden as casus1Golden } from '../casus1.fixture.ts';
 import type { XoWindowInput } from './xoWindow.ts';
 import { DB_PER_OCTAVE_PER_ORDER, XO_FS_FACTOR_BY_ORDER } from '../constants.ts';
 import { V2_INPUT_REGISTER, V2_FORM_FIELDS, placementOf } from '../../v2InputRegister.ts';
@@ -210,5 +211,79 @@ describe('U-3g — the app hands it over', () => {
     const block = APP.slice(at, at + 900);
     expect(block).toContain("m.minCrossoverHz.trim() === ''");
     expect(block).not.toContain("m.minCrossoverOrder.trim() === '') continue");
+  });
+});
+
+/* ==================================================================== *
+ * H-4b — 5. WHAT THE FALLBACK CONVENTION IS WORTH, and where casus 1 stands
+ * ==================================================================== */
+
+describe('H-4b — the k·f_s fallback in decibels, and the register row that quotes it', () => {
+  it('is DERIVED from XO_FS_FACTOR_BY_ORDER, and it is 9.5–12.2 dB — under the 18 dB trade rule', () => {
+    const r = fsConventionDbRange();
+    for (const [order, k] of Object.entries(XO_FS_FACTOR_BY_ORDER)) {
+      /* `6 · order · log2(k)` by hand, per order, so a changed k moves the
+       * sentence and not only the window. */
+      expect(r.perOrder[Number(order)]).toBeCloseTo(6 * Number(order) * Math.log2(k), 12);
+    }
+    expect(r.perOrder[2]).toBeCloseTo(12, 12); // 2× f_s at order 2 is exactly two units of 6 dB
+    expect(r.minDb).toBeCloseTo(9.51, 2);
+    expect(r.maxDb).toBeCloseTo(12.21, 2);
+    /* THE COMPARISON THE SENTENCE EXISTS FOR: every order lands under the
+     * industry rule of thumb, so a project that states nothing gets the
+     * looser convention. U-3e measured this and left it standing on purpose. */
+    for (const db of Object.values(r.perOrder)) expect(db).toBeLessThan(18);
+  });
+
+  it('the register row and the window strip quote the derived figures, not their own', () => {
+    const r = fsConventionDbRange();
+    const row = V2_INPUT_REGISTER.find((x) => x.id === 'minCrossover')!;
+    /* The prose carries the numbers a designer reads; this is what stops it
+     * drifting from the constant when somebody moves a k. */
+    expect(row.emptyMeans).toContain(`${r.minDb.toFixed(1)}–${r.maxDb.toFixed(1)} dB`);
+    expect(row.emptyMeans).toContain('18 dB');
+    /* The STRIP derives it instead of typing it (the UI-1 idiom: a unit test
+     * cannot say whether the app reads the function, and reading it is the
+     * half that matters). */
+    const APP = readFileSync(new URL('../../../App.tsx', import.meta.url), 'utf-8');
+    expect(APP).toContain('fsConventionDbRange()');
+    expect(APP).toContain('fsConventionDb.minDb.toFixed(1)');
+    expect(APP).not.toContain('9.5–12.2');
+  });
+
+  it('CASUS 1 STATES ONE, and it is the floor of the mid→tweeter window (M-2b)', () => {
+    /* THE CORRECTION H-4b MAKES TO THE VUISTREGEL DOCUMENT. It said "casus 1
+     * stelt er geen" and listed feeding the BlieSMa's 2200 Hz as a decision
+     * still waiting — both of which describe U-4, and M-2b took that decision
+     * on 12-09-2026. The window has read `stated-min` ever since. */
+    const mins = casus1MinCrossovers();
+    expect(mins.tweeter?.hz).toBe(2200);
+    expect(mins.tweeter?.order).toBe(2);
+    const window = (casus1Golden().kruisvensters as Record<string, unknown>).mid_tweeter_orde4 as {
+      venster: [number, number];
+      vloer_bindend: string;
+    };
+    expect(window.venster[0]).toBe(2200);
+    expect(window.vloer_bindend).toBe('aanbevolen_ondergrens');
+  });
+
+  it('and there is ONE home for that number — the second manifest key is read by nobody', () => {
+    /* THE FINDING Sander asked for: not a second MECHANISM but a second
+     * COPY. `driverkaart.tweeter.aanbevolen_ondergrens_hz` sits beside
+     * `aanbevolen_kruisband.ondergrens_hz`, carries the same 2200, and no
+     * source file in this repository reads it — `casus1MinCrossovers` takes
+     * the U-4 pair and nothing takes the flat key. It is removed rather than
+     * annotated: a project number with two homes is the shape P6 exists to
+     * prevent, and the one that feeds the engine is the one that stays.
+     *
+     * The registry row is NOT the second path it was suspected of being: it
+     * is the APP's doorway into the same `driverMinCrossoverByDriver` the
+     * fixture fills from the manifest. One mechanism, two entry points —
+     * which is how every casebook number reaches the engine. */
+    const mg = casus1Golden().manifest_en_geometrie as unknown as { driverkaart: Record<string, unknown> };
+    const kaart = mg.driverkaart;
+    const tweeter = kaart.tweeter as Record<string, unknown>;
+    expect('aanbevolen_ondergrens_hz' in tweeter).toBe(false);
+    expect((tweeter.aanbevolen_kruisband as Record<string, unknown>).ondergrens_hz).toBe(2200);
   });
 });

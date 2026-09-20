@@ -1,6 +1,9 @@
 # Vuistregels uit de literatuur, en wat onze engine ermee doet
 
-**Opgesteld 20-09-2026 (H-4), naar aanleiding van de polariteitsarmen.**
+**Opgesteld 20-09-2026 (H-4), naar aanleiding van de polariteitsarmen.
+Bijgewerkt 20-09-2026 (H-4b): elke regel draagt sindsdien een
+TOEPASSINGSSTATUS, de polariteitsregels zijn van status verschoven en twee
+beweringen over `stated-min` zijn rechtgezet.**
 
 ## Wat dit document is — en vooral: wat het niet is
 
@@ -28,6 +31,25 @@ De links staan onderaan.
 
 ---
 
+## De toepassingsstatus — wat de vier woorden betekenen
+
+Sinds H-4b draagt elke regel er een. Het verschil tussen de vier is niet hoe
+belangrijk een regel is maar **wie hem toepast en wanneer**, en dat is precies
+wat een lezer van dit document wil weten voordat hij ergens op vertrouwt.
+
+| status | betekenis | wat je eraan hebt |
+| --- | --- | --- |
+| **TOEGEPAST** | De engine past hem automatisch toe, op elke run, zonder dat iemand iets stelt. Het huis in de code staat erbij. | Je hoeft niets te doen; wil je hem niet, dan moet je hem overschrijven. |
+| **KANDIDAAT** | De regel bepaalt niets; hij maakt een ONTWERP dat naast de andere in de tabel komt, volledig uitontworpen en door dezelfde poorten geoordeeld. | De tabel beslist, niet de regel. |
+| **GERAPPORTEERD** | Gemeten en afgedrukt, oordeelt niets, weigert niets, stuurt geen zoektocht. De V20-klasse. | Een kolom om naar te kijken; wie er een grens op wil, stelt er een. |
+| **GESTELD** | Een projectbesluit met datum en motivering in `gestelde_eisen`, geen industrienorm. | Het getal is van Sander en een gesprek erover gaat over dat besluit. |
+
+Een regel kan er twee dragen: de textbook-polariteit is TOEGEPAST waar de
+engine kiest én sinds H-4b op de handpaden, en tegelijk KANDIDAAT omdat de
+andere arm ernaast gebouwd wordt.
+
+---
+
 ## 1. Polariteit
 
 ### Wat de literatuur zegt
@@ -50,11 +72,14 @@ mét, blijft de afwijking binnen enkele dB.
 
 ### Wat onze engine doet
 
-| Onderdeel | Waar | Gedrag |
-| --- | --- | --- |
-| De textbookregel | `activeSide.ts` → `textbookComplementInverted` | Alleen LR, `(orde/2) % 2 === 1`. Dus LR2 ja, LR4 nee, LR1/LR3 nee, BW/BS nooit. **Eén huis, drie lezers**: het complement van de magere hybride-vorm (`complementSettings`, H-2b), het DSP-doelblok (`dspTarget.ts`, H-1) en de polariteitsarmen (H-4). |
-| De praktijkregel | `predesign/polarityArms.ts` (H-4) | Sinds H-4 is de niet-gekozen polariteit van élke passieve overname **een eigen kandidaat**: zelfde positie, eigen topologieklasse, volledig uitontworpen, gesynthetiseerd en getuned tegen zijn eigen gekantelde fasedoelen, en door dezelfde poorten geoordeeld. Een drieweg heeft twee overnames, dus vier polariteitsconfiguraties, en het veld draagt ze alle vier. |
-| De nultest | `activeSide.ts` (H-1) | De polariteit van de **actieve zijde** in Hybrid mode wordt gekozen op de omgekeerde-polariteit-nulmarge, en het DSP-doelblok drukt beide af zodat de kastmeting hem kan bevestigen. |
+| Onderdeel | Waar | Status | Gedrag |
+| --- | --- | --- | --- |
+| De textbookregel | `activeSide.ts` → `textbookComplementInverted` | **TOEGEPAST** | Alleen LR, `(orde/2) % 2 === 1`. Dus LR2 ja, LR4 nee, LR1/LR3 nee, BW/BS nooit. **Eén huis, vijf lezers sinds H-4b**: het complement van de magere hybride-vorm (`complementSettings`, H-2b), het DSP-doelblok (`dspTarget.ts`, H-1), de polariteitsarmen (H-4), en op de HANDPADEN het bandformulier en de oordeelstrip (`handoverPolarity.ts`, H-4b). |
+| De textbookregel op de HANDPADEN | `handoverPolarity.ts` (H-4b) | **TOEGEPAST** (volgend, overschrijfbaar) | Een nieuwe even-orde-LR-keuze in het bandformulier zet de relatieve polariteit van díé overname op textbook; de andere overname blijft staan waar zij stond. Een stand die ervan afwijkt wordt náást het vinkje benoemd en nooit gecorrigeerd — Gravesen levert ontwerpen die ervan afwijken. Vóór H-4b was de regel op dit pad **afwezig**: het vinkje bleef staan waar het vorige project het liet. |
+| De praktijkregel | `predesign/polarityArms.ts` (H-4) | **KANDIDAAT** | Sinds H-4 is de niet-gekozen polariteit van élke passieve overname **een eigen kandidaat**: zelfde positie, eigen topologieklasse, volledig uitontworpen, gesynthetiseerd en getuned tegen zijn eigen gekantelde fasedoelen, en door dezelfde poorten geoordeeld. Een drieweg heeft twee overnames, dus vier polariteitsconfiguraties, en het veld draagt ze alle vier. |
+| De praktijkregel in de VERKENNING | `predesign/fieldMode.ts` (H-4b) | **KANDIDAAT** (gegarandeerd) | Sinds H-4b draait een verkenning per positie ONVOORWAARDELIJK twee van de vier configuraties: de textbook-arm en de **enkelvoudige driveromkering** (de mid van een drieweg, de tweeter van een tweeweg). De 15°-marge is nog de poort op de overige twee en wordt overal waar hij poort is als lezing afgedrukt. Vóór H-4b gold de marge op alles — en op de driewegdemo betekende dat **6 runs en nul gespiegeld**. |
+| De nultest, ACTIEVE ZIJDE | `activeSide.ts` (H-1) | **TOEGEPAST** | De polariteit van de **actieve zijde** in Hybrid mode wordt gekozen op de omgekeerde-polariteit-nulmarge, en het DSP-doelblok drukt beide af zodat de kastmeting hem kan bevestigen. |
+| De nultest, GETEKEND NETWERK | `handoverPolarity.ts` → `reversedNullSignature` (H-4b) | **GERAPPORTEERD** | De twee null-check-krommen die de grafiek al tekende, als GETAL: het bandgemiddelde van (som − omgepoolde som) over de overnameband, tegen een marge afgeleid uit de fase-eenheid. Onder de marge zwijgt hij. **Een melding, nooit een stille omkering van een netwerk dat iemand getekend heeft** (UI-2). |
 
 **Wat H-4 verving.** Tot H-4 koos de ontwerpstap de polariteit zelf, in een enumeratie op **ideale
 filters** — geen ladder, geen driverimpedantie, geen synthese, geen componenttune — en wat verloor
@@ -76,34 +101,85 @@ Dat laatste is het opmerken waard: op de drieweg sneuvelt de omgepoolde mid **ni
 een LF-budget. De fase-afweging wordt wél gehoord — de arm wordt volledig uitontworpen en op fase
 beoordeeld — maar wat hem doodt is de reactantie die de tune in het wooferpad nodig heeft.
 
-### Waar wij afwijken
+### De omkeer-nultest nagemeten, en zij bevestigt de literatuur op onze eigen data
 
-**De verkenning kan de omgepoolde arm overslaan.** Op gestelde posities (U-5) en in het VOLLE veld
-draaien beide armen onvoorwaardelijk; in de **verkenning op afgeleide posities** zaait de engine de
-spiegel alleen waar de pre-design fasemarge binnen één eenheid faseafwijking (15°) ligt. Gemeten op
-de driewegdemo: verkenning = 6 runs, **0 gespiegeld** — de omgepoolde mid wordt daar dus nooit
-gesimuleerd. De literatuur kent zo'n poort niet; zij zegt onvoorwaardelijk "probeer beide".
+H-4b leest de twee null-check-krommen die de grafiek al tekende als één getal: het bandgemiddelde van
+(som − omgepoolde som) over de overnameband, tegen **2,30 dB** — wat één eenheid faseafwijking (15°)
+voorbij de 90°-gelijkstand op een nulmarge waard is, afgeleid uit `PHASE_ERROR_UNIT_DEG` door de
+nulmarge-meetkunde die `activeSide.ts` al bezat. Twee metingen op casus 1's eigen responsen
+(`handoverPolarity.test.ts`):
 
-> **OPEN BESLUIT.** Sander heeft op 20-09-2026 gesteld dat het bij een driewegsessie belangrijk is
-> dat de omgepoolde mid altijd gesimuleerd wordt. Dat is met de huidige verkenningspoort niet
-> gegarandeerd. De poort weghalen kost een verkenning ×4 (6 → 24 runs op de demo); de marge zou dan
-> blijven staan als **gerapporteerde lezing** in plaats van als filter.
+| paar | LR2 zoals getekend | LR2 met de omkering | LR4 zoals getekend |
+| --- | ---: | ---: | ---: |
+| **CO-GELOKALISEERD** (één gemeten weg draagt beide flanken) | **−17,8 dB** | +17,8 | **+12,1 dB** |
+| **HET ECHTE PAAR** (casus 1b's mid en tweeter, ideale filters) | −1,86 | +1,86 | +1,50 |
 
-### Eén valkuil in het label
+De eerste rij is de vorm waarvoor de textbookregel geformuleerd is — twee bronnen op één punt, dus de
+enige fase tussen hen is die van de filters — en daar is een ontbrekende LR2-omkering **geen dicht
+geval**: zij leest bijna acht keer de marge, en LR4 zoals getekend zwijgt. De tweede rij is de
+LUIDSPREKER, en zij is de literatuur in onze eigen cijfers: de akoestische centra van mid en tweeter
+vallen niet samen, dus op 2251 Hz staan zij noch in fase noch in tegenfase, en **de hele textbook-vraag
+is daar minder dan twee decibel waard**. Alle vier de lezingen blijven onder de marge en de strip zegt
+niets — wat het juiste antwoord is, en precies waarom H-4 de gespiegelde arm BOUWT in plaats van hem op
+dit getal weg te gooien.
 
-Het label noemt **welke wegen omgepoold zijn** — wat een bouwer soldeert — en niet welke arm
-textbook is. Op een **LR2**-veld is daardoor `· mid ⌀` juist de textbook-arm, en de rij zonder
-markering is een spiegel:
+De marge is niet verlaagd om die tweede rij te laten spreken. Een drempel die wordt gebogen tot de data
+hem raakt, meet het buigen.
 
-| label | LR2-veld | LR4-veld |
+### Waar wij afweken, en wat H-4b ervan heeft gemaakt
+
+**H-4: de verkenning kon de omgepoolde arm overslaan.** Op gestelde posities (U-5) en in het VOLLE
+veld draaiden beide armen onvoorwaardelijk; in de **verkenning op afgeleide posities** zaaide de
+engine de spiegel alleen waar de pre-design fasemarge binnen één eenheid faseafwijking (15°) lag.
+Gemeten op de driewegdemo: verkenning = 6 runs, **0 gespiegeld** — de omgepoolde mid werd daar dus
+nooit gesimuleerd. De literatuur kent zo'n poort niet; zij zegt onvoorwaardelijk "probeer beide".
+
+**H-4b (Sander, 20-09-2026) heeft dat besluit genomen, en niet door de poort weg te halen.** De
+enkelvoudige DRIVEROMKERING — één driver omgedraaid, de mid van een drieweg, de tweeter van een
+tweeweg — draait sindsdien onvoorwaardelijk naast de textbook-arm. Dat is de beweging die de
+literatuur telkens bij name noemt, en zij is als ÉÉN OMGEDRAAIDE DRIVER geformuleerd en niet als
+een masker over overnames, want dat is wat zij fysiek is: de draden van één driver omwisselen keert
+de relatieve polariteit van BEIDE overnames waaraan hij deelneemt. De 15°-marge blijft de poort op
+de twee overige configuraties (`· high ⌀` en `· high ⌀ + mid ⌀`) en wordt overal waar hij poort is
+als **gerapporteerde lezing** afgedrukt, per kruising en niet per as.
+
+**DE PRIJS, GEMETEN** (`scripts/measure-h4b-arms.ts`, `test-fixtures/demo_h4b_armen.json`; geen
+ketenrun en geen tune — het telt kandidaten):
+
+| modus | armbeleid | kandidaten | gespiegeld |
+| --- | --- | ---: | ---: |
+| verkenning | geen fasereading (de pre-H-4-stand) | 6 | 0 |
+| verkenning | H-4: alleen de marge | 6 | 0 |
+| verkenning | **H-4b: garantie + marge** | **12** | **6** |
+| vol veld | H-4 | 36 | 27 |
+| vol veld | H-4b (de garantie beslist er niets) | 36 | 27 |
+
+Een verkenning VERDUBBELT dus en verviervoudigt niet — de ×4 die H-4 als prijs van "de poort
+weghalen" noteerde is niet betaald. Elke gespiegelde arm van die twaalf draagt het label
+`· mid ⌀ · mirror`: precies de omgepoolde mid waar Sanders regel over gaat. Wandkloktijd is die
+telling maal de prijs per run, en die is bij U-1 en U-3b in de browser gemeten op ~150 s voor de
+kale driewegdemo — 900 → 1800 s. **Het volle veld beweegt niet**, want `'both'` draaide al alles.
+
+Op de twee kruisingen van de demo leest de marge 20–36°, dus zij gaten alle vier de resterende
+configuraties weg; zonder de garantie zou er inderdaad niets gespiegeld zijn.
+
+### Eén valkuil in het label — gesloten bij H-4b
+
+Het label noemde **welke wegen omgepoold zijn** — wat een bouwer soldeert — en niet welke arm
+textbook is. Op een **LR2**-veld is `· mid ⌀` juist de textbook-arm, en de rij zonder markering is
+een spiegel: precies andersom dan op een LR4-veld.
+
+| markering | LR2-veld | LR4-veld |
 | --- | --- | --- |
-| *(geen markering)* | spiegel (beide overnames omgedraaid) | **textbook** |
+| *(geen)* | spiegel (beide overnames omgedraaid) | **textbook** |
 | `· mid ⌀` | **textbook** | spiegel (beide overnames omgedraaid) |
 | `· high ⌀` | spiegel (M-T omgedraaid) | spiegel (M-T omgedraaid) |
 | `· high ⌀ + mid ⌀` | spiegel (W-M omgedraaid) | spiegel (W-M omgedraaid) |
 
-Welke arm welke is staat wél in de provenance-zin van de rij ("Textbook polarity: …" /
-"Mirrored polarity on …"), alleen niet in het label zelf.
+**Sinds H-4b draagt het label BEIDE HELFTEN** en staat er geen van de twee voor de andere in:
+`… · mid ⌀ · mirror` en `… · textbook`. De markering blijft zeggen wat een bouwer soldeert, het
+woord zegt welke arm het is, en de provenance-zin blijft de volledige bron. Het is een label en
+geen vrije tekst boven de tabel — de U-6-indeling van het resultaatgebied is niet aangeraakt.
 
 ---
 
@@ -129,14 +205,15 @@ allebei op niveau zijn. Losser geformuleerd komt men ook "minder dan één golfl
 
 ### Wat onze engine doet
 
-| Regel | Waar | Waarde |
-| --- | --- | --- |
-| k·f_s-vloer | `constants.ts` → `XO_FS_FACTOR_BY_ORDER` | orde 1: 3,0 · orde 2: 2,0 · orde 3: 1,6 · **orde 4: 1,4** |
-| Aandrijfvloer (A5d.3(ii) omgekeerd) | `predesign/xoWindow.ts`, regel `'drive'` | `f = f_s · 2^(|plafond| / (6 · orde))`, met het plafond uit M-C v2.0 — de **gemeten** excursiegrens van de driver |
-| Gestelde vloer | regel `'drive-stated'` (A5e.3b) | Hetzelfde, op het door de ontwerper gestelde dB-getal |
-| Aanbevolen minimum van het blad | regel `'stated-min'` (U-3g) | Verbatim als vloer, bij élke orde |
-| Breakup-plafond | `BREAKUP_DIV_SEVERE` 3,0 / `BREAKUP_DIV_MILD` 2,0, geïnterpoleerd op severiteit | **ONGEKALIBREERD** en elke lezer moet dat markeren |
-| Lobing | `metrics/lobing.ts` (`lobing-lambda/2.0`) | **Vier** λ-fracties — dichtstbij / amplitudegewogen zwaartepunt / verst, alle drie tússen de wegen, plus de grootste scheiding bínnen een weg |
+| Regel | Waar | Status | Waarde |
+| --- | --- | --- | --- |
+| k·f_s-vloer | `constants.ts` → `XO_FS_FACTOR_BY_ORDER` | **TOEGEPAST** (terugval) | orde 1: 3,0 · orde 2: 2,0 · orde 3: 1,6 · **orde 4: 1,4** — bindt alleen waar niets strengers gesteld of afgeleid is |
+| Aandrijfvloer (A5d.3(ii) omgekeerd) | `predesign/xoWindow.ts`, regel `'drive'` | **TOEGEPAST** | `f = f_s · 2^(|plafond| / (6 · orde))`, met het plafond uit M-C v2.0 — de **gemeten** excursiegrens van de driver |
+| Gestelde vloer | regel `'drive-stated'` (A5e.3b) | **GESTELD** | Hetzelfde, op het door de ontwerper gestelde dB-getal. Casus 1 stelt −20 dB op de tweeter |
+| Aanbevolen minimum van het blad | regel `'stated-min'` (U-3g) | **GESTELD** | Verbatim als vloer, bij élke orde. **Casus 1 stelt er wél een: 2200 Hz op de tweeter, gevoed sinds M-2b** |
+| Aanbevolen maximum van het blad | regel `'stated-max'` (U-4) | **GESTELD** | Verbatim als plafond. Casus 1 voert 30 kHz in en die bindt nergens — de tweeter is van geen enkel paar de onderste weg |
+| Breakup-plafond | `BREAKUP_DIV_SEVERE` 3,0 / `BREAKUP_DIV_MILD` 2,0, geïnterpoleerd op severiteit | **TOEGEPAST**, ongekalibreerd | **ONGEKALIBREERD** en elke lezer moet dat markeren |
+| Lobing | `metrics/lobing.ts` (`lobing-lambda/2.0`) | **GERAPPORTEERD** | **Vier** λ-fracties — dichtstbij / amplitudegewogen zwaartepunt / verst, alle drie tússen de wegen, plus de grootste scheiding bínnen een weg |
 
 **De strengste vloer bindt**, en `floorBy` zegt welke.
 
@@ -154,7 +231,29 @@ twee gepubliceerde conventies. U-3e heeft dat gemeten en bewust laten staan, met
 waar de afgeleide excursiegrens de juiste autoriteit is — en k·f_s bindt alleen wanneer de afgeleide
 vloer lager ligt, dus verhogen zou juist bijten waar de meting zegt dat de driver veilig is. De
 uitweg die U-3e voorstelde en U-3g bouwde is `stated-min`: de aanbevolen minimale kruisfrequentie van
-het datablad als vensterinvoer. **Casus 1 stelt er geen.**
+het datablad als vensterinvoer.
+
+> **ERRATUM (H-4b, 20-09-2026).** Hier stond *"Casus 1 stelt er geen."* Dat beschrijft **U-4**, dat
+> het BlieSMa-getal las en het bewust NIET voedde omdat voeden een regeneratie vraagt. **M-2b is die
+> regeneratie**: Sander stelde de vloer op 12-09-2026, `casus1MinCrossovers()` leest hem uit
+> `driverkaart.tweeter.aanbevolen_kruisband.ondergrens_hz` en voert hem in als
+> `settings.driverMinCrossoverByDriver`, en het mid→tweeter-venster leest sindsdien **2200–2304 Hz met
+> `vloer_bindend: aanbevolen_ondergrens`**. Wat het kostte staat in het casusboek: het venster ging van
+> 0,484 naar 0,067 octaaf en van drie posities naar ÉÉN (2251,4 Hz). De claim is bij H-4b tegen de
+> code en tegen het referentiebestand gepind (`statedMinCrossover.test.ts`), zodat zij niet opnieuw
+> stil kan verouderen.
+
+**EN DE TWEEDE HELFT VAN DIE VRAAG, want zij was de eigenlijke.** Gevraagd was of de U-3g-registerrij
+naast die manifestingang een **tweede, ongevoede doorgang voor hetzelfde getal** is. Dat is zij niet:
+de registerrij (`minCrossover`, Setup → driverkaart) is de deur van de APP naar exact dezelfde
+engine-invoer `ReportSettings.driverMinCrossoverByDriver` die de fixture uit het manifest vult. Eén
+mechanisme, twee ingangen — de vorm waarin élk casusboekgetal de engine bereikt.
+
+**Wat er wél lag was een tweede KOPIE, en die is weggehaald.** `driverkaart.tweeter` droeg naast
+`aanbevolen_kruisband.ondergrens_hz` ook een platte `aanbevolen_ondergrens_hz: 2200`, en **geen enkel
+bronbestand in deze repository las hem** (nagegaan, niet aangenomen). Een projectgetal met twee huizen
+is de vorm waartegen P6 bestaat, en het huis dat de engine voedt is het huis dat blijft. Een claim
+pint sindsdien dat de platte sleutel weg is en de gepaarde er staat.
 
 **Lobing wordt gerapporteerd en nooit geoordeeld.** V20 stelde vast dat voor een weg met meer dan
 één bron geen enkele λ die weg samenvat, en trok de niet-monotone zonescore in. Er is dus geen
@@ -174,12 +273,13 @@ strekken.
 
 ### Wat onze engine doet
 
-| Onderdeel | Waar | Waarde |
-| --- | --- | --- |
-| Het overlapvenster | `integration.ts` → `DEFAULT_OVERLAP_WINDOW_DB` | **20 dB** — precies het getal uit de richtlijn |
-| De fasemaat M-K | `phaseAdmission.ts` + `metrics/phaseIntegration.ts` (`phase-integration/2.0`) | Gemiddelde \|Δφ\| over de **toegelaten** punten |
-| De schaal van de objectieven | `bandMetrics.ts` → `PHASE_ERROR_UNIT_DEG` | **15°** — waar vijf zoekobjectieven hun fasefout door delen |
-| Het stopdoel van de trapmethode | casus 1: `targets` | rimpel 2,5 dB, **fase 15°** |
+| Onderdeel | Waar | Status | Waarde |
+| --- | --- | --- | --- |
+| Het overlapvenster | `integration.ts` → `DEFAULT_OVERLAP_WINDOW_DB` | **TOEGEPAST** | **20 dB** — precies het getal uit de richtlijn |
+| De fasemaat M-K | `phaseAdmission.ts` + `metrics/phaseIntegration.ts` (`phase-integration/2.0`) | **GERAPPORTEERD** | Gemiddelde \|Δφ\| over de **toegelaten** punten; geen poort, geen budget |
+| De schaal van de objectieven | `bandMetrics.ts` → `PHASE_ERROR_UNIT_DEG` | **TOEGEPAST** | **15°** — waar zes lezers hun fasefout door delen: vijf zoekobjectieven, plus sinds H-4 de armmarge en sinds H-4b de null-handtekening |
+| Het stopdoel van de trapmethode | casus 1: `targets` | **GESTELD** | rimpel 2,5 dB, **fase 15°** |
+| De null-marge van één fase-eenheid | `activeSide.ts` → `nullMarginAtPhaseErrorDeg` (H-4b) | **TOEGEPAST** (leesdrempel) | **2,30 dB** — wat één eenheid faseafwijking voorbij de 90°-gelijkstand op een nulmarge waard is |
 
 **De toelating is waar wij van de richtlijn afwijken, en bewust.** V44 verving het ±1-octaafvenster
 door drie gronden tegelijk: (a) binnen de meetgeldigheid van **beide** takken, (b) beide takken
@@ -221,12 +321,12 @@ Rod Elliott behandelt dat samen met de impedantiecompensatie die het tempert.
 
 ### Wat onze engine doet
 
-| Maat | Waar | Casus 1 stelt |
-| --- | --- | --- |
-| M-D — de LF-bult, ontleed in **lift** (resistief) en **opslingering** (resonant) | `metrics/acoustic.ts` (`lf-bump/1.1`), V43 | budget **1,4 dB** op de opslingering |
-| M-E — Q_es-vermenigvuldiging | `1 + R_s/R_e` op de opgeloste R_e | maximaal **2,4** |
-| M-B/\|Z\| — de versterkervloer | `impedanceFloor.ts` → `meetsAmpFloor`, de ene vergelijking | **2,6 Ω** |
-| Niveauwerk op de laagste weg | `levelWork.ts` (`level-work/1.2`) | **geen pad toegestaan** (V51) |
+| Maat | Waar | Status | Casus 1 stelt |
+| --- | --- | --- | --- |
+| M-D — de LF-bult, ontleed in **lift** (resistief) en **opslingering** (resonant) | `metrics/acoustic.ts` (`lf-bump/1.1`), V43 | **GESTELD** | budget **1,4 dB** op de opslingering |
+| M-E — Q_es-vermenigvuldiging | `1 + R_s/R_e` op de opgeloste R_e | **GESTELD** | maximaal **2,4** |
+| M-B/\|Z\| — de versterkervloer | `impedanceFloor.ts` → `meetsAmpFloor`, de ene vergelijking | **GESTELD** | **2,6 Ω** |
+| Niveauwerk op de laagste weg | `levelWork.ts` (`level-work/1.2`) | **GESTELD** | **geen pad toegestaan** (V51) |
 
 ### Waar wij afwijken
 
@@ -244,31 +344,46 @@ allebei met hun datum en hun reden in `gestelde_eisen`, geen van beide een norm.
 
 Vijf dingen waarvoor geen vuistregel bestaat, met de reden dat zij er zijn:
 
-1. **De versterkervloer als zoekdoel** (V30) — een barrière in het objectief die de zoektocht uit het
-   gebied houdt dat de poort zou weigeren, met gewicht `AMP_FLOOR_BARRIER_WEIGHT` = 1200. De
-   literatuur kent de vloer als eis, niet als term.
-2. **De zoekmaat zonder gladding** (`SEARCH_SMOOTHING_OCTAVES` = 0, V38-fix) — gladden vóór de
-   sommatie ontkoppelt magnitude en fase, en trok op onze set de stille geest van buiten de band
-   over de bandrand: de amplitudeterm blies van 1,85 naar 10,22 dB.
-3. **Bouwbaarheid als poort** (V50/V51) — M-A/part en M-L: het vermogen in elke discrete weerstand
-   bij een gesteld **thermisch ontwerpvermogen** van 10 W, en de piekstroom door elke spoel.
-4. **Het rimpel-stopdoel op een eigen band** (E-5b) — de trapmethode stopt escaleren op een band die
-   een halve octaaf onder de laagste overname begint, niet op de hele geoordeelde band.
-5. **De polariteitsarmen zelf** (H-4) — de literatuur zegt "probeer beide"; wat zij niet zegt is dat
-   beide dan ook volledig uitontworpen, getuned en door dezelfde poorten geoordeeld horen te worden,
-   naast elkaar in één tabel.
+1. **De versterkervloer als zoekdoel** (V30) — TOEGEPAST. Een barrière in het objectief die de
+   zoektocht uit het gebied houdt dat de poort zou weigeren, met gewicht
+   `AMP_FLOOR_BARRIER_WEIGHT` = 1200. De literatuur kent de vloer als eis, niet als term.
+2. **De zoekmaat zonder gladding** (`SEARCH_SMOOTHING_OCTAVES` = 0, V38-fix) — TOEGEPAST. Gladden
+   vóór de sommatie ontkoppelt magnitude en fase, en trok op onze set de stille geest van buiten de
+   band over de bandrand: de amplitudeterm blies van 1,85 naar 10,22 dB.
+3. **Bouwbaarheid als poort** (V50/V51) — GESTELD. M-A/part en M-L: het vermogen in elke discrete
+   weerstand bij een gesteld **thermisch ontwerpvermogen** van 10 W, en de piekstroom door elke
+   spoel.
+4. **Het rimpel-stopdoel op een eigen band** (E-5b) — TOEGEPAST. De trapmethode stopt escaleren op
+   een band die een halve octaaf onder de laagste overname begint, niet op de hele geoordeelde band.
+5. **De polariteitsarmen zelf** (H-4/H-4b) — KANDIDAAT. De literatuur zegt "probeer beide"; wat zij
+   niet zegt is dat beide dan ook volledig uitontworpen, getuned en door dezelfde poorten geoordeeld
+   horen te worden, naast elkaar in één tabel — en evenmin welke twee van de vier configuraties een
+   verkenning dan minstens moet draaien.
+6. **De null-handtekening als getal** (H-4b) — GERAPPORTEERD. De omkeer-nultest is in de literatuur
+   een MEETHANDELING aan een gebouwde luidspreker; hier is zij ook een lezing op het getekende
+   netwerk, tegen een marge die uit de fase-eenheid van de engine volgt en niet uit een vuistregel.
+   Zij verandert nooit iets: een getekend netwerk is van de ontwerper (UI-2).
 
 ---
 
 ## Wat hiervan een besluit wacht
 
-1. **De verkenningspoort op de polariteitsarmen** — zie §1. Sanders regel is "op een drieweg altijd";
-   de poort garandeert dat niet.
-2. **`stated-min` voor casus 1** — de aanbevolen minimale kruisfrequentie van de BlieSMa (2200 Hz bij
-   2e orde) is bij U-4 **geregistreerd en niet gevoed**, omdat hij de M-T-vloer van 1646,9 naar
-   2200 Hz zou tillen en dus een regeneratie vraagt.
+1. ~~**De verkenningspoort op de polariteitsarmen.**~~ **GENOMEN bij H-4b** (Sander, 20-09-2026): de
+   enkelvoudige driveromkering draait onvoorwaardelijk, de marge blijft de poort op de rest en wordt
+   overal afgedrukt. Gemeten prijs op de demo: 6 → 12 runs, niet de ×4 die het weghalen van de poort
+   zou hebben gekost. Zie §1.
+2. ~~**`stated-min` voor casus 1.**~~ **AL GENOMEN bij M-2b** (Sander, 12-09-2026) en hier
+   onterecht als openstaand genoteerd; zie het erratum in §2. Het venster leest 2200–2304 Hz met
+   `vloer_bindend: aanbevolen_ondergrens`.
 3. **Het LF-budget van 1,4 dB** — of een omgepoolde mid die er 0,41 dB overheen gaat weggegooid hoort
-   te worden, is een vraag over dat getal.
+   te worden, is een vraag over dat getal. **Sinds H-4b verdient hij aandacht**: op casus 1 sneuvelen
+   álle zes de gespiegelde armen op M-D, en de verkenning draait er sindsdien meer van.
+4. **De breakup-deler is nog steeds ongekalibreerd** (V6/V9). De twee gepubliceerde eindpunten zijn
+   HARMONISCHE ORDES (U-4) en een tweetoonsmeting beslist welke voor déze conus geldt; op casus 1 is
+   zij niet gedaan en het plafond van het mid→tweeter-venster hangt er volledig aan.
+5. **Geen enkele grens op een λ-fractie.** De literatuurgetallen (¼ λ aanvang, ½ λ praktijk) staan in
+   §2 genoteerd; V20 stelde vast dat geen enkele λ een weg met twee bronnen samenvat, dus wie er een
+   grens op wil, stelt eerst welke van de vier.
 
 ---
 

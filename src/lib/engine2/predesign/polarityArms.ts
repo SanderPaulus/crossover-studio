@@ -64,6 +64,7 @@
 
 import { PHASE_ERROR_UNIT_DEG } from '../../bandMetrics.ts';
 import { textbookComplementInverted } from '../../activeSide.ts';
+import { invertedFlagsOf } from '../../handoverPolarity.ts';
 import { applyTransfer, combine, type GriddedResponse, type TweeterAdjust } from '../../dsp.ts';
 import { evalDriverFilter, type FilterKind } from '../../filters.ts';
 import { computeIntegration } from '../../integration.ts';
@@ -131,19 +132,40 @@ export function invertedWaysOf(
   crossings: readonly CandidateCrossing[],
   relative: readonly boolean[],
 ): string[] {
+  /* H-4b — the ACCUMULATION is `invertedFlagsOf` (`handoverPolarity.ts`), so
+   * this function is a name lookup and nothing else. The app reads the same
+   * bits into its two adjustment checkboxes, and two implementations of "which
+   * ways does this arm reverse" is exactly the drift A3g names. */
+  const flags = invertedFlagsOf(relative.slice(0, crossings.length));
   const out: string[] = [];
-  let acc = false;
-  for (let i = 0; i < crossings.length; i++) {
-    acc = acc !== (relative[i] ?? false);
-    if (acc) out.push(crossings[i].upper);
-  }
+  for (let i = 0; i < crossings.length; i++) if (flags[i]) out.push(crossings[i].upper);
   return out.sort();
 }
 
-/** The label suffix an arm adds — empty for a candidate that inverts nothing. */
-export function polarityLabel(invertedWays: readonly string[]): string {
-  if (invertedWays.length === 0) return '';
-  return ` · ${invertedWays.map((w) => `${w} ${POLARITY_MARK}`).join(' + ')}`;
+/**
+ * The label suffix an arm adds: WHICH WAYS A BUILDER SOLDERS REVERSED, and —
+ * since H-4b — WHICH ARM that makes it.
+ *
+ * WHY THE SECOND HALF EXISTS, and it is a trap this casebook walked into with
+ * its eyes open. The mark names the ways, which is what a builder needs; it
+ * does not name the arm, and the two come apart the moment an alignment asks
+ * for a reversal. On an LR2 field `· mid ⌀` IS the textbook arm and the row
+ * with no mark at all is a mirror — the exact inversion of how an LR4 field
+ * reads. The provenance sentence said so all along and a label is what gets
+ * read. So both halves are printed and neither stands in for the other.
+ *
+ * Absent arm = the ways alone, which is the pre-H-4b spelling: a caller with
+ * no expansion has no arm to name.
+ */
+export function polarityLabel(
+  invertedWays: readonly string[],
+  arm?: CandidatePolarity['arm'],
+): string {
+  const ways =
+    invertedWays.length === 0
+      ? ''
+      : ` · ${invertedWays.map((w) => `${w} ${POLARITY_MARK}`).join(' + ')}`;
+  return arm ? `${ways} · ${arm}` : ways;
 }
 
 /** What one handover's two arms read, before anything is designed. */
@@ -215,17 +237,24 @@ export function polarityMargin(input: PolarityMarginInput): PolarityMargin {
   const marginDeg =
     textbookDeg === null || mirrorDeg === null ? null : Math.abs(textbookDeg - mirrorDeg);
   const seedMirror = marginDeg !== null && marginDeg <= POLARITY_ARM_MARGIN_DEG;
+  /* H-4b — THE SENTENCE DESCRIBES THE READING AND NOT THE POLICY, because this
+   * function does not know the policy and the exploration's answer changed
+   * under it: since H-4b two configurations run unconditionally and the margin
+   * gates only the rest. What stays true of the reading either way is whether
+   * the phase argument separates the two arms — and wherever it gates, it is
+   * printed rather than left silent, which is what H-4's own entry asked for. */
   const why =
     marginDeg === null
       ? `${pairLabel}: the two ways never overlap inside the window at ${hz.toFixed(0)} Hz, so no ` +
-        'pre-design phase reading could be taken and the exploration seeds the textbook arm only. ' +
+        'pre-design phase reading could be taken and nothing is mirrored on the margin here. ' +
         'That is a statement about the measurements, not about the polarity (P4).'
       : `${pairLabel}: mean pair phase error ${textbookDeg!.toFixed(1)}° textbook against ` +
         `${mirrorDeg!.toFixed(1)}° mirrored at ${hz.toFixed(0)} Hz — a margin of ` +
         `${marginDeg.toFixed(1)}° against one unit of phase error (${POLARITY_ARM_MARGIN_DEG}°), so the ` +
         (seedMirror
-          ? 'phase argument does not decide and the exploration runs BOTH arms.'
-          : 'exploration runs the textbook arm only. The full field runs both regardless.');
+          ? 'phase argument does NOT decide this handover and an exploration mirrors it.'
+          : 'phase argument DOES decide this handover, so an exploration mirrors it only through the ' +
+            'single-driver reversal it always runs (H-4b). The full field mirrors it regardless.');
   return { pairLabel, textbookDeg, mirrorDeg, marginDeg, seedMirror, why };
 }
 
@@ -283,6 +312,75 @@ export function polarityMarginReader(branchOf: (driverId: string) => PolarityBra
   };
 }
 
+/**
+ * H-4b — WHICH ARMS AN EXPLORATION RUNS WHATEVER THE MARGIN SAID.
+ *
+ * `'single-reversal'` guarantees the arm that reverses EXACTLY ONE WAY: the
+ * lowest handover's upper neighbour — the mid of a three-way, the tweeter of a
+ * two-way. That is the move the literature names every time it says "try both"
+ * (Gravesen ships three-ways whose mid must be reversed; the classic LR2
+ * instruction on a two-way is to flip the tweeter), and Sander stated on
+ * 20-09-2026 that a three-way session must always simulate it.
+ *
+ * It is expressed as ONE REVERSED DRIVER and not as a mask over handovers,
+ * because that is what it physically is: swapping one driver's wires flips the
+ * relative polarity of BOTH handovers it takes part in. On a three-way that is
+ * mask 0b11 and it carries the label `· mid ⌀`; on a two-way it is mask 0b1 and
+ * reads `· high ⌀`. Stated this way it is N-way-agnostic and nothing counts to
+ * three.
+ *
+ * WHAT IT COSTS AND WHAT STAYS GATED. Two of the four configurations of a
+ * three-way are then unconditional — textbook, and the single reversal — so an
+ * exploration doubles rather than quadruples. The margin remains the gate on
+ * the other two (`· high ⌀` and `· high ⌀ + mid ⌀`), and wherever it gates it
+ * is REPORTED as a reading rather than left silent, which is what H-4's own
+ * entry asked for.
+ *
+ * `'none'` is the pre-H-4b behaviour and what the FULL field passes: it already
+ * runs every arm, so a guarantee there would decide nothing.
+ */
+export type PolarityGuarantee = 'single-reversal' | 'none';
+
+/**
+ * The flip mask of the SINGLE-DRIVER REVERSAL, over `handovers` handovers.
+ *
+ * Reversing way 1 (the lowest way's upper neighbour) flips handover 0 and, when
+ * it exists, handover 1 — the two handovers that way takes part in. Everything
+ * above is untouched, which is why the arm reverses exactly one way rather than
+ * every way above the first.
+ */
+export function singleReversalMask(handovers: number): number {
+  if (handovers <= 0) return 0;
+  return 1 | (handovers >= 2 ? 2 : 0);
+}
+
+/**
+ * THE FLIP MASKS an expansion emits, ascending, textbook (mask 0) first.
+ *
+ * Ascending is not cosmetic: it is what makes the enumeration deterministic and
+ * puts the design everyone expects at the top of a scan table read downward.
+ * Mask 0 is always present — a field always carries its textbook arm.
+ */
+export function armFlipMasks(
+  handovers: number,
+  mirrorHandovers: readonly boolean[],
+  guarantee: PolarityGuarantee = 'none',
+): number[] {
+  const masks = new Set<number>([0]);
+  const free: number[] = [];
+  for (let i = 0; i < handovers; i++) if (mirrorHandovers[i]) free.push(i);
+  for (let m = 1; m < 1 << free.length; m++) {
+    let mask = 0;
+    for (let b = 0; b < free.length; b++) if (m & (1 << b)) mask |= 1 << free[b];
+    masks.add(mask);
+  }
+  if (guarantee === 'single-reversal') {
+    const one = singleReversalMask(handovers);
+    if (one !== 0) masks.add(one);
+  }
+  return [...masks].sort((a, b) => a - b);
+}
+
 /** Which handovers an expansion mirrors, and why it was asked to. */
 export interface PolarityArmPolicy {
   /**
@@ -310,6 +408,11 @@ export interface PolarityArmPolicy {
   marginFor?: (crossing: CandidateCrossing) => PolarityMargin;
   /** Whether a STATED candidate gets both arms regardless of the above (U-5). */
   statedAlways: boolean;
+  /**
+   * H-4b — the arm that runs whatever the margin said. Absent = `'none'`, the
+   * pre-H-4b field, so a policy written before this existed keeps its shape.
+   */
+  guarantee?: PolarityGuarantee;
   /** What to print about the decision. */
   why: string;
 }
@@ -324,35 +427,41 @@ export interface PolarityArmPolicy {
 export function polarityArmsOf(
   crossings: readonly CandidateCrossing[],
   mirrorHandovers: readonly boolean[],
+  guarantee: PolarityGuarantee = 'none',
 ): CandidatePolarity[] {
   const textbook = crossings.map((x) => textbookRelativeInverted(x.alignment));
-  const free: number[] = [];
-  for (let i = 0; i < crossings.length; i++) if (mirrorHandovers[i]) free.push(i);
-  const arms: CandidatePolarity[] = [];
-  for (let mask = 0; mask < 1 << free.length; mask++) {
+  const one = singleReversalMask(crossings.length);
+  return armFlipMasks(crossings.length, mirrorHandovers, guarantee).map((mask) => {
     const rel = [...textbook];
     const flipped: string[] = [];
-    for (let b = 0; b < free.length; b++) {
-      if (mask & (1 << b)) {
-        rel[free[b]] = !rel[free[b]];
-        flipped.push(crossings[free[b]].pairLabel);
+    for (let i = 0; i < crossings.length; i++) {
+      if (mask & (1 << i)) {
+        rel[i] = !rel[i];
+        flipped.push(crossings[i].pairLabel);
       }
     }
     const invertedWays = invertedWaysOf(crossings, rel);
-    arms.push({
+    /* H-4b — the single-driver reversal says so in its own words. It is the
+     * one arm the literature names by itself, and on an LR2 field it is not
+     * the one the label's mark makes it look like. */
+    const single = mask === one && mask !== 0;
+    return {
       invertedWays,
-      arm: flipped.length === 0 ? 'textbook' : 'mirror',
+      arm: flipped.length === 0 ? ('textbook' as const) : ('mirror' as const),
       relativeInverted: rel,
       why:
         flipped.length === 0
           ? 'Textbook polarity: the relative polarity each alignment asks for on every handover (' +
             crossings.map((x, i) => `${x.pairLabel} ${textbook[i] ? 'inverted' : 'in phase'}`).join(', ') +
             ').'
-          : `Mirrored polarity on ${flipped.join(' and ')} — the arm the design step's internal ` +
-            'tie-break would have discarded, built and judged in its own right (H-4).',
-    });
-  }
-  return arms;
+          : (single
+              ? `Mirrored polarity on ${flipped.join(' and ')} — ONE driver reversed (${invertedWays.join(', ')}), ` +
+                'the single-driver reversal the literature names every time it says "try both" (H-4b). '
+              : `Mirrored polarity on ${flipped.join(' and ')} — `) +
+            "the arm the design step's internal tie-break would have discarded, built and judged in " +
+            'its own right (H-4).',
+    };
+  });
 }
 
 /**
@@ -373,7 +482,13 @@ export function expandPolarityArms(
   const out: GeneratedCandidate[] = [];
   const readings: PolarityMargin[] = [];
   const seen = new Set<string>();
+  const guarantee = policy.guarantee ?? 'none';
   let added = 0;
+  /* H-4b — for the note: how many of a position's configurations this run
+   * emitted against how many exist, so a reader can see what the margin gated
+   * instead of inferring it from a count that only says what was run. */
+  let emitted = 0;
+  let possible = 0;
   for (const c of field.candidates) {
     const mirror = c.crossings.map((x) => {
       /* Read whatever there is to read, in both modes: in `'both'` it costs a
@@ -400,20 +515,47 @@ export function expandPolarityArms(
       if (policy.seed === 'both') return true;
       return m?.seedMirror === true;
     });
-    if (!mirror.some(Boolean)) {
+    /* H-4b — THE GUARANTEE JOINS THE MARGIN'S MASKS, it does not replace them:
+     * the single-driver reversal always runs, and every handover the reading
+     * left open is mirrored beside it. A STATED candidate already has every
+     * handover free (U-5), so the guarantee decides nothing there. */
+    const masks = armFlipMasks(c.crossings.length, mirror, guarantee);
+    emitted = Math.max(emitted, masks.length);
+    if (masks.length <= 1) {
       out.push(c);
       continue;
     }
-    for (const p of polarityArmsOf(c.crossings, mirror)) {
+    for (const p of polarityArmsOf(c.crossings, mirror, guarantee)) {
       if (p.arm === 'mirror') added++;
       out.push({
         ...c,
-        label: `${c.label}${polarityLabel(p.invertedWays)}`,
+        /* H-4b — the label carries the ARM beside the ways, because on an LR2
+         * field the mark alone says the opposite of what a reader expects. */
+        label: `${c.label}${polarityLabel(p.invertedWays, p.arm)}`,
         polarity: p,
         provenance: `${c.provenance} ${p.why}`,
       });
     }
+    possible = Math.max(possible, 1 << c.crossings.length);
   }
+  /* H-4b — WHAT THE MARGIN GATED, as a line of its own. H-4 printed how many
+   * arms ran and left "and how many did it skip" to be inferred from a number
+   * that cannot answer it. The per-handover readings below carry the margin at
+   * each crossing; this says how many configurations they kept out. */
+  const gated =
+    possible > 0 && emitted < possible
+      ? [
+          `Polarity arms the margin did not admit: ${possible - emitted} of the ${possible} ` +
+            `configurations a position with ${Math.round(Math.log2(possible))} handover` +
+            `${possible === 2 ? '' : 's'} has. ${emitted} ran` +
+            (guarantee === 'single-reversal'
+              ? ' — the textbook arm and the single-driver reversal run unconditionally (H-4b), and ' +
+                'the pre-design phase reading admitted the rest it left open'
+              : '') +
+            '. The reading at each crossing is printed below; nothing was refused on it, and the ' +
+            'full field runs every configuration regardless.',
+        ]
+      : [];
   const notes =
     added > 0
       ? [
@@ -424,11 +566,13 @@ export function expandPolarityArms(
             'the run count multiplies by two per handover that has one rather than adding. ' +
             `${policy.why} Each arm is designed, synthesised and tuned against its own phase targets ` +
             'and judged by the same gates; the shortlist marks it and the table decides (H-4).',
+          ...gated,
         ]
       : [
           `Polarity arms: none. ${policy.why} Every candidate keeps the textbook polarity of its ` +
             'alignment, which is what the design step would have chosen anyway — measured, not ' +
             'assumed (H-4).',
+          ...gated,
         ];
   return {
     field: {

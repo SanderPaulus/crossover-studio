@@ -104,13 +104,28 @@ export function fieldModeSettings(
       /* U-5's rule in both modes: a position the designer stated is not
        * something a run-size policy may answer on their behalf. */
       statedAlways: true,
+      /* H-4b — THE EXPLORATION ALWAYS RUNS THE SINGLE-DRIVER REVERSAL.
+       *
+       * H-4 gated every mirrored arm on the pre-design phase reading, and
+       * measured on the three-way demo that meant SIX runs and NOT ONE of them
+       * mirrored — the reversed mid was never simulated at all. Sander stated
+       * on 20-09-2026 that a three-way session must always simulate it, and the
+       * literature agrees unconditionally where our margin does not: "try
+       * both" has no clause about how far apart the ideal filters read.
+       *
+       * So two of the four configurations become unconditional and the margin
+       * keeps the other two. That doubles an exploration rather than
+       * quadrupling it, which is the price E-2 can carry; the full field is
+       * unchanged, because `'both'` already ran everything. */
+      guarantee: mode === 'full' ? 'none' : 'single-reversal',
       why:
         mode === 'full'
           ? 'Full field: both polarity arms on every handover of every candidate, the run count ' +
             'doubling per handover that has one.'
-          : 'Exploration: the mirrored arm only where the pre-design phase reading leaves the ' +
-            'choice open — one unit of phase error between the two arms. The full field runs ' +
-            'both regardless.',
+          : 'Exploration: the textbook arm and the SINGLE-DRIVER REVERSAL unconditionally (the mid ' +
+            'of a three-way, the tweeter of a two-way — the move the literature names, H-4b), plus ' +
+            'any further handover the pre-design phase reading leaves open at one unit of phase ' +
+            'error. The full field runs every configuration regardless.',
     },
   };
 }

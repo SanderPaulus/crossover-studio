@@ -1,0 +1,74 @@
+{
+ "_": "H-4b — de prijs van de armen-garantie op de driewegdemo. Geschreven door scripts/measure-h4b-arms.ts; geen ketenrun en geen tune.",
+ "gemeten_op": "2026-09-20",
+ "handovers": [
+  "low→mid",
+  "mid→high"
+ ],
+ "stappen_per_as": 2,
+ "wandklok_s_per_run": {
+  "waarde": 150,
+  "herkomst": "GEMETEN IN DE BROWSER bij U-1 (902 s / 6 runs) en U-3b (900 s / 6) op de kale driewegdemo, niet door dit script. Het script telt kandidaten; de wandklok is die telling maal dit getal."
+ },
+ "velden": [
+  {
+   "mode": "exploration",
+   "label": "geen fasereading (de pre-H-4-stand)",
+   "n": 6,
+   "mirrored": 0
+  },
+  {
+   "mode": "exploration",
+   "label": "H-4: alleen de marge",
+   "n": 6,
+   "mirrored": 0
+  },
+  {
+   "mode": "exploration",
+   "label": "H-4b: garantie + marge",
+   "n": 12,
+   "mirrored": 6
+  },
+  {
+   "mode": "full",
+   "label": "H-4: beide armen overal",
+   "n": 36,
+   "mirrored": 27
+  },
+  {
+   "mode": "full",
+   "label": "H-4b: idem (de garantie beslist niets)",
+   "n": 36,
+   "mirrored": 27
+  }
+ ],
+ "labels_verkenning": [
+  "low→mid 415.8 LR4 · mid→high 1532.6 LR4 · textbook",
+  "low→mid 415.8 LR4 · mid→high 1532.6 LR4 · mid ⌀ · mirror",
+  "low→mid 415.8 LR4 · mid→high 1720.3 LR4 · textbook",
+  "low→mid 415.8 LR4 · mid→high 1720.3 LR4 · mid ⌀ · mirror",
+  "low→mid 415.8 LR4 · mid→high 1931 LR4 · textbook",
+  "low→mid 415.8 LR4 · mid→high 1931 LR4 · mid ⌀ · mirror",
+  "low→mid 466.7 LR4 · mid→high 1532.6 LR4 · textbook",
+  "low→mid 466.7 LR4 · mid→high 1532.6 LR4 · mid ⌀ · mirror",
+  "low→mid 466.7 LR4 · mid→high 1720.3 LR4 · textbook",
+  "low→mid 466.7 LR4 · mid→high 1720.3 LR4 · mid ⌀ · mirror",
+  "low→mid 466.7 LR4 · mid→high 1931 LR4 · textbook",
+  "low→mid 466.7 LR4 · mid→high 1931 LR4 · mid ⌀ · mirror"
+ ],
+ "veldregel": "Exploration field — 6 of 15 derived candidates: chain budget 8, positions centre-first (the window centre and its nearest neighbours), one alignment per handover, the same requirements as the full field. Plus 6 mirrored polarity arms: the same positions with a handover the other way round, designed and tuned in their own right and judged by the same gates (H-4).",
+ "notities": [
+  "The derivation offered 15 candidates and the stated budget is 8; 6 are delivered. POSITIONS were thinned, per axis and per order, from the OUTSIDE in: the window centre and its nearest neighbours survive, the cages stay one spacing wide, and the band beyond the survivors is simply not explored (E-2 exploration). ORDERS were not thinned and will not be: a position is a sample of a continuum, an order is a choice, and dropping a choice to fit a budget answers a question that was asked to stay open.",
+  "Polarity arms: 6 mirrored candidates beside the 6 the field derived — 12 runs in total, and THE CHAIN BUDGET DOES NOT BOUND THEM. It thins POSITIONS, and an arm is not a position: it is the other half of a position the derivation already offered, and the run count multiplies by two per handover that has one rather than adding. Exploration: the textbook arm and the SINGLE-DRIVER REVERSAL unconditionally (the mid of a three-way, the tweeter of a two-way — the move the literature names, H-4b), plus any further handover the pre-design phase reading leaves open at one unit of phase error. The full field runs every configuration regardless. Each arm is designed, synthesised and tuned against its own phase targets and judged by the same gates; the shortlist marks it and the table decides (H-4).",
+  "Polarity arms the margin did not admit: 2 of the 4 configurations a position with 2 handovers has. 2 ran — the textbook arm and the single-driver reversal run unconditionally (H-4b), and the pre-design phase reading admitted the rest it left open. The reading at each crossing is printed below; nothing was refused on it, and the full field runs every configuration regardless.",
+  "low→mid: mean pair phase error 72.2° textbook against 107.8° mirrored at 416 Hz — a margin of 35.6° against one unit of phase error (15°), so the phase argument DOES decide this handover, so an exploration mirrors it only through the single-driver reversal it always runs (H-4b). The full field mirrors it regardless.",
+  "mid→high: mean pair phase error 79.9° textbook against 100.1° mirrored at 1533 Hz — a margin of 20.2° against one unit of phase error (15°), so the phase argument DOES decide this handover, so an exploration mirrors it only through the single-driver reversal it always runs (H-4b). The full field mirrors it regardless.",
+  "mid→high: mean pair phase error 78.6° textbook against 101.4° mirrored at 1720 Hz — a margin of 22.7° against one unit of phase error (15°), so the phase argument DOES decide this handover, so an exploration mirrors it only through the single-driver reversal it always runs (H-4b). The full field mirrors it regardless.",
+  "mid→high: mean pair phase error 77.0° textbook against 103.0° mirrored at 1931 Hz — a margin of 25.9° against one unit of phase error (15°), so the phase argument DOES decide this handover, so an exploration mirrors it only through the single-driver reversal it always runs (H-4b). The full field mirrors it regardless.",
+  "low→mid: mean pair phase error 76.8° textbook against 103.2° mirrored at 467 Hz — a margin of 26.4° against one unit of phase error (15°), so the phase argument DOES decide this handover, so an exploration mirrors it only through the single-driver reversal it always runs (H-4b). The full field mirrors it regardless."
+ ],
+ "geen_fasereading": {
+  "_": "De pre-H-4-stand: zonder reading zaait geen enkele modus een arm, en het veld is byte voor byte wat het vóór H-4 was.",
+  "kandidaten": 6
+ }
+}

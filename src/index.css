@@ -739,7 +739,10 @@ h1 {
 .vf-panel.open .vf-grid {
   padding: 1.1rem;
 }
-.vf-panel.open .vf-mode-hint {
+.vf-panel.open .vf-mode-hint,
+/* H-4b — the polarity-follow notice sits in the same place as the mode hint:
+   it belongs where the alignment select the designer just moved is. */
+.vf-panel.open .vf-polarity-followed {
   margin: 0;
   padding: 0.7rem 1.1rem 0;
   font-size: 0.8rem;

@@ -24,12 +24,14 @@ import { describe, expect, it } from 'vitest';
 import {
   POLARITY_ARM_MARGIN_DEG,
   POLARITY_ARMS_VERSION,
+  armFlipMasks,
   expandPolarityArms,
   invertedWaysOf,
   polarityArmsOf,
   polarityLabel,
   polarityMargin,
   polarityMarginReader,
+  singleReversalMask,
   statedInvertedForTwoWay,
   statedPolarityForThreeWay,
   textbookRelativeInverted,
@@ -134,6 +136,99 @@ describe('H-4 — textbook polarity, the rule read and never re-derived', () => 
     expect(polarityLabel([])).toBe('');
     expect(polarityLabel(['mid'])).toBe(' · mid ⌀');
     expect(polarityLabel(['high', 'mid'])).toBe(' · high ⌀ + mid ⌀');
+  });
+
+  it('H-4b — the label carries WHICH ARM beside which ways, and the LR2 trap is why', () => {
+    /* The mark names the ways a builder solders reversed; it does not name the
+     * arm, and on an LR2 field the two say the OPPOSITE of each other. The
+     * casebook's own table spells that out and a label is what gets read. */
+    expect(polarityLabel([], 'textbook')).toBe(' · textbook');
+    expect(polarityLabel(['mid'], 'mirror')).toBe(' · mid ⌀ · mirror');
+    expect(polarityLabel(['mid'], 'textbook')).toBe(' · mid ⌀ · textbook');
+    const lr2 = polarityArmsOf([crossing({ alignment: { kind: 'LR', order: 2 } })], [true]);
+    const lr4 = polarityArmsOf([crossing({ alignment: { kind: 'LR', order: 4 } })], [true]);
+    /* The SAME mark, the OTHER arm — which is exactly the reading a label
+     * without the word cannot give. */
+    const markOf = (arms: ReturnType<typeof polarityArmsOf>, arm: 'textbook' | 'mirror') =>
+      polarityLabel(arms.find((a) => a.arm === arm)!.invertedWays);
+    expect(markOf(lr2, 'textbook')).toBe(' · high ⌀');
+    expect(markOf(lr4, 'mirror')).toBe(' · high ⌀');
+    expect(markOf(lr2, 'mirror')).toBe('');
+    expect(markOf(lr4, 'textbook')).toBe('');
+  });
+});
+
+describe('H-4b — the single-driver reversal the exploration always runs', () => {
+  it('reverses EXACTLY ONE way, the lowest handover’s upper neighbour, at any N', () => {
+    /* Swapping one driver's wires flips the relative polarity of BOTH
+     * handovers it takes part in — which is why the guarantee is stated as a
+     * driver and computed as a mask over handovers. */
+    expect(singleReversalMask(1)).toBe(0b1);
+    expect(singleReversalMask(2)).toBe(0b11);
+    expect(singleReversalMask(3)).toBe(0b011);
+    expect(singleReversalMask(0)).toBe(0);
+    const two = [crossing({ pairLabel: 'a', upper: 'mid' }), crossing({ pairLabel: 'b', upper: 'high' })];
+    const rel = two.map((x, i) => textbookRelativeInverted(x.alignment) !== !!(singleReversalMask(2) & (1 << i)));
+    expect(invertedWaysOf(two, rel)).toEqual(['mid']);
+    const three = [
+      crossing({ pairLabel: 'a', upper: 'w2' }),
+      crossing({ pairLabel: 'b', upper: 'w3' }),
+      crossing({ pairLabel: 'c', upper: 'w4' }),
+    ];
+    const rel3 = three.map((x, i) => textbookRelativeInverted(x.alignment) !== !!(singleReversalMask(3) & (1 << i)));
+    expect(invertedWaysOf(three, rel3)).toEqual(['w2']);
+  });
+
+  it('joins the margin’s masks instead of replacing them, textbook always first', () => {
+    /* Nothing free: the guarantee alone gives two arms. */
+    expect(armFlipMasks(2, [false, false], 'single-reversal')).toEqual([0, 0b11]);
+    /* One handover free: its own mask AND the guarantee, ascending. */
+    expect(armFlipMasks(2, [false, true], 'single-reversal')).toEqual([0, 0b10, 0b11]);
+    /* Everything free: the guarantee is already in there and adds nothing. */
+    expect(armFlipMasks(2, [true, true], 'single-reversal')).toEqual([0, 1, 2, 3]);
+    /* And 'none' is byte for byte the pre-H-4b enumeration (P2). */
+    expect(armFlipMasks(2, [false, false])).toEqual([0]);
+    expect(armFlipMasks(2, [false, true])).toEqual([0, 0b10]);
+    expect(armFlipMasks(2, [true, true])).toEqual([0, 1, 2, 3]);
+  });
+
+  it('gives a three-way TWO configurations of four when the margin gates both handovers', () => {
+    const cs = [crossing({ pairLabel: 'a', upper: 'mid' }), crossing({ pairLabel: 'b', upper: 'high' })];
+    const f = field([candidate(cs, { label: 'A' })]);
+    const never = () => ({
+      pairLabel: 'p',
+      textbookDeg: 10,
+      mirrorDeg: 170,
+      marginDeg: 160,
+      seedMirror: false,
+      why: 'no',
+    });
+    const out = expandPolarityArms(f, {
+      seed: 'margin',
+      marginFor: never,
+      statedAlways: true,
+      guarantee: 'single-reversal',
+      why: 'w',
+    });
+    /* THE CLAIM SANDER STATED ON 20-09-2026: the reversed MID is simulated,
+     * whatever the phase reading said. Before H-4b this field was one
+     * candidate with no arm at all. */
+    expect(out.armsAdded).toBe(1);
+    expect(out.field.candidates.map((c) => c.label)).toEqual(['A · textbook', 'A · mid ⌀ · mirror']);
+    /* And the two the margin kept out are REPORTED and not silent. */
+    const gated = out.field.notes.find((n) => n.startsWith('Polarity arms the margin did not admit'));
+    expect(gated).toBeDefined();
+    expect(gated).toContain('2 of the 4 configurations');
+  });
+
+  it('is absent by default, so a policy written before H-4b keeps its shape (P2)', () => {
+    const cs = [crossing({ pairLabel: 'a', upper: 'mid' }), crossing({ pairLabel: 'b', upper: 'high' })];
+    const f = field([candidate(cs, { label: 'A' })]);
+    const never = () => ({ pairLabel: 'p', textbookDeg: 10, mirrorDeg: 170, marginDeg: 160, seedMirror: false, why: 'no' });
+    const out = expandPolarityArms(f, { seed: 'margin', marginFor: never, statedAlways: true, why: 'w' });
+    expect(out.armsAdded).toBe(0);
+    expect(out.field.candidates).toEqual(f.candidates);
+    expect(JSON.stringify(candidateFieldKey(out.field))).toBe(JSON.stringify(candidateFieldKey(f)));
   });
 });
 
@@ -266,7 +361,12 @@ describe('H-4 — expanding a field, and the identity that protects every finger
     const out = expandPolarityArms(f, { seed: 'margin', marginFor: always, statedAlways: true, why: 'w' });
     expect(out.armsAdded).toBe(2);
     expect(out.field.candidates).toHaveLength(4);
-    expect(out.field.candidates.map((c) => c.label)).toEqual(['A', 'A · high ⌀', 'B', 'B · high ⌀']);
+    expect(out.field.candidates.map((c) => c.label)).toEqual([
+      'A · textbook',
+      'A · high ⌀ · mirror',
+      'B · textbook',
+      'B · high ⌀ · mirror',
+    ]);
     for (const c of out.field.candidates) expect(c.polarity).toBeDefined();
     const key = JSON.stringify(candidateFieldKey(out.field));
     expect(key).not.toBe(JSON.stringify(candidateFieldKey(f)));
@@ -294,7 +394,7 @@ describe('H-4 — expanding a field, and the identity that protects every finger
       }),
     ]);
     const out = expandPolarityArms(statedF, { seed: 'margin', marginFor: never, statedAlways: true, why: 'w' });
-    expect(out.field.candidates.map((c) => c.label)).toEqual(['A', 'S', 'S · high ⌀']);
+    expect(out.field.candidates.map((c) => c.label)).toEqual(['A', 'S · textbook', 'S · high ⌀ · mirror']);
     const off = expandPolarityArms(statedF, { seed: 'margin', marginFor: never, statedAlways: false, why: 'w' });
     expect(off.armsAdded).toBe(0);
   });

@@ -54,6 +54,26 @@
     dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
     staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
     voor de twee weggegooide runs die ernaast liepen.
+    **Ná H-4b (20-09-2026) gemeten op 534 s — 203 bestanden (202 geslaagd, 1 overgeslagen),
+    2716 tests (2712 geslaagd, 4 overgeslagen), in één keer groen, ALLEEN gedraaid met niets
+    ernaast.** +1 BESTAND (`lib/handoverPolarity.test.ts`, 30 claims) en +39 tests, en die telling
+    sluit EXACT: die dertig, plus VIJF in `predesign/polarityArms.test.ts` (18 → 23) en VIER in
+    `predesign/statedMinCrossover.test.ts` (14 → 18); `predesign/fieldMode.test.ts` staat op
+    zestien, want de H-4b-claim daar VERVANGT er een (de oude "een verre lezing laat de verkenning
+    exact zoals zij was" is onwaar geworden en zegt nu wat er sindsdien geldt). Het corpus is NIET
+    aangeraakt. **DE DELTA IS GEËNUMEREERD EN NIET AFGELEID** (`npx vitest list -t '^(?!.*\[live\])'`
+    op HEAD in een wegwerp-worktree tegen dezelfde lijst nu): tien namen erbij in de drie gewijzigde
+    bestanden, ÉÉN weg (de hernoemde fieldMode-claim), plus de dertig van het nieuwe bestand.
+    **EN LET OP DE REGEL WAARTEGEN JE VERGELIJKT — dit boek is er eerder op omgevallen (de
+    V47-nazorg):** de H-4-regel hieronder noteert 2676, maar HEAD is de H-4-NAZORG (`92b9542`), die
+    één claim toevoegde, dus HEAD draait 2677 en 2677 + 39 = 2716. Wie de dichtstbijzijnde
+    voorgaande REGEL pakt voor de dichtstbijzijnde voorgaande COMMIT komt er één tekort. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 534 tegen H-4's 539 s is dezelfde laag op
+    dezelfde machine met één bestand erbij. **DE EERSTE RUN VAN DEZE SESSIE IS WEGGEGOOID EN NIET
+    GERAPPORTEERD**, om de H-2-reden: hij liep nog toen ik besloot de follow-regel uit `App.tsx` te
+    lichten naar een zuivere functie, en een suite-uitslag beschrijft de boom die zij gemeten heeft
+    of zij beschrijft niets. Hij is gestopt en na de refactor opnieuw gedraaid (526 s, groen), en de
+    534 s hierboven is de derde en laatste, ná de laatste bewerking.
     **Ná H-3b (18-09-2026) gemeten op 724 s — 200 bestanden (199 geslaagd, 1 overgeslagen),
     2638 tests (2634 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de drie
     gerichte achtergrondruns en zonder dev-server.** +1 BESTAND (`engine2/h3bFlankBudget.test.ts`,
@@ -7193,3 +7213,178 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   ketenruns. **Gemeten 20-09-2026: 202 bestanden, 2676 tests, 1825 s, niets overgeslagen, in één keer
   groen — alle vier de live ketenruns reproduceren hun bevroren netlist byte voor byte.** Dat is de
   acceptatie van "absent is de identiteit", op de enige plek waar zij werkelijk te toetsen is.
+
+### H-4b-guards (de textbookregel op de handpaden; de armen-garantie; label-identiteit; de statuskolom)
+
+- **WAT H-4 OPENLIET, EN WAAROM HET EEN GAT WAS.** `textbookComplementInverted` is sinds H-2b het ENE
+  huis van de LR-polariteitsregel, en H-4 gaf het drie lezers — het complement van de magere hybride
+  vorm, het DSP-doelblok en de polariteitsarmen. **Alle drie zijn plaatsen waar de ENGINE kiest.**
+  Waar een PERSOON kiest werd hij nergens gelezen: een even-orde-LR-keuze in het bandformulier liet
+  het invert-vinkje staan waar het vorige project het liet, en een handgetekend LR2-netwerk op de
+  Network-tab kreeg geen regel en geen waarschuwing. De meest elementaire regel uit de literatuur was
+  gegarandeerd precies daar waar niemand eraan herinnerd hoeft te worden, en afwezig waar iedereen
+  dat wel moet.
+- **`src/lib/handoverPolarity.ts` (`handover-polarity/1.0`) — TWEE LEZINGEN, EN GEEN VAN BEIDE DRAAIT
+  IETS OM.** Geen engine-import (app-laag die `engine2/` óók leest; de toggle-regressiescan laat
+  alleen de UI-instappunten de andere kant op). (1) `handoverTextbook(lowerLp, upperHp)` — wat de
+  textbook van ÉÉN overname vraagt, gegeven de twee flanken die getekend staan. (2)
+  `reversedNullSignature` — of de OMGEPOOLDE som de gewone over de overnameband verslaat met meer dan
+  de marge. (3) `followTextbookOnAlignmentChange` — de follow als WAARDE en niet als reeks
+  `setState`-aanroepen, om de reden die UI-1 één verdieping lager betaalde: de laag tussen een regel
+  en de app-state had geen test en deed maandenlang het verkeerde.
+- **DE ALGEBRA WOONT HIER OMDAT TWEE VOCABULAIRES HAAR NODIG HEBBEN (A3g).** `polarityArms.ts` spreekt
+  in WEGNAMEN (een shortlist-label zegt welke drivers een bouwer omgekeerd soldeert), de app in de
+  TWEE VINKJES van zijn aanpassings-fieldsets. Het zijn dezelfde bits — de RELATIEVE polariteit van
+  elke overname, opgeteld vanaf de laagste weg, de referentie waartegen zowel `combineN` als
+  `invertedWaysOf` sommeert. `invertedFlagsOf` / `relativeBitsOf` zijn elkaars inverse (gepind over
+  alle 16 maskers van vier overnames) en `invertedWaysOf` is sindsdien een naamopzoeking eroverheen.
+- **DE FOLLOW GAAT DOOR DE BITS EN NIET DOOR ÉÉN VINKJE, en dat is de hele reden dat de algebra
+  bestaat.** De vinkjes zijn ABSOLUUT (elke weg tegen de woofer), de textbookregel is RELATIEF (één
+  overname). `midInverted` alleen zetten om de W-M-regel te halen keert stilletjes de M-T-overname om
+  — een overname die de ontwerper niet aanraakte. De bits terugschrijven houdt élke andere overname
+  precies waar zij stond, tegen de prijs dat het tweetervinkje meebeweegt met het midvinkje. Dat is
+  het fysiek juiste antwoord en de noot naast de vakjes zegt het.
+- **VOLGEND, OVERSCHRIJFBAAR, EN NOOIT GECORRIGEERD (F0).** Alleen op een NIEUWE alignment-keuze (een
+  diff tegen de spec die er stond), dus geen bestaand project en geen geladen ontwerp beweegt door
+  het te openen. Frequentie, aanvinkvakje, gain en EQ-banden veranderen hier niets: de regel gaat
+  over de ALIGNMENT en over niets anders. Een stand die van de textbook afwijkt wordt náást het
+  vinkje benoemd ("departs from textbook — LR2 asks for a reversal here") en nooit hersteld —
+  Gravesen levert ontwerpen waarin de mid omgekeerd MOET, en H-1 mat een echt paar dat onder LR4
+  omgekeerd koos.
+- **WAAR ER GEEN REGEL IS, IS ER GEEN ANTWOORD (P4).** `handoverTextbook` antwoordt alleen waar BEIDE
+  flanken aan staan, dezelfde soort hebben en dezelfde orde: de regel is een eigenschap van een
+  GEPAARD complementair stel (een LR van orde 2m sommeert tot een allpass met zijn eigen spiegel en
+  met niets anders), en een woofer-laagdoorlaat op LR4 tegen een mid-hoogdoorlaat op LR2 is geen paar
+  waar enig boek over spreekt. Toch antwoorden zou de A3h-val in zuiverste vorm zijn: het juiste
+  getal, van de juiste bladzijde, over het verkeerde ding. De zin noemt welke helft ontbreekt.
+- **DE MARGE VAN DE NULL-HANDTEKENING IS AFGELEID, EN HET LINEARISATIEPUNT IS HET HELE VERHAAL.**
+  `nullMarginAtPhaseErrorDeg` (nieuw in `activeSide.ts`, naast de nulmarge-machinerie waar hij uit
+  volgt) geeft de nulmarge die twee gelijke takken `deg` graden VOORBIJ de 90°-gelijkstand
+  produceren: `20·log10(cot((90+deg)/2))`. Op één eenheid faseafwijking (`PHASE_ERROR_UNIT_DEG`, 15°)
+  is dat **2,30039 dB**. **De engine bezat al één zulke omrekening — `polarityDecisiveDb` in
+  `dspTarget.ts` — en die beantwoordt een ANDERE vraag:** hoeveel nulmarge de meetonzekerheid van een
+  project kan verschuiven op een paar dat bijna IN FASE staat, waar de margekromme VLAK is (15° kost
+  daar 0,07 dB). Naast de 90°-gelijkstand is diezelfde kromme STEIL. De ene invoer in de andere
+  functie stoppen leest de juiste constante op het verkeerde punt van dezelfde kromme, en dat is
+  waarom het er twee zijn en het commentaar het zegt.
+- **DE NULL-HANDTEKENING NAGEMETEN, EN ZIJ BEVESTIGT DE LITERATUUR OP ONZE EIGEN DATA.** Twee vormen
+  op casus 1's eigen responsen (`handoverPolarity.test.ts`):
+
+  | paar | LR2 zoals getekend | LR2 met omkering | LR4 zoals getekend |
+  | --- | ---: | ---: | ---: |
+  | CO-GELOKALISEERD (één gemeten weg draagt beide flanken) | **−17,80 dB** | +17,80 | **+12,13 dB** |
+  | HET ECHTE PAAR (casus 1b's mid en tweeter, ideale filters) | −1,86 | +1,86 | +1,50 |
+
+  De eerste rij is de vorm waarvoor de textbookregel geformuleerd is — twee bronnen op één punt, dus
+  de enige fase tussen hen is die van de filters — en daar is een ontbrekende LR2-omkering geen dicht
+  geval: bijna acht keer de marge, en LR4 zoals getekend zwijgt (mét de tegenproef dat LR4  omgekeerd
+  wél vuurt, want zonder haar is "zwijgt op LR4" ook waar van een detector die niets kan). **De
+  tweede rij is de LUIDSPREKER en zij is de literatuur in onze eigen cijfers:** de akoestische centra
+  vallen niet samen, dus op 2251 Hz staan de twee wegen noch in fase noch in tegenfase, en de hele
+  textbook-vraag is daar **minder dan twee decibel** waard — alle vier de lezingen onder de marge, de
+  strip zwijgt, en dat is het JUISTE antwoord: het fase-argument scheidt de armen daar niet, wat
+  precies is waarom H-4 de gespiegelde arm BOUWT in plaats van hem op dit getal weg te gooien. **De
+  marge is niet verlaagd om die tweede rij te laten spreken.** Een drempel die wordt gebogen tot de
+  data hem raakt, meet het buigen.
+- **DE ARMEN-GARANTIE (Sander, 20-09-2026), EN ZIJ IS ALS ÉÉN OMGEDRAAIDE DRIVER GEFORMULEERD.** H-4
+  gatete élke gespiegelde arm op de fasereading, en op de driewegdemo betekende dat **6 runs en NUL
+  gespiegeld** — de omgepoolde mid werd er nooit gesimuleerd. Sinds H-4b draait een verkenning per
+  positie onvoorwaardelijk de textbook-arm **én de enkelvoudige DRIVEROMKERING** (de mid van een
+  drieweg, de tweeter van een tweeweg). Niet als masker over overnames maar als één driver, want dat
+  is wat zij fysiek IS: de draden van één driver omwisselen keert de relatieve polariteit van BEIDE
+  overnames waaraan hij deelneemt — mask `0b11` op een drieweg, `0b1` op een tweeweg, en op een
+  N-weg `singleReversalMask(n)`. Zo geformuleerd telt niets tot drie. De 15°-marge blijft de poort op
+  de twee resterende configuraties en wordt overal waar hij poort is als LEZING afgedrukt, per
+  kruising en niet per as.
+- **DE PRIJS, GEMETEN EN NIET GESCHAT** (`scripts/measure-h4b-arms.ts`,
+  `test-fixtures/demo_h4b_armen.json`; seconden, geen ketenrun en geen tune — het telt kandidaten,
+  en de wandklok is die telling maal een prijs per run die U-1/U-3b in de BROWSER maten en dit script
+  niet):
+
+  | modus | armbeleid | kandidaten | gespiegeld |
+  | --- | --- | ---: | ---: |
+  | verkenning | geen fasereading (de pre-H-4-stand) | 6 | 0 |
+  | verkenning | H-4: alleen de marge | 6 | 0 |
+  | verkenning | **H-4b: garantie + marge** | **12** | **6** |
+  | vol veld | H-4 | 36 | 27 |
+  | vol veld | H-4b (de garantie beslist er niets) | 36 | 27 |
+
+  **6 → 12, dus een verkenning VERDUBBELT en verviervoudigt niet** — de ×4 die H-4 als prijs van "de
+  poort weghalen" noteerde is niet betaald. Elke gespiegelde arm van die twaalf draagt
+  `· mid ⌀ · mirror`: precies de omgepoolde mid waar Sanders regel over gaat. In wandklok ~900 →
+  ~1800 s op de kale driewegdemo (150 s/run, U-1: 902 s voor 6; U-3b: 900 voor 6). **Het volle veld
+  beweegt niet** (36 → 36), want `'both'` draaide al alles. De marge leest op de twee demokruisingen
+  20–36°, dus zonder de garantie zou er inderdaad niets gespiegeld zijn.
+- **LABEL-IDENTITEIT: DE MARKERING EN HET WOORD STAAN ALLEBEI, EN GEEN VAN BEIDE STAAT VOOR DE
+  ANDERE IN.** De markering (`· mid ⌀`) zegt welke wegen een bouwer omgekeerd soldeert; zij zegt niet
+  welke arm textbook is, en op een **LR2**-veld zeggen de twee het TEGENOVERGESTELDE van elkaar — daar
+  is `· mid ⌀` juist de textbook-arm en is de rij zónder markering een spiegel. H-4's eigen entry
+  schreef die val uit en een label is wat gelezen wordt. Sinds H-4b: `… · mid ⌀ · mirror` /
+  `… · textbook`, gepind met de LR2/LR4-kruistabel als claim. Het is een LABEL en geen vrije tekst
+  boven de tabel: de U-6-indeling van het resultaatgebied is niet aangeraakt en `v2ResultLayout`
+  staat ongewijzigd groen.
+- **`fsConventionDbRange()` — WAT DE k·f_s-TERUGVAL IN DECIBELS WAARD IS, AFGELEID.**
+  `XO_FS_FACTOR_BY_ORDER` leest als een frequentieregel en is in de eenheid waarin de aandrijfvloeren
+  rekenen een VERZWAKKING op de resonantie: `6·orde·log2(k)` = **9,51 / 12,00 / 12,21 / 11,65 dB** bij
+  orde 1 t/m 4. U-3e rekende dat met de hand na; sindsdien geeft één functie het terug, en de
+  vensterstrip naast de Optimize-knop drukt het af met de vergelijking erbij ("LOOSER than the 18 dB
+  the trade rule asks for"). De registerrij `minCrossover` citeert dezelfde getallen in proza, en een
+  claim pint de proza tegen de afleiding — **nagemeten: `XO_FS_FACTOR_BY_ORDER[4]` van 1,4 naar 1,9
+  verzetten zet twee claims op rood**, dus de zin kan niet van de constante wegdrijven.
+- **DE `stated-min`-VERIFICATIE, EN HET DOCUMENT HAD HET OP TWEE PLAATSEN MIS.** Het vuistregeldocument
+  schreef "Casus 1 stelt er geen" en noteerde het voeden van de BlieSMa-2200 als openstaand besluit.
+  Allebei beschrijven **U-4**, dat het getal las en bewust niet voedde omdat voeden een regeneratie
+  vraagt. **M-2b is die regeneratie** (Sander, 12-09-2026): `casus1MinCrossovers()` leest hem uit
+  `driverkaart.tweeter.aanbevolen_kruisband.ondergrens_hz`, voert hem in als
+  `settings.driverMinCrossoverByDriver`, en het mid→tweeter-venster leest sindsdien **2200–2304 Hz met
+  `vloer_bindend: aanbevolen_ondergrens`**. Beide beweringen zijn rechtgezet mét een erratum dat zegt
+  wat er stond, en de claim is tegen de code én het referentiebestand gepind zodat zij niet opnieuw
+  stil kan verouderen.
+- **DE REGISTERRIJ IS GEEN TWEEDE MECHANISME — MAAR ER LAG WEL EEN TWEEDE KOPIE, EN DIE IS WEG.** De
+  U-3g-rij (`minCrossover`, Setup → driverkaart) is de deur van de APP naar exact dezelfde
+  engine-invoer `ReportSettings.driverMinCrossoverByDriver` die de fixture uit het manifest vult: één
+  mechanisme, twee ingangen — de vorm waarin élk casusboekgetal de engine bereikt. **Wat er wél lag
+  was een dode DUPLICAAT-SLEUTEL:** `driverkaart.tweeter.aanbevolen_ondergrens_hz: 2200` stond naast
+  `aanbevolen_kruisband.ondergrens_hz: 2200` en **geen enkel bronbestand in deze repository las hem**
+  (nagegaan met een grep over `src/` en `scripts/`, niet aangenomen; geen recorder schrijft
+  `driverkaart` op casus 1 — die kaart is handwerk). Een projectgetal met twee huizen is de vorm
+  waartegen P6 bestaat, dus de platte sleutel is VERWIJDERD en niet geannoteerd; een claim pint dat
+  hij weg is en de gepaarde er staat, en de teruggezette sleutel zet hem op rood.
+- **DE STATUSKOLOM IN HET VUISTREGELDOCUMENT.** Elke regel draagt er sindsdien één — TOEGEPAST /
+  KANDIDAAT / GERAPPORTEERD / GESTELD — met een legenda die zegt dat het verschil niet gaat over hoe
+  belangrijk een regel is maar over **wie hem toepast en wanneer**. De polariteitsregels zijn
+  verschoven: de textbookregel was TOEGEPAST-waar-de-engine-kiest en is nu óók TOEGEPAST op de
+  handpaden; de praktijkregel was KANDIDAAT-onder-de-marge en is nu KANDIDAAT-met-garantie; en er
+  staat een zesde regel in §5 bij (de null-handtekening, GERAPPORTEERD).
+- **WAT ER NIET IS GEBEURD, en het is de omvang van deze sessie.** Geen poort-, oordeel-, budget-,
+  metriek- of corpuswijziging; geen nieuwe constante (de marge is afgeleid, de dB-range ook); geen
+  stille polariteitswijziging aan een bestaand project of een getekend netwerk — het vinkje volgt
+  alléén een NIEUWE alignment-keuze en de strip MELDT en draait nooit iets om (UI-2); corpus en
+  bevroren netlists onaangeroerd. **DE VOLLE RUN IS NIET GEDRAAID**, met de H-2/U-6-afweging: de twee
+  byte-baselines die de zoektocht bewaken (`f4cRegression`, `workerRouteRegression`) draaien in de
+  snelle laag en reproduceerden, net als `toggleRegression`, `p6Lint`, `ciLayer`, `choiceKeyGuard` en
+  `frozenNetlistGates`. De vier live ketenruns zouden corpora reproduceren die deze sessie niet
+  aangeraakt heeft: **geen fixture stelt een `polarityArms`-beleid** (`fieldModeSettings` zonder
+  reading schrijft de sleutel niet, en de fixtures zijn die aanroepers), dus de garantie is daar
+  per constructie absent en het veld is byte voor byte het veld van vóór H-4.
+- **DE FOLLOW MELDT ZICH WAAR HIJ GEBEURDE, en dat is een correctie op mijn eigen eerste plaatsing.**
+  De invert-vinkjes staan in de Setup-kolom en de alignment-selects in het Filter-bands-paneel, dus
+  een melding náást de vinkjes is een melding waar de ontwerper misschien nooit kijkt — en ná een
+  geslaagde follow is er per definitie GEEN afwijkingslabel meer, dus dan is die melding het enige
+  signaal dat er iets bewoog. Een polariteit die ongezien verschuift is precies wat F0 verbiedt. Zij
+  staat sindsdien in het bandenpaneel, naast de mode-hint, en zij verdwijnt zodra de ontwerper zelf
+  een vinkje aanraakt: dan is zij niet meer het laatste wat er gebeurde.
+- **ACHT OPZETTELIJKE BREUKEN, ELK GEMETEN VOORDAT ZIJ OPGESCHREVEN ZIJN.** (1) Het bandformulier weer
+  rechtstreeks naar `setVFilters` → 1 rood. (2) De garantie uit `fieldMode.ts` → 1 rood, op de claim
+  die Sanders regel draagt. (3) De dode manifestsleutel terug → 1 rood. (4)
+  `XO_FS_FACTOR_BY_ORDER[4]` 1,4 → 1,9 → 2 rood (de afleiding én de proza die haar citeert). (5) Het
+  arm-woord uit het label → 4 rood over twee bestanden. (6) De strip stopt met de handtekening
+  afdrukken → 1 rood. (7) De follow-melding uit het bandenpaneel → 1 rood. (8) Een handmatige
+  vinkje-beweging wist de melding niet meer → 1 rood.
+- **DE DRIE BEWAARDE APP-RUNS REPRODUCEREN HUN OPGENOMEN OORDEEL**, en dat is de P2 die telt voor een
+  sessie die het VELD aanraakt: `replay-app-run.ts` zegt SAME/SAME op `casus1_u3b_kale_demo_run.json`
+  en op `casus1_e2_verkenning_run.json` (`--set demo`), en SAME/DIFFERENT op
+  `casus1b_e3b_verkenning_run.json` (`--set casus1b`) — precies wat E-3b opschreef. De reden is
+  structureel en niet gelukkig: een exportblok draagt geen `polarityArms`-beleid (de marge-lezer is
+  een FUNCTIE en reist niet door JSON), dus laag 1 herbouwt het veld zonder armen en stempelt op
+  dezelfde digest.

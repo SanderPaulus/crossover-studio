@@ -250,6 +250,8 @@ import type {
   DriverMaxCrossover,
   DriverMinCrossover,
 } from './lib/engine2/predesign/xoWindow.ts';
+/* H-4b — what the k·f_s fallback is worth in dB, derived from the constant. */
+import { fsConventionDbRange } from './lib/engine2/predesign/xoWindow.ts';
 import {
   V1_FIELD_DEFAULTS,
   describeV1Carryover,
@@ -407,7 +409,22 @@ import {
   defaultEq,
   type DriverFilterSpec,
   type FilterKind,
+  type HpLpSpec,
 } from './lib/filters.ts';
+/* H-4b — the textbook polarity rule on the HAND paths, and the signature of a
+ * missing inversion in a network somebody drew. One algebra, two vocabularies:
+ * a shortlist label speaks in way names, this form in two checkboxes. */
+import {
+  followTextbookOnAlignmentChange,
+  handoverTextbook,
+  handoversOfBand,
+  invertedFlagsOf,
+  relativeBitsOf,
+  reversedNullSignature,
+  textbookDeviation,
+  type HandoverBands,
+  type NullSignature,
+} from './lib/handoverPolarity.ts';
 import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComponent } from './lib/synthesis.ts';
 import { computePhaseStats } from './lib/phaseStats.ts';
 import { computeResponseStats } from './lib/responseStats.ts';
@@ -5804,6 +5821,152 @@ export default function App() {
     };
   }, [seatShiftMm, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted]);
 
+  /* ================================================================ *
+   * H-4b — THE TEXTBOOK POLARITY RULE ON THE HAND PATHS
+   *
+   * `textbookComplementInverted` has had three readers since H-4 and all three
+   * are places where the ENGINE chooses: the lean form's complement, the DSP
+   * target block and the polarity arms. Where a PERSON chooses it was read
+   * nowhere. Picking Linkwitz-Riley 2nd order in the band form left the invert
+   * checkbox wherever the previous project had left it, and the most
+   * elementary rule in the literature — LR2 asks for one reversal, LR4 does
+   * not — was guaranteed exactly where nobody needs reminding.
+   *
+   * The checkbox FOLLOWS a new alignment choice and stays the designer's: a
+   * state that departs from the textbook is printed beside it and never
+   * corrected. Gravesen ships three-ways whose mid must be reversed under an
+   * alignment that asks for no reversal, and H-1 measured a real pair choosing
+   * reversed under LR4 — the rule is a starting point, not a verdict.
+   * ================================================================ */
+
+  /**
+   * The HANDOVERS of this project, low to high, with the two flanks that make
+   * each one and the app state that carries its upper way's polarity.
+   *
+   * One list and no counting to three: a two-way has one handover and its
+   * upper way is the tweeter, a three-way has two. Solo mode has none — there
+   * is no pair, so there is no relative polarity to state.
+   */
+  const handovers = useMemo(() => {
+    if (soloDriver) return [] as { pairLabel: string; lowerLp: HpLpSpec; upperHp: HpLpSpec }[];
+    if (threeWay) {
+      return [
+        { pairLabel: t('woofer-mid'), lowerLp: vFilters.woofer.lp, upperHp: vFilters.mid.hp },
+        { pairLabel: t('mid-tweeter'), lowerLp: vFilters.mid.lp, upperHp: vFilters.tweeter.hp },
+      ];
+    }
+    return [{ pairLabel: t('crossover'), lowerLp: vFilters.woofer.lp, upperHp: vFilters.tweeter.hp }];
+  }, [soloDriver, threeWay, vFilters, t]);
+
+  /**
+   * The two adjustment checkboxes as INVERTED FLAGS — way i+1 reversed
+   * relative to the LOWEST way, which is the reference `combineN` sums
+   * against and the same vocabulary a shortlist label speaks
+   * (`handoverPolarity.ts`, one algebra, two readers).
+   */
+  const invertedFlags = useMemo(
+    () => (threeWay ? [midInverted, inverted] : [inverted]),
+    [threeWay, midInverted, inverted],
+  );
+  /** The same state as the RELATIVE polarity of each handover. */
+  const handoverRelative = useMemo(
+    () => relativeBitsOf(invertedFlags).slice(0, handovers.length),
+    [invertedFlags, handovers.length],
+  );
+  /** What the textbook asks of each handover, given the flanks that are drawn. */
+  const handoverTextbooks = useMemo(
+    () => handovers.map((h) => handoverTextbook(h.lowerLp, h.upperHp)),
+    [handovers],
+  );
+
+  /**
+   * Set ONE handover's relative polarity and write the checkboxes back.
+   *
+   * THROUGH THE BITS AND NOT THROUGH ONE CHECKBOX, and that is the whole
+   * reason the algebra exists. The checkboxes are absolute (each way against
+   * the woofer); the textbook rule is relative (one handover). Setting
+   * `midInverted` on its own to satisfy the woofer-mid rule would silently
+   * flip the mid-tweeter handover as a side effect — changing a handover the
+   * designer did not touch. Writing the bits back holds every other handover
+   * exactly where it was, at the cost that the tweeter's box may move when the
+   * mid's does. That is the physically right answer, and the note beside the
+   * boxes says it.
+   */
+  const writeHandoverRelative = (rel: readonly boolean[]) => {
+    const flags = invertedFlagsOf(rel);
+    if (threeWay) {
+      setMidInverted(!!flags[0]);
+      setInverted(!!flags[1]);
+    } else {
+      setInverted(!!flags[0]);
+    }
+  };
+
+  /**
+   * A band changed in the filter form: if its ALIGNMENT moved, the invert
+   * checkbox of the handover it belongs to follows the textbook.
+   *
+   * Only on a NEW choice — a diff against the spec that was there — so nothing
+   * in an existing project or a loaded design is touched by opening it. The
+   * frequency, the enable box, the gain and the EQ bands change nothing here:
+   * the rule is about the alignment and about nothing else.
+   */
+  const applyVfChange = (role: 'woofer' | 'mid' | 'tweeter', next: DriverFilterSpec) => {
+    const prev = vFilters[role];
+    setVFilters((p) => ({ ...p, [role]: next }));
+    if (soloDriver) return;
+    /* Which handover each band belongs to: the LOW-PASS of a way hands over
+     * upward, the HIGH-PASS downward. Two-way: the woofer's low-pass and the
+     * tweeter's high-pass are the single handover. */
+    const n = handovers.length;
+    const wayIndex = role === 'woofer' ? 0 : role === 'mid' ? 1 : threeWay ? 2 : 1;
+    const moved = (a: HpLpSpec, b: HpLpSpec) => a.kind !== b.kind || a.order !== b.order;
+    const touched = [
+      ...(moved(prev.hp, next.hp) ? handoversOfBand(wayIndex, 'hp', n) : []),
+      ...(moved(prev.lp, next.lp) ? handoversOfBand(wayIndex, 'lp', n) : []),
+    ];
+    if (touched.length === 0) return;
+    /* THE RULE IS A VALUE, and it is decided in one place for both handovers
+     * at once — a mid whose two flanks moved together settles against itself
+     * instead of the second undoing the first. Read off the specs AS THEY WILL
+     * BE, not as they were. */
+    const after = { ...vFilters, [role]: next };
+    const bands = (threeWay
+      ? [
+          { lowerLp: after.woofer.lp, upperHp: after.mid.hp },
+          { lowerLp: after.mid.lp, upperHp: after.tweeter.hp },
+        ]
+      : [{ lowerLp: after.woofer.lp, upperHp: after.tweeter.hp }]) satisfies HandoverBands[];
+    const follow = followTextbookOnAlignmentChange(handoverRelative, bands, touched);
+    if (!follow.changed) return;
+    writeHandoverRelative(follow.relative);
+    setPolarityFollowed(
+      follow.moved
+        .map(
+          (i) =>
+            `${handovers[i]?.pairLabel ?? String(i)} → ${follow.relative[i] ? t('inverted') : t('normal')}`,
+        )
+        .join(', '),
+    );
+  };
+
+  /** The last alignment choice the polarity followed — shown once, beside the box. */
+  const [polarityFollowed, setPolarityFollowed] = useState<string | null>(null);
+
+  /**
+   * What to print beside one adjustment fieldset's invert box: the handover
+   * whose UPPER way it is, when its state departs from the textbook. Null when
+   * it agrees, and null when there is no textbook answer (a mismatched or
+   * disabled pair states no rule — P4).
+   */
+  const polarityNoteFor = (which: 'mid' | 'tweeter'): string | null => {
+    const i = which === 'mid' ? 0 : threeWay ? 1 : 0;
+    const tb = handoverTextbooks[i];
+    if (!tb || handoverRelative[i] === undefined) return null;
+    return textbookDeviation(tb, handoverRelative[i]);
+  };
+
+
   /**
    * UI-2 — CAN THE DRAWING BE SIMULATED, AND IF NOT, WHY NOT.
    *
@@ -6584,6 +6747,13 @@ export default function App() {
    * the loosest thing the window knows. Saying which rule binds turns that
    * from an invisible default into a visible one.
    */
+  /**
+   * H-4b — WHAT THE k·f_s FALLBACK IS WORTH, derived from the constant itself
+   * (`fsConventionDbRange`) rather than typed beside it. The sentence below
+   * compares it with the trade rule, and a comparison that carried its own
+   * copy of the number would be the first thing to drift.
+   */
+  const fsConventionDb = useMemo(() => fsConventionDbRange(), []);
   const v2WindowLines = useMemo((): { pair: string; text: string; convention: boolean }[] => {
     if (!engineSelection.reporting) return [];
     const ws = engineV2Report?.report?.predesign.windows ?? [];
@@ -7153,6 +7323,56 @@ export default function App() {
       high: mk(sim.mid, result.tweeter),
     };
   }, [threeWay, sim, result]);
+
+  /**
+   * H-4b — THE SIGNATURE OF A MISSING INVERSION, on the network as drawn.
+   *
+   * The app has drawn both curves for a long time — "Combined, tweeter
+   * inverted (null check M-T)" and its woofer-flipped twin — and left the
+   * reading to the eye. This is the same two curves as a NUMBER: the mean of
+   * (sum − reversed sum) over the handover band, against a margin derived from
+   * the phase unit (`handoverPolarity.ts`). Negative means reversing one way
+   * of that handover sums better, which is what a missing inversion looks
+   * like.
+   *
+   * A MESSAGE AND NEVER A FLIP. A drawn network is the designer's, and this
+   * tab has refused to change one silently since UI-2. It is also not a
+   * verdict: below the margin the two polarities are not separated by their
+   * phase, and there is nothing to say.
+   */
+  const nullSignatures = useMemo((): NullSignature[] => {
+    if (!result || soloDriver) return [];
+    const out: NullSignature[] = [];
+    const take = (
+      pairLabel: string,
+      centreHz: number | null,
+      reversedDb: readonly number[] | undefined,
+      textbook: (typeof handoverTextbooks)[number] | undefined,
+    ) => {
+      if (centreHz === null || !reversedDb) return;
+      const sig = reversedNullSignature({
+        pairLabel,
+        freq: result.freq,
+        sumDb: result.combinedSpl,
+        reversedDb,
+        centreHz,
+        ...(textbook ? { textbook } : {}),
+      });
+      if (sig.text) out.push(sig);
+    };
+    if (threeWay && pairScores) {
+      /* The W-M check flips the WOOFER and the M-T check the TWEETER — never
+       * the shared mid, which would null both crossings at once (the reason
+       * `invertedLowSpl` exists at all). */
+      const invLow =
+        sim && 'invertedLowSpl' in sim.combined ? sim.combined.invertedLowSpl : undefined;
+      take(t('woofer-mid'), pairScores.low.integ.overlapCentreHz, invLow, handoverTextbooks[0]);
+      take(t('mid-tweeter'), pairScores.high.integ.overlapCentreHz, result.invertedSpl, handoverTextbooks[1]);
+    } else if (integration) {
+      take(t('crossover'), integration.overlapCentreHz, result.invertedSpl, handoverTextbooks[0]);
+    }
+    return out;
+  }, [result, sim, soloDriver, threeWay, pairScores, integration, handoverTextbooks, t]);
 
   /**
    * Verdict on the MEASURING DISTANCE itself. The residual the correction
@@ -18549,10 +18769,27 @@ export default function App() {
                 <input
                   type="checkbox"
                   checked={inverted}
-                  onChange={(e) => setInverted(e.target.checked)}
+                  onChange={(e) => {
+                    setInverted(e.target.checked);
+                    setPolarityFollowed(null);
+                  }}
                 />
                 {t('Invert polarity')}
               </label>
+              {/* H-4b — the textbook rule on the HAND path: the box follows a
+                  NEW alignment choice and stays yours. A state that departs
+                  from the rule is named here and never corrected — measured
+                  drivers on a real baffle depart from it often enough that
+                  Gravesen ships designs which do. */}
+              {polarityNoteFor('tweeter') && (
+                <span
+                  className="nl-warning v2-polarity-note"
+                  title={t(handoverTextbooks[threeWay ? 1 : 0]?.why ?? '')}
+                >
+                  {t(polarityNoteFor('tweeter')!)}
+                </span>
+              )}
+
               <span className="derived" title={t('The mm offset expressed as time delay')}>
                 {t('= {us} µs delay', { us: delayUs.toFixed(0) })}
               </span>
@@ -18602,10 +18839,26 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={midInverted}
-                    onChange={(e) => setMidInverted(e.target.checked)}
+                    onChange={(e) => {
+                      setMidInverted(e.target.checked);
+                      setPolarityFollowed(null);
+                    }}
                   />
                   {t('Invert polarity')}
                 </label>
+                {/* H-4b — the woofer-mid handover's textbook state. Flipping
+                    THIS box alone also flips the mid-tweeter handover, because
+                    the mid is shared; the rule the form follows writes the
+                    relative bits back instead, so the other handover stays
+                    where it was. */}
+                {polarityNoteFor('mid') && (
+                  <span
+                    className="nl-warning v2-polarity-note"
+                    title={t(handoverTextbooks[0]?.why ?? '')}
+                  >
+                    {t(polarityNoteFor('mid')!)}
+                  </span>
+                )}
               </fieldset>
             )}
             {project && project.vxp.crossovers.length > 0 && (
@@ -19159,7 +19412,10 @@ export default function App() {
                           {l.convention && (
                             <em className="v2-window-conv">
                               {' '}
-                              {t('— a convention, not a measurement: nothing is stated or derived about this driver’s drive limit, so the window falls back to k·f_s. State “Max drive on f_s” on its card, or fill Bl, M_ms and X_max plus the amplifier peak, and the floor follows the driver instead.')}
+                              {t('— a convention, not a measurement: nothing is stated or derived about this driver’s drive limit, so the window falls back to k·f_s, which is worth about {lo}–{hi} dB of attenuation at the resonance — LOOSER than the 18 dB the trade rule asks for. State “Max drive on f_s” or a “Minimum crossover” on the driver card, or fill Bl, M_ms and X_max plus the amplifier peak, and the floor follows the driver instead.', {
+                                lo: fsConventionDb.minDb.toFixed(1),
+                                hi: fsConventionDb.maxDb.toFixed(1),
+                              })}
                             </em>
                           )}
                         </span>
@@ -21033,6 +21289,18 @@ export default function App() {
                   </span>
                 )}
               </button>
+              {/* H-4b — THE FOLLOW ANNOUNCES ITSELF WHERE IT HAPPENED. The
+                  invert checkboxes live in the Setup column and the alignment
+                  selects live here, so a notice beside the boxes is a notice
+                  the designer may never look at — and a polarity that moved
+                  unseen is exactly what F0 forbids. It clears the moment the
+                  designer touches a box themselves: then it is no longer the
+                  last thing that happened. */}
+              {!vfCollapsed && polarityFollowed && (
+                <p className="derived vf-polarity-followed">
+                  {t('Polarity followed the alignment you just chose: {what}. It is yours to change — the invert boxes are under Tweeter/Midrange adjustment.', { what: polarityFollowed })}
+                </p>
+              )}
               {!vfCollapsed && synthMode === 'acoustic' && (
                 <p className="derived vf-mode-hint">
                   {t("Build mode is “Acoustic result”: EQ values here are seeds — a passive build re-tunes each enabled band's freq/gain/Q to flatten the measured driver. Switch to “Filter curve” to build exactly what you draw.")}
@@ -21047,7 +21315,7 @@ export default function App() {
                       title={threeWay ? t('Woofer') : t('Woofer / mid')}
                       accentVar="--viz-woofer"
                       spec={vFilters.woofer}
-                      onChange={(woofer) => setVFilters((p) => ({ ...p, woofer }))}
+                      onChange={(woofer) => applyVfChange('woofer', woofer)}
                     />
                   )}
                   {threeWay && (
@@ -21055,7 +21323,7 @@ export default function App() {
                       title={t('Midrange')}
                       accentVar="--viz-mid"
                       spec={vFilters.mid}
-                      onChange={(mid) => setVFilters((p) => ({ ...p, mid }))}
+                      onChange={(mid) => applyVfChange('mid', mid)}
                     />
                   )}
                   {soloDriver !== 'woofer' && (
@@ -21063,7 +21331,7 @@ export default function App() {
                       title={t('Tweeter')}
                       accentVar="--viz-tweeter"
                       spec={vFilters.tweeter}
-                      onChange={(tweeter) => setVFilters((p) => ({ ...p, tweeter }))}
+                      onChange={(tweeter) => applyVfChange('tweeter', tweeter)}
                     />
                   )}
                 </div>
@@ -23217,6 +23485,20 @@ export default function App() {
                       {t('no overlap within 20 dB — the drivers never meet, nothing to integrate')}
                     </span>
                   ))}
+                {/* H-4b — THE REVERSE-NULL CHECK AS A NUMBER. Two curves the
+                    chart has drawn for a long time, read against a margin
+                    derived from the phase unit: when reversing one way of a
+                    handover sums better by more than that, this is what a
+                    missing LR2 inversion looks like. A message, never a flip
+                    of a network somebody drew (UI-2). */}
+                {nullSignatures.map((sig) => (
+                  <span key={`null-${sig.pairLabel}`} className="strip-item alert" title={t(sig.text!)}>
+                    {t('⚠ {pair}: reversed sums {db} dB better — missing inversion?', {
+                      pair: sig.pairLabel,
+                      db: (-sig.marginDb!).toFixed(1),
+                    })}
+                  </span>
+                ))}
                 {pairScores &&
                   (
                     [

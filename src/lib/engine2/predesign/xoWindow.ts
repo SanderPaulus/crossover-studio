@@ -482,6 +482,32 @@ export function bindingBreakup(input: XoWindowInput): {
   };
 }
 
+/**
+ * H-4b — WHAT THE k·f_s FALLBACK IS WORTH IN DECIBELS, DERIVED.
+ *
+ * `XO_FS_FACTOR_BY_ORDER` reads as a frequency rule ("1.4 × f_s at order 4"),
+ * and in the unit the drive floors reckon in it is an ATTENUATION at the
+ * resonance: `6 · order · log2(k)`, which comes out almost flat across the
+ * orders. U-3e measured that by hand and the casebook recorded it; this
+ * returns it instead, so the sentence beside the Optimize button and the
+ * register row cannot drift from the constant they describe.
+ *
+ * The comparison it exists FOR: the industry rule of thumb is 18 dB down at
+ * resonance and casus 1's own stated figure is 20 (18 + 2 for f_s drift). So a
+ * project that states nothing gets the LOOSER of two published conventions,
+ * and U-3e left that standing deliberately — k·f_s binds only where the
+ * derived excursion ceiling is lower, so raising it would bite exactly where
+ * the measurement says the driver is safe.
+ */
+export function fsConventionDbRange(): { minDb: number; maxDb: number; perOrder: Record<number, number> } {
+  const perOrder: Record<number, number> = {};
+  for (const [order, k] of Object.entries(XO_FS_FACTOR_BY_ORDER)) {
+    perOrder[Number(order)] = DB_PER_OCTAVE_PER_ORDER * Number(order) * Math.log2(k); // P6-OK: unit conversion
+  }
+  const all = Object.values(perOrder);
+  return { minDb: Math.min(...all), maxDb: Math.max(...all), perOrder };
+}
+
 export function crossoverWindow(input: XoWindowInput): XoWindowResult {
   const limits: XoLimit[] = [];
 

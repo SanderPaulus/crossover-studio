@@ -650,7 +650,11 @@ const NICE: readonly V2InputRow[] = [
     emptyMeans:
       'nothing the manufacturer said about how low this driver may be crossed reaches the window; ' +
       'its floor rests on whichever of the derived excursion ceiling, a stated dB figure and the ' +
-      'k·f_s CONVENTION demands most — and on a dome that is usually the convention.',
+      'k·f_s CONVENTION demands most — and on a dome that is usually the convention. That ' +
+      'convention is worth about 9.5–12.2 dB of attenuation at the resonance, LOOSER than the ' +
+      '18 dB the trade rule asks for, so where nothing is stated the window takes the more ' +
+      'permissive of two published rules (H-4b; the figures are derived from ' +
+      'XO_FS_FACTOR_BY_ORDER by fsConventionDbRange and pinned against it).',
     source: 'datasheet',
     placement: 'always',
     placementWhy:

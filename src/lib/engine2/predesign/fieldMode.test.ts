@@ -197,7 +197,7 @@ describe('5 — H-4: the polarity arms the mode decides', () => {
     expect(expl.polarityArms?.marginFor).toBe(apart);
   });
 
-  it('a close reading grows the exploration; a distant one leaves it exactly as it was', () => {
+  it('H-4b — a DISTANT reading still runs the single-driver reversal; a close one adds the rest', () => {
     const near = buildCandidateField({
       ...base(),
       ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, close),
@@ -210,8 +210,20 @@ describe('5 — H-4: the polarity arms the mode decides', () => {
       ...base(),
       ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }),
     });
-    expect(far.field.candidates.map((c) => c.label)).toEqual(bare.field.candidates.map((c) => c.label));
-    expect(near.field.candidates.length).toBeGreaterThan(bare.field.candidates.length);
+    /* NO READING AT ALL is still the pre-H-4 field, byte for byte: a caller
+     * that cannot read the responses cannot honestly say what an arm is worth,
+     * and the fixtures are those callers (P2). */
+    expect(bare.field.candidates.every((c) => c.polarity === undefined)).toBe(true);
+    /* WHAT H-4b CHANGED. Under H-4 this line read `far === bare` — the margin
+     * gated everything and the reversed mid was never simulated. Sander stated
+     * on 20-09-2026 that a three-way session must always simulate it, so two of
+     * the four configurations are now unconditional and the exploration
+     * DOUBLES where it used to stand still. */
+    expect(far.field.candidates.length).toBe(bare.field.candidates.length * 2);
+    const mirrors = far.field.candidates.filter((c) => c.polarity?.arm === 'mirror');
+    expect(mirrors).toHaveLength(bare.field.candidates.length);
+    /* And every one of them reverses exactly ONE driver — the mid. */
+    for (const m of mirrors) expect(m.polarity!.invertedWays).toEqual(['mid']);
     /* Two handovers, both close: every candidate stands for four arms. */
     expect(near.field.candidates.length).toBe(bare.field.candidates.length * 4);
   });

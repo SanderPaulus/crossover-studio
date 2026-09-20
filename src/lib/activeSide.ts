@@ -517,6 +517,40 @@ export function fitModelBranch(
 }
 
 /* ==================================================================== *
+ * H-4b — WHAT ONE UNIT OF PHASE ERROR IS WORTH ON A NULL MARGIN
+ * ==================================================================== */
+
+/**
+ * THE NULL MARGIN two equal branches `deg` degrees PAST the 90-degree tie
+ * produce, in dB. Negative past the tie, positive before it.
+ *
+ * Two equal branches theta apart sum to `2|A|cos(theta/2)` and, with one of
+ * them reversed, to `2|A|sin(theta/2)`; the margin between those two levels is
+ * therefore `20*log10(cot(theta/2))` — the same geometry `nullMarginOf` above
+ * integrates over a band, in closed form for one point. At theta = 90 degrees
+ * it is exactly zero: that is the TIE, the angle at which reversing the
+ * polarity neither helps nor hurts.
+ *
+ * DERIVED, NOT CHOSEN, and the LINEARISATION POINT is the whole of it. The
+ * engine already owns one such conversion — `polarityDecisiveDb` in
+ * `engine2/dspTarget.ts` — and it answers a DIFFERENT question: how much null
+ * margin a project's own measurement uncertainty can move a pair that is
+ * nearly IN PHASE, where the margin curve is flat (15 degrees costs 0.07 dB
+ * there). Beside the 90-degree tie the same curve is steep, and one unit of
+ * phase error is worth 2.30 dB. Feeding this function's input into that one —
+ * or the reverse — reads the right constant off the wrong point of the same
+ * curve, which is why they are two functions and this comment says so.
+ *
+ * What it is FOR: a reading that says "the reversed sum wins here by more than
+ * the phase argument's own unit of resolution". It judges nothing on its own
+ * and nothing is refused on it.
+ */
+export function nullMarginAtPhaseErrorDeg(deg: number): number {
+  const half = ((90 + deg) / 2) * (Math.PI / 180); // P6-OK: deg->rad, and 90 is the tie
+  return 20 * Math.log10(Math.cos(half) / Math.sin(half)); // P6-OK: amplitude->dB
+}
+
+/* ==================================================================== *
  * H-2b — THE LEAN FORM: two measured ways, the active side unmeasured
  * ==================================================================== */
 

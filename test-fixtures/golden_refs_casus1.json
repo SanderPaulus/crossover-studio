@@ -5075,7 +5075,6 @@
     "Bl_Tm": 2.6,
     "M_ms_g": 0.15,
     "Re_datasheet_ohm": 5.2,
-    "aanbevolen_ondergrens_hz": 2200,
     "aanbevolen_kruisband": {
      "_": "U-4 (10-09-2026) — DE AANBEVOLEN KRUISBAND ALS PAAR. Eén regel op het blad met TWEE einden, en de app leest ze allebei: de ONDERGRENS bindt het venster waarin deze driver de BOVENSTE van een paar is (U-3g), de BOVENGRENS het venster waarin hij de ONDERSTE is (U-4). Beide verbatim. Alleen de ondergrens wordt ooit OPGETILD, en alleen voor een flank die ondieper is dan die waarbij het blad haar stelt; op de bovengrens staat met opzet GEEN orde, want een aanbevolen bovenkant gaat over conusbreakup en bundeling, geen blad in dit project drukt er een helling bij, en er een verzinnen is precies de A3h-val (het juiste getal, van het juiste blad, over het verkeerde ding).",
      "gelezen_door": "Claude (U-4, 10-09-2026)",
