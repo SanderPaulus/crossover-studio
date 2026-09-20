@@ -1943,7 +1943,19 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
-  **GEMETEN IN CI OP ubuntu/Node 22 (20-09-2026, H-4): 202 bestanden (201 geslaagd, 1 overgeslagen),
+  **GEMETEN IN CI OP ubuntu/Node 22 (20-09-2026, H-4b): 203 bestanden (202 geslaagd, 1 overgeslagen),
+  2697 geslaagd, 19 overgeslagen, 3565 s (59 min 25) — GROEN.** Negentien is opnieuw EXACT het
+  H-1-getal, en dat is de claim: H-4b voegt geen enkele getagde test toe, dus de inventaris staat
+  stil. Wat de run daarnaast bewijst is dat de veertig H-4b-claims op een ANDERE runtime
+  reproduceren, en dat is hier NIET vanzelfsprekend: `handoverPolarity.test.ts` legt een null-marge
+  op NEGEN decimalen naast een handberekening (`20·log10(cot(67,5°))`) en de afgeleide marge op
+  vier, en dat is precies de vorm waarop dit project bij V46, V49 en B-1 elk één keer is omgevallen.
+  Zij houdt om dezelfde reden als H-4's `toBe`: **beide kanten van die vergelijking worden in DEZELFDE
+  run uit dezelfde invoer berekend** — geen verse berekening naast een getal dat op een andere machine
+  is opgeschreven. De rijen die wél tegen een OPGENOMEN getal liggen (−17,8 / +12,1 / −1,86 dB) staan
+  met opzet op één à twee decimalen, in de orde van de grootheid zelf. Wie hier ooit een marge op
+  negen decimalen naast een opgeslagen waarde legt, leest die klasse in plaats van de decimalen.
+  (De H-4-stand ervoor: **202 bestanden (201 geslaagd, 1 overgeslagen),
   2657 geslaagd, 19 overgeslagen, 3580 s (59 min 40) — GROEN.** Negentien is EXACT het H-1-getal, en
   dat is de claim: H-4 voegt geen enkele getagde test toe, dus de inventaris staat stil. Wat de run
   daarnaast bewijst is dat de 29 H-4-claims op een ANDERE runtime reproduceren, en dat is hier NIET
@@ -1955,7 +1967,7 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   bij V46/V49/B-1 brak was een verse berekening naast een getal dat op een ándere machine was
   opgeschreven; een gestelde polariteit die gelijk is aan wat de enumeratie koos loopt door precies
   dezelfde code, dus er is niets om tussen runtimes uiteen te laten lopen. Wie hier ooit een
-  OPGENOMEN fx naast een verse legt, leest die klasse in plaats van de decimalen.
+  OPGENOMEN fx naast een verse legt, leest die klasse in plaats van de decimalen.)
   **GEMETEN IN CI OP ubuntu/Node 22 (17-09-2026, H-2): 196 bestanden (195 geslaagd, 1 overgeslagen),
   2535 geslaagd, 19 overgeslagen, 3382 s (56 min) — GROEN.** Negentien is EXACT het H-1-getal, en
   dat is de claim: H-2 voegt geen enkele getagde test toe, dus de inventaris staat stil. Wat de run
