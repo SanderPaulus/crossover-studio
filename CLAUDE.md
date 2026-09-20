@@ -605,7 +605,19 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 16-09-2026 (M-3): 189 bestanden, 2445 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 20-09-2026 (H-4): 202 bestanden, 2676 tests,
+  1825 s (30 min 25), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag en
+  ná de acht H-4-ketenruns.** +2 bestanden en +35 tests — zie de `test:fast`-regel; het corpus is
+  NIET aangeraakt. **DEZE RUN IS GEDRAAID OMDAT H-4 BEIDE ONTWERPSTAPPEN AANRAAKT** — de
+  polariteits-enumeratie van `designThreeWay` en die van `optimizeVirtualFilters` lezen sinds H-4
+  een array in plaats van een literal, en het is de ONTWERPSTAP die de vier live ketenruns
+  end-to-end toetsen waar `f4cRegression` en `workerRouteRegression` alleen de tuner dekken. Wat hij
+  bewijst is dat een afwezige gestelde polariteit de IDENTITEIT is: alle VIER de live ketenruns
+  reproduceren hun bevroren netlist byte voor byte (casus 1's goedkoopste geleverde en zijn
+  goedkoopste verwerping, casus 1b, casus 1h), en beide byte-baselines plus `toggleRegression` staan.
+  **De tweede reden is de extractie van `PHASE_ERROR_UNIT_DEG`** uit vijf objectieven in drie
+  engines: een literal naar een import, byte-neutraal per constructie en hier per meting.
+  (De stand ervoor: **GEMETEN 16-09-2026 (M-3): 189 bestanden, 2445 tests,
   1785 s (29 min 45), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
   (`engine2/midM3.test.ts`, 43 claims) en +44 tests — zie de `test:fast`-regel; het corpus is NIET
   geregenereerd, dus geen enkele `it.each` over het levende corpus beweegt. **DEZE RUN IS DE
@@ -618,7 +630,7 @@
   `toggleRegression` staan — de wissel raakt geen enkele v1-route. De wandkloktijd IS de
   byte-reproductie (1781 s voor dat ene bestand); `frozenNetlistGates` (482 s) en de rest draaien
   ernaast in de schaduw. **Wat de run NIET bewijst en niet kan bewijzen is dat de route op de HUIDIGE
-  meetbasis diezelfde netlists levert; dat is de eerste vraag van de volgende regeneratie.**
+  meetbasis diezelfde netlists levert; dat is de eerste vraag van de volgende regeneratie.**)
   (De stand ervoor: **GEMETEN 13-09-2026 (M-2b): 188 bestanden, 2401 tests,
   1771 s (29 min 31), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
   (`m2bMeetset.test.ts`, 22 claims) en +22 tests. **DEZE RUN IS DE ACCEPTATIE VAN EEN MEETSETWISSEL ÉN
@@ -6993,3 +7005,178 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   log met twee samenvattingen). Wacht op de PID van `npm run test:fast` en niet op een naam.** Geen volle run: geen enkele uitkomst van
   een niet-gooiende run beweegt, en de twee byte-baselines (`f4cRegression`,
   `workerRouteRegression`) plus `toggleRegression` draaien in de snelle laag.
+
+### H-4-guards (polariteit als uitontworpen arm, niet als vooraf-keuze; alleen de v2-route, corpus onaangeroerd)
+
+- **STAP 1 — WAAR DE POLARITEIT BESLIST WORDT, OP WELKE GROND, EN HOE VAAK DAT VAN TEXTBOOK
+  AFWIJKT. Gemeten vóór er één regel veranderde** (`scripts/measure-h4-polarity.ts`, seconden, geen
+  ketenrun). **De plaats:** `threeWayDesign.ts` stage 1 enumereert alignment × mid-polariteit ×
+  tweeter-polariteit en houdt de beste `fx`; `vfOptimizer.ts` `runStructIters` daalt élke structuur
+  TWEE keer af — op `adjust.inverted` en op zijn spiegel — en houdt de beste `fx`. **De grond is die
+  ene fx:** amplitudevlakheid van de som, fase per aangrenzend paar, de lekterm en de DI-afstand, op
+  IDEALE filters — geen ladder, geen driverimpedantie, geen synthese, geen componenttune. Wat
+  verliest wordt nooit gebouwd, nooit door een poort geoordeeld en staat in geen enkele shortlist.
+- **DE VERWACHTING WAS "nooit", EN DE DATA WEERLEGT HAAR: 5 van de 26 kandidaten wijken af.**
+
+  | casus (meetset) | kandidaten | wijkt af | de armen op de eigen maat van de stap |
+  | --- | --- | --- | --- |
+  | casus 1 (`'m3'`) | 11 | **0** | textbook wint 1,19× tot 3,05× |
+  | casus 1 (`'koan677'`) | 11 | **1** (156,7 Hz kiest `mid+tweeter`) | 33,12 tegen 35,02 — 1,06× |
+  | casus 1b | 3 | **3** (alle drie kiezen `tweeter ⌀`) | 1,57× / 1,73× / 1,85× |
+  | casus 1h | 1 | **1** (`tweeter ⌀`) | 1,82× |
+
+  **DE MEETSET BESLIST MEE, en dat is zelf de bevinding over hoe nauw die tie-break staat:** op de
+  huidige meetbasis (`'m3'`) wijkt casus 1 nergens af en op de set waarop het levende corpus is
+  opgewekt (`'koan677'`) wijkt hij op de laagste W-M-positie wél — M-3's hermergde mid kantelt hem.
+  Een keuze die met één hermerge van teken wisselt is geen keuze die op zichzelf mag staan.
+- **EN DE TWEEWEGSTAP KIEST OP EEN MAAT DIE NIEMAND STROOMAFWAARTS LEEST, wat de klassieke fout van
+  dit boek is in een nieuwe hoek.** `runStructIters` houdt de beste `fx` van de KALE afdaling —
+  vóór de EQ-adoptie, de gulzige EQ, de snoei en de polish — en de cluster één laag hoger
+  rangschikt op `vfPriorityScore`. Gemeten: op casus 1b/1735,4 Hz kiest de tie-break `tweeter ⌀`
+  op het objectief (68,93 tegen 69,83) terwijl de clustermaat de andere arm prefereert (10,91 tegen
+  17,13); op casus 1h prefereren BEIDE maten de textbook-arm (8,89/59,77 tegen 16,14/62,19) en komt
+  er tóch `tweeter ⌀` uit. Dat is woordelijk de waarschuwing die `threeWayDesign.ts` bovenaan zijn
+  eigen bestand draagt — *"⚠ een keuze mag niet gemaakt worden op een grootheid die een latere stap
+  nog verandert"* — toegepast op de KNIE en nooit op de POLARITEIT.
+- **`src/lib/engine2/predesign/polarityArms.ts` (`polarity-arms/1.0`) — DE ARM ALS KANDIDAAT.** Vier
+  regels, elk een besluit. (1) **Polariteit is PER OVERNAME en niet per weg** — wat een som hoort is
+  de RELATIEVE polariteit over een overname, en alles tegelijk omkeren verandert niets; de armen
+  worden dus over de overnames geënumereerd en aan het eind naar omgepoolde WEGEN vertaald met de
+  laagste weg als referentie (N-weg-agnostisch: nergens wordt tot drie geteld). (2) **Alleen
+  PASSIEVE overnames, en per constructie** — op een hybride laat de app de actieve overname vóór
+  `buildCandidateField` vallen (H-2), dus de expansie ziet haar nooit en H-1's besluit dat die
+  polariteit klasse A is staat zonder dat iemand een regel hoeft te onthouden;
+  `h4PolarityArms.test.ts` assert dat in plaats van het te vertrouwen. (3) **De verkenning zaait
+  beide armen alleen waar het fase-argument dicht staat, en zegt dat.** (4) **Een GESTELDE positie
+  krijgt beide armen onvoorwaardelijk** — U-5's regel, één as verder: een positie waar de ontwerper
+  om vroeg is niet iets wat een budget of een marge namens hem beantwoordt.
+- **DE MARGE IS AFGELEID EN NIET GEKOZEN: `PHASE_ERROR_UNIT_DEG` (15°), ÉÉN EENHEID FASEAFWIJKING.**
+  Dat is het getal waardoor VIJF zoekobjectieven hun gemiddelde paar-faseafwijking delen vóór het
+  kwadrateren (`threeWayDesign`, twee in `vfOptimizer`, twee in `netOptimizer`), en het stond als
+  het literal `15` in alle vijf tot H-4 een zesde lezer nodig had. Het is bij H-4 geëxtraheerd naar
+  `bandMetrics.ts` — de module die precies daarvoor bestaat — in plaats van een zesde kopie te
+  schrijven (A3g). **De extractie is BYTE-NEUTRAAL en dat is gemeten en niet beweerd: beide
+  byte-baselines (`f4cRegression`, `workerRouteRegression`) reproduceren en `toggleRegression`
+  staat.** Wat de marge is: twee armen die dichter bij elkaar liggen dan één zo'n eenheid zijn, in
+  de woorden van het objectief dat hen straks beoordeelt, door hun fase niet gescheiden. Het is een
+  RUN-GROOTTEPOLICY van dezelfde soort als `EXPLORATION_CHAIN_BUDGET` en geen eis: er wordt niets
+  op geweigerd en niets door geprefereerd, en het volle veld negeert hem.
+- **DE MARGE WORDT PER KRUISING GELEZEN EN NIET ÉÉN KEER PER AS, en dat is gemeten vóór het
+  opgeschreven is:** op casus 1's woofer→mid-as loopt de marge van 2,5° bij 199 Hz tot 22,5° bij
+  321 Hz — zij kruist één eenheid faseafwijking TWEE keer binnen één venster. Een lezing op het
+  venstermidden (de conventie die de ORDE-afleiding voor haar eigen eisen stelt) zou antwoorden voor
+  posities een halve octaaf verderop, en dit is de ene plek waar die resolutie beslist of een
+  ontwerp überhaupt gebouwd wordt. **Gemeten 20-09-2026: de verkenning zou de gespiegelde arm op
+  6 van de 16 verschillende kruisingen van dit casusboek zaaien** (zes W-M-posities van casus 1;
+  geen enkele mid→tweeter-kruising, waar de armen 22–32° uit elkaar liggen).
+- **WAT ER VAN HET VELD GROEIT, gemeten:** casus 1 van 11 naar 44 kandidaten (twee overnames, dus
+  vier armen per positie), casus 1b van 3 naar 6, casus 1h van 1 naar 2. Dat is het VOLLE veld; de
+  verkenning groeit alleen waar de marge zaait.
+- **HOE DE ARM DE ONTWERPSTAP BEREIKT: als GESTELDE keuze, precies zoals de alignment dat doet.**
+  `Design3Input.statedPolarity` bindt stage 1 aan één van de vier combinaties;
+  `VfOptimizeOptions.statedInverted` laat `runStructIters` één afdaling per structuur doen.
+  `Chain3Settings.statedPolarity` en `ChainSettings.statedInverted` dragen hem, gespreid, en de
+  vertaling van arm naar stap-vocabulaire gebeurt POSITIONEEL (`statedPolarityForThreeWay`,
+  `statedInvertedForTwoWay`) en nooit op wegnaam — een hybride, een hernoeming of een rolmapping kan
+  een namenverzameling laten verschillen. **ABSENT IS OVERAL DE IDENTITEIT**, en daar hangt élk
+  opgenomen corpus aan: zonder arm draagt geen kandidaat een polariteit, schrijft
+  `candidateFieldKey` geen sleutel, en enumereren beide ontwerpstappen zoals altijd.
+- **GEEN NIEUWE CHOICE-SLEUTEL, en dat is een besluit met een precedent.** De polariteit reist zoals
+  `structureLow`/`structureHigh`/`structurePreference` reizen: PER KANDIDAAT, in de ketensettings,
+  door de aanroeper uit het veld gezet. `candidateFieldKey` hasht kandidaten, dus de vingerafdruk
+  beweegt met de arm mee (F4d's regel) zonder dat `CHOICE_KEYS` of `CHAIN_CHOICE_KEYS` groeit —
+  `choiceKeyGuard` staat ongewijzigd op 61 / 40-5-16 en de ketenlijst op zes.
+- **HET OORDEEL IS ONGEWIJZIGD.** Beide armen door dezelfde poorten, dezelfde budgetten, dezelfde
+  eisen en dezelfde shortlist; de diversiteitssleutel scheidt ze al sinds A5e.1 ("een omgepoolde
+  mid is geen variatie op een niet-omgepoolde"), dus twee armen op één positie kunnen nooit als
+  klonen wegvallen. Het LABEL draagt de arm (`· mid ⌀`) en de tabel beslist.
+- **`scripts/h4-bench.ts` + `scripts/measure-h4-polarity.ts` — de meetbank en haar twee lezers.**
+  Dezelfde meetset, poorten, budgetten, seed, raster, vensterinvoer en spoelfamilies als de
+  generator van elke casus, met ÉÉN toevoeging: het veld wordt met `polarityArms` gebouwd. `H4_RUN=1`
+  draait ACHT ketenruns (de goedkoopste geleverde kandidaat per casus in élke arm, `H4_JOBS`
+  tegelijk); `H4_ONLY=<key>` draait er één. Schrijft `test-fixtures/casus1_h4_polariteit.json`.
+  **De meetset is de STANDAARD (`'m3'`), met de M-4-reden woordelijk: H-4 wekt niets opnieuw op maar
+  draait NIEUWE kandidaten, en een nieuwe kandidaat hoort op de huidige meetbasis te lopen.**
+- **`designStepOptions` is bij H-4 uit `runDesignChain` gelicht** — woordelijk, de H-3-zet met
+  `assembledTuneOptions` en om dezelfde reden: een script dat zijn eigen kopie van die opties
+  samenstelt meet het verschil tussen twee optiesets mee (de V38-bank-les). `runDesignChain` leest
+  hem zelf terug, dus er is één assemblage en twee lezers.
+
+- **STAP 3 — DE ARMEN GEBOUWD, EN DE VERWACHTING "de gespiegelde arm verliest overal" IS WEERLEGD.**
+  Acht ketenruns, per casus de goedkoopste GELEVERDE kandidaat van de herkomst en waar er een is ook
+  de goedkoopste GEWEIGERDE, in élke arm (`test-fixtures/casus1_h4_polariteit.json`, gemeten
+  20-09-2026 op de standaardmeetset `'m3'`):
+
+  | casus · onderwerp | arm | uitkomst | rms | M-K | min \|Z\| | onderdelen | s |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 1 · 156,7 (corpus: geweigerd) | textbook | **geleverd** | 0,860 | 180,0 / 3,4 | 2,627 | 77 | 2853 |
+  | | `mid ⌀` | geweigerd M-C mid −9,6 | | | 0,540 | | 817 |
+  | | `tweeter ⌀` | geweigerd M-D 10,04 dB | | | 2,597 | | 737 |
+  | | `mid ⌀ + tweeter ⌀` | geweigerd M-D 5,43 dB | | | 2,706 | | 930 |
+  | 1 · 518,8 (corpus: geleverd) | textbook | geweigerd \|Z\| 2,46 | | | 0,896 | | 1868 |
+  | | `mid ⌀` | geweigerd M-D 1,81 dB | | | 2,586 | | 491 |
+  | | `tweeter ⌀` | geweigerd \|Z\| + M-C | | | 0,944 | | 522 |
+  | | `mid ⌀ + tweeter ⌀` | geweigerd \|Z\| 2,49 | | | 1,177 | | 705 |
+  | 1b · 1947,9 (corpus: geleverd) | textbook | geweigerd M-C tweeter −15,6 | | | 2,417 | | 143 |
+  | | `tweeter ⌀` | **geleverd** | 0,588 | 2,6 | 2,602 | 35 | 315 |
+  | 1b · 2186,5 (corpus: geweigerd) | textbook | **geleverd** | 0,626 | 2,7 | 2,882 | 39 | 466 |
+  | | `tweeter ⌀` | geweigerd M-C −19,9 op de eigen kruispunten | | | 2,573 | | 130 |
+  | 1h · 2251,4 (actief 362,3) | textbook | **geleverd** | **3,148** | 4,2 | 4,223 | 36 | 715 |
+  | | `tweeter ⌀` | **geleverd** | 3,567 | **3,6** | 3,907 | 41 | 677 |
+
+- **DRIE DINGEN STAAN IN DIE TABEL DIE GEEN TIE-BREAK KAN WETEN.** (i) **Op casus 1b/1947,9 is de
+  GESPIEGELDE arm de ENIGE die levert** — de textbook-arm valt op M-C (tweeter −15,6 tegen −20). (ii)
+  **Op casus 1b/2186,5 wijst het precies andersom:** daar levert de TEXTBOOK-arm en valt de
+  gespiegelde, op M-C op zijn eigen kruispunten (−19,9 tegen −20, de A5e.3c-weigering). Twee
+  kandidaten van dezelfde casus, 240 Hz uit elkaar, die tegengesteld uitpakken — en de vrije
+  ontwerpstap koos op beide `tweeter ⌀`, dus op de tweede koos hij de arm die niet gebouwd kan
+  worden. (iii) **Op casus 1h leveren BEIDE armen en delen zij de winst:** textbook is vlakker (rms
+  3,148 tegen 3,567) en de gespiegelde arm tracked beter in fase (M-K 3,6° tegen 4,2°), met 41
+  onderdelen tegen 36. Dat is een afweging, en een afweging hoort in de tabel en niet in een
+  tie-break.
+- **OP CASUS 1 LEVERT GEEN ENKELE GESPIEGELDE ARM, en de WEIGERINGSGROND is de bevinding:** alle zes
+  vallen op M-D (de opslingering van de reflexpiek: 1,81 tot 10,04 dB tegen een budget van 1,4) of
+  op de versterkervloer. Een omgepoolde mid of tweeter verplaatst de fase van de som, de tune
+  compenseert met reactantie in het wooferpad, en dát is precies wat M-D begrenst. De drieweg
+  verdedigt zijn textbook-polariteit dus niet met vlakheid maar met een LF-budget — een
+  mechanisme dat de ontwerpstap, die op ideale filters rekent, niet kan zien.
+- **WAT DEZE TABEL NIET IS: een uitspraak over het levende corpus.** Twee van de vier casus-1-rijen
+  en één casus-1b-rij wijken af van wat de herkomst voor diezelfde kandidaat noteert (518,8 levert
+  daar en weigert hier op de vloer; 2186,5 weigert daar en levert hier). Dat is geen regressie maar
+  DRIFT die dit boek verwacht: die corpora zijn op `'koan677'` respectievelijk vóór E-4/E-5/E-5c/M-3
+  opgewekt en sindsdien niet geregenereerd, en de live byte-reproducties pinnen alleen de GELEVERDE
+  netlists. De controlevergelijking is arm tegen arm BINNEN één run, waar precies één factor
+  verschilt; de vergelijking met het corpus is dat niet en wordt hier niet gemaakt.
+- **DE GUARDS.** `src/lib/engine2/predesign/polarityArms.test.ts` (17 claims): de textbook-regel op
+  handberekening; de accumulatie van relatieve bits naar omgepoolde wegen; vier armen zijn vier
+  VERSCHILLENDE ontwerpen, textbook eerst; het label; de pre-design lezing die op een ideaal paar
+  ~0° voor de textbook-arm en ~180° voor zijn spiegel leest — bij ORDE 2 én 4, want welke arm
+  textbook is wisselt ertussen, en dat is de tweede, onafhankelijke route naar dezelfde regel; de
+  marge als één eenheid faseafwijking mét de bronscan dat er geen zesde kopie van dat getal meer
+  bestaat; P4 op een ontbrekende meting; de pair-relatieve aanpassing mét de tegenproef dat zij
+  aantoonbaar iets doet; de identiteit van een veld dat niets zaait, in `candidateFieldKey`; de
+  groei van een veld dat wel zaait; en `statedAlways` voor U-5.
+  `src/lib/engine2/h4PolarityArms.test.ts` (12 claims): P2 en V23 op BEIDE ontwerpstappen door de
+  echte fixtures; de twee armen in verschillende topologieklassen; **de actieve overname kan per
+  constructie geen arm krijgen** (casus 1h's veld noemt haar nergens, en de laagste PASSIEVE weg is
+  de referentie van de accumulatie en staat dus nooit in de verzameling); en de bronscans op beide
+  ketens, beide ontwerpstappen, `App.tsx` en de vier fixtures/generatoren. **Nagemeten dat zij kunnen
+  falen:** de binding uit `designThreeWay` halen geeft twee rode claims, de app-regel weghalen één.
+  `fieldMode.test.ts` +6: geen lezing = geen armen in beide modi mét de byte-identieke
+  `candidateFieldKey`, het verschil tussen de twee modi, een dichte lezing die de verkenning laat
+  groeien tegen een verre die hem exact laat, `statedAlways`, en de veldregel die de armen in een
+  EIGEN zin telt — "44 kandidaten (22 afgeleid)" is de U-5-fout één clausule verderop.
+- **`npm run test:fast` ná H-4 gemeten op 539 s — 202 bestanden (201 geslaagd, 1 overgeslagen),
+  2676 tests (2672 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid ná de acht
+  ketenruns en met niets anders ernaast.** +2 BESTANDEN (`predesign/polarityArms.test.ts` 17 claims,
+  `h4PolarityArms.test.ts` 12) en +35 tests, en die telling sluit exact: die 29 plus ZES in
+  `fieldMode.test.ts` (10 → 16). Het corpus is NIET aangeraakt, dus geen enkele `it.each` over een
+  levend corpus beweegt. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan, en 539 tegen
+  de 526 s van de Setup-guard is dezelfde laag op dezelfde machine met twee bestanden erbij.
+- **DE VOLLE RUN IS BIJ H-4 WÉL GEDRAAID, en dat is de afweging omgekeerd van H-3b.** H-4 raakt de
+  polariteits-ENUMERATIE van beide ontwerpstappen (een literal-array wordt een array die van een
+  gestelde sleutel afhangt) en de objectieffunctie van drie engines (`PHASE_ERROR_UNIT_DEG`). Wat de
+  byte-baselines dekken is de TUNER; wat de ontwerpstap end-to-end toetst zijn de vier live
+  ketenruns. **Gemeten 20-09-2026: 202 bestanden, 2676 tests, 1825 s, niets overgeslagen, in één keer
+  groen — alle vier de live ketenruns reproduceren hun bevroren netlist byte voor byte.** Dat is de
+  acceptatie van "absent is de identiteit", op de enige plek waar zij werkelijk te toetsen is.

@@ -28,6 +28,7 @@
  */
 
 import { crossoverWindow, type XoWindowInput } from './xoWindow.ts';
+import { expandPolarityArms, type PolarityArmPolicy } from './polarityArms.ts';
 import {
   naturalSlopeDbPerOctave,
   pairOrders,
@@ -96,6 +97,21 @@ export interface CandidateFieldRequest {
   statedPerAxisHz?: readonly (readonly number[])[];
   /** U-5 — when the designer stated them; the attribution every stated candidate carries. */
   statedOn?: string;
+  /**
+   * H-4 — THE POLARITY ARMS, when the caller states a policy.
+   *
+   * Absent and the field is exactly the one this generator has built since
+   * F4d: no candidate carries a polarity, so both design steps enumerate it
+   * themselves, every label is what it was, and `candidateFieldKey` — and with
+   * it every recorded run fingerprint — reproduces byte for byte (P2, the
+   * same rule `statedPerAxisHz` above follows).
+   *
+   * With a policy the mirrored arm of each admitted handover becomes a
+   * candidate of its own: same position, same cage, same window, its own
+   * topology class, and a design step bound to its polarity instead of
+   * tie-breaking it internally (`polarityArms.ts`).
+   */
+  polarityArms?: PolarityArmPolicy;
 }
 
 export interface CandidateFieldResult {
@@ -236,11 +252,18 @@ export function buildCandidateField(req: CandidateFieldRequest): CandidateFieldR
         }
       : field;
 
+  /* H-4 — the polarity arms, LAST: the expansion is over candidates, and both
+   * the derived and the stated halves are candidates. Without a policy this is
+   * the identity and returns the very object it was given. */
+  const armed = req.polarityArms
+    ? expandPolarityArms(merged, req.polarityArms).field
+    : merged;
+
   return {
-    field: merged,
+    field: armed,
     orders,
     referenceCrossingHz,
-    notes: [...notes, ...merged.notes, ...(stated && stated.candidates.length === 0 ? stated.refusals : [])],
+    notes: [...notes, ...armed.notes, ...(stated && stated.candidates.length === 0 ? stated.refusals : [])],
   };
 }
 
@@ -265,6 +288,11 @@ export function candidateFieldKey(field: CandidateField): unknown {
         alignment: `${x.alignment.kind}${x.alignment.order}`,
         window: x.windowHz,
       })),
+      /* H-4 — PRESENT ONLY ON AN EXPANDED FIELD. Two arms at one position are
+       * two designs and must never stamp alike; a field with no arms writes no
+       * key at all and therefore reproduces every fingerprint recorded before
+       * H-4 (the E-2 rule, one field over). */
+      ...(c.polarity ? { inverted: [...c.polarity.invertedWays] } : {}),
     })),
     refusals: field.refusals.length,
   };

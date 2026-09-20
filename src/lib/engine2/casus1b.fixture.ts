@@ -52,6 +52,7 @@ import { buildCandidateField, type CandidateFieldResult } from './predesign/cand
 import { windowFloorsFor } from './optimizer/scanRequest.ts';
 import { fieldModeSettings } from './predesign/fieldMode.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
+import { statedInvertedForTwoWay, type PolarityArmPolicy } from './predesign/polarityArms.ts';
 import { declareCandidateChainChoices, declareCandidateChoices } from './optimizer/candidateDeclaration.ts';
 import { factsForWorker, type MeasurementFactsPayload } from './optimizer/measurementFacts.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
@@ -372,13 +373,27 @@ export const CASUS1B_FIELD_ALIGNMENTS = AUTO_STRUCTS.filter((a) => a.kind === 'L
  * budget and the two policies travel in `field.parameters` and hence in the run
  * fingerprint.
  */
-export function casus1bField(report: EngineV2Report): CandidateFieldResult {
+export function casus1bField(
+  report: EngineV2Report,
+  /**
+   * H-4 — THE POLARITY ARMS, when a caller asks for them.
+   *
+   * ABSENT IS THE IDENTITY and that is the whole of the parameter: no candidate
+   * carries a polarity, the design step enumerates it as it always has, every
+   * label is what it was, and `candidateFieldKey` — and therefore the recorded
+   * run fingerprint of every corpus in this casus book — reproduces byte for
+   * byte. Only `measure-h4-polarity.ts` passes one, because only a measurement
+   * of both arms needs both arms; a regeneration that wants them states it.
+   */
+  polarityArms?: PolarityArmPolicy,
+): CandidateFieldResult {
   const wis = report.predesign.windowInputs;
   return buildCandidateField({
     windowInputs: wis,
     perPair: wis.map(() => ({ statedOrder: CASUS1B_STATED_ORDER })),
     alignments: CASUS1B_FIELD_ALIGNMENTS,
     ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: Math.max(1, wis.length) }),
+    ...(polarityArms ? { polarityArms } : {}),
   });
 }
 
@@ -572,6 +587,12 @@ export function casus1bChainInputFor(
        * (V26 row 39 on the two-way chain: `structurePreference` is the
        * BINDING choice of `vfOptimizer`). */
       structurePreference: { kind: x.alignment.kind as 'LR' | 'BW' | 'BS', order: x.alignment.order as 1 | 2 | 3 | 4 },
+      /* H-4 — and the candidate's POLARITY when the field states one, on the
+       * same terms as the alignment above it: the caller picks, the design
+       * step builds on it. Spread, so a field without polarity arms leaves the
+       * key absent and the design step descends both polarities exactly as it
+       * always did (P2). */
+      ...(c.polarity ? { statedInverted: statedInvertedForTwoWay(c.polarity) } : {}),
     },
     /* The candidate's CAGE is the acoustic-crossing pin of this chain, and the
      * window it is judged against (a cage is bookkeeping, a window a promise;

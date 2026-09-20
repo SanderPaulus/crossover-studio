@@ -27,7 +27,13 @@
  */
 
 import { EXPLORATION_CHAIN_BUDGET } from '../constants.ts';
-import type { AlignmentPolicy, CandidateField, PositionPolicy } from './candidates.ts';
+import type {
+  AlignmentPolicy,
+  CandidateCrossing,
+  CandidateField,
+  PositionPolicy,
+} from './candidates.ts';
+import type { PolarityArmPolicy, PolarityMargin } from './polarityArms.ts';
 
 export type FieldMode = 'exploration' | 'full';
 
@@ -47,6 +53,12 @@ export interface FieldModeSettings {
   chainBudget: number;
   positionPolicy?: PositionPolicy;
   alignmentPolicy?: AlignmentPolicy;
+  /**
+   * H-4 — the polarity arms. Present only when this run has a per-handover
+   * reading to decide on: without one the key is absent and the field is the
+   * field it always was, polarity enumerated inside the design step (P2).
+   */
+  polarityArms?: PolarityArmPolicy;
 }
 
 /**
@@ -59,15 +71,48 @@ export interface FieldModeSettings {
 export function fieldModeSettings(
   mode: FieldMode,
   full: { stepsPerAxis: number; pairs: number },
+  /**
+   * H-4 — the pre-design phase reading of one crossing's two polarity arms.
+   *
+   * ABSENT AND NO ARMS ARE SEEDED IN EITHER MODE, which is the pre-H-4 field
+   * byte for byte: a caller that cannot read the responses cannot honestly say
+   * what a mirrored arm is worth, and a full field that mirrored blindly would
+   * double every run on a promise nobody measured. A caller that HAS the
+   * responses supplies this and gets the arms in both modes.
+   */
+  polarityMarginFor?: (crossing: CandidateCrossing) => PolarityMargin,
 ): FieldModeSettings {
-  if (mode === 'exploration') {
-    return {
-      chainBudget: EXPLORATION_CHAIN_BUDGET,
-      positionPolicy: 'centre-first',
-      alignmentPolicy: 'one',
-    };
-  }
-  return { chainBudget: Math.max(1, Math.round(full.stepsPerAxis)) ** Math.max(1, full.pairs) };
+  const base =
+    mode === 'exploration'
+      ? {
+          chainBudget: EXPLORATION_CHAIN_BUDGET,
+          positionPolicy: 'centre-first' as PositionPolicy,
+          alignmentPolicy: 'one' as AlignmentPolicy,
+        }
+      : { chainBudget: Math.max(1, Math.round(full.stepsPerAxis)) ** Math.max(1, full.pairs) };
+  if (!polarityMarginFor) return base;
+  /* THE ONE DIFFERENCE BETWEEN THE MODES ON THIS AXIS. The full field runs both
+   * arms of every crossing, because that is what "the full field" means; the
+   * exploration runs the mirrored arm only where the pre-design phase reading
+   * says the phase argument does not decide — a mirrored arm is a whole chain
+   * run, and doubling an exploration by reflex would undo what E-2 bought. */
+  return {
+    ...base,
+    polarityArms: {
+      seed: mode === 'full' ? 'both' : 'margin',
+      marginFor: polarityMarginFor,
+      /* U-5's rule in both modes: a position the designer stated is not
+       * something a run-size policy may answer on their behalf. */
+      statedAlways: true,
+      why:
+        mode === 'full'
+          ? 'Full field: both polarity arms on every handover of every candidate, the run count ' +
+            'doubling per handover that has one.'
+          : 'Exploration: the mirrored arm only where the pre-design phase reading leaves the ' +
+            'choice open — one unit of phase error between the two arms. The full field runs ' +
+            'both regardless.',
+    },
+  };
 }
 
 /**
@@ -77,7 +122,6 @@ export function fieldModeSettings(
 export function fieldModeOfParameters(p: CandidateField['parameters']): FieldMode {
   return p.positionPolicy === 'centre-first' && p.alignmentPolicy === 'one' ? 'exploration' : 'full';
 }
-
 /** The one-line description a shortlist prints above its rows. */
 export function describeFieldMode(field: CandidateField): string {
   const p = field.parameters;
@@ -88,11 +132,21 @@ export function describeFieldMode(field: CandidateField): string {
    * measured in the running app before it was written down. It is named in its
    * own clause instead. */
   const stated = p.statedSize ?? 0;
-  const n = field.candidates.length - stated;
+  /* H-4 — the MIRRORED arms are candidates too, and they are neither derived
+   * nor stated: they are the other half of a candidate the derivation offered.
+   * Counting them in `n` produced "44 of 22 derived candidates" — the same
+   * sentence U-5 had to repair one clause over, so they get their own. */
+  const mirrored = p.mirroredArms ?? 0;
+  const n = field.candidates.length - stated - mirrored;
   const plus =
-    stated > 0
+    (stated > 0
       ? ` Plus ${stated} crossing${stated === 1 ? '' : 's'} you stated, which the budget does not thin.`
-      : '';
+      : '') +
+    (mirrored > 0
+      ? ` Plus ${mirrored} mirrored polarity arm${mirrored === 1 ? '' : 's'}: the same positions with a ` +
+        'handover the other way round, designed and tuned in their own right and judged by the same ' +
+        'gates (H-4).'
+      : '');
   if (mode === 'exploration') {
     return (
       `Exploration field — ${n} of ${p.derivedSize} derived candidate${p.derivedSize === 1 ? '' : 's'}: ` +

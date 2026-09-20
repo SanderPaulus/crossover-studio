@@ -16,7 +16,7 @@ import {
   type TweeterAdjust,
 } from './dsp.ts';
 import { computeIntegration } from './integration.ts';
-import { bandStats } from './bandMetrics.ts';
+import { bandStats, PHASE_ERROR_UNIT_DEG } from './bandMetrics.ts';
 import { forbidsPads, type LowestWayLevelWork } from './levelWork.ts';
 
 /**
@@ -100,6 +100,26 @@ export interface Design3Input {
   /** Binding alignment choice per crossing; omit for free enumeration. */
   structureLow?: Struct3Choice;
   structureHigh?: Struct3Choice;
+  /**
+   * H-4 — BINDING POLARITY, exactly as `structureLow`/`structureHigh` are
+   * binding alignments: the caller picks the foundation, this step builds the
+   * best design ON it.
+   *
+   * ABSENT IS THE IDENTITY. Without it stage 1 enumerates all four
+   * mid × tweeter polarity combinations and the best fx wins, which is what
+   * every caller has had since this step existed. With it the enumeration is
+   * bound to the one combination named, and the arm is designed, EQ'd and
+   * refined against its own tilted phase targets — a mirrored polarity is not
+   * the same design with a sign flipped, it is a different design, and the
+   * only way to learn what it is worth is to build it (H-4).
+   *
+   * Why this and not a fourth `AUTO_STRUCTS`-style list: polarity is not an
+   * alignment, and the enumeration here answers "which of these four is best"
+   * where the field answers "which of these two designs do I want measured".
+   * A field that states one is asking for BOTH arms as separate candidates,
+   * judged side by side, rather than for a better internal tie-break.
+   */
+  statedPolarity?: { midInverted: boolean; tweeterInverted: boolean };
   /** Greedy CUT-ONLY EQ budget PER BRANCH (0/absent = off — the staged-v1
    *  behaviour, bit-compatible). This is the stage that separates the 3-way
    *  chain from 2-way parity: without it nothing in the chain can touch an
@@ -397,7 +417,7 @@ export function designThreeWay(input: Design3Input): Design3Result {
     // rule belongs on decision gates, and the chain's ranking applies it.
     const avg = (low.avg + high.avg) / 2;
     const p95 = (low.p95 + high.p95) / 2;
-    const phaseTerm = (avg / 15) ** 2 + 0.5 * (p95 / 45) ** 2;
+    const phaseTerm = (avg / PHASE_ERROR_UNIT_DEG) ** 2 + 0.5 * (p95 / 45) ** 2;
     // Directivity distance (rule 9 of the window spec, moved INTO the
     // structure search): wDI · log2(knee / DI anchor)² per axis with an anchor.
     const dd = diDist(specs);
@@ -414,6 +434,12 @@ export function designThreeWay(input: Design3Input): Design3Result {
   // Pure filter math, so all 64 cost a fraction of one network tune.
   const lows = input.structureLow ? [input.structureLow] : AUTO_STRUCTS;
   const highs = input.structureHigh ? [input.structureHigh] : AUTO_STRUCTS;
+  /* H-4 — a stated polarity binds the enumeration to one combination; absent
+   * is both bits free, byte for byte what every caller before H-4 read. */
+  const midPolarities = input.statedPolarity ? [input.statedPolarity.midInverted] : [false, true];
+  const tweeterPolarities = input.statedPolarity
+    ? [input.statedPolarity.tweeterInverted]
+    : [false, true];
   const baseTrims = trimsFor(input.xoLow, input.xoHigh);
 
   interface Cand {
@@ -427,8 +453,8 @@ export function designThreeWay(input: Design3Input): Design3Result {
   for (const alignLow of lows) {
     for (const alignHigh of highs) {
       const specs = specsFor(alignLow, alignHigh, input.xoLow, input.xoHigh, baseTrims);
-      for (const midInverted of [false, true]) {
-        for (const tweeterInverted of [false, true]) {
+      for (const midInverted of midPolarities) {
+        for (const tweeterInverted of tweeterPolarities) {
           const { fx } = evaluate(specs, midInverted, tweeterInverted);
           cands.push({ alignLow, alignHigh, midInverted, tweeterInverted, fx });
         }

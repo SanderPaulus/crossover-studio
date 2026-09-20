@@ -9,7 +9,7 @@ import {
 import { applyTransfer, combine, combineN, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
 import { levelMatchDb } from './activeSide.ts';
 import { computeIntegration } from './integration.ts';
-import { powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
+import { PHASE_ERROR_UNIT_DEG, powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
 import type { AngleResponse } from './directivity.ts';
 
 /**
@@ -210,6 +210,19 @@ export interface VfOptimizeOptions {
    * free. Omit for a free enumeration over the alignment library.
    */
   structurePreference?: StructChoice;
+  /**
+   * H-4 — BINDING POLARITY, the companion of `structurePreference` on the axis
+   * beside it: the caller picks the polarity, the search builds the best
+   * design on it (knees, level, EQ and every later stage stay free).
+   *
+   * ABSENT IS THE IDENTITY. Without it every structure is descended twice, at
+   * `adjust.inverted` and at its mirror, and the better fx wins — which is
+   * what every caller has read since this search existed. With it there is one
+   * descent per structure, at the stated polarity, and what comes out is that
+   * arm fully designed against its own tilted phase targets rather than the
+   * winner of an internal tie-break (H-4).
+   */
+  statedInverted?: boolean;
   /**
    * SPEED: fix the LP and HP alignment (separately — unlike the symmetric
    * `structurePreference`) instead of enumerating the 4×4 library. Used by the
@@ -432,6 +445,7 @@ export function optimizeVirtualFilters(
     cutOnly = false,
     breakupGuard = false,
     structurePreference,
+    statedInverted,
     fixedStructure,
     targets,
     phaseMetric = 'band',
@@ -770,7 +784,7 @@ export function optimizeVirtualFilters(
   /** Band mode punishes excursions too: "vaker voorbij de 15°/45°-schaal"
    *  must cost, even when the average still looks tidy. */
   const phaseTerm = (m: VfMetrics): number =>
-    (m.avgPhaseErrDeg / 15) ** 2 +
+    (m.avgPhaseErrDeg / PHASE_ERROR_UNIT_DEG) ** 2 +
     (phaseMetric === 'band' ? 0.5 * ((m.phaseP95Deg ?? 180) / 45) ** 2 : 0);
   /** Acoustic-slope targets: one order (6 dB/oct) short ≈ the cost of
    *  ~1.1 dB ripple; steeper than asked is ~6× cheaper (protection). */
@@ -885,9 +899,13 @@ export function optimizeVirtualFilters(
     { kind: 'BW', order: 3 },
     { kind: 'BS', order: 4 },
   ];
+  /* H-4 — the polarities this search descends. Stated = one; absent = the
+   * seed's and its mirror, exactly as before. */
+  const polarities: boolean[] =
+    statedInverted === undefined ? [adjust.inverted, !adjust.inverted] : [statedInverted];
   const runStructIters = (lp: StructChoice, hp: StructChoice, iterations: number): State => {
     let best: State | null = null;
-    for (const inverted of [adjust.inverted, !adjust.inverted]) {
+    for (const inverted of polarities) {
       const run = optimise(baseSpecs(lp, hp), baseHandles(hpFloor), inverted, iterations);
       if (!best || run.fx < best.fx) best = { ...run, inverted, lp, hp };
     }
@@ -1355,7 +1373,7 @@ export function vfPriorityScore(
   phasePriority: number,
 ): number {
   const pw = 0.15 + 0.7 * Math.min(Math.max(phasePriority, 0), 1);
-  return 2 * (1 - pw) * m.responseRipplePeakDb ** 2 + 2 * pw * (m.avgPhaseErrDeg / 15) ** 2;
+  return 2 * (1 - pw) * m.responseRipplePeakDb ** 2 + 2 * pw * (m.avgPhaseErrDeg / PHASE_ERROR_UNIT_DEG) ** 2;
 }
 
 export interface VfClusterResult {

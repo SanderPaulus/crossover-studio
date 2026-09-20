@@ -65,6 +65,7 @@ import {
   casus2V2Declaration,
   casus2V2Facts,
 } from '../src/lib/engine2/casus2.fixture.ts';
+import { statedPolarityForThreeWay } from '../src/lib/engine2/predesign/polarityArms.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_HERKOMST = join(HERE, '..', 'test-fixtures', 'casus2_v2_herkomst.json');
@@ -134,6 +135,11 @@ function payloadFor(c: (typeof field.field.candidates)[number]): V2Chain3Payload
       safety: gridded.safety,
       structureLow: { kind: c.crossings[0].alignment.kind, order: c.crossings[0].alignment.order },
       structureHigh: { kind: c.crossings[1].alignment.kind, order: c.crossings[1].alignment.order },
+      /* H-4 — and the candidate's POLARITY when the field states one, on the
+       * same terms as the alignments above it. Spread: a field without arms
+       * leaves the key absent and the design step enumerates polarity exactly
+       * as it always has (P2). */
+      ...(c.polarity ? { statedPolarity: statedPolarityForThreeWay(c.polarity) } : {}),
       xoFloorPairs: c.crossings.map((x) => x.windowHz[0]),
     } as unknown as Chain3Input['settings'],
   };

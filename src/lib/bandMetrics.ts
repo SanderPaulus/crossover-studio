@@ -17,6 +17,25 @@
  * Pure, allocation-light and free of RNG/wall-clock, like the rest of the lib.
  */
 
+/**
+ * H-4 — ONE UNIT OF PHASE ERROR, in degrees.
+ *
+ * The number five search objectives already divide their mean pair phase error
+ * by before squaring it: `threeWayDesign`'s design objective, `vfOptimizer`'s
+ * two search objectives and `netOptimizer`'s two. It is not a threshold and
+ * nothing is judged on it — it is the SCALE on which this engine calls a phase
+ * error large, and it lived as the literal `15` in all five places until H-4
+ * needed a sixth reader and extracted it rather than writing the number again
+ * (A3g: one implementation, several readers).
+ *
+ * Its sixth reader is the polarity-arm margin (`polarityArms.ts`): two arms
+ * whose mean pair phase error differs by less than one unit are not separated
+ * by the phase argument, so the exploration seeds both and the full run
+ * decides. Extracting it is byte-neutral by construction and that is measured,
+ * not asserted — both byte baselines reproduce.
+ */
+export const PHASE_ERROR_UNIT_DEG = 15;
+
 export interface BandStats {
   /** Points inside the band. 0 when the band misses the grid entirely. */
   count: number;

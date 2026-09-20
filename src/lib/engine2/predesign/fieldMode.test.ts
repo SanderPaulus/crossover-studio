@@ -156,3 +156,95 @@ describe('4 — the FULL mode keys byte-identically to the F4d-form request (eve
     expect(stableJson(candidateFieldKey(x.field))).not.toBe(stableJson(candidateFieldKey(f.field)));
   });
 });
+
+describe('5 — H-4: the polarity arms the mode decides', () => {
+  const close = () => ({
+    pairLabel: 'p',
+    textbookDeg: 88,
+    mirrorDeg: 92,
+    marginDeg: 4,
+    seedMirror: true,
+    why: 'close',
+  });
+  const apart = () => ({
+    pairLabel: 'p',
+    textbookDeg: 20,
+    mirrorDeg: 160,
+    marginDeg: 140,
+    seedMirror: false,
+    why: 'apart',
+  });
+
+  it('NO reading = no arms in EITHER mode, and that is the pre-H-4 field byte for byte', () => {
+    for (const mode of ['exploration', 'full'] as const) {
+      const s = fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 });
+      expect('polarityArms' in s).toBe(false);
+    }
+    /* The claim that matters: without a reading the KEY is unchanged, so every
+     * recorded run fingerprint reproduces. */
+    const viaMode = buildCandidateField({ ...base(), ...fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }) });
+    const f4d = buildCandidateField({ ...base(), chainBudget: 2 ** 2 });
+    expect(stableJson(candidateFieldKey(viaMode.field))).toBe(stableJson(candidateFieldKey(f4d.field)));
+  });
+
+  it('the FULL field seeds both arms whatever the reading says; the EXPLORATION asks it', () => {
+    const full = fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }, apart);
+    expect(full.polarityArms?.seed).toBe('both');
+    const expl = fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, apart);
+    expect(expl.polarityArms?.seed).toBe('margin');
+    /* And the reading travels, so the run notes can print what it found even
+     * where it decided nothing. */
+    expect(expl.polarityArms?.marginFor).toBe(apart);
+  });
+
+  it('a close reading grows the exploration; a distant one leaves it exactly as it was', () => {
+    const near = buildCandidateField({
+      ...base(),
+      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, close),
+    });
+    const far = buildCandidateField({
+      ...base(),
+      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, apart),
+    });
+    const bare = buildCandidateField({
+      ...base(),
+      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }),
+    });
+    expect(far.field.candidates.map((c) => c.label)).toEqual(bare.field.candidates.map((c) => c.label));
+    expect(near.field.candidates.length).toBeGreaterThan(bare.field.candidates.length);
+    /* Two handovers, both close: every candidate stands for four arms. */
+    expect(near.field.candidates.length).toBe(bare.field.candidates.length * 4);
+  });
+
+  it('a stated position gets both arms in both modes (U-5)', () => {
+    for (const mode of ['exploration', 'full'] as const)
+      expect(fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 }, apart).polarityArms?.statedAlways).toBe(true);
+  });
+});
+
+describe('6 — H-4: the field line counts the arms in their own clause', () => {
+  const close = () => ({ pairLabel: 'p', textbookDeg: 88, mirrorDeg: 92, marginDeg: 4, seedMirror: true, why: 'close' });
+
+  it('says how many arms stand beside the derived candidates, and never folds them into that count', () => {
+    const f = buildCandidateField({
+      ...base(),
+      ...fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }, close),
+    });
+    const line = describeFieldMode(f.field);
+    const derived = f.field.parameters.derivedSize;
+    const mirrored = f.field.parameters.mirroredArms ?? 0;
+    expect(mirrored).toBeGreaterThan(0);
+    /* The number in "Full field — N candidates" is the DERIVED half: a
+     * sentence that read "44 candidates (22 derived …)" is the U-5 defect one
+     * clause over. */
+    expect(line).toContain(`${f.field.candidates.length - mirrored} candidate`);
+    expect(line).toContain(`${mirrored} mirrored polarity arm`);
+    expect(derived).toBeLessThan(f.field.candidates.length);
+  });
+
+  it('and says nothing at all about arms on a field that has none', () => {
+    const f = buildCandidateField({ ...base(), ...fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }) });
+    expect('mirroredArms' in f.field.parameters).toBe(false);
+    expect(describeFieldMode(f.field)).not.toContain('mirrored');
+  });
+});

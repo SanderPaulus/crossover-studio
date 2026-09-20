@@ -1,0 +1,1802 @@
+{
+  "_wat": "H-4 — de polariteitsarmen gemeten. Geen regeneratie: geen corpus is aangeraakt.",
+  "_gemeten_op": "2026-09-20",
+  "marge_graden": 15,
+  "casus_1h_actieve_overname_hz": 362.3,
+  "keuze": [
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 31.32305686589989,
+          "phaseDeg": [
+            79.9664487425759,
+            57.80741832491619
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 37.15000006391257,
+          "phaseDeg": [
+            94.4305882380356,
+            58.84026915278923
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 56.55220667001299,
+          "phaseDeg": [
+            79.96643723172306,
+            121.51175325205551
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 63.25054028032719,
+          "phaseDeg": [
+            94.43058823803558,
+            120.98630126577544
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 176.6 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 28.838906196494552,
+          "phaseDeg": [
+            74.45275529109205,
+            56.214036681633885
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 38.95600294313309,
+          "phaseDeg": [
+            99.46040442140904,
+            57.694683516941765
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 54.70717357075218,
+          "phaseDeg": [
+            74.45268855319553,
+            123.28922779131331
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 67.03513619872616,
+          "phaseDeg": [
+            99.46040442140904,
+            122.24539374897961
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 199.1 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 26.741406243424,
+          "phaseDeg": [
+            70.06127130041487,
+            54.41280548981986
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 40.730231827920896,
+          "phaseDeg": [
+            104.93976177451577,
+            56.113016585674316
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 53.22994844513013,
+          "phaseDeg": [
+            70.01254809730693,
+            124.69449435415349
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 71.1722127811109,
+          "phaseDeg": [
+            104.93976177451573,
+            123.84643825857708
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 224.4 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 24.048191380864743,
+          "phaseDeg": [
+            62.95076988546167,
+            52.37130686226431
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 42.41361872041511,
+          "phaseDeg": [
+            110.39798795055582,
+            54.24460287175592
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 51.37720628794746,
+          "phaseDeg": [
+            62.837083385484064,
+            127.29599067910753
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 75.51173782596946,
+          "phaseDeg": [
+            110.3979879505558,
+            125.65539692190762
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 253 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 21.893082012234963,
+          "phaseDeg": [
+            57.79545092673431,
+            50.07137971353807
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 44.815112522887965,
+          "phaseDeg": [
+            117.30873983191712,
+            51.981600662484986
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 50.1849901783498,
+          "phaseDeg": [
+            57.66576404675599,
+            129.5682608842573
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 81.17008368939089,
+          "phaseDeg": [
+            117.30873983191715,
+            127.70470965075035
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 285.1 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 20.1672712431967,
+          "phaseDeg": [
+            53.79294059057469,
+            47.463132755584134
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 46.25473387230397,
+          "phaseDeg": [
+            121.29833540775736,
+            49.98743638969678
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 49.78833187645164,
+          "phaseDeg": [
+            53.56971805695886,
+            132.04398425916466
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 85.67475098322126,
+          "phaseDeg": [
+            121.29833540775736,
+            130.01256361030323
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 321.4 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 18.61096558069447,
+          "phaseDeg": [
+            50.571197582719414,
+            44.670338793734615
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 47.470040878737535,
+          "phaseDeg": [
+            125.24728327089808,
+            46.9584213100584
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 49.744658686186156,
+          "phaseDeg": [
+            52.02791653076487,
+            133.2596385641246
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 90.49092866152816,
+          "phaseDeg": [
+            125.24728327089808,
+            132.6365561435286
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 362.3 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 17.150994548542442,
+          "phaseDeg": [
+            47.471644140750634,
+            40.86658821503494
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 48.027162292659185,
+          "phaseDeg": [
+            128.1175330368487,
+            44.22541601099664
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 49.73683332227427,
+          "phaseDeg": [
+            49.22193983782441,
+            135.6780266963818
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 94.70800302997682,
+          "phaseDeg": [
+            128.11753303684873,
+            135.59795423813006
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 408.4 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 15.690157951825539,
+          "phaseDeg": [
+            44.89873496239765,
+            36.89487417988737
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 47.81861494701877,
+          "phaseDeg": [
+            133.39693434088167,
+            37.348542212130944
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 50.37144630843185,
+          "phaseDeg": [
+            46.609148698459805,
+            138.87993088830268
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 99.75726088383837,
+          "phaseDeg": [
+            131.82419193217157,
+            138.96657307068818
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 460.3 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 14.901168006035133,
+          "phaseDeg": [
+            45.228550632892485,
+            32.26552669241858
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 45.16743652876419,
+          "phaseDeg": [
+            132.87458266570383,
+            33.00440662673733
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 52.06170479593775,
+          "phaseDeg": [
+            45.84422538598423,
+            142.8024297709197
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 103.02786281171018,
+          "phaseDeg": [
+            132.5731468860345,
+            142.80047487839283
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1",
+      "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 14.147014838061654,
+          "phaseDeg": [
+            45.49185780467067,
+            27.457278360614726
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 41.94136445886639,
+          "phaseDeg": [
+            131.0399979056471,
+            28.057626039222615
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 54.661027608158115,
+          "phaseDeg": [
+            45.48929632314999,
+            147.2431814498582
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 106.07947221389759,
+          "phaseDeg": [
+            132.87458266570377,
+            147.15417824346682
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [
+        "mid",
+        "tweeter"
+      ],
+      "textbookInverted": [],
+      "matchesTextbook": false,
+      "arms": [
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 33.12373252178223,
+          "phaseDeg": [
+            84.08286275324545,
+            58.84026953333945
+          ]
+        },
+        {
+          "inverted": [],
+          "fx": 35.024378230578534,
+          "phaseDeg": [
+            89.27415549026813,
+            57.807418324916206
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 57.85102505524086,
+          "phaseDeg": [
+            84.08286275324546,
+            120.98630126577544
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 61.619799065191735,
+          "phaseDeg": [
+            89.2741504059642,
+            121.51175343639197
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 176.6 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 31.856245052747248,
+          "phaseDeg": [
+            82.49054374762498,
+            56.21403668163392
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 35.226143292599765,
+          "phaseDeg": [
+            90.15269473469374,
+            57.694682400882485
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 58.969900330472896,
+          "phaseDeg": [
+            82.49053596084326,
+            123.28922561122222
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 62.039646137076815,
+          "phaseDeg": [
+            90.15269473469375,
+            122.24539374897961
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 199.1 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 29.2378515941966,
+          "phaseDeg": [
+            77.1093632197689,
+            54.41280548981986
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 37.354938185586114,
+          "phaseDeg": [
+            96.9019731305854,
+            56.11301575560209
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 56.896660109708,
+          "phaseDeg": [
+            77.06064001666095,
+            124.69449435415349
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 66.65001095541633,
+          "phaseDeg": [
+            96.90197313058536,
+            123.84643825857708
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 224.4 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 25.81944890471107,
+          "phaseDeg": [
+            68.33934720303513,
+            52.37130686226433
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 39.47253323168254,
+          "phaseDeg": [
+            103.57119068658227,
+            54.24459956251477
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 54.113209023274166,
+          "phaseDeg": [
+            68.22566996327866,
+            127.29599067910753
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 71.55966582497278,
+          "phaseDeg": [
+            103.57119068658223,
+            125.65539692190762
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 253 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 23.251144914873322,
+          "phaseDeg": [
+            62.141672002582716,
+            50.07137971353809
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 42.429310960689506,
+          "phaseDeg": [
+            112.11511336289965,
+            51.98159247980882
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 52.34033163760491,
+          "phaseDeg": [
+            62.011973714973465,
+            129.56825584667686
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 77.98825391373673,
+          "phaseDeg": [
+            112.11511336289966,
+            127.70470965075035
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 285.1 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 21.162311658818194,
+          "phaseDeg": [
+            56.98856859519294,
+            47.68556978169126
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 44.13319142633447,
+          "phaseDeg": [
+            116.95212573953988,
+            49.98743638969678
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 51.454467402664996,
+          "phaseDeg": [
+            56.98856859519296,
+            132.04398425916466
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 82.85127798244854,
+          "phaseDeg": [
+            116.95212573953988,
+            130.01256361030323
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 321.4 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 19.347424218530147,
+          "phaseDeg": [
+            53.31297890509891,
+            44.670338793734615
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 45.702000570182136,
+          "phaseDeg": [
+            121.828432732664,
+            46.958422739905274
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 51.02305265670315,
+          "phaseDeg": [
+            53.31297890509891,
+            134.62276443592904
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 88.12676008905852,
+          "phaseDeg": [
+            121.82843273266404,
+            132.6365561435286
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 362.3 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 17.67373397124631,
+          "phaseDeg": [
+            49.54111542563312,
+            40.86658774184222
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 46.583727075799686,
+          "phaseDeg": [
+            125.37575171446919,
+            44.2254154169422
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 50.932973176249156,
+          "phaseDeg": [
+            51.657981721021514,
+            135.67802629527642
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 92.7543670561485,
+          "phaseDeg": [
+            125.37575171446915,
+            135.59795423813006
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 408.4 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 16.03996184498611,
+          "phaseDeg": [
+            46.32227246435651,
+            36.894875196260834
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 47.070884595162795,
+          "phaseDeg": [
+            131.9733968389228,
+            37.348542212130944
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 51.27624243695063,
+          "phaseDeg": [
+            48.425906788018175,
+            138.87993088830277
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 98.38298936800356,
+          "phaseDeg": [
+            130.00742995231943,
+            138.96657307068818
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 460.3 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 15.093007577560876,
+          "phaseDeg": [
+            46.26274382934922,
+            32.26552669241858
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 44.69039128969967,
+          "phaseDeg": [
+            131.84038946924704,
+            33.00440662673733
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 52.643128619873956,
+          "phaseDeg": [
+            47.21301144556007,
+            142.8024297709197
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 102.00906481306899,
+          "phaseDeg": [
+            131.20436082645864,
+            142.80047487839283
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1 koan677",
+      "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4",
+      "chosenInverted": [],
+      "textbookInverted": [],
+      "matchesTextbook": true,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 14.257519634789837,
+          "phaseDeg": [
+            46.12675864232834,
+            27.457278360614726
+          ]
+        },
+        {
+          "inverted": [
+            "mid",
+            "tweeter"
+          ],
+          "fx": 41.68412446708575,
+          "phaseDeg": [
+            130.43155126955847,
+            28.057626039222615
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 55.105214816344166,
+          "phaseDeg": [
+            46.52348951960672,
+            147.2431814498582
+          ]
+        },
+        {
+          "inverted": [
+            "mid"
+          ],
+          "fx": 105.34989187160123,
+          "phaseDeg": [
+            131.84038946924707,
+            147.15417824346682
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1b",
+      "label": "mid→tweeter 1735.4 LR4",
+      "chosenInverted": [
+        "tweeter"
+      ],
+      "textbookInverted": [],
+      "matchesTextbook": false,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 10.90927552291708,
+          "objective": 69.83410464380816,
+          "phaseDeg": [
+            13.409452041964439
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 17.133031259891617,
+          "objective": 68.9285691391065,
+          "phaseDeg": [
+            9.29204701636017
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1b",
+      "label": "mid→tweeter 1947.9 LR4",
+      "chosenInverted": [
+        "tweeter"
+      ],
+      "textbookInverted": [],
+      "matchesTextbook": false,
+      "arms": [
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 23.407632574500084,
+          "objective": 74.73553723205261,
+          "phaseDeg": [
+            8.588088338856023
+          ]
+        },
+        {
+          "inverted": [],
+          "fx": 40.38422465813937,
+          "objective": 72.66049012107862,
+          "phaseDeg": [
+            14.196728637489189
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1b",
+      "label": "mid→tweeter 2186.5 LR4",
+      "chosenInverted": [
+        "tweeter"
+      ],
+      "textbookInverted": [],
+      "matchesTextbook": false,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 8.234094906010004,
+          "objective": 68.48018176937637,
+          "phaseDeg": [
+            12.241769692644667
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 15.271740889569871,
+          "objective": 65.55607266529347,
+          "phaseDeg": [
+            3.868399630969109
+          ]
+        }
+      ]
+    },
+    {
+      "casus": "casus 1h",
+      "label": "mid→tweeter 2251.4 LR4",
+      "chosenInverted": [
+        "tweeter"
+      ],
+      "textbookInverted": [],
+      "matchesTextbook": false,
+      "arms": [
+        {
+          "inverted": [],
+          "fx": 8.888035064034291,
+          "objective": 59.77391066627719,
+          "phaseDeg": [
+            9.153396613333946
+          ]
+        },
+        {
+          "inverted": [
+            "tweeter"
+          ],
+          "fx": 16.135290374391374,
+          "objective": 62.19091228631532,
+          "phaseDeg": [
+            9.558881890514018
+          ]
+        }
+      ]
+    }
+  ],
+  "marges": [
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 156.7,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 96.29925408699798,
+      "mirrorDeg": 83.70074591300202,
+      "marginDeg": 12.598508173995953,
+      "seedMirror": true,
+      "why": "woofer→mid: mean pair phase error 96.3° textbook against 83.7° mirrored at 157 Hz — a margin of 12.6° against one unit of phase error (15°), so the phase argument does not decide and the exploration runs BOTH arms."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "mid→tweeter",
+      "hz": 2251.4,
+      "pairLabel": "mid→tweeter",
+      "textbookDeg": 73.90771943457254,
+      "mirrorDeg": 106.09228056542746,
+      "marginDeg": 32.18456113085492,
+      "seedMirror": false,
+      "why": "mid→tweeter: mean pair phase error 73.9° textbook against 106.1° mirrored at 2251 Hz — a margin of 32.2° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 176.6,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 91.88276292198563,
+      "mirrorDeg": 88.11723707801438,
+      "marginDeg": 3.765525843971247,
+      "seedMirror": true,
+      "why": "woofer→mid: mean pair phase error 91.9° textbook against 88.1° mirrored at 177 Hz — a margin of 3.8° against one unit of phase error (15°), so the phase argument does not decide and the exploration runs BOTH arms."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 199.1,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 88.72776196283333,
+      "mirrorDeg": 91.27223803716667,
+      "marginDeg": 2.544476074333346,
+      "seedMirror": true,
+      "why": "woofer→mid: mean pair phase error 88.7° textbook against 91.3° mirrored at 199 Hz — a margin of 2.5° against one unit of phase error (15°), so the phase argument does not decide and the exploration runs BOTH arms."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 224.4,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 85.50685489785522,
+      "mirrorDeg": 94.49314510214477,
+      "marginDeg": 8.986290204289546,
+      "seedMirror": true,
+      "why": "woofer→mid: mean pair phase error 85.5° textbook against 94.5° mirrored at 224 Hz — a margin of 9.0° against one unit of phase error (15°), so the phase argument does not decide and the exploration runs BOTH arms."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 253,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 82.24153210662168,
+      "mirrorDeg": 97.75846789337832,
+      "marginDeg": 15.516935786756648,
+      "seedMirror": false,
+      "why": "woofer→mid: mean pair phase error 82.2° textbook against 97.8° mirrored at 253 Hz — a margin of 15.5° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 285.1,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 80.18018457499574,
+      "mirrorDeg": 99.81981542500426,
+      "marginDeg": 19.63963085000853,
+      "seedMirror": false,
+      "why": "woofer→mid: mean pair phase error 80.2° textbook against 99.8° mirrored at 285 Hz — a margin of 19.6° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 321.4,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 78.763068086405,
+      "mirrorDeg": 101.23693191359503,
+      "marginDeg": 22.47386382719003,
+      "seedMirror": false,
+      "why": "woofer→mid: mean pair phase error 78.8° textbook against 101.2° mirrored at 321 Hz — a margin of 22.5° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 362.3,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 79.05079500089973,
+      "mirrorDeg": 100.94920499910029,
+      "marginDeg": 21.898409998200563,
+      "seedMirror": false,
+      "why": "woofer→mid: mean pair phase error 79.1° textbook against 100.9° mirrored at 362 Hz — a margin of 21.9° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 408.4,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 80.19211707888213,
+      "mirrorDeg": 99.80788292111785,
+      "marginDeg": 19.615765842235717,
+      "seedMirror": false,
+      "why": "woofer→mid: mean pair phase error 80.2° textbook against 99.8° mirrored at 408 Hz — a margin of 19.6° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 460.3,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 83.24200925789577,
+      "mirrorDeg": 96.75799074210423,
+      "marginDeg": 13.515981484208453,
+      "seedMirror": true,
+      "why": "woofer→mid: mean pair phase error 83.2° textbook against 96.8° mirrored at 460 Hz — a margin of 13.5° against one unit of phase error (15°), so the phase argument does not decide and the exploration runs BOTH arms."
+    },
+    {
+      "casus": "casus 1",
+      "paar": "woofer→mid",
+      "hz": 518.8,
+      "pairLabel": "woofer→mid",
+      "textbookDeg": 85.54174440604531,
+      "mirrorDeg": 94.4582555939547,
+      "marginDeg": 8.916511187909393,
+      "seedMirror": true,
+      "why": "woofer→mid: mean pair phase error 85.5° textbook against 94.5° mirrored at 519 Hz — a margin of 8.9° against one unit of phase error (15°), so the phase argument does not decide and the exploration runs BOTH arms."
+    },
+    {
+      "casus": "casus 1b",
+      "paar": "mid→tweeter",
+      "hz": 1735.4,
+      "pairLabel": "mid→tweeter",
+      "textbookDeg": 78.70090514157849,
+      "mirrorDeg": 101.29909485842151,
+      "marginDeg": 22.598189716843024,
+      "seedMirror": false,
+      "why": "mid→tweeter: mean pair phase error 78.7° textbook against 101.3° mirrored at 1735 Hz — a margin of 22.6° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1b",
+      "paar": "mid→tweeter",
+      "hz": 1947.9,
+      "pairLabel": "mid→tweeter",
+      "textbookDeg": 77.24606854593662,
+      "mirrorDeg": 102.75393145406338,
+      "marginDeg": 25.507862908126754,
+      "seedMirror": false,
+      "why": "mid→tweeter: mean pair phase error 77.2° textbook against 102.8° mirrored at 1948 Hz — a margin of 25.5° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1b",
+      "paar": "mid→tweeter",
+      "hz": 2186.5,
+      "pairLabel": "mid→tweeter",
+      "textbookDeg": 74.49859406600515,
+      "mirrorDeg": 105.50140593399483,
+      "marginDeg": 31.002811867989678,
+      "seedMirror": false,
+      "why": "mid→tweeter: mean pair phase error 74.5° textbook against 105.5° mirrored at 2187 Hz — a margin of 31.0° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    },
+    {
+      "casus": "casus 1h",
+      "paar": "mid→tweeter",
+      "hz": 2251.4,
+      "pairLabel": "mid→tweeter",
+      "textbookDeg": 73.90771943457254,
+      "mirrorDeg": 106.09228056542746,
+      "marginDeg": 32.18456113085492,
+      "seedMirror": false,
+      "why": "mid→tweeter: mean pair phase error 73.9° textbook against 106.1° mirrored at 2251 Hz — a margin of 32.2° against one unit of phase error (15°), so the exploration runs the textbook arm only. The full field runs both regardless."
+    }
+  ],
+  "armen": [
+    {
+      "key": "casus 1|woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4",
+      "casus": "casus 1",
+      "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4",
+      "inverted": [],
+      "arm": "textbook",
+      "seconds": 2853.22,
+      "outcome": "delivered",
+      "reason": null,
+      "rmsDb": 0.8595410027243887,
+      "windowDb": 71.05576447331818,
+      "phaseDeg": [
+        180,
+        3.397089390920952
+      ],
+      "zMinOhm": 2.626905859929087,
+      "parts": 77,
+      "bomEur": null,
+      "gates": [
+        {
+          "id": "M-A/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/EPDR/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/|Z|/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/mid",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/tweeter",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-A/part/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-L/system",
+          "active": false,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "key": "casus 1|woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀",
+      "casus": "casus 1",
+      "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀",
+      "inverted": [
+        "mid"
+      ],
+      "arm": "mirror",
+      "seconds": 817.066,
+      "outcome": "REFUSED",
+      "reason": "M-C (mid): -9.6 dB exceeds the stated ceiling of -14.1 dB",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 0.5395885249240243,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1|woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀ + tweeter ⌀",
+      "casus": "casus 1",
+      "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀ + tweeter ⌀",
+      "inverted": [
+        "mid",
+        "tweeter"
+      ],
+      "arm": "mirror",
+      "seconds": 930.485,
+      "outcome": "REFUSED",
+      "reason": "the delivered network amplifies woofer's reflex peak by 5.43 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 2.706460342233662,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1|woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4 · tweeter ⌀",
+      "casus": "casus 1",
+      "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4 · tweeter ⌀",
+      "inverted": [
+        "tweeter"
+      ],
+      "arm": "mirror",
+      "seconds": 736.839,
+      "outcome": "REFUSED",
+      "reason": "the delivered network amplifies woofer's reflex peak by 10.04 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 2.596984069622879,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1|woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4",
+      "casus": "casus 1",
+      "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4",
+      "inverted": [],
+      "arm": "textbook",
+      "seconds": 1868.093,
+      "outcome": "REFUSED",
+      "reason": "M-B/|Z|: 2.46 Ω falls below the stated floor of 2.60 Ω",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 0.8962562851802648,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1|woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀",
+      "casus": "casus 1",
+      "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀",
+      "inverted": [
+        "mid"
+      ],
+      "arm": "mirror",
+      "seconds": 491.081,
+      "outcome": "REFUSED",
+      "reason": "the delivered network amplifies woofer's reflex peak by 1.81 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 2.5857692810742745,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1|woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀ + tweeter ⌀",
+      "casus": "casus 1",
+      "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · mid ⌀ + tweeter ⌀",
+      "inverted": [
+        "mid",
+        "tweeter"
+      ],
+      "arm": "mirror",
+      "seconds": 705.406,
+      "outcome": "REFUSED",
+      "reason": "M-B/|Z|: 2.49 Ω falls below the stated floor of 2.60 Ω",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 1.177444558519411,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1|woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · tweeter ⌀",
+      "casus": "casus 1",
+      "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · tweeter ⌀",
+      "inverted": [
+        "tweeter"
+      ],
+      "arm": "mirror",
+      "seconds": 522.487,
+      "outcome": "REFUSED",
+      "reason": "M-B/|Z|: 2.49 Ω falls below the stated floor of 2.60 Ω; M-C (tweeter): -14.5 dB exceeds the stated ceiling of -20.0 dB",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 0.9439492177994526,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1b|mid→tweeter 1947.9 LR4",
+      "casus": "casus 1b",
+      "label": "mid→tweeter 1947.9 LR4",
+      "inverted": [],
+      "arm": "textbook",
+      "seconds": 143.234,
+      "outcome": "REFUSED",
+      "reason": "M-C (tweeter): -15.6 dB exceeds the stated ceiling of -20.0 dB",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 2.4167638805173794,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1b|mid→tweeter 1947.9 LR4 · tweeter ⌀",
+      "casus": "casus 1b",
+      "label": "mid→tweeter 1947.9 LR4 · tweeter ⌀",
+      "inverted": [
+        "tweeter"
+      ],
+      "arm": "mirror",
+      "seconds": 315.381,
+      "outcome": "delivered",
+      "reason": null,
+      "rmsDb": 0.5877876130780505,
+      "windowDb": 70.53348374189036,
+      "phaseDeg": [
+        2.579895744904125
+      ],
+      "zMinOhm": 2.6019983023902804,
+      "parts": 35,
+      "bomEur": null,
+      "gates": [
+        {
+          "id": "M-A/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/EPDR/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/|Z|/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/tweeter",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-A/part/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-L/system",
+          "active": false,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "key": "casus 1b|mid→tweeter 2186.5 LR4",
+      "casus": "casus 1b",
+      "label": "mid→tweeter 2186.5 LR4",
+      "inverted": [],
+      "arm": "textbook",
+      "seconds": 466,
+      "outcome": "delivered",
+      "reason": null,
+      "rmsDb": 0.6258873872622008,
+      "windowDb": 70.38959715361038,
+      "phaseDeg": [
+        2.7364847138620974
+      ],
+      "zMinOhm": 2.881977272342085,
+      "parts": 39,
+      "bomEur": null,
+      "gates": [
+        {
+          "id": "M-A/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/EPDR/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/|Z|/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/tweeter",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-A/part/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-L/system",
+          "active": false,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "key": "casus 1b|mid→tweeter 2186.5 LR4 · tweeter ⌀",
+      "casus": "casus 1b",
+      "label": "mid→tweeter 2186.5 LR4 · tweeter ⌀",
+      "inverted": [
+        "tweeter"
+      ],
+      "arm": "mirror",
+      "seconds": 130.471,
+      "outcome": "REFUSED",
+      "reason": "on the passbands its own crossings imply — M-C (tweeter): -19.9 dB exceeds the stated ceiling of -20.0 dB",
+      "rmsDb": null,
+      "windowDb": null,
+      "phaseDeg": [],
+      "zMinOhm": 2.5731850696997496,
+      "parts": null,
+      "bomEur": null,
+      "gates": []
+    },
+    {
+      "key": "casus 1h|mid→tweeter 2251.4 LR4",
+      "casus": "casus 1h",
+      "label": "mid→tweeter 2251.4 LR4",
+      "inverted": [],
+      "arm": "textbook",
+      "seconds": 715.393,
+      "outcome": "delivered",
+      "reason": null,
+      "rmsDb": 3.1483537478527674,
+      "windowDb": 73.76974239773655,
+      "phaseDeg": [
+        4.211920320351456
+      ],
+      "zMinOhm": 4.223081996341713,
+      "parts": 36,
+      "bomEur": null,
+      "gates": [
+        {
+          "id": "M-A/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/EPDR/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/|Z|/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/mid",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/tweeter",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-A/part/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-L/system",
+          "active": false,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "key": "casus 1h|mid→tweeter 2251.4 LR4 · tweeter ⌀",
+      "casus": "casus 1h",
+      "label": "mid→tweeter 2251.4 LR4 · tweeter ⌀",
+      "inverted": [
+        "tweeter"
+      ],
+      "arm": "mirror",
+      "seconds": 676.81,
+      "outcome": "delivered",
+      "reason": null,
+      "rmsDb": 3.5669047133730865,
+      "windowDb": 74.06102045503162,
+      "phaseDeg": [
+        3.5947672060944833
+      ],
+      "zMinOhm": 3.9074919540470154,
+      "parts": 41,
+      "bomEur": null,
+      "gates": [
+        {
+          "id": "M-A/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/EPDR/system",
+          "active": false,
+          "pass": true
+        },
+        {
+          "id": "M-B/|Z|/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/mid",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-C/tweeter",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-A/part/system",
+          "active": true,
+          "pass": true
+        },
+        {
+          "id": "M-L/system",
+          "active": false,
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

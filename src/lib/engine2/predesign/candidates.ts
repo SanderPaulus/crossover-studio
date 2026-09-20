@@ -72,6 +72,7 @@ import { recommendedBand, type RecommendedBandResult } from './recommendedBand.t
 import { formatEdge, roundEdge, takeoverFor } from './xoRangeAdvice.ts';
 import type { PairOrderResult } from './flankOrder.ts';
 import type { StatedCrossingMark } from './statedCrossings.ts';
+import type { CandidatePolarity } from './polarityArms.ts';
 
 /**
  * One entry of the alignment library the design step will enumerate.
@@ -300,6 +301,20 @@ export interface GeneratedCandidate {
    * candidates; who wrote it is what the mark says.
    */
   stated?: StatedCrossingMark;
+  /**
+   * H-4 — which ways this candidate inverts, when the FIELD states it.
+   *
+   * A TYPE-ONLY REFERENCE, and the direction of the dependency is the same
+   * point U-5 made one field above: this module does not enumerate polarity
+   * and never sets this field. What H-4 adds is an expansion — `polarityArms.ts`
+   * — that turns the arm the design step's internal tie-break would have
+   * discarded into a candidate of its own, at the same position and in its own
+   * topology class.
+   *
+   * ABSENT IS THE IDENTITY, and it is the state of every field before H-4: the
+   * design step then enumerates polarity itself, exactly as it always has.
+   */
+  polarity?: CandidatePolarity;
 }
 
 /** What one axis contributed, and what it had to give up. */
@@ -346,6 +361,12 @@ export interface CandidateField {
      * fingerprint still reproduces (the E-2 rule, one field further).
      */
     statedSize?: number;
+    /**
+     * H-4 — how many MIRRORED polarity arms stand beside the textbook ones.
+     * PRESENT ONLY WHEN ANY WERE SEEDED, by the same rule and for the same
+     * reason: a field without arms serialises exactly as it did before H-4.
+     */
+    mirroredArms?: number;
   };
 }
 

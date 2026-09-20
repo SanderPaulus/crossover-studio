@@ -162,6 +162,12 @@ import {
   type PairDerivationInput,
 } from './lib/engine2/predesign/candidateField.ts';
 import { describeFieldMode, fieldModeOf, fieldModeSettings, type FieldMode } from './lib/engine2/predesign/fieldMode.ts';
+import {
+  polarityMarginReader,
+  statedInvertedForTwoWay,
+  statedPolarityForThreeWay,
+  type PolarityBranch,
+} from './lib/engine2/predesign/polarityArms.ts';
 import { RUN_EXPORT_FORMAT, buildFieldExport, runExportEngine, type RunExport } from './lib/engine2/optimizer/runExport.ts';
 import {
   EMPTY_V2_SETTINGS,
@@ -8608,9 +8614,35 @@ export default function App() {
           return g ? { freq: g.freq, db: g.spl } : null;
         };
         /* The mode's slice of the request: the budget, and for an exploration
-         * the two policies. The full mode passes NO policy — absent is the
-         * field it has been since F4d, byte for byte (`fieldMode.ts`). */
-        const fieldSettings = fieldModeSettings(fieldMode, { stepsPerAxis: scanSteps3, pairs: wis.length });
+         * the two position/alignment policies (`fieldMode.ts`).
+         *
+         * H-4 — AND THE POLARITY ARMS, because this route CAN read the
+         * responses. The full field then runs both arms of every handover and
+         * the exploration only where the reading leaves the choice open; the
+         * run notes print the count and the readings. The pre-H-4 field (no
+         * arms at all) is what a caller WITHOUT the responses gets, and the
+         * fixtures are the callers that still take it. */
+        /* H-4 — THE PRE-DESIGN PHASE READING, per crossing.
+         *
+         * The same branches the design step sums, with each way's adjustment
+         * relative to the lowest exactly as `combineN` applies it; what the
+         * reader does with the pair is its own business
+         * (`polarityArms.ts`). A way whose response is missing yields nulls
+         * and seeds nothing, which is what P4 asks of an absent measurement. */
+        const polarityBranchOf = (driver: string): PolarityBranch | null => {
+          const role = (['low', 'mid', 'high'] as const).find(
+            (r) => engineV2Report?.driverIds?.[r] === driver,
+          );
+          if (role === 'low') return { response: sim.base.w, adjust: {} };
+          if (role === 'mid') return sim.base.m ? { response: sim.base.m, adjust: mAdj } : null;
+          if (role === 'high') return { response: sim.base.t, adjust: tAdj };
+          return null;
+        };
+        const fieldSettings = fieldModeSettings(
+          fieldMode,
+          { stepsPerAxis: scanSteps3, pairs: wis.length },
+          polarityMarginReader(polarityBranchOf),
+        );
         /* E-3b — the per-pair derivation inputs, built by the one function
          * both routes call (`scanRequest.ts`). It maps over the windows the
          * report derived — one per adjacent pair — so it counts handovers and
@@ -8860,6 +8892,14 @@ export default function App() {
                * crossing back inside a window the designer stepped out of
                * (`windowFloorsFor`, one implementation, two readers). */
               xoFloorPairs: windowFloorsFor(cand),
+              /* H-4 — and the candidate's POLARITY, when the field states one.
+               * Spread: a field without arms states none, the key is absent,
+               * and the design step enumerates polarity exactly as it has
+               * since it existed (P2). Translated positionally
+               * (`statedPolarityForThreeWay`), never by way name. */
+              ...(cand.polarity
+                ? { statedPolarity: statedPolarityForThreeWay(cand.polarity) }
+                : {}),
             }
           : {};
         return {
@@ -10018,10 +10058,23 @@ export default function App() {
             const g = role === passiveLowRole ? w : role === (hybridRoles?.highest ?? 'high') ? t : null;
             return g ? { freq: g.freq, db: g.spl } : null;
           };
-          const fieldSettings = fieldModeSettings(fieldMode, {
-            stepsPerAxis: scanSteps2,
-            pairs: wis.length,
-          });
+          /* H-4 — the same pre-design reading on the two-way route. `w` is the
+           * lowest PASSIVE way (on a hybrid the mid), read through
+           * `passiveLowRole` for the same reason the natural-slope fit is. The
+           * ACTIVE handover is not in `wis` at all (H-2 drops it by name), so
+           * no arm can ever be seeded for it and the H-1 decision that its
+           * polarity is class A stands by construction. */
+          const polarityBranchOf = (driver: string): PolarityBranch | null => {
+            const role = v2Roles.find((r) => engineV2Report?.driverIds?.[r] === driver);
+            if (role === passiveLowRole) return { response: w, adjust: {} };
+            if (role === (hybridRoles?.highest ?? 'high')) return { response: t, adjust: tAdjust };
+            return null;
+          };
+          const fieldSettings = fieldModeSettings(
+            fieldMode,
+            { stepsPerAxis: scanSteps2, pairs: wis.length },
+            polarityMarginReader(polarityBranchOf),
+          );
           const perPair: PairDerivationInput[] = pairDerivationInputs({
             windowInputs: wis,
             ...(slopes ? { slopes } : {}),
@@ -10248,6 +10301,12 @@ export default function App() {
                     kind: cand.crossings[0].alignment.kind as 'LR' | 'BW' | 'BS',
                     order: cand.crossings[0].alignment.order as 1 | 2 | 3 | 4,
                   },
+                  /* H-4 — and its POLARITY, the same way and on the same
+                   * terms: absent without an arm, and then the design step
+                   * descends both polarities as it always did. */
+                  ...(cand.polarity
+                    ? { statedInverted: statedInvertedForTwoWay(cand.polarity) }
+                    : {}),
                 }
               : settings),
             /* H-2b — absent on every run that is not a lean-form pass. */

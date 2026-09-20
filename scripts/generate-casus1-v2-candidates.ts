@@ -45,6 +45,7 @@ import { buildReport } from '../src/lib/engine2/report.ts';
 import { describeTargetCurve } from '../src/lib/engine2/requirements/targetCurve.ts';
 import { ctcKey } from '../src/lib/engine2/metrics/types.ts';
 import { candidateFieldKey } from '../src/lib/engine2/predesign/candidateField.ts';
+import { statedPolarityForThreeWay } from '../src/lib/engine2/predesign/polarityArms.ts';
 import { greyValues } from '../src/lib/engine2/optimizer/choices.ts';
 import { stableJson, stampRun } from '../src/lib/engine2/optimizer/determinism.ts';
 import { gateSettingsKey } from '../src/lib/engine2/optimizer/gates.ts';
@@ -357,6 +358,11 @@ function payloadFor(c: (typeof field.field.candidates)[number]): V2Chain3Payload
       safety: gridded.safety,
       structureLow: { kind: c.crossings[0].alignment.kind, order: c.crossings[0].alignment.order },
       structureHigh: { kind: c.crossings[1].alignment.kind, order: c.crossings[1].alignment.order },
+      /* H-4 — and the candidate's POLARITY when the field states one, on the
+       * same terms as the alignments above it. Spread: a field without arms
+       * leaves the key absent and the design step enumerates polarity exactly
+       * as it always has (P2). */
+      ...(c.polarity ? { statedPolarity: statedPolarityForThreeWay(c.polarity) } : {}),
       xoFloorPairs: c.crossings.map((x) => x.windowHz[0]),
     } as unknown as Chain3Input['settings'],
   };

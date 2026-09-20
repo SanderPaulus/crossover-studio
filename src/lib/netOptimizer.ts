@@ -1,5 +1,5 @@
 import { nelderMead } from './optimize.ts';
-import { bandMedian, powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
+import { bandMedian, PHASE_ERROR_UNIT_DEG, powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
 import { applyTransfer, combine, combineN, type BranchAdjust, type CombineResult, type GriddedResponse, type TweeterAdjust } from './dsp.ts';
@@ -3717,7 +3717,7 @@ export function optimizeNetworkValues(
     // decision-level (gates + repair pass), same as the two-driver path.
     if (solo) return 2 * amp;
     const phase =
-      (m.phaseDeg / 15) ** 2 +
+      (m.phaseDeg / PHASE_ERROR_UNIT_DEG) ** 2 +
       (phaseMetric === 'band' ? 0.5 * (m.phaseP95Deg / 45) ** 2 : 0);
     let slopePen = 0;
     if (acSlopes) {
@@ -4261,7 +4261,7 @@ export function optimizeNetworkValues(
          * search rather than out of the stop test. Considered and not taken;
          * if it is ever wanted it is a second stated decision. */
         const exR = Math.max(0, m.ripplePeakDb - barrier.rippleDb * 0.92);
-        const exP = Math.max(0, (m.phaseDeg - barrier.phaseDeg * 0.92) / 15);
+        const exP = Math.max(0, (m.phaseDeg - barrier.phaseDeg * 0.92) / PHASE_ERROR_UNIT_DEG);
         barr = 120 * (exR * exR + exP * exP) + 4 * Math.max(0, m.protSqDb - protRef);
       }
       // SOLO sensitivity wall. Exactly ZERO inside the cap, so the search path

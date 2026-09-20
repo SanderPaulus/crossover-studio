@@ -33,6 +33,7 @@ import type { Manifest } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
 import { buildCandidateField, type CandidateFieldResult } from './predesign/candidateField.ts';
+import type { PolarityArmPolicy } from './predesign/polarityArms.ts';
 import {
   declareCandidateChainChoices,
   declareCandidateChoices,
@@ -776,6 +777,17 @@ export function casus1Field(
    * the E-2 rule one field over).
    */
   stated?: { perAxisHz: readonly (readonly number[])[]; on: string },
+  /**
+   * H-4 — THE POLARITY ARMS, when a caller asks for them.
+   *
+   * ABSENT IS THE IDENTITY and that is the whole of the parameter: no candidate
+   * carries a polarity, the design step enumerates it as it always has, every
+   * label is what it was, and `candidateFieldKey` — and therefore the recorded
+   * run fingerprint of every corpus in this casus book — reproduces byte for
+   * byte. Only `measure-h4-polarity.ts` passes one, because only a measurement
+   * of both arms needs both arms; a regeneration that wants them states it.
+   */
+  polarityArms?: PolarityArmPolicy,
 ): CandidateFieldResult {
   return buildCandidateField({
     windowInputs: report.predesign.windowInputs,
@@ -784,6 +796,7 @@ export function casus1Field(
     chainBudget: CASUS1_FIELD_CHAIN_BUDGET,
     positionPolicy: CASUS1_FIELD_POSITION_POLICY,
     ...(stated ? { statedPerAxisHz: stated.perAxisHz, statedOn: stated.on } : {}),
+    ...(polarityArms ? { polarityArms } : {}),
   });
 }
 

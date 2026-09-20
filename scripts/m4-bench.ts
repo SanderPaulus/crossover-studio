@@ -41,6 +41,7 @@ import type { GeneratedCandidate } from '../src/lib/engine2/predesign/candidates
 import type { V2Chain3Payload } from '../src/lib/engine2/optimizer/worker.ts';
 import type { MeasurementFactsPayload } from '../src/lib/engine2/optimizer/measurementFacts.ts';
 import { statedMarkForWorker } from '../src/lib/engine2/optimizer/scanRequest.ts';
+import { statedPolarityForThreeWay } from '../src/lib/engine2/predesign/polarityArms.ts';
 import {
   CASUS1_CONTINUOUS_POWER_W,
   CASUS1_TARGET_CURVE,
@@ -116,6 +117,11 @@ export function m4PayloadFor(
       safety: gridded.safety,
       structureLow: { kind: c.crossings[0].alignment.kind, order: c.crossings[0].alignment.order },
       structureHigh: { kind: c.crossings[1].alignment.kind, order: c.crossings[1].alignment.order },
+      /* H-4 — and the candidate's POLARITY when the field states one, on the
+       * same terms as the alignments above it. Spread: a field without arms
+       * leaves the key absent and the design step enumerates polarity exactly
+       * as it always has (P2). */
+      ...(c.polarity ? { statedPolarity: statedPolarityForThreeWay(c.polarity) } : {}),
       xoFloorPairs: c.crossings.map((x) => x.windowHz[0]),
     } as unknown as Chain3Input['settings'],
   };

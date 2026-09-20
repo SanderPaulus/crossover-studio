@@ -75,6 +75,15 @@ export interface ChainSettings {
   cutOnly?: boolean;
   breakupGuard?: boolean;
   structurePreference?: StructChoice;
+  /**
+   * H-4 — BINDING POLARITY of the UPPER way relative to the lower, beside the
+   * binding alignment above it. Absent is the identity: the design step
+   * descends every structure at both polarities and the better fx wins, which
+   * is what every caller before H-4 read. On the v2 route the CANDIDATE states
+   * it, so a mirrored arm is its own candidate rather than a tie-break
+   * (`polarityArms.ts`).
+   */
+  statedInverted?: boolean;
   targets?: { rippleDb: number; phaseDeg: number };
   hpFloorHz?: number;
   phaseMetric?: 'band' | 'overlap';
@@ -449,37 +458,24 @@ export function assembledTuneOptions(
   };
 }
 
-/** One full chain for one crossover-range candidate. */
-export function runDesignChain(
+/**
+ * H-4 — THE DESIGN STEP'S OPTIONS, extracted so a measurement can build the
+ * same ones.
+ *
+ * Lifted VERBATIM out of `runDesignChain`, which reads it back below — the
+ * same move H-3 made with `assembledTuneOptions` and for the same reason: a
+ * script that assembles its own copy of these options measures the difference
+ * between two option sets as well as the difference it meant to measure (the
+ * V38-bench lesson). The active branch is built by `activeSideBranches`, the
+ * one construction both the chain and a drawn network's tune read.
+ */
+export function designStepOptions(
   input: ChainInput,
-  label = 'chain',
-  onProgress?: (p: ChainStageProgress) => void,
-  /** F2b — see `ChainEngineHooks` in `threeWayChain.ts`. Absent = off. */
-  hooks?: ChainEngineHooks,
-): ChainResult {
-  const { grid, w, t, driverZ, adjust, settings: s } = input;
-  /* ---------------- H-1: the modelled active branch, built once ----------- *
-   * The measured active way times its stated DSP transfer, on each grid this
-   * chain evaluates on. Built HERE and not inside the searches, because it is
-   * the same fixed curve for every candidate of every round: a branch with no
-   * free parameter is data, and rebuilding data inside a loop is how two
-   * copies of one curve come to disagree. */
-  /* H-3 — built by ONE function shared with the tune of a drawn network
-   * (`activeSideBranches`); the same construction, the same P4 condition. */
-  const { activeSide, activeBranch, activeBranchSafety, missingMeasurement } = activeSideBranches(input);
-  if (missingMeasurement && activeSide) {
-    /* P4's visible half: a stated active side without the measurement it needs
-     * is a statement this chain cannot honour, and honouring it silently with
-     * "no branch" would design the passive network against a sum that does not
-     * exist. The lean form is the one exception, and it says so by name
-     * (`unmeasured`) rather than by leaving the measurement out. */
-    throw new Error(
-      `designChain: an active handover is stated for "${activeSide.handover.activeWay}" but no measured ` +
-        'response was supplied for it (ChainInput.activeMeasured).',
-    );
-  }
-
-  const vfOpts = {
+  branches: ReturnType<typeof activeSideBranches>,
+) {
+  const s = input.settings;
+  const { activeSide, activeBranch } = branches;
+  return {
     phasePriority: s.phasePriority,
     eqBandsPerDriver: s.eqBandsPerDriver,
     angleData: s.angleData,
@@ -499,6 +495,9 @@ export function runDesignChain(
     cutOnly: s.cutOnly,
     breakupGuard: s.breakupGuard,
     structurePreference: s.structurePreference,
+    /* H-4 — spread, so an unstated polarity leaves the key absent and the
+     * design step descends both, exactly as before. */
+    ...(s.statedInverted !== undefined ? { statedInverted: s.statedInverted } : {}),
     targets: s.targets,
     hpFloorHz: s.hpFloorHz,
     phaseMetric: s.phaseMetric,
@@ -516,6 +515,40 @@ export function runDesignChain(
     ...(activeSide ? { lowHighPass: activeHighPass(activeSide.handover) } : {}),
     ...(activeBranch ? { activeBranch, activeLevelBandHz: handoverBandHz(activeSide!.handover.hz) } : {}),
   };
+}
+
+/** One full chain for one crossover-range candidate. */
+export function runDesignChain(
+  input: ChainInput,
+  label = 'chain',
+  onProgress?: (p: ChainStageProgress) => void,
+  /** F2b — see `ChainEngineHooks` in `threeWayChain.ts`. Absent = off. */
+  hooks?: ChainEngineHooks,
+): ChainResult {
+  const { grid, w, t, driverZ, adjust, settings: s } = input;
+  /* ---------------- H-1: the modelled active branch, built once ----------- *
+   * The measured active way times its stated DSP transfer, on each grid this
+   * chain evaluates on. Built HERE and not inside the searches, because it is
+   * the same fixed curve for every candidate of every round: a branch with no
+   * free parameter is data, and rebuilding data inside a loop is how two
+   * copies of one curve come to disagree. */
+  /* H-3 — built by ONE function shared with the tune of a drawn network
+   * (`activeSideBranches`); the same construction, the same P4 condition. */
+  const branches = activeSideBranches(input);
+  const { activeSide, activeBranch, activeBranchSafety, missingMeasurement } = branches;
+  if (missingMeasurement && activeSide) {
+    /* P4's visible half: a stated active side without the measurement it needs
+     * is a statement this chain cannot honour, and honouring it silently with
+     * "no branch" would design the passive network against a sum that does not
+     * exist. The lean form is the one exception, and it says so by name
+     * (`unmeasured`) rather than by leaving the measurement out. */
+    throw new Error(
+      `designChain: an active handover is stated for "${activeSide.handover.activeWay}" but no measured ` +
+        'response was supplied for it (ChainInput.activeMeasured).',
+    );
+  }
+
+  const vfOpts = designStepOptions(input, branches);
   // Round loop (was App-side): re-seed from the best while a round pays ≥1%.
   // Round 1 is a PRIORITY CLUSTER (setpoint ±5%) — a 5% priority nudge kicks
   // the search into a different, often better basin (Sander's 50→55% flip),

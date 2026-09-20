@@ -46,6 +46,7 @@ import { buildCandidateField, type CandidateFieldResult } from './predesign/cand
 import { windowFloorsFor } from './optimizer/scanRequest.ts';
 import { fieldModeSettings } from './predesign/fieldMode.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
+import { statedInvertedForTwoWay, type PolarityArmPolicy } from './predesign/polarityArms.ts';
 import { declareCandidateChainChoices, declareCandidateChoices } from './optimizer/candidateDeclaration.ts';
 import { factsForWorker, type MeasurementFactsPayload } from './optimizer/measurementFacts.ts';
 import { SILENT_GHOST_DB } from './casus1V2.fixture.ts';
@@ -534,16 +535,36 @@ export const CASUS1H_LOWEST_WAY_COIL_SPAN_H: number | null = (() => {
  * mid→tweeter positions; the four stated active handovers are four RUNS of this
  * field, and the generator loops over them.
  */
-export function casus1hField(report: EngineV2Report): CandidateFieldResult {
+export function casus1hField(
+  report: EngineV2Report,
+  /**
+   * H-4 — THE POLARITY ARMS, when a caller asks for them.
+   *
+   * ABSENT IS THE IDENTITY and that is the whole of the parameter: no candidate
+   * carries a polarity, the design step enumerates it as it always has, every
+   * label is what it was, and `candidateFieldKey` — and therefore the recorded
+   * run fingerprint of every corpus in this casus book — reproduces byte for
+   * byte. Only `measure-h4-polarity.ts` passes one, because only a measurement
+   * of both arms needs both arms; a regeneration that wants them states it.
+   */
+  polarityArms?: PolarityArmPolicy,
+): CandidateFieldResult {
   /* The passive pair is the LAST window: the report's windows are in
    * `driversLowToHigh` order, and the first is woofer→mid — the handover the
-   * active side owns. Read off the ORDER rather than by name (N-way agnostic). */
+   * active side owns. Read off the ORDER rather than by name (N-way agnostic).
+   *
+   * H-4 — AND THIS IS WHY NO POLARITY ARM CAN EVER BE SEEDED FOR THE ACTIVE
+   * HANDOVER. It is not in the field, so the expansion never sees it: the
+   * decision that the active side's polarity is class A (H-1, settled by the
+   * cabinet's reversed-polarity null and not by this data) holds by
+   * construction rather than by a rule somebody has to remember. */
   const wis = report.predesign.windowInputs.filter((w) => w.lower !== ACTIVE_WAY);
   return buildCandidateField({
     windowInputs: wis,
     perPair: wis.map(() => ({ statedOrder: CASUS1H_STATED_ORDER })),
     alignments: CASUS1H_FIELD_ALIGNMENTS,
     ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: Math.max(1, wis.length) }),
+    ...(polarityArms ? { polarityArms } : {}),
   });
 }
 
@@ -742,6 +763,12 @@ export function casus1hChainInputFor(
       ...CASUS1H_V2_SETTINGS,
       safety: gridded.safety,
       structurePreference: { kind: x.alignment.kind as 'LR' | 'BW' | 'BS', order: x.alignment.order as 1 | 2 | 3 | 4 },
+      /* H-4 — and the candidate's POLARITY when the field states one, on the
+       * same terms as the alignment above it: the caller picks, the design
+       * step builds on it. Spread, so a field without polarity arms leaves the
+       * key absent and the design step descends both polarities exactly as it
+       * always did (P2). */
+      ...(c.polarity ? { statedInverted: statedInvertedForTwoWay(c.polarity) } : {}),
       activeSide: active,
     },
     xoRange: [x.cageHz[0], x.cageHz[1]],

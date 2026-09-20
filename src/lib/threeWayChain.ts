@@ -68,6 +68,18 @@ export interface Chain3Settings {
    *  enumeration over the library. */
   structureLow?: Struct3Choice;
   structureHigh?: Struct3Choice;
+  /**
+   * H-4 — BINDING POLARITY, beside the binding alignment above it and read the
+   * same way: the caller picks it, the design step builds the best design on
+   * it. Absent is the identity — the design step enumerates all four
+   * combinations and the best fx wins, exactly as every caller before H-4.
+   *
+   * On the v2 route the CANDIDATE states it: a polarity arm is a candidate of
+   * its own, at the same position and in its own topology class, and it is
+   * designed, EQ'd and tuned against its own tilted phase targets rather than
+   * being the loser of an internal tie-break (H-4, `polarityArms.ts`).
+   */
+  statedPolarity?: { midInverted: boolean; tweeterInverted: boolean };
   /** Greedy cut-only EQ budget per branch in the design step (the 2-way
    *  "EQ bands/driver" setting; 0/absent = off).
    *
@@ -360,6 +372,9 @@ export function runThreeWayChain(
     hpFloorHz: s.hpFloorHz,
     structureLow: s.structureLow,
     structureHigh: s.structureHigh,
+    /* H-4 — spread, so an unstated polarity leaves the key absent and the
+     * design step enumerates exactly what it always enumerated. */
+    ...(s.statedPolarity ? { statedPolarity: s.statedPolarity } : {}),
     breakupGuard: s.breakupGuard,
     eqBandsPerBranch: s.eqBands,
     diAnchorHz: s.diAnchorHz,
