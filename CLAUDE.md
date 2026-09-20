@@ -1923,6 +1923,19 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (20-09-2026, H-4): 202 bestanden (201 geslaagd, 1 overgeslagen),
+  2657 geslaagd, 19 overgeslagen, 3580 s (59 min 40) — GROEN.** Negentien is EXACT het H-1-getal, en
+  dat is de claim: H-4 voegt geen enkele getagde test toe, dus de inventaris staat stil. Wat de run
+  daarnaast bewijst is dat de 29 H-4-claims op een ANDERE runtime reproduceren, en dat is hier NIET
+  vanzelfsprekend: `polarityArms.test.ts` legt handberekeningen op zes decimalen (~0° en ~180° op een
+  ideaal paar) en `h4PolarityArms.test.ts` vergelijkt `fx` en `objective` van twee ontwerpruns met
+  `toBe` — EXACTE float-gelijkheid op een AFGELEID getal, precies de vorm waarop dit project bij V46,
+  V49 en B-1 elk één keer is omgevallen. Zij houdt om één reden, en die is het opschrijven waard:
+  **beide kanten van die P2-vergelijking worden in DEZELFDE run uit dezelfde invoer berekend.** Wat
+  bij V46/V49/B-1 brak was een verse berekening naast een getal dat op een ándere machine was
+  opgeschreven; een gestelde polariteit die gelijk is aan wat de enumeratie koos loopt door precies
+  dezelfde code, dus er is niets om tussen runtimes uiteen te laten lopen. Wie hier ooit een
+  OPGENOMEN fx naast een verse legt, leest die klasse in plaats van de decimalen.
   **GEMETEN IN CI OP ubuntu/Node 22 (17-09-2026, H-2): 196 bestanden (195 geslaagd, 1 overgeslagen),
   2535 geslaagd, 19 overgeslagen, 3382 s (56 min) — GROEN.** Negentien is EXACT het H-1-getal, en
   dat is de claim: H-2 voegt geen enkele getagde test toe, dus de inventaris staat stil. Wat de run
