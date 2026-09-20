@@ -380,7 +380,14 @@ export function expandPolarityArms(
        * pure filter evaluation and buys the run notes their numbers. */
       const m = policy.marginFor?.(x) ?? null;
       if (m) {
-        const key = `${x.pairLabel}@${x.hz}`;
+        /* THE ALIGNMENT IS IN THE KEY, and it has to be: the reading applies
+         * the crossing's IDEAL FILTER, so one frequency carried at two orders
+         * is two readings. Measured on the demo's full field — low→mid at
+         * 466.7 Hz reads a 10.0° margin at one alignment and 25.7° at another,
+         * and a key without the alignment printed the first while the second
+         * decided. The DECISION was always per crossing; what was wrong was
+         * the number beside it, which is the worse half of the two. */
+        const key = `${x.pairLabel}@${x.hz}@${x.alignment.kind}${x.alignment.order}`;
         if (!seen.has(key)) {
           seen.add(key);
           readings.push(m);

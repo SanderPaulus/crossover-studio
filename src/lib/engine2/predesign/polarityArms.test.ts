@@ -299,6 +299,26 @@ describe('H-4 — expanding a field, and the identity that protects every finger
     expect(off.armsAdded).toBe(0);
   });
 
+  it('a frequency carried at TWO alignments is TWO readings, not one', () => {
+    /* The reading applies the crossing's IDEAL FILTER, so the alignment is part
+     * of what is read. Measured on the demo's full field before this was
+     * written down: low→mid at 466.7 Hz reads a 10.0° margin at one alignment
+     * and 25.7° at another, and a key without the alignment printed the first
+     * while the second decided. */
+    const two = field([
+      candidate([crossing({ alignment: { kind: 'LR', order: 4 } })], { label: 'A' }),
+      candidate([crossing({ alignment: { kind: 'LR', order: 2 } })], { label: 'B' }),
+    ]);
+    const out = expandPolarityArms(two, {
+      seed: 'both',
+      marginFor: (x) => ({ ...always(), pairLabel: `${x.pairLabel} ${x.alignment.kind}${x.alignment.order}` }),
+      statedAlways: true,
+      why: 'w',
+    });
+    expect(out.readings).toHaveLength(2);
+    expect(out.readings.map((r) => r.pairLabel)).toEqual(['low→high LR4', 'low→high LR2']);
+  });
+
   it('reads each distinct crossing once, and prints what it read', () => {
     let calls = 0;
     const out = expandPolarityArms(f, {
