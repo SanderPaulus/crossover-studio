@@ -272,7 +272,25 @@ const keys = Object.keys(netlists).filter((k) => LIVE_V2.test(k));
  * the registered arm (`register-a5e3-arm.ts`). Anchored on both ends, so the
  * live `KAND_V2_n` and the three baselines can never match. */
 const DATED_KAND = /^[A-Z][A-Z0-9]*_KAND_\d+$/;
-const datedKeys = Object.keys(netlists).filter((k) => DATED_KAND.test(k));
+/**
+ * M-5 — DE VIERDE FAMILIE, en zij matcht `DATED_KAND` en is er toch geen.
+ *
+ * `M5_KAND_<n>` is een GELEVERDE arm van de M-5-meting: een gestelde positie
+ * van het levende corpus met de orde LOSGELATEN en de polariteit GESTELD,
+ * bevroren naast zijn tegenhanger in plaats van in zijn plaats
+ * (`register-m5-candidates.ts`). Naar VORM is dat een gedateerd corpus — een
+ * prefix plus `_KAND_<n>` — maar naar INHOUD het tegenovergestelde van wat een
+ * gedateerd corpus is: een gedateerd corpus is een MEETOBJECT dat onder de
+ * gestelde vloer mag staan omdat het uit een oudere enginestand komt, en deze
+ * netlists zijn ONTWERPEN die door exact dezelfde gewapende poorten zijn
+ * gekomen als het levende corpus. De twee door elkaar halen zou hun
+ * `klasse_toelichting` laten zeggen dat zij niet gebouwd mogen worden, en zou
+ * een van hen onder de vloer laten vallen met "het is een meetobject" als
+ * excuus. Daarom eerst herkend en daarna uit `datedKeys` gehouden.
+ */
+const M5_KAND = /^M5_KAND_\d+$/;
+const m5Keys = Object.keys(netlists).filter((k) => M5_KAND.test(k));
+const datedKeys = Object.keys(netlists).filter((k) => DATED_KAND.test(k) && !M5_KAND.test(k));
 /**
  * M-4 — DE DERDE FAMILIE: een netlist die naast het levende corpus is bevroren.
  *
@@ -625,6 +643,14 @@ const exceptionReason = (key: string, atHz: number | null): string => {
       'de tegenspraak die V32 opspoorde — en dat is een bevinding en geen uitzondering.'
     );
   }
+  if (M5_KAND.test(key)) {
+    return (
+      `DE M-5-ARM ${key} MIST DE GESTELDE VLOER, en dat hoort niet te kunnen: hij is geleverd ` +
+      'door een run met M-B/|Z| gewapend, dus de poort heeft hem goedgekeurd. Staat hij hier, dan ' +
+      'meet de poort iets anders dan deze wandeling — precies de tegenspraak die V32 opspoorde — ' +
+      'en dat is een bevinding en geen uitzondering.'
+    );
+  }
   if (DATED_KAND.test(key)) {
     const prefix = key.replace(/_KAND_\d+$/, '');
     return (
@@ -782,6 +808,32 @@ for (const key of m4Keys) {
       'meetobject: hij haalt elke gewapende poort, net als zijn tegenhanger.',
   );
   console.log(`wrote the class-B block of the phase-priority netlist ${key}`);
+}
+
+/* M-5 — de geleverde LR2- en polariteitsarmen: hetzelfde pad, en ook zij worden
+ * één keer geschreven en daarna met rust gelaten. Een regeneratie van het
+ * levende corpus zegt niets over deze netlists — zij horen niet bij dat veld. */
+for (const key of m5Keys) {
+  if ((raw.kandidaten as Record<string, unknown>)[key] !== undefined) continue;
+  const entry = (
+    raw.manifest_en_geometrie as {
+      m5_corpus?: { meetset?: string; bestanden?: { naam: string; label?: string; uitlijning?: string; arm?: string; omgepoolde_wegen?: string[] }[] };
+    }
+  ).m5_corpus?.bestanden?.find((x) => x.naam === key);
+  const m5set = (raw.manifest_en_geometrie as { m5_corpus?: { meetset?: string } }).m5_corpus?.meetset ?? '<meetset>';
+  (raw.kandidaten as Record<string, unknown>)[key] = classBBlock(
+    key,
+    `EEN GELEVERDE M-5-ARM (${entry?.label ?? key}). Metrieken op de VASTE netlist ` +
+      `manifest_en_geometrie.netlists.${key}, een BESTAND in test-fixtures/casus1/. Een GESTELDE ` +
+      'positie van het levende corpus (U-5) met de ORDE LOSGELATEN — uitlijning ' +
+      `${entry?.uitlijning ?? '?'} — en de POLARITEIT GESTELD (H-4): arm ${entry?.arm ?? '?'}, ` +
+      `omgepoold [${(entry?.omgepoolde_wegen ?? []).join('+') || 'geen'}], gedraaid op meetset ` +
+      `${m5set}. De referentie hangt aan het bestand en niet aan de run die het opleverde, dus ` +
+      'klasse B en geen klasse C; waar hij vandaan komt staat in casus1_m5_herkomst.json en de ' +
+      'tabel in casus1_m5_lr2.json. Dit is een ONTWERP en geen meetobject: hij haalt elke gewapende ' +
+      'poort, net als zijn tegenhanger in het levende corpus.',
+  );
+  console.log(`wrote the class-B block of the M-5 arm ${key}`);
 }
 
 /* The floor walk, over EVERY netlist the manifest names — see the note above. */

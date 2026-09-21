@@ -393,7 +393,10 @@ describe('M-3 — de toegelaten puntenverzameling beweegt nergens', () => {
    */
   const SINCE_M3 = (() => {
     const out = new Set<string>();
-    for (const file of ['casus1_m4_herkomst.json']) {
+    /* M-5 (21-09-2026) is de DERDE familie, en zij is precies het geval dat de
+     * noot hierboven aankondigde: de claim viel om toen zij erbij kwam, en dit
+     * is het noemen van haar herkomst. */
+    for (const file of ['casus1_m4_herkomst.json', 'casus1_m5_herkomst.json']) {
       const path = join(HERE, '..', '..', '..', 'test-fixtures', file);
       if (!existsSync(path)) continue;
       const h = JSON.parse(readFileSync(path, 'utf-8')) as { bestanden: { key: string }[] };
@@ -408,9 +411,14 @@ describe('M-3 — de toegelaten puntenverzameling beweegt nergens', () => {
     const rowsThen = block.per_netlist.filter((r) => !SINCE_M3.has(r.netlist)).length;
     expect(b.bewogen_rijen + b.onbewogen_rijen).toBe(rowsThen);
     expect(toen.length).toBeGreaterThan(0);
-    /* En de uitgesloten verzameling is precies de familie die zij zegt te zijn:
-     * geen enkele netlist van vóór M-3 mag erin wegvallen. */
-    for (const k of SINCE_M3) expect(k).toMatch(/^KAND_V2_\d+F$/);
+    /* En de uitgesloten verzameling is precies de FAMILIES die zij zegt te
+     * zijn: geen enkele netlist van vóór M-3 mag erin wegvallen. Benoemd en
+     * niet als losser patroon — een patroon dat "alles wat nieuw lijkt" pakt
+     * zou de claim stil leegmaken bij de eerstvolgende bevriezing. */
+    const FAMILIES = [/^KAND_V2_\d+F$/, /^M5_KAND_\d+$/];
+    for (const k of SINCE_M3) expect(FAMILIES.some((re) => re.test(k)), k).toBe(true);
+    for (const re of FAMILIES)
+      expect([...SINCE_M3].some((k) => re.test(k)), `${re} noemt geen enkele netlist meer`).toBe(true);
     expect(block.per_netlist.length - rowsThen).toBe(
       block.per_netlist.filter((r) => SINCE_M3.has(r.netlist)).length,
     );

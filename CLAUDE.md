@@ -54,6 +54,27 @@
     dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
     staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
     voor de twee weggegooide runs die ernaast liepen.
+    **Ná M-5 (21-09-2026) gemeten op 546 s — 204 bestanden (203 geslaagd, 1 overgeslagen),
+    2740 tests (2736 geslaagd, 4 overgeslagen), alleen gedraaid met niets ernaast.** +1 BESTAND
+    (`m5Lr2.test.ts`, 23 claims) en +24 tests. **DE DELTA IS GEËNUMEREERD EN NIET AFGELEID**
+    (`npx vitest list -t '^(?!.*\[live\])'` op HEAD in een wegwerp-worktree tegen dezelfde lijst nu):
+    vierentwintig namen erbij, NUL weg — de drieëntwintig van het nieuwe bestand plus ÉÉN in
+    `casus1V2Candidates.test.ts` (de wezen-guard van de M5-familie). `midM3.test.ts` en
+    `frozenNetlistGates.test.ts` veranderden van INHOUD en niet van telling (de derde familie in
+    `SINCE_M3`, en de benoemde uitzondering op de V47-tweeterclaim). Het corpus is NIET
+    geregenereerd — M-5 voegt vijf netlists TOE — dus geen enkele `it.each` over het levende corpus
+    beweegt. **EN LET OP DE REGEL WAARTEGEN JE VERGELIJKT:** de regel hieronder is
+    gelabeld H-4b en noteert 2716 TESTS waarvan 2712 GESLAAGD, en HEAD is de H-4b-nazorg, die geen
+    enkele test toevoegde (de enumeratie zegt 2712 gelijst op beide). 2712 + 24 = 2736 geslaagd, en
+    2740 met de vier overgeslagen erbij. Wie de TOTAALtelling (2716) als startpunt neemt in plaats
+    van de GESLAAGDE (2712), komt er vier te ver — de twee staan in dezelfde zin. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 546 tegen H-4b's 534 s is dezelfde laag op
+    dezelfde machine met één bestand erbij. **DE EERSTE RUN VAN DEZE SESSIE HAD ÉÉN RODE CLAIM EN ZIJ
+    DEED HAAR WERK:** de M-3-brugboekhouding telt "bewogen + onbewogen = élke rij van de netlists van
+    TOEN" en houdt de families die ná M-3 zijn toegevoegd er bij naam buiten — haar eigen noot
+    kondigde aan dat een DERDE familie haar zou laten omvallen totdat iemand die herkomst noemt, en
+    dat is precies wat gebeurde. Gerepareerd door `casus1_m5_herkomst.json` te noemen, niet door het
+    patroon losser te maken.
     **Ná H-4b (20-09-2026) gemeten op 534 s — 203 bestanden (202 geslaagd, 1 overgeslagen),
     2716 tests (2712 geslaagd, 4 overgeslagen), in één keer groen, ALLEEN gedraaid met niets
     ernaast.** +1 BESTAND (`lib/handoverPolarity.test.ts`, 30 claims) en +39 tests, en die telling
@@ -625,7 +646,18 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 20-09-2026 (H-4): 202 bestanden, 2676 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 21-09-2026 (M-5): 204 bestanden, 2740 tests,
+  1832 s (30 min 32), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag en
+  ná de 48 M-5-ketenruns.** +1 bestand en +24 tests — zie de `test:fast`-regel; het corpus is NIET
+  geregenereerd, M-5 voegt VIJF netlists toe. **DEZE RUN IS GEDRAAID OMDAT ER NETLISTS AAN HET
+  CASUSBOEK ZIJN TOEGEVOEGD, en dat is de enige reden** — M-5 raakt geen engine-, poort-, budget-,
+  venster- of metriekcode, en wat het aan `casus1V2.fixture.ts` toevoegt zijn exports plus één
+  import van een zuivere module. Wat hij bewijst is dat die toevoeging INERT is waar het telt: alle
+  VIER de live ketenruns reproduceren hun bevroren netlist byte voor byte (casus 1's goedkoopste
+  geleverde en zijn goedkoopste verwerping, casus 1b, casus 1h), en beide byte-baselines
+  (`f4cRegression`, `workerRouteRegression`) plus `toggleRegression` staan. De wandkloktijd IS de
+  byte-reproductie van casus 1 (1825 s voor dat ene bestand); de verwerping ernaast kostte 948 s.
+  (De stand ervoor: **GEMETEN 20-09-2026 (H-4): 202 bestanden, 2676 tests,
   1825 s (30 min 25), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag en
   ná de acht H-4-ketenruns.** +2 bestanden en +35 tests — zie de `test:fast`-regel; het corpus is
   NIET aangeraakt. **DEZE RUN IS GEDRAAID OMDAT H-4 BEIDE ONTWERPSTAPPEN AANRAAKT** — de
@@ -636,7 +668,7 @@
   reproduceren hun bevroren netlist byte voor byte (casus 1's goedkoopste geleverde en zijn
   goedkoopste verwerping, casus 1b, casus 1h), en beide byte-baselines plus `toggleRegression` staan.
   **De tweede reden is de extractie van `PHASE_ERROR_UNIT_DEG`** uit vijf objectieven in drie
-  engines: een literal naar een import, byte-neutraal per constructie en hier per meting.
+  engines: een literal naar een import, byte-neutraal per constructie en hier per meting.)
   (De stand ervoor: **GEMETEN 16-09-2026 (M-3): 189 bestanden, 2445 tests,
   1785 s (29 min 45), niets overgeslagen, in één keer groen, alleen gedraaid met `nohup`.** +1 bestand
   (`engine2/midM3.test.ts`, 43 claims) en +44 tests — zie de `test:fast`-regel; het corpus is NIET
@@ -1708,6 +1740,24 @@
   Vite's `?raw`-imports draagt — zonder die declaratie 21 TS2307-fouten in `tsc -b`. **`tsconfig.test.json`
   kent hem sinds U-3 óók**, om precies dezelfde reden één project verder: `demoBundle.test.ts` importeert
   beide demobundels.
+- **De LR2-vraag op de huidige meetbasis (M-5, 21-09-2026)** — drie scripts en één veld:
+  - `npx vite-node scripts/measure-m5-lr2.ts` — seconden, geen ketenrun: de AFLEIDINGSTABEL per
+    flank per beschikbare LR-orde, onder de drie wapeningen (`casus1M5PerPair`), met bij elke
+    weigering de grond in de EENHEID VAN DE GRENS (hertz waar zij een frequentie is, decibel waar
+    zij een dB-regel is — U-5's derde regel, toegepast op een ORDE in plaats van op een positie).
+    `M5_RUN=1` draait de rijen (`M5_JOBS` tegelijk, één shard per (meetset, rij) — de shardnaam
+    DRAAGT de meetset, want beide sets leveren identieke labels en een naam op het label alleen zou
+    de ene set de uitslag van de andere laten lezen). `M5_SETS=m3,koan677` (default: allebei),
+    `M5_ONLY=<label>`, `M5_REDO=1`. Schrijft `test-fixtures/casus1_m5_lr2.json`.
+    **GEMETEN 21-09-2026: 48 ketenruns, 23,4 CPU-uur, 5 u 37 wandklok bij acht tegelijk; duurste
+    enkele run 13 264 s (koan677, 518,8 LR4 textbook).** Zeven van 48 geleverd.
+  - `npx vite-node scripts/register-m5-candidates.ts` — seconden, GEEN ketenrun: bevriest de
+    leveringen van de meetset die `M5_FREEZE_SET` noemt (default `m3`, de huidige meetbasis) als
+    `M5-KAND-<n>`, plus de manifestregels, `manifest_en_geometrie.m5_corpus` en
+    `casus1_m5_herkomst.json`. Kopieert, verplaatst niet, overschrijft nooit.
+  - `scripts/m5-bench.ts` — het VELD, en verder niets: dezelfde bank als H-4 (`casus1Bench`,
+    `casus1PayloadFor`) met één factor anders. **DE VOLGORDE IS BINDEND** (de C-2-regel):
+    measure → register → `record-casus1-v2-references.ts` → `record-casus1-m3-references.ts`.
 - **Drie GESTELDE kruispunten op casus 1b, getuned en volledig geoordeeld (U-5, 10-09-2026)**:
   `U5_JOBS=<n> npx vite-node scripts/measure-u5-stated-crossings.ts` — DRIE KETENRUNS (~400 s per
   stuk, standaard alle drie tegelijk als kindprocessen); `U5_ONLY=<hz>` draait er één en schrijft
@@ -7400,3 +7450,81 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   structureel en niet gelukkig: een exportblok draagt geen `polarityArms`-beleid (de marge-lezer is
   een FUNCTIE en reist niet door JSON), dus laag 1 herbouwt het veld zonder armen en stempelt op
   dezelfde digest.
+
+### M-5-guards (de LR2-vraag; de afleiding als weigering; de orde losgelaten; alleen een meetsessie)
+
+- **WAT DEZE SESSIE VERANDERDE AAN DE ENGINE: NIETS.** Geen eis, geen poort, geen budget, geen
+  venster, geen constante en geen corpus. Wat erbij komt is één fixture-functie
+  (`casus1M5PerPair`), drie scripts, vijf bevroren netlists en hun klasse-B-referenties. Het levende
+  corpus van M-2b staat ongewijzigd; `casus1Field(report)` keyt byte-identiek (gepind, mét de
+  tegenproef dat een veld MÉT gestelde posities en armen die sleutels wél draagt).
+- **`casus1M5PerPair` — DE DRIE WAPENINGEN VAN DE A5d.3-AFLEIDING, en de reden dat het er drie zijn
+  is een ASYMMETRIE die deze sessie heeft gemeten.** Élke casus-fixture van dit boek geeft `perPair`
+  alléén een `statedOrder`; de APP wapent A5d.3(ii) wél (`pairDerivationInputs`, E-3b, met het
+  gestelde M-C-getal van de bovenste weg). Zolang de orde GESTELD is verandert dat niets — de
+  verzameling is {gesteld} ∪ {geëist} en op casus 1 zijn beide 4, en dát is gepind — dus het is nooit
+  opgevallen; zodra de orde wordt losgelaten beslist het alles. De functie woont in de FIXTURE en
+  niet in een script, zodat de guard haar kan lezen zonder een script te importeren (de M-4-vorm).
+- `src/lib/engine2/m5Lr2.test.ts` (23 claims) — **elke claim is een handberekening of een
+  tegenproef, en de tegenproeven dragen het bestand.** De vloer van het lege LR2-venster is
+  `f_s · 2^(|eis|/(6·orde))` met de hand nagerekend; de grond in decibel is
+  `12 · log₂(2304/924,3) = 15,81` tegen 20 gevraagd (4,19 tekort) mét de tegenproef dat orde 4 er
+  ruimte heeft; **zonder het gestelde getal is datzelfde venster NIET leeg** — zonder die claim gaat
+  de eerste over de UITLIJNING waar zij over de EIS gaat. Verder: de twee onafhankelijke gronden
+  (gewapend laat orde 2 niet toe; kaal laat hem toe en het VELD weigert hem op het lege venster), de
+  eis van A5d.3(ii) met de hand (2,595 → 3 → bibliotheek 4), de marge van élke gestelde positie op
+  de W-M-as (253 Hz de krapste met 0,45 dB), en de veldopbouw met de H-4b-valstrik erin (op een
+  LR2-veld is de TEXTBOOK-arm degene die mid én tweeter omkeert).
+- **DE WEIGERING OVERLEEFT DE ONGEKALIBREERDE DELER, en dat is nagemeten in plaats van beredeneerd.**
+  Het plafond van 2304 Hz is de breakup van de mid gedeeld door een deler die dit project zelf
+  ongekalibreerd noemt (V6/V9, U-4). Op de MILDSTE gepubliceerde waarde (2,0) is het venster nog
+  steeds leeg (plafond 2844,2 tegen een vloer van 2934,5) en het gaat pas open onder ongeveer 1,94,
+  buiten het gepubliceerde bereik. Gepind mét de tegenproef op 1,9, en met de claim dat dezelfde
+  deler op orde 4 niets doet (daar bindt `stated-min`).
+- **DE AFLEIDING IS MEETSETONAFHANKELIJK, en het script GOOIT als zij dat niet is.** Venster,
+  bindende regel en toelating per orde zijn op `m3` en `koan677` tot op de tiende hertz identiek —
+  wat M-3 voorspelt (hij bewoog de FASE van de mid en geen magnitude, en élke vensterinvoer is een
+  magnitude, een impedantie of een gestelde geldigheid). Eén tabel die stilzwijgend over één van
+  twee sets gaat is precies wat hier niet mag.
+- **DE RUN-CLAIMS, en zij zijn allemaal falsifieerbaar tegen `casus1_m5_lr2.json`:** 48 rijen met
+  élk een tegenhanger in het levende corpus; **geen enkele LR2-TEXTBOOKarm levert** (zes van zes,
+  vier op M-D en twee op de versterkervloer); élke LR2-levering is een SPIEGELarm en haar
+  W-M-fasetracking is slechter dan die van haar tegenhanger (30–95° tegen 10,3–13,1°); en zij WINT
+  op onderdelen, dissipatie en BOM (23–25 tegen 36–39, 15–33 % tegen 51–53 %, € 112–150 tegen
+  € 264–513). **M-D is de dominante weigeringsgrond en dat is GEEN LR2-eigenschap** — 12 LR2 tegen
+  15 LR4 van de 41 weigeringen — want het budget bijt op de seriespoel van de laagste weg en die
+  staat er in beide uitlijningen.
+- **DE ONGEKNIPTE GESTELDE KOOI, gemeten en niet weggepoetst.** U-5 knipt een gestelde kooi met
+  opzet niet tegen het venster; C-2 houdt gegenereerde kooien er juist binnen. Op een positie die
+  BINNEN haar venster ligt reikt de gestelde kooi er daardoor overheen (M-T 2125–2385 waar de
+  gegenereerde 2200–2304 was), en **vijf van de zeven geleverde rijen kruisen boven het
+  breakup-plafond van 2304 Hz** — tot 8560 Hz. Gevolg voor de lezing van de tabel: LR2-tegen-LR4
+  BINNEN de tabel is zuiver (beide dragen dezelfde kooi), de vergelijking met de bevroren netlists
+  draagt dit voorbehoud, en de factor is NIET met een eigen arm geïsoleerd.
+- **EEN BESTAANDE GUARD VUURDE EROP EN DEED ZIJN WERK.** V47's claim "de relatieve regel die M-C
+  verving zag nooit één tweeterresonantie" eist `protSqDb` exact nul op het tweeterpaar van élke
+  bevroren netlist; `M5_KAND_5` leest 3,85, omdat zijn kruispunt naar 8560 Hz liep en `xoF/3`
+  daarmee de 924 Hz van de tweeter eindelijk bereikt — V47's eigen mechanisme van de andere kant.
+  **De claim is NIET versoepeld: de uitzondering is BENOEMD** (`RELATIVE_RULE_SEES_THE_TWEETER`, de
+  V30-vorm) met de eis erbij dat een genoemde uitzondering ook werkelijk boven nul leest, en zij
+  is ook uit de "niet inert"-tegenproef ernaast gehouden.
+- `src/lib/engine2/casus1V2Candidates.test.ts` — de WEZEN-guard van de M5-familie, naast die van
+  `KAND-V2-*` en `KAND-V2-*F` en om dezelfde reden: die patronen zijn ANKERD, wat precies is wat de
+  gedateerde corpora eruit houdt, dus een nieuwe familie krijgt een eigen regel in plaats van een
+  lossere match. Plus de eis dat élke M5-netlist een positie draagt die het LEVENDE corpus ook
+  draagt — het paar is wat de familie betekent, gepaard op KRUISPUNT en nooit op volgnummer.
+- **`record-casus1-v2-references.ts` KENT DE M5-FAMILIE, en zij is een grensgeval dat benoemd moest
+  worden.** `M5_KAND_<n>` matcht `DATED_KAND` naar VORM en is er naar INHOUD het tegenovergestelde
+  van: een gedateerd corpus is een MEETOBJECT dat onder de gestelde vloer mag staan omdat het uit
+  een oudere enginestand komt, en deze netlists zijn ONTWERPEN die door exact dezelfde gewapende
+  poorten zijn gekomen als het levende corpus. Door elkaar halen zou hun `klasse_toelichting` laten
+  zeggen dat zij niet gebouwd mogen worden, en zou een van hen onder de vloer laten vallen met "het
+  is een meetobject" als excuus. Daarom eerst herkend en daarna uit `datedKeys` gehouden, met een
+  eigen `exceptionReason`.
+- **WAT ER NIET GEDAAN IS, met naam.** (1) De ongeknipte kooi is niet gerepareerd — dat raakt U-5 en
+  vraagt een eigen sessie. (2) Waarom 253 Hz op geen enkele arm levert terwijl `KAND_V2_3` daar wél
+  staat en élke poort haalt, is niet uit elkaar getrokken (kooi én zoektocht verschillen). (3) Wat
+  een LR2 met een GEHOUDEN textbook-polariteit op M-K waard is, staat in geen enkele rij: alle zes
+  die armen vielen vóór hun fase beoordeeld kon worden. (4) De koan677-helft is gedraaid maar niet
+  bevroren — zij is een kolom van de tabel en geen ontwerp.
+

@@ -3,7 +3,9 @@
 **Opgesteld 20-09-2026 (H-4), naar aanleiding van de polariteitsarmen.
 Bijgewerkt 20-09-2026 (H-4b): elke regel draagt sindsdien een
 TOEPASSINGSSTATUS, de polariteitsregels zijn van status verschoven en twee
-beweringen over `stated-min` zijn rechtgezet.**
+beweringen over `stated-min` zijn rechtgezet. Bijgewerkt 21-09-2026 (M-5): de
+ondergrens-regels en de praktijkregel hebben er een MEETING bij — 48 ketenruns
+over twee uitlijningen, drie posities en alle vier de polariteitsconfiguraties.**
 
 ## Wat dit document is — en vooral: wat het niet is
 
@@ -96,6 +98,17 @@ en polish, terwijl de cluster erboven op een ándere maat rangschikt.
 - casus 1h — beide leveren en delen de winst: rms 3,148 tegen 3,567 dB, M-K 4,2° tegen 3,6°.
 - casus 1 — geen gespiegelde arm levert; alle zes vallen op M-D (1,81–10,04 dB opslingering tegen
   een budget van 1,4) of op de versterkervloer.
+
+**WAT M-5 ERAAN TOEVOEGDE (21-09-2026), en het is de textbookregel van de andere kant bevestigd.**
+48 ketenruns op casus 1: drie gestelde posities × twee uitlijningen × alle vier de
+polariteitsconfiguraties × twee meetsets. **Geen enkele LR2-TEXTBOOKarm leverde** — zes van zes
+geweigerd, vier op het LF-opslingeringsbudget en twee op de versterkervloer. Élke LR2-levering is
+dus een SPIEGELarm: een ontwerp zonder de omkering die Rane Note 160 voor LR2 voorschrijft. En het
+betaalt precies waar die omkering voor bedoeld is — **fasetracking van 30 tot 95° op het
+woofer→mid-paar, tegen 10,3–13,1° voor de LR4/textbook-tegenhangers**. Bijna-tegenfase op het
+kruispunt, gemeten op een echt paar in plaats van op ideale filters. Wat die armen er wél voor
+terugkrijgen staat in de rekening: 23–25 onderdelen tegen 36–39, 15–33 % dissipatie tegen 51–53 %,
+en een BOM van € 112–150 tegen € 264–513.
 
 Dat laatste is het opmerken waard: op de drieweg sneuvelt de omgepoolde mid **niet op fase** maar op
 een LF-budget. De fase-afweging wordt wél gehoord — de arm wordt volledig uitontworpen en op fase
@@ -209,13 +222,27 @@ allebei op niveau zijn. Losser geformuleerd komt men ook "minder dan één golfl
 | --- | --- | --- | --- |
 | k·f_s-vloer | `constants.ts` → `XO_FS_FACTOR_BY_ORDER` | **TOEGEPAST** (terugval) | orde 1: 3,0 · orde 2: 2,0 · orde 3: 1,6 · **orde 4: 1,4** — bindt alleen waar niets strengers gesteld of afgeleid is |
 | Aandrijfvloer (A5d.3(ii) omgekeerd) | `predesign/xoWindow.ts`, regel `'drive'` | **TOEGEPAST** | `f = f_s · 2^(|plafond| / (6 · orde))`, met het plafond uit M-C v2.0 — de **gemeten** excursiegrens van de driver |
-| Gestelde vloer | regel `'drive-stated'` (A5e.3b) | **GESTELD** | Hetzelfde, op het door de ontwerper gestelde dB-getal. Casus 1 stelt −20 dB op de tweeter |
+| Gestelde vloer | regel `'drive-stated'` (A5e.3b) | **GESTELD** | Hetzelfde, op het door de ontwerper gestelde dB-getal. Casus 1 stelt −20 dB op de tweeter. **M-5 mat wat die ene eis met de UITLIJNING doet: bij orde 2 legt hij de vloer op 2934,5 Hz tegen een breakup-plafond van 2304 — het venster is LEEG, dus LR2 is op mid→tweeter niet uitdrukbaar.** Een orde-keuze die niemand als orde-keuze heeft gesteld |
 | Aanbevolen minimum van het blad | regel `'stated-min'` (U-3g) | **GESTELD** | Verbatim als vloer, bij élke orde. **Casus 1 stelt er wél een: 2200 Hz op de tweeter, gevoed sinds M-2b** |
 | Aanbevolen maximum van het blad | regel `'stated-max'` (U-4) | **GESTELD** | Verbatim als plafond. Casus 1 voert 30 kHz in en die bindt nergens — de tweeter is van geen enkel paar de onderste weg |
 | Breakup-plafond | `BREAKUP_DIV_SEVERE` 3,0 / `BREAKUP_DIV_MILD` 2,0, geïnterpoleerd op severiteit | **TOEGEPAST**, ongekalibreerd | **ONGEKALIBREERD** en elke lezer moet dat markeren |
 | Lobing | `metrics/lobing.ts` (`lobing-lambda/2.0`) | **GERAPPORTEERD** | **Vier** λ-fracties — dichtstbij / amplitudegewogen zwaartepunt / verst, alle drie tússen de wegen, plus de grootste scheiding bínnen een weg |
 
 **De strengste vloer bindt**, en `floorBy` zegt welke.
+
+**EEN GESTELDE ONDERGRENS KIEST DE ORDE MEE, EN M-5 HEEFT GEMETEN HOEVEEL (21-09-2026).** Een
+dB-vloer is A5d.3(ii) omgekeerd, dus hij hangt aan `6 · orde`: hoe ondieper de flank, hoe hoger hij
+komt te liggen. Op casus 1's mid→tweeter zet de gestelde −20 dB de vloer voor een LR2 op
+`924,3 · 2^(20/12) = 2934,5 Hz`, terwijl het breakup-plafond van de mid op 2304 Hz ligt — **het
+venster is leeg en LR2 is daar niet uitdrukbaar**. In decibel, op de gunstigste toegestane plek:
+een LR2 levert er 15,81 dB tegen de 20 die de eis vraagt, **4,19 dB tekort overal in de band**;
+een LR4 levert 31,62 dB. Dat is geen eigenschap van de meetset (nagemeten: m3 en koan677 geven
+hetzelfde venster tot op de tiende hertz) en geen uitkomst van een zoektocht.
+
+Wat er praktisch uit volgt en wat een lezer hier het meest aan heeft: **wie een dB-ondergrens stelt,
+stelt daarmee een ONDERGRENS AAN DE ORDE** zodra het plafond van de onderste weg dichtbij ligt. De
+twee grenzen staan in verschillende eenheden en in verschillende tabellen, en de engine zegt het pas
+als het venster leeg is. Casusboek M-5 draagt de volle tabel.
 
 ### Waar wij afwijken — en dit is de scherpste van dit document
 
@@ -377,11 +404,24 @@ Vijf dingen waarvoor geen vuistregel bestaat, met de reden dat zij er zijn:
    `vloer_bindend: aanbevolen_ondergrens`.
 3. **Het LF-budget van 1,4 dB** — of een omgepoolde mid die er 0,41 dB overheen gaat weggegooid hoort
    te worden, is een vraag over dat getal. **Sinds H-4b verdient hij aandacht**: op casus 1 sneuvelen
-   álle zes de gespiegelde armen op M-D, en de verkenning draait er sindsdien meer van.
+   álle zes de gespiegelde armen op M-D, en de verkenning draait er sindsdien meer van. **M-5
+   (21-09-2026) maakt hem dringender en corrigeert tegelijk de lezing ervan:** van de 41 weigeringen
+   daar vallen er 27 op dit budget — **12 op LR2 en 15 op LR4**, dus het is géén eigenschap van een
+   uitlijning maar van de seriespoel op de laagste weg, en op 253 Hz weigert het 13 van de 16 armen.
 4. **De breakup-deler is nog steeds ongekalibreerd** (V6/V9). De twee gepubliceerde eindpunten zijn
    HARMONISCHE ORDES (U-4) en een tweetoonsmeting beslist welke voor déze conus geldt; op casus 1 is
-   zij niet gedaan en het plafond van het mid→tweeter-venster hangt er volledig aan.
-5. **Geen enkele grens op een λ-fractie.** De literatuurgetallen (¼ λ aanvang, ½ λ praktijk) staan in
+   zij niet gedaan en het plafond van het mid→tweeter-venster hangt er volledig aan. **M-5 legt er
+   gewicht bij én neemt er tegelijk zorg van weg:** datzelfde ongekalibreerde plafond is de helft van
+   de reden dat LR2 op mid→tweeter niet uitdrukbaar is (de andere helft is de gestelde −20 dB) — maar
+   de weigering OVERLEEFT de hele kalibratie-onzekerheid. Op de MILDSTE gepubliceerde deler (2,0)
+   komt het plafond op 5688/2,0 = 2844 Hz, nog altijd onder de LR2-vloer van 2934,5 Hz; pas onder
+   een deler van ~1,94 — buiten het gepubliceerde bereik — zou het venster opengaan.
+5. **De ONGEKNIPTE gestelde kooi op een positie BINNEN haar venster** (M-5, nieuw). U-5 knipt een
+   gestelde kooi met opzet niet tegen het venster; C-2 houdt gegenereerde kooien er juist binnen.
+   Op een positie die erbinnen ligt reikt de gestelde kooi er daardoor overheen, en M-5 mat de tune
+   erin lopen: **vijf van zeven geleverde rijen kruisen boven het breakup-plafond**, één tot 8560 Hz.
+   Repareren raakt U-5 en vraagt een eigen sessie.
+6. **Geen enkele grens op een λ-fractie.** De literatuurgetallen (¼ λ aanvang, ½ λ praktijk) staan in
    §2 genoteerd; V20 stelde vast dat geen enkele λ een weg met twee bronnen samenvat, dus wie er een
    grens op wil, stelt eerst welke van de vier.
 

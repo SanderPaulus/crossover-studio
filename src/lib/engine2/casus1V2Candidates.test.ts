@@ -411,6 +411,41 @@ describe('the frozen v2 candidates are files, and the file says where they came 
     }
   });
 
+  it('M-5 — NO ORPHANS IN THE LR2/POLARITY FAMILY EITHER, and every one names a counterpart', () => {
+    /* `M5-KAND-<n>` is a delivered arm of the M-5 measurement, frozen beside
+     * the live corpus (`register-m5-candidates.ts`). Same rule as the two
+     * guards above, and it needs its own line for the same reason: their
+     * patterns are ANCHORED, which is exactly what keeps the dated corpora out
+     * of them. Empty on both sides is a legal state and stays one — this family
+     * is not regenerated with the field.
+     *
+     * The COUNTERPART half is the point of the family: every M-5 arm sits on a
+     * stated position that the live corpus also carries, so an arm whose
+     * counterpart has been regenerated away is a comparison with one half
+     * missing. Paired on the CROSSING and never on a serial number (M-4). */
+    const named = new Set(Object.values(golden.manifest_en_geometrie.netlists));
+    const onDisk = readdirSync(CASUS1_DIR).filter((f) => /^M5-KAND-\d+\.adsfilter\.json$/.test(f));
+    const keys = Object.keys(golden.manifest_en_geometrie.netlists).filter((k) => /^M5_KAND_\d+$/.test(k));
+    for (const f of onDisk) {
+      expect(named, `${f} is on disk but no manifest entry names it — delete it or name it`).toContain(f);
+    }
+    expect(onDisk.length).toBe(keys.length);
+    const corpus = (
+      golden.manifest_en_geometrie as unknown as {
+        m5_corpus?: { bestanden?: { naam: string; label?: string }[] };
+      }
+    ).m5_corpus;
+    expect(corpus?.bestanden?.map((b) => b.naam).sort()).toEqual([...keys].sort());
+    const liveLows = new Set(
+      HERKOMST.bestanden.map((b) => b.label.match(/woofer→mid ([\d.]+) /)?.[1]).filter((x): x is string => x !== undefined),
+    );
+    for (const b of corpus?.bestanden ?? []) {
+      const hz = b.label?.match(/woofer→mid ([\d.]+) /)?.[1];
+      expect(hz, `${b.naam} has no crossing in its label`).toBeDefined();
+      expect(liveLows, `${b.naam} sits at ${hz} Hz and the live corpus carries nothing there`).toContain(hz!);
+    }
+  });
+
   it('the provenance block is DOCUMENTATION and says so', () => {
     /* Nothing here is an acceptance value. It exists so a later reader can
      * regenerate these files and know what they are comparing against. */

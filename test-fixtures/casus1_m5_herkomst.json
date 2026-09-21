@@ -1,0 +1,927 @@
+{
+ "_": "M-5 — WAAR DE BEVROREN LR2- EN POLARITEITSARMEN VANDAAN KOMEN. DOCUMENTATIE, geen acceptatiewaarde: wat acceptatie is, zijn de bevroren bestanden en hun klasse-B-referenties in golden_refs_casus1.json. Zie scripts/register-m5-candidates.ts.",
+ "gegenereerd_op_commit": "0b2b7fe93df5a2155859ea018e72f36c00458a4a",
+ "gemeten_op": "2026-09-21",
+ "meetsets_gedraaid": [
+  "m3",
+  "koan677"
+ ],
+ "meetset_bevroren": "m3",
+ "meetset_waarom": "de huidige meetbasis, het M-4-precedent: M-5 wekt niets opnieuw op maar draait NIEUWE kandidaten, en een nieuwe kandidaat hoort op de huidige meetbasis te lopen. De koan677-helft is WEL gedraaid en staat in casus1_m5_lr2.json — zij is de set waarop het levende corpus GEZOCHT is, dus de enige waarop beide helften van de paring op één zoekbasis staan, en zij is daarom een kolom van de tabel en geen tweede bevriezing.",
+ "gestelde_posities_hz": [
+  [
+   253,
+   362.3,
+   518.8
+  ],
+  [
+   2251.4
+  ]
+ ],
+ "gesteld_op": "2026-09-20",
+ "gesteld_waarom": "de drie woofer→mid-posities zijn die van KAND-V2-1/2/3 en de mid→tweeter-positie draagt élke kandidaat van dat veld, dus elke M-5-rij heeft een tegenhanger die alleen in de UITLIJNING en de POLARITEIT van haar verschilt. De orde is LOSGELATEN: niet gesteld, maar afgeleid door A5d.3 met het gestelde M-C-getal gewapend zoals de app hem wapent.",
+ "bestanden": [
+  {
+   "naam": "M5-KAND-1",
+   "key": "M5_KAND_1",
+   "label": "woofer→mid 362.3 LR2 · mid→tweeter 2251.4 LR4 · stated · mirror",
+   "lowHz": 362.3,
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoold": []
+  },
+  {
+   "naam": "M5-KAND-2",
+   "key": "M5_KAND_2",
+   "label": "woofer→mid 518.8 LR2 · mid→tweeter 2251.4 LR4 · stated · mirror",
+   "lowHz": 518.8,
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoold": []
+  },
+  {
+   "naam": "M5-KAND-3",
+   "key": "M5_KAND_3",
+   "label": "woofer→mid 518.8 LR2 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "lowHz": 518.8,
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoold": [
+    "tweeter"
+   ]
+  },
+  {
+   "naam": "M5-KAND-4",
+   "key": "M5_KAND_4",
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated · textbook",
+   "lowHz": 518.8,
+   "uitlijning": "LR4/LR4",
+   "arm": "textbook",
+   "omgepoold": []
+  },
+  {
+   "naam": "M5-KAND-5",
+   "key": "M5_KAND_5",
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "lowHz": 518.8,
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoold": [
+    "tweeter"
+   ]
+  }
+ ],
+ "kandidaat_uitkomst": {
+  "M5_KAND_1": {
+   "bevroren": true,
+   "label": "woofer→mid 362.3 LR2 · mid→tweeter 2251.4 LR4 · stated · mirror",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [],
+   "looptijd_s": 779.124,
+   "onderdelen": 51,
+   "tuner_rimpel_dB": 3.391469977106908,
+   "tuner_fase_graden": 41.35772621995775,
+   "evaluaties": 98706,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.3075397592979666,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.2884678957074134,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.576929322128781,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -20.79853809211324,
+     "grens": -12.693517173874529
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -28.482928459698236,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.3987589987802576,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 18.64818964152858,
+     "grens": null
+    }
+   ]
+  },
+  "M5_KAND_2": {
+   "bevroren": true,
+   "label": "woofer→mid 518.8 LR2 · mid→tweeter 2251.4 LR4 · stated · mirror",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [],
+   "looptijd_s": 802.075,
+   "onderdelen": 53,
+   "tuner_rimpel_dB": 3.278143151892138,
+   "tuner_fase_graden": 44.00530252083295,
+   "evaluaties": 97890,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.3291769971529229,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.289059568365956,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.5654447431034906,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -19.032128205611297,
+     "grens": -10.897510565949254
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -24.89720086228394,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.6702474303320434,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 19.80190493494962,
+     "grens": null
+    }
+   ]
+  },
+  "M5_KAND_3": {
+   "bevroren": true,
+   "label": "woofer→mid 518.8 LR2 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "tweeter"
+   ],
+   "looptijd_s": 590.591,
+   "onderdelen": 50,
+   "tuner_rimpel_dB": 4.097191528437136,
+   "tuner_fase_graden": 59.39419344253563,
+   "evaluaties": 90719,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.2569666703447844,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.2814715717837533,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.559416756851452,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -24.211255043149023,
+     "grens": -11.625164284449284
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -54.28534975813628,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.1741185415161741,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 19.695485258211665,
+     "grens": null
+    }
+   ]
+  },
+  "M5_KAND_4": {
+   "bevroren": true,
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated · textbook",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "textbook",
+   "omgepoolde_wegen": [],
+   "looptijd_s": 3859.199,
+   "onderdelen": 73,
+   "tuner_rimpel_dB": 2.3024607132774975,
+   "tuner_fase_graden": 10.27040046539123,
+   "evaluaties": 233531,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.26410006555236104,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.318616898093341,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.593951223384698,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -52.83594455130048,
+     "grens": -11.67892693848739
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -26.770364384722505,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 1.6936513833572038,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 21.381291640471307,
+     "grens": null
+    }
+   ]
+  },
+  "M5_KAND_5": {
+   "bevroren": true,
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "tweeter"
+   ],
+   "looptijd_s": 485.293,
+   "onderdelen": 45,
+   "tuner_rimpel_dB": 6.852831682620021,
+   "tuner_fase_graden": 55.545661016046616,
+   "evaluaties": 88521,
+   "poorten": [
+    {
+     "poort": "M-A",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 0.24164551582558574,
+     "grens": null
+    },
+    {
+     "poort": "M-B/EPDR",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 1.292740264574757,
+     "grens": null
+    },
+    {
+     "poort": "M-B/|Z|",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 2.57400391934419,
+     "grens": 2.6
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "mid",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -49.9315555504508,
+     "grens": -12.954542117114134
+    },
+    {
+     "poort": "M-C",
+     "onderwerp": "tweeter",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": -30.070833131798402,
+     "grens": -20
+    },
+    {
+     "poort": "M-A/part",
+     "onderwerp": "system",
+     "gewapend": true,
+     "geslaagd": true,
+     "waarde": 0.7450297463825446,
+     "grens": 5
+    },
+    {
+     "poort": "M-L",
+     "onderwerp": "system",
+     "gewapend": false,
+     "geslaagd": true,
+     "waarde": 23.59033378352441,
+     "grens": null
+    }
+   ]
+  }
+ },
+ "geweigerd": [
+  {
+   "label": "woofer→mid 253 LR2 · mid→tweeter 2251.4 LR4 · stated · mirror",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [],
+   "looptijd_s": 766.923,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 4.41 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 73.74103178213154,
+    "rmsDeviationDb": 2.2917054405107473,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -15.813578870327152
+   }
+  },
+  {
+   "label": "woofer→mid 253 LR2 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ · mirror",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid"
+   ],
+   "looptijd_s": 615.685,
+   "regels": [
+    "gate"
+   ],
+   "reden": "M-C (mid): -9.4 dB exceeds the stated ceiling of -11.1 dB",
+   "geweigerde_tune": {
+    "minZOhm": 2.584048428338713,
+    "windowPlusMinusDb": 74.28315082899964,
+    "rmsDeviationDb": 4.0892634729718065,
+    "rippleDb": 5.120359854497167,
+    "phaseDeg": 54.43291198394098,
+    "driveOnFsDb": -9.41319130561154
+   }
+  },
+  {
+   "label": "woofer→mid 253 LR2 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ + tweeter ⌀ · textbook",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "textbook",
+   "omgepoolde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "looptijd_s": 4651.582,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 3.03 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 71.48083422578587,
+    "rmsDeviationDb": 0.9866537723858132,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -13.004563707324614
+   }
+  },
+  {
+   "label": "woofer→mid 253 LR2 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "tweeter"
+   ],
+   "looptijd_s": 620.884,
+   "regels": [
+    "gate"
+   ],
+   "reden": "M-B/|Z|: 2.51 Ω falls below the stated floor of 2.60 Ω",
+   "geweigerde_tune": {
+    "minZOhm": 2.5049998548592254,
+    "windowPlusMinusDb": 76.48569964991613,
+    "rmsDeviationDb": 3.498204451192396,
+    "rippleDb": 7.269594928411998,
+    "phaseDeg": 72.1689695209837,
+    "driveOnFsDb": -18.22537033289767
+   }
+  },
+  {
+   "label": "woofer→mid 253 LR4 · mid→tweeter 2251.4 LR4 · stated · textbook",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "textbook",
+   "omgepoolde_wegen": [],
+   "looptijd_s": 3421.875,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 4.72 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 75.08532759533142,
+    "rmsDeviationDb": 2.0037250345630193,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -24.131081514358655
+   }
+  },
+  {
+   "label": "woofer→mid 253 LR4 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ · mirror",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid"
+   ],
+   "looptijd_s": 798.695,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 4.67 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 74.7316328788474,
+    "rmsDeviationDb": 2.5971836573788747,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -21.021691140797152
+   }
+  },
+  {
+   "label": "woofer→mid 253 LR4 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ + tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "looptijd_s": 1042.682,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 5.23 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 76.75387575568249,
+    "rmsDeviationDb": 3.0385182706723954,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -24.8630343637327
+   }
+  },
+  {
+   "label": "woofer→mid 253 LR4 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    253,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "tweeter"
+   ],
+   "looptijd_s": 486.965,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 4.45 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 75.98850929251704,
+    "rmsDeviationDb": 3.0880578212909837,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -56.138895418175565
+   }
+  },
+  {
+   "label": "woofer→mid 362.3 LR2 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ · mirror",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid"
+   ],
+   "looptijd_s": 1071.055,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 3.99 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 71.5244905764747,
+    "rmsDeviationDb": 1.3846648626845992,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -16.333881506306554
+   }
+  },
+  {
+   "label": "woofer→mid 362.3 LR2 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ + tweeter ⌀ · textbook",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "textbook",
+   "omgepoolde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "looptijd_s": 2196.782,
+   "regels": [
+    "gate"
+   ],
+   "reden": "M-B/|Z|: 2.52 Ω falls below the stated floor of 2.60 Ω",
+   "geweigerde_tune": {
+    "minZOhm": 2.5191427741850476,
+    "windowPlusMinusDb": 75.0822844376537,
+    "rmsDeviationDb": 3.5658893784612857,
+    "rippleDb": 6.067892064356677,
+    "phaseDeg": 23.31930547251807,
+    "driveOnFsDb": -14.512840497430211
+   }
+  },
+  {
+   "label": "woofer→mid 362.3 LR2 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "tweeter"
+   ],
+   "looptijd_s": 570.332,
+   "regels": [
+    "gate"
+   ],
+   "reden": "M-B/|Z|: 2.52 Ω falls below the stated floor of 2.60 Ω",
+   "geweigerde_tune": {
+    "minZOhm": 2.5195763893003154,
+    "windowPlusMinusDb": 72.4087094099979,
+    "rmsDeviationDb": 2.1157599527152833,
+    "rippleDb": 3.748172015944178,
+    "phaseDeg": 68.7000858475646,
+    "driveOnFsDb": -22.531840992209336
+   }
+  },
+  {
+   "label": "woofer→mid 362.3 LR4 · mid→tweeter 2251.4 LR4 · stated · textbook",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "textbook",
+   "omgepoolde_wegen": [],
+   "looptijd_s": 3073.63,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 1.66 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 71.0505406368557,
+    "rmsDeviationDb": 0.8111683010371732,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -25.51063934371674
+   }
+  },
+  {
+   "label": "woofer→mid 362.3 LR4 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ · mirror",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid"
+   ],
+   "looptijd_s": 810.224,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 3.32 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 74.79193180334077,
+    "rmsDeviationDb": 2.7119369550276375,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -48.877979269997866
+   }
+  },
+  {
+   "label": "woofer→mid 362.3 LR4 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ + tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "looptijd_s": 1042.756,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 4.34 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 73.32957872637591,
+    "rmsDeviationDb": 1.5966433910845486,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -42.735522466390165
+   }
+  },
+  {
+   "label": "woofer→mid 362.3 LR4 · mid→tweeter 2251.4 LR4 · stated · tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    362.3,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "tweeter"
+   ],
+   "looptijd_s": 539.277,
+   "regels": [
+    "gate"
+   ],
+   "reden": "M-B/|Z|: 1.78 Ω falls below the stated floor of 2.60 Ω",
+   "geweigerde_tune": {
+    "minZOhm": 2.0027551730558897,
+    "windowPlusMinusDb": 75.06010368022737,
+    "rmsDeviationDb": 3.020030699881571,
+    "rippleDb": 5.85794451241393,
+    "phaseDeg": 83.85262765522604,
+    "driveOnFsDb": -30.860068239149534
+   }
+  },
+  {
+   "label": "woofer→mid 518.8 LR2 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ · mirror",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid"
+   ],
+   "looptijd_s": 584.74,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 2.42 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 73.4927425610719,
+    "rmsDeviationDb": 1.7351989187061145,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -19.486777490086173
+   }
+  },
+  {
+   "label": "woofer→mid 518.8 LR2 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ + tweeter ⌀ · textbook",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR2/LR4",
+   "arm": "textbook",
+   "omgepoolde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "looptijd_s": 1576.048,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 3.01 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 75.71715508482852,
+    "rmsDeviationDb": 2.8397165118992653,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -15.570265034569575
+   }
+  },
+  {
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ · mirror",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid"
+   ],
+   "looptijd_s": 483.004,
+   "regels": [
+    "gate"
+   ],
+   "reden": "M-B/|Z|: 2.32 Ω falls below the stated floor of 2.60 Ω",
+   "geweigerde_tune": {
+    "minZOhm": 2.342344048166965,
+    "windowPlusMinusDb": 76.1787787926716,
+    "rmsDeviationDb": 4.515155978594604,
+    "rippleDb": 9.029163037239222,
+    "phaseDeg": 94.15928886501281,
+    "driveOnFsDb": -43.54348462862917
+   }
+  },
+  {
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ + tweeter ⌀ · mirror",
+   "kruispunt_hz": [
+    518.8,
+    2251.4
+   ],
+   "uitlijning": "LR4/LR4",
+   "arm": "mirror",
+   "omgepoolde_wegen": [
+    "mid",
+    "tweeter"
+   ],
+   "looptijd_s": 665.868,
+   "regels": [
+    "budget"
+   ],
+   "reden": "the delivered network amplifies woofer's reflex peak by 1.81 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
+   "geweigerde_tune": {
+    "minZOhm": null,
+    "windowPlusMinusDb": 73.13308848669489,
+    "rmsDeviationDb": 1.970447402832162,
+    "rippleDb": null,
+    "phaseDeg": null,
+    "driveOnFsDb": -41.620023577072146
+   }
+  }
+ ]
+}

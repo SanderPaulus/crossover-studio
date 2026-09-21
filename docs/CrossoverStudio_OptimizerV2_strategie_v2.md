@@ -5197,6 +5197,16 @@ minimum niet onder het LR4-minimum (377 LR2: 2,55–2,60 tegen 379 LR4: 1,54–2
 in de W-M-overlap zit maar in de mid-/tweetertak. Verwachting "LR2 vraagt bij de mid meer van M-C" klopt
 wél: de mid valt op LR2 dertien keer en op LR4 negen keer, alle dertien LR2-gevallen onder 300 Hz.
 
+  > **HERMETEN BIJ M-5 (21-09-2026), en de conclusie hierboven is bij die hermeting op twee punten
+  > ingehaald.** (i) Deze tabel kon LR2 tegen LR4 niet wegen omdat er geen geleverde rij was, en dat
+  > staat er terecht — maar wat er daarna gebeurde is dat A5e.3-veld LR2 op grond van deze tabel
+  > INTROK en élke regeneratie sindsdien orde 4 STELT, dus de weging is nooit alsnog gemaakt.
+  > (ii) De polariteit van élke LR2-arm hierboven kwam uit de interne tie-break van de ontwerpstap,
+  > die H-4 heeft gediscrediteerd (enumeratie op ideale filters; wat verloor werd nooit gebouwd).
+  > M-5 heeft de vraag opnieuw gesteld met de orde losgelaten en alle vier de polariteitsconfiguraties
+  > gebouwd, op de M-2b-meetbasis én op de M-3-standaard. **Wat M-5 vindt en deze tabel niet kón
+  > vinden: op mid→tweeter is LR2 geen veldvraag maar een AFLEIDINGSweigering** — zie de M-5-entry.
+
   De volledige tabel (geweigerde tune; Y = wat de vloer op de woofer vraagt, "—" = onoplosbaar met de rest
   van het systeem tussen haakjes; M-C = slechtst beschermde weg; s = ketenrun):
 
@@ -5784,10 +5794,21 @@ tweeter lucht 1,0 mm (`driverkaart.spoelfamilie.gesteld_door: "Sander Somers, 04
 `gesteld_motivering`). Geen gedempte-shunt-element: met deze families is hij op de arm overbodig gebleken; de
 aanbeveling van de M-1-diagnose blijft genoteerd als optie voor wie lage-DCR-shunts kiest
 (`gedempte_shunt_pool`). Daarna het veld opnieuw, op het echte doel, met drie gestelde veranderingen ten opzichte
-van M-1 en verder niets: LR4 alleen (LR2 in M-1 weerlegd: dezelfde weigeringen, 1–2 dB slechtere RMS), het
+van M-1 en verder niets: LR4 alleen (LR2 in M-1 weerlegd\*: dezelfde weigeringen, 1–2 dB slechtere RMS), het
 W-M-venster onderaan begrensd op de M-C-excursiegrens van de mid in plaats van 1,4·f_s, en een positiebudget van
 24. Plateau 0, `lowestWayLevelWork: 'none'`, gemergede meetset, volle oordeelband vanaf f_p, vloer 2,6, M-C −20 op
 de tweeter en afgeleid op de mid, weerstandspoort 10 W thermisch: ongewijzigd.
+
+> **\* HERMETEN BIJ M-5 (21-09-2026).** "LR2 weerlegd" is hier een uitkomst van het M-1-VELD, en dat
+> veld draaide op de augustus-meetset, vóór de M-3-midfase en vóór H-4 — de polariteit van die
+> LR2-arm kwam uit de enumeratie op ideale filters die H-4 heeft gediscrediteerd, en van de 115
+> kandidaten van M-1 werd er géén geleverd, dus de vergelijking rustte op geweigerde tunes. Sindsdien
+> STELT élke regeneratie orde 4 en is LR2 niet meer gemeten maar gepind. M-5 heeft hem opnieuw
+> gemeten, met de orde losgelaten en met élke polariteitsarm gebouwd. **De uitkomst staat in de
+> M-5-entry en zij is op één punt scherper dan deze zin: op mid→tweeter wordt LR2 niet door een veld
+> verworpen maar door de AFLEIDING geweigerd** — de gestelde −20 dB op de tweeter maakt zijn venster
+> leeg — en dat geldt op beide meetsets en hangt niet van een zoektocht af. Op woofer→mid is LR2 wél
+> toegelaten en is hij gebouwd; wat dat opleverde staat in de M-5-veldtabel.
 
 **STAP 1 — DE AANDRIJFVLOER, EN WAAROM 124 Hz NOOIT EEN ZINNIGE POSITIE WAS.** Het W-M-venster stond sinds M-1 op
 k·f_s van de mid (1,4 × 88,8 = 124 Hz bij orde 4), een conventie zonder gestelde invoer eronder. Het M-1-veld zei
@@ -11222,6 +11243,194 @@ omkering leest dezelfde meting exact 0,00 dB, dus zij meet de omkering en niet d
 - **Er is geen tweede arm op 362,3 Hz gedraaid** met een ruimer budget om te zien wát de weigering kostte.
   Dat is een run van drie kwartier en een gesteld getal dat niemand gesteld heeft; de weigering draagt haar
   eigen cijfers (1,80 tegen 1,4 dB) en dat is genoeg om te weten waar het op vastloopt.
+
+### M-5 — de LR2-vraag beslecht: op mid→tweeter weigert de AFLEIDING hem, op woofer→mid weigert de MEETLAT (21-09-2026, meetsessie; **geen regeneratie, geen eis-, poort-, budget-, venster- of corpuswijziging**)
+
+**DE AANLEIDING, en zij is een houdbaarheidsdatum.** M-1 (04-09-2026) liet de woofer→mid-as zich
+onthouden op de orde en draaide LR2 naast LR4. Op grond van dat veld trok A5e.3-veld LR2 in, en
+sindsdien STELT élke casus-1-regeneratie orde 4 — een run-instelling, geen meting. Vier dingen zijn
+daarna veranderd die precies op die vergelijking drukken, en Sander noemde ze alle vier: de
+meetbasis (M-2b), de FASE van de mid in de W-M-kruisband (M-3), de polariteit als uitontworpen arm
+in plaats van een tie-break op ideale filters (H-4), en de garantie dat de enkelvoudige
+driveromkering altijd meedraait (H-4b). Daar komt een vijfde bij die het boek zelf al opschreef:
+**van de 115 M-1-kandidaten werd er NUL geleverd**, dus die vergelijking ging over geweigerde tunes,
+en de M-1-entry zegt dat ook — *"LR2 tegen LR4 op fase en lobing valt daarmee niet uit deze tabel te
+kiezen"*. Wat daarna gebeurde is dat de intrekking er tóch op gebaseerd werd.
+
+M-5 stelt de vraag opnieuw: orde LOSGELATEN, élke polariteitsarm GEBOUWD, op beide meetsets, op de
+drie woofer→mid-posities waar het levende corpus zijn netlists heeft staan. `measure-m5-lr2.ts`
+(drie tabellen, `M5_RUN=1` voor de ketenruns), `m5-bench.ts` (het veld), `register-m5-candidates.ts`
+(de bevriezing), `test-fixtures/casus1_m5_lr2.json`. **48 ketenruns, 23,4 CPU-uur, 5 u 37
+wandkloktijd bij acht tegelijk**; de duurste enkele run was 13 264 s (koan677, 518,8 LR4 textbook).
+
+---
+
+**STAP 1 — DE AFLEIDING, EN ZIJ BESLIST DE HELFT VAN DE VRAAG ZONDER DAT ER IETS GEZOCHT WORDT.**
+De orde losgelaten en verder niets veranderd, per beschikbare LR-uitlijning:
+
+| overname | uitlijning | venster | vloerregel / plafondregel | toegelaten |
+| --- | --- | --- | --- | --- |
+| woofer→mid | **LR2** | 246,5 – 549,7 Hz | `drive` / `breakup` | **JA** |
+| woofer→mid | LR4 | 147,9 – 549,7 Hz | `drive` / `breakup` | ja |
+| mid→tweeter | **LR2** | **2934,5 – 2304,0 Hz → LEEG** | `drive-stated` / `breakup` | **NEE** |
+| mid→tweeter | LR4 | 2200,0 – 2304,0 Hz | `stated-min` / `breakup` | ja |
+
+**Op mid→tweeter is LR2 geen veldvraag maar een AFLEIDINGSWEIGERING, en de grond staat in de
+eenheid van de grens die hem weigert.** Casus 1 stelt −20 dB op de tweeterresonantie; A5d.3(ii)
+omgekeerd zet de vloer voor een tweede-orde flank op `924,3 · 2^(20/12) = 2934,5 Hz`, en het
+breakup-plafond van de mid ligt op 2304,0. Het venster is dus leeg — 0,35 octaaf. In decibel, op de
+GUNSTIGSTE toegestane plek (het plafond zelf): een LR2 levert daar `12 · log₂(2304/924,3) =
+**15,81 dB**` tegen de **20 dB** die de eis vraagt — **4,19 dB tekort, overal in de toegestane band**.
+Bij LR4 is dat 31,62 dB, ruim 11 dB over.
+
+**EN DE WEIGERING OVERLEEFT DE ONGEKALIBREERDE DELER, wat haar sterker maakt dan zij eruitziet.**
+Het plafond van 2304 Hz is de breakup van de mid (5688 Hz) gedeeld door een deler die dit project
+zelf ONGEKALIBREERD noemt (V6/V9, U-4). Op de MILDSTE gepubliceerde deler (2,0) zou het plafond op
+2844 Hz liggen — nog steeds onder de LR2-vloer van 2934,5 — en pas onder een deler van ongeveer
+**1,94**, buiten het gepubliceerde bereik, gaat het venster open. De LR2-weigering hangt dus niet
+aan de kalibratie die dit boek als open punt draagt.
+
+**TWEE ONAFHANKELIJKE WEGEN NAAR HETZELFDE ANTWOORD, en allebei uit hetzelfde gestelde getal.** De
+GEWAPENDE afleiding laat orde 2 niet eens toe: A5d.3(ii) vraagt op het referentiekruispunt
+(2251,4 Hz, 1,28 octaaf boven f_s) orde `20/(6 · 1,284) = **2,595** → 3`, en de LR-bibliotheek kent
+geen orde 3, dus de eis wordt naar 4 gebracht. De KALE afleiding onthoudt zich (A5e.1) en biedt
+{2, 4} aan — en dan is het het VELD dat orde 2 weigert, op het lege venster. **De tegenproef die
+het een uitspraak over de EIS maakt en niet over de uitlijning:** met `upperStatedDriveLimitDb` op
+`null` is datzelfde LR2-venster NIET leeg. LR2 valt hier op wat casus 1 stelt, niet op iets wat een
+tweede-orde flank verkeerd doet.
+
+**DE AFLEIDING IS OP BEIDE MEETSETS IDENTIEK — venster, bindende regel en toelating per orde,
+nagemeten en niet aangenomen.** Dat is wat M-3 voorspelt (hij bewoog de FASE van de mid en geen
+magnitude, en élke vensterinvoer is een magnitude, een impedantie of een gestelde geldigheid), en
+het betekent dat dit halve antwoord niet van de meetbasis afhangt. Het script GOOIT als zij ooit
+verschillen, in plaats van één tabel af te drukken die stilzwijgend over één van de twee gaat.
+
+**Op woofer→mid is LR2 WEL toegelaten**, en de reden is P4: de mid stelt geen M-C-getal, dus
+A5d.3(ii) onthoudt zich daar en de vensterbodem komt van het AFGELEIDE excursieplafond (17,7 dB,
+V49). Alle drie de gestelde posities liggen erbinnen, met 253 Hz als de krapste: een LR2 levert daar
+18,12 dB tegen 17,7 gevraagd — **0,45 dB marge**; op 362,3 Hz is het 6,67 dB en op 518,8 Hz 12,89.
+
+**EEN BEVINDING DIE NIEMAND BESTELD HAD, en zij is de reden dat stap 1 drie wapeningen naast elkaar
+afdrukt in plaats van één.** Élke casus-fixture van dit boek geeft `perPair` alléén een
+`statedOrder`; de APP wapent A5d.3(ii) wél (`pairDerivationInputs`, E-3b, met het gestelde M-C-getal
+van de bovenste weg). Zolang de orde GESTELD is verandert dat niets — de verzameling is
+{gesteld} ∪ {geëist} en op casus 1 zijn beide 4 — dus het is nooit opgevallen; zodra de orde wordt
+losgelaten beslist het alles. M-5 wapent hem zoals de app dat doet, en `casus1M5PerPair` in de
+fixture is sindsdien het ene huis van die drie wapeningen.
+
+---
+
+**STAP 2 — HET VELD.** Drie gestelde woofer→mid-posities (253 / 362,3 / 518,8 Hz — die van
+`KAND-V2-3`, `-1` en `-2`) × mid→tweeter 2251,4 Hz × de toegelaten uitlijningen (LR2 en LR4 op
+W-M, alléén LR4 op M-T) × alle vier de polariteitsconfiguraties = **24 rijen per meetset, 48 in
+totaal**. Geen van de 24 staat buiten zijn venster; de posities komen uit het afgeleide veld zelf.
+
+**DE H-4b-VALSTRIK, hier in het echt:** op een LR2-veld is de TEXTBOOK-arm degene die mid **én**
+tweeter omkeert (`· mid ⌀ + tweeter ⌀`), en de rij zonder enige markering is een SPIEGEL. Op LR4 is
+het precies andersom. Daarom draagt élk label sinds H-4b beide helften — de markering noemt wat een
+bouwer soldeert, het woord noemt welke arm het is — en deze sessie is waarvoor die regel geschreven
+is.
+
+---
+
+**STAP 3 — DE TABEL. 7 van 48 rijen leveren.** Per meetset, met de tegenhanger uit het levende
+corpus op dezelfde positie, beide helften door ÉÉN meetbank (`corpusBank`, de V33-regel):
+
+| set | pos. | uitl. / arm | markering | uitkomst | rms | ± | M-K | opsl | min \|Z\| | diss | n | BOM | xo |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| m3 | 253 | **KAND_V2_3** | — | tegenhanger | 1,232 | 2,03 | 32,0/8,1 | 1,11 | 2,582 | 52 % | 39 | € 512,93 | |
+| m3 | 253 | *alle acht armen* | | **GEWEIGERD** | | | | | | | | | |
+| m3 | 362,3 | **KAND_V2_1** | — | tegenhanger | 0,911 | 1,47 | 10,6/8,4 | −0,61 | 2,614 | 53 % | 39 | € 490,23 | |
+| m3 | 362,3 | LR2 / spiegel | — | geleverd | 1,420 | 2,82 | **92,8**/8,1 | 1,16 | 2,577 | **31 %** | **25** | **€ 118,84** | 414/2369 |
+| m3 | 518,8 | **KAND_V2_2** | — | tegenhanger | 1,001 | 2,08 | 13,1/5,4 | −0,94 | 2,578 | 51 % | 36 | € 263,87 | |
+| m3 | 518,8 | LR2 / spiegel | — | geleverd | 1,688 | 3,09 | **95,3**/6,5 | 0,65 | 2,565 | 33 % | 25 | € 150,08 | 609/2255 |
+| m3 | 518,8 | LR2 / spiegel | tweeter ⌀ | geleverd | 2,239 | 3,82 | **81,0/31,5** | 0,12 | 2,559 | 26 % | 23 | € 111,64 | 581/2366 |
+| m3 | 518,8 | LR4 / textbook | — | geleverd | 0,998 | 2,13 | 15,7/5,4 | 0,24 | 2,594 | 26 % | 31 | € 183,71 | 554/2322 |
+| m3 | 518,8 | LR4 / spiegel | tweeter ⌀ | geleverd | 2,969 | 5,37 | 20,7/**73,9** | 0,76 | 2,574 | 24 % | 21 | € 102,69 | 479/**8560** |
+| koan677 | 253 | **KAND_V2_3** | — | tegenhanger | 1,232 | 2,03 | 31,4/8,1 | 1,11 | 2,582 | 52 % | 39 | € 512,93 | |
+| koan677 | 253 | *alle acht armen* | | **GEWEIGERD** | | | | | | | | | |
+| koan677 | 362,3 | **KAND_V2_1** | — | tegenhanger | 0,912 | 1,47 | 10,3/8,4 | −0,61 | 2,614 | 53 % | 39 | € 490,23 | |
+| koan677 | 362,3 | *alle acht armen* | | **GEWEIGERD** | | | | | | | | | |
+| koan677 | 518,8 | **KAND_V2_2** | — | tegenhanger | 1,002 | 2,08 | 12,9/5,4 | −0,94 | 2,578 | 51 % | 36 | € 263,87 | |
+| koan677 | 518,8 | LR2 / spiegel | — | geleverd | 1,129 | 2,14 | **30,2**/5,9 | 0,04 | 2,557 | **15 %** | 25 | € 117,52 | 600/2829 |
+| koan677 | 518,8 | LR4 / textbook | — | geleverd | 0,748 | 1,60 | **4,8/4,4** | 0,99 | 2,776 | 20 % | 38 | € 251,67 | 554/2233 |
+
+De volledige 48 rijen mét weigeringsgrond per arm staan in `casus1_m5_lr2.json`.
+
+**HET ANTWOORD OP DE VRAAG VAN DE SESSIE IS NIET "NEE".** Er bestaat wel degelijk een LR2-vorm die
+een KAND-V2 verslaat — **op drie kolommen, en alle drie aan de BOUWkant**: élke LR2-levering draagt
+minder onderdelen (23–25 tegen 36–39), minder dissipatie (15–33 % tegen 51–53 %) en een goedkopere
+BOM (€ 112–150 tegen € 264–513, tot **76 % minder**) dan haar tegenhanger. **Op geen enkele
+akoestische kolom wint er een:** rms is slechter (1,13–2,24 tegen 0,91–1,00), het ±venster
+breder, en de fasetracking op het woofer→mid-paar is 30–95° tegen 10,3–13,1°.
+
+**WAT LR2 DAARVOOR MOET DOEN, EN HET IS DE SCHERPSTE UITKOMST VAN DEZE SESSIE: GEEN ENKELE
+LR2-TEXTBOOKARM LEVERT.** Zes van zes geweigerd — drie posities × twee meetsets — vier op het
+M-D-budget (2,05–3,03 dB opslingering tegen 1,4) en twee op de versterkervloer (2,52 en 2,54 Ω
+tegen 2,60). Élke LR2-levering is dus een SPIEGELarm: een ontwerp dat de omkering die Rane Note 160
+voor LR2 voorschrijft juist NIET heeft, en dat betaalt in precies de grootheid waar die omkering
+voor bedoeld is. De 92,8° en 95,3° in de tabel zijn geen ruis maar bijna-tegenfase op het
+kruispunt — de literatuurregel, van de andere kant bevestigd.
+
+**DE DOMINANTE WEIGERINGSGROND IS M-D EN DAT IS GEEN LR2-EIGENSCHAP.** Van de 41 weigeringen vallen
+er 27 op het LF-opslingeringsbudget: 12 LR2 en 15 LR4. Het budget bijt op de SERIESPOEL van de
+laagste weg, en die staat er in beide uitlijningen. **253 Hz levert op geen van beide sets in geen
+enkele uitlijning en geen enkele arm** — 16 van 16 geweigerd, dertien daarvan op M-D.
+
+---
+
+**WAT DEZE TABEL NIET IS, en het staat hier omdat de verleiding groot is haar zo te lezen: zij is
+GEEN reproductie van KAND-V2.** Een GESTELDE kooi wordt met opzet niet tegen het venster geknipt
+(U-5: dat zou een tune terugslepen naar een rand waar de ontwerper overheen stapte), en een
+GEGENEREERDE kooi sinds C-2 wél (tweezijdig, binnen het venster). Op een positie die BINNEN haar
+venster ligt hebben die twee regels een gevolg dat niemand gesteld heeft: de M-T-kooi van een
+gestelde kandidaat is 2125–2385 Hz waar de gegenereerde 2200–2304 was, en **de tune loopt erin.
+Vijf van de zeven geleverde rijen kruisen BOVEN het breakup-plafond van 2304 Hz** (2322, 2366, 2369,
+2829 en — bij de laatste rij — **8560 Hz**). De vergelijking LR2-tegen-LR4 BINNEN deze tabel is
+daardoor zuiver (beide helften dragen dezelfde kooi); de vergelijking met de bevroren netlists
+draagt dit voorbehoud. M-5 heeft die factor NIET met een eigen arm geïsoleerd, dus hij wordt
+opgeschreven en niet toegeschreven.
+
+**EEN GUARD DIE ERDOOR VUURDE, en hij deed zijn werk.** V47's claim *"de relatieve regel die M-C
+verving zag nooit één tweeterresonantie"* leest `protSqDb` op het tweeterpaar en eist exact nul op
+élke bevroren netlist — 117 keer nul, inclusief de twee die tien dB tekortkomen. `M5_KAND_5` leest
+**3,85**, en de reden is arithmetiek: met het kruispunt op 8560 Hz ligt `xoF/3` op 2853 Hz en
+bereikt de integratieband de 924 Hz van de tweeter eindelijk wél. Dat is V47's eigen mechanisme van
+de andere kant gezien — de band beweegt MET het kruispunt mee, en V47 mat hem wegbewegen. **De
+claim is niet versoepeld maar de uitzondering is BENOEMD** (de V30-vorm), met de eis erbij dat een
+genoemde uitzondering ook werkelijk boven nul leest.
+
+---
+
+**BOEKHOUDING.** Vijf leveringen van de m3-helft zijn bevroren als `M5-KAND-1..5`, met hun
+manifestregels, het corpusblok `manifest_en_geometrie.m5_corpus` en hun klasse-B-referenties
+(`record-casus1-v2-references.ts` kent de M5-familie sinds nu; zij is naar VORM een gedateerd corpus
+en naar INHOUD het tegenovergestelde — een ONTWERP-corpus waarvan élke netlist door dezelfde
+gewapende poorten is gekomen als het levende corpus, dus zij wordt vóór `DATED_KAND` herkend en er
+daarna uit gehouden). **Het levende corpus is NIET aangeraakt**, geen eis is verplaatst, geen grens
+opgerekt en geen venster verschoven. De koan677-helft is wél gedraaid maar niet bevroren: zij is de
+set waarop het levende corpus GEZOCHT is en daarmee een kolom van de tabel, niet een tweede
+bevriezing (`register-m5-candidates.ts` zegt waarom).
+
+**HET STELLEN VAN ORDE 4 BLIJFT, maar niet meer om de reden die er stond.** Op mid→tweeter is het
+geen keuze maar de enige uitdrukbare optie zolang de tweeter −20 dB stelt en de mid op 5688 Hz
+opbreekt. Op woofer→mid is het een keuze die de tabel steunt — LR4/textbook wint er op élke
+akoestische kolom — met de prijs zichtbaar ernaast: twaalf tot vijftien onderdelen en twee tot vier
+keer de BOM.
+
+**OPEN PUNTEN.**
+
+1. **De ongeknipte gestelde kooi op een positie BINNEN haar venster.** Vijf van zeven geleverde
+   rijen verlieten het M-T-venster, één tot 8560 Hz. U-5's besluit ging over posities BUITEN het
+   venster; C-2's tweezijdige regel houdt gegenereerde kooien erbinnen. Repareren raakt U-5 en
+   vraagt een eigen sessie; de factor is hier niet met een arm geïsoleerd.
+2. **Waarom 253 Hz op geen enkele arm levert terwijl `KAND_V2_3` daar wél staat en élke poort
+   haalt.** Beide verschillen in de M-T-kooi én in de zoektocht; M-5 heeft dat niet uit elkaar
+   getrokken.
+3. **Wat een LR2 met een GEHOUDEN textbook-polariteit zou doen als M-D hem niet weigerde.** De zes
+   textbookarmen vielen alle zes vóór hun fase beoordeeld kon worden; wat zij op M-K waard zijn
+   staat in geen enkele rij van deze tabel.
+
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 

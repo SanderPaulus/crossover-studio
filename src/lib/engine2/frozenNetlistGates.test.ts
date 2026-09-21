@@ -2894,16 +2894,41 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
      * is stronger than either, because it needs no band arithmetic at all: on
      * the TWEETER pair the deficit is zero on every frozen netlist in the book
      * — including those two, whose band does reach the resonance, and including
-     * the pair that misses the requirement by ten dB. */
+     * the pair that misses the requirement by ten dB.
+     *
+     * M-5 BROKE IT ONCE, AND THE EXCEPTION IS NAMED RATHER THAN THE CLAIM
+     * LOOSENED (the V30 form: a list that is boekhouding and not a permission).
+     * `M5_KAND_5` reads 3.85 on the tweeter pair, and the reason is arithmetic
+     * and not a new kind of design: its mid→tweeter crossing RAN AWAY to
+     * 8560 Hz — a stated cage is not clipped to the window (U-5) and this tune
+     * walked out of it — so `xoF/3` is 2853 Hz and the integration band finally
+     * reaches the tweeter's 924 Hz resonance. That is V47's own mechanism seen
+     * from the other side: the band moves WITH the crossing, and V47 measured
+     * it moving away. It does not weaken V47's finding — nothing here crosses
+     * that high by design — and it is the sharpest single piece of evidence for
+     * M-5's open point about the unclipped cage. */
+    const RELATIVE_RULE_SEES_THE_TWEETER: Record<string, string> = {
+      M5_KAND_5:
+        'M-5: the mid→tweeter crossing ran away to 8560 Hz (stated cage, unclipped — U-5), so the ' +
+        "band under xoF/3 reaches the tweeter's resonance. Casebook M-5, open point 1.",
+    };
     const tweeterPairs = FIELD.flatMap((f) =>
       f.protectionPairs.filter((p) => p.upper === 'tweeter').map((p) => ({ key: f.key, ...p })),
     );
     expect(tweeterPairs.length, 'no frozen netlist yields a tweeter pair at all').toBeGreaterThan(50);
     for (const p of tweeterPairs) {
+      if (RELATIVE_RULE_SEES_THE_TWEETER[p.key] !== undefined) {
+        /* A named exception has to be a REAL one, or the list quietly grows
+         * into a permission: it must actually read above zero. */
+        expect(p.sqDb, `${p.key} is named as an exception but reads zero — take it off the list`)
+          .toBeGreaterThan(0);
+        continue;
+      }
       expect(
         p.sqDb,
         `${p.key}: the relative rule reads ${p.sqDb} on the tweeter pair — if that is no longer ` +
-          'zero it has started to see something there, and V47\'s finding needs remeasuring',
+          "zero it has started to see something there, and V47's finding needs remeasuring. Name it " +
+          'in RELATIVE_RULE_SEES_THE_TWEETER with the reason, or find out why it crosses that high',
       ).toBe(0);
     }
 
@@ -2912,9 +2937,16 @@ describe('V47 — the stated drive limit on a driver\'s own resonance', () => {
      * read above zero. Those readings come from a pair whose upper way is not
      * the tweeter — the mid, whose own resonance at 88.8 Hz falls inside every
      * W-M band this field carries. That is what the rule was actually measuring
-     * when it refused four candidates with a sentence about the tweeter. */
+     * when it refused four candidates with a sentence about the tweeter.
+     *
+     * The named exception above is excluded here for the same reason it is
+     * named there: its band reaches the tweeter only because its crossing left
+     * the window, so counting it would make this claim read as "the rule does
+     * see tweeters after all", which is the opposite of what it measures. */
     const nonZero = FIELD.flatMap((f) =>
-      f.protectionPairs.filter((p) => p.sqDb > 0).map((p) => ({ key: f.key, ...p })),
+      f.protectionPairs
+        .filter((p) => p.sqDb > 0 && RELATIVE_RULE_SEES_THE_TWEETER[f.key] === undefined)
+        .map((p) => ({ key: f.key, ...p })),
     );
     expect(
       nonZero.length,

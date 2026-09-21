@@ -32,7 +32,11 @@ import { runIngest } from './ingest/derive.ts';
 import type { Manifest } from './ingest/manifest.ts';
 import type { MeasurementFile } from './ingest/derive.ts';
 import { buildReport, type EngineV2Report } from './report.ts';
-import { buildCandidateField, type CandidateFieldResult } from './predesign/candidateField.ts';
+import {
+  buildCandidateField,
+  type CandidateFieldResult,
+  type PairDerivationInput,
+} from './predesign/candidateField.ts';
 import type { PolarityArmPolicy } from './predesign/polarityArms.ts';
 import {
   declareCandidateChainChoices,
@@ -40,7 +44,12 @@ import {
 } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { chainGridFrom, judgedBandFloor } from './predesign/judgedBand.ts';
-import type { DriverBreakupDivisor, DriverMaxCrossover, DriverMinCrossover } from './predesign/xoWindow.ts';
+import type {
+  DriverBreakupDivisor,
+  DriverMaxCrossover,
+  DriverMinCrossover,
+  XoWindowInput,
+} from './predesign/xoWindow.ts';
 import { AUTO_STRUCTS } from '../threeWayDesign.ts';
 import {
   casus1AmpMinLoadOhm,
@@ -86,6 +95,7 @@ import {
   factsForWorker,
   type MeasurementFactsPayload,
 } from './optimizer/measurementFacts.ts';
+import { pairDerivationInputs } from './optimizer/scanRequest.ts';
 
 /**
  * How a branch reads OUTSIDE its own measured extent on a union grid.
@@ -671,6 +681,22 @@ const SAFETY_GRID_POINTS = 240;
  *    filtered): with order 4 stated only LR4 is built, and the restriction is
  *    a designer's and recorded as one (A5d.3 prefers symmetric LR flanks).
  *
+ *    HERMETEN BIJ M-5 (21-09-2026), en het STELLEN blijft — maar niet meer om
+ *    de reden die er stond. Die M-1-uitkomst kwam van een veld dat NUL van zijn
+ *    115 kandidaten leverde (de vergelijking ging dus over geweigerde tunes),
+ *    op de augustusset, vóór de M-3-midfase, en met de polariteit uit de
+ *    tie-break die H-4 heeft gediscrediteerd. M-5 heeft de orde losgelaten en
+ *    élke polariteitsarm gebouwd, op beide meetsets, en vond twee dingen die
+ *    deze zin niet kon vinden. (i) Op MID→TWEETER is LR2 geen veldvraag: het
+ *    gestelde M-C-getal van de tweeter maakt zijn venster LEEG — de afleiding
+ *    weigert hem, op beide sets, zonder dat er iets gezocht wordt. Daar is het
+ *    stellen van orde 4 dus geen keuze maar de enige uitdrukbare optie.
+ *    (ii) Op WOOFER→MID is LR2 wél toegelaten en geeft hij LEVERENDE netwerken
+ *    — maar alleen in SPIEGELarmen, en die betalen het in fasetracking
+ *    (M-K 30–95° tegen 5–16° voor LR4/textbook). Geen enkele LR2-TEXTBOOKarm
+ *    leverde, op geen van beide sets, op geen van de drie posities. Zie
+ *    casusboek M-5 en `casus1_m5_lr2.json`.
+ *
  *  · THE WOOFER→MID FLOOR IS THE MID'S EXCURSION CEILING, not 1.4·f_s. The
  *    report feeds every window the upper driver's M-C v2.0 ceiling (V49) and
  *    `crossoverWindow` inverts A5d.3(ii) with it — see the note there. On the
@@ -761,6 +787,118 @@ export const CASUS1_M4_STATED_PER_AXIS_HZ: readonly (readonly number[])[] = [
   [362.3, 518.8],
   [2251.4],
 ];
+
+/**
+ * M-5 — DE GESTELDE KRUISPUNTEN VAN DE LR2-VRAAG, en de orde LOSGELATEN.
+ *
+ * Sander, 20-09-2026. M-1 verwierp LR2 op de woofer→mid-as ("dezelfde
+ * weigeringen met 1-2 dB slechtere RMS") en sindsdien STELT élke regeneratie
+ * orde 4 — een run-instelling, geen meting. Die weerlegging stamt van de
+ * augustusfixture, van vóór de koan677-meetbasis, van vóór de M-3-midfase, en
+ * van vóór H-4: de polariteit van die LR2-arm kwam uit de enumeratie-op-ideale-
+ * filters die H-4 juist heeft gediscrediteerd. M-5 meet hem opnieuw met de
+ * orde losgelaten en met élke polariteitsarm gebouwd.
+ *
+ * DE DRIE W-M-POSITIES ZIJN DIE VAN HET LEVENDE CORPUS, en dat is de hele opzet
+ * van de vergelijking: `KAND-V2-1`, `-2` en `-3` staan er al op, in LR4/LR4 op
+ * de textbook-arm, dus elke rij van de M-5-tabel heeft een tegenhanger die
+ * alleen in de UITLIJNING en de POLARITEIT van haar verschilt. De mid→tweeter-
+ * positie (2251,4 Hz) draagt élke kandidaat van dat veld.
+ *
+ * ZIJ WORDEN GESTELD ÉN GECONTROLEERD, en die twee samen zijn met opzet. Ze
+ * hier STELLEN maakt de tabel reproduceerbaar ook nadat het corpus opnieuw is
+ * opgewekt (een tabel die haar eigen onderwerpen uit een levend bestand leest
+ * wordt na de eerste regeneratie stilletjes een andere tabel — de V33-les over
+ * `compare-corpora.ts`); ze CONTROLEREN tegen de herkomst
+ * (`assertM5PositionsAreTheLiveCorpus`) vangt precies het omgekeerde, dat de
+ * gestelde drie stil ophouden de drie te zijn waar de tegenhangers staan.
+ *
+ * EEN DRIEWEG HEEFT BEIDE ASSEN NODIG (U-5): de gestelde kandidaten zijn het
+ * PRODUCT over de overnames, hier 3 x 1 = 3 posities, en wat daarvan een VELD
+ * maakt zijn de toegelaten uitlijningen en de polariteitsarmen.
+ */
+export const CASUS1_M5_STATED_PER_AXIS_HZ: readonly (readonly number[])[] = [
+  [253, 362.3, 518.8],
+  [2251.4],
+];
+
+/** Wanneer de ontwerper die drie posities en het loslaten van de orde opschreef. */
+export const CASUS1_M5_STATED_ON = '2026-09-20';
+
+/**
+ * M-5 — DE DRIE WAPENINGEN VAN DE A5d.3-AFLEIDING, naast elkaar.
+ *
+ * `casus1Field` STELT orde 4 op beide overnames en geeft `perPair` verder
+ * niets. Dat laatste is een ASYMMETRIE die M-5 heeft gemeten en die tot dan
+ * onzichtbaar was: de APP wapent A5d.3(ii) wél — `pairDerivationInputs`
+ * (E-3b) geeft de afleiding het gestelde M-C-getal van de bovenste weg mee —
+ * en élke casus-fixture van dit boek geeft alleen een `statedOrder`. Zolang
+ * die orde GESTELD is verandert het niets, want de verzameling is
+ * {gesteld} ∪ {geëist} en beide zijn 4; zodra hij wordt LOSGELATEN beslist het
+ * alles. Dat is precies waarom de drie hier naast elkaar staan in plaats van
+ * dat er één gekozen wordt: het verschil ertussen IS de bevinding.
+ *
+ *   · `'stated'` — wat de fixture vandaag doet: orde 4 gesteld, niets gewapend.
+ *   · `'bare'`   — orde losgelaten, niets gewapend. De afleiding onthoudt zich
+ *     en biedt élke bouwbare orde aan (A5e.1).
+ *   · `'armed'`  — orde losgelaten en A5d.3(ii) gewapend met wat CASUS 1 STELT:
+ *     −20 dB op de tweeter en NIETS op de mid. Er is met opzet geen fallback —
+ *     een weg die geen getal stelt krijgt er geen (P4), en de W-M-as blijft dus
+ *     onthoudend. De natuurlijke helling (A5d.3(i)) is nergens gewapend: deze
+ *     casus stelt geen akoestisch hellingsdoel.
+ *
+ * Hij woont HIER en niet in een script, om de reden die
+ * `CASUS1_M4_STATED_PER_AXIS_HZ` ernaast draagt: een guard moet hem kunnen
+ * lezen zonder een script te importeren, en twee implementaties van "welke
+ * orden laat de afleiding toe" zouden een tabel en haar test uit elkaar laten
+ * lopen (A3g).
+ */
+export type Casus1M5Arming = 'stated' | 'bare' | 'armed';
+
+export function casus1M5PerPair(
+  wis: readonly XoWindowInput[],
+  arming: Casus1M5Arming,
+): PairDerivationInput[] {
+  if (arming === 'stated') return wis.map(() => ({ statedOrder: CASUS1_FIELD_STATED_ORDER }));
+  if (arming === 'bare') return wis.map(() => ({ statedOrder: null }));
+  return pairDerivationInputs({
+    windowInputs: wis,
+    statedDriveLimitDbByDriverId: CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
+    curveOfDriverId: () => null,
+  }).map((p) => ({ ...p, statedOrder: null }));
+}
+
+/**
+ * M-5 — DE CONTROLE: dragen de drie gestelde posities nog de tegenhangers waar
+ * de tabel tegen paart?
+ *
+ * Gooit met de gemeten posities erbij in plaats van stil een andere
+ * vergelijking te maken. Leest de LABELS van `casus1_v2_herkomst.json` — het
+ * bestand dat de generator zelf schrijft — en nooit een tweede lijst.
+ */
+export function assertM5PositionsAreTheLiveCorpus(): void {
+  const raw = JSON.parse(
+    readFileSync(join(CASUS1_DIR, '..', 'casus1_v2_herkomst.json'), 'utf8'),
+  ) as { bestanden?: { name: string; label: string }[] };
+  const live: number[] = [];
+  for (const b of raw.bestanden ?? []) {
+    const m = b.label.match(/woofer→mid ([\d.]+) /);
+    if (m) live.push(Number(m[1]));
+  }
+  const want = [...CASUS1_M5_STATED_PER_AXIS_HZ[0]].sort((a, b) => a - b);
+  const have = [...new Set(live)].sort((a, b) => a - b);
+  const same =
+    want.length === have.length && want.every((v, i) => Math.abs(v - have[i]) < 0.05);
+  if (!same) {
+    throw new Error(
+      `M-5 paart zijn drie gestelde woofer→mid-posities [${want.join(', ')}] Hz tegen de netlists ` +
+        `die het levende corpus daar draagt, en dat corpus draagt er nu [${have.join(', ')}] Hz. ` +
+        'Of de posities zijn achterhaald, of het corpus is opnieuw opgewekt — in beide gevallen is ' +
+        'de M-5-tabel een vergelijking tussen twee verschillende dingen geworden en hoort zij ' +
+        'opnieuw gemeten te worden in plaats van stil door te lopen.',
+    );
+  }
+}
 
 export function casus1Field(
   report: EngineV2Report,
