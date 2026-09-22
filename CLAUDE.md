@@ -1993,6 +1993,20 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (22-09-2026, M-5): 204 bestanden (203 geslaagd, 1 overgeslagen),
+  2721 geslaagd, 19 overgeslagen, 3632 s (60 min 32) — GROEN.** Negentien is voor de derde keer op
+  rij EXACT het H-1-getal, en dat is de claim: M-5 voegt geen enkele getagde test toe — het is een
+  MEETsessie, en haar drieëntwintig claims lezen bestanden en zuivere functies — dus de inventaris
+  staat stil. De telling sluit van de andere kant: 2721 + 19 = 2740, precies de lokale volle-run-
+  telling, dus CI slaat exact de vereniging van beide tags over en verder niets. Wat de run
+  daarnaast bewijst is dat de M-5-claims op een ANDERE runtime reproduceren, en de vorm waarin dat
+  hier gevraagd wordt is de vorm waarvoor dit boek bij V46, V49 en B-1 betaald heeft: de
+  AFLEIDINGSclaims vergelijken twee getallen die in DEZELFDE run uit dezelfde invoer komen
+  (`exactOrder` tegen `20/(6·oct)` op zes decimalen — H-4's argument en niet H-4's geluk), en élke
+  claim tegen het OPGENOMEN `casus1_m5_lr2.json` leest óf een boolean óf een regelnaam (een string
+  drift niet) óf een decibel op TWEE decimalen, in de orde van de grootheid zelf. **En de
+  M5-familie draait in CI mee:** de vijf bevroren netlists worden door `frozenNetlistGates` en
+  `goldenClassification` geoordeeld, en die twee dragen per constructie geen tag.
   **GEMETEN IN CI OP ubuntu/Node 22 (20-09-2026, H-4b): 203 bestanden (202 geslaagd, 1 overgeslagen),
   2697 geslaagd, 19 overgeslagen, 3565 s (59 min 25) — GROEN.** Negentien is opnieuw EXACT het
   H-1-getal, en dat is de claim: H-4b voegt geen enkele getagde test toe, dus de inventaris staat
