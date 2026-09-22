@@ -113,8 +113,18 @@ describe('U-3d — the app does not apply it a second time', () => {
     expect(solver).toContain('d.inverted ? scale(h, -1) : h');
     const dsp = readFileSync(join(ROOT, 'src', 'lib', 'dsp.ts'), 'utf-8');
     expect(dsp).toContain('(adj.inverted ? 180 : 0)');
-    // The app's own polarity state is still reachable — it is the designer's
-    // control, and U-3d took away only the automatic feed from a folded result.
-    expect(APP).toContain('setInverted(e.target.checked)');
+    /* The app's own polarity state is still reachable — it is the designer's
+     * control, and U-3d took away only the automatic feed from a folded
+     * result.
+     *
+     * U-7 moved the SHAPE and not the claim: the checkbox this line used to
+     * pin became the per-way knob, which reads BOTH carriers and writes
+     * whichever is live. The designer's control is if anything more reachable
+     * than before — and the two application points above are untouched, which
+     * is the same "the simulation did not move" claim from the other side. */
+    expect(APP).toContain('const pressWayPolarity');
+    expect(APP).toContain('writeInvertedFlags(plan.adjustFlags)');
+    // Still exactly one result may not feed both: the load path clears.
+    expect(APP).not.toContain('setInverted(e.target.checked)');
   });
 });

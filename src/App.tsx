@@ -123,6 +123,7 @@ import {
   mergeSynthesizedSchematics,
   nextPartId,
   normalizeOrigin,
+  setPartProps,
 } from './lib/schematicEdit.ts';
 import SchematicEditor from './components/SchematicEditor.tsx';
 import NumberFlow from '@number-flow/react';
@@ -425,6 +426,12 @@ import {
   type HandoverBands,
   type NullSignature,
 } from './lib/handoverPolarity.ts';
+import {
+  describeWayPolarity,
+  setWayPolarity,
+  wayPolarities,
+  type NetlistDriver,
+} from './lib/wayPolarity.ts';
 import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComponent } from './lib/synthesis.ts';
 import { computePhaseStats } from './lib/phaseStats.ts';
 import { computeResponseStats } from './lib/responseStats.ts';
@@ -5868,10 +5875,134 @@ export default function App() {
     () => (threeWay ? [midInverted, inverted] : [inverted]),
     [threeWay, midInverted, inverted],
   );
-  /** The same state as the RELATIVE polarity of each handover. */
+
+  /* ================================================================ *
+   * U-7 — ONE PER-WAY POLARITY, READ FROM BOTH CARRIERS
+   *
+   * The inventory is in the module (`wayPolarity.ts`): the adjustment boxes
+   * and `Driver.inverted` on the netlist part are both applied to the same
+   * branch — `network.ts` folds the part's bit into the transfer and
+   * `combineN` applies the box on top of it — so the polarity a way actually
+   * has is the XOR, and until U-7 nothing printed it.
+   *
+   * NOTHING BELOW CHANGES WHAT THE SIMULATION DOES. `branchAdj` is untouched
+   * and the solve is untouched: this reads the two carriers and offers one
+   * knob that writes whichever one is live. Opening a project changes nothing;
+   * the first PRESS on a way settles that way into the netlist part, where the
+   * export and the soldering mark can see it.
+   * ================================================================ */
+
+  /** Way roles lowest-first, as the knob labels them. */
+  const polarityRoles = useMemo(
+    () => (threeWay ? ['woofer', 'mid', 'tweeter'] : ['woofer', 'tweeter']),
+    [threeWay],
+  );
+
+  /**
+   * The driver PART that drives each way in whatever netlist the sum is
+   * running on, resolved by the SAME function the simulation resolves its
+   * transfers with — `pickSlotsN` on a three-way and `pickSlots` on a two-way,
+   * matching `slotTransfersN`/`slotTransfers` exactly. Never by matching a
+   * model name here: an imported vxp names its drivers freely, and matching
+   * literal "mid"/"tweeter" is what once applied no filter at all.
+   *
+   * The two resolvers agree on every netlist this app can build (measured), so
+   * picking per path is not a bug fix — it makes the agreement hold BY
+   * CONSTRUCTION instead of by coincidence, and the knob must stamp the part
+   * whose transfer the sum actually used.
+   *
+   * Null when no netlist drives the sum: then the adjustment boxes are the
+   * only carrier and the knob says so.
+   */
+  const netlistDriversByWay = useMemo((): (NetlistDriver | null)[] | null => {
+    const editor = networkActive && schematic !== null;
+    const variant =
+      project && xoName !== 'none'
+        ? project.vxp.crossovers.find((c) => c.name === xoName)
+        : undefined;
+    // Same precedence the sim memo uses: the editor network replaces the
+    // vxp variant, and a variant only drives when impedances exist for it.
+    const parts: readonly VxpPart[] | null = editor
+      ? schematic!.parts
+      : variant && Object.keys(impedances).length > 0
+        ? variant.parts
+        : null;
+    if (!parts) return null;
+    const drivers = parts
+      .map((p, i) => ({ part: p, index: i }))
+      .filter((x) => x.part.type === 'Driver');
+    if (drivers.length === 0) return null;
+    const named = drivers.map((d) => ({ model: d.part.model ?? '', ref: d }));
+    const pick = (slot: { ref: { part: VxpPart; index: number } } | undefined) =>
+      slot
+        ? {
+            partIndex: editor ? slot.ref.index : null,
+            inverted: slot.ref.part.inverted === true,
+          }
+        : null;
+    if (!threeWay) {
+      const two = pickSlots(named);
+      return [pick(two.woofer), pick(two.tweeter)];
+    }
+    const slots = pickSlotsN(named);
+    if (slots.ambiguous) return null;
+    return [pick(slots.woofer), pick(slots.mid), pick(slots.tweeter)];
+  }, [networkActive, schematic, project, xoName, impedances, threeWay]);
+
+  /**
+   * HYBRID MODE — THE ACTIVE SIDE'S POLARITY IS NOT CHOSEN HERE.
+   *
+   * H-1 settled it: the active way hangs on its own amplifier and DSP, and its
+   * polarity is fixed by the reversed-polarity null measurement in the cabinet
+   * and then typed into the processor. The DSP target block already prints it
+   * with the textbook answer and the "verify in the cabinet" sentence. So the
+   * knob REPORTS that way and refuses to write it — hiding it would leave the
+   * way that matters most looking like it has no polarity at all.
+   */
+  const polarityHeld = useMemo((): (string | null)[] => {
+    const held = polarityRoles.map(() => null as string | null);
+    if (!v2Hybrid || !v2ActiveSide.roles?.active) return held;
+    const i = v2Roles.indexOf(v2ActiveSide.roles.active);
+    if (i >= 0 && i < held.length) {
+      held[i] =
+        'Hybrid mode: this way is driven by its own amplifier and DSP. Its polarity belongs to the ' +
+        'DSP target block — the textbook answer for the alignment, verified with the ' +
+        'reversed-polarity null measurement in the cabinet — and is typed into the processor, ' +
+        'not chosen here.';
+    }
+    return held;
+  }, [polarityRoles, v2Hybrid, v2ActiveSide, v2Roles]);
+
+  /** Every way's effective polarity, and which carrier holds it. */
+  const wayPolarity = useMemo(
+    () =>
+      wayPolarities({
+        roles: polarityRoles,
+        adjustFlags: invertedFlags,
+        netlistDrivers: netlistDriversByWay,
+        readOnly: polarityHeld,
+      }),
+    [polarityRoles, invertedFlags, netlistDriversByWay, polarityHeld],
+  );
+
+  /**
+   * The same state as the RELATIVE polarity of each handover.
+   *
+   * U-7 — READ OFF THE EFFECTIVE POLARITY AND NOT OFF THE BOXES. Until U-7
+   * this read `invertedFlags`, which is only one of the two carriers: with a
+   * netlist part carrying a way's polarity the boxes are clear while the way
+   * is reversed, so every label hanging off this — the textbook deviation
+   * note and the follow's starting point — described a state the simulation
+   * was not in. `effectiveFlags` is the same vocabulary (way i+1 against the
+   * LOWEST way) computed from what the sum actually does.
+   */
+  const effectiveFlags = useMemo(
+    () => wayPolarity.slice(1).map((w) => w.effective !== wayPolarity[0].effective),
+    [wayPolarity],
+  );
   const handoverRelative = useMemo(
-    () => relativeBitsOf(invertedFlags).slice(0, handovers.length),
-    [invertedFlags, handovers.length],
+    () => relativeBitsOf(effectiveFlags).slice(0, handovers.length),
+    [effectiveFlags, handovers.length],
   );
   /** What the textbook asks of each handover, given the flanks that are drawn. */
   const handoverTextbooks = useMemo(
@@ -5893,14 +6024,39 @@ export default function App() {
    * boxes says it.
    */
   const writeHandoverRelative = (rel: readonly boolean[]) => {
-    const flags = invertedFlagsOf(rel);
+    /* U-7 — THE FOLLOW MAY NOT EDIT A DRAWING. `invertedFlagsOf` gives the
+     * wanted EFFECTIVE state of each way above the lowest; reaching it goes
+     * through `setWayPolarity` in `adjust` mode, which solves the box against
+     * whatever the netlist part already contributes. A change in the BAND FORM
+     * silently editing a network somebody drew is what UI-2 stopped, so this
+     * caller is the one that never touches the parts — and any split it leaves
+     * is printed beside the knob rather than hidden. */
+    const want = invertedFlagsOf(rel);
+    let flags = [...invertedFlags];
+    want.forEach((bit, i) => {
+      const absolute = bit !== wayPolarity[0].effective;
+      const plan = setWayPolarity(wayPolarity, flags, i + 1, absolute, 'adjust');
+      if (plan.kind === 'adjust') flags = plan.adjustFlags;
+    });
+    writeInvertedFlags(flags);
+  };
+
+  /**
+   * The same two checkboxes written ABSOLUTELY — way i+1 against the lowest.
+   *
+   * `writeHandoverRelative` speaks the handover vocabulary (H-4b's textbook
+   * rule is relative); U-7's knob speaks per WAY, which is what a builder
+   * solders and what the netlist part stores. One writer underneath both, so
+   * the two vocabularies cannot drift into two setState orders.
+   */
+  function writeInvertedFlags(flags: readonly boolean[]) {
     if (threeWay) {
       setMidInverted(!!flags[0]);
       setInverted(!!flags[1]);
     } else {
       setInverted(!!flags[0]);
     }
-  };
+  }
 
   /**
    * A band changed in the filter form: if its ALIGNMENT moved, the invert
@@ -5952,6 +6108,110 @@ export default function App() {
 
   /** The last alignment choice the polarity followed — shown once, beside the box. */
   const [polarityFollowed, setPolarityFollowed] = useState<string | null>(null);
+
+  /**
+   * Press one way's knob.
+   *
+   * The plan is a VALUE (`setWayPolarity`) and both halves are applied here,
+   * together: writing the part without clearing the box would land 180° from
+   * what the knob says. The netlist write goes through `commitSchematic`, so
+   * it is an ordinary undo-able edit of the WORKING design — a loaded frozen
+   * candidate is already the Working copy (`setWorkingDesign`), and the
+   * fixture on disk is never written by the app.
+   */
+  const pressWayPolarity = (index: number) => {
+    const plan = setWayPolarity(wayPolarity, invertedFlags, index, !wayPolarity[index].effective);
+    if (plan.kind === 'refused') {
+      setPolarityFollowed(null);
+      return;
+    }
+    if (plan.kind === 'netlist') {
+      if (!activeDesign) return;
+      commitSchematic(setPartProps(activeDesign.parts, plan.partIndex, { inverted: plan.inverted }));
+    }
+    writeInvertedFlags(plan.adjustFlags);
+    setPolarityFollowed(null);
+  };
+
+  /**
+   * U-7 — WHAT PRESSING THIS KNOB DOES, IN DECIBELS, BEFORE YOU PRESS IT.
+   *
+   * Read off the SAME pair of curves the charts have drawn for a long time and
+   * the same mean the reverse-null signature takes (`handoverMargins`, one
+   * computation and two readers — A3g). `marginDb` is mean(sum − reversed)
+   * over the handover band, so a POSITIVE margin means the polarity as it
+   * stands sums better and reversing costs that much; a negative one means
+   * reversing buys it.
+   *
+   * A way takes part in the handover BELOW it (as the upper way) and the one
+   * ABOVE it (as the lower way), so the middle way of a three-way reports
+   * both — reversing it moves both crossings at once, which is exactly why
+   * the charts refuse to draw a single mid-flipped curve and why this says it
+   * in two numbers instead of one.
+   *
+   * A READING AND NOT A RECOMMENDATION (F0): the app measures, the designer
+   * chooses.
+   */
+  const polarityEffectFor = (index: number): string | null => {
+    const parts: string[] = [];
+    for (const j of [index - 1, index]) {
+      const m = handoverMargins[j];
+      if (!m || m.marginDb === null) continue;
+      const d = Math.abs(m.marginDb);
+      const verb = m.marginDb > 0 ? t('costs') : t('buys');
+      parts.push(
+        `${m.pairLabel} ${m.bandHz[0].toFixed(0)}–${m.bandHz[1].toFixed(0)} Hz: ` +
+          `${verb} ${d.toFixed(2)} dB`,
+      );
+    }
+    if (parts.length === 0) return null;
+    return `${t('reversing')} — ${parts.join(' · ')}`;
+  };
+
+  /**
+   * U-7 — THE KNOB. One renderer, two placements: full beside the way's own
+   * adjustment fields, compact in the metrics strip under the charts. Both
+   * read the same `wayPolarity[index]` and press the same plan, so they cannot
+   * drift into two controls over one state.
+   */
+  const polarityKnob = (index: number, compact = false) => {
+    const w = wayPolarity[index];
+    if (!w) return null;
+    const effect = polarityEffectFor(index);
+    const note = describeWayPolarity(w);
+    // `describeWayPolarity` already carries the reason for a way that cannot
+    // be set, so the title is the note plus what a press would do — never the
+    // same sentence twice.
+    const title = [note, effect ?? ''].filter(Boolean).map((x) => t(x)).join('\n');
+    const label = `⌀ ${t(w.role)} ${w.effective ? t('reversed') : t('normal')}`;
+    const btn = (
+      <button
+        type="button"
+        className={`pol-knob${w.effective ? ' on' : ''}${w.split ? ' split' : ''}`}
+        disabled={!w.settable}
+        aria-pressed={w.effective}
+        title={title}
+        onClick={() => pressWayPolarity(index)}
+      >
+        {label}
+      </button>
+    );
+    if (compact) return <span key={`pol-${w.role}`} className="strip-item pol-strip">{btn}</span>;
+    return (
+      <div className="way-polarity" key={`pol-${w.role}`}>
+        {btn}
+        <span className="v2-subcap pol-carrier">{t(note)}</span>
+        {/* What pressing it does, before it is pressed — read off the same two
+            curves the charts draw. A reading, never a recommendation (F0). */}
+        {effect && <span className="v2-subcap pol-effect">{t(effect)}</span>}
+        {w.split && (
+          <span className="nl-warning pol-split">
+            {t('the export reads the part only — press to settle both into it')}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   /**
    * What to print beside one adjustment fieldset's invert box: the handover
@@ -7340,17 +7600,16 @@ export default function App() {
    * verdict: below the margin the two polarities are not separated by their
    * phase, and there is nothing to say.
    */
-  const nullSignatures = useMemo((): NullSignature[] => {
+  const handoverMargins = useMemo((): (NullSignature | null)[] => {
     if (!result || soloDriver) return [];
-    const out: NullSignature[] = [];
     const take = (
       pairLabel: string,
       centreHz: number | null,
       reversedDb: readonly number[] | undefined,
       textbook: (typeof handoverTextbooks)[number] | undefined,
-    ) => {
-      if (centreHz === null || !reversedDb) return;
-      const sig = reversedNullSignature({
+    ): NullSignature | null => {
+      if (centreHz === null || !reversedDb) return null;
+      return reversedNullSignature({
         pairLabel,
         freq: result.freq,
         sumDb: result.combinedSpl,
@@ -7358,7 +7617,6 @@ export default function App() {
         centreHz,
         ...(textbook ? { textbook } : {}),
       });
-      if (sig.text) out.push(sig);
     };
     if (threeWay && pairScores) {
       /* The W-M check flips the WOOFER and the M-T check the TWEETER — never
@@ -7366,13 +7624,22 @@ export default function App() {
        * `invertedLowSpl` exists at all). */
       const invLow =
         sim && 'invertedLowSpl' in sim.combined ? sim.combined.invertedLowSpl : undefined;
-      take(t('woofer-mid'), pairScores.low.integ.overlapCentreHz, invLow, handoverTextbooks[0]);
-      take(t('mid-tweeter'), pairScores.high.integ.overlapCentreHz, result.invertedSpl, handoverTextbooks[1]);
-    } else if (integration) {
-      take(t('crossover'), integration.overlapCentreHz, result.invertedSpl, handoverTextbooks[0]);
+      return [
+        take(t('woofer-mid'), pairScores.low.integ.overlapCentreHz, invLow, handoverTextbooks[0]),
+        take(t('mid-tweeter'), pairScores.high.integ.overlapCentreHz, result.invertedSpl, handoverTextbooks[1]),
+      ];
     }
-    return out;
+    if (integration) {
+      return [take(t('crossover'), integration.overlapCentreHz, result.invertedSpl, handoverTextbooks[0])];
+    }
+    return [];
   }, [result, sim, soloDriver, threeWay, pairScores, integration, handoverTextbooks, t]);
+
+  /** The same margins, filtered to the ones decisive enough to say something. */
+  const nullSignatures = useMemo(
+    (): NullSignature[] => handoverMargins.filter((s): s is NullSignature => !!s?.text),
+    [handoverMargins],
+  );
 
   /**
    * Verdict on the MEASURING DISTANCE itself. The residual the correction
@@ -18762,20 +19029,16 @@ export default function App() {
                   onChange={(e) => setTrimDb(e.target.value)}
                 />
               </label>
-              <label
-                className="check"
-                title={t('Flip the tweeter 180° (swap + and −) — the classic move around an LR2 crossover')}
-              >
-                <input
-                  type="checkbox"
-                  checked={inverted}
-                  onChange={(e) => {
-                    setInverted(e.target.checked);
-                    setPolarityFollowed(null);
-                  }}
-                />
-                {t('Invert polarity')}
-              </label>
+              {/* U-7 — ONE KNOB PER WAY, SHOWING THE EFFECTIVE POLARITY.
+                  The checkbox that stood here wrote only the adjustment flag,
+                  which is one of the two carriers: with a netlist part
+                  carrying the design's own polarity (E-3 folds it there) the
+                  two COMPOSE, so the box read "normal" on a way the sum had
+                  reversed, and the export — which reads the part alone —
+                  showed something else again. The knob reads both, writes
+                  whichever is live, and settles a way into the part the first
+                  time it is pressed. */}
+              {polarityKnob(threeWay ? 2 : 1)}
               {/* H-4b — the textbook rule on the HAND path: the box follows a
                   NEW alignment choice and stays yours. A state that departs
                   from the rule is named here and never corrected — measured
@@ -18835,17 +19098,10 @@ export default function App() {
                     onChange={(e) => setMidTrimDb(e.target.value)}
                   />
                 </label>
-                <label className="check" title={t('Flip the midrange 180° (swap + and −)')}>
-                  <input
-                    type="checkbox"
-                    checked={midInverted}
-                    onChange={(e) => {
-                      setMidInverted(e.target.checked);
-                      setPolarityFollowed(null);
-                    }}
-                  />
-                  {t('Invert polarity')}
-                </label>
+                {/* U-7 — the same knob, on the way Sander asked for by name.
+                    Reversing the MID moves both crossings at once, so its
+                    effect line reports two numbers instead of one. */}
+                {polarityKnob(1)}
                 {/* H-4b — the woofer-mid handover's textbook state. Flipping
                     THIS box alone also flips the mid-tweeter handover, because
                     the mid is shared; the rule the form follows writes the
@@ -23485,6 +23741,15 @@ export default function App() {
                       {t('no overlap within 20 dB — the drivers never meet, nothing to integrate')}
                     </span>
                   ))}
+                {/* U-7 — THE POLARITY OF EVERY WAY, BESIDE THE CURVES IT
+                    CHANGES. The same knob as the adjustment fields, compact:
+                    pressing it re-solves the sum, the per-way phase and both
+                    null-check curves through the ordinary live route, so there
+                    is no second "simulation mode" that can drift from what the
+                    app would build. The LOWEST way appears here too — with no
+                    network driving it, it is the reference the sum is measured
+                    against and the knob says so instead of hiding. */}
+                {!soloDriver && wayPolarity.map((_w, i) => polarityKnob(i, true))}
                 {/* H-4b — THE REVERSE-NULL CHECK AS A NUMBER. Two curves the
                     chart has drawn for a long time, read against a margin
                     derived from the phase unit: when reversing one way of a

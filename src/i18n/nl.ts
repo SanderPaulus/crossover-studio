@@ -950,6 +950,12 @@ export const nl: Record<string, string> = {
   'Flip the tweeter 180° (swap + and −) — the classic move around an LR2 crossover':
     'Keer de tweeter 180° om (wissel + en −) — de klassieke zet rond een LR2-crossover',
   'Invert polarity': 'Keer polariteit om',
+  /* U-7 — de woorden op de polariteitsknop. De lange zinnen eromheen vallen
+     terug op het Engels, zoals elke sessie sinds H-4b dat doet. */
+  reversed: 'omgepoold',
+  reversing: 'omkeren',
+  costs: 'kost',
+  buys: 'levert',
   'The mm offset expressed as time delay': 'De mm-offset uitgedrukt als tijdvertraging',
   'measured phase already carries the real timing — leave 0 unless you are simulating a physical move':
     'de gemeten fase draagt de echte timing al — laat op 0 tenzij je een fysieke verplaatsing simuleert',

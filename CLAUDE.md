@@ -54,6 +54,22 @@
     dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
     staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
     voor de twee weggegooide runs die ernaast liepen.
+    **Ná U-7 (22-09-2026) gemeten op 549 s — 205 bestanden (204 geslaagd, 1 overgeslagen),
+    2765 tests (2761 geslaagd, 4 overgeslagen), alleen gedraaid ná de browsercontrole met de
+    dev-server gestopt.** +1 BESTAND (`lib/wayPolarity.test.ts`, 25 claims) en +25 tests, en die
+    twee getallen sluiten EXACT: het corpus is niet aangeraakt, dus geen enkele `it.each` over een
+    levend corpus beweegt, en de twee HERANKERDE bestanden (`handoverPolarity.test.ts`,
+    `optimizer/polarityFold.test.ts`) veranderden van INHOUD en niet van telling. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 549 tegen M-5's 546 s is dezelfde laag op
+    dezelfde machine met één bestand erbij. **DE EERSTE VOLLE SNELLE RUN HAD ÉÉN RODE CLAIM EN ZIJ
+    DEED HAAR WERK:** de U-3d-guard pint dat de app-eigen polariteitstoestand bereikbaar blijft, en
+    hij pinde die met de VORM `setInverted(e.target.checked)` — het vinkje dat U-7 door de knop
+    vervangt. De claim geldt sterker dan ooit en de vorm was weg; herankerd op `pressWayPolarity`
+    mét de omgekeerde eis dat de oude vorm er niet meer staat, en de run erna is de 549 s hierboven.
+    **DE TWEEDE RUN IS DE GERAPPORTEERDE**, om de H-2-reden: de eerste beschrijft een boom die
+    daarna nog drie keer bewerkt is (de herankering, de slot-resolutie per pad, de hold op beide
+    schrijfpaden), en een suite-uitslag beschrijft de boom die zij gemeten heeft of zij beschrijft
+    niets.
     **Ná M-5 (21-09-2026) gemeten op 546 s — 204 bestanden (203 geslaagd, 1 overgeslagen),
     2740 tests (2736 geslaagd, 4 overgeslagen), alleen gedraaid met niets ernaast.** +1 BESTAND
     (`m5Lr2.test.ts`, 23 claims) en +24 tests. **DE DELTA IS GEËNUMEREERD EN NIET AFGELEID**
@@ -7543,3 +7559,147 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   die armen vielen vóór hun fase beoordeeld kon worden. (4) De koan677-helft is gedraaid maar niet
   bevroren — zij is een kolom van de tabel en geen ontwerp.
 
+### U-7-guards (één polariteit per weg, met haar drager benoemd; alleen app/UI)
+
+- **STAP 1 — WAT ER WAS, GEMETEN VOORDAT ER IETS BEWOOG.** Drie mechanismen droegen een
+  polariteit en TWEE ervan werden op dezelfde tak in dezelfde som toegepast:
+
+  | mechanisme | leeft waar | leest wie | schrijft wie |
+  | --- | --- | --- | --- |
+  | `inverted` (tweeter-vinkje, Setup → TWEETER ADJUSTMENT) | `App.tsx` useState + `project.ts` | `branchAdj` → `combine`/`combineN`'s adjust → **de som, de null-check-krommen, de relatieve fase**; `invertedFlags` → H-4b's textbook-label; het bewaarde ontwerp | het vinkje, het projectlaadpad, de H-4b-follow, het vf-optimizer-resultaat; `applyScanCandidate` **wist** het (U-3d) |
+  | `midInverted` (mid-vinkje) | idem | idem | idem |
+  | `Driver.inverted` op het netlist-onderdeel | de partslijst (`VxpPart`) | **`network.ts`** (`d.inverted ? scale(h, -1) : h`) → de takoverdracht, dus de sim, de charts, élke elektrische metriek en het engine2-rapport; **`vxpExport.ts`** | het vinkje in de Network-editor (`SchematicEditor.tsx`), E-3's ontwerpstap-vouw (`foldDriverPolarity`), `netlistEdit` (default false) |
+  | H-4b's textbook-label + follow | `handoverPolarity.ts` | de labels naast de Setup-vinkjes | `applyVfChange` |
+  | de null-check-krommen | de sim-memo | de charts, `nullSignatures` | berekend uit **adjust**, niet uit de netlist |
+
+- **DE BEVINDING, EN ZIJ IS NIET WAT DE OPDRACHT VERWACHTTE: DE TWEE ZIJN GEEN DUBBELE
+  BOEKHOUDING — ZIJ COMPONEREN, EN DAT IS EEN XOR DIE NIEMAND AFDRUKTE.** De netlist-bit is de
+  keuze van het ONTWERP (E-3 vouwt de polariteit van de ontwerpstap daar juist in, "so everything
+  downstream reads the netlist"); het vinkje is de override van de ONTWERPER daar bovenop.
+  `solveNetwork` past de eerste toe, `combineN` de tweede. U-3d's 360°-incident was niet dát zij
+  samen bestaan maar dat `applyScanCandidate` het vinkje uit het RESULTAAT voedde — bit XOR
+  dezelfde bit — zodat een ontwerp dat de tune op een paar graden mat in tegenfase werd getekend.
+  Het vinkje wissen repareerde het laadpad en liet de compositie staan, terecht.
+- **WAT ER WÉL ONTBRAK.** Nergens stond wat een weg EFFECTIEF is, en het label van het vinkje
+  liegt over zijn eigen betekenis: het leest "Invert polarity" en het betekent "keer om ten
+  opzichte van wat de netlist al zegt". En de EXPORT (`.vxp`, `.adsfilter`) leest alléén de
+  netlist-bit, dus een omkering die op het vinkje gemaakt is wordt gesimuleerd, getekend en
+  beoordeeld en staat NIET in wat een bouwer soldeert.
+- **`src/lib/wayPolarity.ts` (`way-polarity/1.0`) — DE ENE WAARHEID, EN GEEN DERDE OPSLAG.** Hij
+  bewaart niets: hij LEEST beide dragers, rapporteert de effectieve waarde en wie haar draagt, en
+  geeft een SCHRIJFPLAN terug als WAARDE — de `selectFromShortlist`-vorm (UI-1), want de laag
+  tussen een regel en de app-state is precies waar dit project eerder voor betaald heeft.
+  `effective = netlist XOR adjust`, en dat is een RAPPORTAGE van wat de sim doet en geen nieuwe
+  regel. Geen engine-import (dezelfde regel als `handoverPolarity.ts`).
+- **N-WEG PER CONSTRUCTIE (P6): de module noemt geen enkele weg.** De aanroeper levert de rollen
+  laag-naar-hoog en het onderdeel dat elke weg aandrijft; "mid" en "tweeter" zijn de
+  DRIEWEG-LEZING van dezelfde generieke knop. Een bronscan pint dat de module de woorden
+  `woofer`, `tweeter`, `'mid'` en `midInverted` nergens bevat — nagemeten dat hij kán falen.
+- **DE SCHRIJF NORMALISEERT ALTIJD, EN NOOIT UIT ZICHZELF.** Een druk op de knop van een weg die
+  door een netlist-onderdeel gedragen wordt schrijft het ONDERDEEL én wist de adjust-flag van die
+  weg, in één ongedaan-te-maken stap, zó gekozen dat de effectieve waarde de gevraagde is. Bij
+  het openen van een project, bij een restore en bij het laden van een kandidaat gebeurt er
+  NIETS — de eerste DRUK op een weg settelt haar, en vanaf dan draagt de export wat de knop toont.
+  Dát is de reden dat de schrijf één plan is en geen setter: de aanroeper past beide helften toe
+  of geen van beide; de helft alleen landt 180° van wat de knop zegt.
+- **DE LAAGSTE WEG.** Zonder netlist heeft zij geen drager — zij IS de referentie waartegen
+  `combineN` sommeert en waartegen élke flag relatief is — en de knop zegt dat in plaats van te
+  verdwijnen. Met een netlist-onderdeel kan zij het wél uitdrukken en is de knop gewoon actief;
+  in de browser nagemeten (⌀ woofer normal → reversed zodra er een netwerk staat).
+- **EEN NETLIST DIE NIET TE BEWERKEN IS WORDT GELEZEN EN NIET GESCHREVEN.** Een geïmporteerde
+  vxp-variant drijft de som wél maar haar onderdelen zijn hier niet bewerkbaar: `partIndex` is
+  dan `null`, de bit wordt GERAPPORTEERD (een knop die daar "normal" toonde zou liegen over de
+  kromme op het scherm) en de knop zegt waarom hij niet kan schrijven.
+- **HYBRID MODE: DE ACTIEVE ZIJDE IS ALLEEN-LEZEN, MET H-1's REDEN.** Haar polariteit hangt aan
+  haar eigen versterker en DSP, wordt vastgesteld met de omgepoolde-null-meting in de kast en in
+  de processor getypt — het DSP-doelblok drukt haar al af met de textbook-regel en de
+  "verify in the cabinet"-zin. De knop rapporteert die weg en weigert haar te schrijven; hem
+  verbergen zou de weg die er het meest toe doet laten lijken alsof zij geen polariteit heeft.
+- **DE SIMULATIE IS NIET BEWOGEN, EN EEN GUARD HOUDT DAT ZO.** `branchAdj` is ONAANGERAAKT en
+  leest nog steeds `inverted`/`midInverted` rechtstreeks; de solve is onaangeraakt. Een bronscan
+  eist dat `branchAdj` de woorden `wayPolarity` en `effective` NIET bevat — hem op de effectieve
+  waarde richten zou de som van élk bestaand project bij het openen verzetten, en dat is precies
+  de stille wijziging die deze sessie verbood. Nagemeten dat die guard kán falen.
+- **DE LABELS LEZEN SINDS U-7 DE EFFECTIEVE STAAT.** `handoverRelative` las `invertedFlags` —
+  één van de twee dragers — dus met een netlist-onderdeel dat de polariteit droeg stonden de
+  vinkjes leeg terwijl de weg omgekeerd was, en élk label dat eraan hangt (de
+  textbook-afwijkingsnoot, het startpunt van de follow) beschreef een toestand waarin de
+  simulatie niet stond. `effectiveFlags` is dezelfde woordenschat (weg i+1 tegen de LAAGSTE weg)
+  berekend uit wat de som werkelijk doet.
+- **DE H-4b-FOLLOW SCHRIJFT DOOR HET VINKJE EN NOOIT DOOR DE TEKENING.** Hij vuurt op een
+  wijziging in het BANDFORMULIER, en een formulierwijziging die stilletjes een netwerk bewerkt
+  dat iemand getekend heeft is precies wat UI-2 stopte. `setWayPolarity(..., 'adjust')` lost het
+  vinkje daarom op TEGEN wat het netlist-onderdeel al bijdraagt, zodat de effectieve waarde de
+  gevraagde is; blijft er dan een SPLIT over (beide lagen dragen een bit, dus de export toont iets
+  anders dan de som), dan wordt die náást de knop afgedrukt in plaats van verstopt.
+- **DE EFFECT-REGEL LEEST DEZELFDE TWEE KROMMEN ALS DE REVERSE-NULL-HANDTEKENING.** `nullSignatures`
+  is bij U-7 gesplitst in `handoverMargins` (het gemiddelde voor ÉLKE overname, altijd) en de
+  beslissende deelverzameling die de strip al afdrukte — één berekening, twee lezers (A3g). Een weg
+  doet mee aan de overname ONDER haar (als bovenste weg) en die ERBOVEN (als onderste), dus de mid
+  van een drieweg rapporteert er TWEE: haar omkeren verzet beide kruisingen tegelijk, precies
+  waarom de charts weigeren één mid-omgekeerde kromme te tekenen. Een LEZING en geen aanbeveling
+  (F0).
+- **DE GUARDS.** `src/lib/wayPolarity.test.ts` (25 claims): de XOR op alle vier de combinaties; de
+  drager per weg; de SPLIT mét de twee tegenproeven dat een enkele drager er géén is; de laagste
+  weg zonder en mét netlist; de alleen-lees-netlist; het schrijfplan; **de claim waar het hele
+  ontwerp op rust — een druk landt op de gevraagde effectieve waarde vanuit ÉLKE begintoestand
+  (2×2×2 geënumereerd, teruggelezen door de module zelf)**; élke ándere weg blijft exact staan;
+  de `'adjust'`-modus landt óók op de gevraagde waarde en laat de TEKENING ongemoeid; N-weg op
+  twee en vier wegen; een GEHOUDEN weg die op BEIDE schrijfpaden geweigerd wordt ("niet hier
+  gekozen" is een uitspraak over de WEG en niet over de drager); en de P6-bronscan. Plus negen
+  app-bronscans (het UI-1-idioom: een eenheidstest kan niet zeggen of de app de knop RENDERT of er
+  nog een vinkje naast zet).
+  **Nagemeten dat zij kunnen falen:** het tweeter-vinkje terugzetten (2 rood), de knop de flags
+  niet laten schrijven (1 rood), `branchAdj` op de effectieve waarde richten (1 rood), de flag niet
+  wissen bij een netlist-schrijf (2 rood), een weg bij naam noemen in de module (2 rood).
+- **DE SLOT-RESOLUTIE VOLGT DE SIM PER PAD, EN DAT IS GEEN BUGFIX MAAR EEN CONSTRUCTIE.** De knop
+  moet het onderdeel stempelen wiens overdracht de som werkelijk gebruikte, dus `netlistDriversByWay`
+  leest `pickSlotsN` op een drieweg en `pickSlots` op een tweeweg — exact wat `slotTransfersN` en
+  `slotTransfers` doen. Nagemeten dat de twee het op élke netlist die deze app kan bouwen eens zijn
+  (2 en 3 drivers, eigen namen én vxp-namen), dus wat dit verandert is dat de overeenstemming BIJ
+  CONSTRUCTIE geldt in plaats van bij toeval.
+- **VIER BRONSCANS GINGEN EROP ROOD EN DEDEN ALLEMAAL HUN WERK — drie van H-4b en één van U-3d.**
+  De VIERDE is de scherpste: `polarityFold.test.ts` pinde dat "de app-eigen polariteitstoestand nog
+  bereikbaar is" met de vorm `setInverted(e.target.checked)` — het vinkje. U-7 verving dat vinkje
+  door de knop, dus de CLAIM geldt sterker dan ooit (de knop bereikt beide dragers) en de VORM was
+  weg. Herankerd op `pressWayPolarity`, mét de omgekeerde eis erbij dat de oude vorm er NIET meer
+  staat. Zijn twee andere asserts — `network.ts` past `d.inverted` toe en `dsp.ts` past
+  `adj.inverted` toe — zijn ONAANGERAAKT en staan: dat is "de simulatie is niet bewogen" van de
+  andere kant, door een guard die U-7 niet geschreven heeft.
+- **DRIE H-4b-BRONSCANS GINGEN EROP ROOD EN DEDEN HUN WERK.** De vorm die zij pinden is verhuisd
+  en hun CLAIM niet: de follow bouwt de bits nog steeds met `invertedFlagsOf` (en zet nooit één
+  vinkje los — dat zou een overname verzetten die de ontwerper niet aanraakte), de
+  afwijkingsnoot staat nog naast het besturingselement, en beide null-check-krommen voeden nog
+  dezelfde memo. Zij zijn HERANKERD op de nieuwe vorm en op geen enkel punt versoepeld; de
+  "nooit uitgeschakeld"-helft is bovendien SCHERPER geworden, want de knop ís uitgeschakeld
+  zonder drager, dus de claim leest nu waar zij hoort: het is nooit de textbook-AFWIJKING die
+  hem uitschakelt (`disabled={!w.settable}`, en de renderer mag de woorden `textbook`,
+  `polarityNoteFor`, `handoverTextbooks` en `deviation` niet bevatten).
+- **BROWSERCONTROLE (Browser-pane op de dev-server, 22-09-2026), en zij is de reden dat dit als af
+  geldt.** Verse localStorage, de DRIEWEGDEMO, Expert.
+  **Zonder netwerk:** drie knoppen in de metriekstrip; ⌀ woofer is UITGESCHAKELD met de
+  referentie-reden, mid en tweeter dragen "carried by the adjustment box. No network drives this
+  way, so there is nothing to export yet."
+  **DE LIVE HERBEREKENING, GEMETEN EN NIET AANGENOMEN:** in de normale stand zegt de mid-knop
+  *"reversing — woofer-mid 684–1368 Hz: buys 10,96 dB · mid-tweeter 6024–12048 Hz: buys 3,63 dB"*;
+  ná één druk staat er *"costs 0,34 dB"* en *"costs 3,54 dB"*. **De tekens klappen om en de
+  grootten zijn NIET symmetrisch** (10,96 → 0,34), wat precies is wat een verse oplossing van de
+  echte som oplevert en wat een gecachete omkering niet kan.
+  **Mét een netwerk** (New from template · 3-way · 2nd order): alle drie de knoppen actief en
+  "carried by the driver part", de banden worden de echte kruisbanden (459–917 en 1398–2796 Hz),
+  en de Setup-tab toont de volle knop met zijn drager- en effect-regel.
+  **DE EXPORT DRAAGT WAT DE KNOP TOONT, afgelezen uit het geschreven bestand:** ná ⌀ mid
+  schrijft "Export filter" `{"model":"mid","inverted":true}` naast woofer en tweeter op `false`.
+  **Undo zet hem terug** — het is een gewone, ongedaan-te-maken netlist-bewerking. Geen enkele
+  console-fout.
+- **EEN BIJVANGST DIE DE METING OPLEVERDE.** Op het 2e-orde-sjabloon leest de tweeter-knop
+  *"buys 8,91 dB"* op mid→tweeter: de handtekening van een ontbrekende LR2-omkering, H-4b's eigen
+  onderwerp, nu per WEG in decibels afleesbaar naast de knop die hem repareert.
+- **WAT NIET GEDAAN IS, met naam.** (1) Geen engine-, poort-, budget-, venster-, metriek- of
+  corpuswijziging; geen bevroren netlist aangeraakt. (2) De adjust-flags blijven op twee
+  benoemde `useState`s (`inverted`, `midInverted`) en zijn NIET naar een N-weg-array verhuisd —
+  de knop is generiek, zijn onderste drager is dat nog niet, en die verhuizing raakt het
+  projectbestand, de autosave, `v1Carryover` en élke laadroute. (3) De `applyScanCandidate`-wis
+  van U-3d staat ongewijzigd: de netlist draagt de polariteit van het ontwerp en het vinkje hoort
+  daar leeg te zijn. (4) De DSP-doelblok-polariteit van de actieve zijde blijft waar H-1 haar
+  zette. (5) Geen volle run — zie de meetregel bij `test:fast`.

@@ -4789,3 +4789,42 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 }
 .v2-window-line b { color: var(--fg); font-weight: 600; }
 .v2-window-conv { font-style: italic; }
+
+/* ---- U-7: the per-way polarity knob -------------------------------------
+   One control, two placements (the way's adjustment fields and the metrics
+   strip under the charts). The ON state is a STATE and not an alarm — a
+   reversed way is an ordinary design choice, and a real one is common enough
+   around an LR2 handover that colouring it red would cry wolf. The SPLIT
+   state (both carriers hold a bit, so the export shows something other than
+   the sum) is the one that warrants the warning colour. */
+.pol-knob {
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid var(--line, #444);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pol-knob:hover:not(:disabled) { color: var(--fg); border-color: var(--fg); }
+.pol-knob.on {
+  color: var(--fg);
+  border-color: currentColor;
+  font-weight: 600;
+}
+.pol-knob.split { color: var(--bad); border-color: currentColor; }
+.pol-knob:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.way-polarity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  margin: 0.25rem 0;
+}
+.pol-carrier, .pol-effect { font-size: 0.72rem; color: var(--muted); }
+.pol-effect { font-variant-numeric: tabular-nums; }
+.score-strip .strip-item.pol-strip { cursor: default; }

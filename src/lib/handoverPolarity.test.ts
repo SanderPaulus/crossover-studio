@@ -385,7 +385,17 @@ describe('H-4b (4) — the app calls it (source scan, the UI-1 idiom)', () => {
      * mid-tweeter handover as a side effect — a handover the designer did not
      * touch. The scan pins the one helper both callers use. */
     expect(APP).toContain('const writeHandoverRelative');
-    expect(APP).toContain('const flags = invertedFlagsOf(rel);');
+    /* U-7 moved the SHAPE and not the claim: the helper still derives the
+     * absolute bits with `invertedFlagsOf`, and reaches them through
+     * `setWayPolarity` in `adjust` mode — the box, never the drawing, because
+     * a change in the band form may not silently edit a network somebody
+     * drew (UI-2). Setting one checkbox directly would still flip a handover
+     * the designer did not touch, and nothing here does that. */
+    const wr = APP.slice(APP.indexOf('const writeHandoverRelative'), APP.indexOf('const writeHandoverRelative') + 1200);
+    expect(wr).toContain('invertedFlagsOf(rel)');
+    expect(wr).toContain("'adjust'");
+    expect(wr).toContain('writeInvertedFlags(flags)');
+    expect(wr).not.toContain('setMidInverted(');
     const fn = APP.slice(APP.indexOf('const applyVfChange'), APP.indexOf('const applyVfChange') + 2600);
     /* The DECISION is the shared function's and not a second copy in the app
      * — the layer between a rule and the app state is exactly what UI-1 found
@@ -397,18 +407,33 @@ describe('H-4b (4) — the app calls it (source scan, the UI-1 idiom)', () => {
     expect(fn).toContain('a.kind !== b.kind || a.order !== b.order');
   });
 
-  it('both invert checkboxes print the deviation, and neither is disabled by it', () => {
+  it('both polarity controls print the deviation, and neither is disabled by it', () => {
     expect(APP).toContain("polarityNoteFor('tweeter')");
     expect(APP).toContain("polarityNoteFor('mid')");
-    /* Printed, never corrected and never blocked: the box stays the
-     * designer's, which is the whole of F0 here. */
+    /* Printed, never corrected and never blocked: the control stays the
+     * designer's, which is the whole of F0 here.
+     *
+     * U-7 replaced the two checkboxes with the per-way knob — same place,
+     * same note beside it. The knob IS disabled when a way has no carrier at
+     * all (the lowest way with no network, or Hybrid mode's active side), so
+     * the claim is read where it belongs: on the DEVIATION, which may never
+     * be what disables it. */
     const around = (needle: string) => {
       const i = APP.indexOf(needle);
       return APP.slice(Math.max(0, i - 900), i + 400);
     };
     for (const n of ["polarityNoteFor('tweeter')", "polarityNoteFor('mid')"]) {
-      expect(around(n)).toContain('type="checkbox"');
-      expect(around(n)).not.toContain('disabled');
+      expect(around(n)).toContain('polarityKnob(');
+    }
+    // The renderer's own body, cut at the next doc comment — a fixed window
+    // would spill into `polarityNoteFor`'s comment, which names the rule.
+    const kStart = APP.indexOf('const polarityKnob');
+    const knob = APP.slice(kStart, APP.indexOf('\n  /**', kStart));
+    expect(knob).toContain('disabled={!w.settable}');
+    // `settable` is a question about CARRIERS. Nothing in the textbook rule
+    // reaches it — a deviation is printed and costs the designer nothing.
+    for (const forbidden of ['textbook', 'polarityNoteFor', 'handoverTextbooks', 'deviation']) {
+      expect(knob).not.toContain(forbidden);
     }
   });
 
@@ -441,8 +466,13 @@ describe('H-4b (4) — the app calls it (source scan, the UI-1 idiom)', () => {
   it('the W-M check flips the WOOFER and the M-T check the TWEETER, never the shared mid', () => {
     /* Flipping the mid would null both crossings at once and read ambiguous —
      * the reason `invertedLowSpl` exists at all. */
-    const memo = APP.slice(APP.indexOf('const nullSignatures'), APP.indexOf('const nullSignatures') + 2200);
+    /* U-7 split this memo in two: `handoverMargins` takes the mean for EVERY
+     * handover (the knob's effect line reads it too), and `nullSignatures` is
+     * the decisive subset. One computation, two readers — A3g — and the two
+     * curves it reads are unchanged. */
+    const memo = APP.slice(APP.indexOf('const handoverMargins'), APP.indexOf('const handoverMargins') + 2200);
     expect(memo).toContain('invertedLowSpl');
     expect(memo).toContain('result.invertedSpl');
+    expect(APP).toContain('handoverMargins.filter((s): s is NullSignature => !!s?.text)');
   });
 });
