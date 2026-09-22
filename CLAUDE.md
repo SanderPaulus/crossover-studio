@@ -1994,8 +1994,9 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
   **GEMETEN IN CI OP ubuntu/Node 22 (22-09-2026, M-5): 204 bestanden (203 geslaagd, 1 overgeslagen),
-  2721 geslaagd, 19 overgeslagen, 3632 s (60 min 32) — GROEN.** Negentien is voor de derde keer op
-  rij EXACT het H-1-getal, en dat is de claim: M-5 voegt geen enkele getagde test toe — het is een
+  2721 geslaagd, 19 overgeslagen, 3632 s (60 min 32) — GROEN.** Negentien is voor de VIJFDE
+  geboekte run op rij EXACT het H-1-getal (H-1, H-2, H-4, H-4b, M-5 — de twee eronder, M-3 en M-4,
+  lezen achttien), en dat is de claim: M-5 voegt geen enkele getagde test toe — het is een
   MEETsessie, en haar drieëntwintig claims lezen bestanden en zuivere functies — dus de inventaris
   staat stil. De telling sluit van de andere kant: 2721 + 19 = 2740, precies de lokale volle-run-
   telling, dus CI slaat exact de vereniging van beide tags over en verder niets. Wat de run
