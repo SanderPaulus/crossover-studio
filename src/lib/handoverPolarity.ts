@@ -162,12 +162,49 @@ export function handoverTextbook(lowerLp: HpLpSpec, upperHp: HpLpSpec): Handover
  * reversed under an alignment that asks for no reversal.
  */
 export function textbookDeviation(tb: HandoverTextbook, actualInverted: boolean): string | null {
-  if (tb.inverted === null || tb.alignment === null) return null;
-  if (tb.inverted === actualInverted) return null;
+  const st = textbookStanding(tb, actualInverted);
+  return st.kind === 'departs' ? st.text : null;
+}
+
+/**
+ * H-5 — WHERE A HANDOVER STANDS AGAINST THE TEXTBOOK, whichever way that is.
+ *
+ * ONE implementation and two readers, which is why `textbookDeviation` above is
+ * now a thin wrapper over it (A3g: two functions answering nearly the same
+ * question is exactly how two descriptions of one state come to disagree).
+ *
+ * WHY THE AGREEING CASE GOT A SENTENCE. Until H-5 the note was printed only on
+ * a DEPARTURE, so a designer who followed the rule saw nothing and a designer
+ * who had never heard of it saw nothing either — and after a successful follow
+ * there is by definition no departure left, so the one moment the rule had just
+ * MOVED a polarity was the one moment it said nothing. Sander stated on
+ * 24-09-2026 that the rule may be deterministic only where it is said out loud.
+ * It is still a MESSAGE and never a correction (F0/UI-2): the control stays the
+ * designer's either way.
+ */
+export interface TextbookStanding {
+  kind: 'follows' | 'departs' | 'none';
+  /** The line to print; empty for `'none'`. */
+  text: string;
+}
+
+export function textbookStanding(tb: HandoverTextbook, actualInverted: boolean): TextbookStanding {
+  if (tb.inverted === null || tb.alignment === null) return { kind: 'none', text: '' };
   const name = `${tb.alignment.kind}${tb.alignment.order}`;
-  return tb.inverted
-    ? `departs from textbook — ${name} asks for a reversal here`
-    : `departs from textbook — ${name} asks for no reversal here`;
+  if (tb.inverted === actualInverted) {
+    return {
+      kind: 'follows',
+      text: tb.inverted
+        ? `textbook for ${name} — it asks for a reversal here`
+        : `textbook for ${name} — it asks for no reversal here`,
+    };
+  }
+  return {
+    kind: 'departs',
+    text: tb.inverted
+      ? `departs from textbook — ${name} asks for a reversal here`
+      : `departs from textbook — ${name} asks for no reversal here`,
+  };
 }
 
 /* ==================================================================== *

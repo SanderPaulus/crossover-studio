@@ -325,6 +325,22 @@ export function dspTargetBlock(
  * judged pair stays, one line down, because it is what the corpus was selected
  * on and a reader comparing candidates needs it.
  */
+/**
+ * H-5 — how a polarity stands against the textbook, as a clause.
+ *
+ * Empty when the alignment states no rule (anything but Linkwitz-Riley), which
+ * is the honest answer rather than a silent "agrees" (P4).
+ */
+function polarityAgainstTextbook(lowPass: { kind: string; order: number }, inverted: boolean): string {
+  const name = `${lowPass.kind}${lowPass.order}`;
+  if (lowPass.kind !== 'LR') return ` (${name} states no textbook polarity rule)`;
+  const asks = textbookComplementInverted('LR', lowPass.order as 1 | 2 | 3 | 4);
+  return asks === inverted
+    ? ` — as textbook for ${name} asks`
+    : ` — DEPARTS from textbook for ${name}, which asks for ${asks ? 'a reversal' : 'normal polarity'}; ` +
+        'the fit on the reversed-polarity null chose this, verify it in the cabinet';
+}
+
 export function describeDspTarget(b: DspTargetBlock): string[] {
   const dB = (v: number) => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(2)} dB` : '—');
   const ms = (v: number) => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(3)} ms` : '—');
@@ -352,7 +368,16 @@ export function describeDspTarget(b: DspTargetBlock): string[] {
     `  low-pass   ${b.lowPass.kind}${b.lowPass.order} @ ${b.lowPass.hz.toFixed(1)} Hz`,
     `  gain       ${dB(dial.gainDb)}`,
     `  delay      ${ms(dialMs)}${latencyTag}`,
-    `  polarity   ${dial.inverted ? 'REVERSED' : 'normal'}`,
+    /* H-5 — THE TEXTBOOK READING BESIDE THE FITTED ONE, and it changes nothing.
+     *
+     * In the MEASURED form the active side's polarity is a MEASUREMENT: H-1
+     * fits it on the reversed-polarity null margin, and the cabinet settles it.
+     * The textbook rule is what the ideal shapes ask for, and H-1 measured that
+     * a real pair with a fitted delay does not always agree — casus 1h at
+     * 362.3 Hz chose reversed under LR4. So both are printed and the line says
+     * which is which: a disagreement is a finding about the loudspeaker, and a
+     * line that showed only the fit would hide it. */
+    `  polarity   ${dial.inverted ? 'REVERSED' : 'normal'}${polarityAgainstTextbook(b.lowPass, dial.inverted)}`,
     b.deliveredRefit
       ? `  (re-fitted on the DELIVERED network; the run was JUDGED with ${dB(b.judged.gainDb)} / ` +
         `${ms(b.judged.delayMs)} / ${b.judged.inverted ? 'reversed' : 'normal'} — see the notes)`

@@ -925,6 +925,9 @@ export function casus1Field(
    * byte. Only `measure-h4-polarity.ts` passes one, because only a measurement
    * of both arms needs both arms; a regeneration that wants them states it.
    */
+  /* H-5 — the PIN: absent here on purpose.
+   *  See `POLARITY_ARMS_ABSENT_MEANS` for what that means and why this
+   *  corpus keeps it. */
   polarityArms?: PolarityArmPolicy,
 ): CandidateFieldResult {
   return buildCandidateField({

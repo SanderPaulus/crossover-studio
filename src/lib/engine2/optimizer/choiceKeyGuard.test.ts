@@ -228,6 +228,25 @@ describe('F4c — every tuner option has a class', () => {
       'a chain key turned up in the tuner classification without being named as one of the ' +
         'keys both layers read',
     ).toEqual([...CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER].sort());
+    /* H-5 — THE NEW STATED RUN CHOICE IS NEITHER OF THESE, AND THAT IS PINNED
+     * RATHER THAN SAID IN PROSE.
+     *
+     * `polarityArms` (`fieldMode.ts`) decides which DESIGNS EXIST to be judged
+     * — the textbook arm alone, or the mirrored one beside it — and it is
+     * consumed by `buildCandidateField`, one layer above both the chain and the
+     * tuner. Nothing reads it in `NetOptimizeOptions` and nothing reads it in
+     * the chain settings, so neither list grows and the counts above stand.
+     * What carries it into a run is the same road `fieldMode` and the stated
+     * crossings take: the field's parameters and the candidates themselves, and
+     * `candidateFieldKey` hashes both, so the fingerprint moves with it (F4d's
+     * rule, one field over).
+     *
+     * The day it turns up in either classification, one of two things has
+     * happened: the tuner has grown a polarity option, or the chain has — and
+     * both are decisions that belong in an entry rather than in a list. */
+    expect(classified as readonly string[]).not.toContain('polarityArms');
+    expect(CHAIN_CHOICE_KEYS as readonly string[]).not.toContain('polarityArms');
+    expect(CHAIN_CHOICE_KEYS.length).toBe(7);
     // V31: instrumentation, never a choice — the key may not silently migrate
     // into the class whose values are only allowed to come from a candidate.
     expect(POLISH_KEYS).toContain('rejectedTuneReport');

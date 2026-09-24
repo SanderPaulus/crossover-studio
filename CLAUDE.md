@@ -54,6 +54,26 @@
     dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
     staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
     voor de twee weggegooide runs die ernaast liepen.
+    **Ná H-5 (24-09-2026) gemeten op 547 s — 206 bestanden (205 geslaagd, 1 overgeslagen),
+    2780 tests (2776 geslaagd, 4 overgeslagen), IN ÉÉN KEER GROEN, alleen gedraaid met niets
+    ernaast.** +1 BESTAND (`h5TextbookPolarity.test.ts`, 12 claims) en +15 tests, en die telling
+    sluit EXACT: die twaalf, plus TWEE in `predesign/polarityArms.test.ts` (de identiteit van een
+    veld ZONDER beleid, en de textbook-zaaiing die niets spiegelt en de reading tóch neemt) en ÉÉN
+    in `predesign/fieldMode.test.ts`, waar de H-4-claim over de armen in twee claims uiteenviel (de
+    gestelde keuze als trigger; textbook die op élke kandidaat een polariteit stelt). Het corpus is
+    NIET aangeraakt, dus geen enkele `it.each` over een levend corpus beweegt.
+    `choiceKeyGuard.test.ts` veranderde van INHOUD en niet van telling. GEEN nieuwe referentie: de
+    V43-waarde van 289 s blijft staan, en 547 tegen U-7's 549 s is dezelfde laag op dezelfde machine
+    met één bestand erbij. **DE EERSTE VOLLE SNELLE RUN IS WEGGEGOOID EN NIET GERAPPORTEERD**, om de
+    H-2-reden: hij was groen (548 s, dezelfde tellingen) maar hij mat een boom waaraan daarna nog één
+    regel JSX is toegevoegd (de datummarkering naast de nieuwe select) plus de twee claims die haar
+    pinnen. Een suite-uitslag beschrijft de boom die zij gemeten heeft of zij beschrijft niets — en
+    de volle run die eronder staat is om dezelfde reden gestopt en opnieuw begonnen. **DRIE CLAIMS VAN DE SNELLE LAAG GINGEN ONDERWEG ROOD EN ALLE DRIE DEDEN HUN
+    WERK**, en zij staan hier omdat zij samen één ding zeggen: een claim die "P2" heet moet weten
+    WAARVAN zij de identiteit is. De drie pinden "een beleid dat niets spiegelt laat élke kandidaat
+    exact zoals zij was" — waar is tot H-5, en onwaar zodra een beleid ÁLTIJD een polariteit stelt.
+    De identiteit is sindsdien het veld ZONDER beleid, en dát is wat elk opgenomen corpus heeft; de
+    drie claims zeggen dat nu, met de tegenproef dat een beleid de sleutel wél verplaatst.
     **Ná U-7 (22-09-2026) gemeten op 549 s — 205 bestanden (204 geslaagd, 1 overgeslagen),
     2765 tests (2761 geslaagd, 4 overgeslagen), alleen gedraaid ná de browsercontrole met de
     dev-server gestopt.** +1 BESTAND (`lib/wayPolarity.test.ts`, 25 claims) en +25 tests, en die
@@ -662,7 +682,24 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 21-09-2026 (M-5): 204 bestanden, 2740 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 24-09-2026 (H-5): 206 bestanden, 2780 tests,
+  1832 s (30 min 33), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag.**
+  +1 bestand en +15 tests — zie de `test:fast`-regel; het corpus is NIET aangeraakt.
+  **DEZE RUN IS GEDRAAID OMDAT H-5 `netOptimizer.ts` AANRAAKT**, en dat is de enige reden die telt:
+  de beschermingsregel van de veegronde zit in de trapsgewijze SNOEI en in de onderdelenAUDIT, en
+  die twee draaien op élke ketenrun terwijl de byte-referenties alleen de TUNER dekken. Wat de run
+  bewijst is dat het veto inert is waar het ertoe doet: **alle VIER de live ketenruns reproduceren
+  hun bevroren netlist byte voor byte** — casus 1's goedkoopste geleverde (1827,9 s) en zijn
+  goedkoopste verwerping (959,1 s), casus 1b (336,3 s) en casus 1h (423,4 s) — en beide
+  byte-referenties (`f4cRegression`, `workerRouteRegression`) plus `toggleRegression` staan. **De
+  tweede reden is de polariteitsregel zelf**: zij raakt de ONTWERPSTAP, en het is de ontwerpstap die
+  de vier live ketenruns end-to-end toetsen waar de byte-referenties dat niet doen. Dat casus 1b en
+  casus 1h — wier corpora op de GESPIEGELDE arm zijn opgewekt — onveranderd reproduceren is de
+  acceptatie van de FIXTURE-PIN: absent is de identiteit, gemeten in plaats van beredeneerd.
+  **DEZE VOLLE RUN IS DE TWEEDE VAN DEZE SESSIE en de eerste is weggegooid**, om de H-2-reden: hij
+  liep nog toen ik één regel JSX toevoegde (de datummarkering naast de nieuwe select), en een
+  suite-uitslag beschrijft de boom die zij gemeten heeft of zij beschrijft niets.
+  (De stand ervoor: **GEMETEN 21-09-2026 (M-5): 204 bestanden, 2740 tests,
   1832 s (30 min 32), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag en
   ná de 48 M-5-ketenruns.** +1 bestand en +24 tests — zie de `test:fast`-regel; het corpus is NIET
   geregenereerd, M-5 voegt VIJF netlists toe. **DEZE RUN IS GEDRAAID OMDAT ER NETLISTS AAN HET
@@ -672,7 +709,7 @@
   VIER de live ketenruns reproduceren hun bevroren netlist byte voor byte (casus 1's goedkoopste
   geleverde en zijn goedkoopste verwerping, casus 1b, casus 1h), en beide byte-baselines
   (`f4cRegression`, `workerRouteRegression`) plus `toggleRegression` staan. De wandkloktijd IS de
-  byte-reproductie van casus 1 (1825 s voor dat ene bestand); de verwerping ernaast kostte 948 s.
+  byte-reproductie van casus 1 (1825 s voor dat ene bestand); de verwerping ernaast kostte 948 s.)
   (De stand ervoor: **GEMETEN 20-09-2026 (H-4): 202 bestanden, 2676 tests,
   1825 s (30 min 25), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag en
   ná de acht H-4-ketenruns.** +2 bestanden en +35 tests — zie de `test:fast`-regel; het corpus is
@@ -1756,6 +1793,14 @@
   Vite's `?raw`-imports draagt — zonder die declaratie 21 TS2307-fouten in `tsc -b`. **`tsconfig.test.json`
   kent hem sinds U-3 óók**, om precies dezelfde reden één project verder: `demoBundle.test.ts` importeert
   beide demobundels.
+- **Draagt élke weg boven de laagste een seriecondensator? (H-5, 24-09-2026)**:
+  `npx vite-node scripts/measure-h5-series-c.ts` — seconden, geen ketenrun en geen tune. Leest élke
+  bevroren netlist van élke casus (casus 1, 1b, 1h, 2) en telt per weg de SERIE-condensatoren, door
+  dezelfde bus-walk die `levelWork.ts` en de tuner lezen. **Gemeten 24-09-2026: 192 netlists, 570
+  wegen; 378 wegen boven de laagste en NUL zonder serie-C; de laagste weg draagt er op 14 van de 192
+  wél een** — dat laatste is de tegenproef dat de meting onderscheidt en niet alles goedkeurt. Het
+  is het bewijsmateriaal onder de H-5-beschermingsregel: de enumeratie kan er geen kwijtraken, de
+  VERWIJDERING wel, en de regel zit daar.
 - **De LR2-vraag op de huidige meetbasis (M-5, 21-09-2026)** — drie scripts en één veld:
   - `npx vite-node scripts/measure-m5-lr2.ts` — seconden, geen ketenrun: de AFLEIDINGSTABEL per
     flank per beschikbare LR-orde, onder de drie wapeningen (`casus1M5PerPair`), met bij elke
@@ -7716,3 +7761,180 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   van U-3d staat ongewijzigd: de netlist draagt de polariteit van het ontwerp en het vinkje hoort
   daar leeg te zijn. (4) De DSP-doelblok-polariteit van de actieve zijde blijft waar H-1 haar
   zette. (5) Geen volle run — zie de meetregel bij `test:fast`.
+
+### H-5-guards (de textbookpolariteit deterministisch; de spiegel achter één gestelde keuze; de veegronde)
+
+- **WAT ER GESTELD IS (Sander, 24-09-2026) EN WAT ERVAN GEBOUWD IS.** De polariteit volgt de
+  textbookregel — bij LR2 op woofer→mid wordt de mid omgekeerd gesimuleerd én ontworpen, afhankelijke
+  wegen kantelen mee zodat hogere paren textbook blijven, geen keuzeknoppen per weg, wél overal
+  duidelijk gemaakt; standaard draait alléén die arm; en dat geldt ook voor de tweeweg in Hybrid mode.
+  De spiegelmachinerie van H-4/H-4b blijft bestaan achter één gestelde run-keuze.
+- **WAT H-4 OPENLIET, EN HET IS PRECIES ÉÉN ZIN.** H-4 maakte van de verworpen arm een KANDIDAAT en
+  beschreef de interne tie-break — maar hij nam hem niet weg: een kandidaat die geen polariteit
+  STELDE liet `designThreeWay` nog steeds de vier combinaties enumereren op ideale filters, en
+  `optimizeVirtualFilters` elke structuur twee keer afdalen. Sinds H-5 draagt élke kandidaat van een
+  v2-veld zijn polariteit EXPLICIET en zijn beide ontwerpstappen eraan gebonden. De tie-break bestaat
+  nog en wordt op de v2-route niet meer bereikt.
+- **ÉÉN HUIS, EN DE ZESDE LEZER LEEST HET.** `textbookComplementInverted` (`activeSide.ts`) is sinds
+  H-2b de ene plek waar de LR-regel woont; H-5 voegt geen tweede toe. `textbookRelativeInverted`
+  stuurt door, en `h5TextbookPolarity.test.ts` pint dat over de HELE bibliotheek (drie kinds × vier
+  orden) en niet op een steekproef — twee implementaties van deze regel is precies de drift die A3g
+  benoemt.
+- **DE PRIJS, GEMETEN EN NIET GESCHAT** (`scripts/measure-h4b-arms.ts`, uitgebreid met de H-5-rijen;
+  `test-fixtures/demo_h4b_armen.json`; geen ketenrun en geen tune — het telt kandidaten):
+
+  | modus | armbeleid | kandidaten | gespiegeld |
+  | --- | --- | ---: | ---: |
+  | verkenning | H-4b: garantie + marge (de stand vóór H-5) | 12 | 6 |
+  | verkenning | **H-5: textbook, de standaard** | **6** | **0** |
+  | vol veld | H-4/H-4b | 36 | 27 |
+  | vol veld | **H-5: textbook, de standaard** | **9** | **0** |
+
+  Een verkenning HALVEERT — terug naar de zes runs van vóór H-4b — en het VOLLE veld gaat van 36 naar
+  9. In wandklok op de kale driewegdemo, bij de ~150 s per run die U-1 en U-3b in de BROWSER maten
+  (en dit script niet opnieuw): 1800 → 900 s voor een verkenning, 5400 → 1350 s voor een vol veld.
+- **DE SPIEGEL IS NIET GESCHRAPT MAAR EEN KEUZE GEWORDEN, EN DE REDEN IS EEN METING VAN M-5.** Op
+  casus 1b bij 1947,9 Hz levert **alléén de gespiegelde arm** — de textbook-arm valt op M-C — en 240 Hz
+  verderop, op 2186,5 Hz, precies andersom. Een standaard die de spiegel nooit bouwt zou de eerste van
+  die twee gemist hebben; een regel die hem altijd bouwt verdubbelt élke verkenning. De gestelde keuze
+  `polarityArms: 'textbook' | 'both'` houdt die meting herhaalbaar zonder haar aan iedere run in
+  rekening te brengen; `'both'` is H-4/H-4b ONGEWIJZIGD, inclusief de enkelvoudige driveromkering en
+  de 15°-marge.
+- **ABSENT IS DE IDENTITEIT, EN DE TRIGGER IS SINDS H-5 DE GESTELDE KEUZE EN NIET DE LEZER.** Tot H-5
+  kreeg een aanroeper die toevallig een margelezer HAD polariteitsarmen en een aanroeper zonder niet,
+  dus of een veld deterministisch was hing af van een toevalligheid in de bedrading. Sindsdien beslist
+  de keuze en is de lezer data: geen keuze → geen beleid → het pre-H-5-veld, byte voor byte. De app
+  stelt hem altijd (default `'textbook'`); de casus-fixtures met opzet niet.
+- **DIE PIN KOST IETS, EN HET STAAT ERBIJ.** Élk corpus van dit boek is door de ENUMERERENDE
+  ontwerpstap gemaakt, en op casus 1b en casus 1h koos die de GESPIEGELDE arm op élke kandidaat (H-4
+  mat het: drie van drie en één van één; casus 1b's `KAND-V2-1` draagt `inverted: true` op de tweeter
+  en U-3d noemt hem). Zouden die fixtures de H-5-standaard overnemen, dan zouden hun live
+  byte-reproducties stoppen met reproduceren — geen regressie maar het gevolg van een regel die ná hen
+  kwam. Dezelfde pin-vorm die M-3 voor de MEETSET koos, met dezelfde tegenproef: **een guard eist dat
+  de pin aantoonbaar VERSCHILT van de standaard**, zodat hij niet stil leeg kan lopen, en de
+  eerstvolgende regeneratie is waar zij meeverhuizen.
+- **GEEN NIEUWE TUNER- OF KETENSLEUTEL, EN DAT IS GEPIND IN PLAATS VAN BEWEERD.** `polarityArms`
+  beslist welke ONTWERPEN bestaan om geoordeeld te worden en wordt door `buildCandidateField`
+  geconsumeerd, één laag boven de keten en de tuner. `choiceKeyGuard.test.ts` eist sinds H-5 dat de
+  sleutel in GEEN van beide classificaties voorkomt en dat de tellingen staan (61 tunersleutels
+  40/5/16, zeven ketensleutels). Wat hem de vingerafdruk in draagt is de weg die `fieldMode` en de
+  gestelde kruisingen al namen: de parameters van het veld en de kandidaten zelf, die
+  `candidateFieldKey` allebei hasht (F4d's regel, één veld verder).
+- **DE APP-RUN IS REPLAYBAAR GEBLEVEN, en dat vroeg één toevoeging.** `replayField` past de
+  TEXTBOOK-expansie toe zodra het blok haar noemt — de regel leest een uitlijning en niets anders, dus
+  laag 1 kan hem exact toepassen. `'both'` kan dat per constructie NIET (de verkenning spiegelt op een
+  pre-design fasereading, en een reading is een FUNCTIE over de gemeten responsen die niet door JSON
+  reist) en het blok zegt dat in plaats van een veld na te bouwen dat het niet eerlijk kan bereiken.
+  De drie BEWAARDE app-runs zijn vóór H-5 opgenomen en repliceren onveranderd: beide helften staan op
+  de pre-H-5-stand.
+- **WAAR DE REGEL ZICH NU UITSPREEKT** (Sanders "wel duidelijk maken"): het shortlist-LABEL
+  (`· textbook` op een all-LR4-veld, `· mid ⌀ + tweeter ⌀ · textbook for LR2` waar een uitlijning erom
+  vraagt, `· mid ⌀ · mirror` voor de spiegel — en de valkuil die H-4b vond blijft gesloten: de
+  markering zegt wat een bouwer soldeert, het woord zegt welke arm het is); de RUN-REGEL boven de
+  tabel; de VELDNOTITIES (plus per kruising wat de spiegel waard zou zijn geweest — de reading wordt
+  onder de standaard nog steeds GENOMEN en beslist niets, want zonder haar is de keuze `both` blind);
+  het DSP-DOELBLOK; de regel NAAST de polariteitsknop; de zin bij de UITLIJNING-select; en de
+  GUIDED-zin.
+- **HET DSP-DOELBLOK VAN DE GEMETEN HYBRIDE VORM DRUKT SINDS H-5 DE TEXTBOOKLEZING NAAST DE GEFITTE,
+  en het verandert niets.** In die vorm is de polariteit van de actieve zijde een MEETING: H-1 fit hem
+  op de omgekeerde-nulmarge en de kast beslecht hem. De textbookregel is wat de ideale vormen vragen,
+  en H-1 mat dat een echt paar met een gefitte delay het er niet altijd mee eens is — casus 1h koos op
+  362,3 Hz omgekeerd onder LR4. Een regel die alleen de fit toonde zou dat verbergen; sinds H-5 staat
+  er "— as textbook for LR4 asks" of "— DEPARTS from textbook for LR4 …". De MAGERE vorm zei het al
+  (H-2b) en is niet aangeraakt: daar is ASSERTEREN het werk en niet bouwen, en
+  `h5TextbookPolarity.test.ts` pint dat `complementSettings` de ene functie leest en dat `dspTarget.ts`
+  nergens een eigen `(orde/2) % 2` draagt.
+- **DE NOOT NAAST DE KNOP SPREEKT SINDS H-5 BEIDE KANTEN OP, en dat is de reden dat zij bestaat.**
+  Tot H-5 werd alleen een AFWIJKING afgedrukt — dus een ontwerper die de regel volgde zag niets, en ná
+  een geslaagde follow is er per definitie geen afwijking meer, zodat de regel zweeg op precies het
+  moment dat zij zojuist een polariteit had verzet. `textbookStanding` is nu de ENE implementatie met
+  twee lezers en `textbookDeviation` is een dunne wikkel eromheen (zodat de H-4b-claim onveranderd
+  staat). De STIJL volgt de standing: een afwijking waarschuwt, de regel volgen is geen waarschuwing.
+  **De U-7-guard is niet aangeraakt en hij hoort niet aangeraakt te worden:** de knop-renderer mag de
+  woorden `textbook`, `polarityNoteFor`, `handoverTextbooks` en `deviation` nog steeds niet bevatten,
+  want het is nooit de textbook-afwijking die de knop uitschakelt. De noot staat ernaast en niet erin.
+- **DE VEEGRONDE — vier vuistregels die het document nog niet noemde. De volle tabel staat in
+  `docs/vuistregels_en_wat_de_engine_doet.md` §6; wat hier staat is wat gebouwd is en wat gemeten.**
+- **(a) DE BESCHERMINGSCONDENSATOR — DE HYPOTHESE IS WEERLEGD VOOR DE ENUMERATIE EN BEVESTIGD VOOR DE
+  VERWIJDERING.** Gevraagd was of de topologie-enumeratie een tweeterweg zónder serie-C kan opleveren.
+  **Nee**, en dat is twee keer nagegaan: de hoogdoorlaatladder begint bij ÉLKE orde met een serie-C
+  (`synthesis.ts`, rung i = 0) en beide ontwerpstappen zetten de hoogdoorlaat van de bovenste weg
+  onvoorwaardelijk aan; en empirisch draagt élke bovenste weg van het hele casusboek er een —
+  **378 van 378, over 192 bevroren netlists** (`scripts/measure-h5-series-c.ts`), terwijl de LAAGSTE
+  weg er op 14 van de 192 wél een draagt, dus de meting onderscheidt en keurt niet alles goed.
+  **Waar het gat wél zat is de VERWIJDERING**: de trapsgewijze snoei laat een geopende serie-C
+  voortleven als DRAAD en de onderdelenaudit heeft op casus 1 aantoonbaar al een C uit een val gehaald
+  (de wees die A5e.3b (c3) noemt). Wat hen tegenhield was geen beschermingsregel maar de eis dat een
+  verwijdering de som, de paarfase en |Z| niet verplaatst — en dat is woordelijk de zin die F2 al over
+  de poorten schreef: **"inert" wordt gemeten op de som, de paarfase en Z, en geen van drieën is de
+  vraag of deze driver gelijkspanning overleeft.**
+- **DE REGEL (`src/lib/seriesProtection.ts`, `series-protection/1.0`, twee lezers): een weg BOVEN de
+  laagste die een seriecondensator draagt, houdt er een.** Gesteld op de NETLIST en zonder één wegnaam
+  (P6: de laagste weg komt uit `pickSlotsN`, de slot-resolutie die de tuner al twee keer leest).
+  Gevraagd als VETO ná de kwaliteitsregels en ná de poort, precies waar `gateViolation` al gevraagd
+  wordt: kost geen enkele netwerkoplossing, dus een verwijdering die toch al werd afgewezen wordt
+  onveranderd afgewezen en het evaluatietal beweegt niet.
+- **DE UITSLUITING VAN DE LAAGSTE WEG IS GEMETEN EN NIET BEREDENEERD, en zij kostte de eerste versie
+  van deze regel een byte-referentie.** Gesteld op ÉLKE weg viel `f4cRegression` meteen om: op de
+  F4b2-fixture krijgt de LAAGSTE tak tijdens de trapmethode een serie-C (`added: ["C3"]`) en raakt hij
+  hem in dezelfde run weer kwijt (`removed: ["R1","C3"]`). Dat is een CORRECTIE-element en geen
+  bescherming — de laagste weg heeft per constructie geen hoogdoorlaat — en zijn verwijdering is
+  juist; de BOVENSTE tak van diezelfde fixture houdt zijn C1 in élke opgeslagen run. Ná de versmalling
+  reproduceren `f4cRegression`, `workerRouteRegression` en `toggleRegression` alle drie.
+- **(b) ZOBEL, BAFFLE-STEP-COMPENSATIE EN DE L-PAD-FORMULES — OVERBODIG-DOOR-METING, een vijfde
+  status in het document.** Alle drie zijn REKENVOORSCHRIFTEN die een grootheid schatten die wij
+  MÉTEN, en in alle drie de gevallen bestaat het ELEMENT wél. De synthese BOUWT een Zobel — maar op de
+  GEMETEN impedantie: zodra |Z| op 4·f_c meer dan 1,3× |Z| op f_c is, met R = |Z(f_c)| als zaad, en de
+  tune beweegt de waarden daarna tegen de echte kromme. De baffle step zit AL in de meting (het verre
+  veld is in de baffle gemeten) en zijn DIEPTE is sinds A5e.2/V45 een gestelde voicing met een uit de
+  kastbreedte afgeleide overgang. De L-pad is een rung die de synthese kent, en de formule gaat uit van
+  een resistieve last op een nominale ohm — wat een echte driver nu juist niet is. **Dat is geen "wij
+  doen dat niet": het mechanisme gebeurt onverminderd, alleen in de oplossing van het echte netwerk in
+  de echte impedantie in plaats van in een vooraf berekende correctie.**
+- **(c) FASESPORING ±30° — DE AANNAME WAS FOUT EN DE EIS BESTAAT AL.** `maxPhaseTrackingDeg` is sinds
+  F3 een v2-eis met een instelveld, een registerrij, een guided-scherm en een lezer in de shortlist.
+  Wat ontbreekt is een GETAL: casus 1 stelt er geen, dus zij is overal ongewapend (P4). Met de cijfers
+  die er al liggen — mediaan 15,2°, spreiding 1,9–81,4°, **149 van 173** binnen de richtlijn, het
+  levende corpus 10,6 / 13,1 / 32,0° — zou 30° ongeveer één op de zeven geleverde woofer→mid-overnames
+  afwijzen en één van de drie levende netlists. **Niet gebouwd; er valt niets te bouwen.**
+- **(d) EXCESS GROUP DELAY — OOK AL AANWEZIG, ALS M-J.** `excessGroupDelay` (`timeDomain.ts`) leest de
+  groepsvertraging uit de ongewikkelde fase en trekt haar in-band minimum eraf; `groupDelay`
+  (`metrics/electrical.ts`) legt hem naast `GROUP_DELAY_THRESHOLD_MS_KNOTS` — de literatuurkromme
+  (100 Hz 10 ms · 500 3,2 · 1000 2 · 2000 1 · 4000 1,5 · 8000 2), de ene plek waar engine2 frequenties
+  houdt die niet zijn afgeleid, met in haar eigen commentaar waarom dat mag: M-J is rapportage-only,
+  de kromme is een CITAAT en de metriek neemt haar als parameter. **De primaire bronnen (Blauert &
+  Laws / Liski) zijn niet gelezen en dat staat er, net als bij Dickason.** Het VOORSTEL is dus niet de
+  metriek en niet de drempel maar het BUDGET — en daarvóór een kolom die zegt wat M-J op dit casusboek
+  werkelijk leest, zoals V47 die voor M-C maakte. **Niet gebouwd.**
+- **WAT NIET GEDAAN IS, met naam.** (1) **Geen regeneratie**: corpus en bevroren netlists zijn niet
+  aangeraakt, en de vier live ketenruns reproduceren op de enumererende ontwerpstap waarop zij
+  opgenomen zijn. (2) De casus-fixtures houden hun pin; de eerstvolgende regeneratie is waar zij op
+  de deterministische regel overgaan — en op casus 1b en 1h verplaatst dat aantoonbaar netwerken,
+  dus het is een besluit met een prijs en geen opruimwerk. (3) **(c) en (d) zijn niet gebouwd**:
+  `maxPhaseTrackingDeg` bestaat al en wacht op een getal, en M-J bestaat al en wacht op een budget —
+  en daarvóór op een kolom die zegt wat hij op dit casusboek leest. (4) De polariteit van de ACTIEVE
+  zijde in de gemeten hybride vorm blijft waar H-1 haar zette: gefit op de omgekeerde-nulmarge, en
+  sinds H-5 alleen NAAST de textbooklezing afgedrukt. (5) De U-7-knoppen zijn niet aangeraakt: een
+  geladen netwerk met de hand omklikken is een BEWERKING en geen zoekdimensie.
+- **BROWSERCONTROLE (Browser-pane op de dev-server, 24-09-2026, ná de volle suite met alles
+  gestopt), en zij is de reden dat de UI-helft als af geldt.** Verse localStorage, de DRIEWEGDEMO,
+  Expert → Filters → ⚙ Settings. **De nieuwe select staat direct onder "Candidate field"** met beide
+  opties en zijn leeg-betekenis; onaangeraakt draagt hij GEEN datummarkering en wél de
+  leeg-betekenis, en ná het kiezen van `both` staat er *"stated by you on 2026-09-24"* en is de
+  leeg-betekenis weg — precies de U-3-vorm. **De regel staat bij de uitlijning-select**, permanent en
+  niet alleen na een follow. **En de noot naast de polariteitsknop is in BEIDE richtingen gemeten, wat
+  de hele reden is dat H-5 haar aanraakte:** met de woofer-LP en de mid-HP op LR2 vuurde de FOLLOW
+  (*"Polarity followed the alignment you just chose: woofer-mid → inverted"*) en stond er daarna op
+  de Setup-tab *"textbook for LR2 — it asks for a reversal here"* in de NEUTRALE stijl
+  (`derived v2-polarity-note`, met de volle regel in de tooltip) — het moment waarop zij tot H-5
+  zweeg. Eén druk op de mid-knop maakte er *"departs from textbook — LR2 asks for a reversal here"*
+  van, in `nl-warning` — en de knop liet zich gewoon indrukken, dus het is nog steeds niet de
+  afwijking die hem uitschakelt. De knoplabels lieten en passant zien dat de follow BEIDE wegen
+  kantelde (`⌀ mid` en `⌀ tweeter`), wat H-4b's accumulatie is. Geen enkele console-fout.
+- **WAT ER IN DE BROWSER NIET GEZIEN IS, en het staat er in plaats van te suggereren dat het wel
+  zo is.** Een volle tweewegrun op de demo is na 21 minuten afgebroken, dus het shortlist-LABEL en de
+  run-regel zijn niet in een levende tabel bekeken. Zij zijn wél op de demo-DATA gemeten:
+  `measure-h4b-arms.ts` drukt de echte labels van het demoveld af
+  (`low→mid 415.8 LR4 · mid→high 1532.6 LR4 · textbook`) langs hetzelfde pad dat de app neemt, de
+  exacte labelstring is een claim in `polarityArms.test.ts`, en een bronscan pint dat de app
+  `describePolarityArmsChoice(polarityArms)` in de run-regel zet.

@@ -188,7 +188,16 @@ export const guidedStages = (engineV2Enabled: boolean): readonly V2GuidedStage[]
  */
 export const guidedEngineNote = (engineV2Enabled: boolean): string | null =>
   engineV2Enabled
-    ? 'Engine v2 is on: guided asks what the design must meet, one requirement at a time, and judges the run against your answers.'
+    ? 'Engine v2 is on: guided asks what the design must meet, one requirement at a time, and judges the run against your answers. ' +
+      /* H-5 — THE ONE DESIGN RULE GUIDED STATES WITHOUT ASKING, and it is
+       * stated for that reason. Every other sentence on this path is a
+       * QUESTION; the polarity is not asked because the textbook answers it,
+       * and a rule that decides something silently is the one thing F0
+       * forbids. Where to change it is named, so it is a statement and not a
+       * closed door. */
+      'The polarity of each handover is not asked: it follows the textbook rule of the alignment ' +
+      '(LR2 one reversal, LR4 none), and every candidate is designed at it. Building the mirrored ' +
+      'arm beside it is the “Polarity arms” choice in expert mode.'
     : null;
 
 /* ==================================================================== *

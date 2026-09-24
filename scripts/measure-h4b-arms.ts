@@ -138,18 +138,19 @@ const perPair = pairDerivationInputs({
 
 const STEPS_PER_AXIS = 2; // the app's own default for a bare project
 
-function build(mode: 'exploration' | 'full', withReading: boolean) {
+function build(mode: 'exploration' | 'full', withReading: boolean, arms: 'textbook' | 'both' = 'both') {
   const settings = fieldModeSettings(
     mode,
     { stepsPerAxis: STEPS_PER_AXIS, pairs: wis.length },
     withReading ? marginFor : undefined,
+    withReading ? arms : undefined,
   );
   return buildCandidateField({ windowInputs: wis, alignments: AUTO_STRUCTS, ...settings, perPair });
 }
 
 /** H-4's behaviour: the same policy with the guarantee taken back out. */
 function buildPreH4b(mode: 'exploration' | 'full') {
-  const settings = fieldModeSettings(mode, { stepsPerAxis: STEPS_PER_AXIS, pairs: wis.length }, marginFor);
+  const settings = fieldModeSettings(mode, { stepsPerAxis: STEPS_PER_AXIS, pairs: wis.length }, marginFor, 'both');
   const pa = settings.polarityArms;
   return buildCandidateField({
     windowInputs: wis,
@@ -178,6 +179,11 @@ const expPre = record('exploration', 'H-4: alleen de marge', buildPreH4b('explor
 const expPost = record('exploration', 'H-4b: garantie + marge', build('exploration', true));
 const fullPre = record('full', 'H-4: beide armen overal', buildPreH4b('full'));
 const fullPost = record('full', 'H-4b: idem (de garantie beslist niets)', build('full', true));
+/* H-5 — DE STANDAARD SINDS 24-09-2026. De textbook-keuze spiegelt niets, in
+ * BEIDE modi: de verkenning valt terug op wat het veld afleidde en het volle
+ * veld ook. `both` hierboven is H-4b ongewijzigd en blijft bereikbaar. */
+const expTb = record('exploration', 'H-5: textbook (de standaard)', build('exploration', true, 'textbook'));
+const fullTb = record('full', 'H-5: textbook (de standaard)', build('full', true, 'textbook'));
 
 out('| modus | arm-beleid | kandidaten | gespiegeld | wandklok (s, uit U-1/U-3b) |');
 out('| --- | --- | ---: | ---: | ---: |');
@@ -190,6 +196,14 @@ out(`DE PRIJS: verkenning ${expPre.field.candidates.length} → ${expPost.field.
   `${Math.round(expPost.field.candidates.length * BROWSER_SECONDS_PER_RUN)} s bij ` +
   `${BROWSER_SECONDS_PER_RUN.toFixed(0)} s per run, GEMETEN IN DE BROWSER BIJ U-1/U-3b en hier niet opnieuw).`);
 out(`Het VOLLE veld beweegt niet: ${fullPre.field.candidates.length} → ${fullPost.field.candidates.length}.`);
+out('');
+out(`H-5 — DE STANDAARD: verkenning ${expPost.field.candidates.length} → ${expTb.field.candidates.length} runs ` +
+  `(${Math.round(expPost.field.candidates.length * BROWSER_SECONDS_PER_RUN)} → ` +
+  `${Math.round(expTb.field.candidates.length * BROWSER_SECONDS_PER_RUN)} s), vol veld ` +
+  `${fullPost.field.candidates.length} → ${fullTb.field.candidates.length}. ` +
+  `Gespiegeld onder de standaard: ${expTb.field.candidates.filter((c: GeneratedCandidate) => c.polarity?.arm === 'mirror').length}.`);
+out('DE LABELS VAN DE VERKENNING ONDER DE STANDAARD (H-5):');
+for (const c of expTb.field.candidates) out(`  ${c.label}`);
 out('');
 
 out('DE LABELS VAN DE VERKENNING (H-4b):');
@@ -219,6 +233,14 @@ writeFileSync(
       labels_verkenning: expPost.field.candidates.map((c: GeneratedCandidate) => c.label),
       veldregel: describeFieldMode(expPost.field),
       notities: expPost.field.notes,
+      h5_standaard: {
+        _: 'H-5 (24-09-2026) — de textbook-keuze is de standaard: zij spiegelt niets, in beide modi. `both` hierboven is H-4b ongewijzigd en blijft bereikbaar als gestelde run-keuze.',
+        verkenning_kandidaten: expTb.field.candidates.length,
+        verkenning_gespiegeld: expTb.field.candidates.filter((c: GeneratedCandidate) => c.polarity?.arm === 'mirror').length,
+        vol_veld_kandidaten: fullTb.field.candidates.length,
+        labels_verkenning: expTb.field.candidates.map((c: GeneratedCandidate) => c.label),
+        veldregel: describeFieldMode(expTb.field),
+      },
       geen_fasereading: {
         _: 'De pre-H-4-stand: zonder reading zaait geen enkele modus een arm, en het veld is byte voor byte wat het vóór H-4 was.',
         kandidaten: expNoRead.field.candidates.length,

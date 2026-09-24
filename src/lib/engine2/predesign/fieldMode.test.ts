@@ -37,7 +37,16 @@ import { stableJson } from '../optimizer/determinism.ts';
 import { AUTO_STRUCTS } from '../../threeWayDesign.ts';
 import { buildCandidateField, candidateFieldKey, type CandidateFieldRequest } from './candidateField.ts';
 import { roundEdge } from './xoRangeAdvice.ts';
-import { describeFieldMode, fieldModeOf, fieldModeOfParameters, fieldModeSettings, FIELD_MODES } from './fieldMode.ts';
+import {
+  describeFieldMode,
+  describePolarityArmsChoice,
+  fieldModeOf,
+  fieldModeOfParameters,
+  fieldModeSettings,
+  polarityArmsChoiceOf,
+  FIELD_MODES,
+  POLARITY_ARMS_CHOICES,
+} from './fieldMode.ts';
 
 const golden = loadGolden();
 const manifest = casus1Manifest(golden);
@@ -187,24 +196,76 @@ describe('5 — H-4: the polarity arms the mode decides', () => {
     expect(stableJson(candidateFieldKey(viaMode.field))).toBe(stableJson(candidateFieldKey(f4d.field)));
   });
 
-  it('the FULL field seeds both arms whatever the reading says; the EXPLORATION asks it', () => {
-    const full = fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }, apart);
-    expect(full.polarityArms?.seed).toBe('both');
-    const expl = fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, apart);
+  it('H-5 — the STATED CHOICE is the trigger, and the reader is only data', () => {
+    /* Until H-5 the READER decided whether a field had arms, so whether a run
+     * was deterministic depended on an accident of plumbing. Now: no choice,
+     * no policy — whatever the caller happens to hold. */
+    for (const mode of ['exploration', 'full'] as const) {
+      expect('polarityArms' in fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 }, apart)).toBe(false);
+    }
+    /* The DEFAULT of the stated choice is textbook, which mirrors nothing in
+     * either mode and never lets a stated position acquire a mirror (U-5 is a
+     * rule about a run-SIZE policy, and this is a design rule). */
+    for (const mode of ['exploration', 'full'] as const) {
+      const tb = fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 }, apart, 'textbook');
+      expect(tb.polarityArms?.seed).toBe('textbook');
+      expect(tb.polarityArms?.statedAlways).toBe(false);
+      expect(tb.polarityArms?.guarantee).toBe('none');
+      /* The reading still travels: it decides nothing and the run notes print
+       * what a mirror would have been worth. */
+      expect(tb.polarityArms?.marginFor).toBe(apart);
+    }
+    /* `both` is H-4/H-4b unchanged. */
+    expect(fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }, apart, 'both').polarityArms?.seed).toBe('both');
+    const expl = fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, apart, 'both');
     expect(expl.polarityArms?.seed).toBe('margin');
-    /* And the reading travels, so the run notes can print what it found even
-     * where it decided nothing. */
-    expect(expl.polarityArms?.marginFor).toBe(apart);
+    expect(expl.polarityArms?.guarantee).toBe('single-reversal');
+    expect(expl.polarityArms?.statedAlways).toBe(true);
+    /* And an empty or unknown stored string reads as the default. */
+    expect(polarityArmsChoiceOf('')).toBe('textbook');
+    expect(polarityArmsChoiceOf(undefined)).toBe('textbook');
+    expect(polarityArmsChoiceOf('nonsense')).toBe('textbook');
+    expect(polarityArmsChoiceOf('both')).toBe('both');
+    /* Exactly two choices, and each says in one line what it will do — the
+     * sentence the panel and the run notes both print. */
+    expect([...POLARITY_ARMS_CHOICES]).toEqual(['textbook', 'both']);
+    expect(describePolarityArmsChoice('textbook')).toContain('TEXTBOOK');
+    expect(describePolarityArmsChoice('textbook')).toContain('no mirrored arm is built');
+    expect(describePolarityArmsChoice('both')).toContain('BOTH');
+    expect(describePolarityArmsChoice('both')).toContain('multiplies');
+  });
+
+  it('H-5 — TEXTBOOK states a polarity on every candidate and builds no mirror', () => {
+    const bare = buildCandidateField({ ...base(), ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }) });
+    for (const mode of ['exploration', 'full'] as const) {
+      const f = buildCandidateField({
+        ...base(),
+        ...fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 }, close, 'textbook'),
+      });
+      /* Not one candidate more than the field derived — the reading says both
+       * handovers are close, and under textbook that decides nothing. */
+      const bareSame = buildCandidateField({ ...base(), ...fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 }) });
+      expect(f.field.candidates).toHaveLength(bareSame.field.candidates.length);
+      expect(f.field.candidates.every((c) => c.polarity?.arm === 'textbook')).toBe(true);
+      expect('mirroredArms' in f.field.parameters).toBe(false);
+    }
+    /* THE TEGENPROEF, and it is what makes the claim above mean anything: the
+     * same reading under `both` DOES multiply the field. */
+    const both = buildCandidateField({
+      ...base(),
+      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, close, 'both'),
+    });
+    expect(both.field.candidates.length).toBeGreaterThan(bare.field.candidates.length);
   });
 
   it('H-4b — a DISTANT reading still runs the single-driver reversal; a close one adds the rest', () => {
     const near = buildCandidateField({
       ...base(),
-      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, close),
+      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, close, 'both'),
     });
     const far = buildCandidateField({
       ...base(),
-      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, apart),
+      ...fieldModeSettings('exploration', { stepsPerAxis: 2, pairs: 2 }, apart, 'both'),
     });
     const bare = buildCandidateField({
       ...base(),
@@ -228,9 +289,9 @@ describe('5 — H-4: the polarity arms the mode decides', () => {
     expect(near.field.candidates.length).toBe(bare.field.candidates.length * 4);
   });
 
-  it('a stated position gets both arms in both modes (U-5)', () => {
+  it('a stated position gets both arms in both modes UNDER `both` (U-5)', () => {
     for (const mode of ['exploration', 'full'] as const)
-      expect(fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 }, apart).polarityArms?.statedAlways).toBe(true);
+      expect(fieldModeSettings(mode, { stepsPerAxis: 2, pairs: 2 }, apart, 'both').polarityArms?.statedAlways).toBe(true);
   });
 });
 
@@ -240,7 +301,7 @@ describe('6 — H-4: the field line counts the arms in their own clause', () => 
   it('says how many arms stand beside the derived candidates, and never folds them into that count', () => {
     const f = buildCandidateField({
       ...base(),
-      ...fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }, close),
+      ...fieldModeSettings('full', { stepsPerAxis: 2, pairs: 2 }, close, 'both'),
     });
     const line = describeFieldMode(f.field);
     const derived = f.field.parameters.derivedSize;

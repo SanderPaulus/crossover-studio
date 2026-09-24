@@ -162,7 +162,16 @@ import {
   candidateFieldKey,
   type PairDerivationInput,
 } from './lib/engine2/predesign/candidateField.ts';
-import { describeFieldMode, fieldModeOf, fieldModeSettings, type FieldMode } from './lib/engine2/predesign/fieldMode.ts';
+import {
+  describeFieldMode,
+  describePolarityArmsChoice,
+  fieldModeOf,
+  fieldModeSettings,
+  polarityArmsChoiceOf,
+  POLARITY_ARMS_CHOICES,
+  type FieldMode,
+  type PolarityArmsChoice,
+} from './lib/engine2/predesign/fieldMode.ts';
 import {
   polarityMarginReader,
   statedInvertedForTwoWay,
@@ -422,7 +431,8 @@ import {
   invertedFlagsOf,
   relativeBitsOf,
   reversedNullSignature,
-  textbookDeviation,
+  textbookStanding,
+  type TextbookStanding,
   type HandoverBands,
   type NullSignature,
 } from './lib/handoverPolarity.ts';
@@ -6214,17 +6224,28 @@ export default function App() {
   };
 
   /**
-   * What to print beside one adjustment fieldset's invert box: the handover
-   * whose UPPER way it is, when its state departs from the textbook. Null when
-   * it agrees, and null when there is no textbook answer (a mismatched or
-   * disabled pair states no rule — P4).
+   * What to print beside one way's polarity knob: where the handover whose
+   * UPPER way it is stands against the textbook.
+   *
+   * H-5 — BOTH WAYS ROUND. Until H-5 this printed only a DEPARTURE, so a
+   * designer following the rule saw nothing — and after a successful follow
+   * there is no departure left, so the rule was silent at exactly the moment it
+   * had just moved a polarity. Null stays null where there is no textbook
+   * answer at all (a mismatched or disabled pair states no rule — P4).
+   *
+   * Still a message and never a correction: the knob is the designer's (UI-2).
    */
-  const polarityNoteFor = (which: 'mid' | 'tweeter'): string | null => {
+  const polarityStandingFor = (which: 'mid' | 'tweeter'): TextbookStanding | null => {
     const i = which === 'mid' ? 0 : threeWay ? 1 : 0;
     const tb = handoverTextbooks[i];
     if (!tb || handoverRelative[i] === undefined) return null;
-    return textbookDeviation(tb, handoverRelative[i]);
+    const st = textbookStanding(tb, handoverRelative[i]);
+    return st.kind === 'none' ? null : st;
   };
+  /** The TEXT of that standing — a thin reader, so the note and its styling
+   *  can never disagree about which case they are describing (A3g). */
+  const polarityNoteFor = (which: 'mid' | 'tweeter'): string | null =>
+    polarityStandingFor(which)?.text ?? null;
 
 
   /**
@@ -9071,6 +9092,7 @@ export default function App() {
        * passes it explicitly (state has not landed yet in that tick), every
        * other start reads the setting. */
       const fieldMode: FieldMode = runOpts.fieldMode ?? fieldModeOf(engineV2Settings.fieldMode);
+      const polarityArms: PolarityArmsChoice = polarityArmsChoiceOf(engineV2Settings.polarityArms);
       /* E-2 — the field REQUEST, kept apart from the field so the run export
        * can carry exactly what the generator was handed (`runExport.ts`). */
       const v2FieldRequest = (() => {
@@ -9125,10 +9147,16 @@ export default function App() {
           if (role === 'high') return { response: sim.base.t, adjust: tAdj };
           return null;
         };
+        /* H-5 — THE STATED POLARITY-ARM CHOICE, and it is what makes the field
+         * deterministic: with it every candidate carries the polarity its
+         * alignments ask for and the design step is bound. Without it (the
+         * fixtures) the field is the pre-H-5 one and the design step
+         * enumerates — absent is the identity. */
         const fieldSettings = fieldModeSettings(
           fieldMode,
           { stepsPerAxis: scanSteps3, pairs: wis.length },
           polarityMarginReader(polarityBranchOf),
+          polarityArms,
         );
         /* E-3b — the per-pair derivation inputs, built by the one function
          * both routes call (`scanRequest.ts`). It maps over the windows the
@@ -9649,6 +9677,10 @@ export default function App() {
                     : {}),
                   alignments: AUTO_STRUCTS,
                   stepsPerAxis: scanSteps3,
+                  /* H-5 — and WHICH ARMS, for the same reason: `'textbook'` is
+                   * replayable from the block alone (the rule reads an
+                   * alignment and nothing else). */
+                  polarityArms,
                 }),
                 run: {
                   gates: v2ScanSettings.gates,
@@ -9832,7 +9864,15 @@ export default function App() {
               stamp: v2Stamp,
               gatesByLabel: { ...v2GatesByLabel },
               /* E-2 — which mode made this field, said by the field itself. */
-              field: v2Generated ? { mode: fieldMode, description: describeFieldMode(v2Generated.field) } : null,
+              /* H-5 — and WHICH ARMS ran, in the same line: a table whose rows
+               * are marked `· textbook` says what each row is, and this says
+               * what the run as a whole decided to build. */
+              field: v2Generated
+                ? {
+                    mode: fieldMode,
+                    description: `${describeFieldMode(v2Generated.field)} ${describePolarityArmsChoice(polarityArms)}`,
+                  }
+                : null,
               export: v2RunExport,
               /* H-2 — a three-way PASSIVE run has no active side by
                * construction: a hybrid falls through to the two-way route. */
@@ -10503,6 +10543,7 @@ export default function App() {
          * passes it explicitly (state has not landed yet in that tick), every
          * other start reads the setting. */
         const fieldMode: FieldMode = runOpts.fieldMode ?? fieldModeOf(engineV2Settings.fieldMode);
+      const polarityArms: PolarityArmsChoice = polarityArmsChoiceOf(engineV2Settings.polarityArms);
         /* E-2 — the field REQUEST, kept apart from the field so the run export
          * can carry exactly what the generator was handed (`runExport.ts`). */
         const v2FieldRequest = (() => {
@@ -10561,6 +10602,7 @@ export default function App() {
             fieldMode,
             { stepsPerAxis: scanSteps2, pairs: wis.length },
             polarityMarginReader(polarityBranchOf),
+            polarityArms,
           );
           const perPair: PairDerivationInput[] = pairDerivationInputs({
             windowInputs: wis,
@@ -10978,6 +11020,7 @@ export default function App() {
                         : {}),
                       alignments: AUTO_STRUCTS,
                       stepsPerAxis: scanSteps2,
+                          polarityArms,
                     },
                   ),
                   run: {
@@ -11052,7 +11095,10 @@ export default function App() {
               stamp: r.stamp,
               gatesByLabel: { ...collected.gatesByLabel },
               field: v2Generated
-                ? { mode: fieldMode, description: describeFieldMode(v2Generated.field) }
+                ? {
+                    mode: fieldMode,
+                    description: `${describeFieldMode(v2Generated.field)} ${describePolarityArmsChoice(polarityArms)}`,
+                  }
                 : null,
               export: v2RunExport,
               activeHandoverByLabel: { ...activeHandoverByLabel },
@@ -19046,7 +19092,13 @@ export default function App() {
                   Gravesen ships designs which do. */}
               {polarityNoteFor('tweeter') && (
                 <span
-                  className="nl-warning v2-polarity-note"
+                  /* H-5 — a DEPARTURE warns; FOLLOWING the rule is not a
+                     warning, it is the rule saying what it did. */
+                  className={
+                    polarityStandingFor('tweeter')?.kind === 'departs'
+                      ? 'nl-warning v2-polarity-note'
+                      : 'derived v2-polarity-note'
+                  }
                   title={t(handoverTextbooks[threeWay ? 1 : 0]?.why ?? '')}
                 >
                   {t(polarityNoteFor('tweeter')!)}
@@ -19109,7 +19161,13 @@ export default function App() {
                     where it was. */}
                 {polarityNoteFor('mid') && (
                   <span
-                    className="nl-warning v2-polarity-note"
+                    /* H-5 — a DEPARTURE warns; FOLLOWING the rule is not a
+                       warning, it is the rule saying what it did. */
+                    className={
+                      polarityStandingFor('mid')?.kind === 'departs'
+                        ? 'nl-warning v2-polarity-note'
+                        : 'derived v2-polarity-note'
+                    }
                     title={t(handoverTextbooks[0]?.why ?? '')}
                   >
                     {t(polarityNoteFor('mid')!)}
@@ -21001,6 +21059,32 @@ export default function App() {
                         <option value="full">{t('full — every window edge to edge, every admitted order')}</option>
                       </select>
                     </label>
+                    {/* H-5 — THE POLARITY ARMS. The textbook rule decides the
+                      * polarity of every candidate: LR2 asks for one reversal,
+                      * LR4 for none, and the design step is bound to it rather
+                      * than settling it on an internal tie-break over ideal
+                      * filters. "Both" builds the mirrored arm beside it —
+                      * M-5 measured a casus where ONLY the mirror delivers,
+                      * and another 240 Hz away where only the textbook arm
+                      * does, so the choice stays reachable and costs nothing
+                      * on a run that does not ask for it. */}
+                    <label title={t('Textbook: every candidate is designed at the polarity its alignments ask for (LR2 one reversal, LR4 none), and the shortlist names the rule beside each row. Both: the mirrored arm is designed, tuned and judged beside it — an exploration always runs the single-driver reversal (the mid of a three-way, the tweeter of a two-way) plus any handover the pre-design phase reading leaves open, and the full field runs every configuration. The run count MULTIPLIES rather than adds.')}>
+                      {t('Polarity arms')}
+                      <select
+                        value={polarityArmsChoiceOf(engineV2Settings.polarityArms)}
+                        onChange={(e) => setV2Field('polarityArms', e.target.value)}
+                      >
+                        {POLARITY_ARMS_CHOICES.map((c) => (
+                          <option key={c} value={c}>
+                            {c === 'textbook'
+                              ? t('textbook — the polarity each alignment asks for, no mirrored arm')
+                              : t('both — the mirrored arm beside it, judged in its own right')}
+                          </option>
+                        ))}
+                      </select>
+                      {v2Stated('polarityArms')}
+                      {v2Empty('polarityArms')}
+                    </label>
                     {/* U-5 — THE CROSSINGS YOU STATE, beside the derived field.
                       * The generated positions stay exactly as they are; every
                       * frequency typed here becomes ONE MORE candidate, tuned
@@ -21555,6 +21639,19 @@ export default function App() {
               {!vfCollapsed && polarityFollowed && (
                 <p className="derived vf-polarity-followed">
                   {t('Polarity followed the alignment you just chose: {what}. It is yours to change — the invert boxes are under Tweeter/Midrange adjustment.', { what: polarityFollowed })}
+                </p>
+              )}
+              {/* H-5 — THE RULE ITSELF, STANDING, and not only its consequence.
+                  The notice above fires when the polarity MOVED; this says what
+                  the rule IS, at the control that triggers it, whether or not
+                  anything moved. Sander stated on 24-09-2026 that the polarity
+                  may follow the textbook deterministically only if it is made
+                  plain everywhere it does so — and after a successful follow
+                  there is no departure left to print, which is exactly when a
+                  reader most needs to know a rule was applied. */}
+              {!vfCollapsed && (
+                <p className="derived vf-polarity-rule">
+                  {t('Polarity follows the textbook rule of the alignment you pick: LR2 (and LR6) ask for ONE reversal across a handover, LR4 and LR8 for none, and other kinds state no rule. Engine v2 designs every candidate at that polarity — the shortlist marks each row with it — and building the mirrored arm beside it is the “Polarity arms” choice under ⚙ Settings. Here it is a suggestion and never a correction: the knobs stay yours.')}
                 </p>
               )}
               {!vfCollapsed && synthMode === 'acoustic' && (

@@ -94,6 +94,15 @@ export const V2_SETTING_KEYS = [
   /** E-2 — the field mode: '' (exploration, the default), 'exploration' or 'full'. */
   'fieldMode',
   /**
+   * H-5 — the polarity arms: '' (textbook, the default), 'textbook' or 'both'.
+   *
+   * NOT A JUDGEMENT KEY. It judges, bounds and filters nothing: it decides
+   * which DESIGNS exist to be judged — the textbook arm alone, or the mirrored
+   * one beside it — and every candidate either way meets exactly the
+   * requirements and gates already in force. A select, so no numeric ghost.
+   */
+  'polarityArms',
+  /**
    * U-5 — the crossings the DESIGNER states, one line per handover, low to
    * high. Free text and not a number: it is a LIST per axis, and the parse
    * (`statedCrossings.ts`) says what it could not use rather than dropping it.
@@ -190,6 +199,7 @@ export const UNSET_GHOST = '—';
  *    presentation count and not a judgement; the app fills it likewise.
  *  · `runBudgetEvals` — "tuner": the tuner's own policy, a word and not a number.
  *  · `fieldMode` — a select, no placeholder.
+ *  · `polarityArms` — a select, no placeholder (H-5).
  * Entries the app fills from an engine constant are left empty here so this
  * file stays free of engine imports; the test pins which keys those are.
  */
@@ -199,6 +209,7 @@ export const V2_GHOSTS: Readonly<Record<V2SettingKey, string>> = Object.freeze({
   shortlistSize: '',
   runBudgetEvals: 'tuner',
   fieldMode: '',
+  polarityArms: '',
 });
 
 /** The keys whose ghost the app fills from an engine default, and why that is honest. */

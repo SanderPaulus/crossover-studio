@@ -26,6 +26,7 @@ import type { AngleResponse } from './directivity.ts';
 import { catalogFamilyOf, dcrOf, roundDcr, snapDcrCeilingOhm, stampCoilDcr, type CoilDcrFit, type CoilDcrModel } from './coilDcr.ts';
 import { floorCurve, type FloorShape } from './impedanceFloor.ts';
 import { ampFloorSlackOhm, minImpedanceAt } from './impedanceFloor.ts';
+import { seriesProtectionRefusal, waysLosingSeriesCap } from './seriesProtection.ts';
 import {
   auditNetwork,
   type AuditThresholds,
@@ -4676,6 +4677,19 @@ export function optimizeNetworkValues(
         e.verdict = 'grey';
         continue;
       }
+      /* H-5 — THE SERIES-CAPACITOR VETO, asked after the gate and for the same
+       * reason one line up: "inert" is measured on the sum, the pair phase and
+       * Z, and none of those is the question whether this driver survives DC.
+       * A branch that lies dead for another reason is acoustically inert WITH
+       * and WITHOUT its series capacitor; taking it then costs nothing on the
+       * sum and everything on the driver. Costs no solve, so a removal the
+       * rules above already refused is refused exactly as it was (P2). */
+      const strippedByAudit = waysLosingSeriesCap(partsNow, trial, seedLowModel);
+      if (strippedByAudit.length > 0) {
+        e.reasons.push(seriesProtectionRefusal(strippedByAudit));
+        e.verdict = 'grey';
+        continue;
+      }
       partsNow = trial;
       ref = m;
       removed.push(...e.ids);
@@ -4894,7 +4908,14 @@ export function optimizeNetworkValues(
             rsSafe(t.parts, cur.parts) &&
             t.fx <= cur.fx * 1.1 &&
             t.fx <= fx0 * 1.35 &&
-            gateOk(t.parts, `prune ${cand.id}`);
+            gateOk(t.parts, `prune ${cand.id}`) &&
+            /* H-5 — LAST, beside the gate and for the same reason: a pruned
+             * series part lives on as a WIRE, and a way that loses its last
+             * series capacitor loses its protection against DC while the sum,
+             * the phase and Z may not move at all. Costs no solve and is only
+             * reached by a removal everything else already accepted, so a run
+             * that never strips one is byte-identical (P2). */
+            waysLosingSeriesCap(cur.parts, t.parts, seedLowModel).length === 0;
 
           let t = structureTune(cand.trial, structureCapped);
           let tFull = fullM(t.parts);

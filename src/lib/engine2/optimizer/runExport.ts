@@ -57,7 +57,8 @@ import {
 } from '../predesign/candidates.ts';
 import { candidateFieldKey, type CandidateFieldResult, type PairDerivationInput } from '../predesign/candidateField.ts';
 import { statedCandidates } from '../predesign/statedCrossings.ts';
-import { fieldModeOfParameters, type FieldMode } from '../predesign/fieldMode.ts';
+import { fieldModeOfParameters, type FieldMode, type PolarityArmsChoice } from '../predesign/fieldMode.ts';
+import { expandPolarityArms } from '../predesign/polarityArms.ts';
 import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from '../version.ts';
 
 export const RUN_EXPORT_FORMAT = 'crossover-studio-run/1';
@@ -115,6 +116,18 @@ export interface RunExportField {
     statedPerAxisHz?: number[][];
     /** U-5 — when they stated them; the attribution each stated candidate carries. */
     statedOn?: string;
+    /**
+     * H-5 — WHICH POLARITY ARMS THE RUN BUILT.
+     *
+     * Present only when a policy was stated, so a block recorded before H-5
+     * exports and replays exactly as it did. `'textbook'` is replayable from
+     * the block alone: the rule reads the alignment and nothing else, so layer
+     * 1 can apply it and reach the same key. `'both'` is NOT — the exploration
+     * mirrors on a pre-design phase reading, and a reading is a FUNCTION over
+     * the measured responses that cannot travel through JSON. Layer 1 says so
+     * rather than rebuilding a field it cannot honestly reach.
+     */
+    polarityArms?: PolarityArmsChoice;
   };
   perPair: ExportedPerPair[];
   /** The window inputs the field stood on — the report's `predesign.windowInputs`. */
@@ -235,6 +248,7 @@ export function buildFieldExport(
         ? { statedPerAxisHz: settings.statedPerAxisHz.map((a) => [...a]) }
         : {}),
       ...(settings.statedOn !== undefined ? { statedOn: settings.statedOn } : {}),
+      ...(settings.polarityArms !== undefined ? { polarityArms: settings.polarityArms } : {}),
     },
     perPair: exportedPerPair(windowInputs, perPair),
     windowInputs: windowInputs.map((w) => ({ ...w })),
@@ -282,7 +296,7 @@ export function replayField(exp: RunExport): CandidateField {
    * derived field, byte for byte. */
   const statedIn = f.settings.statedPerAxisHz;
   if (!statedIn || statedIn.length !== pairs.length || statedIn.some((a) => a.length === 0)) {
-    return derived;
+    return withTextbookArms(derived, f.settings.polarityArms);
   }
   const stated = statedCandidates(pairs, statedIn, {
     alignments: f.settings.alignments,
@@ -290,14 +304,37 @@ export function replayField(exp: RunExport): CandidateField {
     spacingOctaves: f.settings.minSpacingOctaves,
     statedOn: f.settings.statedOn ?? 'date not recorded',
   });
-  if (stated.candidates.length === 0) return derived;
-  return {
-    ...derived,
-    candidates: [...derived.candidates, ...stated.candidates],
-    refusals: [...derived.refusals, ...stated.refusals],
-    notes: [...derived.notes, ...stated.notes],
-    parameters: { ...derived.parameters, statedSize: stated.candidates.length },
-  };
+  if (stated.candidates.length === 0) return withTextbookArms(derived, f.settings.polarityArms);
+  return withTextbookArms(
+    {
+      ...derived,
+      candidates: [...derived.candidates, ...stated.candidates],
+      refusals: [...derived.refusals, ...stated.refusals],
+      notes: [...derived.notes, ...stated.notes],
+      parameters: { ...derived.parameters, statedSize: stated.candidates.length },
+    },
+    f.settings.polarityArms,
+  );
+}
+
+/**
+ * H-5 — the TEXTBOOK expansion, replayed from the block alone.
+ *
+ * The rule reads an alignment and nothing else, so layer 1 can apply it exactly
+ * and reach the same field key a run did. Absent = the pre-H-5 field, untouched.
+ * `'both'` is left untouched too and that is deliberate: its exploration mirrors
+ * on a pre-design phase reading over the measured responses, which no block can
+ * carry, so a replay that pretended to rebuild it would compare two fields that
+ * are not the same question.
+ */
+function withTextbookArms(field: CandidateField, arms: PolarityArmsChoice | undefined): CandidateField {
+  if (arms !== 'textbook') return field;
+  return expandPolarityArms(field, {
+    seed: 'textbook',
+    statedAlways: false,
+    guarantee: 'none',
+    why: 'Textbook: every candidate is designed at the polarity its alignments ask for, and no mirrored arm is built (H-5).',
+  }).field;
 }
 
 /** The stamp's `choices` component value for a field — `digest` of the field key, as the stamp computes it. */

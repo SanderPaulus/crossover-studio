@@ -1,6 +1,6 @@
 {
  "_": "H-4b — de prijs van de armen-garantie op de driewegdemo. Geschreven door scripts/measure-h4b-arms.ts; geen ketenrun en geen tune.",
- "gemeten_op": "2026-09-20",
+ "gemeten_op": "2026-09-24",
  "handovers": [
   "low→mid",
   "mid→high"
@@ -40,6 +40,18 @@
    "label": "H-4b: idem (de garantie beslist niets)",
    "n": 36,
    "mirrored": 27
+  },
+  {
+   "mode": "exploration",
+   "label": "H-5: textbook (de standaard)",
+   "n": 6,
+   "mirrored": 0
+  },
+  {
+   "mode": "full",
+   "label": "H-5: textbook (de standaard)",
+   "n": 9,
+   "mirrored": 0
   }
  ],
  "labels_verkenning": [
@@ -67,6 +79,21 @@
   "mid→high: mean pair phase error 77.0° textbook against 103.0° mirrored at 1931 Hz — a margin of 25.9° against one unit of phase error (15°), so the phase argument DOES decide this handover, so an exploration mirrors it only through the single-driver reversal it always runs (H-4b). The full field mirrors it regardless.",
   "low→mid: mean pair phase error 76.8° textbook against 103.2° mirrored at 467 Hz — a margin of 26.4° against one unit of phase error (15°), so the phase argument DOES decide this handover, so an exploration mirrors it only through the single-driver reversal it always runs (H-4b). The full field mirrors it regardless."
  ],
+ "h5_standaard": {
+  "_": "H-5 (24-09-2026) — de textbook-keuze is de standaard: zij spiegelt niets, in beide modi. `both` hierboven is H-4b ongewijzigd en blijft bereikbaar als gestelde run-keuze.",
+  "verkenning_kandidaten": 6,
+  "verkenning_gespiegeld": 0,
+  "vol_veld_kandidaten": 9,
+  "labels_verkenning": [
+   "low→mid 415.8 LR4 · mid→high 1532.6 LR4 · textbook",
+   "low→mid 415.8 LR4 · mid→high 1720.3 LR4 · textbook",
+   "low→mid 415.8 LR4 · mid→high 1931 LR4 · textbook",
+   "low→mid 466.7 LR4 · mid→high 1532.6 LR4 · textbook",
+   "low→mid 466.7 LR4 · mid→high 1720.3 LR4 · textbook",
+   "low→mid 466.7 LR4 · mid→high 1931 LR4 · textbook"
+  ],
+  "veldregel": "Exploration field — 6 of 15 derived candidates: chain budget 8, positions centre-first (the window centre and its nearest neighbours), one alignment per handover, the same requirements as the full field."
+ },
  "geen_fasereading": {
   "_": "De pre-H-4-stand: zonder reading zaait geen enkele modus een arm, en het veld is byte voor byte wat het vóór H-4 was.",
   "kandidaten": 6

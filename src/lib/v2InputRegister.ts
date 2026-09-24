@@ -924,6 +924,30 @@ const NICE: readonly V2InputRow[] = [
     source: 'choice',
   },
   {
+    /**
+     * H-5 — WHICH POLARITY ARMS A RUN BUILDS.
+     *
+     * NOT a judgement row: it arms no gate and bounds nothing. What it decides
+     * is which DESIGNS exist to be judged, one step earlier — the textbook arm
+     * alone, or the mirrored one beside it — and both are then judged by
+     * exactly the requirements already in force. Same class and same reason as
+     * `fieldMode`, which decides how many POSITIONS exist.
+     */
+    id: 'polarityArms',
+    key: 'polarityArms',
+    label: 'Polarity arms',
+    form: 'Filters → Engine v2',
+    travels:
+      'fieldModeSettings → PolarityArmPolicy.seed → expandPolarityArms → every candidate carries ' +
+      'its polarity, and the design step is bound to it instead of tie-breaking it internally',
+    cls: 'nice',
+    emptyMeans:
+      'the TEXTBOOK rule decides: every candidate is designed at the polarity its alignments ask ' +
+      'for (LR2 one reversal, LR4 none) and no mirrored arm is built. State "both" to build them ' +
+      'beside it — the run count multiplies rather than adds.',
+    source: 'choice',
+  },
+  {
     id: 'statedCrossings',
     key: 'statedCrossings',
     label: 'Crossings you state (Hz, per handover)',
@@ -1477,6 +1501,7 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'runSeed', form: 'v2-panel', control: 'value={engineV2Settings.runSeed}' },
   { row: 'runBudgetEvals', form: 'v2-panel', control: 'value={engineV2Settings.runBudgetEvals}' },
   { row: 'fieldMode', form: 'v2-panel', control: 'value={fieldModeOf(engineV2Settings.fieldMode)}' },
+  { row: 'polarityArms', form: 'v2-panel', control: 'value={polarityArmsChoiceOf(engineV2Settings.polarityArms)}' },
   { row: 'statedCrossings', form: 'v2-panel', control: 'value={engineV2Settings.statedCrossings}' },
   // ---- H-2: the stated active side ----
   { row: 'activeSideOn', form: 'v2-panel', control: "checked={engineV2Settings.activeSideOn === 'on'}" },

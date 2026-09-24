@@ -319,6 +319,12 @@ export interface ProjectDesign {
      */
     fieldMode?: string;
     /**
+     * H-5 — the POLARITY ARMS of a v2 run: '' or 'textbook' (every candidate
+     * designed at the polarity its alignments ask for, no mirrored arm) or
+     * 'both' (the mirrored arm beside it, H-4/H-4b). Empty = textbook.
+     */
+    polarityArms?: string;
+    /**
      * U-5 — the crossings the DESIGNER states, one line per handover, low to
      * high; a semicolon does what a newline does. Every stated position becomes
      * a candidate beside the derived field and is tuned and judged in full,

@@ -5,7 +5,13 @@ Bijgewerkt 20-09-2026 (H-4b): elke regel draagt sindsdien een
 TOEPASSINGSSTATUS, de polariteitsregels zijn van status verschoven en twee
 beweringen over `stated-min` zijn rechtgezet. Bijgewerkt 21-09-2026 (M-5): de
 ondergrens-regels en de praktijkregel hebben er een MEETING bij — 48 ketenruns
-over twee uitlijningen, drie posities en alle vier de polariteitsconfiguraties.**
+over twee uitlijningen, drie posities en alle vier de polariteitsconfiguraties.
+Bijgewerkt 24-09-2026 (H-5): de textbookregel is DETERMINISTISCH geworden en de
+spiegelarm staat achter een gestelde run-keuze; er is een vijfde status
+(OVERBODIG-DOOR-METING) en een zesde (VOORSTEL) bijgekomen, en vier vuistregels
+die tot nu toe niet in dit document stonden — de beschermingscondensator, de
+Zobel, de baffle-step-compensatie en de L-pad-formules — hebben hun antwoord
+gekregen.**
 
 ## Wat dit document is — en vooral: wat het niet is
 
@@ -45,10 +51,23 @@ wat een lezer van dit document wil weten voordat hij ergens op vertrouwt.
 | **KANDIDAAT** | De regel bepaalt niets; hij maakt een ONTWERP dat naast de andere in de tabel komt, volledig uitontworpen en door dezelfde poorten geoordeeld. | De tabel beslist, niet de regel. |
 | **GERAPPORTEERD** | Gemeten en afgedrukt, oordeelt niets, weigert niets, stuurt geen zoektocht. De V20-klasse. | Een kolom om naar te kijken; wie er een grens op wil, stelt er een. |
 | **GESTELD** | Een projectbesluit met datum en motivering in `gestelde_eisen`, geen industrienorm. | Het getal is van Sander en een gesprek erover gaat over dat besluit. |
+| **OVERBODIG-DOOR-METING** | De regel is een REKENVOORSCHRIFT dat een grootheid schat die wij MÉTEN. Hij wordt niet toegepast omdat de meting het antwoord al bevat — niet omdat hij fout is. | Niets te doen, en de reden staat erbij zodat "gemist" beantwoord is in plaats van open. |
+| **VOORSTEL** | De grootheid wordt al gemeten en gerapporteerd; wat ontbreekt is een GETAL. Opgeschreven met de casusboekcijfers erbij, wachtend op Sander. | Eén gesteld getal maakt er een gewapende eis van; tot dan oordeelt hij niets (P4). |
 
 Een regel kan er twee dragen: de textbook-polariteit is TOEGEPAST waar de
 engine kiest én sinds H-4b op de handpaden, en tegelijk KANDIDAAT omdat de
-andere arm ernaast gebouwd wordt.
+andere arm ernaast gebouwd KAN worden — sinds H-5 alleen als de ontwerper daar
+om vraagt.
+
+**OVERBODIG-DOOR-METING is niet hetzelfde als "wij doen dat niet".** Het verschil
+is de moeite waard: een Zobel-formule berekent uit T/S-parameters wat de
+impedantie van een driver bóven zijn resonantie doet, en wij hebben die
+impedantie gemeten, per driver, over de hele band. De formule is een SCHATTER van
+onze invoer. Hem toepassen zou een gemeten kromme door een tweeparameter-model
+vervangen, en dat is precies de richting waarin dit project nooit werkt (A3h).
+Wat de regel BEDOELT — dat een stijgende Le de kruising verschuift — gebeurt
+onverminderd; het gebeurt alleen in de oplossing van het echte netwerk in de
+echte impedantie, en niet in een vooraf berekende correctie.
 
 ---
 
@@ -76,10 +95,11 @@ mét, blijft de afwijking binnen enkele dB.
 
 | Onderdeel | Waar | Status | Gedrag |
 | --- | --- | --- | --- |
-| De textbookregel | `activeSide.ts` → `textbookComplementInverted` | **TOEGEPAST** | Alleen LR, `(orde/2) % 2 === 1`. Dus LR2 ja, LR4 nee, LR1/LR3 nee, BW/BS nooit. **Eén huis, vijf lezers sinds H-4b**: het complement van de magere hybride-vorm (`complementSettings`, H-2b), het DSP-doelblok (`dspTarget.ts`, H-1), de polariteitsarmen (H-4), en op de HANDPADEN het bandformulier en de oordeelstrip (`handoverPolarity.ts`, H-4b). |
+| De textbookregel | `activeSide.ts` → `textbookComplementInverted` | **TOEGEPAST** | Alleen LR, `(orde/2) % 2 === 1`. Dus LR2 ja, LR4 nee, LR1/LR3 nee, BW/BS nooit. **Eén huis, ZES lezers sinds H-5**: het complement van de magere hybride-vorm (`complementSettings`, H-2b), het DSP-doelblok (`dspTarget.ts`, H-1), de polariteitsarmen (H-4), op de HANDPADEN het bandformulier en de oordeelstrip (`handoverPolarity.ts`, H-4b), en sinds H-5 het DSP-doelblok van de GEMETEN hybride vorm, dat de textbooklezing naast de gefitte afdrukt. |
 | De textbookregel op de HANDPADEN | `handoverPolarity.ts` (H-4b) | **TOEGEPAST** (volgend, overschrijfbaar) | Een nieuwe even-orde-LR-keuze in het bandformulier zet de relatieve polariteit van díé overname op textbook; de andere overname blijft staan waar zij stond. Een stand die ervan afwijkt wordt náást het vinkje benoemd en nooit gecorrigeerd — Gravesen levert ontwerpen die ervan afwijken. Vóór H-4b was de regel op dit pad **afwezig**: het vinkje bleef staan waar het vorige project het liet. |
-| De praktijkregel | `predesign/polarityArms.ts` (H-4) | **KANDIDAAT** | Sinds H-4 is de niet-gekozen polariteit van élke passieve overname **een eigen kandidaat**: zelfde positie, eigen topologieklasse, volledig uitontworpen, gesynthetiseerd en getuned tegen zijn eigen gekantelde fasedoelen, en door dezelfde poorten geoordeeld. Een drieweg heeft twee overnames, dus vier polariteitsconfiguraties, en het veld draagt ze alle vier. |
-| De praktijkregel in de VERKENNING | `predesign/fieldMode.ts` (H-4b) | **KANDIDAAT** (gegarandeerd) | Sinds H-4b draait een verkenning per positie ONVOORWAARDELIJK twee van de vier configuraties: de textbook-arm en de **enkelvoudige driveromkering** (de mid van een drieweg, de tweeter van een tweeweg). De 15°-marge is nog de poort op de overige twee en wordt overal waar hij poort is als lezing afgedrukt. Vóór H-4b gold de marge op alles — en op de driewegdemo betekende dat **6 runs en nul gespiegeld**. |
+| De textbookregel op het VELD | `predesign/polarityArms.ts` (H-5) | **TOEGEPAST** | Sinds H-5 stelt het veld de polariteit van **élke kandidaat** uit datzelfde huis en is de ontwerpstap eraan gebonden. Daarvóór koos de ontwerpstap zelf, in een enumeratie op ideale filters. Zie de H-5-sectie hieronder. |
+| De praktijkregel | `predesign/polarityArms.ts` (H-4) | **KANDIDAAT** (op verzoek sinds H-5) | Sinds H-4 kan de niet-gekozen polariteit van élke passieve overname **een eigen kandidaat** zijn: zelfde positie, eigen topologieklasse, volledig uitontworpen, gesynthetiseerd en getuned tegen zijn eigen gekantelde fasedoelen, en door dezelfde poorten geoordeeld. Sinds H-5 gebeurt dat alleen onder de gestelde run-keuze **"Polarity arms: both"**; de standaard bouwt hem niet. |
+| De praktijkregel in de VERKENNING | `predesign/fieldMode.ts` (H-4b) | **KANDIDAAT** (gegarandeerd, onder `both`) | Onder `both` draait een verkenning per positie ONVOORWAARDELIJK twee van de vier configuraties: de textbook-arm en de **enkelvoudige driveromkering** (de mid van een drieweg, de tweeter van een tweeweg). De 15°-marge is nog de poort op de overige twee en wordt overal waar hij poort is als lezing afgedrukt. Onder de standaard geldt geen van beide: er wordt niets gespiegeld, en de marge wordt nog wél GELEZEN en afgedrukt zodat de ontwerper ziet wanneer `both` de moeite waard is. |
 | De nultest, ACTIEVE ZIJDE | `activeSide.ts` (H-1) | **TOEGEPAST** | De polariteit van de **actieve zijde** in Hybrid mode wordt gekozen op de omgekeerde-polariteit-nulmarge, en het DSP-doelblok drukt beide af zodat de kastmeting hem kan bevestigen. |
 | De nultest, GETEKEND NETWERK | `handoverPolarity.ts` → `reversedNullSignature` (H-4b) | **GERAPPORTEERD** | De twee null-check-krommen die de grafiek al tekende, als GETAL: het bandgemiddelde van (som − omgepoolde som) over de overnameband, tegen een marge afgeleid uit de fase-eenheid. Onder de marge zwijgt hij. **Een melding, nooit een stille omkering van een netwerk dat iemand getekend heeft** (UI-2). |
 
@@ -175,6 +195,59 @@ kale driewegdemo — 900 → 1800 s. **Het volle veld beweegt niet**, want `'bot
 
 Op de twee kruisingen van de demo leest de marge 20–36°, dus zij gaten alle vier de resterende
 configuraties weg; zonder de garantie zou er inderdaad niets gespiegeld zijn.
+
+### H-5 — de regel is deterministisch geworden, en wat dat kost
+
+**Sander stelde op 24-09-2026:** de polariteit volgt de textbookregel — bij LR2 op woofer→mid wordt
+de mid omgekeerd gesimuleerd én ontworpen, afhankelijke wegen kantelen mee zodat hogere paren
+textbook blijven, er komen geen keuzeknoppen per weg, en het wordt overal duidelijk gemaakt. De
+spiegelarm blijft bestaan achter één gestelde run-keuze.
+
+**Wat dat verving.** De ontwerpstap koos de polariteit tot H-5 nog steeds zelf wanneer de kandidaat
+er geen stelde, en H-4 had die keuze beschreven zonder haar weg te nemen. Sinds H-5 draagt élke
+kandidaat van een v2-veld zijn polariteit EXPLICIET, en `designThreeWay` en `optimizeVirtualFilters`
+zijn eraan gebonden. De interne tie-break bestaat nog, maar op de v2-route wordt hij niet meer
+bereikt.
+
+**De prijs, gemeten** (`scripts/measure-h4b-arms.ts`, `test-fixtures/demo_h4b_armen.json`; geen
+ketenrun en geen tune — het telt kandidaten):
+
+| modus | armbeleid | kandidaten | gespiegeld |
+| --- | --- | ---: | ---: |
+| verkenning | H-4b: garantie + marge (de stand vóór H-5) | 12 | 6 |
+| verkenning | **H-5: textbook, de standaard** | **6** | **0** |
+| vol veld | H-4/H-4b | 36 | 27 |
+| vol veld | **H-5: textbook, de standaard** | **9** | **0** |
+
+Een verkenning HALVEERT dus — precies terug naar de zes runs van vóór H-4b — en het volle veld gaat
+van 36 naar 9. In wandkloktijd op de kale driewegdemo, bij de ~150 s per run die U-1 en U-3b in de
+browser maten: 1800 → 900 s voor een verkenning, 5400 → 1350 s voor een vol veld.
+
+**Waarom de spiegel niet is weggegooid, en dit is de reden dat het een KEUZE werd en geen schrapping.**
+M-5 mat op casus 1b bij 1947,9 Hz dat **alléén de gespiegelde arm levert** — de textbook-arm valt op
+M-C — en 240 Hz verderop, op 2186,5 Hz, precies andersom. Een standaard die de spiegel nooit bouwt
+zou de eerste van die twee hebben gemist; een regel die hem altijd bouwt verdubbelt élke verkenning.
+De keuze houdt die meting herhaalbaar zonder haar aan iedere run in rekening te brengen.
+
+**Wat de deterministische regel NIET raakt, en dat is het hele casusboek.** Absent is de identiteit:
+een veld dat geen armbeleid stelt draagt geen polariteit, en de ontwerpstap enumereert zoals altijd.
+De casus-fixtures stellen er met opzet geen — hun corpora zijn dóór die enumeratie gemaakt, en op
+casus 1b en casus 1h koos zij de GESPIEGELDE arm op élke kandidaat (H-4 mat het: drie van drie en
+één van één). Zouden zij de H-5-standaard overnemen, dan zouden hun live byte-reproducties stoppen
+met reproduceren. Dezelfde pin-vorm die M-3 voor de meetset koos, met dezelfde tegenproef: een guard
+eist dat de pin aantoonbaar VERSCHILT van de standaard, zodat hij niet stil leeg kan lopen.
+
+**Waar de regel zich nu uitspreekt** (Sanders "wel duidelijk maken"):
+
+| plaats | wat er staat |
+| --- | --- |
+| het shortlist-label | `· textbook` op een all-LR4-veld, `· mid ⌀ + tweeter ⌀ · textbook for LR2` waar een uitlijning erom vraagt, `· mid ⌀ · mirror` voor de spiegel |
+| de run-regel boven de tabel | welke armen deze run bouwde, naast welke veldmodus |
+| de veldnotities | dat de polariteit textbook is, plus per kruising wat de spiegel waard zou zijn geweest |
+| het DSP-doelblok | de MAGERE vorm zei het al; de GEMETEN vorm drukt sinds H-5 de textbooklezing naast de gefitte af, met "DEPARTS from textbook" waar zij uiteenlopen |
+| naast de polariteitsknop | de standing van die overname, **beide kanten op** — tot H-5 werd alleen een AFWIJKING afgedrukt, dus na een geslaagde follow zweeg de regel precies op het moment dat zij zojuist een polariteit had verzet |
+| bij de uitlijning-select | de regel zelf, permanent, en niet alleen zijn gevolg |
+| de guided-zin | dat de polariteit niet gevraagd wordt omdat de textbook haar beantwoordt, en waar je dat verandert |
 
 ### Eén valkuil in het label — gesloten bij H-4b
 
@@ -382,10 +455,14 @@ Vijf dingen waarvoor geen vuistregel bestaat, met de reden dat zij er zijn:
    spoel.
 4. **Het rimpel-stopdoel op een eigen band** (E-5b) — TOEGEPAST. De trapmethode stopt escaleren op
    een band die een halve octaaf onder de laagste overname begint, niet op de hele geoordeelde band.
-5. **De polariteitsarmen zelf** (H-4/H-4b) — KANDIDAAT. De literatuur zegt "probeer beide"; wat zij
-   niet zegt is dat beide dan ook volledig uitontworpen, getuned en door dezelfde poorten geoordeeld
-   horen te worden, naast elkaar in één tabel — en evenmin welke twee van de vier configuraties een
-   verkenning dan minstens moet draaien.
+5. **De polariteitsarmen zelf** (H-4/H-4b/H-5) — KANDIDAAT op verzoek. De literatuur zegt "probeer
+   beide"; wat zij niet zegt is dat beide dan ook volledig uitontworpen, getuned en door dezelfde
+   poorten geoordeeld horen te worden, naast elkaar in één tabel — en evenmin welke twee van de vier
+   configuraties een verkenning dan minstens moet draaien. **Sinds H-5 is de standaard de
+   textbookregel alleen** en staat de spiegelarm achter de gestelde run-keuze "Polarity arms: both".
+7. **De beschermingscondensator als harde regel** (H-5) — TOEGEPAST. De literatuur stelt hem
+   onvoorwaardelijk maar als BOUWinstructie; hier is hij een veto op twee verwijderpaden, gesteld op
+   de netlist en zonder één wegnaam te noemen (§6a).
 6. **De null-handtekening als getal** (H-4b) — GERAPPORTEERD. De omkeer-nultest is in de literatuur
    een MEETHANDELING aan een gebouwde luidspreker; hier is zij ook een lezing op het getekende
    netwerk, tegen een marge die uit de fase-eenheid van de engine volgt en niet uit een vuistregel.
@@ -393,12 +470,119 @@ Vijf dingen waarvoor geen vuistregel bestaat, met de reden dat zij er zijn:
 
 ---
 
+## 6. De veegronde van H-5 — vier vuistregels die hier nog niet stonden
+
+Bij H-5 is de lijst kandidaat-vuistregels langsgelopen die dit document tot dan toe niet noemde.
+Elk van de vier heeft nu een status en een reden, zodat "gemist" beantwoord is in plaats van open.
+
+### (a) De tweeter hangt altijd achter een condensator — **TOEGEPAST** (nieuw bij H-5)
+
+**Wat de literatuur zegt.** Het is de enige beschermingsregel die overal onvoorwaardelijk staat:
+zonder seriecondensator ziet de spreekspoel van de bovenste driver het volle laag van de versterker,
+ook wanneer de akoestische som er goed uitziet.
+
+**De hypothese was dat dit de ene echte misser was. De meting weerlegt dat voor de ENUMERATIE en
+bevestigt het voor de VERWIJDERING.**
+
+| vraag | antwoord | waarop |
+| --- | --- | --- |
+| Kan de SYNTHESE een bovenste weg zonder serie-C leveren? | **Nee** | De hoogdoorlaatladder begint bij élke orde met een serie-C (`synthesis.ts`, rung `i = 0`), en beide ontwerpstappen zetten de hoogdoorlaat van de bovenste weg onvoorwaardelijk aan (`specsFor`, `baseSpecs`) |
+| Draagt élke bovenste weg van het casusboek er een? | **Ja — 378 van 378**, over 192 bevroren netlists | `scripts/measure-h5-series-c.ts` |
+| Kan een weg er een KWIJTRAKEN? | **Ja, in principe** — de trapsgewijze snoei laat een geopende serie-C voortleven als DRAAD, en de onderdelenaudit heeft op casus 1 aantoonbaar al een C uit een val gehaald (de wees die A5e.3b (c3) noemt) | de code, gelezen |
+
+Wat hen tot H-5 tegenhield was **geen regel over bescherming** maar de eis dat een verwijdering de
+som, de paarfase en |Z| niet verplaatst — en dat is precies de zin die F2 al over de poorten schreef:
+*"inert" wordt gemeten op de som, de paarfase en Z, en geen van drieën is de vraag of deze driver
+gelijkspanning overleeft.* Een tak die om een andere reden dood ligt is akoestisch inert mét en
+zónder zijn condensator.
+
+**Sinds H-5 is het een harde regel** (`src/lib/seriesProtection.ts`, twee lezers): een weg BOVEN de
+laagste die een seriecondensator draagt, houdt er een. Gevraagd als VETO ná de kwaliteitsregels en
+ná de poort — dus een verwijdering die toch al werd afgewezen wordt onveranderd afgewezen en het
+aantal netwerkoplossingen beweegt niet (beide byte-referenties reproduceren).
+
+**De uitsluiting van de laagste weg is gemeten en niet beredeneerd, en zij kostte de eerste versie
+van de regel een byte-referentie.** Gesteld op ÉLKE weg viel `f4cRegression` meteen om: op de
+F4b2-fixture krijgt de laagste tak tijdens de trapmethode een serie-C en raakt hij hem in dezelfde
+run weer kwijt. Dat is een CORRECTIE-element en geen bescherming — de laagste weg heeft per
+constructie geen hoogdoorlaat — en zijn verwijdering is juist. Op het casusboek draagt de laagste
+weg er op 14 van de 192 netlists wél een, dus de meting onderscheidt en keurt niet alles goed.
+
+### (b) Zobel, baffle-step-compensatie en de L-pad-formules — **OVERBODIG-DOOR-METING**
+
+Alle drie zijn **rekenvoorschriften die een grootheid schatten die wij MÉTEN**. Het ELEMENT bestaat
+in alle drie de gevallen; wat overbodig is, is de formule die zijn waarden zou moeten bepalen.
+
+| vuistregel | de formule | waarom zij hier niets toevoegt |
+| --- | --- | --- |
+| **Zobel bij stijgende Le** | `R = R_e`, `C = L_e / R_e²`, uit de T/S-parameters | De synthese BOUWT een Zobel — maar op de GEMETEN impedantie: zij legt er een zodra `\|Z\|` op 4·f_c meer dan 1,3× `\|Z\|` op f_c is, met `R = \|Z(f_c)\|` als zaad, en de tune beweegt de waarden daarna tegen de echte kromme (`synthesis.ts`). De formule schat uit twee parameters wat wij per driver over de hele band hebben liggen |
+| **Baffle-step-compensatie** | een serie-L overbrugd door een R, met de stap geschat uit de kastbreedte | De stap zit AL in de meting: het verre veld is in de baffle gemeten. En de DIEPTE ervan is sinds A5e.2/V45 een gestelde voicing (`bass-plateau`), met de overgang afgeleid uit de gemeten kastbreedte bij het lezen en nergens opgeslagen. Wat het netwerk ervoor doet kiest de synthese en de tune — op casus 1 is dat de kanteling van de laagdoorlaatspoel zelf |
+| **L-pad-impedantieformules** | twee weerstanden die de last op een nominale ohm houden | De synthese kent de pad als element (`rung: 'pad'`) en `levelWork.ts` inventariseert wat een weg draagt; de formule gaat uit van een RESISTIEVE last op een nominale waarde, wat een echte driver nu juist niet is, en de tuner lost het netwerk in de gemeten impedantie op. Bovendien stelt V51 op de laagste weg een REGEL over pads, en die is strenger dan welke formule ook |
+
+Dat is geen "wij doen dat niet": het mechanisme dat elk van de drie beschrijft gebeurt onverminderd.
+Het gebeurt alleen in de oplossing van het echte netwerk in de echte impedantie, in plaats van in
+een vooraf berekende correctie op een geschatte kromme.
+
+### (c) Fasesporing binnen ±30° door de overname — **VOORSTEL** (en de eis bestaat al)
+
+**Correctie op de aanname waarmee de veegronde begon:** de eis is niet afwezig. `maxPhaseTrackingDeg`
+is sinds F3 een v2-eis met een instelveld, een registerrij, een guided-scherm en een lezer in de
+shortlist. Wat ontbreekt is **een getal**: casus 1 stelt er geen, dus zij is overal ongewapend (P4)
+en M-K wordt gerapporteerd zonder te oordelen.
+
+Wat een gesteld getal zou doen, met de cijfers die er al liggen (casus 1, woofer→mid, hele casusboek):
+
+| grootheid | waarde |
+| --- | --- |
+| mediaan M-K over 173 geleverde woofer→mid-overnames | **15,2°** |
+| spreiding | 1,9 – 81,4° |
+| binnen de 30°-richtlijn | **149 van de 173** |
+| de referentiefilters van de ontwerper | 2,8 / 4,6 / 20,6° |
+| het levende corpus | 10,6 / 13,1 / 32,0° |
+
+Een budget van 30° zou dus op dit boek ongeveer één op de zeven geleverde overnames afwijzen, en op
+het levende corpus één van de drie. **Niet gebouwd bij H-5**, en het bouwen is ook niet het punt: de
+eis staat er, en wie hem wil wapenen typt één getal. Dat het getal van Sander is en niet van de
+literatuur is dezelfde regel als bij het LF-budget en de Q_es-grens.
+
+### (d) Excess group delay — **GERAPPORTEERD**, en het budget is het VOORSTEL
+
+**Ook hier was de aanname te somber.** M-J bestaat: `excessGroupDelay` (`timeDomain.ts`) leest de
+groepsvertraging uit de ongewikkelde fase en trekt haar in-band minimum eraf, en
+`groupDelay` (`metrics/electrical.ts`) legt hem naast een drempelkromme. De drempel is de
+LITERATUURkromme, als knopen van (Hz, ms):
+
+| Hz | 100 | 500 | 1000 | 2000 | 4000 | 8000 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| ms | 10 | 3,2 | 2 | 1 | 1,5 | 2 |
+
+Zij staat in `constants.ts` als de ENE plek waar engine2 frequenties houdt die niet zijn afgeleid, en
+haar eigen commentaar zegt waarom dat mag: M-J is rapportage-only (A4, "geen poort, geen
+smaakoordeel"), de kromme is een CITAAT en geen projectgetal, en de metriek neemt haar als parameter.
+De herkomst is de Blauert & Laws / Liski-lijn zoals de nota haar samenvat — **de primaire bronnen
+zijn niet gelezen**, net zomin als Dickason, en dat staat er liever dan dat het gesuggereerd wordt.
+
+Het VOORSTEL is dus niet de metriek en niet de drempel maar het BUDGET: een gestelde marge boven die
+kromme waarop geweigerd wordt. **Niet gebouwd bij H-5**, om dezelfde reden als (c) — en hier met een
+extra voorbehoud dat eerst gemeten moet worden: wat M-J op dit casusboek leest is nergens verzameld,
+dus vóór iemand er een grens op zet hoort er een kolom te komen zoals V47 die voor M-C maakte.
+
+---
+
 ## Wat hiervan een besluit wacht
 
-1. ~~**De verkenningspoort op de polariteitsarmen.**~~ **GENOMEN bij H-4b** (Sander, 20-09-2026): de
-   enkelvoudige driveromkering draait onvoorwaardelijk, de marge blijft de poort op de rest en wordt
-   overal afgedrukt. Gemeten prijs op de demo: 6 → 12 runs, niet de ×4 die het weghalen van de poort
-   zou hebben gekost. Zie §1.
+1. ~~**De verkenningspoort op de polariteitsarmen.**~~ **GENOMEN bij H-4b** (Sander, 20-09-2026) en
+   **HERZIEN bij H-5** (Sander, 24-09-2026): de polariteit volgt sindsdien deterministisch de
+   textbookregel en er wordt standaard niets gespiegeld; de H-4b-garantie en de 15°-marge gelden nog
+   onder de gestelde keuze "Polarity arms: both". Gemeten prijs op de demo: verkenning 12 → 6 runs,
+   vol veld 36 → 9. Zie §1.
+7. **Een getal voor `maxPhaseTrackingDeg`** (§6c). De eis bestaat sinds F3 en niemand heeft haar
+   gewapend. Op dit casusboek zou 30° ongeveer één op de zeven geleverde woofer→mid-overnames
+   afwijzen en één van de drie levende netlists; de mediaan is 15,2°. Eén getal maakt er een
+   gewapende eis van.
+8. **Een budget op M-J** (§6d). De metriek en de literatuurdrempel staan er; wat ontbreekt is een
+   gestelde marge erboven — en daarvóór een kolom die zegt wat M-J op dit casusboek werkelijk leest,
+   zoals V47 die voor M-C maakte.
 2. ~~**`stated-min` voor casus 1.**~~ **AL GENOMEN bij M-2b** (Sander, 12-09-2026) en hier
    onterecht als openstaand genoteerd; zie het erratum in §2. Het venster leest 2200–2304 Hz met
    `vloer_bindend: aanbevolen_ondergrens`.

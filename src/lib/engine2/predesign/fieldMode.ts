@@ -40,6 +40,49 @@ export type FieldMode = 'exploration' | 'full';
 export const FIELD_MODES: readonly FieldMode[] = ['exploration', 'full'];
 
 /**
+ * H-5 — THE STATED RUN CHOICE on the polarity arms.
+ *
+ * `'textbook'` (the default) states the polarity of EVERY candidate from the
+ * one home of the rule and builds no mirror: the design step is bound and never
+ * settles polarity on an internal tie-break over ideal filters. `'both'` is
+ * H-4/H-4b unchanged — the mirrored arm beside the textbook one, gated in an
+ * exploration by the single-driver guarantee plus the pre-design phase reading,
+ * unconditional in the full field.
+ *
+ * WHY THE MIRROR SURVIVES AS A CHOICE AND WAS NOT DELETED. M-5 measured on
+ * casus 1b at 1947.9 Hz that ONLY the mirrored arm delivers — the textbook arm
+ * falls on M-C — and at 2186.5 Hz, 240 Hz away on the same casus, that it is
+ * exactly the other way round. A default that never builds the mirror is a
+ * default that would have missed the first of those; a rule that always builds
+ * it doubles every exploration. The choice keeps that measurement repeatable
+ * without charging every run for it.
+ */
+export type PolarityArmsChoice = 'textbook' | 'both';
+
+export const POLARITY_ARMS_CHOICES: readonly PolarityArmsChoice[] = ['textbook', 'both'];
+
+/**
+ * The choice a stored string names. Empty or unknown = TEXTBOOK: a project that
+ * never chose gets the deterministic rule, and the shortlist says which arms
+ * ran either way. Same shape and same reason as `fieldModeOf`.
+ */
+export function polarityArmsChoiceOf(raw: string | null | undefined): PolarityArmsChoice {
+  return raw === 'both' ? 'both' : 'textbook';
+}
+
+/** The one line the run notes and the settings panel both print. */
+export function describePolarityArmsChoice(choice: PolarityArmsChoice): string {
+  return choice === 'both'
+    ? 'Polarity arms: BOTH. Beside the textbook arm the mirrored one is designed, tuned and judged ' +
+        'in its own right — an exploration runs the single-driver reversal unconditionally and any ' +
+        'further handover the pre-design phase reading leaves open; the full field runs every ' +
+        'configuration. The run count multiplies rather than adds (H-4/H-4b).'
+    : 'Polarity arms: TEXTBOOK (the default). Every candidate is designed at the polarity its ' +
+        'alignments ask for — LR2 one reversal, LR4 none — and no mirrored arm is built. State ' +
+        '"both" to build them beside it (H-5).';
+}
+
+/**
  * The mode a stored string names. Empty or unknown = EXPLORATION: a project
  * that never chose is a project whose designer has not yet asked for hours,
  * and the shortlist says which mode made it either way.
@@ -81,6 +124,15 @@ export function fieldModeSettings(
    * responses supplies this and gets the arms in both modes.
    */
   polarityMarginFor?: (crossing: CandidateCrossing) => PolarityMargin,
+  /**
+   * H-5 — the stated run choice. ABSENT = NO POLICY AT ALL, which is the
+   * pre-H-5 field byte for byte: the candidates carry no polarity and the
+   * design step enumerates, exactly as every corpus in this casebook was
+   * generated. The APP always states it (its default is `'textbook'`); the
+   * casus fixtures deliberately do not — see their own pin and the reason
+   * beside it.
+   */
+  arms?: PolarityArmsChoice,
 ): FieldModeSettings {
   const base =
     mode === 'exploration'
@@ -90,20 +142,32 @@ export function fieldModeSettings(
           alignmentPolicy: 'one' as AlignmentPolicy,
         }
       : { chainBudget: Math.max(1, Math.round(full.stepsPerAxis)) ** Math.max(1, full.pairs) };
-  if (!polarityMarginFor) return base;
-  /* THE ONE DIFFERENCE BETWEEN THE MODES ON THIS AXIS. The full field runs both
-   * arms of every crossing, because that is what "the full field" means; the
-   * exploration runs the mirrored arm only where the pre-design phase reading
-   * says the phase argument does not decide — a mirrored arm is a whole chain
-   * run, and doubling an exploration by reflex would undo what E-2 bought. */
+  /* H-5 — THE TRIGGER IS THE STATED CHOICE AND NO LONGER THE READER.
+   *
+   * Until H-5 a caller that happened to HAVE a margin reader got polarity arms
+   * and one that did not got none, so whether a field was deterministic
+   * depended on an accident of plumbing. Now the choice decides and the reader
+   * is data: absent choice = no policy = the pre-H-5 field, byte for byte. */
+  if (arms === undefined) return base;
+  /* THE ONE DIFFERENCE BETWEEN THE MODES ON THIS AXIS, and it only exists under
+   * `'both'`. The full field runs both arms of every crossing, because that is
+   * what "the full field" means; the exploration runs the mirrored arm only
+   * where the pre-design phase reading says the phase argument does not decide
+   * — a mirrored arm is a whole chain run, and doubling an exploration by
+   * reflex would undo what E-2 bought. Under `'textbook'` neither applies:
+   * nothing is mirrored in either mode. */
   return {
     ...base,
     polarityArms: {
-      seed: mode === 'full' ? 'both' : 'margin',
-      marginFor: polarityMarginFor,
+      seed: arms === 'textbook' ? 'textbook' : mode === 'full' ? 'both' : 'margin',
+      ...(polarityMarginFor ? { marginFor: polarityMarginFor } : {}),
       /* U-5's rule in both modes: a position the designer stated is not
-       * something a run-size policy may answer on their behalf. */
-      statedAlways: true,
+       * something a run-size policy may answer on their behalf.
+       *
+       * H-5 — but NOT under `'textbook'`: there the designer stated the RULE,
+       * and a stated position silently acquiring a mirror would answer a
+       * question they had already answered. */
+      statedAlways: arms === 'both',
       /* H-4b — THE EXPLORATION ALWAYS RUNS THE SINGLE-DRIVER REVERSAL.
        *
        * H-4 gated every mirrored arm on the pre-design phase reading, and
@@ -117,9 +181,12 @@ export function fieldModeSettings(
        * keeps the other two. That doubles an exploration rather than
        * quadrupling it, which is the price E-2 can carry; the full field is
        * unchanged, because `'both'` already ran everything. */
-      guarantee: mode === 'full' ? 'none' : 'single-reversal',
+      guarantee: arms === 'both' && mode !== 'full' ? 'single-reversal' : 'none',
       why:
-        mode === 'full'
+        arms === 'textbook'
+          ? 'Textbook: every candidate is designed at the polarity its alignments ask for, and no ' +
+            'mirrored arm is built (H-5).'
+          : mode === 'full'
           ? 'Full field: both polarity arms on every handover of every candidate, the run count ' +
             'doubling per handover that has one.'
           : 'Exploration: the textbook arm and the SINGLE-DRIVER REVERSAL unconditionally (the mid ' +

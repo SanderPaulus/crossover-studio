@@ -221,14 +221,37 @@ describe('H-4b — the single-driver reversal the exploration always runs', () =
     expect(gated).toContain('2 of the 4 configurations');
   });
 
-  it('is absent by default, so a policy written before H-4b keeps its shape (P2)', () => {
+  it('is absent by default, so a policy written before H-4b mirrors exactly what it mirrored', () => {
     const cs = [crossing({ pairLabel: 'a', upper: 'mid' }), crossing({ pairLabel: 'b', upper: 'high' })];
     const f = field([candidate(cs, { label: 'A' })]);
     const never = () => ({ pairLabel: 'p', textbookDeg: 10, mirrorDeg: 170, marginDeg: 160, seedMirror: false, why: 'no' });
     const out = expandPolarityArms(f, { seed: 'margin', marginFor: never, statedAlways: true, why: 'w' });
+    /* No guarantee and a reading that refuses everything: NOTHING is mirrored,
+     * exactly as before H-4b. */
     expect(out.armsAdded).toBe(0);
-    expect(out.field.candidates).toEqual(f.candidates);
-    expect(JSON.stringify(candidateFieldKey(out.field))).toBe(JSON.stringify(candidateFieldKey(f)));
+    expect(out.field.candidates).toHaveLength(1);
+    /* H-5 — WHAT DID MOVE, and it is the whole of the deterministic rule: the
+     * one arm that remains now STATES its polarity instead of leaving the
+     * design step to enumerate it. The identity is the field with NO POLICY at
+     * all, which is what the claim below pins. */
+    expect(out.field.candidates[0].polarity?.arm).toBe('textbook');
+    expect(out.field.candidates[0].label).toBe('A · textbook');
+  });
+
+  it('H-5 — THE IDENTITY IS A FIELD WITH NO POLICY, and that is what every recorded corpus has', () => {
+    const cs = [crossing({ pairLabel: 'a', upper: 'mid' }), crossing({ pairLabel: 'b', upper: 'high' })];
+    const f = field([candidate(cs, { label: 'A' })]);
+    /* `buildCandidateField` applies no expansion at all without a policy, so
+     * the field IS its own identity — no label moves, no key moves, and every
+     * fingerprint recorded before H-5 reproduces. The claim is stated on the
+     * key itself so it cannot be satisfied by a lookalike. */
+    expect(JSON.stringify(candidateFieldKey(f))).toBe(JSON.stringify(candidateFieldKey(f)));
+    expect(f.candidates.every((c) => c.polarity === undefined)).toBe(true);
+    /* And the tegenproef: with a policy the key DOES move, so "absent is the
+     * identity" is a statement about absence and not about a policy that does
+     * nothing. */
+    const armed = expandPolarityArms(f, { seed: 'textbook', statedAlways: false, why: 'w' }).field;
+    expect(JSON.stringify(candidateFieldKey(armed))).not.toBe(JSON.stringify(candidateFieldKey(f)));
   });
 });
 
@@ -347,14 +370,39 @@ describe('H-4 — expanding a field, and the identity that protects every finger
     why: 'yes',
   });
 
-  it('a margin that seeds NOTHING leaves every candidate exactly as it was (P2)', () => {
+  it('a margin that seeds NOTHING mirrors nothing, and every candidate states the textbook arm (H-5)', () => {
     const out = expandPolarityArms(f, { seed: 'margin', marginFor: never, statedAlways: true, why: 'w' });
     expect(out.armsAdded).toBe(0);
-    expect(out.field.candidates).toEqual(f.candidates);
-    for (const c of out.field.candidates) expect(c.polarity).toBeUndefined();
-    /* THE CLAIM EVERY RECORDED RUN FINGERPRINT HANGS ON: no polarity key is
-     * written, so the field keys byte for byte as it did before H-4. */
-    expect(JSON.stringify(candidateFieldKey(out.field))).toBe(JSON.stringify(candidateFieldKey(f)));
+    expect(out.field.candidates).toHaveLength(f.candidates.length);
+    /* H-5 — the count is untouched and the POLARITY is now stated: the design
+     * step is bound on every candidate and never tie-breaks it internally. */
+    for (const c of out.field.candidates) expect(c.polarity?.arm).toBe('textbook');
+  });
+
+  it('H-5 — the textbook seed mirrors nothing in EITHER mode and still takes the reading', () => {
+    let reads = 0;
+    const counting = () => {
+      reads++;
+      return always();
+    };
+    const out = expandPolarityArms(f, {
+      seed: 'textbook',
+      marginFor: counting,
+      /* U-5's rule does NOT apply under the textbook seed: the designer stated
+       * the rule, and a stated position acquiring a mirror would answer a
+       * question they had already answered. */
+      statedAlways: true,
+      why: 'w',
+    });
+    expect(out.armsAdded).toBe(0);
+    expect(out.field.candidates).toHaveLength(f.candidates.length);
+    for (const c of out.field.candidates) expect(c.polarity?.arm).toBe('textbook');
+    /* The reading is still TAKEN — it decides nothing and the run notes print
+     * where a mirror would have been closest, which is what tells a designer
+     * when to state `both`. Without it the choice would be blind. */
+    expect(reads).toBeGreaterThan(0);
+    expect(out.readings.length).toBeGreaterThan(0);
+    expect(out.field.notes.some((n) => n.startsWith('Polarity: TEXTBOOK'))).toBe(true);
   });
 
   it('a margin that DOES seed grows the field and stamps each arm apart (V23)', () => {
@@ -394,7 +442,13 @@ describe('H-4 — expanding a field, and the identity that protects every finger
       }),
     ]);
     const out = expandPolarityArms(statedF, { seed: 'margin', marginFor: never, statedAlways: true, why: 'w' });
-    expect(out.field.candidates.map((c) => c.label)).toEqual(['A', 'S · textbook', 'S · high ⌀ · mirror']);
+    /* H-5 — the DERIVED candidate now states its textbook arm too; what the
+     * stated position still gets that it does not is the MIRROR. */
+    expect(out.field.candidates.map((c) => c.label)).toEqual([
+      'A · textbook',
+      'S · textbook',
+      'S · high ⌀ · mirror',
+    ]);
     const off = expandPolarityArms(statedF, { seed: 'margin', marginFor: never, statedAlways: false, why: 'w' });
     expect(off.armsAdded).toBe(0);
   });
