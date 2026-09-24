@@ -53,6 +53,7 @@ import {
   CASUS1H_DIR,
   CASUS1H_FIELD_ALIGNMENTS,
   CASUS1H_STATED_ORDER,
+  CASUS1H_REQUIREMENTS,
   CASUS1H_TARGET_CURVE,
   CASUS1H_V2_BAND_HZ,
   CASUS1H_V2_BAND_SOURCE,
@@ -391,7 +392,17 @@ const stamp = stampRun(
   },
   'completed',
 );
-const shortlist = buildShortlist(rows, stamp.fingerprint, { targetCurve: CASUS1H_TARGET_CURVE });
+/* U-5c — zie de casus-1-generator: de gestelde eisen bereiken de shortlist,
+ * gespreid, en alleen de shortlist. LET OP op DEZE casus: 30° bijt hier op de
+ * GESTUURDE M-K-lezing van élke bekende rij terwijl dezelfde netwerken op de
+ * in te stellen delay ruim binnen blijven (H-1's open punt, gemeten in
+ * `gestelde_eisen.fasesporing_max_bevinding_op_deze_casus`). Een regeneratie
+ * hier laat de ladder verruimen; dat is de eerlijke uitkomst en geen reden om
+ * de eis stilletjes niet te stellen. */
+const shortlist = buildShortlist(rows, stamp.fingerprint, {
+  targetCurve: CASUS1H_TARGET_CURVE,
+  requirements: { ...CASUS1H_REQUIREMENTS },
+});
 console.log(`shortlist: ${shortlist.rows.length} of ${shortlist.consideredCount} considered`);
 
 for (const f of readdirSync(CASUS1H_DIR)) {

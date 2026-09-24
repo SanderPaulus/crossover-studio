@@ -1200,6 +1200,25 @@ const V1_LEGACY: readonly V2InputRow[] = [
       'no A5d.3 window could be derived and no declaration travels.',
   },
   {
+    id: 'phasePriority',
+    label: 'Priority: response % · phase %',
+    form: 'Filters → Goals & weighting (and the wizard’s Goals step)',
+    travels:
+      'chain settings.phasePriority → OVERWRITTEN by the chain declaration, which states ' +
+      'DEFAULT_PHASE_PRIORITY unconditionally (declareCandidateChainChoices, M-4) because the app ' +
+      'does not hand it the slider',
+    cls: 'v1-legacy',
+    emptyMeans: 'not applicable: the v2 route states the engine’s own 50/50 whatever this holds.',
+    source: 'choice',
+    v1Note:
+      'v1 — not read by Engine v2 since M-4: the candidate states the engine’s own 50/50 split ' +
+      '(DEFAULT_PHASE_PRIORITY) and that overwrites this. Measured at U-5c, and it is a WIRING GAP ' +
+      'rather than a decision — M-4’s own comment says “a designer who states the slider wins over ' +
+      'it”, and the app never states it. One line in declareCandidateChainChoices would restore it; ' +
+      'that changes what every v2 run with a moved slider does, so it is Sander’s call and not a ' +
+      'marking session’s.',
+  },
+  {
     id: 'hpLpPref',
     label: 'HP/LP preference (low xo / high xo)',
     form: 'Filters → Filter shape',
@@ -1536,4 +1555,6 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   'ampMinLoadOhm',
   // the five v1 controls, each already badged where it stands (U-1)
   'errorSmoothOct', 'hpLpPref', 'scan3Mode', 'bomCapEur', 'excursionSpl',
+  // U-5c — the sixth, found by the goals-panel audit and badged where it stands
+  'phasePriority',
 ]);

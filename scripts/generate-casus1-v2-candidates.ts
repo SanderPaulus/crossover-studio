@@ -78,6 +78,7 @@ import {
   CASUS1_WINDOW_SETTINGS,
   CASUS1_MAX_DRIVE_ON_FS_DB_BY_DRIVER,
   CASUS1_QES_MULTIPLIER_MAX,
+  CASUS1_REQUIREMENTS,
   CASUS1_TARGET_CURVE,
   CASUS1_LOWEST_WAY_LEVEL_WORK,
   CASUS1_FIELD_POSITION_POLICY,
@@ -706,7 +707,15 @@ const stamp = stampRun(
   'completed',
 );
 
-const shortlist = buildShortlist(rows, stamp.fingerprint, { targetCurve: CASUS1_TARGET_CURVE });
+/* U-5c — DE GESTELDE EISEN BEREIKEN DE SHORTLIST. Tot U-5c kreeg
+ * `buildShortlist` hier alleen de doelcurve, dus casus 1's eisen waren op deze
+ * route ongewapend ook nadat er een getal gesteld was. Gespreid, zodat een eis
+ * die deze casus niet stelt niets wapent (P4), en alleen HIER: een eis raakt de
+ * tuner niet en kan dus geen netlist verplaatsen. */
+const shortlist = buildShortlist(rows, stamp.fingerprint, {
+  targetCurve: CASUS1_TARGET_CURVE,
+  requirements: { ...CASUS1_REQUIREMENTS },
+});
 console.log(`shortlist: ${shortlist.rows.length} of ${shortlist.consideredCount} considered`);
 
 const written: { name: string; label: string }[] = [];

@@ -1126,6 +1126,25 @@ export function casus1ThermalDesignPowerW(golden: GoldenRefs = loadGolden()): nu
 }
 
 /**
+ * U-5c — the stated MAXIMUM mean |Δφ| through one handover, degrees
+ * (`gestelde_eisen.fasesporing_max_graden`, Sander 24-09-2026). Null = not
+ * stated, and M-K is then reported without judging anything (P4).
+ *
+ * A REQUIREMENT and not a gate, which is why it comes out shaped for
+ * `RequirementSettings` and not for `GateSettings`: it sits in `RELAXABLE`
+ * beside the SPL window, the ladder may widen it, and the label that says so
+ * travels with the rows. A caller who wants an unrelaxable limit is asking for
+ * a different mechanism, not a different number.
+ */
+export function casus1MaxPhaseTrackingDeg(golden: GoldenRefs = loadGolden()): number | null {
+  const e = (golden.manifest_en_geometrie as unknown as {
+    gestelde_eisen?: { fasesporing_max_graden?: unknown };
+  }).gestelde_eisen;
+  const v = e?.fasesporing_max_graden;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
  * V51 — whether the project FORBIDS level work on its lowest way
  * (`gestelde_eisen.geen_niveauwerk_op_laagste_weg`). True = stated; false =
  * not stated, which is P4's absent and never a stated "allowed".

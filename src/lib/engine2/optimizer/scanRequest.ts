@@ -428,6 +428,14 @@ export type DeclarableChainSettings = Omit<StatedByDesigner, 'staged' | 'zFloorS
  * raised: a stated position INSIDE the window keeps the window's own floor,
  * byte for byte.
  *
+ * U-5c — AND IT IS READ PER CROSSING, not per candidate. The `Math.min` below
+ * always was, but until U-5c it could not tell the two cases apart: a stated
+ * cage was never clipped, so its bottom lay under the window floor on EVERY
+ * axis and the min lowered every one of them — including axes the designer had
+ * stepped over nothing on. With the cage now clipped where the position is
+ * inside its window (`statedCage`), the min is a no-op exactly there and still
+ * lowers exactly where U-5 means it to.
+ *
  * ONE IMPLEMENTATION, TWO READERS: the declaration below and the chain input
  * the app builds. Two of them would be two answers to "how low may this tune
  * go", which is precisely the kind of split F4d closed.

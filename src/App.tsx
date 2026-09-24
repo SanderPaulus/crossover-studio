@@ -16420,6 +16420,12 @@ export default function App() {
                     </span>
                   </label>
                 ))}
+              {/* U-5c — the SAME badge the expert slider carries, because this is
+                  the same knob: since M-4 the v2 candidate states the engine's
+                  own 50/50 and overwrites whatever is chosen here. A wizard
+                  that asks a question the run does not read is worse than one
+                  that does not ask it. */}
+              {!soloDriver && <p className="sub">{v1Legacy('phasePriority')}</p>}
               {!soloDriver && ![25, 50, 75].includes(phasePriority) && (
                 <p className="sub">
                   {t('Currently')}{' '}
@@ -19910,6 +19916,7 @@ export default function App() {
                     disabled={!!soloDriver}
                     style={{ width: '14rem', accentColor: 'var(--accent)' }}
                   />
+                  {v1Legacy('phasePriority')}
                 </label>
                 <label title={t("How phase error is judged. Integration band = the panel's average + excursions over the WHOLE overlap window (flat across the handover, matches the numbers you read). Classic = overlap-weighted mean, centre-heavy (the old behaviour, kept as fallback).")}>
                   {t('Phase metric')}
@@ -20040,6 +20047,19 @@ export default function App() {
                     style={{ width: '3.6rem' }}
                     title={t('Hard tier: a candidate with at least this much source resistance in front of the low driver is disqualified from the ranking — it stays in the table, struck through, with the reason. 0 = off.')}
                   />{' '}Ω
+                  {/* U-5c — the goals-panel audit found this one: the field is
+                      shown on every project and only the THREE-WAY chain
+                      settings carry it, so on a two-way v2 run the candidate
+                      declares it ABSENT and nothing is disqualified. Said where
+                      it stands rather than repaired: wiring it would start
+                      disqualifying two-way candidates that are not being
+                      disqualified today, and that is a run-behaviour change. */}
+                  {engineV2Enabled && !threeWay && (
+                    <span className="derived">
+                      {' '}
+                      {t('not read on the two-way Engine v2 route — only the three-way chain settings carry it (U-5c)')}
+                    </span>
+                  )}
                 </label>
                 <label
                   className="inline-num"

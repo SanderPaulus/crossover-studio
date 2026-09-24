@@ -55,7 +55,7 @@ import { LF_BUMP_VERSION } from '../src/lib/engine2/metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from '../src/lib/engine2/metrics/resistiveEquivalent.ts';
 import { PHASE_INTEGRATION_VERSION } from '../src/lib/engine2/metrics/phaseIntegration.ts';
 import { PHASE_ADMISSION_VERSION } from '../src/lib/phaseAdmission.ts';
-import { BUILDABILITY_VERSION } from '../src/lib/engine2/metrics/buildability.ts';
+import { BUILDABILITY_VERSION, worstCapacitor } from '../src/lib/engine2/metrics/buildability.ts';
 import { LEVEL_WORK_VERSION, levelWorkOnNetlist, levelWorkVerdict, seriesInductanceByWay, seriesRMaxOhmOf } from '../src/lib/levelWork.ts';
 import { casus1ThermalDesignPowerW } from '../src/lib/engine2/casus1.fixture.ts';
 import {
@@ -1733,6 +1733,33 @@ putDerived('v47_bescherming', driveRecord as unknown as Record<string, unknown>)
       drukste_spoel_piek_A: r2(l?.value ?? null),
       drukste_spoel_bij_hz: r0(Number(String(l?.parameters?.at ?? '').replace(/[^0-9.]/g, '')) || null),
       spoel_grens_A: l?.limit ?? null,
+      /* U-5c — de DERDE elementsoort, en de enige zonder toegestane waarde: de
+       * catalogus draagt geen spanningsklasse voor condensatoren, dus dit is de
+       * linkerhelft van de som die de bouwer zelf maakt (geen poort). */
+      ...((): Record<string, unknown> => {
+        const c = worstCapacitor(rep.metrics.buildability?.capacitorLoads ?? []);
+        /* U-5c — HOEVEEL SPOELEN VAN DEZE NETLIST GEEN DCR DRAGEN, en die kolom
+         * is geen netheid maar het antwoord op de vraag die de reeks anders
+         * oproept. Een serieresonante tak met een VERLIESVRIJE spoel heeft een
+         * onbegrensde Q, dus de spanning over haar condensator loopt op tot in
+         * de kilovolts — gemeten 30 110 V op V28_KAND_2. Dat is een eigenschap
+         * van een GEÏDEALISEERDE netlist en geen uitspraak over een bouwbaar
+         * ontwerp: de gedateerde corpora van vóór A5e.3 dragen geen DCR-model,
+         * de levende netlists wel. Wie de reeks leest moet dat naast het getal
+         * zien staan en niet hoeven afleiden. */
+        const coils = rep.metrics.buildability?.coilLoads ?? [];
+        const lossless = casus1Filter(key, manifest, files, golden).netlist.elements.filter(
+          (e) => e.kind === 'L' && !((e.seriesR ?? 0) > 0),
+        ).length;
+        return {
+          zwaarste_C: c?.id ?? null,
+          zwaarste_C_uF: c ? r2(c.farad * 1e6) : null,
+          zwaarste_C_piek_V: r2(c?.peakV ?? null),
+          zwaarste_C_bij_hz: r0(c?.atHz ?? null),
+          spoelen: coils.length,
+          spoelen_zonder_DCR: lossless,
+        };
+      })(),
     });
   }
   const live = rows.filter((r) => /^KAND_V2_\d+$/.test(String(r.netlist)));
@@ -1744,7 +1771,9 @@ putDerived('v47_bescherming', driveRecord as unknown as Record<string, unknown>)
       'V50 — BOUWBAARHEID op élke bevroren netlist: het vermogen in de HEETSTE discrete weerstand ' +
       '(M-A, IEC-gewogen bij het continue vermogen; de weerstand met de minste marge tegen zijn ' +
       'toegestane waarde) tegen klasse × marge (poort M-A/part), en de PIEKSTROOM door de drukste spoel ' +
-      'bij de piekingang (poort M-L, ongewogen). Afgeleid; frozenNetlistGates.test.ts herrekent het. ' +
+      'bij de piekingang (poort M-L, ongewogen), en sinds U-5c de PIEKSPANNING over de zwaarste ' +
+      'condensator bij diezelfde piekingang — die laatste zonder poort en zonder toegestane waarde, ' +
+      'want de catalogus draagt geen spanningsklasse voor condensatoren. Afgeleid; frozenNetlistGates.test.ts herrekent het. ' +
       'Zie gestelde_eisen.weerstandsklasse_* en .spoelklasse_* voor de eisen en de bevindingen erbij.',
     schatter: BUILDABILITY_VERSION,
     weerstandsklasse_W: BUILDABILITY.resistorClassW ?? null,
@@ -1762,6 +1791,36 @@ putDerived('v47_bescherming', driveRecord as unknown as Record<string, unknown>)
     oordeel_bij_W: casus1ThermalDesignPowerW(golden) ?? CONTINUOUS_POWER_W,
     spoelklasse_A: BUILDABILITY.coilClassA ?? null,
     V_piek_V: vPeak === null ? null : r2(vPeak),
+    /* U-5c — wat de condensatorkolom over dit boek zegt, in één regel: de
+     * hoogste spanning en hoeveel netlists er BOVEN de piekingang uitkomen.
+     * Een kolom en geen oordeel — er is geen gestelde spanningsklasse. */
+    ...((): Record<string, unknown> => {
+      const lossy = rows.filter((r) => r.spoelen_zonder_DCR === 0);
+      const idealised = rows.filter((r) => Number(r.spoelen_zonder_DCR) > 0);
+      const top = (rs: Record<string, unknown>[]) =>
+        rs.reduce<number | null>((m, r) => {
+          const v = r.zwaarste_C_piek_V;
+          return typeof v === 'number' && (m === null || v > m) ? v : m;
+        }, null);
+      return {
+        _bij_de_condensatorreeks:
+          'DE REEKS VALT IN TWEE POPULATIES EN ZIJ MOGEN NIET DOOR ELKAAR GELEZEN WORDEN. Een ' +
+          'serieresonante tak met een VERLIESVRIJE spoel heeft een onbegrensde Q, dus de spanning ' +
+          'over haar condensator loopt tot in de kilovolts — dat is een eigenschap van een ' +
+          'geïdealiseerde netlist en geen uitspraak over een bouwbaar ontwerp. De gedateerde corpora ' +
+          'van vóór A5e.3 dragen geen DCR-model (kolom spoelen_zonder_DCR > 0); élke netlist mét ' +
+          'koper leest een getal dat een bouwer kan gebruiken. Lees hoogste_C_piek_V_met_koper.',
+        hoogste_C_piek_V_met_koper: r2(top(lossy)),
+        hoogste_C_piek_V_geidealiseerd: r2(top(idealised)),
+        netlists_met_koper: lossy.length,
+        netlists_geidealiseerd: idealised.length,
+        netlists_met_C_boven_V_piek:
+          vPeak === null
+            ? null
+            : rows.filter((r) => typeof r.zwaarste_C_piek_V === 'number' && (r.zwaarste_C_piek_V as number) > vPeak)
+                .length,
+      };
+    })(),
     gewapend_op_de_zoektocht: casus1BuildabilityOnSearch(golden),
     levend_corpus_netlists: live.length,
     levend_corpus_eroverheen: live.filter((r) => r.haalt_de_eis === false).length,

@@ -44,7 +44,11 @@ import { cabs } from '../util.ts';
 import type { DissipationResult } from './electrical.ts';
 import type { NetworkAnalysis } from './types.ts';
 
-export const BUILDABILITY_VERSION = 'buildability/1.0';
+/* U-5c — 1.0 -> 1.1: the module grew a third element kind (`capacitorLoads`).
+ * The SHAPE grew and not a single number moved — the resistor watts and the
+ * coil currents are bit for bit what they were — and the bump is the A5e.5
+ * cache rule applied to a shape change, the V44 `z-resonance` precedent. */
+export const BUILDABILITY_VERSION = 'buildability/1.1';
 
 /** What the CHOSEN part on one element is rated for, keyed by element id. */
 export interface PartRating {
@@ -232,6 +236,107 @@ export function worstCoil(loads: readonly CoilLoad[]): CoilLoad | null {
       worst = l;
       worstKey = key;
     }
+  }
+  return worst;
+}
+
+/* ================================================================== *
+ * Capacitor peak voltage at the peak input
+ * ================================================================== */
+
+export interface CapacitorLoad {
+  id: string;
+  farad: number;
+  /** Largest voltage amplitude across this capacitor at the peak input, V. */
+  peakV: number | null;
+  /** Where on the electrical grid that maximum sits, Hz. */
+  atHz: number | null;
+  /** P4's visible half: why there is no reading, when there is none. */
+  why: string | null;
+}
+
+/**
+ * U-5c — EVERY CAPACITOR OF A SOLVED NETWORK WITH THE VOLTAGE ACROSS IT.
+ *
+ * THE VUISTREGEL THIS ANSWERS is the oldest one in the build shed: check the
+ * voltage rating of your capacitors. Until U-5c this app could not answer it at
+ * all — it printed the watts in every resistor (M-A/part, V50) and the peak
+ * current through every coil (M-L, V50) and said nothing whatever about the
+ * volts across a capacitor, which is the one number that decides whether the
+ * part you ordered survives being asked to do its job.
+ *
+ * READ OFF THE SAME SOLUTION as the two beside it. `elementCurrent` is the
+ * current at the netlist's own generator EMF and everything is linear, so the
+ * amplitude at V_peak is |I(f)|·|Z_C(f)|·V_peak/E_g. `Z_C` is the element as
+ * BUILT — `seriesR + 1/(jωC)`, the ESR included — because the part a builder
+ * buys is the whole element and not the ideal capacitance inside it. On a
+ * lossless capacitor the ESR term is zero and the reading is exactly the
+ * reactive voltage, so nothing is added that was not there.
+ *
+ * REPORTING ONLY, AND THERE IS NO GATE — on purpose, and not for lack of a
+ * number to compare with. A voltage rating is a TYPE decision the builder makes
+ * when they pick a part; the app has no catalogue field for it (the series carry
+ * `powerW` for resistors and `maxCurrentA` for cored coils and nothing for
+ * capacitors), so inventing an allowance here would be inventing data — exactly
+ * what A3h forbids — and comparing against an allowance that does not exist
+ * would be worse than saying nothing. What this gives is the left-hand side of
+ * the builder's own sum, which is the half they cannot compute and the app can.
+ *
+ * The frequency travels for the reason `coilLoads` carries one: a figure
+ * without the place it occurs cannot be checked against anything.
+ */
+export function capacitorLoads(
+  analysis: NetworkAnalysis,
+  i: { peakInputVolts?: number },
+): CapacitorLoad[] {
+  const { grid, generatorVolts: eg } = analysis;
+  const vPeak = i.peakInputVolts !== undefined && i.peakInputVolts > 0 ? i.peakInputVolts : null;
+  const out: CapacitorLoad[] = [];
+  for (const p of analysis.passives) {
+    if (p.kind !== 'C') continue;
+    const cur = analysis.elementCurrent[p.id];
+    let peakV: number | null = null;
+    let atHz: number | null = null;
+    const why =
+      vPeak === null
+        ? 'no peak input voltage: the amplifier peak power and nominal load are not both stated'
+        : !cur
+          ? 'the solve produced no current for this element'
+          : !(eg > 0)
+            ? 'the network was solved at a zero generator EMF'
+            : !(p.value > 0)
+              ? 'this capacitor has no capacitance'
+              : null;
+    if (why === null && vPeak !== null && cur) {
+      let best = -1;
+      let bestIdx = -1;
+      for (let k = 0; k < cur.length; k++) {
+        const w = 2 * Math.PI * grid[k];
+        if (!(w > 0)) continue;
+        // |Z| of the element as built: ESR in series with the reactance.
+        const z = Math.hypot(p.seriesR, 1 / (w * p.value));
+        const v = cabs(cur[k]) * z;
+        if (v > best) {
+          best = v;
+          bestIdx = k;
+        }
+      }
+      if (bestIdx >= 0) {
+        peakV = (best / eg) * vPeak;
+        atHz = grid[bestIdx];
+      }
+    }
+    out.push({ id: p.id, farad: p.value, peakV, atHz, why });
+  }
+  return out;
+}
+
+/** The capacitor a reader looks at first: the highest voltage. */
+export function worstCapacitor(loads: readonly CapacitorLoad[]): CapacitorLoad | null {
+  let worst: CapacitorLoad | null = null;
+  for (const l of loads) {
+    if (l.peakV === null) continue;
+    if (worst === null || l.peakV > worst.peakV!) worst = l;
   }
   return worst;
 }

@@ -94,8 +94,10 @@ import { peakInputVolts } from './metrics/driveExcursion.ts';
  * REPORTING metric: no gate id, no window floor, per the §A4 procedure. */
 import { driverThermalLoad, type ThermalLoadResult } from './metrics/thermalLoad.ts';
 import {
+  capacitorLoads,
   coilLoads,
   resistorLoads,
+  type CapacitorLoad,
   type CoilLoad,
   type ResistorLoad,
 } from './metrics/buildability.ts';
@@ -581,8 +583,18 @@ export interface EngineV2Report {
      * current through every coil, each beside what the chosen or stated part
      * may carry. Null without a solved network. The two gates `M-A/part` and
      * `M-L` are made from exactly these lists.
+     *
+     * U-5c — and the VOLTS ACROSS EVERY CAPACITOR at the peak input, which has
+     * no gate and no allowance to be compared with: a voltage rating is a type
+     * decision the builder makes, and the catalogue carries no field for it.
+     * Reporting only, and it is the left-hand side of a sum the builder cannot
+     * compute for themselves.
      */
-    buildability: { resistorLoads: ResistorLoad[]; coilLoads: CoilLoad[] } | null;
+    buildability: {
+      resistorLoads: ResistorLoad[];
+      coilLoads: CoilLoad[];
+      capacitorLoads: CapacitorLoad[];
+    } | null;
     /**
      * V49 — the WEAKEST-LINK reading for every way that is NOT high-pass
      * protected: how far its cone moves on the resonance at the amplifier's
@@ -1125,6 +1137,11 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
       coilLoads: coilLoads(analysis, {
         ...(peakV !== undefined ? { peakInputVolts: peakV } : {}),
         ...(input.settings.coilClassA !== undefined ? { coilClassA: input.settings.coilClassA } : {}),
+      }),
+      /* U-5c — the same peak input, the third element kind. No class and no
+       * margin: there is nothing stated to compare a capacitor with. */
+      capacitorLoads: capacitorLoads(analysis, {
+        ...(peakV !== undefined ? { peakInputVolts: peakV } : {}),
       }),
     };
   }

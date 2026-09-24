@@ -68,6 +68,7 @@ import {
   casus1MaxCrossovers,
   casus1MinCrossovers,
   casus1QesMultiplierMax,
+  casus1MaxPhaseTrackingDeg,
   casus1RippleStopFromLowestCrossing,
   casus1TargetCurve,
   casus1ThermalDesignPowerW,
@@ -91,6 +92,7 @@ import type { LowestWayLevelWork } from '../levelWork.ts';
 import type { CoilDcrFit, CoilDcrModel } from '../coilDcr.ts';
 import { peakInputVolts } from './metrics/driveExcursion.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
+import type { RequirementSettings } from './requirements/requirements.ts';
 import {
   factsForWorker,
   type MeasurementFactsPayload,
@@ -567,6 +569,28 @@ export const CASUS1_QES_MULTIPLIER_MAX: number | null = casus1QesMultiplierMax()
  * run SAYS it did, and the fingerprint records it.
  */
 export const CASUS1_RIPPLE_STOP_FROM_LOWEST_CROSSING: boolean = casus1RippleStopFromLowestCrossing();
+
+/**
+ * U-5c — THE REQUIREMENTS casus 1 states, shaped for `buildShortlist`.
+ *
+ * Spread at the use site (`requirements: { ...CASUS1_REQUIREMENTS }`) so that
+ * a requirement this casus does NOT state arms nothing (P4) — the same shape
+ * `CASUS1_V2_GATES` and `CASUS1_V2_BUDGETS` carry, and for the V42 reason: a
+ * generator and a test that each assemble this block themselves end up running
+ * two different runs and comparing them.
+ *
+ * ONLY the shortlist reads it. Requirements never reach the tuner — they are
+ * not in `NetOptimizeOptions` and never have been — so arming one cannot move
+ * a single component value, and every frozen netlist of this book reproduces
+ * byte for byte with it stated. That is what let U-5c state a number without
+ * regenerating anything; it is a property of where the requirement lives, and
+ * `phaseTrackingRequirement.test.ts` asserts it rather than trusting it.
+ */
+export const CASUS1_MAX_PHASE_TRACKING_DEG: number | null = casus1MaxPhaseTrackingDeg();
+export const CASUS1_REQUIREMENTS: RequirementSettings =
+  CASUS1_MAX_PHASE_TRACKING_DEG !== null
+    ? { maxPhaseTrackingDeg: CASUS1_MAX_PHASE_TRACKING_DEG }
+    : {};
 
 /**
  * V45 — the design's own TARGET CURVE, built by the fixture helper from the

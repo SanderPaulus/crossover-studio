@@ -54,6 +54,7 @@ import { DB_PER_OCTAVE_PER_ORDER, XO_FS_FACTOR_BY_ORDER } from '../constants.ts'
 import {
   alignmentFor,
   orderPolicyChoice,
+  symmetricCage,
   type Alignment,
   type AlignmentPolicy,
   type CandidateCrossing,
@@ -709,6 +710,77 @@ export interface StatedField {
 }
 
 /**
+ * U-5c — THE CAGE OF ONE STATED CROSSING, decided PER AXIS.
+ *
+ * U-5 laid every stated cage one spacing wide, centred, and NOT clipped to the
+ * window, and the reason it gave is sound where it applies: clipping would drag
+ * the tune back toward an edge the designer deliberately stepped over, which is
+ * a second opinion about a position they already gave. What that reason does
+ * NOT cover is a position that stepped over nothing. There the unclipped cage
+ * is not protecting a decision, because no decision was made against the
+ * window; it simply hands the tune room the measurements do not admit — on
+ * EVERY axis of the candidate, including the ones the designer never argued
+ * with.
+ *
+ * M-5 measured what that costs. Its stated mid→tweeter position (2251.4 Hz)
+ * lies INSIDE a window of 2200–2304 Hz and was caged 2125–2385, so the cage
+ * reached 81 Hz past the breakup ceiling; of the seven delivered rows, FIVE
+ * crossed above 2304 Hz. M-5's own entry recorded it as a caveat on its table
+ * and left the repair to its own session, which is this one.
+ *
+ * THE RULE, and it is one line of decision: a crossing that is past NO limit of
+ * its own window is caged exactly as a generated one — `[max(floor, hz/2^half),
+ * min(ceiling, hz·2^half)]`, the shape `positionsAlong` lays (C-2) — and a
+ * crossing that IS past something keeps U-5's unclipped cage, because that is
+ * precisely the case U-5's reason describes. Nothing else changes: the stated
+ * position itself never moves, the verdicts are untouched, and a candidate
+ * whose axes disagree gets the right answer on each of them separately, which
+ * is the whole point of deciding per crossing instead of per candidate.
+ *
+ * `twoSided` is read with the GENERATED field's own predicate (`symmetricCage`,
+ * on the UNROUNDED edges, C-2's lesson) rather than asserted: after a clip the
+ * cage may genuinely be one-sided, and a reader told "two-sided" about a cage
+ * that is not would be told the opposite of what was built.
+ *
+ * A clip is never allowed to collapse the cage to a point: a zero-width cage
+ * turns the tuner's handover penalty into a cliff, which is the lesson the v1
+ * cage already carries and which `positionsAlong` guards the same way.
+ */
+export function statedCage(
+  hz: number,
+  halfOctaves: number,
+  window: XoWindowResult,
+  insideWindow: boolean,
+): { cageHz: [number, number]; twoSided: boolean; clipped: 'floor' | 'ceiling' | 'both' | null } {
+  const rawLo = hz / 2 ** halfOctaves;
+  const rawHi = hz * 2 ** halfOctaves;
+  if (!insideWindow) {
+    return { cageHz: [roundEdge(rawLo), roundEdge(rawHi)], twoSided: true, clipped: null };
+  }
+  const floor = window.floorHz !== null && window.floorHz > 0 ? window.floorHz : null;
+  const ceiling = window.ceilingHz !== null && window.ceilingHz > 0 ? window.ceilingHz : null;
+  const lo = floor !== null ? Math.max(floor, rawLo) : rawLo;
+  const hi = ceiling !== null ? Math.min(ceiling, rawHi) : rawHi;
+  // Never a point, and never inverted: the position itself is always inside.
+  const loSafe = Math.min(lo, hz);
+  const hiSafe = Math.max(hi, hz);
+  const clippedFloor = loSafe > rawLo * (1 + SAME_FREQUENCY_REL);
+  const clippedCeiling = hiSafe < rawHi * (1 - SAME_FREQUENCY_REL);
+  return {
+    cageHz: [roundEdge(loSafe), roundEdge(hiSafe)],
+    twoSided: symmetricCage(hz, loSafe, hiSafe),
+    clipped:
+      clippedFloor && clippedCeiling
+        ? 'both'
+        : clippedFloor
+          ? 'floor'
+          : clippedCeiling
+            ? 'ceiling'
+            : null,
+  };
+}
+
+/**
  * The stated candidates: the product over the handovers, each position with the
  * window it is measured against and everything it is past.
  *
@@ -771,7 +843,8 @@ export function statedCandidates(
       for (const hz of stated) {
         const breaches = breachesAt(hz, window, pair, order);
         const insideWindow = breaches.length === 0;
-        const cage: [number, number] = [roundEdge(hz / 2 ** half), roundEdge(hz * 2 ** half)];
+        const laid = statedCage(hz, half, window, insideWindow);
+        const cage = laid.cageHz;
         const win: [number, number] = [
           roundEdge(window.floorHz ?? hz),
           roundEdge(window.ceilingHz ?? hz),
@@ -789,12 +862,10 @@ export function statedCandidates(
           upper: wi.upper,
           hz,
           cageHz: cage,
-          /* A stated cage is symmetric by construction and is NOT clipped to
-           * the window. Clipping it would drag the tune back toward an edge the
-           * designer deliberately stepped over, which is a second opinion about
-           * a position they already gave; inside the window it is the same
-           * shape a two-sided generated cage has (C-2). */
-          twoSided: true,
+          /* U-5c — CLIPPED PER AXIS, and `statedCage` above carries the whole
+           * argument: a position INSIDE its own window is caged exactly as a
+           * generated one, a position OUTSIDE it keeps U-5's unclipped cage. */
+          twoSided: laid.twoSided,
           order,
           alignment,
           windowHz: win,
@@ -815,7 +886,15 @@ export function statedCandidates(
             `${wi.lower}→${wi.upper} at ${formatEdge(hz)} Hz, ${alignment.kind}${alignment.order}: ` +
             `STATED BY THE DESIGNER (${settings.statedOn}), position ${stated.indexOf(hz) + 1} of ` +
             `${stated.length} on this handover; cage ${formatEdge(cage[0])}–${formatEdge(cage[1])} Hz ` +
-            '(one spacing wide, centred on the stated frequency and not clipped to the window); ' +
+            (laid.clipped === null
+              ? insideWindow
+                ? '(one spacing wide, centred on the stated frequency and inside the window on both sides)'
+                : '(one spacing wide, centred on the stated frequency and NOT clipped to the window: ' +
+                  'this position is past a limit, so an edge is not a second opinion to drag it back to)'
+              : `(one spacing wide, centred on the stated frequency and CLIPPED to the window at the ` +
+                `${laid.clipped === 'both' ? 'floor and the ceiling' : laid.clipped} — U-5c: this position ` +
+                'is past nothing, so it is caged exactly as a generated one)') +
+            '; ' +
             `window ${formatEdge(win[0])}–${formatEdge(win[1])} Hz — ` +
             (insideWindow
               ? 'the stated position is INSIDE it, so this candidate is treated exactly as a ' +

@@ -114,7 +114,7 @@ import { epdr } from './metrics/electrical.ts';
 import { LF_BUMP_VERSION } from './metrics/acoustic.ts';
 import { RESISTIVE_EQUIVALENT_VERSION } from './metrics/resistiveEquivalent.ts';
 import { DRIVE_EXCURSION_VERSION } from './metrics/driveExcursion.ts';
-import { BUILDABILITY_VERSION } from './metrics/buildability.ts';
+import { BUILDABILITY_VERSION, worstCapacitor } from './metrics/buildability.ts';
 import { LEVEL_WORK_VERSION, levelWorkOnNetlist, levelWorkOnWay, seriesInductanceByWay, seriesRMaxOhmOf } from '../levelWork.ts';
 import type { LevelWorkAnalysis } from './report.ts';
 import { BARRIER_DIP_REFINEMENT, busTopology, extendGridToSweepExtent, refinedSystemMinImpedanceOhm, systemMinImpedanceOhm } from '../netOptimizer.ts';
@@ -343,6 +343,13 @@ const FIELD: {
   /** V51 — the watts of the resistor M-A/part judged, at the CONTINUOUS rating
    *  (the M-A column), beside the judged value in `verdicts`. The V50 reading. */
   hottestAtRatingW: number | null;
+  /** U-5c — the VOLTS across the worst capacitor at the peak input, from the
+   *  same report again, and how many of this netlist's coils carry no DCR: a
+   *  lossless resonant branch has unbounded Q, so the two belong side by side. */
+  worstCapV: number | null;
+  worstCapId: string | null;
+  worstCapAtHz: number | null;
+  losslessCoils: number;
 }[] = NETLIST_KEYS.map((key) => {
   const r = report(key);
   const d = r.metrics.dissipation;
@@ -358,6 +365,17 @@ const FIELD: {
     levelWork: r.predesign.levelWork,
     seriesLByWay: seriesInductanceByWay(casus1Parts(key)),
     hottestAtRatingW: judgedEl?.watts ?? null,
+    ...((): { worstCapV: number | null; worstCapId: string | null; worstCapAtHz: number | null; losslessCoils: number } => {
+      const c = worstCapacitor(r.metrics.buildability?.capacitorLoads ?? []);
+      return {
+        worstCapV: c?.peakV ?? null,
+        worstCapId: c?.id ?? null,
+        worstCapAtHz: c?.atHz ?? null,
+        losslessCoils: casus1Parts(key).filter(
+          (p) => p.type === 'Inductor' && !((p.params.find((x) => x.name === 'DCR')?.value ?? 0) > 0),
+        ).length,
+      };
+    })(),
     lfBumpDb: r.metrics.lfBump[0]?.result.extraDb ?? null,
     lfLiftDb: r.metrics.lfBump[0]?.result.liftDb ?? null,
     lfResonantDb: r.metrics.lfBump[0]?.result.resonantDb ?? null,
@@ -4113,6 +4131,86 @@ describe('E-4 — the A5d.6 inversion is not the inverse of the M-D metric', () 
       const f = FIELD.find((x) => x.key === r.netlist)!;
       expect(f.lfResonantDb, `${r.netlist}: above its ceiling and no M-D reading`).not.toBeNull();
       expect(r.binnen_budget).toBe(f.lfResonantDb! <= E4.budget_dB);
+    }
+  });
+});
+
+/* ================================================================== *
+ * U-5c — DE SPANNING OVER DE CONDENSATOREN
+ * ================================================================== */
+
+describe('U-5c — de piekspanning over elke condensator, op élke bevroren netlist', () => {
+  const PEAK_V = FIELD.map((f) => f.verdicts.find((v) => v.gate === 'M-L')?.parameters?.peak_input_V).find(
+    (v): v is number => typeof v === 'number',
+  )!;
+
+  it('élke netlist levert een lezing, en de piekingang is de gestelde √(2·P_piek·R_nom)', () => {
+    expect(PEAK_V).toBeCloseTo(Math.sqrt(2 * 160 * 8), 2);
+    for (const f of FIELD) {
+      expect(f.worstCapV, `${f.key}: geen condensatorlezing`).not.toBeNull();
+      expect(f.worstCapId, `${f.key}: geen onderdeel`).not.toBeNull();
+      expect(f.worstCapAtHz, `${f.key}: geen frequentie`).not.toBeNull();
+    }
+  });
+
+  it('DE BEVINDING: op ÉLKE netlist van dit boek staat er MEER over een condensator dan de versterker levert', () => {
+    /* Het antwoord op de vuistregel, en het is niet subtiel: de piekingang is
+     * 50,6 V en de zwaarste condensator ziet overal meer. "De versterker levert
+     * 50 V" is dus geen antwoord op de vraag welke spanningsklasse je koopt —
+     * en dat is precies waarom deze kolom bestaat. */
+    for (const f of FIELD) expect(f.worstCapV!, `${f.key}`).toBeGreaterThan(PEAK_V);
+  });
+
+  it('DE TWEE POPULATIES, en zij mogen niet door elkaar gelezen worden', () => {
+    /* Een serieresonante tak met een VERLIESVRIJE spoel heeft een onbegrensde
+     * Q, dus de spanning over haar condensator loopt tot in de kilovolts. Dat
+     * is een eigenschap van een GEÏDEALISEERDE netlist en geen uitspraak over
+     * een bouwbaar ontwerp: de gedateerde corpora van vóór A5e.3 dragen geen
+     * DCR-model. Zonder deze scheiding leest het boek als "tot 30 kV", en dat
+     * zou een bouwer een onderdeel laten kopen voor een netwerk dat niemand
+     * bouwt. */
+    const copper = FIELD.filter((f) => f.losslessCoils === 0);
+    const idealised = FIELD.filter((f) => f.losslessCoils > 0);
+    expect(copper.length).toBeGreaterThan(0);
+    expect(idealised.length).toBeGreaterThan(0);
+    // De uitschieters zitten ALLEMAAL in de geïdealiseerde helft.
+    const worstCopper = Math.max(...copper.map((f) => f.worstCapV!));
+    for (const f of FIELD) {
+      if (f.worstCapV! <= worstCopper) continue;
+      expect(f.losslessCoils, `${f.key} leest ${f.worstCapV!.toFixed(0)} V zonder verliesvrije spoel`).toBeGreaterThan(0);
+    }
+    // En de levende netlists dragen allemaal koper, dus hun lezing is bruikbaar.
+    for (const f of FIELD.filter((x) => /^KAND_V2_\d+$/.test(x.key))) {
+      expect(f.losslessCoils, f.key).toBe(0);
+    }
+  });
+
+  it('het opgeschreven blok reproduceert uit een verse meting, per netlist', () => {
+    const BLOCK = (golden.manifest_en_geometrie as unknown as {
+      v50_bouwbaarheid?: { schatter: string; per_netlist: unknown[] };
+    }).v50_bouwbaarheid;
+    expect(BLOCK, 'de recorder schreef geen v50_bouwbaarheid-blok').toBeDefined();
+    const rec = BLOCK!.per_netlist as unknown as {
+      netlist: string;
+      zwaarste_C: string | null;
+      zwaarste_C_piek_V: number | null;
+      spoelen_zonder_DCR: number;
+    }[];
+    expect(BLOCK!.schatter).toBe(BUILDABILITY_VERSION);
+    for (const row of rec) {
+      const f = FIELD.find((x) => x.key === row.netlist)!;
+      expect(row.zwaarste_C, row.netlist).toBe(f.worstCapId);
+      expect(row.zwaarste_C_piek_V!, row.netlist).toBeCloseTo(f.worstCapV!, 1);
+      expect(row.spoelen_zonder_DCR, row.netlist).toBe(f.losslessCoils);
+    }
+  });
+
+  it('en er is GEEN poort op deze kolom — er is niets om tegen te vergelijken', () => {
+    /* De catalogus draagt `powerW` voor weerstanden en `maxCurrentA` voor
+     * kernspoelen en NIETS voor condensatoren. Een toelating verzinnen zou data
+     * verzinnen (A3h); een spanningsklasse is een TYPEbesluit van de bouwer. */
+    for (const f of FIELD) {
+      expect(f.verdicts.some((v) => (v.gate as string).includes('/V') || (v.gate as string) === 'M-V')).toBe(false);
     }
   });
 });

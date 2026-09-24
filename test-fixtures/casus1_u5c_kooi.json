@@ -1,0 +1,97 @@
+{
+ "_": "U-5c — DE TWEE koan677-LEVERINGEN VAN M-5, ÉÉN KEER HERDRAAID MET DE GEKNIPTE KOOI. Precies ÉÉN factor verschilt: de gestelde mid->tweeter-kooi ging van 2125-2385 Hz (U-5's ongeknipte vorm) naar 2200-2304 Hz (het venster zelf). De woofer->mid-kooi van 518,8 LR4 verandert niet (489,7-549,6 ligt al binnen 147,9-549,7), dus wat hier beweegt is de M-T-kooi en verder niets. Zelfde machine, zelfde seed, zelfde meetset, zelfde bank (m5-bench.ts): A5e.4 zegt dan dat het verschil de ingreep IS en geen ruis.",
+ "_gemeten_op": "2026-09-24",
+ "_hoe": "M5_REDO=1 M5_SET=koan677 M5_ONLY='<rij>' npx vite-node scripts/measure-m5-lr2.ts — de eigen weg van het script. De M-5-shards zijn ervoor weggezet en erna byte-identiek teruggezet (48 van 48), dus het GEDATEERDE M-5-record in casus1_m5_lr2.json is niet aangeraakt en wordt dat ook nooit: een tabel die een enginestand beschrijft wordt niet herschreven omdat die stand verandert.",
+ "_wat_het_zegt": "TWEE RIJEN EN TWEE VERSCHILLENDE ANTWOORDEN, en het tweede is de onaangename helft. (1) De LR2-SPIEGEL kruiste bij M-5 op 2829 Hz — 525 Hz BOVEN het breakup-plafond — en wordt met de dichte kooi GEWEIGERD, op de versterkervloer (2,54 tegen 2,60 ohm). Die levering leunde dus op het verlaten van het venster, en dat is precies wat deze reparatie wegneemt: M5-KAND is meetmateriaal en geen bouwkandidaat, nu gemeten in plaats van aangenomen. (2) De LR4-TEXTBOOKarm kruiste bij M-5 op 2232,6 Hz, BINNEN het plafond, en levert nog steeds — maar een ANDER en op vrijwel elke kolom slechter netwerk: fase 4,45 -> 15,04 graden, min |Z| 2,776 -> 2,585 ohm (haalt de vloer nog maar BINNEN de 2 %-meettolerantie), M-C -30,5 -> -25,6 dB, 76 -> 66 onderdelen. En `tuned` is 0 waar M-5's zeven leveringen 25 tot 42 lezen: de laatste structuurstap rolde terug en wat eruit komt is het netwerk zoals het stond. De kooi is een ZACHTE straf die het hele zoeklandschap vormt, niet alleen de landingsplaats, dus een rij die al binnen het nieuwe venster landde loopt er toch een ander pad doorheen. DE REPARATIE IS DUS NIET GRATIS, en dat hoort hier te staan en niet weggepoetst te worden.",
+ "kooi_voor_na": {
+  "mid_tweeter_gesteld_hz": 2251.4,
+  "venster_hz": [
+   2200.0,
+   2304.0
+  ],
+  "kooi_M5_hz": [
+   2125.0,
+   2385.0
+  ],
+  "kooi_U5c_hz": [
+   2200.0,
+   2304.0
+  ],
+  "woofer_mid_gesteld_hz": 518.8,
+  "woofer_mid_kooi_onveranderd_hz": [
+   489.7,
+   549.6
+  ]
+ },
+ "rijen": [
+  {
+   "rij": "woofer→mid 518.8 LR2 · mid→tweeter 2251.4 LR4 · stated · mirror",
+   "meetset": "koan677",
+   "M5_ongeknipte_kooi": {
+    "geleverd": true,
+    "seconden": 1491.1,
+    "rimpel_dB": 2.3424,
+    "fase_graden": 14.5933,
+    "evaluaties": 155037,
+    "tuned": 30,
+    "onderdelen": 55,
+    "min_Z_ohm": 2.5569,
+    "min_Z_binnen_tolerantie": true,
+    "M_C_dB": -30.221,
+    "M_A_part_W": 0.526,
+    "weigering": null
+   },
+   "U5c_geknipte_kooi": {
+    "geleverd": false,
+    "seconden": 687.5,
+    "rimpel_dB": 10.8412,
+    "fase_graden": 93.0558,
+    "evaluaties": 110616,
+    "tuned": 0,
+    "onderdelen": 0,
+    "min_Z_ohm": 2.5434,
+    "min_Z_binnen_tolerantie": false,
+    "M_C_dB": -23.604,
+    "M_A_part_W": 1.32,
+    "weigering": {
+     "kinds": [
+      "gate"
+     ],
+     "reason": "M-B/|Z|: 2.54 Ω falls below the stated floor of 2.60 Ω"
+    }
+   }
+  },
+  {
+   "rij": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4 · stated · textbook",
+   "meetset": "koan677",
+   "M5_ongeknipte_kooi": {
+    "geleverd": true,
+    "seconden": 13264.3,
+    "rimpel_dB": 2.304,
+    "fase_graden": 4.4506,
+    "evaluaties": 998775,
+    "tuned": 42,
+    "onderdelen": 76,
+    "min_Z_ohm": 2.776,
+    "min_Z_binnen_tolerantie": false,
+    "M_C_dB": -42.626,
+    "M_A_part_W": 1.545,
+    "weigering": null
+   },
+   "U5c_geknipte_kooi": {
+    "geleverd": true,
+    "seconden": 1745.9,
+    "rimpel_dB": 2.3297,
+    "fase_graden": 15.0372,
+    "evaluaties": 141981,
+    "tuned": 0,
+    "onderdelen": 66,
+    "min_Z_ohm": 2.5853,
+    "min_Z_binnen_tolerantie": true,
+    "M_C_dB": -34.256,
+    "M_A_part_W": 2.834,
+    "weigering": null
+   }
+  }
+ ]
+}

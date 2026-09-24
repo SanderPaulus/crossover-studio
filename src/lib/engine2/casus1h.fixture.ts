@@ -61,6 +61,7 @@ import { buildReport, type EngineV2Report, type FilterInput, type ReportSettings
 import { ctcKey, type Geometry } from './metrics/types.ts';
 import { peakInputVolts } from './metrics/driveExcursion.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
+import type { RequirementSettings } from './requirements/requirements.ts';
 import type { CoilDcrFit, CoilDcrModel } from '../coilDcr.ts';
 import {
   casus1AmpMinLoadOhm,
@@ -81,6 +82,7 @@ import {
   casus1QesMultiplierMax,
   casus1RippleStopFromLowestCrossing,
   casus1TargetCurve,
+  casus1MaxPhaseTrackingDeg,
   casus1ThermalDesignPowerW,
   casus1WiringByDriver,
   loadGolden,
@@ -242,6 +244,22 @@ export const CASUS1H_BUILDABILITY = casus1BuildabilitySettings(G1H_AS_1);
 export const CASUS1H_BUILDABILITY_ON_SEARCH: boolean = casus1BuildabilityOnSearch(G1H_AS_1);
 export const CASUS1H_CONTINUOUS_POWER_W: number | null = casus1ContinuousPowerW(G1H_AS_1);
 export const CASUS1H_THERMAL_DESIGN_POWER_W: number | null = casus1ThermalDesignPowerW(G1H_AS_1);
+/**
+ * U-5c — casus 1h states the SAME 30° as casus 1, read by casus 1's own reader
+ * from casus 1h's own block.
+ *
+ * AND ON THIS CASUS IT BITES EVERY ROW, on a figure H-1 itself calls the wrong
+ * one: the four frozen netlists read 35.9–77.5° woofer→mid on the STEERING
+ * delay and 9.2–16.6° on the delay the DSP block says to dial. That is H-1's
+ * open point and not a property of these designs; the manifest block
+ * (`fasesporing_max_bevinding_op_deze_casus`) carries the measurement, and
+ * `phaseTrackingRequirement.test.ts` pins both halves so it cannot go quiet.
+ */
+export const CASUS1H_MAX_PHASE_TRACKING_DEG: number | null = casus1MaxPhaseTrackingDeg(G1H_AS_1);
+export const CASUS1H_REQUIREMENTS: RequirementSettings =
+  CASUS1H_MAX_PHASE_TRACKING_DEG !== null
+    ? { maxPhaseTrackingDeg: CASUS1H_MAX_PHASE_TRACKING_DEG }
+    : {};
 export const CASUS1H_TARGET_CURVE: TargetCurve = casus1TargetCurve(G1H_AS_1);
 export const CASUS1H_WIRING: Record<string, WayWiring> = casus1WiringByDriver(G1H_AS_1);
 export const CASUS1H_MAX_CROSSING_HZ_BY_PAIR: Record<string, number> = casus1MaxCrossingHzByPair(G1H_AS_1);

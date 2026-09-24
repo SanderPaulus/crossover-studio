@@ -2054,6 +2054,19 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (24-09-2026, H-5): 206 bestanden (205 geslaagd, 1 overgeslagen),
+  2761 geslaagd, 19 overgeslagen, 3561 s (59 min 21) — GROEN.** Negentien is voor de ZEVENDE
+  geboekte run op rij EXACT het H-1-getal (H-1, H-2, H-4, H-4b, M-5, U-7, H-5), en dat is de claim:
+  H-5 voegt geen enkele getagde test toe. De telling sluit van de andere kant: 2761 + 19 = 2780,
+  precies de lokale volle-run-telling, dus CI slaat exact de vereniging van beide tags over en
+  verder niets. **En dat hier niets getagd hoeft te worden is een EIGENSCHAP van de sessie en geen
+  geluk** — de val waar dit boek bij V46, V49, B-1, M-2 en M-3 voor betaald heeft is een claim die
+  een FIT of een FFT VERS HERBEREKENT en naast een op een andere machine opgeschreven getal legt.
+  `h5TextbookPolarity.test.ts` doet niets van dien aard: hij leest bestanden, bronnen en zuivere
+  functies, en het zwaarste rekenwerk erin is een bus-walk over een netlist. **De twee nieuwe
+  BRONbestanden hebben om dezelfde reden geen eigen getagde claim:** `seriesProtection.ts` telt
+  onderdelen en `polarityArms.ts` vergelijkt booleans. Wie hier ooit een claim toevoegt die een
+  kromme reproduceert, vraagt zich eerst af of zij `[bytes]` hoort te dragen.
   **GEMETEN IN CI OP ubuntu/Node 22 (22-09-2026, U-7): 205 bestanden (204 geslaagd, 1 overgeslagen),
   2746 geslaagd, 19 overgeslagen, 3550 s (59 min 10) — GROEN.** Negentien is voor de ZESDE
   geboekte run op rij EXACT het H-1-getal (H-1, H-2, H-4, H-4b, M-5, U-7), en dat is de claim:

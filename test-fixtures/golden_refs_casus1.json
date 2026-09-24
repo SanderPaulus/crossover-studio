@@ -3954,90 +3954,6 @@
    "wm_fase_overlapvenster_V43": 73.61,
    "mt_fase_overlapvenster_V43": 5.98
   },
-  "KAND_V2_1": {
-   "klasse": "B",
-   "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): alleen de W-M-fasevelden bewogen, hun M-2b-lezing staat in _waarden_M2b_tot_M3.",
-   "minZ": 2.61,
-   "minEPDR": 1.44,
-   "dissipatie_pct": 53,
-   "grootste_R_W_bij_100W": 30.71,
-   "Qes_mult": 1.52,
-   "lf_bult_extra_dB": 1.44,
-   "lf_lift_dB": 2.05,
-   "lf_opslingering_dB": -0.61,
-   "V_tweeter_op_fs_dB": -30.57,
-   "rms_vlakheid_dB": 0.91,
-   "spl_venster_pm_dB": 1.47,
-   "wm_fase_oct": 10.57,
-   "mt_fase_oct": 8.41,
-   "wm_fase_oct_octaafgeknipt_V43": 12.83,
-   "mt_fase_oct_octaafgeknipt_V43": 8.04,
-   "wm_fase_overlapvenster_V43": 50.62,
-   "mt_fase_overlapvenster_V43": 8.41,
-   "_waarden_M2b_tot_M3": {
-    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
-    "wm_fase_oct": 10.26,
-    "wm_fase_oct_octaafgeknipt_V43": 12.58,
-    "wm_fase_overlapvenster_V43": 45.45
-   }
-  },
-  "KAND_V2_2": {
-   "klasse": "B",
-   "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): alleen de W-M-fasevelden bewogen, hun M-2b-lezing staat in _waarden_M2b_tot_M3.",
-   "minZ": 2.58,
-   "minEPDR": 1.29,
-   "dissipatie_pct": 51,
-   "grootste_R_W_bij_100W": 32.78,
-   "Qes_mult": 1.43,
-   "lf_bult_extra_dB": 0.7,
-   "lf_lift_dB": 1.64,
-   "lf_opslingering_dB": -0.94,
-   "V_tweeter_op_fs_dB": -33.55,
-   "rms_vlakheid_dB": 1,
-   "spl_venster_pm_dB": 2.08,
-   "wm_fase_oct": 13.12,
-   "mt_fase_oct": 5.41,
-   "wm_fase_oct_octaafgeknipt_V43": 13,
-   "mt_fase_oct_octaafgeknipt_V43": 5.22,
-   "wm_fase_overlapvenster_V43": 19.75,
-   "mt_fase_overlapvenster_V43": 5.41,
-   "_waarden_M2b_tot_M3": {
-    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
-    "wm_fase_oct": 12.89,
-    "wm_fase_oct_octaafgeknipt_V43": 12.77,
-    "wm_fase_overlapvenster_V43": 20.7
-   }
-  },
-  "KAND_V2_3": {
-   "klasse": "B",
-   "afhankelijkheid": "meting+netlist",
-   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): alleen de W-M-fasevelden bewogen, hun M-2b-lezing staat in _waarden_M2b_tot_M3.",
-   "minZ": 2.58,
-   "minEPDR": 2.1,
-   "dissipatie_pct": 52,
-   "grootste_R_W_bij_100W": 34.77,
-   "Qes_mult": 1.77,
-   "lf_bult_extra_dB": 3.63,
-   "lf_lift_dB": 2.52,
-   "lf_opslingering_dB": 1.11,
-   "V_tweeter_op_fs_dB": -38.57,
-   "rms_vlakheid_dB": 1.23,
-   "spl_venster_pm_dB": 2.03,
-   "wm_fase_oct": 32.02,
-   "mt_fase_oct": 8.05,
-   "wm_fase_oct_octaafgeknipt_V43": 33.23,
-   "mt_fase_oct_octaafgeknipt_V43": 6.7,
-   "wm_fase_overlapvenster_V43": 27.08,
-   "mt_fase_overlapvenster_V43": 8.05,
-   "_waarden_M2b_tot_M3": {
-    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
-    "wm_fase_oct": 31.37,
-    "wm_fase_oct_octaafgeknipt_V43": 32.19,
-    "wm_fase_overlapvenster_V43": 28.67
-   }
-  },
   "M5_KAND_1": {
    "klasse": "B",
    "afhankelijkheid": "meting+netlist",
@@ -4147,6 +4063,90 @@
    "mt_fase_oct_octaafgeknipt_V43": 73.59,
    "wm_fase_overlapvenster_V43": 22.92,
    "mt_fase_overlapvenster_V43": 73.86
+  },
+  "KAND_V2_1": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_1, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.61,
+   "minEPDR": 1.44,
+   "dissipatie_pct": 53,
+   "grootste_R_W_bij_100W": 30.71,
+   "Qes_mult": 1.52,
+   "lf_bult_extra_dB": 1.44,
+   "lf_lift_dB": 2.05,
+   "lf_opslingering_dB": -0.61,
+   "V_tweeter_op_fs_dB": -30.57,
+   "rms_vlakheid_dB": 0.91,
+   "spl_venster_pm_dB": 1.47,
+   "wm_fase_oct": 10.57,
+   "mt_fase_oct": 8.41,
+   "wm_fase_oct_octaafgeknipt_V43": 12.83,
+   "mt_fase_oct_octaafgeknipt_V43": 8.04,
+   "wm_fase_overlapvenster_V43": 50.62,
+   "mt_fase_overlapvenster_V43": 8.41,
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 10.26,
+    "wm_fase_oct_octaafgeknipt_V43": 12.58,
+    "wm_fase_overlapvenster_V43": 45.45
+   }
+  },
+  "KAND_V2_2": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_2, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 1.29,
+   "dissipatie_pct": 51,
+   "grootste_R_W_bij_100W": 32.78,
+   "Qes_mult": 1.43,
+   "lf_bult_extra_dB": 0.7,
+   "lf_lift_dB": 1.64,
+   "lf_opslingering_dB": -0.94,
+   "V_tweeter_op_fs_dB": -33.55,
+   "rms_vlakheid_dB": 1,
+   "spl_venster_pm_dB": 2.08,
+   "wm_fase_oct": 13.12,
+   "mt_fase_oct": 5.41,
+   "wm_fase_oct_octaafgeknipt_V43": 13,
+   "mt_fase_oct_octaafgeknipt_V43": 5.22,
+   "wm_fase_overlapvenster_V43": 19.75,
+   "mt_fase_overlapvenster_V43": 5.41,
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 12.89,
+    "wm_fase_oct_octaafgeknipt_V43": 12.77,
+    "wm_fase_overlapvenster_V43": 20.7
+   }
+  },
+  "KAND_V2_3": {
+   "klasse": "B",
+   "afhankelijkheid": "meting+netlist",
+   "klasse_toelichting": "Metrieken op de VASTE netlist manifest_en_geometrie.netlists.KAND_V2_3, een BESTAND in test-fixtures/casus1/. Het netwerk komt uit een v2-run (zie manifest_en_geometrie.v2_herkomst), maar de referentie hangt aan het bestand en niet aan die run — precies zoals de drie v1-kandidaten. Daarom klasse B en geen klasse C.",
+   "minZ": 2.58,
+   "minEPDR": 2.1,
+   "dissipatie_pct": 52,
+   "grootste_R_W_bij_100W": 34.77,
+   "Qes_mult": 1.77,
+   "lf_bult_extra_dB": 3.63,
+   "lf_lift_dB": 2.52,
+   "lf_opslingering_dB": 1.11,
+   "V_tweeter_op_fs_dB": -38.57,
+   "rms_vlakheid_dB": 1.23,
+   "spl_venster_pm_dB": 2.03,
+   "wm_fase_oct": 32.02,
+   "mt_fase_oct": 8.05,
+   "wm_fase_oct_octaafgeknipt_V43": 33.23,
+   "mt_fase_oct_octaafgeknipt_V43": 6.7,
+   "wm_fase_overlapvenster_V43": 27.08,
+   "mt_fase_overlapvenster_V43": 8.05,
+   "_waarden_M2b_tot_M3": {
+    "_": "De W-M-fasevelden van dit blok op de M-2b-set (13-09-2026 tot M-3), toen de mid nog Koan_M_merged.frd was. Brug, reproduceerbaar met casus1Manifest(golden, \"koan677\"). Alleen deze velden staan er: elk ander veld van dit blok reproduceert ONVERANDERD op de nieuwe set, en de mid-tweeter-fase beweegt exact nul omdat die overname boven de splice ligt.",
+    "wm_fase_oct": 31.37,
+    "wm_fase_oct_octaafgeknipt_V43": 32.19,
+    "wm_fase_overlapvenster_V43": 28.67
+   }
   }
  },
  "kruisvensters": {
@@ -5178,7 +5178,30 @@
    "rimpel_stopdoel_band_gesteld_door": "Sander Somers, 13-09-2026",
    "rimpel_stopdoel_band_motivering": "Het rimpel-STOPDOEL van de trapmethode (2,5 dB) wordt beoordeeld op de band vanaf de ONDERSTE overname-positie minus een halve octaaf tot de bovengrens van de geoordeelde band, en niet meer over de hele geoordeelde band. Sinds E-5 reikt die band tot f_p van de laagste weg, en onder de onderste overname IS de som de kast: haar vorm is de zaak van de plateau-doelvorm (A5e.2) en van M-D tegen het gestelde LF-budget, niet van het filter. De rimpel van het laag mag daarom niet beslissen wanneer de escalatie mag stoppen. Wat NIET verandert: de ontwerpstap mag daar nog steeds cut-banden leggen — daar komt de reflexpiek-val vandaan (E-5) — en de barriere blijft op de hele geoordeelde band drukken. De halve octaaf is een MARGE en geen frequentie: het kruisgebied houdt niet op bij de overname, en een stopdoel dat precies daar begon zou de rimpel van de eigen knie van de onderste flank erbuiten laten vallen.",
    "rimpel_stopdoel_band_invoerpunt": "De F4c-keuzesleutel `rippleTargetBand` (choice) draagt de bandkeuze; de band zelf reist als `rippleTargetBandHz` (polish), afgeleid door de KETEN uit de overname-posities die zij al heeft (src/lib/rippleTargetBand.ts). Absent = de geoordeelde band, byte-identiek — wat elke v1-run is.",
-   "rimpel_stopdoel_band_gemeten": "INERT OP CASUS 1, gemeten en niet beredeneerd (E-5b, kandidaat woofer->mid 156,7 LR4 · mid->tweeter 1744,8 LR4): beide armen leveren hetzelfde netwerk langs hetzelfde pad — 161554 evaluaties in beide, rimpel 2,214 dB, fase 4,1 graden, min |Z| 2,701 ohm, dezelfde gesnoeide onderdelen (C4, C·L4) en dezelfde toevoeging (C10); 1934 s tegen 1908 s, wat ruis is op een run van een half uur. De reden is dat het stopdoel op de HELE geoordeelde band al gehaald werd (2,21 <= 2,5), dus meets() was in beide armen op dezelfde punten waar. Het C-2-corpus is daarmee onaangeroerd, en dat is een meting en geen argument."
+   "rimpel_stopdoel_band_gemeten": "INERT OP CASUS 1, gemeten en niet beredeneerd (E-5b, kandidaat woofer->mid 156,7 LR4 · mid->tweeter 1744,8 LR4): beide armen leveren hetzelfde netwerk langs hetzelfde pad — 161554 evaluaties in beide, rimpel 2,214 dB, fase 4,1 graden, min |Z| 2,701 ohm, dezelfde gesnoeide onderdelen (C4, C·L4) en dezelfde toevoeging (C10); 1934 s tegen 1908 s, wat ruis is op een run van een half uur. De reden is dat het stopdoel op de HELE geoordeelde band al gehaald werd (2,21 <= 2,5), dus meets() was in beide armen op dezelfde punten waar. Het C-2-corpus is daarmee onaangeroerd, en dat is een meting en geen argument.",
+   "fasesporing_max_graden": 30,
+   "fasesporing_max_gesteld_door": "Sander Somers, 24-09-2026 (U-5c). De EIS bestaat sinds F3 met een instelveld, een registerrij, een guided-scherm en een lezer in de shortlist; wat ontbrak was dit getal, en H-5 noteerde dat als het enige wat er te doen viel.",
+   "fasesporing_max_motivering": "De grootste aanvaardbare gemiddelde |delta phi| over EEN overname, in graden, geoordeeld op M-K (V44: het gemiddelde over de TOEGELATEN punten - binnen de meetgeldigheid van beide takken, boven de stille-geestvloer, en binnen het overlapvenster). 30 graden is de richtlijn die de literatuur noemt voor fasesporing door het kruisgebied; hij is GESTELD en niet afgeleid, precies zoals het LF-budget en de Q_es-grens dat zijn. PER OVERNAME en nooit als gemiddelde over de overnames: een ontwerp dat op de ene overname goed spoort en op de andere slecht heeft de eis niet gehaald, en een enkel gemiddeld getal zou dat doorlaten (dat is hoe evaluateRequirements hem al leest).",
+   "fasesporing_max_soort": "EIS en GEEN POORT, en dat verschil is hier het opschrijven waard. Een poort is een BESCHERMING die de relaxatieladder nooit mag verruimen (A5e.1); fasesporing is smaak, staat in RELAXABLE naast het SPL-venster, en de ladder MAG haar verruimen als er anders te weinig kandidaten haalbaar zijn - met het etiket dat dan met de rijen meereist. Wie hem als onverruimbare grens wil, stelt dat apart; vandaag is hij wat F3 van hem maakte.",
+   "fasesporing_max_invoerpunt": "A5a-veld 'Max phase tracking' (App.tsx, Engine v2-instellingen) -> v2ScanSettings.requirements.maxPhaseTrackingDeg -> buildShortlist({ requirements }). Langs hetzelfde pad als het SPL-venster; de fixture leest hem hiervandaan (casus1MaxPhaseTrackingDeg) en typt hem nergens over (P6). Leeg = niet beoordeeld (P4): M-K wordt dan gerapporteerd zonder te oordelen, precies zoals tot U-5c.",
+   "fasesporing_max_haalbaar_en_niet_vacuum": "HAALBAAR: alle drie de referentiefilters halen hem op BEIDE overnames (HUIDIG 20,61 / 7,04; KAND_A 4,63 / 3,92; KAND_B 2,83 / 3,39 graden) - de slechtste lezing van de ontwerper zelf is 20,61 en dat is 9,4 graden marge. NIET VACUUM: 25 van de 180 netlists van dit casusboek gaan er op minstens een overname overheen, het levende corpus draagt er een (KAND_V2_3, woofer|mid 32,02) en vier van de vijf M5-netlists vallen af. Beide helften zijn GEMETEN uit v44_fasematen en niet beredeneerd; zie fasesporing_max_gemeten.",
+   "fasesporing_max_gemeten": "WAT 30 GRADEN OVER DIT BOEK ZEGT, gemeten 24-09-2026 uit de opgenomen M-K-kolommen van v44_fasematen (geen nieuwe run, geen herbeoordeling van een bevroren corpus). woofer|mid: 177 rijen, mediaan 14,36, spreiding 1,79-95,29, twintig boven 30. mid|tweeter: 180 rijen, mediaan 10,05, spreiding 3,10-97,92, zeven boven 30. Per NETLIST (de eis oordeelt per overname, dus een netlist valt af zodra een van haar overnames eroverheen gaat): 25 van de 180. LET OP DAT DIT BOEK GROEIT: H-5 noteerde op 24-09-2026 nog 173 woofer|mid-rijen met mediaan 15,2 en 149 erbinnen; M-5 voegde vijf netlists toe en sindsdien zijn het er 177 met mediaan 14,36 en 157 erbinnen. Een telling van dit boek is deels een corpusgrootte.",
+   "fasesporing_max_wat_hij_zou_hebben_gevangen": "DE SCHERPSTE LEZING, en zij is een bevestiging van M-5: van de ZEVEN geleverde rijen van de M-5-tabel zouden er VIJF op deze eis zijn afgevallen, en het zijn precies de vijf die M-5 als spiegelarmen boekte - woofer|mid 92,76 / 95,29 / 80,96 / 20,68 en mid|tweeter 31,50 / 73,86. De twee die hem halen zijn de twee LR4-textbookarmen (15,70 / 5,38 en 4,77 / 4,40). M-5 schreef dat de LR2-spiegels 'winnen op de rekening en het betalen in fasetracking'; dit getal zegt hoeveel dat kost, in de eenheid waarin het betaald wordt.",
+   "gemeten_M_K_referentiefilters_graden": {
+    "HUIDIG": {
+     "woofer|mid": 20.61,
+     "mid|tweeter": 7.04
+    },
+    "KAND_A": {
+     "woofer|mid": 4.63,
+     "mid|tweeter": 3.92
+    },
+    "KAND_B": {
+     "woofer|mid": 2.83,
+     "mid|tweeter": 3.39
+    }
+   },
+   "_bij_de_M_K_reeks": "Deze reeks staat hier om dezelfde reden als gemeten_minZ_HUIDIG_ohm en gemeten_M_C_referentiefilters_dB: een gestelde eis hoort naast de meting te staan waartegen zij gesteld is. De waarden komen uit v44_fasematen (M-K, phase-integration/2.0, phase-admission/1.0) op de standaardmeetset."
   },
   "driverkaart": {
    "_": "DRIVERKAART (V49) — PROJECTINVOER van de ontwerper, overgenomen uit de FABRIKANTSDATASHEETS; geen meting en geen afleiding. Dezelfde soort invoer als gestelde_eisen en zij erft daarom de klasse van manifest_en_geometrie. Deze getallen staan UITSLUITEND hier: niet in src/lib/engine2/, niet als default, niet als constante in een fixture (P6). De fixture leest ze via casus1DriverCards() en de app via het A5a-formulier (Sd/Xmax op de Setup-tab, Bl/M_ms in het Engine v2-meetblok). F_s/f_c, Q_ms, Q_es en Z_max komen NIET van de kaart maar uit de gemeten sweep in situ — de ingest heeft ze (z-resonance 1.1 draagt sinds V49 Small's Q_ms per motionele piek).",
@@ -15274,7 +15297,7 @@
    ]
   },
   "v44_fasematen": {
-   "_": "V44 — WELKE PUNTEN EEN FASE-OORDEEL DRAGEN. `mk_dB` is M-K: het gemiddelde |relatieve fase| over de punten die alle drie de gronden doorstaan (binnen de meetgeldigheid van beide takken, beide takken boven de stille-geestvloer, en binnen het overlapvenster). `octaafgeknipt_dB` is wat `system.phaseTracking` tot V43 afdrukte (±1 octaaf rond het kruispunt, geknipt op meetgeldigheid) en `overlapvenster_dB` is wat de TUNER tot V43 las (elk punt binnen het overlapvenster, ongeknipt). Beide laatste zijn CONTROLEKOLOMMEN: geen poort, geen eis, geen sorteersleutel leest ze. Zij staan er omdat hun onderlinge tegenspraak het bewijsmateriaal onder V44 is. De eenheid is graden; de sleutelnamen zeggen dB en dat is een vergissing in de naam die niet in de waarde zit. Zie casusboek V40 en V44. SINDS M-3 gemeten op de HERMERGDE MID (mid_hor_0_merged.frd): elke woofer|mid-rij leest een andere fase, elke mid|tweeter-rij exact dezelfde, en de M-2b-lezing van de bewogen rijen staat in _waarden_M2b_tot_M3.",
+   "_": "V44 — WELKE PUNTEN EEN FASE-OORDEEL DRAGEN. `mk_dB` is M-K: het gemiddelde |relatieve fase| over de punten die alle drie de gronden doorstaan (binnen de meetgeldigheid van beide takken, beide takken boven de stille-geestvloer, en binnen het overlapvenster). `octaafgeknipt_dB` is wat `system.phaseTracking` tot V43 afdrukte (±1 octaaf rond het kruispunt, geknipt op meetgeldigheid) en `overlapvenster_dB` is wat de TUNER tot V43 las (elk punt binnen het overlapvenster, ongeknipt). Beide laatste zijn CONTROLEKOLOMMEN: geen poort, geen eis, geen sorteersleutel leest ze. Zij staan er omdat hun onderlinge tegenspraak het bewijsmateriaal onder V44 is. De eenheid is graden; de sleutelnamen zeggen dB en dat is een vergissing in de naam die niet in de waarde zit. Zie casusboek V40 en V44.",
    "metriek_versie": "phase-integration/2.0",
    "toelating_versie": "phase-admission/1.0",
    "per_netlist": [
@@ -35104,8 +35127,8 @@
    ]
   },
   "v50_bouwbaarheid": {
-   "_": "V50 — BOUWBAARHEID op élke bevroren netlist: het vermogen in de HEETSTE discrete weerstand (M-A, IEC-gewogen bij het continue vermogen; de weerstand met de minste marge tegen zijn toegestane waarde) tegen klasse × marge (poort M-A/part), en de PIEKSTROOM door de drukste spoel bij de piekingang (poort M-L, ongewogen). Afgeleid; frozenNetlistGates.test.ts herrekent het. Zie gestelde_eisen.weerstandsklasse_* en .spoelklasse_* voor de eisen en de bevindingen erbij.",
-   "schatter": "buildability/1.0",
+   "_": "V50 — BOUWBAARHEID op élke bevroren netlist: het vermogen in de HEETSTE discrete weerstand (M-A, IEC-gewogen bij het continue vermogen; de weerstand met de minste marge tegen zijn toegestane waarde) tegen klasse × marge (poort M-A/part), en de PIEKSTROOM door de drukste spoel bij de piekingang (poort M-L, ongewogen), en sinds U-5c de PIEKSPANNING over de zwaarste condensator bij diezelfde piekingang — die laatste zonder poort en zonder toegestane waarde, want de catalogus draagt geen spanningsklasse voor condensatoren. Afgeleid; frozenNetlistGates.test.ts herrekent het. Zie gestelde_eisen.weerstandsklasse_* en .spoelklasse_* voor de eisen en de bevindingen erbij.",
+   "schatter": "buildability/1.1",
    "weerstandsklasse_W": 10,
    "weerstandsmarge": 0.5,
    "toegestaan_W": 5,
@@ -35114,6 +35137,12 @@
    "oordeel_bij_W": 10,
    "spoelklasse_A": null,
    "V_piek_V": 50.6,
+   "_bij_de_condensatorreeks": "DE REEKS VALT IN TWEE POPULATIES EN ZIJ MOGEN NIET DOOR ELKAAR GELEZEN WORDEN. Een serieresonante tak met een VERLIESVRIJE spoel heeft een onbegrensde Q, dus de spanning over haar condensator loopt tot in de kilovolts — dat is een eigenschap van een geïdealiseerde netlist en geen uitspraak over een bouwbaar ontwerp. De gedateerde corpora van vóór A5e.3 dragen geen DCR-model (kolom spoelen_zonder_DCR > 0); élke netlist mét koper leest een getal dat een bouwer kan gebruiken. Lees hoogste_C_piek_V_met_koper.",
+   "hoogste_C_piek_V_met_koper": 642.6,
+   "hoogste_C_piek_V_geidealiseerd": 30109.85,
+   "netlists_met_koper": 40,
+   "netlists_geidealiseerd": 140,
+   "netlists_met_C_boven_V_piek": 180,
    "gewapend_op_de_zoektocht": true,
    "levend_corpus_netlists": 3,
    "levend_corpus_eroverheen": 0,
@@ -35314,7 +35343,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 15.58,
      "drukste_spoel_bij_hz": 242,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 51,
+     "zwaarste_C_piek_V": 94.08,
+     "zwaarste_C_bij_hz": 364,
+     "spoelen": 10,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "KAND_A",
@@ -35328,7 +35363,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 15.96,
      "drukste_spoel_bij_hz": 289,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.41,
+     "zwaarste_C_piek_V": 82.6,
+     "zwaarste_C_bij_hz": 971,
+     "spoelen": 10,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "KAND_B",
@@ -35342,7 +35383,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 15.44,
      "drukste_spoel_bij_hz": 223,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 42,
+     "zwaarste_C_piek_V": 89.54,
+     "zwaarste_C_bij_hz": 469,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "V28_KAND_1",
@@ -35356,7 +35403,13 @@
      "drukste_spoel": "B·L5",
      "drukste_spoel_piek_A": 3075.4,
      "drukste_spoel_bij_hz": 3751,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 12.53,
+     "zwaarste_C_piek_V": 12486.17,
+     "zwaarste_C_bij_hz": 3751,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_2",
@@ -35370,7 +35423,13 @@
      "drukste_spoel": "B·L5",
      "drukste_spoel_piek_A": 5128.18,
      "drukste_spoel_bij_hz": 3915,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 10.86,
+     "zwaarste_C_piek_V": 30109.85,
+     "zwaarste_C_bij_hz": 3915,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_3",
@@ -35384,7 +35443,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 35.28,
      "drukste_spoel_bij_hz": 408,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 111,
+     "zwaarste_C_piek_V": 95.8,
+     "zwaarste_C_bij_hz": 393,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_4",
@@ -35398,7 +35463,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 32.24,
      "drukste_spoel_bij_hz": 492,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 20.6,
+     "zwaarste_C_piek_V": 96.11,
+     "zwaarste_C_bij_hz": 1028,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_5",
@@ -35412,7 +35483,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 41.05,
      "drukste_spoel_bij_hz": 393,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 125,
+     "zwaarste_C_piek_V": 101.8,
+     "zwaarste_C_bij_hz": 380,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_6",
@@ -35426,7 +35503,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 36.29,
      "drukste_spoel_bij_hz": 445,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 24.2,
+     "zwaarste_C_piek_V": 97.46,
+     "zwaarste_C_bij_hz": 948,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_7",
@@ -35440,7 +35523,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 45.24,
      "drukste_spoel_bij_hz": 384,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 135,
+     "zwaarste_C_piek_V": 105.75,
+     "zwaarste_C_bij_hz": 371,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_8",
@@ -35454,7 +35543,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 38.15,
      "drukste_spoel_bij_hz": 462,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 26.5,
+     "zwaarste_C_piek_V": 109.23,
+     "zwaarste_C_bij_hz": 944,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_9",
@@ -35468,7 +35563,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 43.4,
      "drukste_spoel_bij_hz": 447,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 28.3,
+     "zwaarste_C_piek_V": 115.28,
+     "zwaarste_C_bij_hz": 891,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V28_KAND_10",
@@ -35482,7 +35583,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 47.22,
      "drukste_spoel_bij_hz": 434,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 29.9,
+     "zwaarste_C_piek_V": 115.6,
+     "zwaarste_C_bij_hz": 854,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_1",
@@ -35496,7 +35603,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 23.5,
      "drukste_spoel_bij_hz": 380,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 31.48,
+     "zwaarste_C_piek_V": 169.68,
+     "zwaarste_C_bij_hz": 384,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_2",
@@ -35510,7 +35623,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.37,
      "drukste_spoel_bij_hz": 386,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 42.07,
+     "zwaarste_C_piek_V": 124.35,
+     "zwaarste_C_bij_hz": 377,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_3",
@@ -35524,7 +35643,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 16.03,
      "drukste_spoel_bij_hz": 420,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.69,
+     "zwaarste_C_piek_V": 111.87,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_4",
@@ -35538,7 +35663,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 15.51,
      "drukste_spoel_bij_hz": 424,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.48,
+     "zwaarste_C_piek_V": 106.27,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V30_KAND_5",
@@ -35552,7 +35683,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.7,
      "drukste_spoel_bij_hz": 242,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 26.34,
+     "zwaarste_C_piek_V": 118.52,
+     "zwaarste_C_bij_hz": 962,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_6",
@@ -35566,7 +35703,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.31,
      "drukste_spoel_bij_hz": 86,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 38.21,
+     "zwaarste_C_piek_V": 104.1,
+     "zwaarste_C_bij_hz": 375,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_7",
@@ -35580,7 +35723,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 17.56,
      "drukste_spoel_bij_hz": 426,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 19.13,
+     "zwaarste_C_piek_V": 198.78,
+     "zwaarste_C_bij_hz": 428,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_8",
@@ -35594,7 +35743,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 15.45,
      "drukste_spoel_bij_hz": 1244,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 27.16,
+     "zwaarste_C_piek_V": 98.62,
+     "zwaarste_C_bij_hz": 432,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V30_KAND_9",
@@ -35608,7 +35763,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.02,
      "drukste_spoel_bij_hz": 210,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.7,
+     "zwaarste_C_piek_V": 129.36,
+     "zwaarste_C_bij_hz": 913,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V30_KAND_10",
@@ -35622,7 +35783,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 19.99,
      "drukste_spoel_bij_hz": 412,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 24.36,
+     "zwaarste_C_piek_V": 178.81,
+     "zwaarste_C_bij_hz": 416,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V32_KAND_1",
@@ -35636,7 +35803,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 16.03,
      "drukste_spoel_bij_hz": 420,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.69,
+     "zwaarste_C_piek_V": 111.87,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V32_KAND_2",
@@ -35650,7 +35823,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 15.51,
      "drukste_spoel_bij_hz": 424,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.48,
+     "zwaarste_C_piek_V": 106.27,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V32_KAND_3",
@@ -35664,7 +35843,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.7,
      "drukste_spoel_bij_hz": 242,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 26.34,
+     "zwaarste_C_piek_V": 118.52,
+     "zwaarste_C_bij_hz": 962,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V32_KAND_4",
@@ -35678,7 +35863,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 17.56,
      "drukste_spoel_bij_hz": 426,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 19.13,
+     "zwaarste_C_piek_V": 198.78,
+     "zwaarste_C_bij_hz": 428,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V32_KAND_5",
@@ -35692,7 +35883,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 15.45,
      "drukste_spoel_bij_hz": 1244,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 27.16,
+     "zwaarste_C_piek_V": 98.62,
+     "zwaarste_C_bij_hz": 432,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V32_KAND_6",
@@ -35706,7 +35903,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.02,
      "drukste_spoel_bij_hz": 210,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.7,
+     "zwaarste_C_piek_V": 129.36,
+     "zwaarste_C_bij_hz": 913,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V32_KAND_7",
@@ -35720,7 +35923,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 19.99,
      "drukste_spoel_bij_hz": 412,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 24.36,
+     "zwaarste_C_piek_V": 178.81,
+     "zwaarste_C_bij_hz": 416,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_1",
@@ -35734,7 +35943,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.3,
      "drukste_spoel_bij_hz": 133,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.46,
+     "zwaarste_C_piek_V": 141.69,
+     "zwaarste_C_bij_hz": 830,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_2",
@@ -35748,7 +35963,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 17.57,
      "drukste_spoel_bij_hz": 132,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 26.11,
+     "zwaarste_C_piek_V": 133.12,
+     "zwaarste_C_bij_hz": 862,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_3",
@@ -35762,7 +35983,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 21.29,
      "drukste_spoel_bij_hz": 389,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 37.8,
+     "zwaarste_C_piek_V": 125.84,
+     "zwaarste_C_bij_hz": 380,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_4",
@@ -35776,7 +36003,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.03,
      "drukste_spoel_bij_hz": 132,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 27.32,
+     "zwaarste_C_piek_V": 113.84,
+     "zwaarste_C_bij_hz": 971,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_5",
@@ -35790,7 +36023,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.35,
      "drukste_spoel_bij_hz": 132,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.89,
+     "zwaarste_C_piek_V": 126.15,
+     "zwaarste_C_bij_hz": 926,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_6",
@@ -35804,7 +36043,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 21.8,
      "drukste_spoel_bij_hz": 378,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 46.35,
+     "zwaarste_C_piek_V": 115.82,
+     "zwaarste_C_bij_hz": 368,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_7",
@@ -35818,7 +36063,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 15.43,
      "drukste_spoel_bij_hz": 1232,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.45,
+     "zwaarste_C_piek_V": 103.04,
+     "zwaarste_C_bij_hz": 401,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V33_SWEEP_KAND_8",
@@ -35832,7 +36083,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 16.34,
      "drukste_spoel_bij_hz": 341,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 29.12,
+     "zwaarste_C_piek_V": 122.62,
+     "zwaarste_C_bij_hz": 416,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V33_SWEEP_KAND_9",
@@ -35846,7 +36103,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 16.52,
      "drukste_spoel_bij_hz": 418,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 21.99,
+     "zwaarste_C_piek_V": 162.15,
+     "zwaarste_C_bij_hz": 426,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_SWEEP_KAND_10",
@@ -35860,7 +36123,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 17.19,
      "drukste_spoel_bij_hz": 420,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.07,
+     "zwaarste_C_piek_V": 120.88,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_KAND_1",
@@ -35874,7 +36143,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.41,
      "drukste_spoel_bij_hz": 399,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 41.69,
+     "zwaarste_C_piek_V": 122.41,
+     "zwaarste_C_bij_hz": 388,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_KAND_2",
@@ -35888,7 +36163,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 23.63,
      "drukste_spoel_bij_hz": 382,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 36.64,
+     "zwaarste_C_piek_V": 145.68,
+     "zwaarste_C_bij_hz": 388,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_KAND_3",
@@ -35902,7 +36183,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 15.62,
      "drukste_spoel_bij_hz": 1136,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.69,
+     "zwaarste_C_piek_V": 105.04,
+     "zwaarste_C_bij_hz": 406,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V33_KAND_4",
@@ -35916,7 +36203,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 15.54,
      "drukste_spoel_bij_hz": 422,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.42,
+     "zwaarste_C_piek_V": 106.77,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_KAND_5",
@@ -35930,7 +36223,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.39,
      "drukste_spoel_bij_hz": 88,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.2,
+     "zwaarste_C_piek_V": 135.81,
+     "zwaarste_C_bij_hz": 891,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_KAND_6",
@@ -35944,7 +36243,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 15.85,
      "drukste_spoel_bij_hz": 410,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 29.1,
+     "zwaarste_C_piek_V": 124.61,
+     "zwaarste_C_bij_hz": 416,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V33_KAND_7",
@@ -35958,7 +36263,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.34,
      "drukste_spoel_bij_hz": 222,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.72,
+     "zwaarste_C_piek_V": 123.47,
+     "zwaarste_C_bij_hz": 953,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_KAND_8",
@@ -35972,7 +36283,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 16.28,
      "drukste_spoel_bij_hz": 401,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 26.49,
+     "zwaarste_C_piek_V": 141.3,
+     "zwaarste_C_bij_hz": 406,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V33_KAND_9",
@@ -35986,7 +36303,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.33,
      "drukste_spoel_bij_hz": 243,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 27.11,
+     "zwaarste_C_piek_V": 109.05,
+     "zwaarste_C_bij_hz": 1018,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V33_KAND_10",
@@ -36000,7 +36323,13 @@
      "drukste_spoel": "B·L5",
      "drukste_spoel_piek_A": 16.34,
      "drukste_spoel_bij_hz": 3460,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 5.07,
+     "zwaarste_C_piek_V": 261.47,
+     "zwaarste_C_bij_hz": 3427,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V34_KAND_1",
@@ -36014,7 +36343,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.24,
      "drukste_spoel_bij_hz": 132,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.69,
+     "zwaarste_C_piek_V": 130.09,
+     "zwaarste_C_bij_hz": 900,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V34_KAND_2",
@@ -36028,7 +36363,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.41,
      "drukste_spoel_bij_hz": 399,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 41.69,
+     "zwaarste_C_piek_V": 122.41,
+     "zwaarste_C_bij_hz": 388,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V34_KAND_3",
@@ -36042,7 +36383,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 23.63,
      "drukste_spoel_bij_hz": 382,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 36.64,
+     "zwaarste_C_piek_V": 145.68,
+     "zwaarste_C_bij_hz": 388,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V34_KAND_4",
@@ -36056,7 +36403,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.91,
      "drukste_spoel_bij_hz": 401,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 39.35,
+     "zwaarste_C_piek_V": 128.76,
+     "zwaarste_C_bij_hz": 391,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V34_KAND_5",
@@ -36070,7 +36423,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 17.08,
      "drukste_spoel_bij_hz": 422,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 27.11,
+     "zwaarste_C_piek_V": 138.01,
+     "zwaarste_C_bij_hz": 428,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V34_KAND_6",
@@ -36084,7 +36443,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.31,
      "drukste_spoel_bij_hz": 243,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 25.05,
+     "zwaarste_C_piek_V": 139.07,
+     "zwaarste_C_bij_hz": 870,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V34_KAND_7",
@@ -36098,7 +36463,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 15.62,
      "drukste_spoel_bij_hz": 420,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.12,
+     "zwaarste_C_piek_V": 110.47,
+     "zwaarste_C_bij_hz": 408,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V34_KAND_8",
@@ -36112,7 +36483,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.22,
      "drukste_spoel_bij_hz": 243,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 27.16,
+     "zwaarste_C_piek_V": 111.11,
+     "zwaarste_C_bij_hz": 1009,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V34_KAND_9",
@@ -36126,7 +36503,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 17.04,
      "drukste_spoel_bij_hz": 373,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.54,
+     "zwaarste_C_piek_V": 104.05,
+     "zwaarste_C_bij_hz": 406,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V34_KAND_10",
@@ -36140,7 +36523,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 15.61,
      "drukste_spoel_bij_hz": 971,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 25.62,
+     "zwaarste_C_piek_V": 144.83,
+     "zwaarste_C_bij_hz": 386,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V37_KAND_1",
@@ -36154,7 +36543,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.41,
      "drukste_spoel_bij_hz": 399,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 41.69,
+     "zwaarste_C_piek_V": 122.41,
+     "zwaarste_C_bij_hz": 388,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V37_KAND_2",
@@ -36168,7 +36563,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 23.63,
      "drukste_spoel_bij_hz": 382,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 36.64,
+     "zwaarste_C_piek_V": 145.68,
+     "zwaarste_C_bij_hz": 388,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V37_KAND_3",
@@ -36182,7 +36583,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.05,
      "drukste_spoel_bij_hz": 91,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 24.75,
+     "zwaarste_C_piek_V": 142.35,
+     "zwaarste_C_bij_hz": 870,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V37_KAND_4",
@@ -36196,7 +36603,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 15.52,
      "drukste_spoel_bij_hz": 1191,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.05,
+     "zwaarste_C_piek_V": 102.18,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V37_KAND_5",
@@ -36210,7 +36623,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.04,
      "drukste_spoel_bij_hz": 243,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 27.72,
+     "zwaarste_C_piek_V": 108.79,
+     "zwaarste_C_bij_hz": 1004,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V37_KAND_6",
@@ -36224,7 +36643,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 16.49,
      "drukste_spoel_bij_hz": 416,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 30.28,
+     "zwaarste_C_piek_V": 120.52,
+     "zwaarste_C_bij_hz": 426,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V37_KAND_7",
@@ -36238,7 +36663,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.07,
      "drukste_spoel_bij_hz": 243,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 27.17,
+     "zwaarste_C_piek_V": 111.53,
+     "zwaarste_C_bij_hz": 994,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V37_KAND_8",
@@ -36252,7 +36683,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 15.59,
      "drukste_spoel_bij_hz": 1147,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.46,
+     "zwaarste_C_piek_V": 107.32,
+     "zwaarste_C_bij_hz": 406,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V37_KAND_9",
@@ -36266,7 +36703,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 16.24,
      "drukste_spoel_bij_hz": 404,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 23.93,
+     "zwaarste_C_piek_V": 156.86,
+     "zwaarste_C_bij_hz": 408,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V37_KAND_10",
@@ -36280,7 +36723,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 13.71,
      "drukste_spoel_bij_hz": 467,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 9.96,
+     "zwaarste_C_piek_V": 289.97,
+     "zwaarste_C_bij_hz": 467,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V38FIX_KAND_1",
@@ -36294,7 +36743,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 17.24,
      "drukste_spoel_bij_hz": 397,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.31,
+     "zwaarste_C_piek_V": 120.55,
+     "zwaarste_C_bij_hz": 406,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V38FIX_KAND_2",
@@ -36308,7 +36763,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 18.39,
      "drukste_spoel_bij_hz": 406,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 30.33,
+     "zwaarste_C_piek_V": 126.74,
+     "zwaarste_C_bij_hz": 399,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V38FIX_KAND_3",
@@ -36322,7 +36783,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 18.61,
      "drukste_spoel_bij_hz": 418,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.13,
+     "zwaarste_C_piek_V": 133.13,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V38FIX_KAND_4",
@@ -36336,7 +36803,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.68,
      "drukste_spoel_bij_hz": 406,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 45.5,
+     "zwaarste_C_piek_V": 115.9,
+     "zwaarste_C_bij_hz": 397,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V38FIX_KAND_5",
@@ -36350,7 +36823,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.26,
      "drukste_spoel_bij_hz": 132,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 24.74,
+     "zwaarste_C_piek_V": 164.41,
+     "zwaarste_C_bij_hz": 737,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V38FIX_KAND_6",
@@ -36364,7 +36843,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 21.49,
      "drukste_spoel_bij_hz": 397,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 28.06,
+     "zwaarste_C_piek_V": 165.8,
+     "zwaarste_C_bij_hz": 401,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V38FIX_KAND_7",
@@ -36378,7 +36863,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 25.93,
      "drukste_spoel_bij_hz": 397,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 49.6,
+     "zwaarste_C_piek_V": 125.89,
+     "zwaarste_C_bij_hz": 388,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V38FIX_KAND_8",
@@ -36392,7 +36883,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.79,
      "drukste_spoel_bij_hz": 384,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 31.52,
+     "zwaarste_C_piek_V": 106.75,
+     "zwaarste_C_bij_hz": 410,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V38FIX_KAND_9",
@@ -36406,7 +36903,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 23.61,
      "drukste_spoel_bij_hz": 401,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 35.46,
+     "zwaarste_C_piek_V": 142.26,
+     "zwaarste_C_bij_hz": 404,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V38FIX_KAND_10",
@@ -36420,7 +36923,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.87,
      "drukste_spoel_bij_hz": 242,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 26.24,
+     "zwaarste_C_piek_V": 125.56,
+     "zwaarste_C_bij_hz": 917,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V41_KAND_1",
@@ -36434,7 +36943,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 14.83,
      "drukste_spoel_bij_hz": 74,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 42.31,
+     "zwaarste_C_piek_V": 99.18,
+     "zwaarste_C_bij_hz": 375,
+     "spoelen": 10,
+     "spoelen_zonder_DCR": 10
     },
     {
      "netlist": "V41_KAND_2",
@@ -36448,7 +36963,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.71,
      "drukste_spoel_bij_hz": 77,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 41.04,
+     "zwaarste_C_piek_V": 101.42,
+     "zwaarste_C_bij_hz": 414,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V41_KAND_3",
@@ -36462,7 +36983,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 17.41,
      "drukste_spoel_bij_hz": 317,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 38.91,
+     "zwaarste_C_piek_V": 89.48,
+     "zwaarste_C_bij_hz": 480,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V41_KAND_4",
@@ -36476,7 +37003,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 12.95,
      "drukste_spoel_bij_hz": 76,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 42.91,
+     "zwaarste_C_piek_V": 94.9,
+     "zwaarste_C_bij_hz": 397,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V41_KAND_5",
@@ -36490,7 +37023,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.45,
      "drukste_spoel_bij_hz": 76,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 33.4,
+     "zwaarste_C_piek_V": 98.65,
+     "zwaarste_C_bij_hz": 443,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V41_KAND_6",
@@ -36504,7 +37043,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 13.97,
      "drukste_spoel_bij_hz": 445,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 43.7,
+     "zwaarste_C_piek_V": 105.42,
+     "zwaarste_C_bij_hz": 424,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V41_KAND_7",
@@ -36518,7 +37063,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 19.93,
      "drukste_spoel_bij_hz": 377,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.32,
+     "zwaarste_C_piek_V": 679.59,
+     "zwaarste_C_bij_hz": 4581,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 11
     },
     {
      "netlist": "V41_KAND_8",
@@ -36532,7 +37083,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.02,
      "drukste_spoel_bij_hz": 418,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 24.68,
+     "zwaarste_C_piek_V": 184.26,
+     "zwaarste_C_bij_hz": 420,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V42_KAND_1",
@@ -36546,7 +37103,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 14.83,
      "drukste_spoel_bij_hz": 74,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 42.31,
+     "zwaarste_C_piek_V": 99.18,
+     "zwaarste_C_bij_hz": 375,
+     "spoelen": 10,
+     "spoelen_zonder_DCR": 10
     },
     {
      "netlist": "V42_KAND_2",
@@ -36560,7 +37123,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 17.41,
      "drukste_spoel_bij_hz": 317,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 38.91,
+     "zwaarste_C_piek_V": 89.48,
+     "zwaarste_C_bij_hz": 480,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V42_KAND_3",
@@ -36574,7 +37143,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.45,
      "drukste_spoel_bij_hz": 76,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 33.4,
+     "zwaarste_C_piek_V": 98.65,
+     "zwaarste_C_bij_hz": 443,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V42_KAND_4",
@@ -36588,7 +37163,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.02,
      "drukste_spoel_bij_hz": 418,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 24.68,
+     "zwaarste_C_piek_V": 184.26,
+     "zwaarste_C_bij_hz": 420,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V43_KAND_1",
@@ -36602,7 +37183,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.13,
      "drukste_spoel_bij_hz": 377,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 38.29,
+     "zwaarste_C_piek_V": 95.59,
+     "zwaarste_C_bij_hz": 439,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V43_KAND_2",
@@ -36616,7 +37203,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 12.44,
      "drukste_spoel_bij_hz": 317,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.61,
+     "zwaarste_C_piek_V": 89.68,
+     "zwaarste_C_bij_hz": 480,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V43_KAND_3",
@@ -36630,7 +37223,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.36,
      "drukste_spoel_bij_hz": 262,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 62.37,
+     "zwaarste_C_piek_V": 86.37,
+     "zwaarste_C_bij_hz": 451,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V43_KAND_4",
@@ -36644,7 +37243,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.33,
      "drukste_spoel_bij_hz": 287,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C4",
+     "zwaarste_C_uF": 1.42,
+     "zwaarste_C_piek_V": 94.44,
+     "zwaarste_C_bij_hz": 269,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V43_KAND_5",
@@ -36658,7 +37263,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.69,
      "drukste_spoel_bij_hz": 439,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 30.01,
+     "zwaarste_C_piek_V": 146.58,
+     "zwaarste_C_bij_hz": 445,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 11
     },
     {
      "netlist": "V43_KAND_6",
@@ -36672,7 +37283,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.62,
      "drukste_spoel_bij_hz": 300,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C8",
+     "zwaarste_C_uF": 0.5,
+     "zwaarste_C_piek_V": 744.66,
+     "zwaarste_C_bij_hz": 5895,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 11
     },
     {
      "netlist": "V43_KAND_7",
@@ -36686,7 +37303,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 21.01,
      "drukste_spoel_bij_hz": 250,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.59,
+     "zwaarste_C_piek_V": 546.65,
+     "zwaarste_C_bij_hz": 5284,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 11
     },
     {
      "netlist": "V44_KAND_1",
@@ -36700,7 +37323,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 14.83,
      "drukste_spoel_bij_hz": 316,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.51,
+     "zwaarste_C_piek_V": 95.55,
+     "zwaarste_C_bij_hz": 1048,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V44_KAND_2",
@@ -36714,7 +37343,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 15.92,
      "drukste_spoel_bij_hz": 354,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 33.11,
+     "zwaarste_C_piek_V": 90.56,
+     "zwaarste_C_bij_hz": 471,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V44_KAND_3",
@@ -36728,7 +37363,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.56,
      "drukste_spoel_bij_hz": 267,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C15",
+     "zwaarste_C_uF": 6.55,
+     "zwaarste_C_piek_V": 89.23,
+     "zwaarste_C_bij_hz": 642,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V44_KAND_4",
@@ -36742,7 +37383,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 21.61,
      "drukste_spoel_bij_hz": 250,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.32,
+     "zwaarste_C_piek_V": 1028.05,
+     "zwaarste_C_bij_hz": 2985,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V44_KAND_5",
@@ -36756,7 +37403,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.08,
      "drukste_spoel_bij_hz": 287,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C2",
+     "zwaarste_C_uF": 107,
+     "zwaarste_C_piek_V": 93.05,
+     "zwaarste_C_bij_hz": 267,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V44_KAND_6",
@@ -36770,7 +37423,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 21.62,
      "drukste_spoel_bij_hz": 430,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 28.29,
+     "zwaarste_C_piek_V": 153.92,
+     "zwaarste_C_bij_hz": 434,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V44_KAND_7",
@@ -36784,7 +37443,13 @@
      "drukste_spoel": "C·L2",
      "drukste_spoel_piek_A": 23.46,
      "drukste_spoel_bij_hz": 460,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.61,
+     "zwaarste_C_piek_V": 634.48,
+     "zwaarste_C_bij_hz": 3101,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 11
     },
     {
      "netlist": "V45_KAND_1",
@@ -36798,7 +37463,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.71,
      "drukste_spoel_bij_hz": 368,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 5.97,
+     "zwaarste_C_piek_V": 100.63,
+     "zwaarste_C_bij_hz": 985,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V45_KAND_2",
@@ -36812,7 +37483,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.13,
      "drukste_spoel_bij_hz": 382,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 35.3,
+     "zwaarste_C_piek_V": 89.89,
+     "zwaarste_C_bij_hz": 478,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V45_KAND_3",
@@ -36826,7 +37503,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 21.06,
      "drukste_spoel_bij_hz": 232,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C11",
+     "zwaarste_C_uF": 0.31,
+     "zwaarste_C_piek_V": 772.26,
+     "zwaarste_C_bij_hz": 5014,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V45_KAND_4",
@@ -36840,7 +37523,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 26.86,
      "drukste_spoel_bij_hz": 361,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 58.86,
+     "zwaarste_C_piek_V": 113.91,
+     "zwaarste_C_bij_hz": 366,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V45_KAND_5",
@@ -36854,7 +37543,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 24.06,
      "drukste_spoel_bij_hz": 478,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C11",
+     "zwaarste_C_uF": 0.34,
+     "zwaarste_C_piek_V": 1088.3,
+     "zwaarste_C_bij_hz": 5621,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 11
     },
     {
      "netlist": "V45_KAND_6",
@@ -36868,7 +37563,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.11,
      "drukste_spoel_bij_hz": 443,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.38,
+     "zwaarste_C_piek_V": 555.72,
+     "zwaarste_C_bij_hz": 7479,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V45_KAND_7",
@@ -36882,7 +37583,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 21.74,
      "drukste_spoel_bij_hz": 428,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 24.64,
+     "zwaarste_C_piek_V": 176.65,
+     "zwaarste_C_bij_hz": 432,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V47_KAND_1",
@@ -36896,7 +37603,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.3,
      "drukste_spoel_bij_hz": 317,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 33.99,
+     "zwaarste_C_piek_V": 93.86,
+     "zwaarste_C_bij_hz": 581,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V47_KAND_2",
@@ -36910,7 +37623,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 15.93,
      "drukste_spoel_bij_hz": 325,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.93,
+     "zwaarste_C_piek_V": 86.5,
+     "zwaarste_C_bij_hz": 462,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V47_KAND_3",
@@ -36924,7 +37643,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 21.05,
      "drukste_spoel_bij_hz": 250,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C4",
+     "zwaarste_C_uF": 4.54,
+     "zwaarste_C_piek_V": 81.03,
+     "zwaarste_C_bij_hz": 240,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V47_KAND_4",
@@ -36938,7 +37663,13 @@
      "drukste_spoel": "C·L2",
      "drukste_spoel_piek_A": 34.45,
      "drukste_spoel_bij_hz": 2001,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C11",
+     "zwaarste_C_uF": 0.92,
+     "zwaarste_C_piek_V": 2503.28,
+     "zwaarste_C_bij_hz": 2001,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V48_KAND_1",
@@ -36952,7 +37683,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.8,
      "drukste_spoel_bij_hz": 301,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.49,
+     "zwaarste_C_piek_V": 98.22,
+     "zwaarste_C_bij_hz": 999,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V48_KAND_2",
@@ -36966,7 +37703,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 14.15,
      "drukste_spoel_bij_hz": 304,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.28,
+     "zwaarste_C_piek_V": 95.42,
+     "zwaarste_C_bij_hz": 962,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V48_KAND_3",
@@ -36980,7 +37723,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.56,
      "drukste_spoel_bij_hz": 286,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.8,
+     "zwaarste_C_piek_V": 98.08,
+     "zwaarste_C_bij_hz": 854,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V48_KAND_4",
@@ -36994,7 +37743,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.5,
      "drukste_spoel_bij_hz": 290,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 44.87,
+     "zwaarste_C_piek_V": 97.03,
+     "zwaarste_C_bij_hz": 356,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V48_KAND_5",
@@ -37008,7 +37763,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 17.55,
      "drukste_spoel_bij_hz": 373,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 25.28,
+     "zwaarste_C_piek_V": 136.76,
+     "zwaarste_C_bij_hz": 434,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V49_KAND_1",
@@ -37022,7 +37783,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.6,
      "drukste_spoel_bij_hz": 359,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.11,
+     "zwaarste_C_piek_V": 89.74,
+     "zwaarste_C_bij_hz": 508,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V49_KAND_2",
@@ -37036,7 +37803,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.97,
      "drukste_spoel_bij_hz": 303,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.25,
+     "zwaarste_C_piek_V": 94.55,
+     "zwaarste_C_bij_hz": 962,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V49_KAND_3",
@@ -37050,7 +37823,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.27,
      "drukste_spoel_bij_hz": 290,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 36.29,
+     "zwaarste_C_piek_V": 102.81,
+     "zwaarste_C_bij_hz": 366,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V49_KAND_4",
@@ -37064,7 +37843,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20,
      "drukste_spoel_bij_hz": 274,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 37.82,
+     "zwaarste_C_piek_V": 87.12,
+     "zwaarste_C_bij_hz": 412,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V49_KAND_5",
@@ -37078,7 +37863,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 33.19,
      "drukste_spoel_bij_hz": 426,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.44,
+     "zwaarste_C_piek_V": 546.27,
+     "zwaarste_C_bij_hz": 7806,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V49_KAND_6",
@@ -37092,7 +37883,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 25.98,
      "drukste_spoel_bij_hz": 439,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 22.3,
+     "zwaarste_C_piek_V": 215.67,
+     "zwaarste_C_bij_hz": 443,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V49_KAND_7",
@@ -37106,7 +37903,13 @@
      "drukste_spoel": "C·L2",
      "drukste_spoel_piek_A": 28.32,
      "drukste_spoel_bij_hz": 508,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.44,
+     "zwaarste_C_piek_V": 717.67,
+     "zwaarste_C_bij_hz": 4804,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V50_KAND_1",
@@ -37120,7 +37923,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.6,
      "drukste_spoel_bij_hz": 359,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 29.11,
+     "zwaarste_C_piek_V": 89.74,
+     "zwaarste_C_bij_hz": 508,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V50_KAND_2",
@@ -37134,7 +37943,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 13.97,
      "drukste_spoel_bij_hz": 303,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.25,
+     "zwaarste_C_piek_V": 94.55,
+     "zwaarste_C_bij_hz": 962,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V50_KAND_3",
@@ -37148,7 +37963,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.27,
      "drukste_spoel_bij_hz": 290,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 36.29,
+     "zwaarste_C_piek_V": 102.81,
+     "zwaarste_C_bij_hz": 366,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V50_KAND_4",
@@ -37162,7 +37983,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20,
      "drukste_spoel_bij_hz": 274,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 37.82,
+     "zwaarste_C_piek_V": 87.12,
+     "zwaarste_C_bij_hz": 412,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V50_KAND_5",
@@ -37176,7 +38003,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 33.19,
      "drukste_spoel_bij_hz": 426,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.44,
+     "zwaarste_C_piek_V": 546.27,
+     "zwaarste_C_bij_hz": 7806,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V50_KAND_6",
@@ -37190,7 +38023,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 25.98,
      "drukste_spoel_bij_hz": 439,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 22.3,
+     "zwaarste_C_piek_V": 215.67,
+     "zwaarste_C_bij_hz": 443,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V50_KAND_7",
@@ -37204,7 +38043,13 @@
      "drukste_spoel": "C·L2",
      "drukste_spoel_piek_A": 28.32,
      "drukste_spoel_bij_hz": 508,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.44,
+     "zwaarste_C_piek_V": 717.67,
+     "zwaarste_C_bij_hz": 4804,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 12
     },
     {
      "netlist": "V51_KAND_1",
@@ -37218,7 +38063,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.73,
      "drukste_spoel_bij_hz": 29,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 40.02,
+     "zwaarste_C_piek_V": 84.55,
+     "zwaarste_C_bij_hz": 592,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V51B_KAND_1",
@@ -37232,7 +38083,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.35,
      "drukste_spoel_bij_hz": 248,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 6.62,
+     "zwaarste_C_piek_V": 96.59,
+     "zwaarste_C_bij_hz": 999,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 9
     },
     {
      "netlist": "V51B_KAND_2",
@@ -37246,7 +38103,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.8,
      "drukste_spoel_bij_hz": 250,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 31.83,
+     "zwaarste_C_piek_V": 94.6,
+     "zwaarste_C_bij_hz": 541,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 7
     },
     {
      "netlist": "V51B_KAND_3",
@@ -37260,7 +38123,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.4,
      "drukste_spoel_bij_hz": 250,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 28.12,
+     "zwaarste_C_piek_V": 85.42,
+     "zwaarste_C_bij_hz": 496,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 8
     },
     {
      "netlist": "V51B_KAND_4",
@@ -37274,7 +38143,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.37,
      "drukste_spoel_bij_hz": 243,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 62.68,
+     "zwaarste_C_piek_V": 91.68,
+     "zwaarste_C_bij_hz": 370,
+     "spoelen": 13,
+     "spoelen_zonder_DCR": 13
     },
     {
      "netlist": "V51B_KAND_5",
@@ -37288,7 +38163,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 22.99,
      "drukste_spoel_bij_hz": 487,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 55.31,
+     "zwaarste_C_piek_V": 105.48,
+     "zwaarste_C_bij_hz": 469,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 11
     },
     {
      "netlist": "V51B_KAND_6",
@@ -37302,7 +38183,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 21.41,
      "drukste_spoel_bij_hz": 301,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C3",
+     "zwaarste_C_uF": 33.04,
+     "zwaarste_C_piek_V": 119.73,
+     "zwaarste_C_bij_hz": 443,
+     "spoelen": 10,
+     "spoelen_zonder_DCR": 10
     },
     {
      "netlist": "A5E3ARM_KAND_1",
@@ -37316,7 +38203,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 20.15,
      "drukste_spoel_bij_hz": 439,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C1",
+     "zwaarste_C_uF": 8.92,
+     "zwaarste_C_piek_V": 108.26,
+     "zwaarste_C_bij_hz": 1099,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3VELD_KAND_1",
@@ -37330,7 +38223,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 15.41,
      "drukste_spoel_bij_hz": 341,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 342,
+     "zwaarste_C_piek_V": 103.39,
+     "zwaarste_C_bij_hz": 51,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3VELD_KAND_2",
@@ -37344,7 +38243,13 @@
      "drukste_spoel": "L3",
      "drukste_spoel_piek_A": 19.83,
      "drukste_spoel_bij_hz": 10,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 72.62,
+     "zwaarste_C_piek_V": 67.81,
+     "zwaarste_C_bij_hz": 211,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3VELD_KAND_3",
@@ -37358,7 +38263,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.1,
      "drukste_spoel_bij_hz": 327,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 13.13,
+     "zwaarste_C_piek_V": 229.53,
+     "zwaarste_C_bij_hz": 322,
+     "spoelen": 13,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3VELD_KAND_4",
@@ -37372,7 +38283,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.85,
      "drukste_spoel_bij_hz": 53,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 327.7,
+     "zwaarste_C_piek_V": 149.22,
+     "zwaarste_C_bij_hz": 52,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3VELD_KAND_5",
@@ -37386,7 +38303,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.88,
      "drukste_spoel_bij_hz": 53,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 279.9,
+     "zwaarste_C_piek_V": 172.58,
+     "zwaarste_C_bij_hz": 53,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3VELD_KAND_6",
@@ -37400,7 +38323,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.12,
      "drukste_spoel_bij_hz": 53,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 46.21,
+     "zwaarste_C_piek_V": 93.01,
+     "zwaarste_C_bij_hz": 174,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3VELD_KAND_7",
@@ -37414,7 +38343,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 20.37,
      "drukste_spoel_bij_hz": 375,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 220.7,
+     "zwaarste_C_piek_V": 189.47,
+     "zwaarste_C_bij_hz": 53,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_1",
@@ -37428,7 +38363,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.86,
      "drukste_spoel_bij_hz": 52,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 9.85,
+     "zwaarste_C_piek_V": 348.37,
+     "zwaarste_C_bij_hz": 416,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_2",
@@ -37442,7 +38383,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.21,
      "drukste_spoel_bij_hz": 52,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 9.18,
+     "zwaarste_C_piek_V": 339.05,
+     "zwaarste_C_bij_hz": 422,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_3",
@@ -37456,7 +38403,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.7,
      "drukste_spoel_bij_hz": 52,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 347,
+     "zwaarste_C_piek_V": 148.18,
+     "zwaarste_C_bij_hz": 51,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_4",
@@ -37470,7 +38423,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.9,
      "drukste_spoel_bij_hz": 341,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 18.4,
+     "zwaarste_C_piek_V": 340.24,
+     "zwaarste_C_bij_hz": 336,
+     "spoelen": 10,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_5",
@@ -37484,7 +38443,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.09,
      "drukste_spoel_bij_hz": 53,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 355.1,
+     "zwaarste_C_piek_V": 140.09,
+     "zwaarste_C_bij_hz": 52,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_6",
@@ -37498,7 +38463,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.78,
      "drukste_spoel_bij_hz": 328,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 13.86,
+     "zwaarste_C_piek_V": 207.45,
+     "zwaarste_C_bij_hz": 325,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_7",
@@ -37512,7 +38483,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.84,
      "drukste_spoel_bij_hz": 272,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C12",
+     "zwaarste_C_uF": 0.53,
+     "zwaarste_C_piek_V": 184.38,
+     "zwaarste_C_bij_hz": 1828,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_8",
@@ -37526,7 +38503,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 20.45,
      "drukste_spoel_bij_hz": 331,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 17.88,
+     "zwaarste_C_piek_V": 267.52,
+     "zwaarste_C_bij_hz": 328,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_9",
@@ -37540,7 +38523,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.72,
      "drukste_spoel_bij_hz": 238,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C12",
+     "zwaarste_C_uF": 2.19,
+     "zwaarste_C_piek_V": 305.17,
+     "zwaarste_C_bij_hz": 870,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "A5E3C_KAND_10",
@@ -37554,7 +38543,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.2,
      "drukste_spoel_bij_hz": 204,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C1",
+     "zwaarste_C_uF": 6.2,
+     "zwaarste_C_piek_V": 85.12,
+     "zwaarste_C_bij_hz": 546,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_1",
@@ -37568,7 +38563,13 @@
      "drukste_spoel": "L3",
      "drukste_spoel_piek_A": 16,
      "drukste_spoel_bij_hz": 245,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C2",
+     "zwaarste_C_uF": 126,
+     "zwaarste_C_piek_V": 146.75,
+     "zwaarste_C_bij_hz": 247,
+     "spoelen": 13,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_2",
@@ -37582,7 +38583,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 17.34,
      "drukste_spoel_bij_hz": 51,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 10.87,
+     "zwaarste_C_piek_V": 430.34,
+     "zwaarste_C_bij_hz": 397,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_3",
@@ -37596,7 +38603,13 @@
      "drukste_spoel": "B·L7",
      "drukste_spoel_piek_A": 14.33,
      "drukste_spoel_bij_hz": 624,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C12",
+     "zwaarste_C_uF": 4.12,
+     "zwaarste_C_piek_V": 389.59,
+     "zwaarste_C_bij_hz": 624,
+     "spoelen": 13,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_4",
@@ -37610,7 +38623,13 @@
      "drukste_spoel": "L3",
      "drukste_spoel_piek_A": 17.97,
      "drukste_spoel_bij_hz": 331,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C9",
+     "zwaarste_C_uF": 16.13,
+     "zwaarste_C_piek_V": 376.67,
+     "zwaarste_C_bij_hz": 331,
+     "spoelen": 10,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_5",
@@ -37624,7 +38643,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.24,
      "drukste_spoel_bij_hz": 52,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 331.8,
+     "zwaarste_C_piek_V": 142.17,
+     "zwaarste_C_bij_hz": 51,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_6",
@@ -37638,7 +38663,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.49,
      "drukste_spoel_bij_hz": 37,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 11.09,
+     "zwaarste_C_piek_V": 85.49,
+     "zwaarste_C_bij_hz": 834,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_7",
@@ -37652,7 +38683,13 @@
      "drukste_spoel": "C·L2",
      "drukste_spoel_piek_A": 18.11,
      "drukste_spoel_bij_hz": 1063,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C2",
+     "zwaarste_C_uF": 76.62,
+     "zwaarste_C_piek_V": 204.03,
+     "zwaarste_C_bij_hz": 256,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_8",
@@ -37666,7 +38703,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.65,
      "drukste_spoel_bij_hz": 52,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C6",
+     "zwaarste_C_uF": 359,
+     "zwaarste_C_piek_V": 148.34,
+     "zwaarste_C_bij_hz": 51,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_9",
@@ -37680,7 +38723,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 18.14,
      "drukste_spoel_bij_hz": 192,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C2",
+     "zwaarste_C_uF": 94.55,
+     "zwaarste_C_piek_V": 151.23,
+     "zwaarste_C_bij_hz": 249,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "C2_KAND_10",
@@ -37694,7 +38743,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 16.56,
      "drukste_spoel_bij_hz": 371,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C13",
+     "zwaarste_C_uF": 0.37,
+     "zwaarste_C_piek_V": 642.6,
+     "zwaarste_C_bij_hz": 2551,
+     "spoelen": 12,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "KAND_V2_2F",
@@ -37708,7 +38763,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.57,
      "drukste_spoel_bij_hz": 50,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C1",
+     "zwaarste_C_uF": 32.3,
+     "zwaarste_C_piek_V": 114.13,
+     "zwaarste_C_bij_hz": 328,
+     "spoelen": 13,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "M5_KAND_1",
@@ -37722,7 +38783,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 18.65,
      "drukste_spoel_bij_hz": 102,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C10",
+     "zwaarste_C_uF": 0.46,
+     "zwaarste_C_piek_V": 102.39,
+     "zwaarste_C_bij_hz": 4669,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "M5_KAND_2",
@@ -37736,7 +38803,13 @@
      "drukste_spoel": "B·L5",
      "drukste_spoel_piek_A": 19.8,
      "drukste_spoel_bij_hz": 895,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C10",
+     "zwaarste_C_uF": 0.9,
+     "zwaarste_C_piek_V": 82.41,
+     "zwaarste_C_bij_hz": 4625,
+     "spoelen": 9,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "M5_KAND_3",
@@ -37750,7 +38823,13 @@
      "drukste_spoel": "L1",
      "drukste_spoel_piek_A": 19.7,
      "drukste_spoel_bij_hz": 250,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C1",
+     "zwaarste_C_uF": 8.37,
+     "zwaarste_C_piek_V": 75.72,
+     "zwaarste_C_bij_hz": 3346,
+     "spoelen": 8,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "M5_KAND_4",
@@ -37764,7 +38843,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 21.38,
      "drukste_spoel_bij_hz": 533,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C12",
+     "zwaarste_C_uF": 0.49,
+     "zwaarste_C_piek_V": 179.6,
+     "zwaarste_C_bij_hz": 2233,
+     "spoelen": 13,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "M5_KAND_5",
@@ -37778,7 +38863,13 @@
      "drukste_spoel": "C·L2",
      "drukste_spoel_piek_A": 23.59,
      "drukste_spoel_bij_hz": 2491,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C6",
+     "zwaarste_C_uF": 1.93,
+     "zwaarste_C_piek_V": 153.39,
+     "zwaarste_C_bij_hz": 9265,
+     "spoelen": 7,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "KAND_V2_1",
@@ -37792,7 +38883,13 @@
      "drukste_spoel": "C·L2",
      "drukste_spoel_piek_A": 16.49,
      "drukste_spoel_bij_hz": 1131,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "C·C1",
+     "zwaarste_C_uF": 6.84,
+     "zwaarste_C_piek_V": 151.03,
+     "zwaarste_C_bij_hz": 1109,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "KAND_V2_2",
@@ -37806,7 +38903,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 26.71,
      "drukste_spoel_bij_hz": 373,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C1",
+     "zwaarste_C_uF": 80.55,
+     "zwaarste_C_piek_V": 104.46,
+     "zwaarste_C_bij_hz": 354,
+     "spoelen": 11,
+     "spoelen_zonder_DCR": 0
     },
     {
      "netlist": "KAND_V2_3",
@@ -37820,7 +38923,13 @@
      "drukste_spoel": "B·L2",
      "drukste_spoel_piek_A": 15.61,
      "drukste_spoel_bij_hz": 210,
-     "spoel_grens_A": null
+     "spoel_grens_A": null,
+     "zwaarste_C": "B·C12",
+     "zwaarste_C_uF": 0.73,
+     "zwaarste_C_piek_V": 370.08,
+     "zwaarste_C_bij_hz": 1292,
+     "spoelen": 14,
+     "spoelen_zonder_DCR": 0
     }
    ]
   },

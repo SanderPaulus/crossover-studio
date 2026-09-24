@@ -420,8 +420,15 @@ interface CandidatePoint {
   twoSided: boolean;
 }
 
-/** Equal octave room on both sides, on the unrounded edges. */
-const symmetricCage = (hz: number, lo: number, hi: number): boolean =>
+/**
+ * Equal octave room on both sides, on the unrounded edges.
+ *
+ * EXPORTED SINCE U-5c, for one reader and one reason: a STATED crossing that
+ * lies inside its window is caged the same way a generated one is, and two
+ * implementations of "is this cage two-sided" would let the generated field
+ * and the stated field disagree about the same shape (A3g).
+ */
+export const symmetricCage = (hz: number, lo: number, hi: number): boolean =>
   lo > 0 &&
   lo < hz &&
   hi > hz &&
