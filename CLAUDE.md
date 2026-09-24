@@ -2088,6 +2088,28 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (24-09-2026, U-5c): 209 bestanden (208 geslaagd,
+  1 overgeslagen), 2821 geslaagd, 19 overgeslagen, 3551 s (59 min 11) — GROEN.** Negentien is voor
+  de ACHTSTE geboekte run op rij EXACT het H-1-getal (H-1, H-2, H-4, H-4b, M-5, U-7, H-5, U-5c), en
+  dat is de claim: U-5c voegt geen enkele getagde test toe. De telling sluit van de andere kant:
+  2821 + 19 = 2840, precies de lokale volle-run-telling, dus CI slaat exact de vereniging van beide
+  tags over en verder niets.
+  **DAT HIER NIETS GETAGD HOEFT IS DEZE KEER BIJNA NIET WAAR GEWEEST, en het verschil is één
+  bewerking.** De val waar dit boek bij V46, V49 en B-1 voor betaald heeft is een claim die een
+  VERSE berekening naast een op een ÁNDERE machine opgeschreven getal legt, en U-5c schrijft er een:
+  de condensatorkolom van `frozenNetlistGates` legt een verse lezing uit een LINEAIRE OPLOSSING
+  naast wat de recorder hier opschreef — op sommige netlists 30 110 V, waar "één decimaal" zes
+  significante cijfers van een solver over twee runtimes zou vragen. Hij is vóór de commit
+  RELATIEF gemaakt (0,1 promille, of 0,05 V op kleine waarden). **EN DAT WAS PREVENTIEF EN GEEN
+  REPARATIE — dat hoort er eerlijk bij:** de run op `3b3c1f3`, die dezelfde claim nog op één
+  decimaal droeg, liet hem GROEN. De marge was dus toevallig genoeg, en een claim die het van
+  toeval moet hebben is precies wat deze regel al drie keer heeft zien omvallen. Wie hier ooit een
+  reproductieclaim toevoegt leest haar in de ORDE van de grootheid en niet in decimalen — of tagt
+  haar `[bytes]`.
+  **DE RUN OP `3b3c1f3` WAS ROOD, EN OP PRECIES ÉÉN CLAIM:** de U-1-telling van de v1-erfgoedrijen
+  (6 tegen 5), dezelfde die de lokale snelle laag ving. Dat die commit überhaupt CI haalde is de
+  ongelukssplitsing van deze sessie — zie de U-5c-entry — en niet een tweede bevinding: 2819
+  geslaagd, 19 overgeslagen, één rood, en dat ene is in `c7f3fd3` rechtgezet.
   **GEMETEN IN CI OP ubuntu/Node 22 (24-09-2026, H-5): 206 bestanden (205 geslaagd, 1 overgeslagen),
   2761 geslaagd, 19 overgeslagen, 3561 s (59 min 21) — GROEN.** Negentien is voor de ZEVENDE
   geboekte run op rij EXACT het H-1-getal (H-1, H-2, H-4, H-4b, M-5, U-7, H-5), en dat is de claim:
