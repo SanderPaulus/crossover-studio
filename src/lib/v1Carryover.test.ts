@@ -28,10 +28,10 @@ import {
 import { rowsOfClass } from './v2InputRegister.ts';
 import { selectEngine } from './engine2/facade.ts';
 
-const APP = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'),
-  'utf-8',
-);
+const HERE = dirname(fileURLToPath(import.meta.url));
+const APP = readFileSync(join(HERE, '..', 'App.tsx'), 'utf-8');
+/** U-5c — het PROJECTBESTANDstype, om te zeggen wat een bestand werkelijk draagt. */
+const PROJECT = readFileSync(join(HERE, 'project.ts'), 'utf-8');
 
 /* ==================================================================== *
  * 1 — WHAT A PROJECT CARRIES
@@ -120,14 +120,39 @@ describe('U-1 — the v1 starting values have one home', () => {
   });
 
   it('every field of the register that a project FILE can carry is covered', () => {
-    /* The register's v1 class has five rows; a project file holds three of
-       them, and the other two live in localStorage. Naming the gap here means
-       a later session that moves one into the file finds this claim rather
-       than a notice that quietly under-reports. */
-    const inFile = new Set(['hpLpPref', 'excursionSpl']);
+    /* The register's v1 class has SIX rows since U-5c; a project file carries
+       three of them and the other three live in `localStorage`. Naming the gap
+       here means a later session that moves one into the file finds this claim
+       rather than a notice that quietly under-reports.
+       U-5c — AND IT DID EXACTLY THAT, TWICE. The count is a DEED and not a
+       consequence: adding `phasePriority` to the v1 class turned this claim red
+       on the spot, which is what a counted guard is for. And it caught the
+       second half too — see the claim below. */
+    const inFile = new Set(['hpLpPref', 'excursionSpl', 'phasePriority']);
     const rows = rowsOfClass('v1-legacy').map((r) => r.id);
-    expect(rows.length).toBe(5);
-    expect(rows.filter((id) => inFile.has(id)).sort()).toEqual(['excursionSpl', 'hpLpPref']);
+    expect(rows.length).toBe(6);
+    expect(rows.filter((id) => inFile.has(id)).sort()).toEqual([
+      'excursionSpl',
+      'hpLpPref',
+      'phasePriority',
+    ]);
+  });
+
+  it('U-5c — `phasePriority` IS in the project file and the notice does NOT report it', () => {
+    /* THE GAP, STATED RATHER THAN CLOSED. `project.ts` carries `phasePriority`
+       and `applyProject` restores it, so a project written on v1 brings a moved
+       slider along — and since M-4 the v2 route overwrites it with the engine's
+       own 50/50, so it is exactly the kind of value this notice exists to
+       report. It is NOT in `V1_FIELD_DEFAULTS`, so the notice stays silent.
+       Adding it would make the notice fire on every project with a moved
+       slider, which is a behaviour change on existing files; U-5c MARKS the
+       control where it stands (the badge, on both the expert panel and the
+       wizard) and leaves the notice alone. Whoever closes it finds this claim. */
+    expect(PROJECT).toContain('phasePriority: number;');
+    expect(APP).toContain('setPhasePriority(d.phasePriority)');
+    expect(Object.keys(V1_FIELD_DEFAULTS)).not.toContain('phasePriority');
+    // …and the badge IS there, which is what this session did instead.
+    expect(APP).toContain("v1Legacy('phasePriority')");
   });
 });
 

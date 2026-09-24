@@ -113,6 +113,15 @@ const GOALS: readonly {
   },
 ];
 
+/** De regio "Goals & weighting" van het expertpaneel, als bron. */
+function goalsRegion(): string {
+  const start = APP.indexOf("<span className=\"opt-group-cap\">{t('Goals & weighting')}</span>");
+  const end = APP.indexOf("<span className=\"opt-group-cap\">{t('Filter shape')}</span>", start);
+  expect(start).toBeGreaterThan(0);
+  expect(end).toBeGreaterThan(start);
+  return APP.slice(start, end);
+}
+
 /** De ketensettings die de app voor de TWEEWEGroute bouwt, als bron. */
 const TWO_WAY = (() => {
   const i = APP.indexOf('const twoWayChainSettings = (args: {');
@@ -125,11 +134,7 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     /* De U-3b-vorm: de SCAN telt de besturingselementen van de regio en de
      * inventaris moet er evenveel dragen. Een knop die aan dit paneel wordt
      * toegevoegd zonder status valt hier om in plaats van stil mee te liften. */
-    const start = APP.indexOf("<span className=\"opt-group-cap\">{t('Goals & weighting')}</span>");
-    const end = APP.indexOf("<span className=\"opt-group-cap\">{t('Filter shape')}</span>", start);
-    expect(start).toBeGreaterThan(0);
-    expect(end).toBeGreaterThan(start);
-    const region = APP.slice(start, end);
+    const region = goalsRegion();
     const controls = [...region.matchAll(/\n\s*(?:value|checked)=\{/g)].length;
     /* `Correction bands per driver` staat in "Filter shape" en niet in
      * "Goals & weighting" — hij hoort inhoudelijk bij deze audit (hij is de
@@ -190,6 +195,20 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
         expect(row, `${g.control} heeft geen registerrij`).toBeDefined();
         expect(row!.cls, g.control).toBe('v1-legacy');
         expect(APP, `${g.control} is niet gebadged`).toContain(`v1Legacy('${g.state}')`);
+        /* EN OP ÉLKE PLAATS WAAR DE KNOP STAAT, niet "ergens". De eerste versie
+         * van deze claim zocht de badge in het HELE bestand, en een opzettelijke
+         * breuk — de badge van het expertpaneel weghalen — liet haar groen: de
+         * schuif staat óók in de wizard en die tweede badge droeg de claim in
+         * haar eentje. Een guard die de helft van zijn onderwerp niet ziet is
+         * geen guard (nagemeten, en daarom staat hij er zo). */
+        if (g.state === 'phasePriority') {
+          const badge = `v1Legacy('${g.state}')`;
+          expect(APP.split(badge).length - 1, 'de schuif staat op TWEE plaatsen').toBe(2);
+          expect(goalsRegion(), 'het expertpaneel draagt de badge niet').toContain(badge);
+          const w = APP.indexOf('name="wiz-priority"');
+          expect(w).toBeGreaterThan(0);
+          expect(APP.slice(w, w + 2500), 'de Goals-stap van de wizard draagt de badge niet').toContain(badge);
+        }
       } else {
         expect(APP, `${g.control} draagt een v1-badge die hij niet verdient`).not.toContain(
           `v1Legacy('${g.state}')`,

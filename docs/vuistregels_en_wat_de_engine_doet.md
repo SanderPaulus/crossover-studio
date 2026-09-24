@@ -399,9 +399,19 @@ Twee grootheden worden hier makkelijk verward en ze schelen een factor drie:
 | De **paarfase van de ontwerpstap** | op IDEALE filters, op de ongerefinede knie — het getal waarop de polariteits-tie-break viel | 45–80° |
 | **M-K op het geleverde netwerk** | de echte ladder in de echte driverimpedantie, na de tune, op de toegelaten punten | **10,6 / 13,1 / 32,0°** (het levende corpus), HUIDIG 20,6° |
 
-Over het hele casusboek: 173 geleverde woofer→mid-overnames, mediaan **15,2°**, spreiding 1,9–81,4°,
-en **149 van de 173 binnen de 30°-richtlijn**. De referentiefilters van de ontwerper lezen 2,8 / 4,6 /
-20,6°.
+Over het hele casusboek, **hermeten op 24-09-2026** (U-5c): 177 geleverde woofer→mid-overnames,
+mediaan **14,36°**, spreiding 1,79–95,29°, en **157 van de 177 binnen de 30°-richtlijn**; op
+mid→tweeter 180 overnames, mediaan 10,05°, spreiding 3,10–97,92°, zeven eroverheen. De
+referentiefilters van de ontwerper lezen 2,8 / 4,6 / 20,6°.
+
+**LET OP DAT DIT BOEK GROEIT.** H-5 noteerde hier nog 173 rijen met mediaan 15,2° en 149 erbinnen;
+M-5 voegde vijf netlists toe en sindsdien zijn het er 177 met mediaan 14,36 en 157 erbinnen. Een
+telling van dit boek is deels een corpusgrootte — dezelfde les die de testtellingen in CLAUDE.md
+dragen — en wie twee van deze regels naast elkaar legt moet de datum lezen en niet het verschil.
+
+**SINDS U-5c IS DE RICHTLIJN EEN GESTELDE EIS** (Sander, 24-09-2026: `maxPhaseTrackingDeg` = 30°,
+casus 1 én casus 1h). Zie §7 voor wat zij op dit boek zou hebben gezegd en voor de casus waar zij op
+het verkeerde getal bijt.
 
 Dat verschil is zelf een bevinding over de oude polariteitskeuze: zij werd genomen op een getal dat
 op ideale filters drie keer zo slecht is als wat de tune uiteindelijk levert — precies het bezwaar
@@ -569,6 +579,179 @@ dus vóór iemand er een grens op zet hoort er een kolom te komen zoals V47 die 
 
 ---
 
+## 7. De veegronde van U-5c — vijf vuistregels, en twee dode velden
+
+Bij H-5 zijn vier kandidaat-vuistregels langsgelopen; dit is de tweede ronde langs wat er toen
+nog lag. Eén ervan is GEBOUWD, één is GEMETEN, twee zijn GRENZEN die bewust buiten de bibliotheek
+liggen, en één was al gedekt en krijgt alleen zijn statuskolom.
+
+### (a) De spanningsklasse van je condensatoren — **GERAPPORTEERD** (nieuw bij U-5c)
+
+**Wat de literatuur zegt.** Het is de oudste regel in de bouwschuur: kijk naar de spanning over je
+condensatoren voordat je ze bestelt. Een valcondensator in een resonante tak ziet een veelvoud van
+de bronspanning, en het is het onderdeel dat een bouwer opblaast.
+
+**Wat de engine tot U-5c deed: niets.** Zij drukte de WATT in elke weerstand af (M-A/part, V50) en
+de PIEKSTROOM door elke spoel (M-L, V50) en zei niets over de VOLT over een condensator — de ene
+grootheid die beslist of het onderdeel dat je bestelt zijn werk overleeft.
+
+**Sinds U-5c staat zij er** (`capacitorLoads` in `metrics/buildability.ts`, versie `buildability/1.1`),
+gelezen uit dezelfde oplossing als de twee ernaast: |V| = |I|·|Z_C|·V_piek/E_g, met de ESR erin
+omdat het ELEMENT is wat een bouwer koopt, en met de frequentie erbij omdat een getal zonder de
+plaats waar het optreedt tegen niets te controleren is.
+
+**GEEN POORT, en niet bij gebrek aan moeite.** De catalogus draagt `powerW` voor weerstanden en
+`maxCurrentA` voor kernspoelen en NIETS voor condensatoren; een spanningsklasse is een TYPEbesluit
+dat de bouwer neemt. Een toelating hier verzinnen zou data verzinnen (A3h). Wat de engine levert is
+de linkerhelft van de som die de bouwer zelf maakt — de helft die hij niet kan uitrekenen.
+
+**Wat de meting zegt, over het hele casusboek (180 netlists, piekingang √(2·160·8) = 50,6 V):**
+
+| lezing | waarde |
+| --- | --- |
+| netlists waar de zwaarste condensator BOVEN de piekingang uitkomt | **180 van 180** |
+| hoogste spanning op een netlist MET koper (DCR-model, 40 netlists) | **642,6 V** |
+| de drie referentiefilters van de ontwerper | 94,1 / 82,6 / 89,5 V |
+| het levende corpus | 151,0 / 104,5 / 370,1 V |
+
+**"De versterker levert 50 V" is dus geen antwoord op de vraag.** Op KAND_V2_3 staat er 370 V over
+een valcondensator van 0,73 µF bij 1292 Hz — 7,3 keer de ingang — en dat is precies het mechanisme
+dat de vuistregel bedoelt: bij resonantie heffen X_L en X_C elkaar op en staat er Q keer de
+bronspanning over élk van de twee.
+
+**DE REEKS VALT IN TWEE POPULATIES EN ZIJ MOGEN NIET DOOR ELKAAR GELEZEN WORDEN.** Een tak met een
+VERLIESVRIJE spoel heeft een onbegrensde Q, dus daar loopt de lezing tot in de kilovolts — gemeten
+30 110 V op `V28_KAND_2`. Dat is een eigenschap van een GEÏDEALISEERDE netlist en geen uitspraak
+over een bouwbaar ontwerp: de gedateerde corpora van vóór A5e.3 dragen geen DCR-model (140 van de
+180), de levende netlists wel. Het blok `v50_bouwbaarheid` draagt daarom `spoelen_zonder_DCR` per
+rij en twee aparte totalen, en `frozenNetlistGates.test.ts` pint dat élke uitschieter in de
+geïdealiseerde helft zit.
+
+### (b) Tolerantiegevoeligheid — **VOORSTEL** (gemeten bij U-5c)
+
+**Wat de literatuur zegt.** Geen ontwerp dat binnen ±5 % onderdelentolerantie instort. Het is de
+enige vuistregel van deze ronde die niet over een GRENS gaat maar over de STEILHEID van het
+optimum: een netwerk waarvan de rimpel binnen de tolerantieband een decibel wegloopt is niet
+bouwbaar, hoe goed het nominale getal ook is.
+
+**Wat de engine doet:** zij rapporteert overal het NOMINALE ontwerp en nergens hoe scherp dat punt
+is. `scripts/measure-u5c-tolerance.ts` beantwoordt de vraag nu als MEETSCRIPT — geen ketenrun en
+geen tune, het netwerk wordt alleen opnieuw opgelost — in twee lezingen: Monte-Carlo met alle
+onderdelen tegelijk (wat een bouwer overkomt) en één onderdeel tegelijk op beide randen (wie de
+spreiding draagt). Uniform binnen de band, want een tolerantie is een SPECIFICATIE en geen gemeten
+spreiding; wie de echte verdeling meet mag haar invullen.
+
+**GEMETEN 24-09-2026 op KAND_V2_2** (36 onderdelen met een tolerantie, ±5 %, 200 trekkingen, seed
+20260924, meetset `m3`):
+
+| grootheid | nominaal | spreiding over de band | p95 \|Δ\| | grootste \|Δ\| |
+| --- | ---: | --- | ---: | ---: |
+| ± venster | 2,083 dB | 1,847 – 2,482 | 0,249 | 0,399 |
+| rms | 1,001 dB | 0,897 – 1,170 | 0,112 | 0,169 |
+| min \|Z\| | 2,578 Ω | **2,410 – 2,690** | 0,121 | 0,168 |
+| M-K woofer→mid | 13,12° | 9,14 – 17,17 | 3,00 | 4,05 |
+| M-K mid→tweeter | 5,41° | **4,51 – 11,73** | 3,18 | 6,32 |
+
+**HET ONTWERP STORT NIET IN — en twee GEOORDEELDE grootheden lopen wél weg, en dat is de bevinding.**
+De amplitude houdt zich aan de vuistregel: het venster beweegt hoogstens vier tienden van een dB en
+de rms twee. Maar de fasesporing op mid→tweeter MEER DAN VERDUBBELT (5,4 → 11,7°), en min \|Z\| zakt
+tot 2,410 Ω tegen een GESTELDE vloer van 2,60 — het nominale getal (2,578) haalt die vloer al alleen
+binnen de 2 %-meettolerantie, en een bouw binnen ±5 % kan er bijna twee tienden ohm onder landen.
+Wie deze netlist bouwt koopt dus geen ontwerp dat 2,58 Ω presenteert maar een ontwerp dat ergens
+tussen 2,41 en 2,69 uitkomt. **Met de eis van §(c) hierboven erbij: 30° overleeft de tolerantieband
+op deze kandidaat ruim** (slechtste trekking 17,2 / 11,7°), en dat is een geruststelling die alleen
+een meting kan geven.
+
+**GEEN ENKEL ONDERDEEL DRAAGT DE SPREIDING.** Eén onderdeel tegelijk op beide randen geeft als
+grootste uitslag 0,149 dB op het venster (C·R6) en 0,061 dB op de rms (B·L5) — de spreiding is een
+optelsom van zesendertig kleine bijdragen en niet één kritieke schroef. Dat is zelf het antwoord op
+"welk onderdeel moet ik nauwkeurig kopen": geen in het bijzonder.
+
+
+
+**Niet gebouwd als kolom.** Een gevoeligheidskolom in de shortlist is een eigen sessie en een eigen
+besluit: zij vraagt een keuze over wat er gemeten wordt en waartegen, en een eis die deze sessie
+zelf zou stellen is een eis die niemand gesteld heeft (A5e.1).
+
+### (c) De dode-velden-audit van het Goals-paneel — **TWEE VONDSTEN**
+
+E-2 vond zes spookgetallen op het v2-formulier, I-1 vijf v1-knoppen die de v2-route niet leest,
+U-3b twaalf zichtbare besturingselementen zonder registerrij. Het paneel **Goals & weighting** is
+het ene formulier waar dat nooit systematisch is nagegaan — het is ouder dan het v2-blok en het
+draagt de knoppen waarmee een ontwerper zegt waar de zoektocht zijn budget aan uitgeeft.
+
+Dertien besturingselementen, elk met zijn status, nagemeten in `goalsPanelAudit.test.ts`:
+
+| veld | status | waarom |
+| --- | --- | --- |
+| **Priority: response · phase** | **V1-ALLEEN** | sinds M-4 stelt de ketenverklaring `DEFAULT_PHASE_PRIORITY` onvoorwaardelijk en de app geeft de schuif niet mee |
+| Phase metric · Amplitude target · Power response | GELEZEN | de kandidaat STELT ze uit de ketensettings |
+| Weight for in-room sound · DI-fold weight · Dissipation weight | GELEZEN | GREY-sleutels: expliciet overgenomen, nooit verklaard (A3j) |
+| Amplifier min load · Source R limit | GELEZEN | gesteld; de eerste wapent M-B/\|Z\| |
+| Correction bands per driver | GELEZEN | de ketenverklaring stelt hem UIT de settings (V41) |
+| **Error smoothing** | V1-ALLEEN | al gemarkeerd bij I-1 (V38-fix stelt de breedte zelf) |
+| **Source R disqualify** | **DRIEWEG-ALLEEN** | alleen de drieweg-ketensettings dragen hem; op een tweeweg verklaart de kandidaat hem ABSENT |
+| DI anchor weight | drieweg-alleen, en drieweg-GATED | staat achter `threeWay`, dus een tweewegontwerper ziet hem niet |
+
+**DOOD, in de zin van "in de settings en door niemand gelezen": GEEN GEVONDEN.** Dat is een claim
+met een enumeratie eronder en geen stilte.
+
+**DE EERSTE VONDST — de Priority-schuif doet op de v2-route niets.** M-4 maakte `phasePriority` de
+zesde ketensleutel en liet de verklaring hem ONVOORWAARDELIJK stellen uit `DEFAULT_PHASE_PRIORITY`
+(de eigen 0,5 van de motor). Het commentaar daar zegt *"een ontwerper die de schuif stelt wint
+ervan"* — en de app stelt hem nergens, op geen van de drie routes waar zij de ketenverklaring
+aanroept. Bij 50/50 is het onzichtbaar (de schuifdefault ís 0,5); wie hem verzet krijgt zonder
+melding hetzelfde antwoord. **Het is een BEDRADINGSGAT en geen besluit**, en één regel in
+`declareCandidateChainChoices` zou het sluiten — maar dat verandert wat élke v2-run met een verzette
+schuif doet, en dat is een gesteld besluit en geen markeringssessie. **Gemarkeerd, op beide plaatsen
+waar de schuif staat: het expertpaneel én de Goals-stap van de wizard.**
+
+**DE TWEEDE VONDST — Source R disqualify is zichtbaar op een tweeweg en doet daar niets.** De
+drieweg-ketensettings dragen `rSourceDisqualifyOhm` en `twoWayChainSettings` niet, dus op een
+tweeweg-v2-run verklaart de kandidaat hem ABSENT (V34's `withDeclaredSourceLimit` maakt er een
+expliciete `null` van) en wordt er niets gediskwalificeerd. Het veld staat er wel, op elk project.
+**Gezegd waar het staat** in plaats van gerepareerd, om dezelfde reden: hem bedraden zou
+tweeweg-kandidaten gaan diskwalificeren die vandaag doorgaan.
+
+### (d) Seriële kruisfilters en oneven-orde-uitlijningen — **BENOEMDE GRENS**
+
+Beide liggen buiten de bibliotheek, en dat staat hier zodat "gemist" ook hier beantwoord is met
+"bewust niet" in plaats van met stilte.
+
+**SERIËLE TOPOLOGIEËN.** Dit project bouwt uitsluitend PARALLELLE kruisfilters: elke weg hangt met
+haar eigen tak aan de generatorknoop. De seriële vorm — de takken in serie, met de drivers als
+elkaars belasting — heeft eigenschappen die een parallelle niet heeft (zelfcorrigerend bij
+componentdrift, één gedeelde stroom) en vraagt een andere synthese, een andere audit en een andere
+lezing van élke elektrische metriek: `levelWork.ts`, `seriesProtection.ts` en de slot-resolutie
+lopen alle drie van de bus naar de driver en die bus bestaat daar niet. Geen enkele vuistregel uit
+dit document is erop nagemeten. **Buiten de bibliotheek, met naam.**
+
+**ONEVEN-ORDE-UITLIJNINGEN (BW1, BW3).** `CASUS1_FIELD_ALIGNMENTS` kent LR2 en LR4 en de
+bibliotheek is symmetrisch (A5d.3(iv) kan niet uitgedrukt worden — `flankOrder.ts` zegt dat zelf).
+Een derde-orde Butterworth sommeert op de as in KWADRATUUR: vlak van magnitude, maar met een lob die
+van de as af kantelt, en de polariteitsregel die H-5 deterministisch maakte geldt er niet — de
+textbookregel van `textbookComplementInverted` is geformuleerd voor LR van orde 2m. Een oneven orde
+toevoegen is daarom niet één regel in de bibliotheek maar een tweede polariteitsdoctrine.
+**Buiten de bibliotheek, met naam**, en H-5's eigen regel zou er stilzwijgend verkeerd op zijn.
+
+### (e) Spoelverzadiging en EPDR — **statuskolom bijgewerkt**
+
+Beide waren al gedekt en krijgen hier alleen hun woord.
+
+**SPOELVERZADIGING — GERAPPORTEERD.** M-L (V50) leest de piekstroom door elke spoel bij de
+piekingang, ongewogen, met de frequentie erbij. De poort bestaat en oordeelt op casus 1 niets, om
+een gemeten reden: van de 2116 spoelen in de v8-catalogus draagt er NUL een stroomopgave, en het
+Jantzen-blad noemt geen verzadigingsstroom. Casus 1's `spoelklasse_A` is daarom LEEG met die
+bevinding erbij (P4). Luchtspoelen verzadigen niet; de vraag gaat over kernspoelen, en dit project
+gebruikt ze niet.
+
+**EPDR — GERAPPORTEERD, WACHT OP EEN GETAL.** M-B/EPDR staat naast M-B/|Z| en leest de
+equivalente piek-dissipatieweerstand — de last zoals een versterker hem thermisch voelt, fase erin.
+Casus 1 stelt er geen vloer op, dus de poort rapporteert en oordeelt niets. Hetzelfde patroon als
+`maxPhaseTrackingDeg` tot U-5c: het mechanisme staat er, het getal is van Sander.
+
+---
+
 ## Wat hiervan een besluit wacht
 
 1. ~~**De verkenningspoort op de polariteitsarmen.**~~ **GENOMEN bij H-4b** (Sander, 20-09-2026) en
@@ -576,10 +759,16 @@ dus vóór iemand er een grens op zet hoort er een kolom te komen zoals V47 die 
    textbookregel en er wordt standaard niets gespiegeld; de H-4b-garantie en de 15°-marge gelden nog
    onder de gestelde keuze "Polarity arms: both". Gemeten prijs op de demo: verkenning 12 → 6 runs,
    vol veld 36 → 9. Zie §1.
-7. **Een getal voor `maxPhaseTrackingDeg`** (§6c). De eis bestaat sinds F3 en niemand heeft haar
-   gewapend. Op dit casusboek zou 30° ongeveer één op de zeven geleverde woofer→mid-overnames
-   afwijzen en één van de drie levende netlists; de mediaan is 15,2°. Eén getal maakt er een
-   gewapende eis van.
+7. ~~**Een getal voor `maxPhaseTrackingDeg`**~~ (§6c). **GESTELD bij U-5c** (Sander, 24-09-2026):
+   **30°**, voor casus 1 én casus 1h, in `gestelde_eisen.fasesporing_max_graden`. Zij is een EIS en
+   geen poort — de ladder mag haar verruimen (A5e.1) — en zij oordeelt PER OVERNAME. Wat 30° over
+   het opgenomen boek zegt: 25 van de 180 netlists gaan er op minstens één overname overheen, het
+   levende corpus draagt er één (`KAND_V2_3`, 32,02°), de drie referentiefilters halen hem ruim
+   (slechtste 20,61°), en **vijf van de zeven M-5-leveringen zouden zijn afgevallen — precies de
+   spiegelarmen**. **OP CASUS 1h BIJT HIJ OP ÉLKE RIJ**, en op een getal dat H-1 zelf als het
+   verkeerde aanwijst: de vier bevroren netlists lezen 35,9–77,5° op de GESTUURDE delay en
+   9,2–16,6° op de delay die het DSP-blok zegt in te stellen. Dat is H-1's openstaande punt (nr. 9
+   hieronder) en niets aan deze eis repareert het.
 8. **Een budget op M-J** (§6d). De metriek en de literatuurdrempel staan er; wat ontbreekt is een
    gestelde marge erboven — en daarvóór een kolom die zegt wat M-J op dit casusboek werkelijk leest,
    zoals V47 die voor M-C maakte.
@@ -600,11 +789,26 @@ dus vóór iemand er een grens op zet hoort er een kolom te komen zoals V47 die 
    de weigering OVERLEEFT de hele kalibratie-onzekerheid. Op de MILDSTE gepubliceerde deler (2,0)
    komt het plafond op 5688/2,0 = 2844 Hz, nog altijd onder de LR2-vloer van 2934,5 Hz; pas onder
    een deler van ~1,94 — buiten het gepubliceerde bereik — zou het venster opengaan.
-5. **De ONGEKNIPTE gestelde kooi op een positie BINNEN haar venster** (M-5, nieuw). U-5 knipt een
-   gestelde kooi met opzet niet tegen het venster; C-2 houdt gegenereerde kooien er juist binnen.
-   Op een positie die erbinnen ligt reikt de gestelde kooi er daardoor overheen, en M-5 mat de tune
-   erin lopen: **vijf van zeven geleverde rijen kruisen boven het breakup-plafond**, één tot 8560 Hz.
-   Repareren raakt U-5 en vraagt een eigen sessie.
+5. ~~**De ONGEKNIPTE gestelde kooi op een positie BINNEN haar venster.**~~ **GEREPAREERD bij U-5c**
+   (24-09-2026): de kooi wordt sindsdien PER AS gelezen — een kruising die nergens overheen stapt
+   krijgt de geknipte vorm die een gegenereerde kruising heeft, een kruising die WEL over een grens
+   stapt houdt U-5's ongeknipte kooi, want dat is precies het geval dat U-5's reden beschrijft.
+   Herdraaid op de twee koan677-leveringen van M-5: de LR2-spiegel die op 2829 Hz kruiste wordt nu
+   GEWEIGERD (versterkervloer), de LR4-textbookarm levert nog maar een ander en slechter netwerk
+   (fase 4,45 → 15,04°). **De reparatie is dus niet gratis**, en dat staat in
+   `test-fixtures/casus1_u5c_kooi.json` naast het getal.
+9. **De delay die STUURT is niet de delay die je INSTELT** (H-1, en sinds U-5c dragend). Op casus
+   1h wordt de zoektocht gestuurd op een klasse-A-delay die is afgeleid vóór er een netwerk was, en
+   de delay die je werkelijk instelt wordt op het GELEVERDE netwerk geherfit; het verschil is daar
+   26–66° M-K. Zolang dat zo is, oordeelt de fasesporingseis van §7 op die casus het verkeerde
+   getal. H-1 schreef de weg op: een gesloten-vorm tijdmatch per evaluatie, O(n).
+10. **De Priority-schuif doet op de v2-route niets** (§7c). Eén regel in
+   `declareCandidateChainChoices` sluit het bedradingsgat — en verandert wat élke v2-run met een
+   verzette schuif doet, dus het is een gesteld besluit. Gemarkeerd, niet gerepareerd.
+11. **`Source R disqualify` is zichtbaar op een tweeweg en doet daar niets** (§7c). Hem bedraden zou
+   tweeweg-kandidaten gaan diskwalificeren die vandaag doorgaan.
+12. **Een gevoeligheidskolom** (§7b). De meting staat er; of de spreiding onder ±5 % een KOLOM in de
+   shortlist wordt, en waartegen, is een eigen besluit.
 6. **Geen enkele grens op een λ-fractie.** De literatuurgetallen (¼ λ aanvang, ½ λ praktijk) staan in
    §2 genoteerd; V20 stelde vast dat geen enkele λ een weg met twee bronnen samenvat, dus wie er een
    grens op wil, stelt eerst welke van de vier.

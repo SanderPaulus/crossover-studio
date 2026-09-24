@@ -54,6 +54,25 @@
     dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
     staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
     voor de twee weggegooide runs die ernaast liepen.
+    **Ná U-5c (24-09-2026) gemeten op 546 s — 209 bestanden (208 geslaagd, 1 overgeslagen),
+    2840 tests (2836 geslaagd, 4 overgeslagen), alleen gedraaid met niets ernaast.** +3 BESTANDEN
+    (`predesign/statedCage.test.ts` 21 claims, `phaseTrackingRequirement.test.ts` 18,
+    `goalsPanelAudit.test.ts` 9) en +60 tests, en die telling sluit EXACT: die 48, plus VIJF in
+    `frozenNetlistGates` (de condensatorkolom), ZES in `metrics/buildability.test.ts` en ÉÉN in
+    `v1Carryover.test.ts`. Geteld met `grep -cE '^\s+it\('` per bestand tegen `3b3c1f3~1`; het
+    corpus is NIET aangeraakt, dus geen enkele `it.each` over een levend corpus beweegt. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 546 tegen H-5's 547 s is dezelfde laag op
+    dezelfde machine met drie bestanden erbij.
+    **TWEE VOLLE SNELLE RUNS ZIJN WEGGEGOOID EN NIET GERAPPORTEERD**, allebei om de H-2-reden. De
+    eerste liep nog toen ik de tolerantiemeting haar meetset liet opschrijven en twee opzettelijke
+    breuken draaide; een suite-uitslag beschrijft de boom die zij gemeten heeft of zij beschrijft
+    niets. **DE TWEEDE HAD ÉÉN RODE CLAIM EN ZIJ DEED HAAR WERK, twee keer:** de U-1-telling van de
+    v1-erfgoedrijen pint er VIJF en `phasePriority` maakt er zes van — een telling die per
+    constructie een DAAD is hoort om te vallen wanneer iemand die daad verricht. Zij ving daarbij de
+    helft die nog nergens stond: `phasePriority` zit WÉL in het projectbestand en NIET in
+    `V1_FIELD_DEFAULTS`, dus de U-1-overdrachtsmelding rapporteert hem niet. Dat gat is sindsdien
+    een eigen claim in plaats van stilte; het sluiten zou de melding laten vuren op élk project met
+    een verzette schuif, en dat is een gedragswijziging op bestaande bestanden.
     **Ná H-5 (24-09-2026) gemeten op 547 s — 206 bestanden (205 geslaagd, 1 overgeslagen),
     2780 tests (2776 geslaagd, 4 overgeslagen), IN ÉÉN KEER GROEN, alleen gedraaid met niets
     ernaast.** +1 BESTAND (`h5TextbookPolarity.test.ts`, 12 claims) en +15 tests, en die telling
@@ -682,7 +701,22 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 24-09-2026 (H-5): 206 bestanden, 2780 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 24-09-2026 (U-5c): 209 bestanden, 2840 tests,
+  1851 s (30 min 51), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag.**
+  +3 bestanden en +60 tests — zie de `test:fast`-regel; het corpus is NIET aangeraakt.
+  **DEZE RUN IS GEDRAAID OMDAT U-5c DE KOOI AANRAAKT**, en de kooi is een zoekinvoer: zij is de
+  zachte straf waarmee de tuner een overname op haar plaats houdt. Dat de wijziging op élk opgenomen
+  corpus ABSENT is, is per constructie waar — geen casus-fixture geeft `buildCandidateField` een
+  `statedPerAxisHz`, dus `statedCandidates` wordt daar nooit aangeroepen — maar "per constructie
+  absent" is precies het soort bewering dat dit boek MEET in plaats van gelooft, en de sessie heeft
+  ernaast laten zien dat de kooi een zoektocht werkelijk verzet (de LR2-spiegel van M-5 kantelt van
+  geleverd naar geweigerd). Wat de run bewijst: **alle VIER de live ketenruns reproduceren hun
+  bevroren netlist byte voor byte** — casus 1's goedkoopste geleverde en zijn goedkoopste
+  verwerping, casus 1b en casus 1h — en beide byte-referenties (`f4cRegression`,
+  `workerRouteRegression`) plus `toggleRegression` staan. **De tweede reden is de versiebump**
+  (`buildability/1.0 → 1.1`): hij staat NIET in `ESTIMATOR_VERSIONS`, dus geen enkele
+  run-vingerafdruk beweegt en geen herkomstbestand veroudert — nagegaan en niet aangenomen.
+  (De stand ervoor: **GEMETEN 24-09-2026 (H-5): 206 bestanden, 2780 tests,
   1832 s (30 min 33), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag.**
   +1 bestand en +15 tests — zie de `test:fast`-regel; het corpus is NIET aangeraakt.
   **DEZE RUN IS GEDRAAID OMDAT H-5 `netOptimizer.ts` AANRAAKT**, en dat is de enige reden die telt:
@@ -698,7 +732,7 @@
   acceptatie van de FIXTURE-PIN: absent is de identiteit, gemeten in plaats van beredeneerd.
   **DEZE VOLLE RUN IS DE TWEEDE VAN DEZE SESSIE en de eerste is weggegooid**, om de H-2-reden: hij
   liep nog toen ik één regel JSX toevoegde (de datummarkering naast de nieuwe select), en een
-  suite-uitslag beschrijft de boom die zij gemeten heeft of zij beschrijft niets.
+  suite-uitslag beschrijft de boom die zij gemeten heeft of zij beschrijft niets.)
   (De stand ervoor: **GEMETEN 21-09-2026 (M-5): 204 bestanden, 2740 tests,
   1832 s (30 min 32), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag en
   ná de 48 M-5-ketenruns.** +1 bestand en +24 tests — zie de `test:fast`-regel; het corpus is NIET
@@ -7951,3 +7985,227 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   (`low→mid 415.8 LR4 · mid→high 1532.6 LR4 · textbook`) langs hetzelfde pad dat de app neemt, de
   exacte labelstring is een claim in `polarityArms.test.ts`, en een bronscan pint dat de app
   `describePolarityArmsChoice(polarityArms)` in de run-regel zet.
+
+### U-5c-guards (de gestelde kooi per as; de fasesporingseis krijgt haar getal; de tweede veegronde)
+
+- **DEZE SESSIE ZIT IN TWEE COMMITS EN DAT IS EEN ONGELUK, GEEN INDELING.** Terwijl U-5c halverwege
+  was heeft een GELIJKTIJDIGE sessie de H-5-nazorg-CI-uitslag geboekt en daarbij de hele werkboom
+  meegecommit en gepusht: `3b3c1f3` draagt dertien regels CLAUDE.md die bij zijn eigen boodschap
+  horen ÉN tweeëntwintig bestanden U-5c-werk die er niet in genoemd worden. Sander heeft op
+  24-09-2026 besloten die historie te laten staan (niets herschreven, niets force-gepusht) en de
+  vervolgcommit per bestand te laten zeggen wat waar zat. **DE ACCEPTATIE GELDT DAAROM VOOR HET
+  GEHEEL VAN BEIDE COMMITS**, en de suite-uitslagen hieronder zijn op die samengestelde boom
+  gemeten. Wie deze sessie naleest heeft `3b3c1f3` én de vervolgcommit nodig; de boodschap van de
+  eerste beschrijft alleen zijn eigen dertien regels.
+  **DE UITSLAGEN, op die samengestelde boom en elk ALLEEN gedraaid:** `npm run test:fast` 546 s,
+  209 bestanden (208 geslaagd, 1 overgeslagen), 2840 tests (2836 geslaagd, 4 overgeslagen), groen;
+  `npx vitest run` 1851 s (30 min 51), 209 bestanden, 2840 tests, niets overgeslagen, in één keer
+  groen, met **alle VIER de live ketenruns byte-identiek** en beide byte-referenties plus
+  `toggleRegression` staand. `npx tsc -b` groen vóór elke stap. De twee regels hierboven in dit
+  bestand (bij `test:fast` en bij `npx vitest run`) dragen de tellingen en de afweging; wat hier
+  staat is dat zij over het GEHEEL gaan en niet over de tweede commit alleen.
+  **CLAUDE.md en `docs/` zijn ná die runs bewerkt en dat is met opzet nagegaan: geen enkele test
+  leest een van beide** (wel `App.tsx`, `netOptimizer.ts`, de generatoren en de fixtures, en die
+  zijn sinds de laatste run niet aangeraakt). De boom die de suites gemeten hebben is dus in élk
+  opzicht dat een test kan zien de boom die gecommit wordt.
+
+- **DEEL 1 — DE GESTELDE KOOI WORDT PER AS GELEZEN.** U-5 legt élke gestelde kooi één spacing breed,
+  gecentreerd, en NIET tegen het venster geknipt, met een reden die juist is wáár zij geldt: knippen
+  zou de tune terugtrekken naar een rand waar de ontwerper bewust overheen stapte. **Wat die reden
+  niet dekt is een positie die nergens overheen stapte.** Daar beschermt de ongeknipte kooi geen
+  besluit en geeft zij de tune ruimte die de METINGEN niet toelaten — op élke as van de kandidaat,
+  ook de assen waarover de ontwerper niets zei. M-5 mat wat dat kost en liet de reparatie aan een
+  eigen sessie; dit is die sessie.
+  **DE REGEL IS ÉÉN BESLISSING** (`statedCage` in `statedCrossings.ts`): een kruising die past NIETS
+  van haar eigen venster wordt gekooid als een gegenereerde — `[max(vloer, hz/2^half),
+  min(plafond, hz·2^half)]`, de vorm die `positionsAlong` legt (C-2) — en een kruising die WÉL
+  ergens overheen stapt houdt U-5's ongeknipte kooi. `twoSided` wordt gelezen met de GENERATOR-eigen
+  predikaat (`symmetricCage`, sinds U-5c geëxporteerd, op de ONGERONDE randen, C-2's les) in plaats
+  van beweerd: na een knip kan de kooi werkelijk eenzijdig zijn, en een lezer die "tweezijdig" te
+  horen krijgt over een kooi die dat niet is krijgt het omgekeerde van wat er gebouwd is.
+  **HET TWEEDE LEK SLUIT DOOR DEZELFDE REPARATIE.** `windowFloorsFor` verlaagt de vensterVLOER naar
+  de kooibodem zodra een kandidaat gesteld is — U-5's regel, en juist wáár de ontwerper onder de
+  vloer stapte. De `Math.min` daar was altijd al PER KRUISING, maar kon de twee gevallen niet
+  onderscheiden: een ongeknipte kooi ligt per constructie onder de vloer, dus hij verlaagde ze
+  allemaal. Met de geknipte kooi is die min precies daar een no-op.
+  **GEMETEN OP HET M-5-VELD:** de mid→tweeter-kooi ging van 2125–2385 Hz naar 2200–2304 (het venster
+  zelf, aan beide kanten geknipt), en de woofer→mid-positie 253 Hz is bij LR2 geknipt (vloer 246,5)
+  en bij LR4 niet (vloer 147,9) — **dezelfde frequentie, dezelfde as, twee kooien**, en dat is wat
+  "per as" betekent: geen besluit op kandidaatniveau kan dat opleveren.
+- **DE HERDRAAI, EN ZIJ GEEFT TWEE VERSCHILLENDE ANTWOORDEN** (`test-fixtures/casus1_u5c_kooi.json`;
+  `M5_REDO=1 M5_SET=koan677 M5_ONLY='<rij>' npx vite-node scripts/measure-m5-lr2.ts`, de eigen weg
+  van het script). De M-5-shards zijn ervoor weggezet en erna byte-identiek teruggezet (48 van 48),
+  dus het GEDATEERDE M-5-record is niet aangeraakt. **(1) De LR2-SPIEGEL die bij M-5 op 2829 Hz
+  kruiste — 525 Hz boven het breakup-plafond — wordt met de dichte kooi GEWEIGERD**, op de
+  versterkervloer (2,54 tegen 2,60 Ω), in 687 s tegen 1491 s. Die levering leunde dus op het
+  verlaten van het venster, en de M5-KAND-status "meetmateriaal, geen bouwkandidaat" is daarmee
+  GEMETEN in plaats van aangenomen. **(2) De LR4-TEXTBOOKarm die er BINNEN kruiste (2232,6 Hz)
+  levert nog steeds — maar een ANDER en op vrijwel elke kolom slechter netwerk:** fase 4,45 → 15,04°,
+  min |Z| 2,776 → 2,585 Ω (haalt de vloer nog maar BINNEN de 2 %-meettolerantie), M-C −30,5 → −25,6
+  dB, 76 → 66 onderdelen, en `tuned` 42 → **0** waar M-5's zeven leveringen 25 tot 42 lezen: de
+  laatste structuurstap rolde terug en wat eruit komt is het netwerk zoals het stond (`asIs`,
+  freeCount 0). **DE REPARATIE IS DUS NIET GRATIS**, en dat staat hier omdat het gemeten is: de kooi
+  is een ZACHTE straf die het hele zoeklandschap vormt en niet alleen de landingsplaats, dus een rij
+  die al binnen het nieuwe venster landde loopt er tóch een ander pad doorheen.
+- **GEEN ENKEL CORPUS BEWEEGT, en dat is per constructie en niet per geluk:** geen casus-fixture
+  geeft `buildCandidateField` een `statedPerAxisHz` (nagegaan in alle vier de generatoren), dus
+  `statedCandidates` wordt op geen enkele opgenomen run aangeroepen en de kooi die U-5c verandert
+  bestaat daar niet. De vier live ketenruns reproduceren.
+- `src/lib/engine2/predesign/statedCage.test.ts` (21 claims, nieuw) — vijf groepen, en de
+  TEGENPROEF draagt het bestand: een positie BUITEN haar venster houdt haar ongeknipte kooi, want
+  dat is precies het geval dat U-5's reden beschrijft. Zonder haar leest de eerste groep als
+  "gestelde kooien worden geknipt", en dat is de regel niet. Verder: de handberekening op U-5's
+  eigen bank (plafond, vloer, geen-plafond, de positie beweegt nooit en ligt altijd in haar kooi);
+  per as én per ORDE; een kandidaat waarvan de assen het ONEENS zijn krijgt per as het juiste
+  antwoord; het M-5-veld met de kooien van vandaag; de opgenomen M-5-tabel als gedateerd record van
+  wat de oude kooi toeliet; en de venstervloer. **Nagemeten dat hij kán falen:** de knip terugdraaien
+  zet TIEN claims op rood en laat U-5's eigen 36 claims groen — de tegenproef en de P2-claims
+  overleven, wat precies goed is.
+
+- **DEEL 2 — `maxPhaseTrackingDeg` KRIJGT HAAR GETAL: 30° (Sander, 24-09-2026), casus 1 én casus 1h.**
+  H-5 corrigeerde de aanname dat de eis ontbrak en noteerde dat alleen het GETAL miste: zij bestaat
+  sinds F3 met een instelveld, een registerrij, een guided-scherm, een plaats in `RELAXABLE` en een
+  lezer in de shortlist. Wat U-5c toevoegt is dat getal, de lezer die het uit het manifest haalt in
+  plaats van het over te typen (`casus1MaxPhaseTrackingDeg`, P6), en de twee plaatsen waar het de
+  shortlist bereikt (`CASUS1_REQUIREMENTS` / `CASUS1H_REQUIREMENTS`, gespreid zodat een niet-gestelde
+  eis niets wapent — de `CASUS1_V2_GATES`-vorm, om de V42-reden).
+  **EEN EIS EN GEEN POORT, en die scheiding is hier geen haarkloverij.** De opdracht van deze sessie
+  noemde hem een poort; dat is het mechanisme niet. Een poort is een BESCHERMING die de ladder nooit
+  mag verruimen; fasesporing is smaak (A5e.1), staat in `RELAXABLE` naast het SPL-venster, en de
+  ladder MAG haar verruimen met het etiket dat dat zegt. Dat staat als claim in de suite, mét de
+  tegenproef dat een POORT niet wijkt.
+- **WAAROM ER NIETS GEREGENEREERD HOEFT, en het is gemeten en niet beredeneerd:** een EIS bereikt de
+  TUNER niet. `maxPhaseTrackingDeg` staat in geen van de drie classificaties van `choices.ts` — dus
+  niet in `NetOptimizeOptions`, wat `choiceKeyGuard` van de andere kant bewaakt — en geen tuner-,
+  worker-, keten- of ontwerpbron noemt hem. Een gesteld getal kan daarom per constructie geen enkele
+  componentwaarde verplaatsen, en élke bevroren netlist reproduceert ermee gesteld.
+- **WAT 30° OVER HET OPGENOMEN BOEK ZEGT** (uit de M-K-kolommen van `v44_fasematen`, geen nieuwe run,
+  geen herbeoordeling): woofer|mid 177 rijen, mediaan 14,36°, spreiding 1,79–95,29, **twintig boven
+  30**; mid|tweeter 180 rijen, mediaan 10,05°, spreiding 3,10–97,92, zeven erboven. Per NETLIST —
+  de eis oordeelt per overname, dus een netlist valt af zodra één overname eroverheen gaat — **25 van
+  de 180**. HAALBAAR: alle drie de referentiefilters halen hem op BEIDE overnames (slechtste 20,61°,
+  9,4° marge). NIET VACUÜM: het levende corpus draagt er één (`KAND_V2_3`, 32,02°) en vier van de
+  vijf M5-netlists vallen af. **EN DE SCHERPSTE LEZING: 30° had VIJF van de ZEVEN M-5-leveringen
+  gevangen — precies de vijf spiegelarmen**, en de twee die hem halen zijn de twee LR4-textbookarmen.
+  M-5 schreef dat de LR2-spiegels "winnen op de rekening en het betalen in fasetracking"; dit getal
+  zegt hoeveel dat kost, in de eenheid waarin het betaald wordt.
+  **LET OP DAT DIT BOEK GROEIT:** H-5 noteerde 173 woofer|mid-rijen met mediaan 15,2 en 149 erbinnen;
+  M-5 voegde vijf netlists toe en sindsdien zijn het er 177 met mediaan 14,36 en 157 erbinnen. Een
+  telling van dit boek is deels een corpusgrootte, precies zoals de testtellingen hieronder.
+- **OP CASUS 1h BIJT HIJ OP ÉLKE RIJ, OP EEN GETAL DAT H-1 ZELF ALS HET VERKEERDE AANWIJST — en dat
+  is de onaangename vondst van deel 2.** De vier bevroren netlists lezen woofer|mid 35,86 / 77,33 /
+  77,50 / 76,43° op de GESTUURDE delay en gaan er dus alle vier overheen; op de delay die het
+  DSP-doelblok zegt IN TE STELLEN lezen dezelfde vier netwerken 9,15 / 11,08 / 16,61 / 14,48 en halen
+  zij hem alle vier ruim. Het verschil IS H-1's openstaande punt — de zoektocht wordt gestuurd op een
+  klasse-A-delay die is afgeleid vóór er een netwerk was — en **niets aan deze eis repareert dat**.
+  Gevolg, hardop: de eerstvolgende casus-1h-regeneratie oordeelt op de gestuurde lezing en zou op dit
+  veld geen enkele rij haalbaar laten; de ladder verruimt hem dan tot er rijen zijn, met het etiket
+  dat dat zegt. Niets is daarvoor versoepeld en geen corpus is herbeoordeeld: wat er staat is de
+  meting die eraan voorafgaat, in `gestelde_eisen.fasesporing_max_bevinding_op_deze_casus` en gepind
+  in `phaseTrackingRequirement.test.ts` zodat zij niet stil kan worden.
+- `src/lib/engine2/phaseTrackingRequirement.test.ts` (18 claims, nieuw) — het gestelde getal gelezen
+  en nergens getypt (beide casussen); leeg is niet beoordeeld en gesteld weigert met GEMETEN tegen
+  GESTELD in graden (`"42.5° misses 30.0° by 12.5°"`); niet-gemeten is niet gefaald; PER OVERNAME
+  mét de tegenproef dat het GEMIDDELDE van 8 en 41 de eis zou halen; door de shortlist met de
+  tegenproef zonder de eis; de LADDER verruimt hem en zegt dat, waar een POORT niet wijkt; de drie
+  bronscans die "een eis bereikt de tuner niet" hard maken; de tabel over het boek; en casus 1h.
+  **Nagemeten dat hij kán falen:** het getal uit het manifest halen zet TIEN claims op rood.
+
+- **DEEL 3 — DE TWEEDE VEEGRONDE LANGS DE VUISTREGELS.** Vijf posten, één gebouwd, één gemeten, twee
+  benoemde grenzen, één statuskolom. De volle tabel staat in `docs/vuistregels_en_wat_de_engine_doet.md`
+  §7; wat hier staat is wat gebouwd is en wat gemeten.
+- **(a) DE SPANNING OVER ELKE CONDENSATOR — GEBOUWD, RAPPORTAGE-ONLY** (`capacitorLoads` in
+  `metrics/buildability.ts`, versie **1.0 → 1.1**: de vorm groeide met een derde elementsoort en geen
+  enkel getal bewoog — de A5e.5-cacheregel op een vormwijziging, het V44-precedent bij
+  `z-resonance`). De engine drukte de WATT in elke weerstand af (M-A/part) en de PIEKSTROOM door elke
+  spoel (M-L) en zei niets over de VOLT over een condensator — de ene grootheid die beslist of het
+  onderdeel dat je bestelt zijn werk overleeft. Gelezen uit dezelfde oplossing als de twee ernaast:
+  |V| = |I|·|Z_C|·V_piek/E_g, met de ESR erin omdat het ELEMENT is wat een bouwer koopt.
+  **GEEN POORT, en niet bij gebrek aan moeite:** de catalogus draagt `powerW` voor weerstanden en
+  `maxCurrentA` voor kernspoelen en NIETS voor condensatoren; een spanningsklasse is een TYPEbesluit
+  van de bouwer, en een toelating hier verzinnen zou data verzinnen (A3h).
+  **WAT DE METING ZEGT: op ÉLKE van de 180 netlists van dit boek staat er MEER over een condensator
+  dan de versterker levert** (piekingang 50,6 V). Hoogste lezing op een netlist MET koper: **642,6 V**;
+  de referentiefilters 94,1 / 82,6 / 89,5 V; het levende corpus 151,0 / 104,5 / **370,1** V — die
+  laatste een valcondensator van 0,73 µF bij 1292 Hz, 7,3 keer de ingang, precies het mechanisme dat
+  de vuistregel bedoelt. **"De versterker levert 50 V" is dus geen antwoord op de vraag.**
+  **DE REEKS VALT IN TWEE POPULATIES EN ZIJ MOGEN NIET DOOR ELKAAR GELEZEN WORDEN**, en dat is de
+  helft die bijna fout het boek in ging: een tak met een VERLIESVRIJE spoel heeft een onbegrensde Q,
+  dus daar loopt de lezing tot in de kilovolts — gemeten **30 110 V op `V28_KAND_2`**. Dat is een
+  eigenschap van een GEÏDEALISEERDE netlist en geen uitspraak over een bouwbaar ontwerp: de
+  gedateerde corpora van vóór A5e.3 dragen geen DCR-model (140 van de 180), de levende netlists wel.
+  Het blok `v50_bouwbaarheid` draagt daarom `spoelen_zonder_DCR` per rij en twee aparte totalen, en
+  `frozenNetlistGates.test.ts` pint dat élke uitschieter in de geïdealiseerde helft zit.
+  **EEN VERWACHTING DIE DE DATA WEERLEGDE, en zij staat in de suite omdat zij terugkomt:** de eerste
+  vorm van de ESR-claim was "meer ESR is meer spanning over hetzelfde onderdeel", want de ESR zit in
+  de TELLER. Onwaar — hij zit óók in de NOEMER, want hij staat in de lus, en waar X_C ≫ R wint de
+  noemer (49,94 V zonder ESR tegen 49,86 met 5 Ω). De claim zegt sindsdien wat er gemeten is, mét de
+  tegenproef dat de ESR wél in de teller zit.
+  `metrics/buildability.test.ts` +6 claims (de handberekening, de resonante veelvoud-van-de-ingang,
+  de ESR, de nieuwe meting met de capaciteit als tweede hefboom, P4/F0, en "er is niets om tegen te
+  vergelijken"); `frozenNetlistGates.test.ts` +5. **De reproductieclaim vergelijkt RELATIEF en niet
+  op decimalen** — de V46/V49/B-1-les, preventief: het opgenomen getal is op DEZE machine geschreven
+  en de verse lezing komt uit een lineaire oplossing, en "één decimaal" op 30 110 V zou zes
+  significante cijfers van een solver over twee runtimes vragen.
+- **(b) TOLERANTIEGEVOELIGHEID — GEMETEN, EN GEREGISTREERD ALS VOORSTEL**
+  (`scripts/measure-u5c-tolerance.ts`, `test-fixtures/casus1_u5c_tolerantie.json`; seconden, geen
+  ketenrun en geen tune — het netwerk wordt alleen opnieuw opgelost). Twee lezingen: Monte-Carlo met
+  alle onderdelen tegelijk (wat een bouwer overkomt) en één onderdeel tegelijk op beide randen (wie
+  de spreiding draagt). UNIFORM binnen de band en niet normaal, met reden: een tolerantie is een
+  SPECIFICATIE en geen gemeten spreiding, en een normale verdeling eromheen zou een aanname over de
+  fabrikant toevoegen die niemand gemeten heeft (A3h).
+  **GEMETEN 24-09-2026 op KAND_V2_2 (36 onderdelen, ±5 %, 200 trekkingen, seed 20260924): het ontwerp
+  stort NIET in en twee GEOORDEELDE grootheden lopen wél weg.** ± venster 2,083 → 1,847–2,482 dB
+  (grootste |Δ| 0,399), rms 1,001 → 0,897–1,170 (0,169) — de amplitude houdt zich aan de vuistregel.
+  Maar **M-K op mid→tweeter MEER DAN VERDUBBELT** (5,41 → 4,51–11,73°, grootste |Δ| 6,32) en
+  **min |Z| zakt tot 2,410 Ω tegen een gestelde vloer van 2,60** — het nominale getal (2,578) haalt
+  die vloer al alleen binnen de 2 %-meettolerantie. Wie deze netlist bouwt koopt een ontwerp dat
+  ergens tussen 2,41 en 2,69 Ω uitkomt. **De 30° van deel 2 overleeft de band op deze kandidaat ruim**
+  (slechtste trekking 17,2 / 11,7°), en dat is een geruststelling die alleen een meting kan geven.
+  **GEEN ENKEL ONDERDEEL DRAAGT DE SPREIDING:** de grootste uitslag van één onderdeel is 0,149 dB op
+  het venster (C·R6) en 0,061 dB op de rms (B·L5) — een optelsom van zesendertig kleine bijdragen en
+  niet één kritieke schroef. **Geen kolom gebouwd**: dat is een eigen besluit (A5e.1).
+- **(c) DE DODE-VELDEN-AUDIT VAN HET GOALS-PANEEL — TWEE VONDSTEN**
+  (`goalsPanelAudit.test.ts`, 9 claims, nieuw). Dertien besturingselementen, elk met een status die
+  is NAGEMETEN en niet beweerd: GELEZEN (bereikt de ketensettings én overleeft de verklaring),
+  V1-ALLEEN (wordt door de verklaring overschreven) of DRIEWEG-ALLEEN. **DOOD — in de settings en
+  door niemand gelezen — GEEN GEVONDEN**, en dat is een claim met een enumeratie eronder en geen
+  stilte.
+  **DE EERSTE VONDST: de Priority-schuif doet op de v2-route niets.** M-4 maakte `phasePriority` de
+  zesde ketensleutel en liet de verklaring hem ONVOORWAARDELIJK stellen uit `DEFAULT_PHASE_PRIORITY`
+  (de eigen 0,5 van de motor); het commentaar daar zegt *"een ontwerper die de schuif stelt wint
+  ervan"* — en de app stelt hem nergens, op geen van de drie routes waar zij de ketenverklaring
+  aanroept. Bij 50/50 is het onzichtbaar (de schuifdefault ÍS 0,5); wie hem verzet krijgt zonder
+  melding hetzelfde antwoord. **Het is een BEDRADINGSGAT en geen besluit**, en één regel zou het
+  sluiten — maar dat verandert wat élke v2-run met een verzette schuif doet, en dat is een gesteld
+  besluit en geen markeringssessie. **GEMARKEERD op beide plaatsen waar de schuif staat**: het
+  expertpaneel én de Goals-stap van de wizard, met de badge die I-1 voor deze soort schreef. Zesde
+  rij in `V1_LEGACY` en zesde naam in `V2_UNGOVERNED_ROWS`.
+  **DE TWEEDE VONDST: `Source R disqualify` is zichtbaar op een tweeweg en doet daar niets.** De
+  drieweg-ketensettings dragen `rSourceDisqualifyOhm` en `twoWayChainSettings` niet, dus op een
+  tweeweg-v2-run verklaart de kandidaat hem ABSENT (V34's `withDeclaredSourceLimit` maakt er een
+  expliciete `null` van). Het veld staat er wel, op elk project. **Gezegd waar het staat** — een
+  `derived`-regel achter `engineV2Enabled && !threeWay`, de vorm die de DI-ankerknop ernaast al
+  draagt — en niet gerepareerd, om dezelfde reden: hem bedraden zou tweeweg-kandidaten gaan
+  diskwalificeren die vandaag doorgaan. `DI anchor weight` is óók drieweg-alleen en krijgt GEEN
+  melding: hij staat achter `threeWay`, dus een tweewegontwerper ziet hem niet — en dát verschil is
+  waarom de een er een krijgt en de ander niet.
+- **(d) SERIËLE KRUISFILTERS EN ONEVEN-ORDE-UITLIJNINGEN — BENOEMDE GRENS, niet gebouwd.** Dit
+  project bouwt uitsluitend PARALLELLE kruisfilters; de seriële vorm vraagt een andere synthese, een
+  andere audit en een andere lezing van élke elektrische metriek (`levelWork.ts`,
+  `seriesProtection.ts` en de slot-resolutie lopen alle drie van de BUS naar de driver, en die bus
+  bestaat daar niet). En de bibliotheek kent LR2 en LR4: een derde-orde Butterworth sommeert in
+  KWADRATUUR, en **de textbookregel die H-5 deterministisch maakte geldt er niet** — zij is
+  geformuleerd voor LR van orde 2m. Een oneven orde toevoegen is daarom geen regel erbij maar een
+  tweede polariteitsdoctrine. Beide staan met naam in §7(d), zodat "gemist" ook hier beantwoord is
+  met "bewust niet" in plaats van met stilte.
+- **(e) SPOELVERZADIGING EN EPDR — statuskolom bijgewerkt, beide al gedekt.** M-L (V50) leest de
+  piekstroom per spoel en oordeelt op casus 1 niets om een gemeten reden (NUL van de 2116
+  catalogusspoelen draagt een stroomopgave; luchtspoelen verzadigen niet). M-B/EPDR staat naast
+  M-B/|Z| en wacht op een getal — hetzelfde patroon als `maxPhaseTrackingDeg` tot vandaag.
+
+- **WAT ER NIET IS GEBEURD, en dat is de omvang van deze sessie.** Geen enkele poort verplaatst, geen
+  budget, geen venster, geen metriekgetal en geen corpus; geen bevroren netlist aangeraakt; geen
+  regeneratie. De twee bedradingsgaten van (c) zijn GEMARKEERD en niet gedicht, allebei omdat dichten
+  verandert wat een bestaande run doet. De casus-1h-bevinding van deel 2 is GEBOEKT en niet
+  gerepareerd: zij is H-1's openstaande punt. En de tolerantiemeting levert geen kolom.

@@ -4200,7 +4200,17 @@ describe('U-5c — de piekspanning over elke condensator, op élke bevroren netl
     for (const row of rec) {
       const f = FIELD.find((x) => x.key === row.netlist)!;
       expect(row.zwaarste_C, row.netlist).toBe(f.worstCapId);
-      expect(row.zwaarste_C_piek_V!, row.netlist).toBeCloseTo(f.worstCapV!, 1);
+      /* RELATIEF EN NIET OP DECIMALEN, en dat is de les waarvoor dit boek bij
+       * V46, V49 en B-1 elk één keer betaald heeft: het opgenomen getal is op
+       * DEZE machine geschreven en dit is een VERSE lezing uit een lineaire
+       * oplossing, die op een andere runtime in de laatste bits kan afwijken.
+       * Op 30 110 V zou "één decimaal" zes significante cijfers van een solver
+       * vragen. Eén tiende promille is ruim binnen élke natuurkundige
+       * betekenis en ver buiten wat een runtime verschuift. */
+      const rec = row.zwaarste_C_piek_V!;
+      expect(Math.abs(rec - f.worstCapV!), `${row.netlist}: ${rec} V tegen ${f.worstCapV!} V`).toBeLessThanOrEqual(
+        Math.max(0.05, 1e-4 * Math.abs(rec)),
+      );
       expect(row.spoelen_zonder_DCR, row.netlist).toBe(f.losslessCoils);
     }
   });

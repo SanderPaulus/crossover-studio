@@ -61,6 +61,7 @@ import {
   casus1FilterFromParts,
   casus1Geometry,
   casus1Manifest,
+  casus1SetOf,
   loadGolden,
 } from '../src/lib/engine2/casus1.fixture.ts';
 import { buildReport, type EngineV2Report } from '../src/lib/engine2/report.ts';
@@ -261,7 +262,10 @@ writeFileSync(
       tolerantie_pct: PCT,
       trekkingen: N,
       seed: SEED,
-      meetset: (manifest as unknown as { sessie?: string }).sessie ?? null,
+      /* De meetset uit het MANIFEST en niet getypt: de sessie-id van casus 1
+       * kent er vier, en een tolerantietabel zonder de set waarop zij gemeten
+       * is beschrijft een ander netwerk zodra de basis verschuift (M-3). */
+      meetset: casus1SetOf(manifest),
       per_netlist: out,
     },
     null,

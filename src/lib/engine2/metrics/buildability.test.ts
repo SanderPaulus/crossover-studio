@@ -200,7 +200,13 @@ describe('U-5c — de piekspanning over elke condensator', () => {
      * deze keten is dat ook waar de spanning het grootst is. */
     expect(c.atHz).toBe(100);
     const hand = (hz: number) => (50 * xc(hz)) / Math.hypot(RG + 8, xc(hz));
-    expect(c.peakV!).toBeCloseTo(hand(100), 9);
+    /* ZES DECIMALEN EN GEEN NEGEN. Beide kanten worden in DEZELFDE run
+     * berekend — dat is de H-4-reden waarom dit geen V46-val is — maar het
+     * zijn twee VERSCHILLENDE berekeningen van dezelfde grootheid: een
+     * lineaire oplossing tegen een gesloten vorm. Zes decimalen op 50 V is
+     * 2e-8 relatief, ver binnen élke betekenis en ver buiten wat een andere
+     * runtime aan de laatste bits doet. */
+    expect(c.peakV!).toBeCloseTo(hand(100), 6);
     // En dat is GEEN benadering van V_piek: bij 100 Hz is X_C 159 Ω tegen 8 Ω
     // last, dus vrijwel de hele generatorspanning staat over de condensator.
     expect(xc(100)).toBeCloseTo(159.15, 2);
@@ -234,7 +240,7 @@ describe('U-5c — de piekspanning over elke condensator', () => {
     // Q = X / R op resonantie, en de spanning over C is Q keer de ingang.
     const Q = (2 * Math.PI * f0 * L) / (RG + 8);
     expect(Q).toBeGreaterThan(7);
-    expect(c.peakV!).toBeCloseTo(50 * Q, 6);
+    expect(c.peakV!).toBeCloseTo(50 * Q, 4);
     expect(c.peakV!).toBeGreaterThan(300);
   });
 
@@ -249,8 +255,8 @@ describe('U-5c — de piekspanning over elke condensator', () => {
     const esr = capacitorLoads(capAnalysis(5), { peakInputVolts: 50 })[0];
     const hand = (hz: number, r: number) =>
       (50 * Math.hypot(r, xc(hz))) / Math.hypot(RG + 8 + r, xc(hz));
-    expect(zero.peakV!).toBeCloseTo(hand(100, 0), 9);
-    expect(esr.peakV!).toBeCloseTo(hand(100, 5), 9);
+    expect(zero.peakV!).toBeCloseTo(hand(100, 0), 6);
+    expect(esr.peakV!).toBeCloseTo(hand(100, 5), 6);
     expect(esr.peakV!).toBeLessThan(zero.peakV!);
     /* EN DE TEGENPROEF DIE ZEGT DAT DE ESR WÉL IN DE TELLER ZIT, want zonder
      * haar is de claim hierboven ook waar voor een lezing die het element als

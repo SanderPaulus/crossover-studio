@@ -1,0 +1,536 @@
+{
+ "_": "U-5c — TOLERANTIEGEVOELIGHEID (VOORSTEL, geen eis en geen kolom): wat ±5 % op élk onderdeel met een geleverd ontwerp doet. Twee lezingen: Monte-Carlo met alle onderdelen tegelijk (wat een bouwer overkomt) en één onderdeel tegelijk op beide randen (wie de spreiding draagt). Geen ketenrun en geen tune — het netwerk wordt alleen opnieuw opgelost. Uniform binnen de band, want een tolerantie is een SPECIFICATIE en geen gemeten spreiding.",
+ "_gemeten_op": "2026-09-24",
+ "tolerantie_pct": 5,
+ "trekkingen": 200,
+ "seed": 20260924,
+ "meetset": "m3",
+ "per_netlist": [
+  {
+   "netlist": "KAND_V2_2",
+   "onderdelen": 36,
+   "nominaal": {
+    "rippleDb": 4.165641517520929,
+    "windowDb": 2.0828207587604646,
+    "rmsDb": 1.001294430500304,
+    "minZOhm": 2.5780245053322637,
+    "mk": [
+     13.117588366498916,
+     5.410271136179543
+    ]
+   },
+   "monte_carlo": [
+    {
+     "grootheid": "± venster dB",
+     "nominaal": 2.0828,
+     "min": 1.8469,
+     "max": 2.4822,
+     "p95_afwijking": 0.2495,
+     "grootste_afwijking": 0.3994
+    },
+    {
+     "grootheid": "rms dB",
+     "nominaal": 1.0013,
+     "min": 0.897,
+     "max": 1.1698,
+     "p95_afwijking": 0.1124,
+     "grootste_afwijking": 0.1685
+    },
+    {
+     "grootheid": "min |Z| Ω",
+     "nominaal": 2.578,
+     "min": 2.4104,
+     "max": 2.69,
+     "p95_afwijking": 0.1213,
+     "grootste_afwijking": 0.1676
+    },
+    {
+     "grootheid": "M-K 1 °",
+     "nominaal": 13.1176,
+     "min": 9.1366,
+     "max": 17.1678,
+     "p95_afwijking": 2.9984,
+     "grootste_afwijking": 4.0502
+    },
+    {
+     "grootheid": "M-K 2 °",
+     "nominaal": 5.4103,
+     "min": 4.5143,
+     "max": 11.7258,
+     "p95_afwijking": 3.1758,
+     "grootste_afwijking": 6.3156
+    }
+   ],
+   "per_onderdeel": [
+    {
+     "onderdeel": "L1",
+     "soort": "Inductor",
+     "waarde": 7.3,
+     "eenheid": "mH",
+     "venster_dB": 0.1416433887582058,
+     "rms_dB": 0.017848906108363316,
+     "minZ_ohm": 0.0007771933939832998,
+     "mk_graden": [
+      0.49293233170845774,
+      1.7763568394002505e-15
+     ]
+    },
+    {
+     "onderdeel": "C2",
+     "soort": "Capacitor",
+     "waarde": 124.2,
+     "eenheid": "uF",
+     "venster_dB": 0.10349509605329343,
+     "rms_dB": 0.010187029261634617,
+     "minZ_ohm": 0.00004255015478493718,
+     "mk_graden": [
+      1.7142952755654104,
+      1.7763568394002505e-15
+     ]
+    },
+    {
+     "onderdeel": "L3",
+     "soort": "Inductor",
+     "waarde": 1.04,
+     "eenheid": "mH",
+     "venster_dB": 0.02072293516055046,
+     "rms_dB": 0.009694646565252985,
+     "minZ_ohm": 0.00001770137015499884,
+     "mk_graden": [
+      1.3006138380982897,
+      1.7763568394002505e-15
+     ]
+    },
+    {
+     "onderdeel": "C4",
+     "soort": "Capacitor",
+     "waarde": 7.242,
+     "eenheid": "uF",
+     "venster_dB": 0.0020802144500433606,
+     "rms_dB": 0.0009243922155419693,
+     "minZ_ohm": 0.0000020536509461877017,
+     "mk_graden": [
+      0.1423244376104833,
+      8.881784197001252e-16
+     ]
+    },
+    {
+     "onderdeel": "C6",
+     "soort": "Capacitor",
+     "waarde": 12.76,
+     "eenheid": "uF",
+     "venster_dB": 0.0037388958008190976,
+     "rms_dB": 0.0016214431367038706,
+     "minZ_ohm": 0.000003475569024136149,
+     "mk_graden": [
+      0.16357332443091188,
+      1.7763568394002505e-15
+     ]
+    },
+    {
+     "onderdeel": "R7",
+     "soort": "Resistor",
+     "waarde": 0.4108,
+     "eenheid": "Ω",
+     "venster_dB": 0.00003695344978993376,
+     "rms_dB": 0.000003943863963407068,
+     "minZ_ohm": 8.190690792275745e-8,
+     "mk_graden": [
+      0.001093907253734372,
+      1.7763568394002505e-15
+     ]
+    },
+    {
+     "onderdeel": "L8",
+     "soort": "Inductor",
+     "waarde": 6.227,
+     "eenheid": "mH",
+     "venster_dB": 0.006712025780938102,
+     "rms_dB": 0.0014670554531581725,
+     "minZ_ohm": 8.686034984606295e-7,
+     "mk_graden": [
+      0.016267875998190462,
+      1.7763568394002505e-15
+     ]
+    },
+    {
+     "onderdeel": "C9",
+     "soort": "Capacitor",
+     "waarde": 1298,
+     "eenheid": "uF",
+     "venster_dB": 0.0001423012625281217,
+     "rms_dB": 0.000016445755711913534,
+     "minZ_ohm": 1.8810921709189188e-9,
+     "mk_graden": [
+      0.0004991607847397717,
+      0
+     ]
+    },
+    {
+     "onderdeel": "R10",
+     "soort": "Resistor",
+     "waarde": 0.7224,
+     "eenheid": "Ω",
+     "venster_dB": 0.00037890415892860574,
+     "rms_dB": 0.000026450329791982696,
+     "minZ_ohm": 5.2083013457604466e-9,
+     "mk_graden": [
+      0.0002771445945004558,
+      1.7763568394002505e-15
+     ]
+    },
+    {
+     "onderdeel": "B·C1",
+     "soort": "Capacitor",
+     "waarde": 80.55,
+     "eenheid": "uF",
+     "venster_dB": 0.045944320453646714,
+     "rms_dB": 0.020328299878353828,
+     "minZ_ohm": 0.02944626767002001,
+     "mk_graden": [
+      1.142777538660484,
+      0.2032368109324647
+     ]
+    },
+    {
+     "onderdeel": "B·L2",
+     "soort": "Inductor",
+     "waarde": 1.361,
+     "eenheid": "mH",
+     "venster_dB": 0.033475616705451294,
+     "rms_dB": 0.008260681476239595,
+     "minZ_ohm": 0.04863443567229542,
+     "mk_graden": [
+      1.6663011944628927,
+      0.024181208932096077
+     ]
+    },
+    {
+     "onderdeel": "B·C3",
+     "soort": "Capacitor",
+     "waarde": 46.34,
+     "eenheid": "uF",
+     "venster_dB": 0.06630748646044449,
+     "rms_dB": 0.03804032729302076,
+     "minZ_ohm": 0.03735974056373248,
+     "mk_graden": [
+      0.24250926179341192,
+      0.2561503926492277
+     ]
+    },
+    {
+     "onderdeel": "B·L4",
+     "soort": "Inductor",
+     "waarde": 7.333,
+     "eenheid": "mH",
+     "venster_dB": 0.005837229819444012,
+     "rms_dB": 0.0027481802297473212,
+     "minZ_ohm": 0.015789230201268545,
+     "mk_graden": [
+      0.1690197893827925,
+      0.023723355068516305
+     ]
+    },
+    {
+     "onderdeel": "B·L5",
+     "soort": "Inductor",
+     "waarde": 0.6575,
+     "eenheid": "mH",
+     "venster_dB": 0.01738346009282221,
+     "rms_dB": 0.06058283383880636,
+     "minZ_ohm": 0.07238821232992132,
+     "mk_graden": [
+      0.1811136753922078,
+      1.0126523392240934
+     ]
+    },
+    {
+     "onderdeel": "B·C6",
+     "soort": "Capacitor",
+     "waarde": 18.19,
+     "eenheid": "uF",
+     "venster_dB": 0.0006629537201221503,
+     "rms_dB": 0.009847877509632452,
+     "minZ_ohm": 0.01397229852338322,
+     "mk_graden": [
+      0.3548224432581826,
+      1.548601124229477
+     ]
+    },
+    {
+     "onderdeel": "B·L7",
+     "soort": "Inductor",
+     "waarde": 0.1885,
+     "eenheid": "mH",
+     "venster_dB": 0.0006430467505214033,
+     "rms_dB": 0.0032187559439580404,
+     "minZ_ohm": 0.022049059429186002,
+     "mk_graden": [
+      0.17779122394412994,
+      0.6712860557909259
+     ]
+    },
+    {
+     "onderdeel": "B·C8",
+     "soort": "Capacitor",
+     "waarde": 1.157,
+     "eenheid": "uF",
+     "venster_dB": 0.00005772106828283441,
+     "rms_dB": 0.00024596658947961814,
+     "minZ_ohm": 0.0016500701690160824,
+     "mk_graden": [
+      0.015726732309710556,
+      0.018771098450103274
+     ]
+    },
+    {
+     "onderdeel": "B·R9",
+     "soort": "Resistor",
+     "waarde": 2.562,
+     "eenheid": "Ω",
+     "venster_dB": 0.022331373629509432,
+     "rms_dB": 0.008489458415370743,
+     "minZ_ohm": 0.06686552099843324,
+     "mk_graden": [
+      0.18152270528412906,
+      0.6298822786172709
+     ]
+    },
+    {
+     "onderdeel": "B·R10",
+     "soort": "Resistor",
+     "waarde": 1.144,
+     "eenheid": "Ω",
+     "venster_dB": 0.06322700348816701,
+     "rms_dB": 0.027826873368573368,
+     "minZ_ohm": 0.01560527609226492,
+     "mk_graden": [
+      0.04099481918377812,
+      0.5144353153427614
+     ]
+    },
+    {
+     "onderdeel": "B·C12",
+     "soort": "Capacitor",
+     "waarde": 47.89,
+     "eenheid": "uF",
+     "venster_dB": 0.0036676695495017064,
+     "rms_dB": 0.00023802398227168453,
+     "minZ_ohm": 0.000015425025184256924,
+     "mk_graden": [
+      0.021061804155580788,
+      0.006843657640439815
+     ]
+    },
+    {
+     "onderdeel": "B·R13",
+     "soort": "Resistor",
+     "waarde": 9.914,
+     "eenheid": "Ω",
+     "venster_dB": 0.001249723384931567,
+     "rms_dB": 0.0024355858884546056,
+     "minZ_ohm": 0.0020327638259063363,
+     "mk_graden": [
+      0.0714940710409433,
+      0.05610060307576337
+     ]
+    },
+    {
+     "onderdeel": "C·C1",
+     "soort": "Capacitor",
+     "waarde": 5.328,
+     "eenheid": "uF",
+     "venster_dB": 0.09994554847442982,
+     "rms_dB": 0.02528253560799576,
+     "minZ_ohm": 0.04315172262621347,
+     "mk_graden": [
+      8.881784197001252e-15,
+      0.7910252829788371
+     ]
+    },
+    {
+     "onderdeel": "C·L2",
+     "soort": "Inductor",
+     "waarde": 0.7071,
+     "eenheid": "mH",
+     "venster_dB": 0.002659126872115003,
+     "rms_dB": 0.008250758956362958,
+     "minZ_ohm": 0.00462436221855711,
+     "mk_graden": [
+      5.329070518200751e-15,
+      0.45032992652864046
+     ]
+    },
+    {
+     "onderdeel": "C·C3",
+     "soort": "Capacitor",
+     "waarde": 32.3,
+     "eenheid": "uF",
+     "venster_dB": 0.016583791008478066,
+     "rms_dB": 0.011924517142749558,
+     "minZ_ohm": 0.008431036536114433,
+     "mk_graden": [
+      8.881784197001252e-15,
+      0.20374015832407277
+     ]
+    },
+    {
+     "onderdeel": "C·R5",
+     "soort": "Resistor",
+     "waarde": 0.9919,
+     "eenheid": "Ω",
+     "venster_dB": 0.0559654919867314,
+     "rms_dB": 0.01611206407837673,
+     "minZ_ohm": 0.030497311260202498,
+     "mk_graden": [
+      5.329070518200751e-15,
+      0.04169294125400924
+     ]
+    },
+    {
+     "onderdeel": "C·R6",
+     "soort": "Resistor",
+     "waarde": 1.081,
+     "eenheid": "Ω",
+     "venster_dB": 0.14919354173377375,
+     "rms_dB": 0.04663452891704378,
+     "minZ_ohm": 0.018857403643783854,
+     "mk_graden": [
+      5.329070518200751e-15,
+      0.7420202550963033
+     ]
+    },
+    {
+     "onderdeel": "C·R7",
+     "soort": "Resistor",
+     "waarde": 48.92,
+     "eenheid": "Ω",
+     "venster_dB": 0.00009669991340688355,
+     "rms_dB": 0.0023791644665388523,
+     "minZ_ohm": 0.00003312243762865208,
+     "mk_graden": [
+      8.881784197001252e-15,
+      0.05766101662929746
+     ]
+    },
+    {
+     "onderdeel": "C·C8",
+     "soort": "Capacitor",
+     "waarde": 24.04,
+     "eenheid": "uF",
+     "venster_dB": 0.003156170759903709,
+     "rms_dB": 0.017460471455310156,
+     "minZ_ohm": 0.00036628789240555903,
+     "mk_graden": [
+      5.329070518200751e-15,
+      0.6293198743046249
+     ]
+    },
+    {
+     "onderdeel": "C·L9",
+     "soort": "Inductor",
+     "waarde": 0.4867,
+     "eenheid": "mH",
+     "venster_dB": 0.0019637316582263864,
+     "rms_dB": 0.00746384331873351,
+     "minZ_ohm": 0.000004883273036160318,
+     "mk_graden": [
+      0,
+      0.2023781892128076
+     ]
+    },
+    {
+     "onderdeel": "C·C10",
+     "soort": "Capacitor",
+     "waarde": 104.1,
+     "eenheid": "uF",
+     "venster_dB": 0.000015888631830218714,
+     "rms_dB": 0.00043710637834282196,
+     "minZ_ohm": 0.0000015556717873899117,
+     "mk_graden": [
+      8.881784197001252e-15,
+      0.028950971590726127
+     ]
+    },
+    {
+     "onderdeel": "C·L12",
+     "soort": "Inductor",
+     "waarde": 1.625,
+     "eenheid": "mH",
+     "venster_dB": 0.0006565143174852572,
+     "rms_dB": 0.004908115307789229,
+     "minZ_ohm": 2.6131745656243766e-9,
+     "mk_graden": [
+      5.329070518200751e-15,
+      0.46171388618503784
+     ]
+    },
+    {
+     "onderdeel": "C·C13",
+     "soort": "Capacitor",
+     "waarde": 0.5168,
+     "eenheid": "uF",
+     "venster_dB": 0.00006293619989738986,
+     "rms_dB": 0.004733951764563926,
+     "minZ_ohm": 5.4792762327338096e-8,
+     "mk_graden": [
+      8.881784197001252e-15,
+      0.464368328763733
+     ]
+    },
+    {
+     "onderdeel": "C·R14",
+     "soort": "Resistor",
+     "waarde": 4.285,
+     "eenheid": "Ω",
+     "venster_dB": 0.00002833565402671212,
+     "rms_dB": 0.0009540598852666449,
+     "minZ_ohm": 4.1606043055253394e-9,
+     "mk_graden": [
+      5.329070518200751e-15,
+      0.14971878521018311
+     ]
+    },
+    {
+     "onderdeel": "C·L15",
+     "soort": "Inductor",
+     "waarde": 0.36,
+     "eenheid": "mH",
+     "venster_dB": 0.0025785641326794284,
+     "rms_dB": 0.01924151425115761,
+     "minZ_ohm": 0.00007692293881467194,
+     "mk_graden": [
+      8.881784197001252e-15,
+      0.20581661182612887
+     ]
+    },
+    {
+     "onderdeel": "C·C16",
+     "soort": "Capacitor",
+     "waarde": 81.75,
+     "eenheid": "uF",
+     "venster_dB": 0.000014291413358069605,
+     "rms_dB": 0.004737678478287988,
+     "minZ_ohm": 0.000047487877214980045,
+     "mk_graden": [
+      7.105427357601002e-15,
+      0.016923809432562997
+     ]
+    },
+    {
+     "onderdeel": "C·R17",
+     "soort": "Resistor",
+     "waarde": 0.2961,
+     "eenheid": "Ω",
+     "venster_dB": 0.00003287967219067767,
+     "rms_dB": 0.0016823139627888395,
+     "minZ_ohm": 0.000007890495249629481,
+     "mk_graden": [
+      5.329070518200751e-15,
+      0.06163360649222138
+     ]
+    }
+   ]
+  }
+ ]
+}
