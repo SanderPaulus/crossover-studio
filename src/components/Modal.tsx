@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Dialog } from '@base-ui-components/react/dialog';
+import { holdRootInert } from '../lib/rootInert.ts';
 
 interface Props {
   open: boolean;
@@ -35,14 +36,17 @@ export function Modal({ open, onClose, label, cardClass, children }: Props) {
   // ignore, which is worse than the hand-rolled popups were. `inert` is the
   // real containment (unfocusable AND unclickable) and the dialog itself is
   // portalled to <body>, outside #root, so it stays interactive.
+  //
+  // U-8 — through `rootInert.ts`, which is now the ONE owner of that
+  // attribute. The run overlay wants it too, and two surfaces that each set
+  // and clear a boolean attribute revive the page for each other: whichever
+  // closes first removed what the other still needed. The release below still
+  // runs before base-ui restores focus to the opener — that element must not
+  // be inert at that moment or the focus() call is a silent no-op, which is
+  // the reason this effect exists at all.
   useEffect(() => {
     if (!open) return undefined;
-    const root = document.getElementById('root');
-    if (!root) return undefined;
-    root.setAttribute('inert', '');
-    // Runs before base-ui restores focus to the opener — that element must not
-    // be inert at that moment or the focus() call is a no-op.
-    return () => root.removeAttribute('inert');
+    return holdRootInert();
   }, [open]);
 
   return (

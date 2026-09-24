@@ -54,6 +54,20 @@
     dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
     staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
     voor de twee weggegooide runs die ernaast liepen.
+    **Ná U-8 (24-09-2026) gemeten op 551 s — 211 bestanden (210 geslaagd, 1 overgeslagen),
+    2898 tests (2894 geslaagd, 4 overgeslagen), IN ÉÉN KEER GROEN, alleen gedraaid met de
+    dev-server gestopt.** +2 BESTANDEN (`lib/runOverlay.test.ts` 53 tests waarvan 44 een `it.each`
+    over de opgenomen labels van M-5 en H-4b, `lib/rootInert.test.ts` 5) en +58 tests, en die
+    telling sluit EXACT: 53 + 5 = 58, en geen enkel bestaand bestand veranderde van telling — het
+    corpus is NIET aangeraakt en U-8 raakt geen enkele fixture. **DE BOOM DIE ZIJ GEMETEN HEEFT IS
+    DE BOOM DIE GECOMMIT WORDT**, nagegaan met de mtimes tegen het starttijdstip van de run: na
+    18:45:20 is geen bronbestand meer aangeraakt (de H-2-regel). GEEN nieuwe referentie: de
+    V43-waarde van 289 s blijft staan, en 551 tegen U-5c's 546 s is dezelfde laag op dezelfde
+    machine met twee bestanden erbij. **LET OP BIJ HET WACHTEN OP EEN RUN: `grep -q "FAIL"` op het
+    log matcht een TESTNAAM.** De A5e.3c-claim heet
+    `… is PASSED on the frozen passbands and FAILED on the own crossings`, dus een wachtlus op dat
+    woord meldt "klaar" terwijl de suite nog een kwartier loopt. Wacht op de samenvattingsregel,
+    verankerd: `grep -qE "^ *Test Files "`.
     **Ná U-5c (24-09-2026) gemeten op 546 s — 209 bestanden (208 geslaagd, 1 overgeslagen),
     2840 tests (2836 geslaagd, 4 overgeslagen), alleen gedraaid met niets ernaast.** +3 BESTANDEN
     (`predesign/statedCage.test.ts` 21 claims, `phaseTrackingRequirement.test.ts` 18,
@@ -8231,3 +8245,108 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   regeneratie. De twee bedradingsgaten van (c) zijn GEMARKEERD en niet gedicht, allebei omdat dichten
   verandert wat een bestaande run doet. De casus-1h-bevinding van deel 2 is GEBOEKT en niet
   gerepareerd: zij is H-1's openstaande punt. En de tolerantiemeting levert geen kolom.
+
+### U-8-guards (de run-overlay past altijd; de pagina eronder is inert; alleen app/UI)
+
+- **DE AANLEIDING, EN ZIJ IS TWEE DINGEN DIE ER ALS ÉÉN UITZIEN** (Sander, screenshot
+  24-09-2026). Sinds H-4b/H-5 draagt élke scanrij haar polariteit — welke wegen een bouwer
+  omgekeerd soldeert, welke arm dat maakt, en welke uitlijning erom vroeg — dus een echte rij is
+  `woofer→mid 253 LR2 · mid→tweeter 2251.4 LR4 · stated · mid ⌀ + tweeter ⌀ · textbook for LR2`
+  en wraps naar drie regels. De kaart was een centrerende flexbox met een VASTE BREEDTE EN GEEN
+  HOOGTEGRENS, dus bij tien kandidaten groeide zij voorbij het venster en verdwenen de onderste
+  rijen, de voortgangsregel én Cancel van het scherm — met `align-items: center` aan beide kanten
+  tegelijk, dus onbereikbaar. En daarnaast rendeerde de tooltip van de Wizard-knop ÓVER de dialoog.
+- **DIE TOOLTIP IS NATIEF, EN DAT IS DE HELE REDEN DAT Z-ORDER HIER NIET HET ANTWOORD WAS.** De
+  Wizard-knop staat in dezelfde rij als "Optimize — design for me" en draagt een `title`; een
+  `title`-tooltip is browser-UI, boven élke laag die de pagina bezit, dus geen backdrop en geen
+  z-index had hem ooit onder de dialoog gekregen. **GEMETEN op de draaiende app, met de muis
+  werkelijk op die knop:** hittest zonder inert → de knop; hittest met `#root` inert → de OVERLAY;
+  `btn.matches(':hover')` met inert → nog steeds waar. Een inerte subtree valt dus uit de
+  hittest — de browser kan er geen tooltip meer uit oplossen — terwijl een `:hover` die er AL
+  stond blijft staan tot de muis beweegt. **Waarom het bij het OPENEN moet gebeuren en niet later:
+  de v2-solver blokkeert de hoofdthread, de hittest veroudert voor de duur, en de browser blijft
+  tekenen wat hij het laatst oploste. Opgelost tegen een inerte pagina is dat niets.** Wat GEEN
+  enkele pagina kan is een tooltip wissen die op dát moment al geschilderd is; dat staat er zo bij.
+- **`src/lib/rootInert.ts` — ÉÉN EIGENAAR VAN `#root`'s `inert`, met een telling.** `Modal.tsx`
+  zette het attribuut sinds F3b zelf; U-8 heeft het ook nodig, en twee eigenaars van één booleaans
+  attribuut is een bug die op de eerste overlap wacht: wie het eerst sluit haalt weg wat de ander
+  nog wil, en de pagina komt tot leven ónder een dialoog die nog staat. `holdRootInert()` geeft zijn
+  eigen release terug; twee keer releasen is een no-op (React unmount een aanroeper in mid-flight).
+  `Modal.tsx` gaat er sinds U-8 doorheen, en de laatste claim van `rootInert.test.ts` is de scan die
+  een derde handmatige schrijver vangt.
+- **`src/lib/runOverlay.ts` — DE SPLITSING, EN ZIJ IS LOSSLESS OF ZIJ GEBEURT NIET.** Een label is
+  `' · '`-gescheiden, de LEIDENDE segmenten zijn kruisingen (`<lager>→<hoger> <hz> <kind><orde>`)
+  en alles wat erachter komt is herkomst: `stated` (U-5), `mid ⌀ + tweeter ⌀` en
+  `textbook for LR2` / `mirror` (H-4b/H-5), `active 400 Hz` (H-2). Positie op de eerste regel,
+  herkomst als BADGES eronder — dezelfde woorden, de U-6-regel één oppervlak verder. **De
+  discriminator is de PIJL en niet een woordenlijst**: `candidateField.ts` bouwt élk paarlabel als
+  `${lower}→${upper}` en geen enkele mark draagt er een, dus een sessie die een nieuwe mark
+  toevoegt hoeft hier niet langs en een die de spelling van een kruising verandert wél. Een label
+  zonder kruising (een tune-stagenaam) of met een kruising ná een mark komt HEEL terug: een
+  voortgangsrij die je niet kunt lezen is geen voortgangsrapport, en een die stilletjes een woord
+  kwijt is, is erger.
+- **DE KAART IS EEN KOP, ÉÉN SCROLLER EN EEN VOET, en dat is sterker dan sticky.** Kop en voet zijn
+  flex-BROERS van de scroller en geen `position: sticky` erbinnen: een sticky kop deelt de box van
+  de scroller en kan op een kort venster alsnog voorbijgescrold worden, een broer die niet scrolt
+  niet. Alleen de RIJEN scrollen. `min-height: 0` op de scroller staat er met de reden erbij — zonder
+  dat weigert een flex-item onder zijn inhoud te krimpen en groeit de kaart voorbij haar eigen cap,
+  dezelfde clipping op een nieuwe plek.
+- **GEMETEN IN DE BROWSER (24-09-2026, driewegdemo, volle veld met beide polariteitsarmen, 16
+  kandidaten).** Venster 1600 × 900: kaart 868 px hoog, top 16, bodem 884 — **binnen het venster,
+  met exact de 1 rem padding die de cap eraf trekt**; scroller 673 px met 819 px inhoud, dus hij
+  scrollt; kop en voet bewegen bij het scrollen **0 px**; de laatste rij is bereikbaar en Cancel
+  staat op het scherm. **375 × 812 (mobiel): idem** — labels wrappen naar twee regels met hun badges
+  eronder, de rijen scrollen, `0/16 done · 564.000 sims · 0:43` en Cancel volledig zichtbaar.
+  **Een KORTE lijst geeft een korte kaart:** dezelfde kaart met 16 rijen 688 px en met 2 rijen
+  289 px (venster 720), voet vlak onder de laatste rij, geen scrollbalk — de cap is een `max-height`
+  en nergens een `height`, en dat is een eigen claim.
+- **DE PAGINA ERONDER, GEMETEN TIJDENS DE RUN:** overlay geportald naar `document.body`, `#root`
+  draagt `inert`, en de hittest op het midden van de Wizard-knop levert `busy-overlay run-overlay`
+  in plaats van de knop. **Beide helften zijn nodig en elk alleen is een bug:** geportald zonder
+  inert blijft de pagina hittestbaar (de tooltip), inert zonder portal gaat de Cancel-knop van de
+  overlay zelf mee inert. De z-index is daarnaast een eigen laag (300) boven de modaltier (201),
+  want een run die start terwijl een base-ui-popup open staat rendeerde anders eronder; de guard
+  leest élke z-index in `index.css` en pint dat er niets bovenuit komt.
+- `src/lib/runOverlay.test.ts` (9 claims + 44 `it.each`-rijen) — **de splitsing wordt getoetst op
+  labels die dit project heeft OPGENOMEN en niet op labels die hier getypt zijn**:
+  `casus1_m5_lr2.json` draagt er 24 van de M-5-run, elk MÉT de kruisingen waaruit het gebouwd is, en
+  `demo_h4b_armen.json` 20 van de H-4b-meting. De falsifieerbare helft is dat de positie precies
+  zoveel segmenten telt als de opname kruisingen noteert — tegen de RUN dus, en niet tegen een
+  tweede lezing van dezelfde string. **De LANGSTE vorm is door de engine zelf gebouwd** op een
+  opgenomen label (`polarityLabel` + `hybridLabel`) en nergens overgetypt: een met de hand
+  geschreven "langste label" is een gok over wat de app uitzendt, en die twee lopen uiteen op de
+  eerste sessie die een woord toevoegt. De rest zijn bronscans op `index.css` en `App.tsx` (het
+  UI-1-idioom): een eenheidstest kan niet zeggen dat de voortgangsregel BUITEN de scroller staat, en
+  dat — niet de CSS-property op zichzelf — is wat haar op het scherm houdt.
+- **ACHT OPZETTELIJKE BREUKEN, en de EERSTE VOND EEN GAT IN DE GUARD ZELF.** `min-height: 0` uit de
+  scroller halen liet hem GROEN: de regex matchte het COMMENTAAR erboven, dat de declaratie bij naam
+  noemt om uit te leggen waarom zij er staat. De CSS-lezer strookt sindsdien commentaar vóór hij
+  scant — de discipline die `noWeights.test.ts` om precies dezelfde reden al toepast, en zonder de
+  breuk was hij er nooit uit gekomen. Daarna vangen zij alle acht: `min-height` weg (1 rood),
+  z-index terug naar 200 (1), de totalenregel in de scroller (1), het label weer rauw (1), het
+  portal weg (1), de splitsing die de laatste mark laat vallen (12), `Modal.tsx` dat inert weer met
+  de hand zet (1), de inert-hold uit het overlay-effect (1).
+- **WAT NIET VERANDERD IS, met naam.** (1) Geen enkele zin is herschreven, en dat is MECHANISCH
+  nagegaan en niet beweerd: élk stringliteraal van `App.tsx` op HEAD is er nog — commentaar
+  gestript, de verzamelingen vergeleken — en de enige nieuwe zijn de drie importpaden
+  (`react-dom`, `./lib/rootInert.ts`, `./lib/runOverlay.ts`). `runOverlay.ts` splitst en
+  herformuleert nooit, en élk woord dat de overlay vóór U-8 drukte drukt zij nog (F0). (2) De
+  STAATKOLOM naast het label houdt haar `white-space: nowrap` en wordt op een smal venster geëllipst
+  ("tune (part audit (se…"). Dat is de bestaande stabiele-rijhoogte-invariant en geen U-8-gevolg: de
+  stage tikt door terwijl de rij staat, en een kolom die daarbij wrapt laat de hele lijst springen —
+  op precies het scherm waar dat het meest hindert. Op 1600 px past zij voluit. (3) De
+  busy-overlay blijft NIET-MODAAL (`role="status"`, een live region): `Modal.tsx` schreef in F3b
+  hardop op dat een multi-minuten-run geen focus mag vangen, en een `<dialog>.showModal()` — dat de
+  top-layer en de inertie van de spec gratis geeft — zou precies dat besluit omdraaien. Het is
+  overwogen en om die reden niet genomen. (4) Geen engine-, poort-, budget-, venster-, metriek- of
+  corpuswijziging, geen bevroren netlist aangeraakt.
+- **DE VOLLE RUN IS BIJ U-8 NIET GEDRAAID**, met de U-6/H-2/U-7-afweging, en zij is hier de
+  eenvoudigste van allemaal: dit is PRESENTATIE. `netOptimizer.ts`, `designChain.ts`, `worker.ts`,
+  élke metriek en élke fixture zijn onaangeraakt; wat beweegt is JSX, CSS en twee nieuwe
+  `src/lib`-modules die geen enkele engine-bron importeert. De twee byte-baselines die de zoektocht
+  bewaken (`f4cRegression`, `workerRouteRegression`) draaien in de snelle laag en reproduceerden,
+  net als `toggleRegression` (byte-identiek), `p6Lint`, `ciLayer` en `browserSafe`. De vier live
+  ketenruns zouden corpora reproduceren die deze sessie niet aangeraakt heeft. **U-8 TAGT NIETS**
+  — de twee nieuwe bestanden lezen bestanden, strings en zuivere functies, en het zwaarste
+  rekenwerk erin is een `split(' · ')` — dus het aantal overgeslagen tests in `test:ci` hoort het
+  H-1-getal NEGENTIEN te blijven; wat CI ervan zegt hoort in de nazorg, zoals bij elke sessie.

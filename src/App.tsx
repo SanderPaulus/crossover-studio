@@ -9,8 +9,15 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { t, setLang, currentLang, subscribeLang, LANGS } from './lib/i18n.ts';
 import { meetsAmpFloor } from './lib/impedanceFloor.ts';
+import { holdRootInert } from './lib/rootInert.ts';
+import {
+  RUN_OVERLAY_CLASS,
+  RUN_OVERLAY_REGION,
+  splitScanLabel,
+} from './lib/runOverlay.ts';
 /** Same translator under a name nothing shadows: inside the optimizer
  *  handlers `t` is the TWEETER response (a long-standing local), so a
  *  t('…') there is a type error waiting to happen. */
@@ -11719,6 +11726,34 @@ export default function App() {
     const t = setTimeout(() => setOverlayVisible(false), 250);
     return () => clearTimeout(t);
   }, [anyBusy]);
+  /**
+   * U-8 — WHILE THE OVERLAY IS UP, THE APP BEHIND IT IS `inert`.
+   *
+   * Sander's screenshot of 24-09-2026 has the Wizard button's tooltip painted
+   * ON TOP of the run dialog. That is a NATIVE `title` tooltip — browser UI,
+   * drawn above every layer a page owns — so no backdrop and no z-index could
+   * ever have put the dialog above it. What can be done is take away the thing
+   * it is resolved from, and `inert` does exactly that: measured on the live
+   * app, a hit test on that button returns the button normally and returns
+   * something else entirely while `#root` is inert.
+   *
+   * It has to be set when the overlay OPENS rather than left to the pointer,
+   * because the v2 solver blocks the main thread: hit-testing goes stale for
+   * the duration and the browser keeps painting whichever tooltip it last
+   * resolved. Resolved against an inert page, that is none. (A tooltip already
+   * painted at that instant survives until the pointer next moves — `inert`
+   * removes an element from hit-testing but does not clear a `:hover` that is
+   * already set, which was measured too. Nothing in the page can erase one.)
+   *
+   * The same attribute is what stops the page beneath taking focus or opening
+   * a disclosure under the dialog, which is why `Modal.tsx` has done this
+   * since F3b; `rootInert.ts` is the one owner both of them go through, so
+   * whichever closes first cannot revive the page for the other.
+   */
+  useEffect(() => {
+    if (!overlayVisible) return undefined;
+    return holdRootInert();
+  }, [overlayVisible]);
 
   const [netOptNote, setNetOptNote] = useState<string | null>(null);
   /**
@@ -14224,64 +14259,85 @@ export default function App() {
   const scanDoneCount = vfProgress?.items?.filter((i) => i.done).length ?? 0;
 
   // Busy-card body, built during render and snapshotted for the close-linger.
+  //
+  // U-8 — THE CARD IS A HEAD, ONE SCROLLER AND A FOOT, and the split is the
+  // whole point: since H-4b/H-5 a row's label carries its polarity and wraps
+  // to three lines, so ten candidates grew the card past the viewport and took
+  // the bottom rows, the totals line and Cancel off-screen with no way to
+  // reach them. Only the ROWS scroll; the head and the foot are flex siblings
+  // of the scroller, which is stronger than making them sticky inside it — a
+  // sticky header shares the scroller's box and can be scrolled past on a
+  // short viewport, a sibling that does not scroll cannot be.
+  const scanRows = vfBusy && vfProgress?.items ? vfProgress.items : null;
+  const tuneRows = !vfBusy && netOptBusy && netOptPlan ? netOptPlan : null;
+  const elapsedText = `${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`;
   const busyCardBody = (
     <>
-      <div className="busy-spinner" />
-      <div className="busy-title">
-        {vfBusy
-          ? 'Optimizing crossover…'
-          : netOptBusy
-            ? 'Tuning components on the assembled network…'
-            : 'Building passive network…'}
+      {/* U-8 OVERLAY · HEAD */}
+      <div className={RUN_OVERLAY_REGION.head}>
+        <div className="busy-spinner" />
+        <div className="busy-title">
+          {vfBusy
+            ? 'Optimizing crossover…'
+            : netOptBusy
+              ? 'Tuning components on the assembled network…'
+              : 'Building passive network…'}
+        </div>
+        {scanRows && vfProgress?.round3 && (
+          /* WHICH ROUND, and how many there are. Without it the candidate
+             counter's denominator grows underneath you (7 → 14 → 23) as
+             rounds are earned, which reads as a target running away. The
+             total stays "2–3" until the third round is decided: it runs only
+             when the two axes prove coupled, so a fixed "of 3" would be a
+             promise the scan cannot keep. */
+          <p className="busy-round" title={t('The third round is a local refinement and runs only when the two axes turn out coupled — until then the total is 2 or 3.')}>
+            {vfProgress.round3.label} — {t('round {n} of {total}', { n: String(vfProgress.round3.n), total: vfProgress.round3.total })}
+          </p>
+        )}
       </div>
-      {vfBusy && vfProgress?.items ? (
-        // Scan view: one STABLE row per candidate + a totals line — the
-        // card never changes size while stages tick underneath.
-        <>
-          {vfProgress.round3 && (
-            /* WHICH ROUND, and how many there are. Without it the candidate
-               counter's denominator grows underneath you (7 → 14 → 23) as
-               rounds are earned, which reads as a target running away. The
-               total stays "2–3" until the third round is decided: it runs only
-               when the two axes prove coupled, so a fixed "of 3" would be a
-               promise the scan cannot keep. */
-            <p className="busy-round" title={t('The third round is a local refinement and runs only when the two axes turn out coupled — until then the total is 2 or 3.')}>
-              {vfProgress.round3.label} — {t('round {n} of {total}', { n: String(vfProgress.round3.n), total: vfProgress.round3.total })}
-            </p>
-          )}
+      {/* U-8 OVERLAY · SCROLL */}
+      <div className={RUN_OVERLAY_REGION.scroll}>
+        {scanRows ? (
+          // Scan view: one STABLE row per candidate — the rows are created
+          // with their labels at the start, so the list settles immediately
+          // and nothing moves while stages tick underneath.
           <table className="busy-scan">
             <tbody>
-              {vfProgress.items.map((it) => (
-                <tr key={it.label} className={it.done ? 'done' : ''}>
-                  <td>{it.label}</td>
-                  <td>
-                    {it.text}
-                    {it.warn && <span className="scan-warn"> {it.warn}</span>}
-                  </td>
-                </tr>
-              ))}
+              {scanRows.map((it) => {
+                /* U-8 — the SAME label, laid out. `splitScanLabel` is lossless
+                   or it declines: position and marks rejoined are the label,
+                   byte for byte, and a label it cannot split (a stage name)
+                   comes back whole as the position. */
+                const parts = splitScanLabel(it.label);
+                return (
+                  <tr key={it.label} className={it.done ? 'done' : ''}>
+                    <td>
+                      <span className="scan-pos">{parts.position}</span>
+                      {parts.marks.length > 0 && (
+                        <span className="scan-marks">
+                          {parts.marks.map((m) => (
+                            <span key={m} className="scan-mark">
+                              {m}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {it.text}
+                      {it.warn && <span className="scan-warn"> {it.warn}</span>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          <div className="busy-totals">
-            {vfProgress.round}/{vfProgress.items.length} done ·{' '}
-            <SimCount value={vfProgress.evals} /> sims
-            {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined && (
-              <>
-                {' · best '}
-                <BestMetric value={vfProgress.rippleDb} digits={2} /> dB /{' '}
-                <BestMetric value={vfProgress.phaseDeg} digits={1} />°
-              </>
-            )}
-            {` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
-          </div>
-        </>
-      ) : !vfBusy && netOptBusy && netOptPlan ? (
-        // Component-tune view: the SAME stable-card pattern as the scan — one
-        // fixed row per pipeline stage, states tick underneath (Sanders wens).
-        <>
+        ) : tuneRows ? (
+          // Component-tune view: the SAME stable-row pattern as the scan — one
+          // fixed row per pipeline stage, states tick underneath (Sanders wens).
           <table className="busy-scan">
             <tbody>
-              {netOptPlan.map((st) => {
+              {tuneRows.map((st) => {
                 // Order-agnostic on purpose: stages fire in rounds and revisit
                 // earlier labels (drift catches, ladder retunes), so "later
                 // stage started ⇒ this one was skipped" would lie. A stage is
@@ -14297,67 +14353,83 @@ export default function App() {
               })}
             </tbody>
           </table>
+        ) : null}
+      </div>
+      {/* U-8 OVERLAY · FOOT */}
+      <div className={RUN_OVERLAY_REGION.foot}>
+        {scanRows ? (
           <div className="busy-totals">
-            {`${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}`}
+            {vfProgress!.round}/{scanRows.length} done ·{' '}
+            <SimCount value={vfProgress!.evals} /> sims
+            {vfProgress!.rippleDb !== undefined && vfProgress!.phaseDeg !== undefined && (
+              <>
+                {' · best '}
+                <BestMetric value={vfProgress!.rippleDb} digits={2} /> dB /{' '}
+                <BestMetric value={vfProgress!.phaseDeg} digits={1} />°
+              </>
+            )}
+            {` · ${elapsedText}`}
           </div>
-        </>
-      ) : (
-        <div className="busy-detail">
-          {vfBusy && vfProgress ? (
-            <>
-              {`round ${vfProgress.round} · `}
-              <SimCount value={vfProgress.evals} /> network sims
-              {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined && (
-                <>
-                  {' · best '}
-                  <BestMetric value={vfProgress.rippleDb} digits={2} /> dB /{' '}
-                  <BestMetric value={vfProgress.phaseDeg} digits={1} />°
-                </>
-              )}
-            </>
-          ) : vfBusy ? (
-            'searching structures and EQ stages — runs in the background, the app stays live'
-          ) : netOptBusy ? (
-            'value fit, prune/escalate, debris sweep'
-          ) : (
-            'fitting real component values on the measured impedances'
-          )}
-          {anyBusy && busyElapsed > 0 ? ` · ${Math.floor(busyElapsed / 60)}:${String(busyElapsed % 60).padStart(2, '0')}` : ''}
-        </div>
-      )}
-      {(vfBusy || netOptBusy) && (
-        <div className="busy-actions">
-          {/* A scan with finished candidates has something worth keeping.
-              Cancel throws the whole field away, which is the wrong price for
-              "I have seen enough" (Sander: "stel dat ik door wil met de 3
-              complete uitkomsten"). This stops the compute and ranks what
-              landed; the note says it was a partial field. */}
-          {vfBusy && scanDoneCount > 0 && (
+        ) : tuneRows ? (
+          <div className="busy-totals">{elapsedText}</div>
+        ) : (
+          <div className="busy-detail">
+            {vfBusy && vfProgress ? (
+              <>
+                {`round ${vfProgress.round} · `}
+                <SimCount value={vfProgress.evals} /> network sims
+                {vfProgress.rippleDb !== undefined && vfProgress.phaseDeg !== undefined && (
+                  <>
+                    {' · best '}
+                    <BestMetric value={vfProgress.rippleDb} digits={2} /> dB /{' '}
+                    <BestMetric value={vfProgress.phaseDeg} digits={1} />°
+                  </>
+                )}
+              </>
+            ) : vfBusy ? (
+              'searching structures and EQ stages — runs in the background, the app stays live'
+            ) : netOptBusy ? (
+              'value fit, prune/escalate, debris sweep'
+            ) : (
+              'fitting real component values on the measured impedances'
+            )}
+            {anyBusy && busyElapsed > 0 ? ` · ${elapsedText}` : ''}
+          </div>
+        )}
+        {(vfBusy || netOptBusy) && (
+          <div className="busy-actions">
+            {/* A scan with finished candidates has something worth keeping.
+                Cancel throws the whole field away, which is the wrong price for
+                "I have seen enough" (Sander: "stel dat ik door wil met de 3
+                complete uitkomsten"). This stops the compute and ranks what
+                landed; the note says it was a partial field. */}
+            {vfBusy && scanDoneCount > 0 && (
+              <button
+                type="button"
+                className="busy-keep"
+                onClick={stopKeepingResults}
+                title={t('Stop searching and rank the candidates that already finished — the best of those is loaded, the rest is never computed. The scan table shows which ones ran.')}
+              >
+                {scanDoneCount === 1
+                  ? t('Use the 1 finished result')
+                  : t('Use the {n} finished results', { n: scanDoneCount })}
+              </button>
+            )}
             <button
               type="button"
-              className="busy-keep"
-              onClick={stopKeepingResults}
-              title={t('Stop searching and rank the candidates that already finished — the best of those is loaded, the rest is never computed. The scan table shows which ones ran.')}
+              className="busy-cancel"
+              onClick={cancelOptimTasks}
+              title={t('Stop the run — nothing is committed, your design stays as it was')}
             >
-              {scanDoneCount === 1
-                ? t('Use the 1 finished result')
-                : t('Use the {n} finished results', { n: scanDoneCount })}
+              {t('Cancel')}
             </button>
-          )}
-          <button
-            type="button"
-            className="busy-cancel"
-            onClick={cancelOptimTasks}
-            title={t('Stop the run — nothing is committed, your design stays as it was')}
-          >
-            {t('Cancel')}
-          </button>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+      {/* U-8 OVERLAY · END */}
     </>
   );
   if (anyBusy) busyCardBodyRef.current = busyCardBody;
-
   /** Per-driver facts (position, enclosure, datasheet numbers, how many).
    *  Lives in step 1 "Your drivers" — these are properties of the DRIVER,
    *  while the baffle, the reference point and the mic rig belong to the
@@ -15765,14 +15837,28 @@ export default function App() {
 
   return (
     <div className={`app-shell layout-${layoutMode} mode-${uiMode}`}>
-      {overlayVisible && (
-        <div className="busy-overlay" role="status" aria-live="polite">
-          {/* During the 250 ms close-linger (anyBusy false) the card renders
-              its FROZEN last body — swapping to fallback text for a few
-              frames read as a flicker (Sanders tweede melding). */}
-          <div className="busy-card">{anyBusy ? busyCardBody : busyCardBodyRef.current}</div>
-        </div>
-      )}
+      {/* U-8 — THE RUN OVERLAY IS PORTALLED OUT OF `#root`, and it has to be:
+          while it is up the app behind it is `inert` (see the effect above and
+          `rootInert.ts`), and an overlay inside that subtree would have taken
+          its own Cancel button down with it. Out here it is also a sibling of
+          base-ui's popup portals rather than a cousin two levels down, which
+          is what makes the z-order in `.run-overlay` decide anything at all. */}
+      {overlayVisible &&
+        createPortal(
+          <div
+            className={`busy-overlay ${RUN_OVERLAY_CLASS.overlay}`}
+            role="status"
+            aria-live="polite"
+          >
+            {/* During the 250 ms close-linger (anyBusy false) the card renders
+                its FROZEN last body — swapping to fallback text for a few
+                frames read as a flicker (Sanders tweede melding). */}
+            <div className={`busy-card ${RUN_OVERLAY_CLASS.card}`}>
+              {anyBusy ? busyCardBody : busyCardBodyRef.current}
+            </div>
+          </div>,
+          document.body,
+        )}
       {helpOpen && (
         <HelpPanel initialId={helpSectionForTab(designTab)} onClose={() => setHelpOpen(false)} />
       )}

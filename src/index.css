@@ -2720,6 +2720,110 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/* ------------------------------------------------------------------ *
+ * U-8 — the run overlay: all of it fits, none of it is cut off
+ * ------------------------------------------------------------------ */
+
+/* THE TOP LAYER, and it has to be its own tier. `.busy-overlay` is shared
+   with `Modal.tsx`'s backdrop (200) whose card sits at 201, so a run started
+   while any base-ui popup is up would have rendered UNDER that popup. Nothing
+   in this stylesheet may sit above this number; `runOverlay.test.ts` reads
+   every z-index in the file and pins that.
+
+   It does not, and cannot, put the overlay above a NATIVE `title` tooltip:
+   that is browser UI painted above every layer the page owns, which is why
+   the answer there is `inert` on the page beneath (see `rootInert.ts`) and
+   not a bigger number here. */
+.busy-overlay.run-overlay {
+  z-index: 300;
+  /* The card can never touch a viewport edge — the height cap below subtracts
+     exactly this much, so the two cannot disagree. */
+  padding: 1rem;
+}
+
+/* The card stops at the viewport and hands the overflow to ONE scroller.
+   `dvh` second so a browser without it still gets the `vh` cap rather than no
+   cap at all — on a phone the difference is the address bar, on a desktop
+   nothing. */
+.busy-card.run-card {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  /* The regions own their padding and their spacing: a gap on the card would
+     put a hole between the foot's border and the rows it separates. */
+  padding: 0;
+  gap: 0;
+  /* The CARD never scrolls. If it did, the head and foot would scroll with
+     it, which is the whole thing this section exists to prevent. */
+  overflow: hidden;
+}
+.run-card .busy-head,
+.run-card .busy-foot {
+  /* `0 0 auto`: under the cap a flex item's default is to SHRINK, and a head
+     that shrinks is a title clipped to nothing. */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0 clamp(0.9rem, 4vw, 2rem);
+}
+.run-card .busy-head {
+  padding-top: 1.4rem;
+  padding-bottom: 0.7rem;
+}
+.run-card .busy-foot {
+  padding-top: 0.7rem;
+  padding-bottom: 1.4rem;
+  /* Says where the scrolling stops. Without it a half-scrolled row and the
+     totals line read as one block. */
+  border-top: 1px solid var(--border);
+}
+.run-card .busy-scroll {
+  flex: 1 1 auto;
+  /* WITHOUT `min-height: 0` a flex item refuses to shrink below its content,
+     so the card would grow past its own cap and clip again — the same bug in
+     a new place. */
+  min-height: 0;
+  overflow-y: auto;
+  /* A scroll that runs out at the end of the rows must not then scroll the
+     page underneath. */
+  overscroll-behavior: contain;
+  width: 100%;
+  padding: 0 clamp(0.9rem, 4vw, 2rem);
+}
+
+/* THE LABEL GETS ITS STRUCTURE BACK. Position on its own line, provenance as
+   badges under it — the same words the label always carried (`runOverlay.ts`
+   splits, it never rewrites), laid out so the frequency you are looking for is
+   not in the middle of a polarity sentence. */
+.scan-pos {
+  display: block;
+}
+.scan-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+  margin-top: 0.22rem;
+}
+.scan-mark {
+  padding: 0.02rem 0.36rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--muted);
+  /* A mark is never abbreviated: `mid ⌀ + tweeter ⌀` is what a builder
+     solders by. On a narrow card it wraps inside its own badge. */
+  overflow-wrap: anywhere;
+}
+/* A finished row is green; its badges stay quiet so the row still reads as
+   one thing and the colour keeps meaning "done". */
+.busy-scan tr.done .scan-mark {
+  color: var(--muted);
+}
+
 /* Old → new component values of the last tune run, collapsed by default. */
 .tune-diff {
   margin: 0 0 0.8rem;
