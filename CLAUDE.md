@@ -2102,6 +2102,19 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (24-09-2026, U-8): 211 bestanden (210 geslaagd,
+  1 overgeslagen), 2879 geslaagd, 19 overgeslagen, 2848 s (47 min 28) — GROEN.** Negentien is voor
+  de NEGENDE geboekte run op rij EXACT het H-1-getal, en dat is de claim: U-8 voegt geen enkele
+  getagde test toe. De telling sluit van de andere kant: 2879 + 19 = 2898, precies de lokale
+  snelle-laag-telling, dus CI slaat exact de vereniging van beide tags over en verder niets.
+  **Dat hier niets getagd hoeft is een EIGENSCHAP van de sessie en geen geluk** — de val waar dit
+  boek bij V46, V49, B-1, M-2 en M-3 voor betaald heeft is een claim die een FIT of een FFT VERS
+  HERBEREKENT en naast een op een andere machine opgeschreven getal legt. `runOverlay.test.ts` en
+  `rootInert.test.ts` doen niets van dien aard: zij lezen bestanden, strings en zuivere functies,
+  en het zwaarste rekenwerk erin is een `split(' · ')` en een attribuuttelling. **DE WANDKLOK IS
+  BIJNA TWINTIG PROCENT LAGER DAN DE ACHT RUNS ERVOOR** (2848 tegen 3382–3632 s) en dat is de
+  RUNNER en niet de laag: U-8 voegt twee bestanden van samen twaalf milliseconden toe en raakt geen
+  enkele ketenrun. Wie hier een trend in leest, leest een machine.
   **GEMETEN IN CI OP ubuntu/Node 22 (24-09-2026, U-5c): 209 bestanden (208 geslaagd,
   1 overgeslagen), 2821 geslaagd, 19 overgeslagen, 3551 s (59 min 11) — GROEN.** Negentien is voor
   de ACHTSTE geboekte run op rij EXACT het H-1-getal (H-1, H-2, H-4, H-4b, M-5, U-7, H-5, U-5c), en
