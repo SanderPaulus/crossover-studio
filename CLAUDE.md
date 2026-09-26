@@ -54,6 +54,25 @@
     dsp-claims (`dsp.test.ts` 8 → 11). GEEN nieuwe referentie: de V43-waarde van 289 s blijft
     staan (`frozenNetlistGates` alléén kostte 448 s in deze run). Zie de guard-sectie onderaan
     voor de twee weggegooide runs die ernaast liepen.
+    **Ná D-0 (26-09-2026) gemeten op 549 s — 212 bestanden (211 geslaagd, 1 overgeslagen),
+    2914 tests (2910 geslaagd, 4 overgeslagen), IN ÉÉN KEER GROEN, alleen gedraaid met beide
+    dev-servers gestopt en geen Chrome meer in leven.** +1 BESTAND (`lib/bootDefer.test.ts`,
+    16 claims) en +16 tests, en die twee getallen zijn HETZELFDE getal: het corpus is NIET
+    aangeraakt, geen enkele fixture beweegt, en geen bestaand bestand veranderde van telling.
+    **DE BOOM DIE ZIJ GEMETEN HEEFT IS DE BOOM DIE GECOMMIT WORDT** (de H-2-regel), nagegaan
+    met de mtimes: de laatste bronbewerking is 11:27 en de run start 11:28. GEEN nieuwe
+    referentie: de V43-waarde van 289 s blijft staan, en 549 tegen U-8's 551 s is dezelfde laag
+    op dezelfde machine met één bestand erbij. **DRIE EERDERE VOLLE SNELLE RUNS ZIJN GEDRAAID EN
+    ALLE DRIE WEGGEGOOID**, alle drie groen en alle drie om de H-2-reden — een suite-uitslag
+    beschrijft de boom die zij gemeten heeft of zij beschrijft niets. De eerste (533 s, 13 claims)
+    mat de tussenstand waarin de vrijgave nog een KALE timer was, en die is daarna vervangen door
+    de voortgangscontrole. De tweede (548 s, 15 claims) mat een boom waarin één doc-commentaar nog
+    boven de verkeerde declaratie stond; dat is voor geen enkele claim zichtbaar (de bronscans
+    strippen commentaar) en het bestand veranderde er tóch van. De derde (541 s, 15 claims) mat de
+    boom van vóór `v2ReportNow` — de reparatie die een RUN uit een uitgesteld rapport houdt, en de
+    enige van de drie die werkelijk gedrag verzet. **EN DE VOLLE RUN DIE ERBIJ HOORDE IS OP
+    211 VAN DE 212 BESTANDEN AFGEBROKEN** toen die reparatie nodig bleek: twintig minuten weg, en
+    dat is goedkoper dan een uitslag die een andere boom beschrijft.
     **Ná U-8 (24-09-2026) gemeten op 551 s — 211 bestanden (210 geslaagd, 1 overgeslagen),
     2898 tests (2894 geslaagd, 4 overgeslagen), IN ÉÉN KEER GROEN, alleen gedraaid met de
     dev-server gestopt.** +2 BESTANDEN (`lib/runOverlay.test.ts` 53 tests waarvan 44 een `it.each`
@@ -715,7 +734,24 @@
   kandidaat van het veld (8671 s in de generator, 7182 s live), dus de volle suite kostte twee uur voor een claim die
   élke geleverde netlist evengoed draagt. Sinds E-1: KAND-V2-8 (313,2 · 1647, 1787 s in de generator) en de verwerping
   455,7 · 2304 (topologie, 1410 s). De inventaris in `ciLayer.test.ts` draagt de nieuwe `[bytes]`-naam.
-- `npx vitest run` — volledige testsuite. **GEMETEN 24-09-2026 (U-5c): 209 bestanden, 2840 tests,
+- `npx vitest run` — volledige testsuite. **GEMETEN 26-09-2026 (D-0): 212 bestanden, 2914 tests,
+  1815 s (30 min 15), niets overgeslagen, IN ÉÉN KEER GROEN, alleen gedraaid ná de snelle laag en
+  met beide dev-servers gestopt.** +1 bestand en +16 tests — zie de `test:fast`-regel; het corpus
+  is NIET aangeraakt. **DEZE RUN IS GEDRAAID OMDAT D-0 DE RESTORE EN HET RAPPORT-MEMO AANRAAKT**,
+  en dat is de enige reden die telt: er is geen engine-, poort-, budget-, venster-, metriek- of
+  corpuswijziging, maar de volgorde waarin een project in de app landt raakt élk pad dat daarna
+  iets bouwt. Wat de run bewijst is dat het uitstel niets verplaatst: **alle VIER de live
+  ketenruns reproduceren hun bevroren netlist byte voor byte** — casus 1's goedkoopste geleverde
+  en zijn goedkoopste verwerping, casus 1b en casus 1h — en beide byte-referenties
+  (`f4cRegression` 102 s, `workerRouteRegression` 101 s) plus `toggleRegression` staan. Dat laatste
+  is hier het scherpst: de toggle-invariant rendert `App.tsx` niet, dus zij was per constructie
+  ongemoeid — en dat is nagemeten in plaats van beredeneerd. **Er is GEEN versiebump en geen
+  schatter aangeraakt**, dus geen enkele run-vingerafdruk beweegt en geen herkomstbestand veroudert.
+  **DEZE VOLLE RUN IS DE TWEEDE VAN DEZE SESSIE en de eerste is op 211 van de 212 bestanden
+  AFGEBROKEN**, om de H-2-reden: halverwege bleek `v2ReportNow` nodig (een RUN mag geen uitgesteld
+  rapport lezen), en een uitslag die een boom beschrijft waaraan daarna nog een reparatie is
+  toegevoegd beschrijft niets. Twintig minuten weg en goedkoper dan de alternatieve fout.
+  (De stand ervoor: **GEMETEN 24-09-2026 (U-5c): 209 bestanden, 2840 tests,
   1851 s (30 min 51), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag.**
   +3 bestanden en +60 tests — zie de `test:fast`-regel; het corpus is NIET aangeraakt.
   **DEZE RUN IS GEDRAAID OMDAT U-5c DE KOOI AANRAAKT**, en de kooi is een zoekinvoer: zij is de
@@ -729,7 +765,7 @@
   verwerping, casus 1b en casus 1h — en beide byte-referenties (`f4cRegression`,
   `workerRouteRegression`) plus `toggleRegression` staan. **De tweede reden is de versiebump**
   (`buildability/1.0 → 1.1`): hij staat NIET in `ESTIMATOR_VERSIONS`, dus geen enkele
-  run-vingerafdruk beweegt en geen herkomstbestand veroudert — nagegaan en niet aangenomen.
+  run-vingerafdruk beweegt en geen herkomstbestand veroudert — nagegaan en niet aangenomen.)
   (De stand ervoor: **GEMETEN 24-09-2026 (H-5): 206 bestanden, 2780 tests,
   1832 s (30 min 33), niets overgeslagen, in één keer groen, alleen gedraaid ná de snelle laag.**
   +1 bestand en +15 tests — zie de `test:fast`-regel; het corpus is NIET aangeraakt.
@@ -8363,3 +8399,208 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   — de twee nieuwe bestanden lezen bestanden, strings en zuivere functies, en het zwaarste
   rekenwerk erin is een `split(' · ')` — dus het aantal overgeslagen tests in `test:ci` hoort het
   H-1-getal NEGENTIEN te blijven; wat CI ervan zegt hoort in de nazorg, zoals bij elke sessie.
+
+### D-0-guards (de restore schildert voordat zij rapporteert; alleen app/presentatie)
+
+- **DE OPDRACHT HAD TWEE HELFTEN EN DEEL B WAS AL AF.** De overlay-helft — maximumhoogte aan het
+  viewport, scrollende rijenlijst, kop/voortgangsregel/Cancel altijd zichtbaar, de labels volledig
+  gewrapt met positie en herkomst gescheiden, en de pagina eronder die niet meer door de dialoog
+  heen tekent — is **U-8** (`cb34f93`, 24-09-2026), met 22 claims in `runOverlay.test.ts` en
+  `rootInert.test.ts` en acht opzettelijke breuken. Er is aan Deel B niets toegevoegd en niets
+  overgedaan. **De ENE bestelling die U-8 niet is: "open tooltips sluiten bij het openen van de
+  overlay".** Die knop draagt een NATIVE `title`, en een `title`-tooltip is browser-UI: geen
+  z-index, geen backdrop en geen script van de pagina bereikt hem. Wat U-8 wél deed is `#root`
+  `inert` zetten, waarmee de knop uit de hittest valt en er geen NIEUWE tooltip meer uit opgelost
+  kan worden — gemeten, met de muis werkelijk op die knop. Een tooltip die op dát moment al
+  geschilderd staat verdwijnt pas als de muis beweegt, en dat is een platformgrens en geen
+  openstaand werk. Hem echt kunnen sluiten vraagt een eigen tooltipcomponent in plaats van
+  `title`, en dat is een UI-beslissing met een eigen prijs.
+
+- **DEEL A — WAT ER GEMETEN IS, EN WAARMEE.** Chrome over CDP (`Page.addScriptToEvaluateOnNewDocument`
+  voor de instrumentatie vóór élk paginascript, `Profiler` voor de CPU-profielen, een tikker van
+  20 ms voor de blokkades, de Long-Task-API en `paint`), aangestuurd met Node's eigen WebSocket —
+  **géén nieuwe dependency.** De fixture is een VOL KOAN-project in de autosave-vorm, en hij is
+  door de APP zelf gemaakt: de driewegdemo via haar eigen knop geladen, een echt 74-delig netwerk
+  via "Import filter" erin (casus 1's `KAND-V2-1`), en daarna de drie herbemonsterde demoresponsen
+  en -impedanties vervangen door de VOLLE-RESOLUTIE originelen van dezelfde luidspreker (de
+  67,7 L-set) plus twee nabije velden op volle resolutie. **3,84 MB aan project-JSON** (de payload; als bestand met inspringing 4 044 526 tekens
+  = 3,86 MB), **gepakt 1 706 255 tekens in localStorage** (1,63 MB). Sanders eigen autosave is 7,8 MB, dus dit is ongeveer de helft; het is het
+  eerlijke maximum uit de ECHTE bestanden in deze repo, want vijf volle-resolutie hoekensets per
+  driver maken zou metingen verzinnen (A3h).
+
+- **DE EERSTE BEVINDING IS EEN MEETOPSTELLING EN ZIJ VERANDERT ELK GETAL HIERONDER: DE APP DRAAIT
+  ONDER `<StrictMode>`.** React roept in DEV élke componentbody twee keer aan, dus élke memo
+  rekent twee keer. In de dev-profielen staat de hele zware keten dan ook tweemaal — `buildReport`
+  in twee bursts (215..522 en 737..972 ms), `runIngest` idem, met sim en BOM ertussen in dezelfde
+  volgorde: dat is één render-body die twee keer loopt en geen defect. `deserializeProject` loopt
+  wél één keer, dus de restore zelf verdubbelt niet. **Gevolg: de dev-server meet ongeveer 2× de
+  productie** (dev 1× 1228 ms geblokkeerd tegen productie 595 ms), en wie deze meting herhaalt en
+  alleen `npm run dev` gebruikt, meet een app die niemand draait. De ATTRIBUTIE hieronder komt van
+  dev (daar zijn de functienamen niet geminificeerd), de GETALLEN die tellen van de productiebuild.
+
+- **DE 40 SECONDEN REPRODUCEREN NIET, en dat wordt hier niet weggepoetst.** Gemeten op dit
+  volle project: productie op volle snelheid **0,6 s** vastgehouden, productie met de CPU 6×
+  vertraagd **3,4 s**, de dev-server met de CPU 6× vertraagd **6,4 s**. Niets komt in de buurt van
+  veertig. Wat wél reproduceert is het INSTRUMENT waarmee de eerdere waarneming gedaan is: zodra de
+  hoofddraad seconden vastzit begint `Runtime.evaluate` te verlopen (1 time-out op productie/6×, 2
+  op dev/6×), en een sonde die bij elke time-out opnieuw injecteert telt die wachttijden op. De
+  eerlijke lezing is dus: **de bevriezing is echt en zij is een halve tot drie en een halve seconde
+  vastgehouden hoofddraad, afhankelijk van machine en build — niet veertig seconden**, en het
+  verschil zit in de meetmethode en in de dev-server. Wie het tóch op veertig wil zien: dat vraagt
+  ongeveer 4× bovenop de traagste stand die hier te maken was, en dat is niet gemeten en wordt dus
+  niet beweerd.
+
+- **WAT ER IN DIE ENE TAAK ZIT (dev-server, 1×, inclusieve tijd van de ankerfunctie).** NUL
+  workers, voor en na: élke milliseconde van de laadweg is de hoofddraad.
+
+  | taak | vóór | ná | draad |
+  | --- | ---: | ---: | --- |
+  | `applyProject` — de opgeslagen tekst parsen | 439 | 176 | hoofddraad |
+  | `engineV2Report` — v2-ingest + rapport | 531 | 497 | hoofddraad |
+  | — waarvan `runIngest` (de schatters) | 232 | 222 | hoofddraad |
+  | `simRaw` — herbemonsteren + netwerk oplossen + sommeren | 248 | 256 | hoofddraad |
+  | de vormcontrole in het nabij-veldslot (IN JSX) | 217 | 33 | hoofddraad |
+  | minimumfase-reconstructie | 120 | 116 | hoofddraad |
+  | BOM over de catalogus | 85 | 83 | hoofddraad |
+  | autosave wegschrijven (serialise + gzip + store) | 25 | 23 | hoofddraad |
+
+  **DE RIJEN OVERLAPPEN WAAR DE ENE DE ANDERE AANROEPT** — dat is wat een inclusieve tijd is, en
+  het is de reden dat de parse-rij mee omlaag gaat met de vormcontrole: `classifyMeasurementShape`
+  doet zijn eigen `parseFrd`, en die milliseconden staan in beide rijen. Optellen tot het totaal
+  kan dus niet.
+
+- **DE TWEEDE BEVINDING IS EEN DEFECT DAT NIETS MET LADEN TE MAKEN HEEFT: DE VORMCONTROLE STOND IN
+  JSX.** `classifyMeasurementShape` beantwoordt "is dit werkelijk een nabij veld" uit de header —
+  maar hij roept ook `parseFrd` aan op de hele tekst, want het oordeel legt 1/T naast de EIGEN
+  laagste frequentie van het bestand en een bestand dat niet te parsen is, is zijn eigen antwoord.
+  Dat is de juiste lezing; wat fout was is de PLAATS. Het nabij-veldslot riep hem inline aan, twee
+  keer per driver (de conus en het verre veld waarop zij gespliced wordt), dus **élke render van de
+  Project-tab herparste tot twee megabyte meettekst: 217 ms van de 1054 ms restore, en diezelfde
+  217 ms opnieuw bij élke toetsaanslag met die tab open.** Sinds D-0 gaat het door `shapeOf`, een
+  cache op de ruwe tekst zelf — de enige invoer waarvan het oordeel afhangt, dus het antwoord is
+  byte-identiek aan inline aanroepen; de functie is onaangeraakt en zo ook élke zin die zij
+  produceert. Begrensd op `SHAPE_CACHE_MAX` (10) en dan geleegd, zodat een sessie die bestand na
+  bestand laadt niets opstapelt; de strings zelf zitten al in de projectstaat, dus wat dit
+  toevoegt is de map-ingang en niet de tekst. **De loader-aanroep (één keer per gesleept bestand,
+  géén render) gaat bewust nog steeds rechtstreeks.**
+
+- **DE DERDE: HET v2-RAPPORT WACHT ÉÉN GESCHILDERDE FRAME.** Het is de grootste post in de
+  restore-taak (531 van de 1054 ms op dev, 3016 van de 6383 bij 6×) en de enige die de EERSTE
+  verf niet nodig heeft: de grafieken komen uit `simRaw` en het rapport voedt het Engine-v2-paneel
+  onderaan de analysekolom. `v2ReportDeferred` staat op waar er iets te herstellen valt en op af
+  zodra de browser geschilderd heeft; het rapport wordt daarna uit dezelfde invoer door dezelfde
+  functie gebouwd. Zonder autosave staat de vlag per constructie uit, dus een met de hand geopend
+  project, de demo en élke latere interactie zijn exact wat zij waren.
+
+- **DE VRIJGAVE IS EEN VRAAG OVER DE FRAMES EN GEEN WEDLOOP ERMEE, en dat is gemeten.** De eerste
+  bouw gebruikte een KALE timer van 300 ms naast de twee geneste frames, en dat is fout op precies
+  de machine waar het ertoe doet: na een render die de draad seconden vasthoudt staan de verlopen
+  timer én het verschuldigde frame allebei klaar, de timer kan eerst, en dan gaat de poort open
+  zónder dat er ooit geschilderd is — de twee renders lopen alsnog achter elkaar en de splitsing
+  waarvoor dit bestaat gebeurt niet. **Gemeten op dev bij 6×: één vastgehouden blok van 5999 ms,
+  precies alsof er niets uitgesteld was.** Sinds de reparatie RELEASET de timer niet maar KIJKT
+  hij: gingen de frames VOORUIT sinds de vorige blik, dan leven zij en zijn zij één frame van de
+  verf af, dus wachten; geen voortgang tussen twee blikken betekent dat er niets schildert, en dan
+  pas de vrijgave. Die lezing — voortgang, niet aanwezigheid — is wat hem in alle vier de gevallen
+  goed maakt: een snelle machine (de frames winnen meteen), een trage (de eerste blik ziet ze
+  starten), een verborgen tab (twee blikken, geen voortgang, vrijgave) en een tab die TUSSEN de
+  twee frames verborgen raakt (hetzelfde, één blik later). Die laatste twee zijn de gevallen waar
+  een poort die nooit opengaat het hele v2-paneel de rest van de sessie verbergt, en zij hebben elk
+  hun eigen claim.
+
+- **EEN GAT DAT DE REVIEW VOND EN DE METING NIET: EEN RUN MAG NOOIT EEN UITGESTELD RAPPORT
+  LEZEN.** Het uitstel gaat over WANNEER het paneel gebouwd wordt en over niets anders — maar
+  `runVfOptimize` leest datzelfde object op **negentien** plaatsen en `runNetOptimizeHybrid` op nog
+  eens drie: de vensterinvoer waaruit het kandidatenveld wordt opgewekt, de driver-id-woordenschat,
+  de afgeleide aandrijfplafonds. Een klik die in dat ene uitgestelde frame landt zou daar `null`
+  gevonden hebben en de weg genomen hebben die bedoeld is voor "v2 kan over dit project helemaal
+  niet rapporteren". Dat is een ECHT antwoord voor een project zonder takken; het is het verkeerde
+  antwoord voor een project dat alleen één frame te vroeg is. **Sinds D-0 vraagt een run het op
+  (`v2ReportNow`) en krijgt het, zo nodig ter plekke gebouwd** — dezelfde invoer door dezelfde
+  functie, dus de run is de run die hij zonder het uitstel geweest zou zijn, voor de milliseconden
+  die de render toch ging uitgeven. Beide ingangen SCHADUWEN de naam als eerste regel, met opzet:
+  zo hoeft geen van de tweeëntwintig verwijzingen gevonden en herschreven te worden, en zo faalt
+  het verdwijnen van die ene regel in de guard. Het is het soort gat dat een tijdmeting niet vindt
+  — de klok wordt er niet slechter van — en dat is de reden dat het hier apart staat.
+
+- **DE VRIJGAVE ZIT IN EEN `finally`, om dezelfde reden.** `v2ReportDeferred` begint dicht zodra er
+  een opgeslagen project is, dus élke uitgang uit de restore moet hem openen — en de uitgangen zijn
+  de oninteressante: een restore die gooide, geen ruimte om de payload apart te zetten, een
+  autosave die tussen deze render en dit effect verdween. Hersteld of niet, het rapport wordt
+  gebouwd.
+
+- **DE VÓÓR/NÁ, OP DE PRODUCTIEBUILD (`npm run build` + `vite preview`), TWEE RUNS PER CEL.**
+
+  | | vóór (1×) | ná (1×) | vóór (6×) | ná (6×) |
+  | --- | --- | --- | --- | --- |
+  | first contentful paint | 92 / 96 | 92 / 96 | 412 / 416 | 412 / 424 |
+  | **blokkades > 120 ms** | **599** / **591** | **268+343** / **270+340** | 384+**3444**+541+261+289 | 357+**1597**+**1933**+271+297 |
+  | langste enkele blokkade | 599 / 591 | **343 / 340** | 3444 / 3450 | **1933 / 1950** |
+  | totaal geblokkeerd | 599 / 591 | 611 / 611 | 4919 / 4926 | 4455 / 4480 |
+  | het PROJECT op het scherm | 677 / 673 | **346 / 352** | 3921 / 3939 | **2079 / 2088** |
+  | helemaal uitgerekend | 659 / 655 | 1223 / 682 | 5451 / 5471 | 4778 / 4797 |
+  | `Runtime.evaluate`-time-outs | 0 / 0 | 0 / 0 | **1 / 1** | **0 / 0** |
+
+  **WAT DEZE TABEL WEL EN NIET ZEGT, en de eerste lezing die ik ervan maakte was fout.** Op één
+  before-run leek "interactief" te halveren (1529 → 703); met twee runs per cel staat er iets
+  anders. Het TOTALE rekenwerk beweegt niet en hoort niet te bewegen — dezelfde memo's, dezelfde
+  invoer — en op 1× kost de splitsing zelfs een tiende seconde extra (599 → 611), de prijs van een
+  tweede renderpas over de boom. Wat er WÉL gebeurt is dat die ene blokkade er twee worden en dat
+  **het project na de EERSTE op het scherm staat in plaats van na alles**: 675 → 349 ms op volle
+  snelheid, 3,93 → 2,08 s bij 6×. En de langste aaneengesloten greep op de tab gaat met 43 % omlaag
+  (599 → 341, 3447 → 1941). Op 6× zakt het totaal ook echt (4922 → 4468), want daar weegt de
+  vormcontrole zwaar genoeg om de splitsingsoverhead te overtreffen; op 1× niet. **Op 1× is
+  "helemaal uitgerekend" na de wijziging gelijk of iets later** (655 → 682, in één run 1223), en
+  dat staat er omdat het waar is: wat gekocht is, is responsiviteit en een zichtbaar project, niet
+  minder werk.
+
+- **DE GELIJKWAARDIGHEID IS GEMETEN EN NIET BEREDENEERD.** Dezelfde fixture, 6× vertraagd, vóór en
+  ná, allebei tot rust laten komen inclusief de 800 ms autosave-debounce: **de opnieuw
+  geserialiseerde projectstaat heeft dezelfde hash (`147959fdf06b971a`), het Engine-v2-paneel
+  dezelfde hash over 31 131 tekens (`013dc4e1e3ed70f1`), 14 grafieken aan beide kanten, nul
+  console-fouten aan beide kanten.** Het ENIGE verschil is de nieuwe toestand: `Solving…` gezien op
+  332 ms en weg zodra het rapport landt. Eerlijk erbij: twee van mijn vijf selectors (de chips- en
+  vensterregels) raakten niets, dus de vergelijking rust op het project en op de paneeltekst.
+
+- **DE ENE NIEUWE ZICHTBARE TOESTAND, en waarom zij er moet zijn.** Met het rapport uitgesteld
+  rendert `{engineSelection.reporting && engineV2Report && …}` helemaal niets, en op een hersteld
+  project leest een ONTBREKEND Engine-v2-paneel als "v2 heeft niets te zeggen over dit ontwerp".
+  Eén regel in de paneelkop dus, en verder geen woord erbij (de U-6-regel).
+
+- **WAT ER NIET GEDAAN IS, met naam.**
+  (1) **De workerroute is niet genomen.** De opdracht bood twee helften ("naar de v2-worker-route
+  óf uitstellen tot ná de eerste verf") en dit is de tweede. Het rapport wordt op **47 plaatsen** in
+  `App.tsx` synchroon gelezen; `handleV2Request` is een route voor SERIALISEERBARE
+  optimalisatieverzoeken en niet voor een rapport dat uit closures over app-state gebouwd wordt; en
+  de gemeten prijs (~250 ms productie) rechtvaardigt niet dat zevenenveertig lezers asynchroon
+  worden. Dat is een besluit en geen vergetelheid.
+  (2) **`simRaw` is NIET uitgesteld**, en dat is een meting en geen voorkeur: met metingen geladen
+  en `result` null drukt de app **"Nothing to simulate: the view range is invalid"** af plus een
+  "laad de demo"-knop — een plausibel-maar-onwaar scherm, precies wat A3h verbiedt. Bovendien is de
+  eerste verf mét grafieken beter dan de "lege chartframes" die de opdracht voorzag: het eerste
+  beeld toont de echte krommen.
+  (3) **De parse in `applyProject` is niet uitgesteld**: dat is wat het project laat bestaan.
+  (4) **Het pad van "open projectbestand" (`loadProjectFromFile`) is onaangeraakt.** Het betaalt
+  dezelfde enkele taak, maar het is een klik met terugkoppeling en geen koude start; uitstellen daar
+  is een eigen beslissing.
+  (5) Geen engine-, poort-, budget-, venster-, metriek- of corpuswijziging; geen bevroren netlist
+  aangeraakt; geen enkele zin herschreven.
+
+- **BIJVANGST: `AUTOSAVE_KEY` had drie spellingen** — een literal in de modus-default, een literal
+  in de welkomstkaart en een component-constante in de restore. Eén huis nu, en een claim die het
+  zo houdt.
+
+- **DE GUARDS.** `src/lib/bootDefer.test.ts` (16 claims). De beslissing (iets te herstellen, lege
+  string is geen project, storage die gooit zegt NEE); de vrijgave met een neppe scheduler, waarin
+  élke volgorde een claim is — twee geneste frames en niet één, de verborgen tab na TWEE blikken,
+  **`THE BUG`: een blik die na een lange greep landt geeft voorrang aan de verf**, de tab die tussen
+  de frames verdwijnt, hoogstens één vrijgave hoeveel er ook vuurt, en het annuleren. Plus de
+  app-helft als BRONSCAN (het UI-1-idioom: een unittest kan niet zeggen of `App.tsx` het uitstel
+  VRAAGT, het op élke uitgang vrijgeeft of de ene toestand toont) — met commentaar eerst gestript,
+  want de redenen citeren de code die zij uitleggen. **Nagemeten dat zij kunnen falen**, zeven
+  opzettelijke breuken: de poort eruit (1 rood), de `finally` eruit (1), `shapeOf` teruggedraaid
+  (1), het paneel dood-gecodeerd met een `false &&` ervoor (1 — daarvoor is de claim op de openende
+  accolade verankerd), de voortgangscontrole vervangen door de kale timer (**3 rood**, precies de
+  drie claims die haar dragen), de schaduw uit `runVfOptimize` (1) en `v2ReportNow` dat niet meer
+  ter plekke bouwt (4).
+

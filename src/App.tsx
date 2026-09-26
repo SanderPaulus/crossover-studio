@@ -69,6 +69,7 @@ import {
   sweepUntouchedCheck,
   type MergeCheck,
   type NfMergeResult,
+  type ShapeVerdict,
   type StepPeer,
 } from './lib/nfMerge.ts';
 import {
@@ -137,6 +138,7 @@ import NumberFlow from '@number-flow/react';
 import { Modal } from './components/Modal.tsx';
 import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
+import { releaseAfterPaint, shouldDeferOnBoot } from './lib/bootDefer.ts';
 import { EngineV2Panel } from './components/EngineV2Panel.tsx';
 import { selectEngine } from './lib/engine2/facade.ts';
 import { buildReport, type EngineV2ReportInput } from './lib/engine2/report.ts';
@@ -654,6 +656,25 @@ function useDebounced<T>(value: T, ms: number, hold = false): T {
 
 type Theme = 'system' | 'light' | 'dark';
 const THEME_KEY = 'ads-theme';
+
+/**
+ * D-0 — how many measurement-shape verdicts `shapeOf` keeps (see there).
+ *
+ * A project holds at most a handful of files that are ever asked: a cone near
+ * field and a far field per branch. Ten covers a three-way with room to spare;
+ * past it the map is cleared rather than grown, so loading file after file in
+ * one session cannot accumulate entries.
+ */
+const SHAPE_CACHE_MAX = 10;
+
+/**
+ * D-0 — the autosave key, at module scope.
+ *
+ * Read in four places now: the mode default, the welcome card, the restore
+ * itself and the boot-defer decision. It was a literal in the first two and a
+ * component-scope constant in the third, which is three spellings of one key.
+ */
+const AUTOSAVE_KEY = 'ads-autosave';
 
 function useTheme(): [Theme, (t: Theme) => void] {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -1877,7 +1898,7 @@ export default function App() {
   const [uiMode, setUiMode] = useState<'guided' | 'expert' | 'compare'>(() => {
     const m = localStorage.getItem('ads-ui-mode');
     if (m === 'guided' || m === 'expert' || m === 'compare') return m;
-    return localStorage.getItem('ads-autosave') ? 'expert' : 'guided';
+    return localStorage.getItem(AUTOSAVE_KEY) ? 'expert' : 'guided';
   });
   useEffect(() => {
     localStorage.setItem('ads-ui-mode', uiMode);
@@ -2738,7 +2759,7 @@ export default function App() {
    * existing autosave means a returning user, and the flag means they chose to
    * look around — either way the card must never nag twice. */
   const [welcomeOpen, setWelcomeOpen] = useState(
-    () => !localStorage.getItem('ads-autosave') && !localStorage.getItem('ads-welcomed'),
+    () => !localStorage.getItem(AUTOSAVE_KEY) && !localStorage.getItem('ads-welcomed'),
   );
 
   /* Reference-height edits must not move the DRIVERS (Sanders report: "als ik
@@ -4655,11 +4676,52 @@ export default function App() {
     v2ActiveSide,
   ]);
 
+  /**
+   * D-0 — TRUE WHILE A STORED PROJECT IS BEING RESTORED AND NOT YET PAINTED.
+   *
+   * The v2 report is the single biggest item in the restore task (531 ms of
+   * 1054 at full speed, 3016 of 6383 with the CPU throttled 6x — see
+   * `bootDefer.ts` for the whole measurement) and the one item the first paint
+   * does not need: the charts come from `simRaw`. Holding it for one painted
+   * frame splits that task in two and puts the project on screen in roughly
+   * half the time, and it is the only thing this flag does — the report is
+   * built from the same inputs by the same function the moment it drops.
+   *
+   * FALSE unless there is something to restore, so a hand-loaded project, the
+   * demo and every later interaction are exactly what they were.
+   */
+  const [v2ReportDeferred, setV2ReportDeferred] = useState(() =>
+    shouldDeferOnBoot(() => localStorage.getItem(AUTOSAVE_KEY)),
+  );
+
   /** The panel's report: the function above, applied to the design on screen. */
-  const engineV2Report = useMemo(() => {
+  const buildPanelReport = () => {
     const active = designs.find((d) => d.id === activeDesignId);
     return buildV2Report(active ? { name: active.name, parts: active.parts } : null);
-  }, [buildV2Report, designs, activeDesignId]);
+  };
+  const engineV2Report = useMemo(
+    () => (v2ReportDeferred ? null : buildPanelReport()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [buildV2Report, designs, activeDesignId, v2ReportDeferred],
+  );
+  /**
+   * D-0 — THE REPORT A *RUN* READS, which is never a deferred one.
+   *
+   * The boot deferral is about WHEN the panel is built and about nothing else.
+   * A run reads the same object in nineteen places (`runVfOptimize`) and three
+   * more (`runNetOptimizeHybrid`) — the window inputs the candidate field is
+   * generated from, the driver-id vocabulary, the derived drive ceilings — and
+   * a click that landed inside that one painted frame would have found `null`
+   * there and taken the path meant for "v2 cannot report on this project at
+   * all". That is a real answer for a project with no branches; it is the
+   * wrong answer for a project that is merely one frame early.
+   *
+   * So a run asks for it and gets it, built on the spot if the gate still
+   * holds — the same inputs through the same function, so the run is the run
+   * it would have been without the deferral. It costs the milliseconds the
+   * render was about to spend anyway.
+   */
+  const v2ReportNow = () => engineV2Report ?? buildPanelReport();
 
   /**
    * E-3b — THE SAME FIGURES KEYED BY REPORT DRIVER ID, and the same rekeyed by
@@ -5156,6 +5218,38 @@ export default function App() {
     }
     return out as Record<BranchRole, number | null>;
   }, [cabinet, ctcK]);
+
+  /**
+   * D-0 — THE SHAPE CHECK IS A PARSE, SO IT IS DONE ONCE PER FILE.
+   *
+   * `classifyMeasurementShape` answers "is this really a near field" off the
+   * header — but it also calls `parseFrd` on the whole text, because the
+   * verdict compares 1/T against the file's OWN lowest frequency and a file
+   * that cannot be parsed at all is its own answer. That is the right reading;
+   * what was wrong is WHERE it was asked. The near-field slot called it inline
+   * in JSX, twice per driver (the cone and the far field it is spliced onto),
+   * so every render of the Project tab re-parsed up to two megabytes of
+   * measurement text: **217 ms of the 1054 ms restore measured at D-0, and the
+   * same 217 ms again on every keystroke with that tab open.**
+   *
+   * Keyed on the raw text itself, which is the only thing the verdict depends
+   * on, so the answer is byte-identical to calling it inline — the function is
+   * untouched and so is every sentence it produces. Cleared when it outgrows
+   * the handful of files a project can hold, so a session that loads file after
+   * file does not accumulate them; the strings themselves are already held by
+   * the project state, so what this adds is the map entry and not the text.
+   */
+  const shapeCache = useRef(new Map<string, ShapeVerdict>());
+  const shapeOf = (raw: string | null | undefined): ShapeVerdict | null => {
+    if (!raw) return null;
+    const cache = shapeCache.current;
+    const hit = cache.get(raw);
+    if (hit !== undefined) return hit;
+    if (cache.size >= SHAPE_CACHE_MAX) cache.clear();
+    const v = classifyMeasurementShape(raw);
+    cache.set(raw, v);
+    return v;
+  };
 
   /**
    * Near-field merge per branch: the driver's effective response, with its low
@@ -8195,7 +8289,6 @@ export default function App() {
 
   /* ---- Project persistence (step 8) ---- */
 
-  const AUTOSAVE_KEY = 'ads-autosave';
   /* BROWSER STORAGE IS SMALL, AND IT USED TO FAIL IN SILENCE (aug 2026,
    * Sanders "de selectie van de catalogus bestanden werken niet meer").
    *
@@ -8688,6 +8781,7 @@ export default function App() {
   // Restore autosave once on mount. A blob that fails to restore is moved
   // aside, NEVER deleted — a transient code bug must not destroy data.
   useEffect(() => {
+    let cancelRelease: (() => void) | null = null;
     // Blank slate (fresh visit or after Reset) — guide the user in: auto-open
     // the wizard on its import step so the first thing they see is "load your
     // measurements", not an empty canvas. Cancel dismisses it.
@@ -8700,36 +8794,52 @@ export default function App() {
       setWizardStep(0);
       setWizardOpen(true);
     };
+    /* D-0 — THE v2 REPORT IS RELEASED ON EVERY EXIT FROM HERE, and that is the
+     * whole reason this is a `finally` and not a line after `applyProject`.
+     * `v2ReportDeferred` starts true whenever there is a stored project, so a
+     * path that leaves without releasing hides the Engine v2 panel for the rest
+     * of the session — and the paths are the uninteresting ones: a restore that
+     * threw, no room to set the payload aside, an autosave that vanished
+     * between this render and this effect. Restored or not, the report is built. */
+    const release = () => {
+      cancelRelease = releaseAfterPaint(() => setV2ReportDeferred(false), window);
+    };
     const stored = localStorage.getItem(AUTOSAVE_KEY);
     if (!stored) {
       openWizardForEmpty();
+      release();
       return;
     }
     // Async because the payload may be gzipped (see packForStorage); plain
     // text from before that change still reads through unchanged.
     void (async () => {
-      let text: string;
       try {
-        text = await unpackFromStorage(stored);
-      } catch {
-        text = stored;
-      }
-      try {
-        applyProject(deserializeProject(text));
-        setPersistNote(t('Restored from autosave'));
-      } catch {
+        let text: string;
         try {
-          localStorage.setItem(`${AUTOSAVE_KEY}-unreadable`, stored);
+          text = await unpackFromStorage(stored);
         } catch {
-          // No room to keep it aside; leave the original in place instead.
-          return;
+          text = stored;
         }
-        localStorage.removeItem(AUTOSAVE_KEY);
-        setUnreadableBackup(text);
-        setPersistNote(t('Autosave could not be restored — kept aside as backup'));
-        openWizardForEmpty();
+        try {
+          applyProject(deserializeProject(text));
+          setPersistNote(t('Restored from autosave'));
+        } catch {
+          try {
+            localStorage.setItem(`${AUTOSAVE_KEY}-unreadable`, stored);
+          } catch {
+            // No room to keep it aside; leave the original in place instead.
+            return;
+          }
+          localStorage.removeItem(AUTOSAVE_KEY);
+          setUnreadableBackup(text);
+          setPersistNote(t('Autosave could not be restored — kept aside as backup'));
+          openWizardForEmpty();
+        }
+      } finally {
+        release();
       }
     })();
+    return () => cancelRelease?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -8827,6 +8937,11 @@ export default function App() {
   });
 
   async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean; fieldMode?: FieldMode } = {}) {
+    /* D-0 — every `engineV2Report` below is the RUN's report and not the
+     * panel's: shadowed on purpose, so that no reference has to be found and
+     * rewritten one by one. The same object whenever the gate is open, which
+     * is every moment except one painted frame after a restore. */
+    const engineV2Report = v2ReportNow();
     const refusal = refuseIfUnverified();
     if (refusal) {
       setVfError(`Cannot optimise yet — ${refusal}`);
@@ -12554,6 +12669,11 @@ export default function App() {
    * NOTHING and says which rule refused (V31): the drawing stays as it was.
    */
   function runNetOptimizeHybrid() {
+    /* D-0 — every `engineV2Report` below is the RUN's report and not the
+     * panel's: shadowed on purpose, so that no reference has to be found and
+     * rewritten one by one. The same object whenever the gate is open, which
+     * is every moment except one painted frame after a restore. */
+    const engineV2Report = v2ReportNow();
     if (!activeDesign || !sim || !result || !v2ActiveSide.roles || !v2ActiveSide.shape) return;
     const roles = v2ActiveSide.roles;
     const loadedOf = (r: BranchRole): Loaded | null => (r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter);
@@ -17970,14 +18090,14 @@ export default function App() {
                              contradiction; it never assigns the roles itself
                              (the manifest's doctrine: auto-detection is a
                              pre-fill, never a fact). */
-                          const coneShape = slot.cone ? classifyMeasurementShape(slot.cone.raw) : null;
+                          const coneShape = shapeOf(slot.cone?.raw);
                           /* Once a merge is accepted the branch's response IS
                              a merge, so the file to check for "is this really a
                              far field" is the SOURCE it was built on. */
                           const farSrc = slot.far ?? (loadedDrv ? { name: loadedDrv.name, raw: loadedDrv.raw } : null);
-                          const farShape = farSrc ? classifyMeasurementShape(farSrc.raw) : null;
+                          const farShape = shapeOf(farSrc?.raw);
                           const shapeNote = (
-                            v: ReturnType<typeof classifyMeasurementShape> | null,
+                            v: ShapeVerdict | null,
                             expected: 'ungated' | 'gated',
                             what: string,
                           ) => {
@@ -24570,6 +24690,20 @@ export default function App() {
             />
           </div>
         </>
+      )}
+
+      {/* D-0 — THE ONE NEW STATE: the panel says it is coming rather than being
+          absent. With the report deferred for a painted frame this block would
+          otherwise render nothing at all, and on a restored project a missing
+          Engine v2 panel reads as "v2 has nothing to say about this design". */}
+      {engineSelection.reporting && v2ReportDeferred && (
+        <div className="panel v2-panel">
+          <div className="v2-head">
+            <h3>{engineSelection.label}</h3>
+            <div className="v2-stamp">{engineSelection.version}</div>
+          </div>
+          <p className="sub">{t('Solving… — the restored project is on screen; this panel fills when the report lands.')}</p>
+        </div>
       )}
 
       {engineSelection.reporting && engineV2Report && (
