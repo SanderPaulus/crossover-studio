@@ -255,7 +255,13 @@ describe('reading the project back per screen', () => {
   it('the voicing is never reported as skipped: blank there IS flat', () => {
     const v = stateWith();
     expect(skippedScreens(v).map((s) => s.id)).not.toContain('voicing');
-    expect(skippedScreens(v)).toHaveLength(15);
+    /* U-9 fase 3 (V15 form). WAS: 15 — the active side counted as a skipped
+       requirement. IS: 14 — a blank active side is FULLY PASSIVE, an answer
+       guided's first question offers, never "not judged". WHY: the guided end
+       screen said "Hybrid mode … skipped, not judged" right after the user
+       chose passive (found in the fase-3 browser check). */
+    expect(skippedScreens(v).map((s) => s.id)).not.toContain('active-side');
+    expect(skippedScreens(v)).toHaveLength(14);
     /* …and it still reads `blank` to the wizard, which is the truthful word
      * for a field nobody has touched and what the progress dots show. */
     expect(screenStatus(v, V2_REQUIREMENT_SCREENS.find((s) => s.id === 'voicing')!)).toBe('blank');
@@ -264,7 +270,7 @@ describe('reading the project back per screen', () => {
 
   it('the summary names what went unanswered, and says nothing when nothing did', () => {
     const fresh = describeSkipped(stateWith());
-    expect(fresh).toContain('15 requirements you skipped');
+    expect(fresh).toContain('14 requirements you skipped'); // U-9 fase 3: passive is an answer (see above)
     expect(fresh).toContain('Amplifier min load');
     expect(fresh).toContain('none of them decided anything');
     const half = describeSkipped(stateWith({ amplifierPeakPowerW: '160' }));
@@ -422,8 +428,17 @@ describe('App.tsx walks this route', () => {
          would show a question with no field under it. */
       expect(named || key !== undefined, id).toBe(true);
     }
-    expect(REQ_PANE).toContain('{rows.map((row) => v2RequirementField(row.id))}');
-    expect(REQ_PANE).toContain('screenRows(sc)');
+    /* U-9 fase 3 (V15 form). WAS: the pane mapped the sixteen screens and
+       rendered every row of the current one (`{rows.map((row) =>
+       v2RequirementField(row.id))}`, `screenRows(sc)`). IS: the pane asks the
+       five guided questions (`GUIDED_QUESTIONS`) and draws a free field ONLY
+       for the hybrid handover, through the same renderer. WHY: a beginner
+       cannot answer sixteen numbers; the answers now go through profiles
+       (`guidedProfiles.ts`), and `u9Fase3.test.ts` pins where every
+       requirement lands. The renderer above still serves every row by id. */
+    expect(REQ_PANE).toContain('const qs = GUIDED_QUESTIONS;');
+    expect(REQ_PANE).toContain("{v2RequirementField('activeHandoverHz')}");
+    expect(REQ_PANE).toContain("{v2RequirementField('activeHandoverShape')}");
   });
 
   it('NO requirement field carries a numeric placeholder (E-2, where it matters most)', () => {
@@ -439,13 +454,17 @@ describe('App.tsx walks this route', () => {
   });
 
   it('the skip button and the cost of skipping are both on the screen', () => {
-    expect(REQ_PANE).toContain('skipMeansFor(sc).map');
-    expect(REQ_PANE).toContain("{t('If you leave this blank:')}");
-    expect(REQ_PANE).toContain('skipLabelFor(sc)');
-    /* Skipping CLEARS, because the button promises "unjudged" and merely
-       walking past a half-filled screen would not deliver it. */
-    expect(REQ_PANE).toContain('clearScreen(sc);');
-    expect(REQ_PANE).toContain('Skip — clear this and leave it unjudged');
+    /* U-9 fase 3 (V15 form). WAS: a "Skip — clear this and leave it unjudged"
+       button per screen, with `skipMeansFor(sc)` beneath it. IS: every profile
+       question carries an "I don't know" choice whose text IS what it costs
+       (`q.unknownMeans`), and it withdraws what a PROFILE stated while saying
+       how many of the viewer's own values stay. WHY: B-1 — "I don't know" is
+       a profile with no values; the sixteen screens' skip sentences survive
+       on the end screen through `describeSkipped`. */
+    expect(REQ_PANE).toContain("{t('I don’t know')}");
+    expect(REQ_PANE).toContain('{t(q.unknownMeans)}');
+    expect(REQ_PANE).toContain('forgetQuestion(qid)');
+    expect(REQ_PANE).toContain('describeSkipped(v2GuidedValues)');
   });
 
   it('guided keeps NO store of its own: every answer is written to the app’s state', () => {

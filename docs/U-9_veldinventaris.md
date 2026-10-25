@@ -411,3 +411,133 @@ Sander keurde de NIETS-lijst van vier goed. De drie velden die alleen de v1-lees
 **Open punt U-10 — de v1-motor verwijderen.** `runChainScan`, `runChain3Scan`, de v1-ranking, de terugval zonder A5d.3-venster en `toggleRegression` staan ongewijzigd. Verwijderen vraagt eerst twee dingen:
 - (a) v2 moet in de terugval zelf melden of weigeren, in plaats van stil v1 te lezen;
 - (b) de toggle-invariant moet een nieuwe vorm krijgen. Die bewijst zich nu dóór v1 te draaien.
+
+## Fase 3 — Guided: eenvoudig, maar verstandig (25-10-2026)
+
+**Goedgekeurd door Sander (25-10-2026):** de B-1-tabel hieronder ongewijzigd, met M-C alleen op de bovenste weg, en B-3 optie (c). Wat er gebouwd is staat onder "Fase 3 — uitgevoerd" aan het eind; de tabellen hieronder zijn het voorstel zoals het is goedgekeurd.
+
+### B-3 — wat de Wizard in guided werkelijk schrijft (gemeten)
+
+Gemeten met de fase-0-techniek: de setters van de Wizard-stappen 1–3 (`App.tsx`, `wizardStep === 1/2/3`) gekruist met `test-fixtures/u9_field_effects.json` (de payload-diff van fase 0, drie routes).
+
+| Wizard-stap | Veld (rij) | Gemeten effect | Wat het is |
+|---|---|---|---|
+| 1 Goals | trapmethode aan/uit, rimpeldoel, fasedoel (`stagedOn`, `targetRipple`, `targetPhase`) | ZOEKT (`targets` + tuner `staged`, 3W/2W/Hyb) | stopdoel van de tuner |
+| 1 Goals | Priority-radio (`phasePriority`) | ZOEKT (alleen tuner, N1) | gewicht |
+| 1 Goals | amplitudedoel, directiviteitsgewicht (`ampTarget`, `dirWeight`) | ZOEKT (tuner; 2W ook ontwerpstap) | gewicht |
+| 2 Crossover (alleen 2W) | f_min / f_max (`viewFmin`, `viewFmax`) | f_max ZOEKT (plafond geoordeelde band, N6) | grafiekbereik |
+| 2 Crossover | pin aan + frequentie + marge (`crossoverPoint`) | ZOEKT mét vinkje | gestelde kandidaatpositie |
+| 2 Crossover | mid-maat (`nominalSize`, alleen zonder S_d) | ZOEKT (bundelplafond) | meting-vervanger |
+| 2 Crossover | akoestische hellingen mid/tweeter (`acSlopeMid`, `acSlopeTweeter`) | ZOEKT (tuner + vensters, N3) | doelvorm |
+| 3 Components | snap, snapprofiel, serie per soort, binden, stapels | ZOEKT (ontwerpstap + tuner `snapPrefs`) | bouwkeuze |
+| 0 (poort) | meetbestanden laden, wegen kiezen, tweeter-offset | invoer van metingen | meting |
+
+**Bevinding.** Op stap 0 na schrijft de Wizard **uitsluitend tuner-knoppen** (ZOEKT), waarvan er geen één een eis is en negen geen registerrij hadden vóór fase 2. In guided is hij daarmee een tweede, diepere route die precies de getallen vraagt die een beginner niet kan weten — het omgekeerde van het doel van fase 3. Stap 0 (bestanden laden en het aantal wegen kiezen) dubbelt de guided-stap "Your project".
+
+**Voorstel: (c).** De Wizard verdwijnt uit Guided: de knop "Walk me through it" en de route van de welkomstkaart (die opent in guided voortaan de stap "Your project"). In Expert blijft hij staan als "🧙 Wizard", met de fase-2-badges. *(Bij het bouwen bijgesteld: de driftguard noemt hem nog bij naam, met de reden dat zijn besturingselementen paneelrijen bewust een tweede keer tekenen; zie "Fase 3 — uitgevoerd".)* Zijn bruikbare vragen gaan NIET op in de vijf: geen ervan is een eis.
+
+### B-1 — de profielwaarden (voorstel; generiek, niet Koan)
+
+Elk profiel schrijft pas iets als de gebruiker het kiest, met `V2StatedBy` = "profile <naam>". "Weet ik niet" schrijft niets. Een veld dat al in Expert gesteld is wordt niet overschreven zonder dat het scherm het zegt.
+
+**Vraag 2 — Welke versterker?**
+
+| Profiel | Vloer `ampMinLoadOhm` | Continu `amplifierPowerW` | Piek `amplifierPeakPowerW` | Nominaal `amplifierNominalLoadOhm` |
+|---|---|---|---|---|
+| Alleen 8 Ω (veel buizen, vintage) | 6,4 Ω | 30 W | 60 W | 8 Ω |
+| 4–8 Ω (de meeste receivers en integrated) | 3,2 Ω | 100 W | 200 W | 8 Ω |
+| 2 Ω-stabiel (eindversterker) | 1,6 Ω | 200 W | 400 W | 8 Ω |
+
+Onderbouwing:
+- Vloer = 0,8 × de laagste nominale last waarvoor de versterker gespecificeerd is. IEC 60268-5 staat toe dat een luidspreker van nominaal Z tot 0,8·Z zakt, dus een versterker voor "4 Ω-luidsprekers" is op 3,2 Ω-dips berekend.
+- Piek = 2 × continu: 3 dB dynamische reserve (de IHF-dynamic-headroom-conventie). Het piek/nominaal-paar voedt alleen het excursieplafond (V49: `V_piek = √(2·P·R)`).
+- Nominaal 8 Ω: de last waarop vermogens doorgaans worden opgegeven.
+- Te streng (vloer te hoog): de zoektocht weigert ontwerpen die de versterker aankan, en de shortlist kan leeg raken. Te ruim: een ontwerp wordt geleverd dat de versterker laat clippen of beschermen.
+- Tegenproef Koan: het levende corpus leest min |Z| 2,58–2,61 Ω. Het haalt dus **alleen** het profiel "2 Ω-stabiel", en **niet** "4–8 Ω", terwijl de NAD fabrieksmatig 4 Ω opgeeft. Casus 1 stelde 2,6 Ω op eigen gronden. Dat is precies het verschil tussen een profiel en een gesteld projectgetal.
+- EPDR en max dissipatie: **geen** onderbouwd generiek getal → alleen Expert.
+
+**Vraag 3 — Hoe zwaar wordt hij belast?**
+
+| Profiel | M-C op f_s, **alleen de bovenste weg** (per weg) | X_max-marge `xmaxMarginFraction` | Thermisch ontwerpvermogen `resistorThermalPowerW` |
+|---|---|---|---|
+| Rustig luisteren | −18 dB | 1,0 | 2 % van het continu vermogen (vraag 2) |
+| Stevig | −20 dB | 0,8 | 10 % |
+| Feesten | −24 dB | 0,7 | 25 % |
+
+Onderbouwing:
+- **−18 dB** is de conservatieve vuistregel *"18 dB down at resonance"* (vuistregels §2). **−20** is diezelfde regel plus 2 dB marge voor f_s-drift (de V47b-redenering). **−24 dB** is een 2e-orde flank op 4·f_s (12 dB/oct × log₂4), de "3–4× f_s"-regel (Dickason) aan zijn strenge kant.
+- **Alleen op de bovenste weg (per weg)**, en dat is een bevinding: het enkele getal `maxDriveOnFsDb` geldt voor élke hoogdoorlaatbeschermde weg, dus ook de mid van een drieweg. Daar bindt de *afgeleide* excursiegrens (V49), en de 18 dB-regel is een tweeterregel. Tegenproef Koan: `KAND_V2_1` leest −8,77 dB op de **mid** en zou op elk profiel met het enkele getal afvallen. Op de tweeter lezen −30,6…−38,6 dB, dus alle drie de profielen worden gehaald.
+- **X_max-marge.** 1,0 = de hele opgegeven slag (X_max is al de lineariteitsgrens). 0,8 en 0,7 geven 20 en 30 % reserve tegen de spreiding in hoe fabrikanten X_max definiëren. Dit is een conventie en geen norm. Zij telt pas mét piek + nominaal (vraag 2) en de driverkaart.
+- **Thermisch vermogen** = muziekgemiddelde. Met piek = 2 × continu is het gemiddelde `2·P/10^(crest/10)`: een crestfactor van ~20 dB (rustig, dynamische muziek) geeft 2 %, ~13 dB 10 %, en ~9 dB (gecomprimeerd, tegen clipping) 25 %. Zonder antwoord op vraag 2 schrijft vraag 3 dit veld **niet**.
+- Te streng: kleinere vensters en meer weigeringen op M-C. Te ruim: een ontwerp dat bij hoog volume de tweeter of de weerstanden overbelast.
+
+**Vraag 4 — Wat wil je bouwen?**
+
+| Profiel | Weerstandsklasse × marge | ±-venster `splWindowPlusMinusDb` | Fasesporing `maxPhaseTrackingDeg` |
+|---|---|---|---|
+| Zo eenvoudig mogelijk | 10 W × 0,5 | ±3 dB | niet gesteld |
+| Gebalanceerd | 10 W × 0,5 | ±2 dB | 30° |
+| Zoveel als nodig | 20 W × 0,5 | ±1,5 dB | 30° |
+
+Onderbouwing:
+- **10 W** is de gangbare cement/MOX-klasse: 100 van de 108 weerstanden in de v8-catalogus (Jantzen MOX 53, Superes 40, Duelund CAST 7; V50). **20 W** is de enige andere klasse erin (Mundorf MResist Supreme, 8).
+- **Marge 0,5**: een conventie (halve belasting voor een weerstand in een gesloten kast), geen norm; casus 1 stelt dezelfde 0,5.
+- **±3 / ±2 / ±1,5 dB** zijn fabrikantsconventies (hifi / goed / monitor) en geen norm. Ze zijn een EIS (A5e.1): de ladder mag ze verruimen en zegt dat dan.
+- **30°** is de literatuurrichtlijn voor fasesporing (vuistregels §6c, gesteld voor casus 1 bij U-5c).
+- **Niet in dit profiel, alleen Expert:** niveauwerk laagste weg, LF-bult-budget, Q_es-grens, dempingsmarge, spoelklasse. Voor de eerste vier bestaat geen vuistregel met een getal (vuistregels §4). Voor de spoelklasse draagt geen catalogusspoel een stroomopgave (V50).
+- Tegenproef Koan: ±-venster 1,47 / 2,08 / 2,03 dB. Bij ±2 haalt 1 van de 3 het, bij ±1,5 ook 1. De ladder verruimt dan. Fasesporing 10,6 / 13,1 / 32,0°: bij 30° valt `KAND_V2_3` af (bekend, U-5c).
+- Te streng: een lege shortlist plus het ladderetiket. Te ruim: vlakheid en fase worden niet onderscheiden.
+- De sorteersleutel van de guided-shortlist (minste onderdelen / laagste kosten / vlakste respons) is een **weergave** en geen profielwaarde.
+
+**Vraag 5 — Hoe moet hij klinken?**
+
+| Keuze | `targetCurve` | Plateaudiepte |
+|---|---|---|
+| Vlak (neutraal) | flat | — |
+| Licht basplateau | bass-plateau | 1,5 dB |
+| Basplateau | bass-plateau | 3 dB |
+| Vol basplateau | bass-plateau | 4,5 dB |
+
+Onderbouwing: ¼, ½ en ¾ van de theoretische baffle step van 6 dB. Hoeveel de kamer teruggeeft hangt af van de plaatsing, en dat is wat de keuze zegt. De overgang wordt afgeleid uit de kastbreedte (A5e.2, ongewijzigd).
+
+**Vraag 1 — Wat bouw je?** Passief, of Hybrid mode. Een hybride vraagt de overname, en die heeft geen default (P4). Het flankbudget en de processorlatentie staan alleen in Expert. Op het passieve pad staat **geen** getalveld.
+
+### De toewijzingstabel (voorstel)
+
+Elke rij met klasse `judgement` of effect `oordeelt` landt op precies één bestemming.
+
+| Rij | Bestemming |
+|---|---|
+| `activeSideOn`, `activeHandoverHz`, `activeHandoverShape` | vraag 1 |
+| `activeFlankBudgetDbRms` | Expert ("budget op de flank: Expert") |
+| `ampMinLoadOhm`, `amplifierPowerW`, `amplifierPeakPowerW`, `amplifierNominalLoadOhm` | vraag 2 |
+| `minEpdrOhm`, `maxDissipationPct` | Expert |
+| `driveOnFsMaxDb-per-way` (bovenste weg), `xmaxMarginFraction`, `resistorThermalPowerW` | vraag 3 |
+| `maxDriveOnFsDb` (het enkele getal) | Expert (zie de bevinding bij vraag 3) |
+| `resistorClassW`, `resistorPowerMargin`, `splWindowPlusMinusDb`, `maxPhaseTrackingDeg` | vraag 4 |
+| `coilClassA`, `lowestWayLevelWork`, `lowestWaySeriesRMaxOhm`, `lfBumpBudgetDb`, `qesMultiplierMax`, `dampingMarginDb` | Expert |
+| `targetCurve`, `plateauDepthDb` | vraag 5 |
+| `sd`, `baffle-width`, `driveVoltageV`, `rotSym`, `sourceCount`, `wiring`, `powerRating` | meetstappen (project / kast / drivers): afgeleid uit wat daar ingevuld wordt |
+| `verticalWindowDeg`, `networkSource`, `networkTemplate`, `networkEditor` | Expert |
+
+
+## Fase 3 — uitgevoerd (25-10-2026)
+
+- **Stap 0b.** `src/lib/u9Fase3.test.tsx` pint met een bronscan dat geen `polarityBranchOf` in `runVfOptimize` een `const`/`let` leest die pas later gedeclareerd wordt (de vorm van de fase-2-crash). De opzettelijke breuk (`branchAdj.tweeter` → `tAdjust`) gaat rood met de naam erbij.
+- **De profielen als data: `src/lib/guidedProfiles.ts`.** Elke goedgekeurde waarde staat er één keer, met `basis`, `tooStrict` en `tooLoose` als velden. Een bronscan pint dat het guided-paneel geen getal van zichzelf draagt, ook niet als string ('3.2'). Vraag 5 (voicing) is een KEUZE van de gebruiker en geen profiel: wie "3 dB plateau" kiest, heeft die diepte zelf gesteld.
+- **Attributie in dezelfde twee kaarten.** `V2StatedBy`/`V2StatedAt` kennen sinds fase 3 ook de twee invoeren buiten het settings-blok die een profiel schrijft: `ampMinLoadOhm` en `driveOnFsMaxDb:high`. Er is geen tweede attributie. `statedMarkFor` geeft "stated via profile <naam> on <datum>". Een eigen bewerking (expert of guided) wist de naam en stempelt de datum (`noteStatedExtra`, de U-3-regel). Het rapport toont per poort wie de grens stelde (`EngineV2Panel.limitProvenance`, gevoed uit `GATE_LIMIT_KEYS`). Zonder de prop rendert het paneel byte-identiek.
+- **Vijf vragen** (`GUIDED_QUESTIONS` in `v2Guided.ts`): wat bouw je / welke versterker / hoe zwaar / wat wil je bouwen / hoe moet hij klinken. Elke keuze laat vóór het kiezen zien wat ze stelt ("This states: …"), en ook welke eigen waarde ze vervangt. "I don't know" trekt alleen in wat een PROFIEL stelde, en zegt hoeveel eigen waarden blijven staan. Het passieve pad heeft geen getalveld; de enige vrije invoer is de overname van een hybride.
+- **De zestien schermen blijven de inventaris** die `describeSkipped` leest. Het eindscherm toont drie dingen, alle drie inklapbaar of geteld:
+  - "Deze eisen zijn niet beoordeeld", met een link naar Expert;
+  - "N eisen gesteld in Expert";
+  - "N instellingen sturen de zoektocht op een app-startwaarde".
+- **Bestemming van elke eis** (`GUIDED_DESTINATION`): elke rij met klasse `judgement` of effect `oordeelt` heeft er precies één. De test breekt op een rij zonder bestemming; de opzettelijke breuk (één rij weggehaald) gaat rood.
+- **Guided-shortlist**: de gebruiker kiest de sorteersleutel (minste onderdelen / laagste kosten / vlakste respons), en het scherm noemt hem. Zonder keuze staat er: "Not a ranking". Nieuwe registerrij `guidedShortlistOrder` (toont).
+- **B-3 (c).** De Wizard is weg uit Guided. Weg zijn de knop "Walk me through it", het paletitem, de route van de welkomstkaart en de knop in het lege paneel; het lege project in guided opent nu "Your project". Zijn enige renderpunt staat achter `uiMode !== 'guided'`. De fase-2-driftguard noemt hem nog bij naam, met de reden: zijn besturingselementen tekenen paneelrijen bewust een tweede keer, dus test (2) kan voor hem niet gelden.
+- **Bevinding tijdens de browsercontrole, gerepareerd:** na "Fully passive" meldde het eindscherm Hybrid mode als "overgeslagen, niet beoordeeld". Een lege actieve zijde is passief, dus een antwoord; `skippedScreens` telt haar sindsdien niet meer. Een half-gestelde hybride blijft wél gemeld (`partlyScreens`).
+- **Eén primaire knop per scherm.** De algemene "Next: …"-rij onderaan verbergt zich op de eisenstap, want het paneel draagt zijn eigen knop.
+- **Niet gedaan, en waarom:**
+  - **De voicing kan in Guided pas ná de eerste run gekozen worden.** Ze hangt aan een ontwerp, en op een vers project bestaat nog geen ontwerptab. Het scherm zegt dat ("tot dan wordt de run vlak beoordeeld"). Een lege ontwerptab aanmaken raakt UI-2's lege-netwerkstaat; dat is een eigen besluit.
+  - Een load-profiel rekent het thermisch vermogen uit tegen het continu vermogen dat er op het moment van kiezen stond. Een latere wijziging van het versterkerantwoord past het niet automatisch aan; het scherm toont de waarde.
+  - Registerlabels in de keuzekaarten ("Amplifier power W") staan in het Engels; het register heeft geen NL-labels.
+  - Open punten: U-10 (de v1-motor) en N1 (de Priority-schuif in de ontwerpstap).

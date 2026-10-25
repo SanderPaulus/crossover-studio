@@ -120,9 +120,14 @@ function braceSpan(src: string, from: number): [number, number] {
  * THE THREE NAMED EXCEPTIONS of the app-wide guard, each a region by its own
  * landmark, and each with its reason. Asserted to be real and sizeable below.
  *
- *   · the WIZARD — a guided walk over the same state (I-3's rule: one store,
- *     two views); phase 3 of U-9 redesigns it, and its controls redraw rows the
- *     panel holds (the priority radio, the slopes, the pin) on purpose;
+ *   · the WIZARD — a walk over the same state (I-3's rule: one store, two
+ *     views). Since U-9 fase 3 (B-3 c) it is EXPERT-ONLY (`uiMode !== 'guided'`
+ *     on its one render point, pinned in `u9Fase3.test.ts`), and it stays named
+ *     here for a reason the guard itself states: its controls redraw rows the
+ *     panel already holds (the priority radio, the slopes, the pin, the snap
+ *     choices) on purpose, so test (2) — one draw point per token — cannot hold
+ *     for it. Was: "phase 3 of U-9 redesigns it". Phase 3 measured it (every
+ *     field it writes is ZOEKT, fase 0) and moved it out of guided instead;
  *   · the guided REQUIREMENT renderer (`v2RequirementField`) — the second VIEW
  *     of the requirement fields, by row id, which `v2Guided.test.ts` governs;
  *   · the cabinet helpers `veld` and `refTopVeld` — their fields are
@@ -130,7 +135,7 @@ function braceSpan(src: string, from: number): [number, number] {
  *     `v2InputPlacement.test.ts` scans.
  */
 const EXEMPT: Record<string, [number, number]> = {
-  wizard: parenSpan(APP, APP.indexOf('{wizardOpen && (')),
+  wizard: parenSpan(APP, APP.indexOf("{wizardOpen && uiMode !== 'guided' && (")),
   guidedRequirement: braceSpan(APP, APP.indexOf('const v2RequirementField = (')),
   cabinetHelper: parenSpan(APP, APP.indexOf('=> (', APP.indexOf('const veld = ('))),
   cabinetRefTop: parenSpan(APP, APP.indexOf('=> (', APP.indexOf('const refTopVeld = ('))),

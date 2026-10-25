@@ -144,12 +144,19 @@ export interface EngineV2PanelProps {
    * swap. Absent = the drawing simulates.
    */
   notSimulated?: { label: string; title: string } | null;
+  /**
+   * U-9 fase 3 — WHO STATED EACH GATE'S LIMIT, per gate id ("stated via
+   * profile 4–8 Ω on 2026-10-25"). The report does not know where a limit came
+   * from — the app does — so this is a prop, the `floors` reasoning. Absent or
+   * empty = the table renders exactly as before.
+   */
+  limitProvenance?: Readonly<Record<string, string>>;
 }
 
 /** The class of the tag, shared with the chart headings' `.stale-tag`. */
 export const V2_STALE_TAG_CLASS = 'stale-tag';
 
-export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = null }: EngineV2PanelProps) {
+export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = null, limitProvenance = {} }: EngineV2PanelProps) {
   const { ingest, capability, metrics, predesign, system, gates } = report;
 
   return (
@@ -230,6 +237,9 @@ export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = n
                       <span className="v2-muted">no limit set</span>
                     ) : (
                       `${v.direction === 'max' ? '≤' : '≥'} ${fmt(v.limit, v.gate)}`
+                    )}
+                    {v.limit !== null && limitProvenance[v.gate] && (
+                      <div className="v2-muted v2-limit-by">{limitProvenance[v.gate]}</div>
                     )}
                   </td>
                   {/* UI-1 — "not judged" IS A STATUS, and it used to be spelled

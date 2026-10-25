@@ -1834,6 +1834,20 @@ const U9_ROWS: readonly V2InputRowDef[] = [
     source: 'choice',
   },
   {
+    /* U-9 fase 3 — the guided shortlist's order. A VIEW and not a verdict: the
+     * engine delivers a field, not a ranking, so guided sorts on a key the user
+     * picks and names it; with none picked the list stands in the order the
+     * spreading chose. No "recommended" crown. */
+    id: 'guidedShortlistOrder',
+    label: 'Order the guided shortlist by',
+    form: 'Guided → the shortlist after a run',
+    travels: 'the order the guided shortlist rows are printed in — nothing in a run reads it',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'the list stands in the order the spreading chose; that order is not a ranking.',
+    source: 'choice',
+  },
+  {
     id: 'chartDisplay', // #134, #135, #136
     label: 'Chart range, Pareto axis, sonogram, bypass, solo floor',
     form: 'the chart panels and the solo controls',
@@ -2101,6 +2115,7 @@ const GROUP_OF: Readonly<Record<string, V2FieldGroup>> = Object.freeze({
   'viewFmax': 'run',
   'viewFmin': 'run',
   'chartDisplay': 'run',
+  'guidedShortlistOrder': 'run',
   'bandForms': 'run',
   'navigation': 'run',
 });
@@ -2548,7 +2563,7 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   'phaseMode', 'tweeterAdjust', 'midAdjust', 'seatTiming',
   'synthMode', 'snapProfile', 'snapSeries', 'snapBoundToSeries', 'snapStacks',
   'networkTemplate', 'networkEditor', 'partLock', 'simDisplay',
-  'viewFmax', 'viewFmin', 'chartDisplay', 'bandForms', 'navigation',
+  'viewFmax', 'viewFmin', 'chartDisplay', 'bandForms', 'navigation', 'guidedShortlistOrder',
 ]);
 
 /**
@@ -2592,6 +2607,7 @@ export const V2_APP_CONTROLS: readonly V2AppControl[] = Object.freeze([
   // ---- App.tsx: Setup ----
   { row: 'viewFmin', file: 'App.tsx', control: 'value={fMin}' },
   { row: 'viewFmax', file: 'App.tsx', control: 'value={fMax}' },
+  { row: 'guidedShortlistOrder', file: 'App.tsx', control: 'value={guidedShortlistOrder}' },
   { row: 'chartDisplay', file: 'App.tsx', control: 'value={splMin}' },
   { row: 'chartDisplay', file: 'App.tsx', control: 'value={splMax}' },
   { row: 'phaseMode', file: 'App.tsx', control: 'value={phaseMode}' },

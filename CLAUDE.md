@@ -8688,3 +8688,48 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   terugval zonder A5d.3-venster, `toggleRegression`). Daarvoor moet eerst:
   - (a) v2 in de terugval zelf melden of weigeren, in plaats van stil v1 te lezen;
   - (b) de toggle-invariant een nieuwe vorm krijgen. Die bewijst zich nu dóór v1 te draaien.
+
+### U-9 fase 3-guards (Guided: vijf vragen, profielen als data, de Wizard expert-only; alleen app/UI)
+
+- **`src/lib/guidedProfiles.ts` — DE ENIGE PLEK WAAR EEN PROFIELWAARDE GETYPT STAAT (P6).**
+  - De B-1-tabel is goedgekeurd door Sander op 25-10-2026, met de onderbouwing per waarde in `docs/U-9_veldinventaris.md` (fase 3).
+  - Drie profielen per vraag: versterker (vloer/continu/piek/nominaal), belasting (M-C op de BOVENSTE weg / X_max-marge / thermisch als fractie van het continu vermogen) en bouwen (weerstandsklasse × 0,5 / ±-venster / fasesporing).
+  - Elke waarde draagt `basis`, `tooStrict` en `tooLoose` als velden, niet als commentaar: het scherm drukt ze af.
+  - **M-C gaat alleen op `driveOnFsMaxDb:high`**: het enkele getal zou ook de mid oordelen (Koan `KAND_V2_1` mid −8,77 dB). Geen profiel schrijft `maxDriveOnFsDb`, en de test pint dat.
+  - Een fractie zonder continu vermogen wordt NIET geschreven (`PROFILE_SKIP_REASON`, P4).
+  - De voicing (vraag 5) is een keuze van de gebruiker en geen profiel.
+- **ATTRIBUTIE IN DEZELFDE TWEE KAARTEN** (`V2StatedBy`/`V2StatedAt`; er is geen tweede mechanisme).
+  - Sinds fase 3 kennen ze ook `V2_STATED_EXTRA_KEYS` (`ampMinLoadOhm`, `driveOnFsMaxDb:high`). `restoreV2Settings` neemt die mee; een project van vóór fase 3 opent zonder attributie.
+  - `statedMarkFor` geeft "stated via profile <naam> on <datum>"; `tMark` in `App.tsx` vertaalt de vier vormen.
+  - Een eigen bewerking van de twee extra's stempelt de datum en wist de profielnaam (`noteStatedExtra`, in expert én in guided, gepind op het aantal aanroepen).
+  - Het rapport toont per poort wie de grens stelde: `EngineV2Panel.limitProvenance`, gevoed uit `GATE_LIMIT_KEYS` (dekt precies `GATE_IDS`). Zonder de prop is de render byte-identiek.
+- **VIJF VRAGEN** (`GUIDED_QUESTIONS`, ≤ 5, gepind).
+  - Geen vrij getalveld op het passieve pad; de enige vrije invoer is de overname van een hybride, onder `onlyWhen: 'hybrid'`.
+  - Het paneel schrijft dezelfde staat als expert. Het bewaart alleen een cursor (`v2ReqIx`, nu geklemd op vijf).
+  - "I don't know" trekt alleen in wat een PROFIEL stelde, en zegt hoeveel eigen waarden blijven staan.
+  - Een profielkaart noemt elke eigen waarde die ze zou vervangen, vóór het klikken.
+- **ELKE EIS HEEFT PRECIES ÉÉN BESTEMMING** (`GUIDED_DESTINATION`).
+  - Het gaat om elke registerrij met klasse `judgement` of effect `oordeelt`, en de bestemming is een vraag, een meetstap, of "expert" met de zin erbij.
+  - De sleutelverzameling moet GELIJK zijn aan `DESTINED_ROWS`. Een nieuwe eis zonder bestemming breekt de build (nagemeten met een weggehaalde rij).
+  - De rijen die een profielvraag krijgt zijn precies de rijen die haar profielen schrijven, in beide richtingen.
+- **DE ZESTIEN SCHERMEN BLIJVEN DE INVENTARIS** die `describeSkipped` leest. `skippedScreens` telt de actieve zijde sindsdien niet meer: leeg = volledig passief, en dat is een antwoord. Gevonden in de browser, toen het eindscherm na "Fully passive" Hybrid mode als "niet beoordeeld" meldde. `v2Guided.test.ts` 15 → 14, in de V15-vorm.
+- **B-3 (c) — DE WIZARD IS EXPERT-ONLY.**
+  - Eén renderpunt: `{wizardOpen && uiMode !== 'guided' && (`.
+  - Weg uit guided: de knop "Walk me through it", het paletitem, de welkomstkaart-route en de knop in het lege paneel. Het lege project in guided opent "Your project" (`setDesignTab('import')`).
+  - De fase-2-driftguard noemt hem nog bij naam, met de reden: zijn besturingselementen tekenen paneelrijen bewust een tweede keer, dus test (2) kan voor hem niet gelden.
+- **DE GUIDED-SHORTLIST** sorteert op een sleutel die de gebruiker kiest (`guidedShortlistOrder`: onderdelen / kosten / vlakste) en noemt die sleutel. Zonder keuze staat er "Not a ranking". Een kolomklik wint. De test pint dat het resultaatgebied geen "recommended" draagt.
+- **STAP 0b**: een bronscan pint de tweewegcrash van fase 2 (`polarityBranchOf` mag geen later gedeclareerde `const` lezen), met de opzettelijke breuk als eigen claim.
+- `src/lib/u9Fase3.test.tsx` (23 claims). **Drie opzettelijke breuken, alle drie rood:**
+  - een profielwaarde als string in het paneel;
+  - de guard van de Wizard weggehaald (ook drie fase-2-claims rood);
+  - een eis zonder bestemming.
+- **`npm run test:fast` NÁ U-9 FASE 3 (25-10-2026): 548 s — 215 bestanden (214 geslaagd, 1 overgeslagen), 2987 tests (2983 geslaagd, 4 overgeslagen), IN ÉÉN KEER GROEN, alleen gedraaid met de dev-server gestopt en ná de browserrun.** +1 bestand en +23 tests, en die twee getallen sluiten exact: het zijn de 23 claims van `u9Fase3.test.tsx`; `v2Guided.test.ts` veranderde van inhoud en niet van telling. De laatste bronbewerking lag vóór de start van de run (17:41) (de H-2-regel). GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan. Geen volle run: er is geen engine- of zoekwijziging.
+- **BROWSERCONTROLE (dev-server, 25-10-2026).**
+  - De vijf vragen en het eindscherm zijn doorlopen op de driewegdemo en de tweewegdemo, het hybride pad tot en met vraag 1 (overname en vorm), op desktop en 375 px, in EN en NL.
+  - De markeringen in expert lezen "stated via profile 4–8 Ω on 2026-10-25". Een eigen bewerking wordt "stated by you", en vraag 2 noemt de vervangen eigen waarde.
+  - Eén volledige tweewegrun tot de shortlist (3 kandidaten, 1 geleverd). De sortering "fewest parts" noemt haar sleutel, en er is geen v1-tabel.
+  - Vraag 5 is na de run te beantwoorden (plateau 3 dB, `aria-pressed`).
+- **NIET GEDAAN:**
+  - De voicing kan in guided pas ná de eerste run gekozen worden: zij hangt aan een ontwerp, en dat bestaat op een vers project nog niet. Het scherm zegt dat.
+  - Open blijven U-10 (de v1-motor) en N1 (de Priority-schuif in de ontwerpstap).
+  - Geen engine-, poort-, budget-, venster- of corpuswijziging, dus geen volle run.

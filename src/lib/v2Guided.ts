@@ -618,7 +618,17 @@ export function screenStatus(values: V2GuidedValues, screen: V2RequirementScreen
  * a field nobody has touched, and the wizard uses that to show progress.
  */
 export const skippedScreens = (values: V2GuidedValues): readonly V2RequirementScreen[] =>
-  V2_REQUIREMENT_SCREENS.filter((s) => s.skip !== 'neutral' && screenStatus(values, s) === 'blank');
+  V2_REQUIREMENT_SCREENS.filter(
+    (s) =>
+      s.skip !== 'neutral' &&
+      /* U-9 fase 3 — a blank active side is FULLY PASSIVE, which guided's
+       * first question offers as an answer (`GUIDED_QUESTIONS`, 'build'). It is
+       * the architecture, not a requirement nobody stated, so it is never
+       * reported as "not judged". A HALF-stated hybrid still is: that is
+       * `partlyScreens`, untouched. */
+      s.id !== 'active-side' &&
+      screenStatus(values, s) === 'blank',
+  );
 
 /** The screens holding part of an answer, which judge nothing while looking answered. */
 export const partlyScreens = (values: V2GuidedValues): readonly V2RequirementScreen[] =>
@@ -790,3 +800,166 @@ export const LEVEL_WORK_OPTIONS: readonly { value: string; label: string }[] = O
   { value: 'none', label: 'none (no series R, no shunt pad)' },
   { value: 'series-r-max', label: 'series R up to a maximum, no pad' },
 ]);
+
+/* ==================================================================== *
+ * 6 — U-9 FASE 3: VIJF VRAGEN, EN WAAR ELKE EIS HEEN GAAT
+ * ==================================================================== */
+
+/**
+ * WHY FIVE AND NOT SIXTEEN. The sixteen screens above ask a number per
+ * requirement, and a beginner can answer almost none of them. Guided now asks
+ * five questions in CONCEPTS — what you build, which amplifier, how hard it is
+ * played, how much you want to build, how it should sound — and each answer
+ * writes registered rows through a guided profile (`guidedProfiles.ts`) or a
+ * plain choice, with the values shown before they are written. The sixteen
+ * screens stay: they are the inventory `describeSkipped` reads, so what guided
+ * does not ask is still said rather than silenced.
+ *
+ * The questions are data and their number is pinned by a test (≤ 5). The
+ * passive path holds no number field at all: the one free number is the
+ * handover of a hybrid, which has no default (P4) — and a builder who does not
+ * know it is sent to expert and carries on passive.
+ */
+export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'voicing';
+
+export interface GuidedQuestion {
+  id: GuidedQuestionId;
+  title: string;
+  /** How the screen answers: a profile pick, the architecture choice, or the voicing choice. */
+  kind: 'architecture' | 'profile' | 'voicing';
+  /** Register rows a FREE field asks for, and on which path. Never on the passive path. */
+  freeFields: readonly { rowId: string; onlyWhen: 'hybrid' }[];
+  /** What “I don’t know” costs, in one sentence. */
+  unknownMeans: string;
+}
+
+export const GUIDED_QUESTIONS: readonly GuidedQuestion[] = Object.freeze([
+  {
+    id: 'build',
+    title: 'What are you building?',
+    kind: 'architecture',
+    freeFields: [{ rowId: 'activeHandoverHz', onlyWhen: 'hybrid' }],
+    unknownMeans: 'Fully passive: every way goes through the passive network, which is how the design is made when nothing else is stated.',
+  },
+  {
+    id: 'amplifier',
+    title: 'Which amplifier will drive it?',
+    kind: 'profile',
+    freeFields: [],
+    unknownMeans: 'No amplifier floor, power or peak is stated: the impedance minimum and the resistor watts are measured and shown, and nothing judges them; no excursion ceiling is computed.',
+  },
+  {
+    id: 'load',
+    title: 'How hard will it be played?',
+    kind: 'profile',
+    freeFields: [],
+    unknownMeans: 'No tweeter-protection figure, no excursion margin and no thermal design power: drive at resonance and cone travel are measured and shown, and nothing judges them.',
+  },
+  {
+    id: 'ambition',
+    title: 'What do you want to build?',
+    kind: 'profile',
+    freeFields: [],
+    unknownMeans: 'No resistor class, no flatness tolerance and no phase-tracking limit: every design is shown with its flatness and phase, and nothing is refused on them.',
+  },
+  {
+    id: 'voicing',
+    title: 'How should it sound?',
+    kind: 'voicing',
+    freeFields: [],
+    unknownMeans: 'Flat — the neutral reference. Blank is not an absence here: flat is stated by being kept.',
+  },
+]);
+
+/**
+ * WHERE EVERY REQUIREMENT GOES — the I-3 rule "the count is derived, not
+ * typed" in its new form. Every register row with class `judgement` or effect
+ * `oordeelt` lands on EXACTLY ONE of these, and the test breaks the build on a
+ * row with none:
+ *
+ *  · `question` — a guided question writes it, through a profile or a choice;
+ *  · `measurement` — it is entered on a measurement step (project, cabinet,
+ *    drivers): guided asks the measurement, never a number the measurement
+ *    already knows;
+ *  · `expert` — guided does not ask it, by name, with the sentence guided shows
+ *    about it. It is never silenced: the end screen counts what is stated
+ *    there, and `describeSkipped` names what is not.
+ */
+export type GuidedDestination =
+  | { kind: 'question'; question: GuidedQuestionId }
+  | { kind: 'measurement'; stage: V2GuidedStageId }
+  | { kind: 'expert'; why: string };
+
+const Q = (question: GuidedQuestionId): GuidedDestination => ({ kind: 'question', question });
+const M = (stage: V2GuidedStageId): GuidedDestination => ({ kind: 'measurement', stage });
+const E = (why: string): GuidedDestination => ({ kind: 'expert', why });
+
+const NO_RULE = 'No rule of thumb with a number exists for this (vuistregels §4); it is a project decision, stated in expert.';
+
+export const GUIDED_DESTINATION: Readonly<Record<string, GuidedDestination>> = Object.freeze({
+  activeSideOn: Q('build'),
+  activeHandoverHz: Q('build'),
+  activeHandoverShape: Q('build'),
+  activeFlankBudgetDbRms: E('A budget on the flank of the lowest passive way — set it in expert once a hybrid has run.'),
+  ampMinLoadOhm: Q('amplifier'),
+  amplifierPowerW: Q('amplifier'),
+  amplifierPeakPowerW: Q('amplifier'),
+  amplifierNominalLoadOhm: Q('amplifier'),
+  maxDissipationPct: E('No generic, supported figure exists for how much of the amplifier may be burnt in the filter.'),
+  minEpdrOhm: E('No generic, supported figure exists for the EPDR floor.'),
+  'driveOnFsMaxDb-per-way': Q('load'),
+  maxDriveOnFsDb: E('The single figure judges every protected way, the midrange included, where the derived excursion ceiling is the right one; guided states the tweeter rule on the top way instead.'),
+  xmaxMarginFraction: Q('load'),
+  resistorThermalPowerW: Q('load'),
+  resistorClassW: Q('ambition'),
+  resistorPowerMargin: Q('ambition'),
+  splWindowPlusMinusDb: Q('ambition'),
+  maxPhaseTrackingDeg: Q('ambition'),
+  coilClassA: E('No coil in the catalogue carries a current rating, and air-cored coils do not saturate (V50).'),
+  lowestWayLevelWork: E(NO_RULE),
+  lowestWaySeriesRMaxOhm: E(NO_RULE),
+  lfBumpBudgetDb: E(NO_RULE),
+  qesMultiplierMax: E(NO_RULE),
+  dampingMarginDb: E(NO_RULE),
+  targetCurve: Q('voicing'),
+  plateauDepthDb: Q('voicing'),
+  sd: M('drivers'),
+  'baffle-width': M('cabinet'),
+  powerRating: M('drivers'),
+  driveVoltageV: M('measurements'),
+  rotSym: M('drivers'),
+  sourceCount: M('drivers'),
+  wiring: M('drivers'),
+  verticalWindowDeg: E('A reporting window for the lobing column; it judges nothing.'),
+  networkSource: E('The network is drawn or imported on the build step and in expert.'),
+  networkTemplate: E('The network is drawn or imported on the build step and in expert.'),
+  networkEditor: E('The network is drawn or imported on the build step and in expert.'),
+});
+
+/** The rows a destination test must cover: every judgement row and every row that judges. */
+export const DESTINED_ROWS: readonly V2InputRow[] = Object.freeze(
+  V2_INPUT_REGISTER.filter((r) => r.cls === 'judgement' || r.effect === 'oordeelt'),
+);
+
+/** The expert-only requirements, for the end screen's “stated in expert” count. */
+export const EXPERT_ONLY_ROW_IDS: readonly string[] = Object.freeze(
+  Object.entries(GUIDED_DESTINATION)
+    .filter(([, d]) => d.kind === 'expert')
+    .map(([id]) => id),
+);
+
+/**
+ * WHICH STATED INPUTS SET EACH GATE'S LIMIT — so the report can say, per gate,
+ * who stated it ("stated via profile 4–8 Ω on …"). Keys are provenance keys
+ * (`V2StatedKey`), not row ids: the M-C limit of the top way is the per-way
+ * figure the load profile writes. Gate ids are written as strings because this
+ * file may not import `engine2/`; the test pins them against `GATE_IDS`.
+ */
+export const GATE_LIMIT_KEYS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  'M-A': ['maxDissipationPct'],
+  'M-B/EPDR': ['minEpdrOhm'],
+  'M-B/|Z|': ['ampMinLoadOhm'],
+  'M-C': ['driveOnFsMaxDb:high', 'maxDriveOnFsDb', 'xmaxMarginFraction', 'amplifierPeakPowerW', 'amplifierNominalLoadOhm'],
+  'M-A/part': ['resistorClassW', 'resistorPowerMargin', 'resistorThermalPowerW'],
+  'M-L': ['coilClassA'],
+});

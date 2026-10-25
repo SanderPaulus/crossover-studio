@@ -198,7 +198,9 @@ import {
   clearStatedBy,
   stampStated,
   statedMark,
+  statedMarkFor,
   type V2SettingKey,
+  type V2StatedKey,
   type V2Settings,
   type V2StatedAt,
   type V2StatedBy,
@@ -292,24 +294,32 @@ import {
 import {
   LEVEL_WORK_OPTIONS,
   REQUIREMENT_INPUT,
-  SOURCE_WORDS,
   V2_GUIDED_STAGES,
-  V2_REQUIREMENT_SCREENS,
   describeRunChoice,
   describeSkipped,
   guidedEngineNote,
   guidedStages,
   guidedValues,
   requiredRowsOfStage,
-  screenName,
-  screenRows,
-  screenSources,
-  screenStatus,
-  skipLabelFor,
-  skipMeansFor,
   type V2GuidedStageId,
-  type V2RequirementScreen,
+  EXPERT_ONLY_ROW_IDS,
+  GATE_LIMIT_KEYS,
+  GUIDED_QUESTIONS,
 } from './lib/v2Guided.ts';
+/* U-9 fase 3 — the guided profiles, as data: the approved values and their
+ * basis (`guidedProfiles.ts`, the one place a profile value is typed). */
+import {
+  PROFILE_SKIP_REASON,
+  VOICING_CHOICES,
+  profileStatedBy,
+  profileWrites,
+  profilesOf,
+  selectedProfile,
+  targetsOf,
+  type GuidedProfile,
+  type GuidedProfileQuestion,
+  type ProfileTarget,
+} from './lib/guidedProfiles.ts';
 import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import {
@@ -461,7 +471,7 @@ import { computePhaseStats } from './lib/phaseStats.ts';
 import { computeResponseStats } from './lib/responseStats.ts';
 import { toleranceBand } from './lib/tolerance.ts';
 import { type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
-import { APP_DEFAULTS, appDefaultMark, restoreFieldStatedAt, stampField, type FieldStatedAt } from './lib/appDefaults.ts';
+import { APP_DEFAULTS, APP_DEFAULT_ROWS, appDefaultMark, restoreFieldStatedAt, stampField, type FieldStatedAt } from './lib/appDefaults.ts';
 import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
 import {
   serializeProject,
@@ -2122,10 +2132,10 @@ export default function App() {
    */
   const [v2ReqIx, setV2ReqIxRaw] = useState<number>(() => {
     const v = Number(localStorage.getItem('ads-v2-req-ix'));
-    return Number.isFinite(v) && v >= 0 && v <= V2_REQUIREMENT_SCREENS.length ? v : 0;
+    return Number.isFinite(v) && v >= 0 && v <= GUIDED_QUESTIONS.length ? v : 0;
   });
   const setV2ReqIx = (n: number) => {
-    const clamped = Math.max(0, Math.min(V2_REQUIREMENT_SCREENS.length, n));
+    const clamped = Math.max(0, Math.min(GUIDED_QUESTIONS.length, n));
     setV2ReqIxRaw(clamped);
     localStorage.setItem('ads-v2-req-ix', String(clamped));
   };
@@ -2151,6 +2161,36 @@ export default function App() {
     /* U-3 — an edited field is the viewer's own, whatever a demo said before. */
     setEngineV2StatedBy((prev) => clearStatedBy(prev, key));
   };
+  /**
+   * U-9 fase 3 — the same stamp for the two inputs outside the settings block
+   * that a guided profile writes (the amplifier floor, the top way's M-C
+   * figure). An own edit makes the value the viewer's: date today, profile
+   * name cleared — the U-3 rule, in the same two maps.
+   */
+  const noteStatedExtra = (key: V2StatedKey, value: string) => {
+    setEngineV2StatedAt((prev) => stampStated(prev, key, value));
+    setEngineV2StatedBy((prev) => clearStatedBy(prev, key));
+  };
+  /** The mark beside one of those two, in the same words as `v2Stated`. */
+  const v2StatedExtra = (key: V2StatedKey, value: string) => {
+    const m = statedMarkFor(value, engineV2StatedAt[key], engineV2StatedBy[key]);
+    return m ? <span className="v2-stated">{tMark(m)}</span> : null;
+  };
+  /**
+   * U-9 fase 3 — a provenance mark in the reader's language. The marks are
+   * built in English by `statedMarkFor` (one implementation, every reader);
+   * this translates their four shapes, profile name included.
+   */
+  const tMark = (m: string): string => {
+    const via = /^stated via profile (.+?)(?: on (\d{4}-\d\d-\d\d))?$/.exec(m);
+    if (via) {
+      const who = t('profile {name}', { name: t(via[1]) });
+      return via[2] ? t('stated via {who} on {d}', { who, d: via[2] }) : t('stated via {who}', { who });
+    }
+    const on = /^stated by you on (\d{4}-\d\d-\d\d)$/.exec(m);
+    if (on) return t('stated by you on {d}', { d: on[1] });
+    return t(m);
+  };
   /** E-2 — the mark beside a stated field; null while the field is empty. */
   const v2Stated = (key: V2SettingKey) => {
     const m = statedMark(engineV2Settings, engineV2StatedAt, key, engineV2StatedBy);
@@ -2159,7 +2199,7 @@ export default function App() {
         className="v2-stated"
         title={t('This value is yours — the app never fills a requirement. Clear the field to withdraw it.')}
       >
-        {m}
+        {tMark(m)}
       </span>
     ) : null;
   };
@@ -2318,6 +2358,7 @@ export default function App() {
             value={ampMinLoadOhm ?? ''}
             onChange={(e) => {
               const raw = e.target.value.trim();
+              noteStatedExtra('ampMinLoadOhm', raw);
               if (raw === '') {
                 setAmpMinLoadOhm(null);
                 localStorage.removeItem('ads-amp-min-load');
@@ -2416,7 +2457,10 @@ export default function App() {
                 placeholder={UNSET_GHOST}
                 value={v2Meas[r].driveOnFsMaxDb}
                 onChange={(e) =>
-                  setV2Meas((m) => ({ ...m, [r]: { ...m[r], driveOnFsMaxDb: e.target.value } }))
+                  {
+                    if (r === 'high') noteStatedExtra('driveOnFsMaxDb:high', e.target.value);
+                    setV2Meas((m) => ({ ...m, [r]: { ...m[r], driveOnFsMaxDb: e.target.value } }));
+                  }
                 }
                 style={{ width: '4.5rem' }}
               />{' '}
@@ -2540,6 +2584,8 @@ export default function App() {
   const v2ReqStatedMark = (rowId: string): ReactNode => {
     const row = V2_INPUT_REGISTER.find((r) => r.id === rowId);
     if (row?.key !== undefined) return v2Stated(row.key);
+    if (rowId === 'ampMinLoadOhm')
+      return v2StatedExtra('ampMinLoadOhm', ampMinLoadOhm === null ? '' : String(ampMinLoadOhm));
     /* The three rows outside the settings block carry no DATE — they predate
        E-2's stamp or live on the design, which has its own history — so they
        say the value is yours and do not invent a day for it. */
@@ -2944,7 +2990,11 @@ export default function App() {
     localStorage.setItem('ads-welcomed', '1');
     setWelcomeOpen(false);
     if (next === 'demo') loadDemo();
-    else if (next === 'wizard') {
+    else if (next === 'wizard' && uiMode === 'guided') {
+      /* U-9 fase 3 (B-3 c) — the Wizard is not part of guided: "I have
+       * measurements" opens guided's own first step, where they are loaded. */
+      setDesignTab('import');
+    } else if (next === 'wizard') {
       // "I have measurements" means "help me load them": open on the
       // measurements GATE (step 0), not on the default Goals step — a fresh
       // user has nothing loaded yet, so Goals would be a form about nothing.
@@ -4324,6 +4374,30 @@ export default function App() {
       }),
     [engineV2Settings, ampMinLoadOhm, v2Meas, activeTargetCurve],
   );
+  /**
+   * U-9 fase 3 — WHO STATED EACH GATE'S LIMIT, per gate, for the report. A
+   * gate whose limit inputs were stated by a profile says so ("stated via
+   * profile 4–8 Ω on …"); a gate whose inputs the viewer typed says "stated by
+   * you"; several sources are listed. Empty for a gate nobody stated.
+   */
+  const v2LimitProvenance = useMemo(() => {
+    const valueOf = (k: string): string =>
+      k === 'ampMinLoadOhm'
+        ? ampMinLoadOhm === null ? '' : String(ampMinLoadOhm)
+        : k === 'driveOnFsMaxDb:high'
+          ? v2Meas.high.driveOnFsMaxDb
+          : (engineV2Settings as Record<string, string>)[k] ?? '';
+    const out: Record<string, string> = {};
+    for (const [gate, keys] of Object.entries(GATE_LIMIT_KEYS)) {
+      const marks = new Set<string>();
+      for (const k of keys) {
+        const m = statedMarkFor(valueOf(k), engineV2StatedAt[k as V2StatedKey], engineV2StatedBy[k as V2StatedKey]);
+        if (m) marks.add(tMark(m));
+      }
+      if (marks.size > 0) out[gate] = [...marks].join(' · ');
+    }
+    return out;
+  }, [engineV2Settings, engineV2StatedAt, engineV2StatedBy, ampMinLoadOhm, v2Meas]);
 
   /**
    * E-3b — the same stated M-C figures keyed by WORKER MODEL. `threeWay` is
@@ -6808,7 +6882,7 @@ export default function App() {
        * and the fourteen sentences say what it costs. A tick that demanded
        * fifteen stated requirements would mark a deliberately minimal run as
        * unfinished forever, which is the opposite of what this route is for. */
-      requirements: v2ReqIx >= V2_REQUIREMENT_SCREENS.length,
+      requirements: v2ReqIx >= GUIDED_QUESTIONS.length,
       // Design: a network with real filter parts exists — a bare template
       // (generator + drivers) has not designed anything yet.
       design: designs.some(
@@ -8906,6 +8980,11 @@ export default function App() {
     // no-regie problem the card exists to solve.
     const openWizardForEmpty = () => {
       if (!localStorage.getItem('ads-welcomed')) return;
+      /* U-9 fase 3 (B-3 c) — guided starts on its own first step instead. */
+      if (uiMode === 'guided') {
+        setDesignTab('import');
+        return;
+      }
       setWizardStep(0);
       setWizardOpen(true);
     };
@@ -12104,6 +12183,13 @@ export default function App() {
   /** Which shortlist column the table is sorted on. Presentation only. */
   const [shortlistSort, setShortlistSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   /**
+   * U-9 fase 3 — THE GUIDED SHORTLIST'S ORDER, chosen by the user and named.
+   * A view and not a verdict: the engine delivers a field, not a ranking, so
+   * '' leaves the list in the order the spreading chose and SAYS that order
+   * is no ranking. No "recommended" crown anywhere.
+   */
+  const [guidedShortlistOrder, setGuidedShortlistOrder] = useState<'' | 'parts' | 'cost' | 'flat'>('');
+  /**
    * UI-1 — the shortlist row currently loaded in the Working tab, by label.
    *
    * Null means nothing from this shortlist is loaded, which after a run with
@@ -15270,10 +15356,14 @@ export default function App() {
                                 max={0}
                                 placeholder="—"
                                 value={v2Meas[role].driveOnFsMaxDb}
-                                onChange={(e) => setV2MeasField(role, 'driveOnFsMaxDb', e.target.value)}
+                                onChange={(e) => {
+                                  if (role === 'high') noteStatedExtra('driveOnFsMaxDb:high', e.target.value);
+                                  setV2MeasField(role, 'driveOnFsMaxDb', e.target.value);
+                                }}
                                 style={{ width: '4.5rem' }}
                               />
                               {' dB'}
+                              {role === 'high' && v2StatedExtra('driveOnFsMaxDb:high', v2Meas.high.driveOnFsMaxDb)}
                             </span>
                           </>
                         )}
@@ -15862,7 +15952,7 @@ export default function App() {
         });
       },
     },
-    { id: 'wizard', label: t('Open the design wizard'), run: () => setWizardOpen(true) },
+    ...(uiMode === 'guided' ? [] : [{ id: 'wizard', label: t('Open the design wizard'), run: () => setWizardOpen(true) }]),
     { id: 'compare', label: t('Compare mode: model vs measurement'), hint: t('load the built speaker’s response'), run: () => setUiMode('compare') },
     { id: 'measure', label: t('Open the measuring guide'), hint: t('rig, distances, angles'), run: () => setMeasureGuideOpen(true) },
     { id: 'help', label: t('Open the manual'), run: () => setHelpOpen(true) },
@@ -16334,7 +16424,11 @@ export default function App() {
             </button>
             <button type="button" onClick={() => dismissWelcome('wizard')}>
               📁 {t('I have measurements')}
-              <small>{t('The wizard walks you through loading them and checks nothing is missing.')}</small>
+              <small>
+                {uiMode === 'guided'
+                  ? t('Guided mode takes you through loading them, one step at a time.')
+                  : t('The wizard walks you through loading them and checks nothing is missing.')}
+              </small>
             </button>
           </div>
           <button type="button" className="welcome-skip" onClick={() => dismissWelcome()}>
@@ -16342,7 +16436,7 @@ export default function App() {
           </button>
         </Modal>
       )}
-      {wizardOpen && (
+      {wizardOpen && uiMode !== 'guided' && (
         <Modal
           open
           onClose={() => setWizardOpen(false)}
@@ -16664,7 +16758,7 @@ export default function App() {
                   </button>
                 </p>
                 <p className="sub" style={{ marginTop: '0.6rem' }}>
-                  {t('Filling these in closes the wizard; come back with "Walk me through it" on the Design step — it reopens here until the list is green, then at Goals.')}
+                  {t('Filling these in closes the wizard; come back with "🧙 Wizard" on the Design step — it reopens here until the list is green, then at Goals.')}
                 </p>
               </>
             );
@@ -19796,56 +19890,135 @@ export default function App() {
               * tab is not in the route, not in the palette and not reachable.
               * ================================================================ */}
             {designTab === 'requirements' && engineV2Enabled && (() => {
-              const screens = V2_REQUIREMENT_SCREENS;
-              const ix = Math.min(v2ReqIx, screens.length);
-              const statusOf = (sc: V2RequirementScreen) => screenStatus(v2GuidedValues, sc);
-              /* Skipping CLEARS, and the button label says so. Merely walking
-                 past a half-filled screen would leave a value that judges
-                 nothing while looking like an answer — the `partly` state — so
-                 the one button that promises "unjudged" has to deliver it. */
-              const clearScreen = (sc: V2RequirementScreen) => {
-                for (const row of screenRows(sc)) {
-                  if (row.id === 'ampMinLoadOhm') {
-                    setAmpMinLoadOhm(null);
-                    localStorage.removeItem('ads-amp-min-load');
-                  } else if (row.id === 'driveOnFsMaxDb-per-way') {
-                    setV2Meas((m) => ({
-                      low: { ...m.low, driveOnFsMaxDb: '' },
-                      mid: { ...m.mid, driveOnFsMaxDb: '' },
-                      high: { ...m.high, driveOnFsMaxDb: '' },
-                    }));
-                  } else if (row.id === 'targetCurve' || row.id === 'plateauDepthDb') {
-                    if (activeDesign)
-                      setDesigns((ds) =>
-                        ds.map((d) =>
-                          d.id === activeDesign.id ? { ...d, targetCurve: { type: 'flat' } } : d,
-                        ),
-                      );
-                  } else if (row.key !== undefined) {
-                    setV2Field(row.key, '');
-                  }
+              /* U-9 fase 3 — FIVE QUESTIONS IN CONCEPTS, NOT SIXTEEN NUMBERS.
+               * Each answer writes registered rows through a guided profile
+               * (`guidedProfiles.ts`) or a plain choice, shows those rows and
+               * their values before it writes them, and stamps them "stated via
+               * profile <name> on <date>" in the same provenance maps expert
+               * reads (`V2StatedBy`). The sixteen requirement screens stay the
+               * inventory `describeSkipped` reads, so what guided does not ask
+               * is said on the end screen rather than silenced. */
+              const qs = GUIDED_QUESTIONS;
+              const ix = Math.min(v2ReqIx, qs.length);
+              const today = new Date().toISOString().slice(0, 10);
+              const readTarget = (tg: ProfileTarget): string =>
+                tg === 'ampMinLoadOhm'
+                  ? ampMinLoadOhm === null ? '' : String(ampMinLoadOhm)
+                  : tg === 'driveOnFsMaxDb:high'
+                    ? v2Meas.high.driveOnFsMaxDb
+                    : engineV2Settings[tg];
+              /* "Own" = a value the viewer (or a demo) stated, not a profile. */
+              const isOwn = (tg: ProfileTarget) =>
+                readTarget(tg).trim() !== '' && !(engineV2StatedBy[tg] ?? '').startsWith('profile ');
+              const writeTarget = (tg: ProfileTarget, value: string, by: string | null) => {
+                if (tg === 'ampMinLoadOhm') {
+                  const v = Number(value);
+                  const nv = value.trim() !== '' && Number.isFinite(v) && v > 0 ? v : null;
+                  setAmpMinLoadOhm(nv);
+                  if (nv === null) localStorage.removeItem('ads-amp-min-load');
+                  else localStorage.setItem('ads-amp-min-load', String(nv));
+                } else if (tg === 'driveOnFsMaxDb:high') {
+                  setV2Meas((m) => ({ ...m, high: { ...m.high, driveOnFsMaxDb: value } }));
+                } else {
+                  setEngineV2Settings((v) => ({ ...v, [tg]: value }));
                 }
+                setEngineV2StatedAt((prev) => stampStated(prev, tg, value, today));
+                setEngineV2StatedBy((prev) => {
+                  const next = { ...prev };
+                  if (by && value.trim() !== '') next[tg] = by;
+                  else delete next[tg];
+                  return next;
+                });
               };
+              /* The continuous power AS IT WILL STAND after a pick: a load
+                 profile's thermal power is a share of it (B-1). */
+              const powerAfter = (p: GuidedProfile) =>
+                p.question === 'amplifier'
+                  ? profileWrites(p, '').writes.find((w) => w.target === 'amplifierPowerW')?.value ?? ''
+                  : engineV2Settings.amplifierPowerW;
+              const applyProfile = (p: GuidedProfile) => {
+                const by = profileStatedBy(p);
+                for (const w of profileWrites(p, powerAfter(p)).writes) writeTarget(w.target, w.value, by);
+              };
+              /* "I don't know" withdraws what a PROFILE stated on this question
+                 and leaves the viewer's own values standing — the button says
+                 how many, so nothing is cleared or kept unseen. */
+              const forgetQuestion = (q: GuidedProfileQuestion) => {
+                for (const tg of targetsOf(q))
+                  if ((engineV2StatedBy[tg] ?? '').startsWith('profile ')) writeTarget(tg, '', null);
+              };
+              const ownOn = (q: GuidedProfileQuestion) => targetsOf(q).filter(isOwn);
+              const rowLabel = (rowId: string) => t(V2_INPUT_REGISTER.find((r) => r.id === rowId)?.label ?? rowId);
+              /* The unit beside a stated value, from the one bound table (no copy). */
+              const unitOf = (tg: ProfileTarget): string => {
+                const u =
+                  tg === 'ampMinLoadOhm'
+                    ? 'Ω'
+                    : tg === 'driveOnFsMaxDb:high'
+                      ? t('dB (tweeter)')
+                      : REQUIREMENT_INPUT[tg]?.unit;
+                return u ? ` ${u}` : '';
+              };
+              const answerOf = (qid: (typeof qs)[number]['id']): string | null => {
+                if (qid === 'build') return engineV2Settings.activeSideOn === 'on' ? t('Hybrid mode') : t('Fully passive');
+                if (qid === 'voicing') {
+                  if (activeTargetCurve.type === 'flat') return t('Flat — the neutral reference');
+                  const c = VOICING_CHOICES.find((vc) => vc.plateauDepthDb === activeTargetCurve.plateauDepthDb);
+                  return c ? t(c.label) : t('a voicing stated in expert');
+                }
+                const p = selectedProfile(qid, engineV2StatedBy);
+                if (p) return t(p.name);
+                return ownOn(qid).length > 0 ? t('your own values (expert)') : null;
+              };
+              const setVoicing = (depth: number | null) => {
+                if (!activeDesign) return;
+                setDesigns((ds) =>
+                  ds.map((d) =>
+                    d.id !== activeDesign.id
+                      ? d
+                      : depth === null
+                        ? { ...d, targetCurve: { type: 'flat' } }
+                        : { ...d, targetCurve: { ...(d.targetCurve ?? {}), type: 'bass-plateau', plateauDepthDb: depth } },
+                  ),
+                );
+              };
+              const nav = (atEnd: boolean) => (
+                <div className="v2-req-nav">
+                  <button type="button" disabled={ix === 0} onClick={() => setV2ReqIx(ix - 1)}>
+                    {t('← Back')}
+                  </button>
+                  <button
+                    type="button"
+                    className="step-next"
+                    onClick={() => (atEnd ? setDesignTab('filters') : setV2ReqIx(ix + 1))}
+                  >
+                    {atEnd ? t('Next: Design it →') : t('Next →')}
+                  </button>
+                </div>
+              );
+              /* What guided does not ask, counted for the end screen (N2/P4). */
+              const expertStated = EXPERT_ONLY_ROW_IDS.filter((id) => (v2GuidedValues[id] ?? '').trim() !== '');
+              const routeRows = Object.keys(APP_DEFAULT_ROWS).filter((id) =>
+                ['rSourceDisq', 'diWeight', 'acSlopeWoofer', 'acSlopeMidHp'].includes(id) ? threeWay && !v2Hybrid : true,
+              );
+              const onAppDefault = routeRows.filter(
+                (id) => appDefaultMark(id, appDefaultValues(), fieldStatedAt).kind === 'app-default',
+              );
               return (
                 <div className="panel v2-req">
                   <h2>{t('What the design must meet')}</h2>
                   <p className="sub">
-                    {t('One question at a time, in the order the engine reads them. Nothing here is filled in for you: a limit exists only because you state it, and every question can be skipped — the button says what that costs.')}
+                    {t('Five questions, in words rather than numbers. Each answer shows what it states before it states it, and every value stays visible and editable in expert mode. “I don’t know” states nothing — and says what that costs.')}
                   </p>
-                  {/* The whole walk at a glance, and a way back into any of it:
-                      a dot per question, filled when it holds an answer, half
-                      when it holds part of one. */}
                   <ol className="v2-req-dots" aria-label={t('Requirements')}>
-                    {screens.map((sc, i) => {
-                      const st = statusOf(sc);
+                    {qs.map((q, i) => {
+                      const a = answerOf(q.id);
                       return (
-                        <li key={sc.id}>
+                        <li key={q.id}>
                           <button
                             type="button"
-                            className={`v2-req-dot v2-req-${st}${i === ix ? ' active' : ''}`}
-                            title={`${t(sc.title)} — ${t(
-                              st === 'stated' ? 'stated' : st === 'partly' ? 'half-stated: judges nothing' : 'not stated',
-                            )}`}
+                            className={`v2-req-dot v2-req-${a ? 'stated' : 'blank'}${i === ix ? ' active' : ''}`}
+                            title={`${t(q.title)} — ${a ?? t('not stated')}`}
                             onClick={() => setV2ReqIx(i)}
                           >
                             {i + 1}
@@ -19854,113 +20027,200 @@ export default function App() {
                       );
                     })}
                   </ol>
-                  {ix >= screens.length ? (
+                  {ix >= qs.length ? (
                     <div className="v2-req-summary">
                       <h3>{t('That is all of them.')}</h3>
                       <ul className="v2-req-list">
-                        {screens.map((sc) => {
-                          const st = statusOf(sc);
+                        {qs.map((q) => {
+                          const a = answerOf(q.id);
                           return (
-                            <li key={sc.id} className={`v2-req-${st}`}>
-                              <strong>{screenName(sc)}</strong>{' '}
-                              {st === 'stated'
-                                ? t('— stated')
-                                : st === 'partly'
-                                  ? t('— half-stated, so it judges nothing')
-                                  : sc.skip === 'neutral'
-                                    ? t('— flat, the neutral reference')
-                                    : t('— skipped, not judged')}
+                            <li key={q.id} className={`v2-req-${a ? 'stated' : 'blank'}`}>
+                              <strong>{t(q.title)}</strong> — {a ?? t('I don’t know: not stated, not judged')}
                             </li>
                           );
                         })}
                       </ul>
                       {(() => {
                         const line = describeSkipped(v2GuidedValues);
-                        return line ? <p className="sub v2-req-skipped">{line}</p> : null;
+                        return line ? (
+                          <details className="v2-req-unjudged">
+                            <summary>{t('These requirements are not judged')}</summary>
+                            <p className="sub v2-req-skipped">{line}</p>
+                            <button type="button" className="link-btn" onClick={() => { setUiMode('expert'); setDesignTab('filters'); }}>
+                              {t('State them in expert mode →')}
+                            </button>
+                          </details>
+                        ) : null;
                       })()}
-                      <div className="v2-req-nav">
-                        <button type="button" onClick={() => setV2ReqIx(screens.length - 1)}>
-                          {t('← Back')}
-                        </button>
-                        <button
-                          type="button"
-                          className="step-next"
-                          onClick={() => setDesignTab('filters')}
-                        >
-                          {t('Next: Design it →')}
-                        </button>
-                      </div>
+                      {expertStated.length > 0 && (
+                        <p className="sub v2-req-expert-stated">
+                          {t('{n} requirement(s) stated in expert, and judged on the run:', { n: expertStated.length })}{' '}
+                          {expertStated.map(rowLabel).join(' · ')}
+                        </p>
+                      )}
+                      {onAppDefault.length > 0 && (
+                        <details className="v2-req-app-default">
+                          <summary>
+                            {t('{n} settings steer the search on an app start value — not stated by you', { n: onAppDefault.length })}
+                          </summary>
+                          <p className="sub">
+                            {t('Guided does not ask these, and does not hide them either: each one steers the search, and none of them was chosen by you. They are marked “app default” in expert mode.')}
+                          </p>
+                          <ul className="v2-req-list">
+                            {onAppDefault.map((id) => (
+                              <li key={id}>
+                                {rowLabel(id)} — {t(appDefaultMark(id, appDefaultValues(), fieldStatedAt).text)}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
+                      {nav(true)}
                     </div>
                   ) : (
                     (() => {
-                      const sc = screens[ix];
-                      const rows = screenRows(sc);
-                      const st = statusOf(sc);
+                      const q = qs[ix];
                       return (
-                        <div className="v2-req-screen" key={sc.id}>
-                          <p className="v2-req-count">
-                            {t('Question {x} of {y}', { x: ix + 1, y: screens.length })}
-                          </p>
-                          <h3>{t(sc.title)}</h3>
-                          <p className="v2-req-source">
-                            {t('Where to find it:')}{' '}
-                            {screenSources(sc)
-                              .map((src) => t(SOURCE_WORDS[src]))
-                              .join('; ')}
-                            .
-                          </p>
-                          <div className="v2-req-fields">
-                            {rows.map((row) => v2RequirementField(row.id))}
-                          </div>
-                          {st === 'partly' && (
-                            <p className="result-warn">
-                              ⚠{' '}
-                              {t('Half an answer states nothing: these inputs only mean something together, so as it stands this judges no more than leaving it blank.')}
-                            </p>
-                          )}
-                          <div className="v2-req-cost">
-                            <strong>{t('If you leave this blank:')}</strong>
-                            <ul>
-                              {skipMeansFor(sc).map((c) => (
-                                <li key={c.rowId} className={c.defers ? 'v2-req-defers' : undefined}>
-                                  <em>{t(c.label)}</em> — {c.means}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="v2-req-nav">
-                            <button
-                              type="button"
-                              disabled={ix === 0}
-                              onClick={() => setV2ReqIx(ix - 1)}
-                            >
-                              {t('← Back')}
-                            </button>
-                            <button
-                              type="button"
-                              className="v2-req-skip"
-                              onClick={() => {
-                                clearScreen(sc);
-                                setV2ReqIx(ix + 1);
-                              }}
-                              title={t('Moves on without stating it — and clears anything typed here, so what the run sees matches what this button promises.')}
-                            >
-                              {t(
-                                st === 'blank'
-                                  ? skipLabelFor(sc)
-                                  : sc.skip === 'neutral'
-                                    ? 'Back to flat — the neutral reference'
-                                    : 'Skip — clear this and leave it unjudged',
+                        <div className="v2-req-screen" key={q.id}>
+                          <p className="v2-req-count">{t('Question {x} of {y}', { x: ix + 1, y: qs.length })}</p>
+                          <h3>{t(q.title)}</h3>
+                          {q.kind === 'architecture' && (
+                            <>
+                              <div className="v2-profile-choices">
+                                <button
+                                  type="button"
+                                  className={`v2-profile${engineV2Settings.activeSideOn !== 'on' ? ' active-toggle' : ''}`}
+                                  aria-pressed={engineV2Settings.activeSideOn !== 'on'}
+                                  onClick={() => setV2Field('activeSideOn', '')}
+                                >
+                                  <strong>{t('Fully passive')}</strong>
+                                  <small>{t('Every way through one passive network, on one amplifier.')}</small>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`v2-profile${engineV2Settings.activeSideOn === 'on' ? ' active-toggle' : ''}`}
+                                  aria-pressed={engineV2Settings.activeSideOn === 'on'}
+                                  onClick={() => setV2Field('activeSideOn', 'on')}
+                                >
+                                  <strong>{t('Hybrid mode')}</strong>
+                                  <small>{t('The woofer on its own amplifier and DSP; the ways above it passive.')}</small>
+                                </button>
+                              </div>
+                              {engineV2Settings.activeSideOn === 'on' && (
+                                <div className="v2-req-fields">
+                                  {v2RequirementField('activeHandoverHz')}
+                                  {v2RequirementField('activeHandoverShape')}
+                                  <p className="sub">
+                                    {t('The handover has no default: it is where your DSP will cross. Don’t know it yet? Choose “Fully passive” now and set up Hybrid mode in expert mode later.')}
+                                  </p>
+                                </div>
                               )}
-                            </button>
-                            <button
-                              type="button"
-                              className="step-next"
-                              onClick={() => setV2ReqIx(ix + 1)}
-                            >
-                              {t('Next →')}
-                            </button>
-                          </div>
+                            </>
+                          )}
+                          {q.kind === 'profile' && (() => {
+                            const qid = q.id as GuidedProfileQuestion;
+                            const sel = selectedProfile(qid, engineV2StatedBy);
+                            const own = ownOn(qid);
+                            return (
+                              <>
+                                <div className="v2-profile-choices">
+                                  {profilesOf(qid).map((p) => {
+                                    const { writes, skipped } = profileWrites(p, powerAfter(p));
+                                    const replaces = writes.filter((w) => isOwn(w.target) && readTarget(w.target) !== w.value);
+                                    return (
+                                      <button
+                                        key={p.id}
+                                        type="button"
+                                        className={`v2-profile${sel?.id === p.id ? ' active-toggle' : ''}`}
+                                        aria-pressed={sel?.id === p.id}
+                                        onClick={() => applyProfile(p)}
+                                      >
+                                        <strong>{t(p.name)}</strong>
+                                        <small>{t(p.who)}</small>
+                                        <span className="v2-profile-states">
+                                          {t('This states:')}{' '}
+                                          {writes.map((w) => `${rowLabel(w.rowId)}: ${w.value}${unitOf(w.target)}`).join(' · ')}
+                                        </span>
+                                        {skipped.map((sk) => (
+                                          <span key={sk.rowId} className="v2-profile-skip">
+                                            {rowLabel(sk.rowId)} — {t(PROFILE_SKIP_REASON, { pct: sk.pct })}
+                                          </span>
+                                        ))}
+                                        {replaces.length > 0 && (
+                                          <span className="v2-warn">
+                                            {t('Replaces your own value for:')}{' '}
+                                            {replaces.map((w) => `${rowLabel(w.rowId)} (${readTarget(w.target)})`).join(' · ')}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                  <button
+                                    type="button"
+                                    className={`v2-profile v2-profile-unknown${!sel && own.length === 0 ? ' active-toggle' : ''}`}
+                                    onClick={() => forgetQuestion(qid)}
+                                  >
+                                    <strong>{t('I don’t know')}</strong>
+                                    <small>{t(q.unknownMeans)}</small>
+                                    {own.length > 0 && (
+                                      <span className="v2-profile-skip">
+                                        {t('Your {n} own value(s) from expert stay as they are.', { n: own.length })}
+                                      </span>
+                                    )}
+                                  </button>
+                                </div>
+                                {sel && (
+                                  <details className="v2-profile-basis">
+                                    <summary>{t('Why these numbers')}</summary>
+                                    <ul>
+                                      {sel.values.map((val) => (
+                                        <li key={val.rowId}>
+                                          <strong>{rowLabel(val.rowId)}</strong> — {t(val.basis)}{' '}
+                                          <span className="sub">
+                                            {t('Too strict:')} {t(val.tooStrict)} {t('Too loose:')} {t(val.tooLoose)}
+                                          </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </details>
+                                )}
+                              </>
+                            );
+                          })()}
+                          {q.kind === 'voicing' && (
+                            activeDesign ? (
+                              <div className="v2-profile-choices">
+                                {VOICING_CHOICES.map((c) => {
+                                  const on =
+                                    c.plateauDepthDb === null
+                                      ? activeTargetCurve.type === 'flat'
+                                      : activeTargetCurve.type === 'bass-plateau' &&
+                                        activeTargetCurve.plateauDepthDb === c.plateauDepthDb;
+                                  return (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      className={`v2-profile${on ? ' active-toggle' : ''}`}
+                                      aria-pressed={on}
+                                      onClick={() => setVoicing(c.plateauDepthDb)}
+                                    >
+                                      <strong>{t(c.label)}</strong>
+                                      <small>
+                                        {c.plateauDepthDb === null
+                                          ? t(c.basis)
+                                          : `${t('This states: bass plateau')} ${c.plateauDepthDb} dB — ${t(c.basis)}`}
+                                      </small>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="v2-req-blocked">
+                                {t('The voicing hangs on a design, and a design exists once the first run has loaded one. Until then the run is judged flat — the neutral reference. Come back here after the run to choose a bass plateau.')}
+                              </p>
+                            )
+                          )}
+                          {nav(false)}
                         </div>
                       );
                     })()
@@ -20101,6 +20361,11 @@ export default function App() {
                       ))}
                     </div>
                   )}
+                  {/* U-9 fase 3 (B-3 c) — the Wizard is expert-only: in guided it
+                    * was a second, deeper walk over the tuner's own knobs (every
+                    * field it writes measured ZOEKT in fase 0), which is the
+                    * opposite of what guided is for. */}
+                  {uiMode !== 'guided' && (
                   <button
                     type="button"
                     onClick={() => {
@@ -20115,8 +20380,9 @@ export default function App() {
                     }}
                     title={t('Design wizard: load measurements, then goals, priority, crossover point, acoustic slopes and component choices in one guided flow — ends with Optimize')}
                   >
-                    {uiMode === 'guided' ? `🧙 ${t('Walk me through it')}` : `🧙 ${t('Wizard')}`}
+                    {`🧙 ${t('Wizard')}`}
                   </button>
+                  )}
                   <select
                     className={uiMode === 'guided' ? 'expert-only' : undefined}
                     value={synthMode}
@@ -20455,6 +20721,7 @@ export default function App() {
                     value={ampMinLoadOhm ?? ''}
                     onChange={(e) => {
                       const raw = e.target.value.trim();
+                      noteStatedExtra('ampMinLoadOhm', raw);
                       if (raw === '') {
                         setAmpMinLoadOhm(null);
                         localStorage.removeItem('ads-amp-min-load');
@@ -20473,6 +20740,7 @@ export default function App() {
                       ? t('— empty: no floor is applied, the minimum is only reported')
                       : t('— designs below it are repaired, or lose a ranking class')}
                   </span>
+                {v2StatedExtra('ampMinLoadOhm', ampMinLoadOhm === null ? '' : String(ampMinLoadOhm))}
                 {fieldBadge('ampMinLoadOhm')}
 </label>
                 <label onChangeCapture={fieldStamp('dissipationWeight')}
@@ -22503,6 +22771,19 @@ export default function App() {
                      printed nine times (F0). */
                   const view = groupShortlistRows(v2Shortlist.rows, v2Shortlist.stated);
                   const sorted = [...view];
+                  /* U-9 fase 3 — guided sorts on the key the user picked, and
+                     an explicit column sort (a header click) still wins. */
+                  if (uiMode === 'guided' && guidedShortlistOrder !== '' && !shortlistSort) {
+                    const keyOf = (r: (typeof v2Shortlist.rows)[number]): number | null =>
+                      guidedShortlistOrder === 'parts'
+                        ? r.result.parts.filter((pp) => /Inductor|Capacitor|Resistor/.test(pp.type)).length
+                        : guidedShortlistOrder === 'cost'
+                          ? r.result.bomTotalEur
+                          : r.measurements.response?.rmsDeviationDb ?? null;
+                    sorted.sort(
+                      (a, b) => (keyOf(a.row) ?? Number.POSITIVE_INFINITY) - (keyOf(b.row) ?? Number.POSITIVE_INFINITY),
+                    );
+                  }
                   /* H-2b/H-3b — the flank column exists on a HYBRID run (both
                      forms since H-3b: the worker reads the flank wherever a
                      stated budget can judge it) and on no other; the sum
@@ -22520,6 +22801,31 @@ export default function App() {
                     }
                   }
                   return (
+                    <>
+                    {uiMode === 'guided' && (
+                      <p className="sub v2-guided-order">
+                        <label>
+                          {t('Order the list by')}{' '}
+                          <select
+                            value={guidedShortlistOrder}
+                            onChange={(e) => {
+                              setGuidedShortlistOrder(e.target.value as '' | 'parts' | 'cost' | 'flat');
+                              setShortlistSort(null);
+                            }}
+                          >
+                            <option value="">{t('— the order the spread chose')}</option>
+                            <option value="parts">{t('fewest parts')}</option>
+                            <option value="cost">{t('lowest cost')}</option>
+                            <option value="flat">{t('flattest response')}</option>
+                          </select>
+                        </label>{' '}
+                        {guidedShortlistOrder === ''
+                          ? t('Not a ranking: every row met what you stated, and the engine does not say which is best.')
+                          : t('Sorted by {key} — your choice of key, not a verdict of the engine.', {
+                              key: t(guidedShortlistOrder === 'parts' ? 'fewest parts' : guidedShortlistOrder === 'cost' ? 'lowest cost' : 'flattest response'),
+                            })}
+                      </p>
+                    )}
                     <div className="v2-scroll">
                       <table className="scan-table">
                         <thead>
@@ -22610,6 +22916,7 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   );
                 })()}
                 {/* U-6 RESULT · BELOW */}
@@ -23988,6 +24295,10 @@ export default function App() {
                 const order = guidedStages(engineV2Enabled);
                 const next = order[order.findIndex((st) => st.tab === designTab) + 1];
                 if (!next) return null;
+                /* U-9 fase 3 — ONE primary button per screen: the requirements
+                   pane carries its own "Next →" per question and "Next: Design
+                   it →" on its end screen, so this row would be a second. */
+                if (designTab === 'requirements') return null;
                 return (
                   <div className="step-next-row">
                     <button type="button" className="step-next" onClick={() => setDesignTab(next.tab)}>
@@ -24067,8 +24378,12 @@ export default function App() {
             <button type="button" className="empty-cta" onClick={() => loadDemo()}>
               🎧 {t('Load the demo measurements')}
             </button>
-            <button type="button" className="empty-cta" onClick={() => setWizardOpen(true)}>
-              📁 {t('Load your own (wizard) →')}
+            <button
+              type="button"
+              className="empty-cta"
+              onClick={() => (uiMode === 'guided' ? setDesignTab('import') : setWizardOpen(true))}
+            >
+              📁 {uiMode === 'guided' ? t('Load your own →') : t('Load your own (wizard) →')}
             </button>
           </div>
         </div>
@@ -25006,6 +25321,7 @@ export default function App() {
             ambiguous={engineV2Report.ambiguous}
             floors={v2Floors}
             notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
+            limitProvenance={v2LimitProvenance}
           />
         ) : (
           <div className="panel v2-panel">

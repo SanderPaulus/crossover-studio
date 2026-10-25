@@ -215,8 +215,21 @@ export const V2_GHOSTS: Readonly<Record<V2SettingKey, string>> = Object.freeze({
 /** The keys whose ghost the app fills from an engine default, and why that is honest. */
 export const V2_DEFAULT_GHOST_KEYS: readonly V2SettingKey[] = ['runSeed', 'shortlistSize'];
 
+/**
+ * U-9 fase 3 — THE TWO INPUTS OUTSIDE THE SETTINGS BLOCK THAT A GUIDED PROFILE
+ * WRITES, so their provenance travels in the SAME two maps as every setting's
+ * (no second attribution): the amplifier floor (app state older than this
+ * block) and the M-C figure of the TOP way (a per-way field on the driver
+ * card — B-1: the profile states the tweeter rule there, never the single
+ * figure that would also judge the mid).
+ */
+export const V2_STATED_EXTRA_KEYS = ['ampMinLoadOhm', 'driveOnFsMaxDb:high'] as const;
+export type V2StatedExtraKey = (typeof V2_STATED_EXTRA_KEYS)[number];
+/** Every key a provenance entry can be filed under. */
+export type V2StatedKey = V2SettingKey | V2StatedExtraKey;
+
 /** When each field was last stated, ISO date (`YYYY-MM-DD`). Absent = never, or before E-2. */
-export type V2StatedAt = Partial<Record<V2SettingKey, string>>;
+export type V2StatedAt = Partial<Record<V2StatedKey, string>>;
 
 /**
  * U-3 — WHO stated each field, when it was not the person at the keyboard.
@@ -227,7 +240,7 @@ export type V2StatedAt = Partial<Record<V2SettingKey, string>>;
  * additive on the wire: a project without it reads exactly as before, and the
  * first edit of a field clears its entry, because then it IS yours.
  */
-export type V2StatedBy = Partial<Record<V2SettingKey, string>>;
+export type V2StatedBy = Partial<Record<V2StatedKey, string>>;
 
 /** Today's date in the form `V2StatedAt` records. */
 export const isoDay = (now: Date = new Date()): string => now.toISOString().slice(0, 10);
@@ -254,11 +267,20 @@ export function restoreV2Settings(
     const by = storedBy?.[k];
     if (typeof by === 'string' && by !== '' && settings[k] !== '') statedBy[k] = by;
   }
+  /* U-9 fase 3 — the two extras have no value in this block to check against,
+   * so they come back as they were written; the mark beside the field shows
+   * nothing while the field itself is empty (`statedMarkFor`). */
+  for (const k of V2_STATED_EXTRA_KEYS) {
+    const d = storedAt?.[k];
+    if (typeof d === 'string' && d !== '') statedAt[k] = d;
+    const by = storedBy?.[k];
+    if (typeof by === 'string' && by !== '') statedBy[k] = by;
+  }
   return { settings, statedAt, statedBy };
 }
 
 /** The provenance stamp after an edit: a value gets today's date, a cleared field loses its date. */
-export function stampStated(prev: V2StatedAt, key: V2SettingKey, value: string, today: string = isoDay()): V2StatedAt {
+export function stampStated(prev: V2StatedAt, key: V2StatedKey, value: string, today: string = isoDay()): V2StatedAt {
   const next = { ...prev };
   if (value.trim() === '') delete next[key];
   else next[key] = today;
@@ -271,7 +293,7 @@ export function stampStated(prev: V2StatedAt, key: V2SettingKey, value: string, 
  * "absent = the viewer" true, so a demo value the designer then changes stops
  * carrying the demo's name.
  */
-export function clearStatedBy(prev: V2StatedBy, key: V2SettingKey): V2StatedBy {
+export function clearStatedBy(prev: V2StatedBy, key: V2StatedKey): V2StatedBy {
   if (prev[key] === undefined) return prev;
   const next = { ...prev };
   delete next[key];
@@ -290,10 +312,21 @@ export function statedMark(
   key: V2SettingKey,
   statedBy: V2StatedBy = {},
 ): string | null {
-  if (settings[key].trim() === '') return null;
-  const d = statedAt[key];
-  const who = statedBy[key];
-  if (who) return d ? `stated by ${who} on ${d}` : `stated by ${who}`;
+  return statedMarkFor(settings[key], statedAt[key], statedBy[key]);
+}
+
+/**
+ * The same mark for any value, settings key or not (U-9 fase 3: the amplifier
+ * floor and the top way's M-C figure carry their provenance in the same maps).
+ * A guided profile reads "stated via profile <name> on <date>"; a demo
+ * bundle "stated by <the demo>"; the viewer "stated by you".
+ */
+export function statedMarkFor(value: string, d: string | undefined, who: string | undefined): string | null {
+  if (value.trim() === '') return null;
+  if (who) {
+    const verb = who.startsWith('profile ') ? 'stated via' : 'stated by';
+    return d ? `${verb} ${who} on ${d}` : `${verb} ${who}`;
+  }
   return d ? `stated by you on ${d}` : 'stated by you (date not recorded)';
 }
 
