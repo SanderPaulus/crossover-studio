@@ -337,6 +337,89 @@ export interface ChainEngineHooks {
   tuneOptionsFor?: (seedParts: readonly VxpPart[]) => Partial<NetOptimizeOptions>;
 }
 
+/**
+ * U-10 — the two cages of a three-way candidate: its own (the scan subdivided
+ * the pin and this candidate owns one slice) over the raw designer pin.
+ */
+function chain3Cages(input: Chain3Input): { low: [number, number] | null; high: [number, number] | null } {
+  const s = input.settings;
+  const pinRange = (pin?: { freq: number; margin: number }): [number, number] | null =>
+    pin ? [pin.freq - Math.max(pin.margin, pin.freq * 0.02), pin.freq + Math.max(pin.margin, pin.freq * 0.02)] : null;
+  return { low: input.xoLowRange ?? pinRange(s.xoLowPin), high: input.xoHighRange ?? pinRange(s.xoHighPin) };
+}
+
+/**
+ * U-10 fase 1 — THE ASSEMBLED TWO-PAIR TUNE'S OPTIONS, one object for two
+ * callers: `runThreeWayChain` (its own synthesis as the seed) and the v2
+ * worker's drawn-network tune (`v2TuneNetlist3`, the designer's drawing). The
+ * three-way twin of `assembledTuneOptions` in `designChain.ts` (H-3).
+ *
+ * `branchTargets` exist only where a design step ran; `crossingsHz` only where
+ * the candidate's handovers are known before the tune (a drawn network's are
+ * not — its stop-goal stays on the judged band, as the two-way drawn tune's
+ * does). The hook is merged LAST (F2b).
+ */
+export function assembledTuneOptions3(
+  input: Chain3Input,
+  seedParts: readonly VxpPart[],
+  extras: {
+    branchTargets?: NetOptimizeOptions['branchTargets'];
+    crossingsHz: readonly [number, number] | null;
+    /** The mid's adjustment as the design step chose its polarity; absent = the input's. */
+    midAdjust?: BranchAdjust;
+    onStage?: NetOptimizeOptions['onStage'];
+  },
+  hooks?: ChainEngineHooks,
+): NetOptimizeOptions {
+  const s = input.settings;
+  const { low: lowCage, high: highCage } = chain3Cages(input);
+  return {
+    midBranch: { response: input.m, adjust: extras.midAdjust ?? input.midAdjust },
+    ...(extras.branchTargets ? { branchTargets: extras.branchTargets } : {}),
+    // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
+    // has nothing to respect and everything to hide behind. See zFloorStrict.
+    zFloorStrict: true,
+    phasePriority: s.phasePriority,
+    breakupGuard: s.breakupGuard,
+    angleData: input.angleData,
+    directivityWeight: s.directivityWeight,
+    powerMetric: s.powerMetric,
+    powerFoldWeight: s.powerFoldWeight,
+    errorSmoothOct: s.errorSmoothOct,
+    costWeight: s.costWeight,
+    dissipationWeight: s.dissipationWeight,
+    // A3e: the ranking's hard tier becomes a constraint in the search, so the
+    // tuner cannot spend its time in ground the ranking will throw away.
+    rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
+    loadFloor: s.loadFloor,
+    ampMinLoadOhm: s.ampMinLoadOhm,
+    audit: s.audit,
+    ampTarget: s.ampTarget,
+    acousticSlopes: s.acousticSlopes,
+    xoRangePairs: [lowCage, highCage],
+    xoFloorPairs: s.xoFloorPairs,
+    staged: s.targets,
+    /* E-5b — THE BAND THE STOP-GOAL MAY BE READ ON, derived here because this
+     * is where the candidate's handover positions live. POLISH: it carries no
+     * decision — whether the tuner reads it is `rippleTargetBand`, a choice the
+     * candidate states. Handed over on every run, v1 included, and on a run
+     * that states no choice nothing reads it (`rippleTargetBand.ts`). */
+    ...(extras.crossingsHz && rippleStopBand([...extras.crossingsHz], s.band) !== null
+      ? { rippleTargetBandHz: rippleStopBand([...extras.crossingsHz], s.band)! }
+      : {}),
+    phaseMetric: s.phaseMetric,
+    catalogSnap: s.catalogSnap,
+    snapPrefs: s.snapPrefs,
+    band: s.band,
+    safety: s.safety,
+    ...(extras.onStage ? { onStage: extras.onStage } : {}),
+    // F2b: the engine hook, merged LAST so a v2 run's gate and bound options
+    // cannot be overwritten by anything above. Absent = nothing is added and
+    // the object is the one this chain always built.
+    ...(hooks?.tuneOptionsFor ? hooks.tuneOptionsFor(seedParts) : {}),
+  };
+}
+
 export function runThreeWayChain(
   input: Chain3Input,
   onProgress?: (p: ChainStageProgress) => void,
@@ -456,12 +539,9 @@ export function runThreeWayChain(
 
   // ---- Assembled two-pair tune -------------------------------------------
   onProgress?.({ stage: 'tune', evals: 0 });
-  const pinRange = (pin?: { freq: number; margin: number }): [number, number] | null =>
-    pin ? [pin.freq - Math.max(pin.margin, pin.freq * 0.02), pin.freq + Math.max(pin.margin, pin.freq * 0.02)] : null;
   // The candidate's own cage wins over the raw designer pin: the scan already
   // subdivided that pin, and this candidate owns one slice of it.
-  const lowCage = input.xoLowRange ?? pinRange(s.xoLowPin);
-  const highCage = input.xoHighRange ?? pinRange(s.xoHighPin);
+  const { low: lowCage, high: highCage } = chain3Cages(input);
   /* THE LEASH: the design step's acoustic target per branch, handed to the
    * assembled tune as a corridor (see branchTargets in netOptimizer). Masked
    * to where the branch is alive AND within 25 dB of its own target peak —
@@ -481,51 +561,21 @@ export function runThreeWayChain(
     high: targetFor(specs.tweeter, t),
   };
 
-  const tuneOpts = {
-    midBranch: { response: m, adjust: midAdjust },
-    branchTargets,
-    // The seed here is OUR OWN synthesis, so the seed-relative amp-load bar
-    // has nothing to respect and everything to hide behind. See zFloorStrict.
-    zFloorStrict: true,
-    phasePriority: s.phasePriority,
-    breakupGuard: s.breakupGuard,
-    angleData: input.angleData,
-    directivityWeight: s.directivityWeight,
-    powerMetric: s.powerMetric,
-    powerFoldWeight: s.powerFoldWeight,
-    errorSmoothOct: s.errorSmoothOct,
-    costWeight: s.costWeight,
-    dissipationWeight: s.dissipationWeight,
-    // A3e: the ranking's hard tier becomes a constraint in the search, so the
-    // tuner cannot spend its time in ground the ranking will throw away.
-    rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
-    loadFloor: s.loadFloor,
-    ampMinLoadOhm: s.ampMinLoadOhm,
-    audit: s.audit,
-    ampTarget: s.ampTarget,
-    acousticSlopes: s.acousticSlopes,
-    xoRangePairs: [lowCage, highCage],
-    xoFloorPairs: s.xoFloorPairs,
-    staged: s.targets,
-    /* E-5b — THE BAND THE STOP-GOAL MAY BE READ ON, derived here because this
-     * is where the candidate's handover positions live. POLISH: it carries no
-     * decision — whether the tuner reads it is `rippleTargetBand`, a choice the
-     * candidate states. Handed over on every run, v1 included, and on a run
-     * that states no choice nothing reads it (`rippleTargetBand.ts`). */
-    ...(rippleStopBand([xoLow, xoHigh], s.band) !== null
-      ? { rippleTargetBandHz: rippleStopBand([xoLow, xoHigh], s.band)! }
-      : {}),
-    phaseMetric: s.phaseMetric,
-    catalogSnap: s.catalogSnap,
-    snapPrefs: s.snapPrefs,
-    band: s.band,
-    safety: s.safety,
-    onStage: (detail: string, ev?: number) => onProgress?.({ stage: 'tune', evals: ev ?? 0, detail }),
-    // F2b: the engine hook, merged LAST so a v2 run's gate and bound options
-    // cannot be overwritten by anything above. Absent = nothing is added and
-    // the object is the one this chain always built.
-    ...(hooks?.tuneOptionsFor ? hooks.tuneOptionsFor(merged) : {}),
-  };
+  /* U-10 — the option assembly lives in `assembledTuneOptions3`, so the tune
+   * of a DRAWN three-way network (the v2 worker's `v2TuneNetlist3`) reads the
+   * same object this chain does. Extracted verbatim: the keys, their order and
+   * their values are what stood here. */
+  const tuneOpts = assembledTuneOptions3(
+    input,
+    merged,
+    {
+      branchTargets,
+      crossingsHz: [xoLow, xoHigh],
+      midAdjust,
+      onStage: (detail: string, ev?: number) => onProgress?.({ stage: 'tune', evals: ev ?? 0, detail }),
+    },
+    hooks,
+  );
   let net = optimizeNetworkValues(merged, grid, w, t, driverZ, tAdjust, tuneOpts);
 
   /* ---- Hold-the-pin repair (DESIGNER pins only) --------------------------

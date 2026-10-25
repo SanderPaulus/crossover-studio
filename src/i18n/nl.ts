@@ -2134,4 +2134,9 @@ export const nl: Record<string, string> = {
   "not stated": "niet gesteld",
   "← Back": "← Terug",
   "What it must meet": "Wat het moet halen",
+  // U-10 — the two named exceptions, Sander's own sentences (25-10-2026).
+  'Without impedance measurements: virtual filters only. Electrical requirements (floor, EPDR, dissipation) are not judged.':
+    'Zonder impedantiemetingen: alleen virtuele filters. Elektrische eisen (vloer, EPDR, dissipatie) zijn niet beoordeeld.',
+  'Solo design: one driver, no handover — the per-handover v2 requirements do not apply here.':
+    'Solo-ontwerp: één driver, geen overname — de v2-eisen per overname zijn hier niet van toepassing',
 };

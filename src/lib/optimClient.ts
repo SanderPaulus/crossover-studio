@@ -73,6 +73,7 @@ import type {
   V2RunSettings,
   V2CandidatePayload,
   V2TuneNetlistPayload,
+  V2TuneNetlist3Payload,
   V2TuneNetlistResult,
 } from './engine2/optimizer/worker.ts';
 
@@ -216,7 +217,7 @@ function workerAtV2(slot: number): Worker {
 
 function runV2<T>(
   slot: number,
-  kind: 'v2Chain3One' | 'v2ChainOne' | 'v2TuneNetlist',
+  kind: 'v2Chain3One' | 'v2ChainOne' | 'v2TuneNetlist' | 'v2TuneNetlist3',
   payload: unknown,
   onProgress?: (d: unknown) => void,
 ): Promise<T> {
@@ -783,6 +784,19 @@ export function runTuneNetlistV2(
 ): Promise<V2CandidateResult<V2TuneNetlistResult>> {
   stoppedEarly = false;
   return runV2<V2CandidateResult<V2TuneNetlistResult>>(0, 'v2TuneNetlist', payload, (d) => {
+    const m = d as { detail?: string; stage?: string };
+    if (m.detail) onStage?.(m.detail);
+    else if (m.stage) onStage?.(m.stage);
+  });
+}
+
+/** U-10 — the drawn THREE-WAY network through the v2 worker (tune or minimise). */
+export function runTuneNetlist3V2(
+  payload: V2TuneNetlist3Payload,
+  onStage?: (label: string) => void,
+): Promise<V2CandidateResult<V2TuneNetlistResult>> {
+  stoppedEarly = false;
+  return runV2<V2CandidateResult<V2TuneNetlistResult>>(0, 'v2TuneNetlist3', payload, (d) => {
     const m = d as { detail?: string; stage?: string };
     if (m.detail) onStage?.(m.detail);
     else if (m.stage) onStage?.(m.stage);

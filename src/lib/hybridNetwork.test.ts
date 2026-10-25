@@ -301,18 +301,25 @@ describe('H-3 — App.tsx reads Hybrid mode on the Network tab', () => {
   });
 
   it('⚙ Optimize components in Hybrid mode goes through the v2 worker on the chain’s own assembly', () => {
-    expect(APP).toContain('    if (v2Hybrid) {\n      runNetOptimizeHybrid();\n      return;\n    }');
-    expect(APP).toContain('function runNetOptimizeHybrid() {');
+    /* U-10 (V15 form) — was: `if (v2Hybrid) { runNetOptimizeHybrid(); … }`. Since
+     * U-10 the same function tunes every non-solo two-way, hybrid or not
+     * (`runNetOptimizeV2`), so the hybrid reaches it through a wider branch. The
+     * claim — Hybrid mode goes through the v2 worker — is unchanged. */
+    expect(APP).toContain("    if (!soloDriver && (v2Hybrid || !threeWay)) {\n      runNetOptimizeV2('tune');\n      return;\n    }");
+    expect(APP).toContain("function runNetOptimizeV2(pass: 'tune' | 'minimize' = 'tune') {");
     expect(APP).toContain('runTuneNetlistV2(');
     /* The chain settings have ONE home, read by the scan and by the tune. */
     expect(APP.split('twoWayChainSettings({').length - 1).toBe(2);
     expect(APP).toContain('const settings: ChainSettings = twoWayChainSettings({ band: opts.band, angleData, safety, targets });');
     /* The lean band, the class-A DSP derivation and the complement: the run's own. */
-    expect(APP).toContain('const leanBand = active.handover.unmeasured && settings.band ? leanJudgedBand(settings.band, hz) : null;');
+    expect(APP).toContain('const leanBand = active?.handover.unmeasured && settings.band ? leanJudgedBand(settings.band, hz) : null;');
     expect(APP).toContain("        ? { handover: a.stated, settings: complementSettings(a.stated) }\n        : null;");
     /* Refused wholesale = nothing applied (V31). */
-    expect(APP).toContain("`⚠ ${t('Hybrid mode: the tune was refused and nothing was applied')} — ${r.rejection.reason}`");
-    /* The v1 route is what it was: the v1 tune is still there for every other run. */
+    expect(APP).toContain("? 'Hybrid mode: the tune was refused and nothing was applied'");
+    expect(APP).toContain(')} — ${r.rejection.reason}`');
+    /* U-10 (V15 form) — was: "the v1 tune is still there for every other run".
+     * Since U-10 it is there for ONE run only, the solo exception (Sander,
+     * 25-10-2026); every other drawn network is tuned on the v2 worker. */
     expect(APP).toContain('runNetOptimizeTask({');
   });
 
@@ -332,8 +339,12 @@ describe('H-3 — App.tsx reads Hybrid mode on the Network tab', () => {
     expect(route).toContain('assembledTuneOptions(');
     expect(route).toContain('runCandidate<ChainInput, V2TuneNetlistResult>(');
     expect(route).toContain('optimizeNetworkValues(');
-    /* No second option literal anywhere in the worker: the tuner is called once there. */
-    expect(WORKER.split('optimizeNetworkValues(').length - 1).toBe(1);
+    /* No second option literal anywhere in the worker. U-10 (V15 form) — was ONE
+     * tuner call; since U-10 the drawn route has a MINIMISE pass and a three-way
+     * twin, so it is FOUR: per drawn route the tune and the one-iteration reading
+     * of a minimised network, each on that route's own assembly. */
+    expect(WORKER.split('optimizeNetworkValues(').length - 1).toBe(4);
+    expect(WORKER.split('assembledTuneOptions3(').length - 1).toBe(1);
     /* And both two-way routes are judged by the one measurements function. */
     expect(WORKER.split('twoWayMeasurements(chainInput, v2, r.parts, r.net.after)').length - 1).toBe(2);
     expect(WORKER.split('measureRejectedTwoWay(chainInput, v2, parts)').length - 1).toBe(2);

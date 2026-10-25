@@ -361,6 +361,24 @@ describe('H-3 — the seed and the tune of a drawn network on casus 1b', () => {
     }
   }, 600_000);
 
+  it('U-10 — the MINIMISE pass on the same route: a report on offer, or a refusal by rule — never an ungated network', () => {
+    const r = through({
+      ...tuneInput(seeded.parts, HANDOVER),
+      minimize: { targets: CASUS1B_V2_SETTINGS.targets ?? { rippleDb: 2.5, phaseDeg: 15 } },
+    });
+    if (r.rejection) {
+      /* V31 — refused wholesale: nothing on offer, the rule named. */
+      expect(r.result.parts).toEqual([]);
+      expect(r.rejection.reason.length).toBeGreaterThan(0);
+    } else {
+      expect(r.result.minimize).toBeDefined();
+      // what is applied on accept is exactly the network the gates judged
+      expect(r.result.parts).toEqual(r.result.minimize!.parts);
+      expect(r.gates.filter((g) => g.active && !g.pass)).toEqual([]);
+      expect(r.result.minimize!.after.peakDb).toBeLessThanOrEqual(r.result.minimize!.before.peakDb + 3);
+    }
+  }, 600_000);
+
   it('H-3b — with a STATED flank-error budget of 1.5 dB rms the same tune HOLDS the flank or is REFUSED with the number, never delivered above it', () => {
     const budgeted: ActiveHandover = { ...HANDOVER, flankBudgetDbRms: 1.5 };
     const before = reportFlank(seeded.parts)!;

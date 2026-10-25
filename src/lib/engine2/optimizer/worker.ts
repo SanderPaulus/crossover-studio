@@ -48,7 +48,7 @@ import {
   type ChainStageProgress,
 } from '../../designChain.ts';
 import { flankErrorDb, flankVerdict, handoverBandHz, levelMatchDb, modelBranchResponse, type FlankError } from '../../activeSide.ts';
-import { runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
+import { assembledTuneOptions3, runThreeWayChain, type Chain3Input, type Chain3Result } from '../../threeWayChain.ts';
 import {
   busTopology,
   busTopologyOfNetlist,
@@ -59,6 +59,7 @@ import {
 import type { NetElement, Netlist } from '../../network.ts';
 import type { VxpPart } from '../../parsers/vxp.ts';
 import type { VxpCrossover } from '../../parsers/vxp.ts';
+import { minimizeNetwork, type MinimizeResult } from '../../minimize.ts';
 import { crossoverToNetlist } from '../../vxpNetwork.ts';
 import { classifyImpedance, estimateRe } from '../ingest/impedance.ts';
 import { DEG_PER_HALF_TURN, H_PER_MH } from '../constants.ts';
@@ -292,6 +293,33 @@ export interface V2TuneNetlistPayload {
   label: string;
   v2: V2RunSettings;
   candidate?: V2CandidatePayload;
+  /**
+   * U-10 fase 1 (B-4.1) — the MINIMISE pass on the same route. Absent = the
+   * value tune H-3 built, byte for byte. Present = `minimizeNetwork` on the
+   * drawn network, with the SAME assembled options as the tune (so every retune
+   * inside it carries the gate hook and the declared choices), and the result
+   * judged by `runCandidate` like any other: a minimised network that misses an
+   * armed gate is refused wholesale and nothing is applied (V31).
+   */
+  minimize?: {
+    targets: { rippleDb: number; phaseDeg: number };
+    rSourceLimitOhm?: number;
+    fbHz?: number;
+  };
+}
+
+/**
+ * U-10 fase 1 (B-4.1) — THE DRAWN THREE-WAY NETWORK on the v2 route: the
+ * three-way twin of `V2TuneNetlistPayload`. Until U-10 a three-way drawing was
+ * tuned and minimised on the v1 worker with no armed gate at all.
+ */
+export interface V2TuneNetlist3Payload {
+  input: Chain3Input;
+  parts: VxpPart[];
+  label: string;
+  v2: V2RunSettings;
+  candidate?: V2CandidatePayload;
+  minimize?: V2TuneNetlistPayload['minimize'];
 }
 
 /** What the tune of a drawn network hands back, inside `V2CandidateResult`. */
@@ -299,6 +327,8 @@ export interface V2TuneNetlistResult {
   label: string;
   parts: VxpPart[];
   net: NetOptimizeResult;
+  /** U-10 — the minimise pass's own report, when that pass ran. */
+  minimize?: MinimizeResult;
 }
 
 /**
@@ -478,6 +508,7 @@ export type V2Request = { id: number; catalog?: V2CatalogPayload | null } & (
   | { kind: 'v2Chain3One'; payload: V2Chain3Payload }
   | { kind: 'v2ChainOne'; payload: V2ChainOnePayload }
   | { kind: 'v2TuneNetlist'; payload: V2TuneNetlistPayload }
+  | { kind: 'v2TuneNetlist3'; payload: V2TuneNetlist3Payload }
 );
 
 export type V2Response =
@@ -1977,6 +2008,161 @@ function measureRejectedTwoWay(chainInput: ChainInput, v2: V2RunSettings, parts:
 }
 
 /**
+ * U-10 — the network facts and the declared chain input of a three-way
+ * candidate, by ONE function shared by the scan (`v2Chain3One`) and the
+ * drawn-network tune (`v2TuneNetlist3`): the three-way twin of
+ * `twoWayNetworkFacts`, lifted verbatim out of the scan's case.
+ */
+function threeWayNetworkFacts(
+  input: Chain3Input,
+  candidate: V2CandidatePayload | undefined,
+  /** A DRAWN network's handovers are not known before its tune: false leaves
+   * the crossings out, exactly as the two-way drawn route has none (no cage). */
+  crossingsKnown = true,
+): { network: NetworkFacts; chainInput: Chain3Input } {
+  /* The candidate's own network facts. The key mapping is the same one
+   * `branchDb` above uses — on the three-way chain the seed's way names
+   * ARE the model names `driverZ` is keyed by. The tweeter has no
+   * handover above it, so it contributes no crossing. */
+  const network: NetworkFacts = {
+    // A way's HP flank belongs to the handover BELOW it, so the mid's
+    // order is the low pair's and the tweeter's is the high pair's —
+    // the same convention `parseHpLpPref` documents in the app. 'auto'
+    // arrives as `undefined`: nothing is declared yet, and an absent
+    // order is a different statement from order 1.
+    orderByModel: pruneUndefined({
+      ...{
+        mid: input.settings.structureLow?.order,
+        tweeter: input.settings.structureHigh?.order,
+      },
+      // F4d (V26 row 39): a generated candidate always knows its order
+      // per flank, so it always states it. Merged over the read-back
+      // rather than instead of it, so a payload without a candidate
+      // behaves exactly as it did before.
+      ...(candidate?.orderByModel ?? {}),
+    }),
+    crossingAboveByModel: crossingsKnown
+      ? pruneUndefined({
+          woofer: input.xoLow,
+          mid: input.xoHigh,
+        })
+      : {},
+    /* F4c — the search choices this candidate carries, read back out of
+     * the settings the chain was handed. Nothing is decided here: the
+     * point is that they cross the hook NAMED instead of riding along in
+     * the chain's own spread. */
+    choices: pruneUndefinedValues({
+      band: input.settings.band,
+      acousticSlopes: input.settings.acousticSlopes,
+      catalogSnap: input.settings.catalogSnap,
+      ampTarget: input.settings.ampTarget,
+      phaseMetric: input.settings.phaseMetric,
+      powerMetric: input.settings.powerMetric,
+      breakupGuard: input.settings.breakupGuard,
+      xoFloorPairs: input.settings.xoFloorPairs,
+      ampMinLoadOhm: input.settings.ampMinLoadOhm,
+      rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
+    }),
+    weights: pruneUndefinedValues({
+      phasePriority: input.settings.phasePriority,
+      directivityWeight: input.settings.directivityWeight,
+      powerFoldWeight: input.settings.powerFoldWeight,
+      dissipationWeight: input.settings.dissipationWeight,
+      costWeight: input.settings.costWeight,
+    }),
+    ...(candidate
+      ? {
+          declaration: candidate.declaration,
+          chainDeclaration: candidate.chainDeclaration,
+          /* U-5 — the designer's own mark, when they stated the handovers.
+           * Absent on every generated candidate, and then nothing in
+           * `runCandidate` behaves differently (P2). */
+          ...(candidate.stated ? { stated: candidate.stated } : {}),
+        }
+      : {}),
+  };
+  /* V34 — the candidate's declaration overrides the chain's own default
+   * for the one CHOICE key the chain resolves outside the tuner. Identity
+   * when there is no candidate, so every other caller is untouched.
+   *
+   * V41 — and the two the chain resolves before the tuner exists at all.
+   * Same shape, same identity: no candidate, no rewrite. */
+  const chainInput = withDeclaredChainChoices(
+    withDeclaredSourceLimit(input, candidate?.declaration),
+    candidate?.chainDeclaration,
+  );
+  return { network, chainInput };
+}
+
+/**
+ * U-10 — what a three-way network is judged on (the summed response against
+ * the target curve, and the phase tracking the tuner delivered per pair), by
+ * one function for the scan and the drawn-network tune.
+ */
+function threeWayMeasurements(
+  input: Chain3Input,
+  v2: V2RunSettings,
+  parts: readonly VxpPart[],
+  after: NetOptimizeResult['after'],
+): CandidateMeasurements {
+  const sum = summedResponse(
+    parts,
+    input.grid,
+    [
+      { model: 'woofer', response: input.w },
+      { model: 'mid', response: input.m },
+      { model: 'tweeter', response: input.t },
+    ],
+    input.driverZ,
+  );
+  const band = judgeBandOf(v2, input.grid);
+  const response: ResponseJudgement | null = sum
+    ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band)
+    : null;
+  // The phase tracking the tuner already delivered, per adjacent
+  // pair — the existing metric, not a second opinion about it.
+  const pairs = after.pairPhaseDeg ?? [];
+  /* V44 — the historic reading rides along per pair when the
+   * admission was armed. It judges nothing; the shortlist prints it
+   * beside the delivered number so a figure that MOVED reads as a
+   * redefinition instead of a regression. */
+  const control = after.pairPhaseControlDeg ?? [];
+  const labels = ['woofer|mid', 'mid|tweeter'];
+  return {
+    response,
+    phaseTracking: pairs
+      .map((deg, i) => ({
+        subject: labels[i] ?? `pair ${i}`,
+        meanAbsDeg: deg,
+        ...(Number.isFinite(control[i]) ? { controlDeg: control[i] } : {}),
+      }))
+      .filter((x) => Number.isFinite(x.meanAbsDeg)),
+  };
+}
+
+/** U-10 — the SPL window of a refused three-way tune, shared by both three-way routes. */
+function measureRejectedThreeWay(input: Chain3Input, v2: V2RunSettings, parts: readonly VxpPart[]): ResponseJudgement | null {
+  const sum = summedResponse(
+    parts,
+    input.grid,
+    [
+      { model: 'woofer', response: input.w },
+      { model: 'mid', response: input.m },
+      { model: 'tweeter', response: input.t },
+    ],
+    input.driverZ,
+  );
+  return sum
+    ? judgeResponse(
+        sum.freq,
+        sum.spl,
+        v2.targetCurve ?? FLAT_TARGET,
+        judgeBandOf(v2, input.grid),
+      )
+    : null;
+}
+
+/**
  * H-3 — THE NETWORK FACTS AND THE DECLARED CHAIN INPUT of a two-way payload,
  * shared by both two-way routes: the F4c read-back of the search choices, the
  * candidate's declaration when there is one, and V34/E-3's three overlays on
@@ -3183,75 +3369,9 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           { woofer: input.w.spl, mid: input.m.spl, tweeter: input.t.spl },
           v2,
         );
-        /* The candidate's own network facts. The key mapping is the same one
-         * `branchDb` above uses — on the three-way chain the seed's way names
-         * ARE the model names `driverZ` is keyed by. The tweeter has no
-         * handover above it, so it contributes no crossing. */
-        const network: NetworkFacts = {
-          // A way's HP flank belongs to the handover BELOW it, so the mid's
-          // order is the low pair's and the tweeter's is the high pair's —
-          // the same convention `parseHpLpPref` documents in the app. 'auto'
-          // arrives as `undefined`: nothing is declared yet, and an absent
-          // order is a different statement from order 1.
-          orderByModel: pruneUndefined({
-            ...{
-              mid: input.settings.structureLow?.order,
-              tweeter: input.settings.structureHigh?.order,
-            },
-            // F4d (V26 row 39): a generated candidate always knows its order
-            // per flank, so it always states it. Merged over the read-back
-            // rather than instead of it, so a payload without a candidate
-            // behaves exactly as it did before.
-            ...(candidate?.orderByModel ?? {}),
-          }),
-          crossingAboveByModel: pruneUndefined({
-            woofer: input.xoLow,
-            mid: input.xoHigh,
-          }),
-          /* F4c — the search choices this candidate carries, read back out of
-           * the settings the chain was handed. Nothing is decided here: the
-           * point is that they cross the hook NAMED instead of riding along in
-           * the chain's own spread. */
-          choices: pruneUndefinedValues({
-            band: input.settings.band,
-            acousticSlopes: input.settings.acousticSlopes,
-            catalogSnap: input.settings.catalogSnap,
-            ampTarget: input.settings.ampTarget,
-            phaseMetric: input.settings.phaseMetric,
-            powerMetric: input.settings.powerMetric,
-            breakupGuard: input.settings.breakupGuard,
-            xoFloorPairs: input.settings.xoFloorPairs,
-            ampMinLoadOhm: input.settings.ampMinLoadOhm,
-            rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
-          }),
-          weights: pruneUndefinedValues({
-            phasePriority: input.settings.phasePriority,
-            directivityWeight: input.settings.directivityWeight,
-            powerFoldWeight: input.settings.powerFoldWeight,
-            dissipationWeight: input.settings.dissipationWeight,
-            costWeight: input.settings.costWeight,
-          }),
-          ...(candidate
-            ? {
-                declaration: candidate.declaration,
-                chainDeclaration: candidate.chainDeclaration,
-                /* U-5 — the designer's own mark, when they stated the handovers.
-                 * Absent on every generated candidate, and then nothing in
-                 * `runCandidate` behaves differently (P2). */
-                ...(candidate.stated ? { stated: candidate.stated } : {}),
-              }
-            : {}),
-        };
-        /* V34 — the candidate's declaration overrides the chain's own default
-         * for the one CHOICE key the chain resolves outside the tuner. Identity
-         * when there is no candidate, so every other caller is untouched.
-         *
-         * V41 — and the two the chain resolves before the tuner exists at all.
-         * Same shape, same identity: no candidate, no rewrite. */
-        const chainInput = withDeclaredChainChoices(
-          withDeclaredSourceLimit(input, candidate?.declaration),
-          candidate?.chainDeclaration,
-        );
+        /* U-10 — the network facts and the declared chain input by the function
+         * this case shares with the drawn-network tune (`threeWayNetworkFacts`). */
+        const { network, chainInput } = threeWayNetworkFacts(input, candidate);
         data = runCandidate<Chain3Input, Chain3Result>(
           chainInput,
           v2,
@@ -3268,40 +3388,9 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
             return foldDriverPolarity(r, { mid: r.midInverted, tweeter: r.tweeterInverted });
           },
           (r) => {
-            const sum = summedResponse(
-              r.parts,
-              input.grid,
-              [
-                { model: 'woofer', response: input.w },
-                { model: 'mid', response: input.m },
-                { model: 'tweeter', response: input.t },
-              ],
-              input.driverZ,
-            );
-            const band = judgeBandOf(v2, input.grid);
-            const response: ResponseJudgement | null = sum
-              ? judgeResponse(sum.freq, sum.spl, v2.targetCurve ?? FLAT_TARGET, band)
-              : null;
-            // The phase tracking the tuner already delivered, per adjacent
-            // pair — the existing metric, not a second opinion about it.
-            const pairs = r.net.after.pairPhaseDeg ?? [];
-            /* V44 — the historic reading rides along per pair when the
-             * admission was armed. It judges nothing; the shortlist prints it
-             * beside the delivered number so a figure that MOVED reads as a
-             * redefinition instead of a regression. */
-            const control = r.net.after.pairPhaseControlDeg ?? [];
-            const labels = ['woofer|mid', 'mid|tweeter'];
             return {
-              measurements: {
-                response,
-                phaseTracking: pairs
-                  .map((deg, i) => ({
-                    subject: labels[i] ?? `pair ${i}`,
-                    meanAbsDeg: deg,
-                    ...(Number.isFinite(control[i]) ? { controlDeg: control[i] } : {}),
-                  }))
-                  .filter((x) => Number.isFinite(x.meanAbsDeg)),
-              },
+              /* U-10 — by the function both three-way routes share. */
+              measurements: threeWayMeasurements(input, v2, r.parts, r.net.after),
               topology: topologyOf(
                 {
                   woofer: r.specs.woofer,
@@ -3316,26 +3405,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
            * same machinery a delivered candidate gets. The parts come in and
            * do not go out: `runCandidate` drops them, so what a caller sees is
            * a number about a network it cannot build. */
-          (parts) => {
-            const sum = summedResponse(
-              parts,
-              input.grid,
-              [
-                { model: 'woofer', response: input.w },
-                { model: 'mid', response: input.m },
-                { model: 'tweeter', response: input.t },
-              ],
-              input.driverZ,
-            );
-            return sum
-              ? judgeResponse(
-                  sum.freq,
-                  sum.spl,
-                  v2.targetCurve ?? FLAT_TARGET,
-                  judgeBandOf(v2, input.grid),
-                )
-              : null;
-          },
+          (parts) => measureRejectedThreeWay(input, v2, parts),
           candidate?.provenance,
         );
         break;
@@ -3399,7 +3469,7 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
          * the same declared chain input, the same options assembly and the
          * same judgement as `v2ChainOne` — minus the design and synthesis
          * steps, because the network is the designer's. */
-        const { input, parts: drawn, label, v2: v2Wire, candidate } = req.payload;
+        const { input, parts: drawn, label, v2: v2Wire, candidate, minimize } = req.payload;
         const v2 = withDerivedDriveCeiling(v2Wire);
         const facts = measurementFacts(
           input.grid,
@@ -3423,26 +3493,40 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           facts,
           network,
           (hooks) => {
-            const net = optimizeNetworkValues(
+            const opts = assembledTuneOptions(
+              chainInput,
               drawn,
-              chainInput.grid,
-              chainInput.w,
-              chainInput.t,
-              chainInput.driverZ,
-              chainInput.adjust,
-              assembledTuneOptions(
-                chainInput,
-                drawn,
-                {
-                  activeBranch: branches.activeBranch,
-                  activeBranchSafety: branches.activeBranchSafety,
-                  onStage: (detail, ev) =>
-                    post({ id: req.id, kind: 'progress', data: { stage: 'tune', evals: ev ?? 0, detail, variant: label } }),
-                },
-                hooks,
-              ),
+              {
+                activeBranch: branches.activeBranch,
+                activeBranchSafety: branches.activeBranchSafety,
+                onStage: (detail, ev) =>
+                  post({ id: req.id, kind: 'progress', data: { stage: 'tune', evals: ev ?? 0, detail, variant: label } }),
+              },
+              hooks,
             );
-            return { label, parts: net.parts, net };
+            const { grid: g, w: wR, t: tR, driverZ: zR, adjust: adj } = chainInput;
+            if (!minimize) {
+              const net = optimizeNetworkValues(drawn, g, wR, tR, zR, adj, opts);
+              return { label, parts: net.parts, net };
+            }
+            const min = minimizeNetwork(drawn, g, wR, tR, zR, adj, {
+              targets: minimize.targets,
+              ...(minimize.rSourceLimitOhm !== undefined ? { rSourceLimitOhm: minimize.rSourceLimitOhm } : {}),
+              ...(minimize.fbHz !== undefined ? { fbHz: minimize.fbHz } : {}),
+              tuneOpts: opts,
+              onStage: (detail) =>
+                post({ id: req.id, kind: 'progress', data: { stage: 'tune', evals: 0, detail, variant: label } }),
+            });
+            /* The minimised parts, read by the SAME tuner with one iteration
+             * and no snap — minimize.ts's own measuring idiom — so the gate
+             * hook judges exactly the network that would be applied. */
+            const net = optimizeNetworkValues(min.parts, g, wR, tR, zR, adj, {
+              ...opts,
+              staged: undefined,
+              catalogSnap: false,
+              maxIterations: 1,
+            });
+            return { label, parts: min.parts, net, minimize: min };
           },
           (r) => ({
             measurements: twoWayMeasurements(chainInput, v2, r.parts, r.net.after),
@@ -3462,6 +3546,75 @@ export function handleV2Request(req: V2Request, post: V2Post): void {
           candidate?.provenance,
           /* H-3b — the same reader as the scan: one verdict for both routes. */
           (parts) => hybridFlankErrorOf(chainInput, parts),
+        );
+        break;
+      }
+      case 'v2TuneNetlist3': {
+        /* U-10 — THE DRAWN THREE-WAY NETWORK, on the scan's own terms: the same
+         * facts, network facts and declared chain input as `v2Chain3One`, the
+         * same option assembly as the chain's assembled tune
+         * (`assembledTuneOptions3`), and the same judgement — minus the design
+         * and synthesis steps, because the network is the designer's. */
+        const { input, parts: drawn, label, v2: v2Wire, candidate, minimize } = req.payload;
+        const v2 = withDerivedDriveCeiling(v2Wire);
+        const facts = measurementFacts(
+          input.grid,
+          input.driverZ,
+          { woofer: input.w.spl, mid: input.m.spl, tweeter: input.t.spl },
+          v2,
+        );
+        const { network, chainInput } = threeWayNetworkFacts(input, candidate, false);
+        data = runCandidate<Chain3Input, V2TuneNetlistResult>(
+          chainInput,
+          v2,
+          facts,
+          network,
+          (hooks) => {
+            const opts = assembledTuneOptions3(
+              chainInput,
+              drawn,
+              {
+                crossingsHz: null,
+                onStage: (detail, ev) =>
+                  post({ id: req.id, kind: 'progress', data: { stage: 'tune', evals: ev ?? 0, detail, variant: label } }),
+              },
+              hooks,
+            );
+            const { grid: g, w: wR, t: tR, driverZ: zR, tAdjust: adj } = chainInput;
+            if (!minimize) {
+              const net = optimizeNetworkValues(drawn, g, wR, tR, zR, adj, opts);
+              return { label, parts: net.parts, net };
+            }
+            const min = minimizeNetwork(drawn, g, wR, tR, zR, adj, {
+              targets: minimize.targets,
+              ...(minimize.rSourceLimitOhm !== undefined ? { rSourceLimitOhm: minimize.rSourceLimitOhm } : {}),
+              ...(minimize.fbHz !== undefined ? { fbHz: minimize.fbHz } : {}),
+              tuneOpts: opts,
+              onStage: (detail) =>
+                post({ id: req.id, kind: 'progress', data: { stage: 'tune', evals: 0, detail, variant: label } }),
+            });
+            const net = optimizeNetworkValues(min.parts, g, wR, tR, zR, adj, {
+              ...opts,
+              staged: undefined,
+              catalogSnap: false,
+              maxIterations: 1,
+            });
+            return { label, parts: min.parts, net, minimize: min };
+          },
+          (r) => ({
+            measurements: threeWayMeasurements(chainInput, v2, r.parts, r.net.after),
+            /* As on the two-way drawn route: a drawing states no flank orders,
+             * so its class is read off the polarity its driver parts carry. */
+            topology: {
+              flanks: [],
+              inverted: r.parts
+                .filter((p) => p.type === 'Driver' && p.inverted === true && p.model !== undefined)
+                .map((p) => p.model!)
+                .sort(),
+            },
+          }),
+          (parts) => measureRejectedThreeWay(chainInput, v2, parts),
+          candidate?.provenance,
         );
         break;
       }

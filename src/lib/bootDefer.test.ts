@@ -189,8 +189,11 @@ describe('D-0 — the app is wired to it', () => {
        rewritten — and why the shadow disappearing has to fail here. */
     expect(src).toMatch(/const v2ReportNow = \(\) => engineV2Report \?\? buildPanelReport\(\);/);
     const shadows = src.match(/const engineV2Report = v2ReportNow\(\);/g) ?? [];
-    expect(shadows.length).toBe(2);
-    for (const fn of ['runVfOptimize', 'runNetOptimizeHybrid']) {
+    /* U-10 — three run entry points since the drawn-network tune went to the v2
+     * worker on every route: H-3's hybrid tune generalised (`runNetOptimizeV2`)
+     * and the three-way one beside it (`runNetOptimizeV2_3`). Was two. */
+    expect(shadows.length).toBe(3);
+    for (const fn of ['runVfOptimize', 'runNetOptimizeV2', 'runNetOptimizeV2_3']) {
       const at = src.indexOf(`function ${fn}(`);
       expect(at).toBeGreaterThan(-1);
       /* The shadow is the first thing each of them does: a reference above it

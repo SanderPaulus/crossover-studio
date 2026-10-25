@@ -312,7 +312,10 @@ const ERROR_SMOOTHING_ARMS = [{}, { errorSmoothOct: 0 }, { errorSmoothOct: 1 / 1
 
 describe('U-9 (3): perturbing a niets field leaves what the v2 route builds byte-identical', () => {
   it('errorSmoothOct, three-way: the only chain reader is the tuner literal, and the hook overrides it', () => {
-    const lit = CHAIN3.slice(CHAIN3.indexOf('const tuneOpts = {'), CHAIN3.indexOf('let net = optimizeNetworkValues'));
+    /* U-10 (V15 form) — was the inline `const tuneOpts = {` literal; since U-10
+     * it is `assembledTuneOptions3`, the same literal lifted verbatim for the
+     * chain and the drawn three-way tune. */
+    const lit = CHAIN3.slice(CHAIN3.indexOf('export function assembledTuneOptions3('), CHAIN3.indexOf('export function runThreeWayChain('));
     expect(CHAIN3.match(/\bs\.errorSmoothOct\b/g)).toHaveLength(1);
     expect(lit).toContain('errorSmoothOct: s.errorSmoothOct,');
     expect(lit.indexOf('errorSmoothOct: s.errorSmoothOct')).toBeLessThan(lit.indexOf('hooks.tuneOptionsFor'));

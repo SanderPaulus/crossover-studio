@@ -538,7 +538,8 @@ describe('H-2 / H-2b — App.tsx routes a hybrid', () => {
     expect(APP).toContain('const d = describeFlank(hybridFlank, hybridStrip.hz, hybridFlankVerdict);');
     expect(APP).toContain("d.tone === 'ok' ? 'chip-ok' : d.tone === 'bad' ? 'chip-bad' : 'chip-neutral'");
     /* The ⚙ note reads the same one comparison, and says so when nothing judges. */
-    expect(APP).toContain('const flankJudged = flankVerdict(flank, active.handover.flankBudgetDbRms);');
+    /* U-10: the same function serves the non-hybrid two-way, which has no flank. */
+    expect(APP).toContain('const flankJudged = active ? flankVerdict(flank, active.handover.flankBudgetDbRms) : null;');
     expect(APP).toContain('t(ACTIVE_SIDE_FLANK_UNJUDGED)');
     expect(APP).not.toContain('flankErrorDb(');
   });

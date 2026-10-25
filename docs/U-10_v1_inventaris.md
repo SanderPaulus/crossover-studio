@@ -323,6 +323,11 @@ Voorstel voor de harde regel in CLAUDE.md, ter vervanging van de huidige toggle-
 > (`App.tsx`, `EngineV2Panel.tsx`, `XoWindowAnnotation.tsx`, `optimClient.ts`) importeren
 > engine2. Engine2 mag de motor *aanroepen* en *sturen via gestelde opties*, nooit stil
 > veranderen. Elke wijziging die dit raakt vereist `toggleRegression.test.ts`.
+> **Twee benoemde v1-routes blijven, en zijn de enige:** de tweeweg zónder impedanties
+> (`vfRounds`, virtuele filters) en het solo-ontwerp (`soloChain`, plus de v1-tune en
+> -minimalisatie van een solonetwerk). Zij en de v1-code die zij nodig hebben worden niet
+> verwijderd. Elk zegt bij elke run zichtbaar wat zij is, en geen van beide leest het verborgen
+> "Error smoothing".
 
 In de test, in de V15-vorm:
 
@@ -339,8 +344,99 @@ In de test, in de V15-vorm:
   is een bevinding.
 - **B-4.2: weigeren met reden.** Zonder v2-rapport start de run niet, en de foutmelding wordt
   genoemd.
-- **B-4.2-uitbreiding: (i).** `vfRounds` (tweeweg zonder impedanties) en `soloChain` (één
-  driver) weigeren ook, elk met hun reden.
+- **B-4.2-uitbreiding: (i)** — **gecorrigeerd door Sander, 25-10-2026, tijdens fase 1.** Er
+  wordt niet geweigerd. Beide routes zijn benoemde uitzonderingen (zie §9).
 - **B-4.3 en B-4.4: akkoord.** De v1-velden worden verliesvrij meegedragen zonder lezer. De
   toggle-invariant wordt de motorgrens-invariant uit §7, en `toggleRegression.test.ts` houdt
   zijn naam.
+
+## 9. De twee benoemde uitzonderingen (Sanders correctie op B-4.2, 25-10-2026)
+
+| route | wat blijft | wat de run zichtbaar zegt | "Error smoothing" | v2-versie |
+| --- | --- | --- | --- | --- |
+| tweeweg zónder impedanties | `vfRounds` (v1-worker), `optimizeVirtualFilters`, `runSynthesis` | "Zonder impedantiemetingen: alleen virtuele filters. Elektrische eisen (vloer, EPDR, dissipatie) zijn niet beoordeeld." | `SEARCH_SMOOTHING_OCTAVES` (v2-waarde) | **open punt**, latere sessie |
+| solo (één driver) | `soloChain` (v1-worker), plus de v1-taken `netOptimize`/`minimize` voor een solonetwerk | "Solo-ontwerp: één driver, geen overname — de v2-eisen per overname zijn hier niet van toepassing" | `SEARCH_SMOOTHING_OCTAVES` op de solo-tune en -minimalisatie; `soloChain` zelf las de knop nooit | komt er niet: één driver heeft geen overname |
+
+**Keuze bij "Error smoothing": de v2-waarde, en het veld niet terug.**
+
+- Sinds V38-fix stuurt elke v2-route op de ongegladde kromme (`SEARCH_SMOOTHING_OCTAVES` = 0). De
+  gegladde zoekmaat las een stille geest over de bandrand en is gemeten als de verkeerde vraag.
+- Het veld op één route terug tonen zou één knop op twee manieren laten betekenen, afhankelijk van
+  of er impedanties geladen zijn. Dat is precies het "zelfde veld, ander effect" dat U-9 per route
+  wegwerkte.
+- De prijs is reëel: wie vóór U-9 een andere gladding koos, krijgt op deze twee routes nu een
+  ander resultaat. Dat is de bedoeling: de knop was onzichtbaar.
+
+`soloChain` zelf geeft geen gladding door aan zijn tuner, en draaide dus al op de tunerdefault.
+Hij is niet aangeraakt ("de route blijft zoals hij is").
+
+## 10. Fase 1 — wat er gebouwd is (25-10-2026)
+
+**De terugval weigert.** `src/lib/v2RouteRefusal.ts` is een zuivere beslissing:
+
+- Een rapport dat niet gebouwd kon worden wordt `no-report`, met zijn eigen foutmelding.
+- Een rapport zonder vensterinvoer wordt `no-window`.
+- De twee benoemde uitzonderingen geven `null`.
+
+`runVfOptimize` vraagt de regel vóórdat er iets wordt opgewekt of naar een worker gaat.
+`crossoverVariants`/`crossover3Variants` en `runAxes` zijn daarmee onbereikbaar op een v2-run.
+Ze staan er nog, want verwijderen is fase 3.
+
+Gepind op een echt rapport: casus 1b met één weg weggehaald is een eenweg-rapport zonder
+vensterinvoer, en dat wordt geweigerd (`v2RouteRefusal.test.ts`).
+
+**⚙ Optimize components en ✂ Minimize network lopen op de v2-worker, op elke route behalve solo.**
+
+- **Tweeweg (hybride of niet):** `runNetOptimizeV2(pass)`. Dit is de H-3-functie, gegeneraliseerd:
+  zonder actieve zijde is `activeSide` overal afwezig, en dat is de identiteit.
+- **Drieweg:** `runNetOptimizeV2_3(pass)` met de nieuwe worker-kind `v2TuneNetlist3`.
+- **Minimaliseren:** een `minimize`-veld op beide payloads. `minimizeNetwork` krijgt dezelfde
+  geassembleerde opties als de tune, dus de poorthook zit in elke hertune. Daarna leest het
+  geminimaliseerde netwerk één iteratie, zonder snap, en `runCandidate` oordeelt erover. Een
+  minimalisatie die een poort mist, wordt in zijn geheel geweigerd (V31).
+
+**Geen derde kopie.** Vijf extracties, alle vijf verbatim:
+
+| geëxtraheerd | uit | lezers |
+| --- | --- | --- |
+| `assembledTuneOptions3` | `threeWayChain.ts` (gedeelde motor) | de keten en `v2TuneNetlist3` |
+| `threeWayNetworkFacts` | de `v2Chain3One`-case | beide driewegroutes |
+| `threeWayMeasurements` | idem | idem |
+| `measureRejectedThreeWay` | idem | idem |
+| `threeWayChainSettings`, `threeWayChainBranches` | de driewegscan in `App.tsx` | de scan en de getekende-netwerktune |
+
+**Wat er voor een getekend netwerk anders is dan voor een scankandidaat:**
+
+- Geen kooi, geen vensterbodem en geen kruispunten in de netwerkfeiten, net als op de
+  tweeweg-getekende route.
+- `xoFloorPairs` wordt expliciet leeggemaakt. Het driewegliteral draagt de v1-fysicavloer, die
+  alleen ooit voor de eigen vloer van een kandidaat instond.
+
+**Browsercontrole** (dev-server, verse `localStorage`, het workerverkeer gemeten met een
+`postMessage`-probe):
+
+| actie | vóór U-10 | ná fase 1 | uitkomst |
+| --- | --- | --- | --- |
+| tweeweg-demo, ⚙ Optimize | `netOptimize` (v1) | `v2TuneNetlist` (v2) | geleverd: 4 onderdelen, 10 095 sims, piek 3,11 → 3,16 dB, fase 117,1 → 21,7°, elke gewapende poort binnen |
+| tweeweg-demo, ✂ Minimize | `minimize` (v1) | `v2TuneNetlist` (v2) | rapport aangeboden: BOM €36 → €18, piek 2,37 dB, fase 14,0° |
+| driewegdemo, ⚙ Optimize | `netOptimize` (v1) | `v2TuneNetlist3` (v2) | geleverd: 8 onderdelen, 16 900 sims, piek 6,21 → 3,22 dB, fase 123,9 → 27,5° |
+| driewegdemo, ✂ Minimize | `minimize` (v1) | `v2TuneNetlist3` (v2) | rapport aangeboden: BOM €52 → €33 |
+| tweeweg zónder Z, Optimize | `vfRounds` | `vfRounds` (uitzondering) | Sanders zin staat er |
+| solo, Optimize — flatten driver | `soloChain` | `soloChain` (uitzondering) | Sanders zin staat er |
+| solo, ⚙ Optimize | `netOptimize` | `netOptimize` (uitzondering) | route bevestigd; de tune zelf is niet afgewacht |
+
+**Een bevinding, geen regressie.** Op hetzelfde sjabloonzaad las de v1-tune
+"piek 3,22 → 2,51 dB". De v2-tune leest "3,11 → 3,16 dB". Het zijn twee verschillende maten:
+
+- de v2-band begint op f_p van de laagste weg (E-5) en niet op 300 Hz;
+- de zoektocht is ongegladd (V38-fix) in plaats van 1/12 octaaf.
+
+De piek op de bredere, ongegladde band is dus niet dezelfde grootheid. Wat de v2-tune wél
+garandeert, is dat elke gewapende poort binnen is. De v1-tune kende geen poort.
+
+**Wat fase 1 niet heeft gedaan:**
+
+- Niets verwijderd.
+- De solo-tune niet tot het einde in de browser afgewacht.
+- De Nederlandse weergave van de twee zinnen alleen in de test gepind, niet in de browser bekeken.
+- Een v2-versie van de virtuele-filterroute: dat blijft een **open punt**.

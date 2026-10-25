@@ -8742,3 +8742,64 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   - De voicing kan in guided pas ná de eerste run gekozen worden: zij hangt aan een ontwerp, en dat bestaat op een vers project nog niet. Het scherm zegt dat.
   - Open blijven U-10 (de v1-motor) en N1 (de Priority-schuif in de ontwerpstap).
   - Geen engine-, poort-, budget-, venster- of corpuswijziging, dus geen volle run.
+
+### U-10 fase 1-guards (de terugval weigert; ⚙ en ✂ op de v2-worker; twee benoemde v1-uitzonderingen)
+
+- **`src/lib/v2RouteRefusal.ts` — de terugval weigert met reden (Sander, B-4.2).** Een run
+  zonder v2-rapport (`no-report`, met de gevangen fout) of zonder vensterinvoer (`no-window`)
+  start niet. Er wordt geen verzonnen veld gemaakt (P4). `runVfOptimize` vraagt de regel vóór
+  er iets wordt opgewekt. De v1-generatoren (`crossoverVariants`, `crossover3Variants`,
+  `runAxes`) zijn daardoor onbereikbaar op een v2-run, maar staan er nog tot fase 3.
+- **TWEE BENOEMDE UITZONDERINGEN, en geen derde** (Sanders correcties, 25-10-2026). Beide
+  worden niet geweigerd en in fase 3 niet verwijderd, en beide noemen we bij naam in de nieuwe
+  invariant.
+  - **De tweeweg zónder impedanties.** Route: `vfRounds`, virtuele filters, plus
+    `runSynthesis`. Zichtbare zin: `VIRTUAL_FILTERS_ONLY_NOTE`. Een v2-versie is een **open
+    punt**.
+  - **Solo.** Route: `soloChain`, plus de v1-taken `netOptimize`/`minimize` voor een
+    solonetwerk. Zichtbare zin: `SOLO_DESIGN_NOTE`. Er komt geen v2-versie, want één driver heeft
+    geen overname.
+
+  Beide zinnen zijn Sanders eigen woorden, in `src/i18n/nl.ts`, en een test pint ze. Geen van
+  beide routes leest nog het verborgen "Error smoothing": beide nemen `SEARCH_SMOOTHING_OCTAVES`.
+  **Het veld is bewust niet teruggezet.** Eén knop die per route iets anders betekent is precies
+  wat U-9 wegwerkte. `soloChain` zelf gaf de knop nooit door en is niet aangeraakt.
+- **⚙ Optimize components en ✂ Minimize network lopen op de v2-worker, op elke route behalve
+  solo** (B-4.1(a)).
+  - Tweeweg (hybride of niet): `runNetOptimizeV2(pass)`, de gegeneraliseerde H-3-functie.
+  - Drieweg: `runNetOptimizeV2_3(pass)` via de nieuwe worker-kind `v2TuneNetlist3`.
+  - Minimaliseren is het `minimize`-veld op beide payloads. `minimizeNetwork` krijgt de
+    geassembleerde opties, met de poorthook in elke hertune, en `runCandidate` oordeelt over het
+    geminimaliseerde netwerk. Een geweigerde minimalisatie biedt niets aan (V31).
+  - **Gemeten in de browser met een `postMessage`-probe:** vóór U-10 `netOptimize`/`minimize` op
+    `optimWorker.ts`, ná fase 1 `v2TuneNetlist`/`v2TuneNetlist3` op `worker.ts`.
+- **DE GEDEELDE MOTOR IS GERAAKT, verbatim, en daarom is de volle run gedraaid.**
+  `assembledTuneOptions3` is uit `runThreeWayChain` gelicht: dezelfde sleutels, dezelfde
+  volgorde en dezelfde waarden. De mid-aanpassing van de ontwerpstap reist mee als `midAdjust`.
+  In de worker zijn `threeWayNetworkFacts`, `threeWayMeasurements` en `measureRejectedThreeWay`
+  uit de `v2Chain3One`-case gelicht. In `App.tsx` zijn dat `threeWayChainSettings` en
+  `threeWayChainBranches` uit de driewegscan. Dat geeft twee lezers per stuk en geen derde kopie.
+  Een getekend driewegnetwerk draagt geen kooi, geen vensterbodem en geen kruispunten in zijn
+  netwerkfeiten (`crossingsKnown = false`). `xoFloorPairs` wordt expliciet leeggemaakt, omdat het
+  driewegliteral de v1-fysicavloer draagt.
+- **`npx vitest run` ná fase 1 (25-10-2026): 1764 s, 217 bestanden, 3002 tests, niets
+  overgeslagen, in één keer groen, alleen gedraaid met de dev-server gestopt.**
+  - **Alle vier de live ketenruns reproduceren byte voor byte**, en `f4cRegression`,
+    `workerRouteRegression` en `toggleRegression` staan.
+  - **Er zijn 15 tests bijgekomen** (2987 → 3002): `v2RouteRefusal.test.ts` (10),
+    `optimizer/drawnTune3.test.ts` (4) en één minimalisatieclaim in `h3NetworkTab.test.ts`.
+    Geen ervan draagt een tag, dus de CI-telling hoort op 19 te blijven.
+  - **De eerste snelle laag (550 s) had zeven rode claims, allemaal bronscans die een oude vorm
+    pinden.** Ze zijn bijgewerkt in de V15-vorm, met wat er stond en wat er staat:
+    - `bootDefer`: drie run-ingangen in plaats van twee;
+    - `hybridNetwork` (2): de bredere dispatch, en `optimizeNetworkValues(` vier keer in de
+      worker in plaats van één;
+    - `u9FieldEffects`: het literal heet nu `assembledTuneOptions3`;
+    - `v2ActiveSide`: de flank alleen met een actieve zijde;
+    - `e5Repairs`: een vierde `v2ChainFrame`-lezer;
+    - `goalsPanelAudit`: vier routes in plaats van drie.
+- **Een bevinding, geen regressie.** Op hetzelfde sjabloonzaad las de v1-tune "piek 3,22 → 2,51
+  dB" en de v2-tune leest "3,11 → 3,16 dB". Dat zijn twee maten: de band begint sinds E-5 op f_p
+  en de zoektocht is ongegladd sinds V38-fix. Wat de v2-tune garandeert, is dat elke gewapende
+  poort binnen is. De v1-tune kende geen poort. De volle tabel staat in
+  `docs/U-10_v1_inventaris.md` §10.

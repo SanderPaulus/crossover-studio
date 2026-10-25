@@ -181,12 +181,14 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     expect(after.settings.phasePriority).not.toBe(0.25);
   });
 
-  it('…en de app geeft de schuif nergens aan de verklaring mee — op geen van de drie routes', () => {
+  it('…en de app geeft de schuif nergens aan de verklaring mee — op geen van de vier routes', () => {
     /* Dat is de precieze vorm van het gebrek, en zij is een BRONSCAN omdat
      * geen functietest kan zeggen of de app haar meegeeft. Drie aanroepen:
      * de drieweg, de tweeweg en de tune van een getekend netwerk. */
     const at = [...APP.matchAll(/declareCandidateChainChoices\(\{/g)].map((m) => m.index!);
-    expect(at.length, 'de app roept de ketenverklaring niet op drie routes aan').toBe(3);
+    /* U-10 (V15-vorm) — waren drie; de tune van een getekend DRIEWEG-netwerk
+     * (`runNetOptimizeV2_3`) is sinds U-10 de vierde, en hij geeft de schuif óók niet mee. */
+    expect(at.length, 'de app roept de ketenverklaring niet op vier routes aan').toBe(4);
     for (const i of at) {
       /* Het ARGUMENT van de aanroep: tot de eerste `});` erna. Ruim genoeg om
        * élke sleutel te bevatten en te smal om de volgende aanroep te raken. */
