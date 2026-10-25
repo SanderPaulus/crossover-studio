@@ -7,7 +7,7 @@
 
 ## Harde regels (altijd)
 - **P6:** geen letterlijke frequenties, componentgrenzen of andere projectgetallen in engine-/metriekcode. Alles afgeleid uit projectdata of expliciete projectinstelling. Whitelist: eenheidsconversies, c=343.
-- **Toggle-invariant:** met `engineV2Enabled` uit is app-gedrag byte-identiek. Elke wijziging die dit raakt vereist de toggle-regressietest.
+- **Motorgrens-invariant (U-10, vervangt de toggle-invariant):** de gedeelde motor — de ketens (`designChain.ts`, `threeWayChain.ts`, `threeWayDesign.ts`), de tuner (`netOptimizer.ts`), `vfOptimizer.ts`, `minimize.ts`, `soloOptimizer.ts`, de synthese (`synthesis.ts`) en de audit (`partAudit.ts`) — importeert niets uit `engine2/`, en een referentierun ervan is byte-identiek met en zonder `engine2/` in de modulegraaf. Alleen de UI-ingangen (`App.tsx`, `EngineV2Panel.tsx`, `XoWindowAnnotation.tsx`, `optimClient.ts`) importeren engine2. Engine2 mag de motor *aanroepen* en *sturen via gestelde opties*, nooit stil veranderen. **Twee benoemde v1-routes blijven, en zijn de enige:** de tweeweg zónder impedanties (`vfRounds`, virtuele filters) en het solo-ontwerp (`soloChain`, plus de v1-tune en -minimalisatie van een solonetwerk); zij en de v1-code die zij nodig hebben worden niet verwijderd, zeggen bij elke run zichtbaar wat zij zijn, en lezen geen verborgen knop. Elke wijziging die dit raakt vereist `toggleRegression.test.ts`. *(Tot U-10 fase 3 bestaat de vlag `engineV2Enabled` nog en staat hij altijd aan; de oude regel "met de vlag uit is app-gedrag byte-identiek" had zonder bedienbare vlag geen onderwerp meer — zie `docs/U-10_v1_inventaris.md` §7.)*
 - **Schatter-versionering:** elke extractor exporteert een versiestring; gedragswijziging = versiebump = cache-invalidatie.
 - **A5e-besluiten** (aggregatie, doelcurve, catalogus-schema, determinisme-beleid) zijn geparkeerd: niet eigenmachtig invullen, TODO met verwijzing.
 - N-weg-agnostisch: nergens een aanname van drie wegen.
@@ -8803,3 +8803,20 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   en de zoektocht is ongegladd sinds V38-fix. Wat de v2-tune garandeert, is dat elke gewapende
   poort binnen is. De v1-tune kende geen poort. De volle tabel staat in
   `docs/U-10_v1_inventaris.md` §10.
+
+### U-10 fase 2-guards (de motorgrens-invariant)
+
+- **De harde regel is vervangen** (Sander, B-4.4). "Met `engineV2Enabled` uit is app-gedrag
+  byte-identiek" is nu de **motorgrens-invariant** bovenaan dit bestand. Die regel noemt de
+  gedeelde-motorbestanden en de twee benoemde v1-routes bij naam.
+- **`toggleRegression.test.ts` is aangepast in de V15-vorm** en houdt zijn naam. Twee claims
+  blijven letterlijk staan:
+  - de referentierun is byte-identiek met en zonder engine2 in de graaf;
+  - de importgrens.
+
+  Eén claim is erbij: **de gedeelde motor bij naam** (`SHARED_MOTOR`, negen bestanden). Elk
+  bestand bestaat, importeert niets uit `engine2/` en staat niet op de toegestane-importeurslijst.
+  Nagemeten dat hij kán falen: een type-import uit engine2 in `vfOptimizer.ts` zet hem en de
+  generieke scan allebei op rood.
+- **De vlagclaims blijven tot fase 3** (F3b/F3c, en "absent = false = off"). De vlag bestaat nog
+  en de claims zijn nog waar. Ze verdwijnen mét de vlag, elk bij naam in die commit.

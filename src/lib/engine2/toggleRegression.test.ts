@@ -23,6 +23,33 @@
  *     never routes the optimiser to v2 whatever the flag says.
  */
 
+/*
+ * U-10 fase 2 (Sander, 25-10-2026, B-4.4) — THE INVARIANT HAS A NEW FORM, in
+ * the V15 shape: what stood, what stands, why.
+ *
+ * WHAT STOOD: "with `engineV2Enabled` off, app behaviour is byte-identical".
+ * Since U-1 nobody can switch the flag off from the interface, and since U-10
+ * fase 1 no UI route reaches the v1 search except the two named exceptions —
+ * so the rule had lost its subject.
+ *
+ * WHAT STANDS: the MOTOR-BOUNDARY invariant (CLAUDE.md, hard rules). Two of the
+ * three claims above guarded something that stays, and they stay LITERALLY:
+ *   1. a reference run of the shared motor is byte-identical with and without
+ *      engine2 in the module graph — engine2 may CALL and STEER the motor, it
+ *      may never change it silently;
+ *   2. nothing outside engine2 imports engine2 except the UI entry points — and
+ *      since U-10 the shared-motor files are NAMED (`SHARED_MOTOR`), so the
+ *      boundary is not only "nothing outside" but "these, by name, exist and
+ *      import nothing", which a later allow-list widening cannot slip past.
+ * The third — the flag's own semantics — and the F3b/F3c guards that surfaces
+ * hang off the flag still hold while the flag exists, and go WITH the flag in
+ * U-10 fase 3, each by name in that commit. The two named v1 routes (the
+ * two-way without impedances and the solo design) are pinned by
+ * `v2RouteRefusal.test.ts`, which is where their routing is decided.
+ *
+ * The file keeps its name (Sander's choice).
+ */
+
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -192,7 +219,7 @@ const ALLOWED_IMPORTERS = [
   join('lib', 'optimClient.ts'),
 ];
 
-describe('engine v2 toggle — off means unchanged', () => {
+describe('engine v2 toggle — off means unchanged (since U-10: the motor boundary)', () => {
   it('a reference optimisation run is byte-identical with and without the v2 modules loaded', async () => {
     const withoutV2 = referenceRun();
     // Load the entire v2 surface, exactly as switching the toggle on would.
@@ -229,6 +256,31 @@ describe('engine v2 toggle — off means unchanged', () => {
     expect(hits, `pre-v2 code reaches into engine2:\n${hits.join('\n')}`).toEqual([]);
   });
 
+  it('U-10 — the SHARED MOTOR, by name, exists and imports nothing from engine2', () => {
+    /* The motor-boundary invariant names its files (CLAUDE.md, hard rules).
+     * The generic scan above already covers them; this list is what makes a
+     * renamed or deleted motor file, or an allow-list that quietly grows to
+     * include one, fail here by name. */
+    const SHARED_MOTOR = [
+      'designChain.ts',
+      'threeWayChain.ts',
+      'threeWayDesign.ts',
+      'netOptimizer.ts',
+      'vfOptimizer.ts',
+      'minimize.ts',
+      'soloOptimizer.ts',
+      'synthesis.ts',
+      'partAudit.ts',
+    ];
+    for (const f of SHARED_MOTOR) {
+      const text = readFileSync(join(LIB, f), 'utf-8');
+      expect(text.length, f).toBeGreaterThan(1000);
+      const hits = text.split('\n').filter((line) => /from\s+['"][^'"]*engine2\//.test(line));
+      expect(hits, `${f} imports engine2`).toEqual([]);
+      expect(ALLOWED_IMPORTERS.some((a) => a.endsWith(f)), `${f} is on the allow-list`).toBe(false);
+    }
+  });
+
   it('the v1 worker still imports NOTHING from engine2 (F2b, permanent)', () => {
     // The allow-list above grew by one at F2b, and this test is the floor
     // under that decision: whatever else changes, the module that runs the v1
@@ -262,6 +314,8 @@ describe('engine v2 toggle — off means unchanged', () => {
    * as `noAppWideFloor.test.ts` and the import scan above — a review rule does
    * not survive; a test does.
    * ------------------------------------------------------------------ */
+  /* U-10 — these guards go WITH the flag in fase 3: they pin that a surface
+   * hangs off `engineSelection.reporting`, a guard that disappears with it. */
   describe('F3b - the new dialog and panel surfaces are behind the flag', () => {
     const app = () => readFileSync(join(SRC, 'App.tsx'), 'utf-8');
 
@@ -383,6 +437,8 @@ describe('engine v2 toggle — off means unchanged', () => {
     expect(scanned).toContain('App.tsx');
   });
 
+  /* U-10 — goes WITH the flag in fase 3 (by name in that commit): it pins the
+   * semantics of a selection the interface can no longer make. */
   it('absent, false and off are the same selection; only ON routes the optimiser to v2', () => {
     expect(selectEngine(undefined)).toEqual(ENGINE_V1_ONLY);
     expect(selectEngine(false)).toEqual(ENGINE_V1_ONLY);

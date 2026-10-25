@@ -440,3 +440,11 @@ garandeert, is dat elke gewapende poort binnen is. De v1-tune kende geen poort.
 - De solo-tune niet tot het einde in de browser afgewacht.
 - De Nederlandse weergave van de twee zinnen alleen in de test gepind, niet in de browser bekeken.
 - Een v2-versie van de virtuele-filterroute: dat blijft een **open punt**.
+
+## 11. Fase 2 — de invariant (25-10-2026)
+
+- De harde regel in CLAUDE.md is vervangen door de motorgrens-invariant uit §7, inclusief de twee
+  benoemde uitzonderingen.
+- `toggleRegression.test.ts` is aangepast in de V15-vorm. Er is één claim bij gekomen: de
+  gedeelde motor bij naam, negen bestanden. Daarvan is gemeten dat hij kan falen.
+- De vlagclaims blijven staan tot fase 3.
