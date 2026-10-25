@@ -2138,6 +2138,15 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (25-10-2026, U-9): twee runs, beide GROEN.** Fase 2
+  (`65eadca`, run 40186114574): 214 bestanden (213 geslaagd, 1 overgeslagen), 2945 geslaagd,
+  19 overgeslagen, 3627 s. Fase 3 (`709ad9c`, run 40214694098): 215 bestanden (214 geslaagd,
+  1 overgeslagen), 2968 geslaagd, 19 overgeslagen, 2843 s. **Fase 0 en 1 (`c06e4ad`) hebben GEEN
+  eigen run:** die commit is samen met fase 2 gepusht en CI draait op de kop van een push, dus zijn
+  boom is in de fase-2-run meegemeten en niet apart. Negentien is op beide runs exact het
+  H-1-getal (de D-0-run, `ae3c261`, groen, is nooit geboekt en staat hier niet als meting): U-9 tagt niets (`u9Fase2.test.ts` en `u9Fase3.test.tsx`
+  lezen bronnen, strings en zuivere functies). De telling sluit van de andere kant: 2945 + 19 =
+  2964 en 2968 + 19 = 2987, precies de lokale snelle-laag-tellingen van beide fasen.
   **GEMETEN IN CI OP ubuntu/Node 22 (24-09-2026, U-8): 211 bestanden (210 geslaagd,
   1 overgeslagen), 2879 geslaagd, 19 overgeslagen, 2848 s (47 min 28) — GROEN.** Negentien is voor
   de NEGENDE geboekte run op rij EXACT het H-1-getal, en dat is de claim: U-8 voegt geen enkele
