@@ -110,10 +110,21 @@ describe('the register covers the form', () => {
   });
 
   it('a v1 row carries what v1 does with it, and says it is not read by Engine v2', () => {
+    /* U-9 — ONE named exception, measured: the tuner reads the priority slider
+     * (finding N1), so its note may not say "not read" and says what the
+     * measurement found instead. Named, not loosened — the V47/V48 lesson. */
+    const HALF_READ = ['phasePriority'];
     for (const r of rowsOfClass('v1-legacy')) {
       expect(r.v1Note, r.id).toBeTruthy();
-      expect(r.v1Note!, r.id).toMatch(/not read by Engine v2/);
+      if (HALF_READ.includes(r.id)) {
+        expect(r.effect, r.id).toBe('zoekt');
+        expect(r.v1Note!, r.id).toMatch(/Half read by Engine v2/);
+        expect(r.v1Note!, r.id).toMatch(/tuner/);
+      } else {
+        expect(r.v1Note!, r.id).toMatch(/not read by Engine v2/);
+      }
     }
+    expect(rowsOfClass('v1-legacy').filter((r) => r.effect === 'zoekt').map((r) => r.id)).toEqual(HALF_READ);
     // …and no other class carries one: the note is what makes the class.
     for (const r of V2_INPUT_REGISTER) {
       if (r.cls !== 'v1-legacy') expect(r.v1Note, r.id).toBeUndefined();

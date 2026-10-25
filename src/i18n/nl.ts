@@ -467,6 +467,8 @@ export const nl: Record<string, string> = {
   'HP floor {f} Hz': 'HP-vloer {f} Hz',
   'Alignment {a} · slopes mid {m} / tweeter {tw}':
     'Alignment {a} · flanken mid {m} / tweeter {tw}',
+  'Slopes mid {m} / tweeter {tw}': 'Flanken mid {m} / tweeter {tw}',
+  'v1 — on Engine v2 only the tuner reads this': 'v1 — op Engine v2 leest alleen de tuner dit',
   'Optimize runs the full chain: design →': 'Optimize draait de hele keten: ontwerp →',
   'solo topology build': 'solo-topologiebouw',
   'passive build': 'passieve bouw',

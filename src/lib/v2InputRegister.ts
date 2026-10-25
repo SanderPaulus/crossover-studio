@@ -86,6 +86,26 @@ export type V2InputSource =
  */
 export type V2InputPlacement = 'always' | 'more' | 'conditional';
 
+/**
+ * U-9 — WHAT A FIELD MEASURABLY DOES, as data beside what it is.
+ *
+ *   'zoekt'    — it changes the v2 request or its fingerprint: which networks
+ *                can come out (the field, the declaration, the tuner, a gate,
+ *                a budget, a measured fact).
+ *   'oordeelt' — it changes only a verdict: a gate status, a metric, a
+ *                shortlist requirement.
+ *   'toont'    — it changes only a chart, a sorting or what is displayed.
+ *   'niets'    — no measurable effect on any v2 route. Such a row is NEVER
+ *                rendered, in any mode; its value stays in the project file.
+ *
+ * Filled from the U-9 phase-0 measurement (`scripts/measure-u9-field-effects.ts`,
+ * `docs/U-9_veldinventaris.md`), as the class a field has WHEN ITS PARENT IS
+ * SET: a field that does nothing only because its parent is off is not a
+ * 'niets' field (startprompt, point 5). Where a field differs per route, the
+ * strongest route decides and the inventory names the others.
+ */
+export type V2InputEffect = 'zoekt' | 'oordeelt' | 'toont' | 'niets';
+
 /** One input, with everything a reader needs to act on it. */
 export interface V2InputRow {
   /** Stable id, used by the panel and by the tests. Never shown. */
@@ -100,6 +120,8 @@ export interface V2InputRow {
    */
   travels: string;
   cls: V2InputClass;
+  /** U-9 — what the field measurably does (see `V2InputEffect`). */
+  effect: V2InputEffect;
   /** What happens when it is blank. One sentence, in the app's own voice. */
   emptyMeans: string;
   source: V2InputSource;
@@ -136,6 +158,7 @@ const REQUIRED: readonly V2InputRow[] = [
     travels:
       'parseFrd → AdapterBranch.onAxis → ingest → report.predesign.windowInputs → buildCandidateField',
     cls: 'required',
+    effect: 'zoekt',
     emptyMeans:
       'fewer than two responses means no adjacent pair, so no A5d.3 window and no candidate field; ' +
       'the run falls back to the v1 generator and says so in its notes.',
@@ -148,6 +171,7 @@ const REQUIRED: readonly V2InputRow[] = [
     travels:
       'parseArtaHeader / mergeBlock → validity.ts → the judged band and every window floor (A5b.1)',
     cls: 'required',
+    effect: 'zoekt',
     emptyMeans:
       'the response has no floor it may be believed at, the anchored gaps refuse to compute, and ' +
       'v1 refuses the run outright (“the window could not be read”).',
@@ -160,6 +184,7 @@ const REQUIRED: readonly V2InputRow[] = [
     travels:
       'parseZma → AdapterBranch.impedance → z-resonance → f_s, R_e, the gate grid, M-B/|Z|, M-C',
     cls: 'required',
+    effect: 'zoekt',
     emptyMeans:
       'no f_s, so no k·f_s window floor and no M-C; no measured |Z|, so M-B and the amplifier ' +
       'floor have nothing to read and every electrical gate reports “not judged”.',
@@ -172,6 +197,7 @@ const REQUIRED: readonly V2InputRow[] = [
     travels:
       'branches → roles → one window input per ADJACENT PAIR (report.ts, i + 1 < order.length)',
     cls: 'required',
+    effect: 'zoekt',
     emptyMeans: 'nothing is assumed: two filled slots is a two-way run, three a three-way.',
     source: 'measurement',
   },
@@ -182,6 +208,7 @@ const REQUIRED: readonly V2InputRow[] = [
     travels:
       'cabinet.drivers[role].xMm/yMm → geometry.verticalMm → c-t-c → the lobing zones and M-F',
     cls: 'required',
+    effect: 'zoekt',
     emptyMeans:
       'no c-t-c, so no lobing zone and no vertical-lobing synthesis; the window keeps its other ' +
       'limits and says the spacing is unknown.',
@@ -193,6 +220,7 @@ const REQUIRED: readonly V2InputRow[] = [
     form: 'Setup tab → driver card',
     travels: 'sdCm2 → AdapterBranch.driverCard.sdCm2 → piston diameter → the beaming ceiling; M-C route 2',
     cls: 'required',
+    effect: 'oordeelt',
     emptyMeans:
       'no cone diameter, so the measured beaming ceiling falls back to the nominal size select ' +
       'and, without that too, the window has no directivity ceiling.',
@@ -204,6 +232,7 @@ const REQUIRED: readonly V2InputRow[] = [
     form: 'Setup tab → Cabinet & drivers',
     travels: 'cabinet.baffleWidthMm → geometry.baffleWidthMm → the baffle step → the target curve transition',
     cls: 'required',
+    effect: 'oordeelt',
     emptyMeans:
       'a stated bass plateau has a depth and no transition: the curve produces no offsets and ' +
       'names the half that was missing.',
@@ -242,6 +271,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'active side (H-1), two measured ways give the lowest passive way its flank target and judge ' +
       'no sum (the lean form)',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'architecture',
     emptyMeans:
       'no hybrid: every measured way is part of the passive network, nothing is modelled, and the ' +
@@ -258,6 +288,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'ambiguous comma is refused) → one RUN of the passive field per stated handover, and ' +
       'ActiveHandover.hz in the report and the chain declaration',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'architecture',
     emptyMeans:
       'no handover is stated, so there is nothing to design towards: the active side realises its ' +
@@ -273,6 +304,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'ActiveHandover.kind and .order → the high-pass the passive way must reach AND the low-pass ' +
       'the DSP must reach — one stated shape, read twice',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'architecture',
     emptyMeans:
       'no shape is stated, so neither flank has an alignment to meet and nothing is designed towards.',
@@ -298,6 +330,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'NetOptimizeOptions.flankBudget (a wall in the tuner’s objective) and runCandidate’s refusal ' +
       '(by: stated-flank-budget, kinds: budget) on every delivered or tuned network',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'architecture',
     emptyMeans:
       'no budget: the target-flank error is measured and reported on every hybrid run, and nothing ' +
@@ -311,6 +344,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Goals & weighting',
     travels: 'ampMinLoadOhm → gateSettingsFor → GateSettings.ampMinLoadOhm → M-B/|Z| and the barrier',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'no floor is applied; the delivered impedance minimum is measured and only reported.',
     source: 'nameplate',
@@ -322,6 +356,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'engineV2Gates.maxDissipationFraction → GateSettings → M-A',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'M-A judges nothing; the percentage is still reported.',
     source: 'choice',
@@ -333,6 +368,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'engineV2Gates.minEpdrOhm → GateSettings → M-B/EPDR',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'M-B/EPDR judges nothing; the EPDR minimum is still reported.',
     source: 'choice',
@@ -346,6 +382,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'engineV2Gates.maxDriveOnFsDb → GateSettings.maxDriveOnFsDb AND the candidate declaration ' +
       "(protectionRule: 'stated') AND the A5d.3(ii) order derivation",
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans:
       'M-C judges nothing unless an excursion ceiling is derived, the order derivation stays ' +
@@ -358,6 +395,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Drivers tab → Engine v2 — measurement',
     travels: 'v2Meas[role].driveOnFsMaxDb → driveOnFsMaxDbByModel → GateSettings.maxDriveOnFsDbByDriver',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans:
       'nothing is stated for this way: the single M-C field above judges it, and blank there too ' +
@@ -371,6 +409,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'peakInputVolts(peak, nominal) → GateSettings.peakInputVolts → M-C v2.0 and M-L',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans:
       'no peak input voltage, so no derived excursion ceiling and no coil-current judgement; ' +
@@ -384,6 +423,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'the other half of peakInputVolts — both are needed or neither counts',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'no peak input voltage, exactly as above: the peak power alone states nothing.',
     source: 'nameplate',
@@ -395,6 +435,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'ReportSettings → driveExcursion → ceilingDbReInput → the M-C limit and the window floor',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'no derived excursion ceiling; only a stated dB figure can judge M-C.',
     source: 'choice',
@@ -408,6 +449,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'ReportSettings.amplifierPowerW → M-A watts AND, unless a thermal power is stated, the ' +
       'power M-A/part is JUDGED at',
     cls: 'judgement',
+    effect: 'oordeelt',
     band: 'gates',
     emptyMeans:
       'no watts anywhere — only M-A’s scale-free fraction — and M-A/part has no power to judge at.',
@@ -420,6 +462,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'GateSettings.resistorClassW → M-A/part (class × margin, or the snapped part’s own rating)',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'no allowance, so M-A/part judges nothing; the watts per resistor are still shown.',
     source: 'choice',
@@ -431,6 +474,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'the other half of the M-A/part allowance — class without margin arms nothing',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'no allowance, exactly as above: a class on its own states nothing.',
     source: 'choice',
@@ -442,6 +486,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'GateSettings.coilClassA → M-L (peak current per coil at the amplifier peak)',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'M-L judges nothing; the peak current per coil is still shown. Air cores never saturate.',
     source: 'choice',
@@ -453,6 +498,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'GateSettings.resistorThermalPowerW → the power M-A/part reads (V51)',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans:
       'M-A/part judges at the amplifier power above; the gate row always says which power it read.',
@@ -467,6 +513,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'engineV2Gates.lowestWayLevelWork → declareCandidateChainChoices → the design and synthesis ' +
       'steps, and the worker’s topology refusal',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans:
       'nothing is forbidden — absent, never a stated “allowed” — so the search keeps its own ' +
@@ -480,6 +527,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2 (shown once “series R up to a maximum” is chosen)',
     travels: 'the maximum that makes the mode a statement — discrete R plus every series coil’s DCR',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'gates',
     emptyMeans: 'the mode cannot be stated without its number, so the whole rule reads as not stated.',
     source: 'choice',
@@ -493,6 +541,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'BudgetSettings.lfBumpBudgetDb → the A5d.6 inversion (a soft ceiling since C-2) AND M-D on ' +
       'the delivered network',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'budgets',
     emptyMeans: 'no ceiling is inverted and M-D judges nothing; the lift is still reported.',
     source: 'choice',
@@ -504,6 +553,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'BudgetSettings.qesMultiplierMax → the exact inversion R_s ≤ R_e·(q−1) → M-E',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'budgets',
     emptyMeans: 'no bound on the series resistance in the lowest path; M-E is reported only.',
     source: 'choice',
@@ -515,6 +565,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'BudgetSettings.dampingMarginDb → the A5d.4 pad inversion against the way’s own passband |Z|',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'budgets',
     emptyMeans: 'no bound on how much attenuation a way may spend beyond its measured gap.',
     source: 'choice',
@@ -526,6 +577,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'the shortlist’s A5e.1 requirements — which finished designs you are shown',
     cls: 'judgement',
+    effect: 'oordeelt',
     band: 'requirements',
     emptyMeans: 'not asked; the value is shown beside every row and filters nothing.',
     source: 'choice',
@@ -537,6 +589,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2',
     travels: 'the shortlist’s A5e.1 requirements, judged PER handover',
     cls: 'judgement',
+    effect: 'oordeelt',
     band: 'requirements',
     emptyMeans: 'not asked; the value is shown beside every row and filters nothing.',
     source: 'choice',
@@ -549,6 +602,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
       'activeDesign.targetCurve → V2RunSettings.targetCurve AND the candidate declaration ' +
       '(amplitudeReference) → what “flat” means for the search, the window and the RMS',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'voicing',
     emptyMeans: 'flat is the neutral reference, not a missing answer — it is stated by being chosen.',
     source: 'choice',
@@ -559,6 +613,7 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
     form: 'Filters → Engine v2 — voicing',
     travels: 'the depth half of the curve; the transition is the baffle step and is never stored',
     cls: 'judgement',
+    effect: 'zoekt',
     band: 'voicing',
     emptyMeans: 'the curve produces no offsets at all and says which half was missing.',
     source: 'choice',
@@ -576,6 +631,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → driver card → Datasheet',
     travels: 'v2Meas[role].blTm → driverCard → driveExcursion route 1 (x/V on the resonance)',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'no excursion ceiling for this way; M-C falls back to the stated dB figure, if any.',
     source: 'datasheet',
     placement: 'always',
@@ -592,6 +648,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → driver card → Datasheet',
     travels: 'the other half of route 1 — Bl and M_ms are needed together',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'no excursion ceiling for this way, exactly as above.',
     source: 'datasheet',
     placement: 'always',
@@ -608,6 +665,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → driver card → Datasheet',
     travels: 'xmaxMm → driverCard.xMaxMm → the allowed voltage on f_s',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'no excursion ceiling; the excursion per volt is still derived and shown.',
     source: 'datasheet',
     placement: 'always',
@@ -626,6 +684,7 @@ const NICE: readonly V2InputRow[] = [
       'v2Meas[role].ratedPowerW / testFilterOrder / testFilterHz → AdapterBranch.powerRating → ' +
       'ReportSettings.driverPowerRatingByDriver → M-M (metrics/thermalLoad.ts)',
     cls: 'nice',
+    effect: 'oordeelt',
     emptyMeans:
       'M-M reports what this driver dissipates and judges it against nothing; the crossover floor ' +
       'then rests on the k·f_s convention or on a stated dB figure, neither of which is a ' +
@@ -647,6 +706,7 @@ const NICE: readonly V2InputRow[] = [
       'v2Meas[role].minCrossoverHz / minCrossoverOrder → AdapterBranch.minCrossover → ' +
       "ReportSettings.driverMinCrossoverByDriver → the A5d.3 window floor (rule 'stated-min')",
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'nothing the manufacturer said about how low this driver may be crossed reaches the window; ' +
       'its floor rests on whichever of the derived excursion ceiling, a stated dB figure and the ' +
@@ -671,6 +731,7 @@ const NICE: readonly V2InputRow[] = [
       'v2Meas[role].maxCrossoverHz → AdapterBranch.maxCrossover → ' +
       "ReportSettings.driverMaxCrossoverByDriver → the A5d.3 window ceiling (rule 'stated-max')",
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'nothing the manufacturer said about how HIGH this driver may be crossed reaches the window; ' +
       'its ceiling rests on whichever of the breakup derivation and the beaming limit is stricter — ' +
@@ -690,6 +751,7 @@ const NICE: readonly V2InputRow[] = [
       'v2Meas[role].maxCrossoverOverride → AdapterBranch.maxCrossover.overridesBreakup → ' +
       'the breakup limit is REPORTED and does not bind (XoLimit.superseded)',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'off, which is the only state nothing can put you in by accident: the stated ceiling is read ' +
       'beside the derived ones and the strictest binds, exactly like every other limit.',
@@ -708,6 +770,7 @@ const NICE: readonly V2InputRow[] = [
       'v2Meas[role].breakupDivisor → AdapterBranch.breakupDivisor → ' +
       'ReportSettings.driverBreakupDivisorByDriver → the breakup ceiling, and its UNCALIBRATED mark',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the ceiling divides the breakup by an interpolation between two published endpoints, and ' +
       'says of itself that the ramp between them is uncalibrated (V9). ' +
@@ -727,6 +790,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Engine v2 (shown once Hybrid mode is ticked)',
     travels: 'dspTargetBlock({ processorLatencyMs }) → subtracted from the delay to dial in, named apart',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans:
       'the delay in the DSP target block is printed WITHOUT the processor’s own latency, and the block ' +
       'says so; the FA251 with an analogue input is about 0.35 ms.',
@@ -743,6 +807,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → Engine v2 — measurement',
     travels: 'responseDrive → driveExcursion route 2 (the independent x/V from the far field)',
     cls: 'nice',
+    effect: 'oordeelt',
     emptyMeans: 'route 2 stays off and says the drive voltage is not documented; route 1 is unaffected.',
     source: 'measurement',
   },
@@ -754,6 +819,7 @@ const NICE: readonly V2InputRow[] = [
       'coilFamilyByModel + the loaded catalogue’s fits → the candidate’s coilDcrModel → every ' +
       'coil carries its family’s DCR, in the solver and in every gate',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'this way’s coils are lossless in every judgement, and the report says so as a deviation ' +
       'from any real build.',
@@ -774,6 +840,7 @@ const NICE: readonly V2InputRow[] = [
       'the slot → mergeNearField → the merged FRD → this branch’s response → readMergeBlock / ' +
       'parseArtaHeader → declaredMergeValidity → the window floor of every pair it touches',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'no merge is possible, and this branch is honest only above its own gate — the crossover ' +
       'window starts there and the app says so.',
@@ -785,6 +852,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → driver card → Near field',
     travels: 'portWeight (Keele, complex) → the near-field half before the level fit',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the merge is the cone alone. On a sealed box that is the whole radiator; on a REFLEX box ' +
       'the merge then refuses to state a validity floor at all, because at the tuning the cone is ' +
@@ -797,6 +865,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → driver card → Near field',
     travels: 'bandOf / centreOf → mergeNearField’s level and delay fit and its crossfade',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the app proposes the widest band both limits allow — above the far field’s own floor, below ' +
       '0.95 × ka = 1 — and shows both numbers beside it.',
@@ -808,6 +877,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → driver card → Near field',
     travels: '`Valid from` in the written block → declaredMergeValidity → this branch’s validity floor',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'derived: as far down as the near field reaches for a sealed box, and for a reflex box only ' +
       'when the port is summed in. Without the port the merge refuses rather than choosing a number.',
@@ -819,6 +889,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → Engine v2 — measurement',
     travels: 'measuredReOhm → the A5c.1 hierarchy (above both sweep derivations) → M-E, the Q_es bound',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'R_e comes from the motional fit, or from the direct low-frequency reading, and says which.',
     source: 'measurement',
   },
@@ -828,6 +899,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → Engine v2 — measurement',
     travels: 'geometry.rotationallySymmetric → the M-F-final point-source assumption',
     cls: 'nice',
+    effect: 'oordeelt',
     emptyMeans: 'not stated — three states, and this is one of them; M-F-final says which it used.',
     source: 'choice',
   },
@@ -837,6 +909,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → Engine v2 — measurement',
     travels: 'v2Meas[role].zMm → geometry.verticalMm (in place of the baffle position)',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'the cabinet position is used, which is the right number for a flush-mounted driver.',
     source: 'measurement',
   },
@@ -846,6 +919,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → Engine v2 — measurement',
     travels: 'AdapterBranch.wiring → the level-work report (what N in series would deliver)',
     cls: 'nice',
+    effect: 'oordeelt',
     emptyMeans: 'no wiring statement; a half-stated wiring is absent, and nothing is converted.',
     source: 'choice',
   },
@@ -855,6 +929,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Driver limits',
     travels: 'diameterInch → the beaming ceiling when S_d gives no piston diameter',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'the window keeps its measured beaming ceiling, or has none and says so.',
     source: 'datasheet',
   },
@@ -866,6 +941,7 @@ const NICE: readonly V2InputRow[] = [
       'catalogSnap → the candidate declaration → the snap AFTER the tune; since E-4 it obeys the ' +
       'stated coil family’s own residual rather than the v1 branch budget',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'the design keeps continuous values; nothing is judged against a purchasable part.',
     source: 'choice',
   },
@@ -876,6 +952,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Engine v2',
     travels: 'ReportSettings.verticalWindowDeg → the vertical-lobing synthesis (M-F-final)',
     cls: 'nice',
+    effect: 'oordeelt',
     emptyMeans: 'the lobing synthesis stays off and says so. It is a column, never a gate.',
     source: 'choice',
   },
@@ -886,6 +963,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Engine v2',
     travels: 'buildShortlist — how many designs the list holds, spread over topology and component space',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans: 'the published default holds; since E-4 the list says when more designs qualified than fit.',
     source: 'choice',
   },
@@ -896,6 +974,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Engine v2',
     travels: 'DeterminismSettings.seed → the run fingerprint (A5e.4)',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the ONE field where blank does not mean off: the published default runs and is reported, ' +
       'because “no seed” would mean “not reproducible”.',
@@ -908,6 +987,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Engine v2',
     travels: 'DeterminismSettings.budgetEvaluations → the tuner’s iteration ceiling',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans: 'the tuner’s own policy, exactly as a v1 run. A budget bounds effort, never acceptance.',
     source: 'choice',
   },
@@ -918,6 +998,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Engine v2',
     travels: 'fieldModeSettings → the chain budget and the position/alignment policies of the field',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the exploration runs: a smaller field with the same requirements, gates and seed, and the ' +
       'shortlist says which mode made it.',
@@ -941,6 +1022,7 @@ const NICE: readonly V2InputRow[] = [
       'fieldModeSettings → PolarityArmPolicy.seed → expandPolarityArms → every candidate carries ' +
       'its polarity, and the design step is bound to it instead of tie-breaking it internally',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the TEXTBOOK rule decides: every candidate is designed at the polarity its alignments ask ' +
       'for (LR2 one reversal, LR4 none) and no mirrored arm is built. State "both" to build them ' +
@@ -956,6 +1038,7 @@ const NICE: readonly V2InputRow[] = [
       'parseStatedCrossings → buildCandidateField(statedPerAxisHz) → one extra candidate per ' +
       'stated position, tuned and judged by the worker exactly as a derived one',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the derived field alone — the positions A5d.3 lays across each feasible window, and ' +
       'nothing outside one. State a frequency here and it becomes an extra candidate: inside a ' +
@@ -978,6 +1061,7 @@ const NICE: readonly V2InputRow[] = [
       'cabinet.micDistanceMm → the far-field ratio and the honest-down-to line; the near-field ' +
       'merge’s far-field limit; and, with a stated drive voltage, responseDrive → M-C route 2',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans:
       'no far-field check and no honest-down-to line; the merge cannot say where its far-field ' +
       'half stops being believable; M-C’s acoustic counter-proof stays off.',
@@ -995,6 +1079,7 @@ const NICE: readonly V2InputRow[] = [
       'cabinet.gateMs → the honest-down-to line, and the data floor of a response whose own file ' +
       'states no window',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans:
       'each file’s own window decides, and where none states one the floor is predicted from the ' +
       'geometry and says so.',
@@ -1012,6 +1097,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → Cabinet & measurement',
     travels: 'cabinet.micElevationDeg → the true off-axis angle per driver and the listening angle',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans: 'the mic is taken to have stood level with the reference point, which is 0°.',
     source: 'measurement',
   },
@@ -1021,6 +1107,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → Cabinet & measurement',
     travels: 'cabinet.baffleHeightMm → the front-panel drawing and the reference-point sanity check',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans: 'the panel is not drawn to scale and a reference point deeper than the box is not caught.',
     source: 'measurement',
     placement: 'always',
@@ -1036,6 +1123,7 @@ const NICE: readonly V2InputRow[] = [
       'cabinet.refFromTopMm → the origin every driver position is typed against; ' +
       'cabinet.refHeightMm → the floor-bounce prediction and the listening angle',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans:
       'driver positions are typed from the reference point instead of from the top of the panel, ' +
       'and the drawing places every driver against an origin of zero.',
@@ -1051,6 +1139,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → Cabinet & measurement',
     travels: 'cabinet.refDriver → which driver is the origin, and therefore whose offset is not typed',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans: 'the reference point is a spot on the baffle and every driver states its own offset.',
     source: 'measurement',
     placement: 'always',
@@ -1062,6 +1151,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → Cabinet & measurement',
     travels: 'cabinet.cabinetDepthMm → the baffle width a driver on a side panel radiates from',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans: 'a side-firing driver has no panel width of its own and keeps the front baffle’s step.',
     source: 'measurement',
     placement: 'conditional',
@@ -1076,6 +1166,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → Cabinet & measurement',
     travels: 'cabinet.listenDistanceM / listenEarHeightMm → the seat angle off the reference axis',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans: 'the vertical spacing rules are stated in degrees rather than about your seat.',
     source: 'measurement',
   },
@@ -1087,6 +1178,7 @@ const NICE: readonly V2InputRow[] = [
       'cabinet.drivers[role].count / spacingMm → geometry.sourceCount + arraySpacingMm → the four ' +
       'lobing fractions and the array’s own lobing ceiling; the count also carries the wiring',
     cls: 'nice',
+    effect: 'oordeelt',
     emptyMeans:
       'the branch is read as one radiator: no array lobing ceiling, and the lobing fractions fall ' +
       'back to a single source per way. Never a default of one — unknown is unknown (P4).',
@@ -1104,6 +1196,7 @@ const NICE: readonly V2InputRow[] = [
       'cabinet.drivers[role].facing / depthMm / tiltDeg / opposed → the true off-axis angle, the ' +
       'panel a driver radiates from, and the app’s own measured-depth cross-check',
     cls: 'nice',
+    effect: 'toont',
     emptyMeans:
       'the driver is taken to fire forward from the front baffle with its acoustic centre in the ' +
       'baffle plane. The engine’s geometry reads the acoustic centre from the A5a block, not here.',
@@ -1115,6 +1208,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Setup tab → driver card',
     travels: 'cabinet.drivers[role].enclosure / fbHz → what the box itself already filters, and the excursion warning',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the box behind this driver is unknown and nothing is assumed; the impedance sweep still ' +
       'proposes the corner it measures, with a button to take it.',
@@ -1126,6 +1220,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Drivers tab → Engine v2 — measurement',
     travels: 'v2Meas[role].refTimeMs / rightWindowMs / floorHz → AdapterBranch.manualWindow → validity.ts',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'the file’s own header decides, which is what it is for. A FALLBACK and never an override: ' +
       'nothing typed here can relax a window a file states (A5b.1(i)).',
@@ -1145,6 +1240,7 @@ const NICE: readonly V2InputRow[] = [
       'crossover point is on, → expandStatedRange → statedPerAxisHz, where it is how many STATED ' +
       'positions each pinned handover gets',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'read by the FULL field only; an exploration uses its own chain budget and ignores this ' +
       'number — except as the step count of a pinned crossover point, which both modes read.',
@@ -1159,6 +1255,7 @@ const NICE: readonly V2InputRow[] = [
       'v2StatedRanges → expandStatedRange → statedPerAxisHz → buildCandidateField → one stated ' +
       'candidate per position',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'off = you state no crossing here and the derived A5d.3 field is the whole field. On it is ' +
       'the short way of writing the "Crossings you state" list: N stated positions across the ' +
@@ -1171,6 +1268,7 @@ const NICE: readonly V2InputRow[] = [
     form: 'Filters → Crossover',
     travels: 'scanSteps2 → v2StatedRanges → expandStatedRange; and fieldModeSettings(full) as stepsPerAxis',
     cls: 'nice',
+    effect: 'zoekt',
     emptyMeans:
       'it is a select and is never empty. With the crossover point OFF it states nothing at all; ' +
       'with it on, this is how many positions you asked for and how many chain runs that costs.',
@@ -1192,6 +1290,7 @@ const V1_LEGACY: readonly V2InputRow[] = [
       'unconditionally (declareCandidateChoices) and, on the two-way route, writes it back into the ' +
       'chain settings (withDeclaredSearchSmoothing)',
     cls: 'v1-legacy',
+    effect: 'niets',
     emptyMeans: 'not applicable: the v2 route states its own width whatever this holds.',
     source: 'choice',
     v1Note:
@@ -1204,19 +1303,20 @@ const V1_LEGACY: readonly V2InputRow[] = [
     label: 'Priority: response % · phase %',
     form: 'Filters → Goals & weighting (and the wizard’s Goals step)',
     travels:
-      'chain settings.phasePriority → OVERWRITTEN by the chain declaration, which states ' +
-      'DEFAULT_PHASE_PRIORITY unconditionally (declareCandidateChainChoices, M-4) because the app ' +
-      'does not hand it the slider',
+      'chain settings.phasePriority → OVERWRITTEN for the design and synthesis steps by the chain ' +
+      'declaration (DEFAULT_PHASE_PRIORITY, declareCandidateChainChoices, M-4) — but the TUNER reads ' +
+      'the slider: the worker builds `network.weights` from the raw `input.settings` before the ' +
+      'declaration is applied, and the hook spreads those weights last (U-9, finding N1, measured on ' +
+      'the three-way, the two-way and the hybrid route)',
     cls: 'v1-legacy',
-    emptyMeans: 'not applicable: the v2 route states the engine’s own 50/50 whatever this holds.',
+    effect: 'zoekt',
+    emptyMeans: 'not applicable: the slider always holds a value.',
     source: 'choice',
     v1Note:
-      'v1 — not read by Engine v2 since M-4: the candidate states the engine’s own 50/50 split ' +
-      '(DEFAULT_PHASE_PRIORITY) and that overwrites this. Measured at U-5c, and it is a WIRING GAP ' +
-      'rather than a decision — M-4’s own comment says “a designer who states the slider wins over ' +
-      'it”, and the app never states it. One line in declareCandidateChainChoices would restore it; ' +
-      'that changes what every v2 run with a moved slider does, so it is Sander’s call and not a ' +
-      'marking session’s.',
+      'Half read by Engine v2 (U-9, measured): the design and synthesis steps run on the engine’s ' +
+      'own 50/50 split (M-4), while the tuner runs on this slider. U-5c read it as not read at all; ' +
+      'the measurement says otherwise. Whether the design step should follow the slider, or the tuner ' +
+      'should stop following it, is an engine decision and not a UI one.',
   },
   {
     id: 'hpLpPref',
@@ -1226,6 +1326,7 @@ const V1_LEGACY: readonly V2InputRow[] = [
       'settings.structureLow/structureHigh → OVERRIDDEN per candidate by the alignment A5d.3 ' +
       'derived (chainInputFor: alignmentOf(i) ?? settings.structureLow)',
     cls: 'v1-legacy',
+    effect: 'niets',
     emptyMeans: 'not applicable: the candidate brings its own alignment and order.',
     source: 'choice',
     v1Note:
@@ -1239,6 +1340,7 @@ const V1_LEGACY: readonly V2InputRow[] = [
     form: 'Filters → Crossover',
     travels: 'skipped on the v2 route, with a note in the run notes',
     cls: 'v1-legacy',
+    effect: 'niets',
     emptyMeans: 'not applicable.',
     source: 'choice',
     v1Note:
@@ -1251,6 +1353,7 @@ const V1_LEGACY: readonly V2InputRow[] = [
     form: 'Filters → Targets',
     travels: 'rankChain3Results → the v1 scan TABLE only; it reaches no gate and no shortlist',
     cls: 'v1-legacy',
+    effect: 'toont',
     emptyMeans: 'not applicable to the shortlist.',
     source: 'choice',
     v1Note:
@@ -1263,6 +1366,7 @@ const V1_LEGACY: readonly V2InputRow[] = [
     form: 'Filters → Driver limits',
     travels: 'excursionFloorHz → the v1 physics window floor; the v2 window floor is M-C v2.0’s ceiling',
     cls: 'v1-legacy',
+    effect: 'toont',
     emptyMeans: 'not applicable.',
     source: 'choice',
     /* THE SENTENCE HAS ONE HOME AND TWO READERS. E-2 gave this field its note
@@ -1333,6 +1437,79 @@ export const emptyHelpFor = (key: V2SettingKey): string | null =>
  * field is what it always was, and the toggle invariant is about behaviour the
  * designer sees as well as about bytes in a netlist.
  */
+/**
+ * U-9 — MAY THIS ROW BE RENDERED AT ALL? False for `effect: 'niets'`, in every
+ * mode. Hidden, never deleted: the value stays in state and in the project
+ * file, an old project opens unchanged, and the U-1 carry-over notice still
+ * names it. An unknown id THROWS — a render guard that silently answers "yes"
+ * for a typo is a guard that guards nothing.
+ */
+export const rendersRow = (id: string): boolean => {
+  const row = V2_INPUT_REGISTER.find((r) => r.id === id);
+  if (!row) throw new Error(`rendersRow: no register row "${id}"`);
+  return row.effect !== 'niets';
+};
+
+/** U-9 — the rows that are never rendered (Sander's approval, 25-10-2026). */
+export const V2_NIETS_ROWS: readonly string[] = Object.freeze(
+  V2_INPUT_REGISTER.filter((r) => r.effect === 'niets').map((r) => r.id),
+);
+
+/**
+ * U-9 — CONTROLS THAT APPEAR ONLY ONCE THEIR PARENT IS SET.
+ *
+ * Placement (U-3b) is per ROW; these are single controls INSIDE a row whose
+ * effect depends on a sibling or on another field (startprompt, point 5). A
+ * field that does nothing only because its parent is off is not a 'niets'
+ * field — it is a field that waits, and it waits out of sight. `guard` is the
+ * app's own expression, as it stands in `App.tsx`; the test reads it there.
+ *
+ * NOT here, on purpose: the mutual pairs (peak power ↔ nominal load, resistor
+ * class ↔ margin, Bl ↔ M_ms). Either half can be typed first, so hiding one
+ * until the other is set would make both unreachable.
+ */
+export interface V2DependentControl {
+  row: string;
+  /** The control's identifying source fragment (the `V2_FORM_FIELDS` vocabulary). */
+  control: string;
+  /** The parent, in the app's own words. */
+  parent: string;
+  /** The guard expression that renders the control, verbatim from `App.tsx`. */
+  guard: string;
+}
+export const V2_DEPENDENT_CONTROLS: readonly V2DependentControl[] = Object.freeze([
+  {
+    row: 'minCrossover',
+    control: 'value={v2Meas[role].minCrossoverOrder}',
+    parent: 'a stated recommended minimum crossover frequency',
+    guard: "v2Meas[role].minCrossoverHz.trim() !== '' &&",
+  },
+  {
+    row: 'breakupDivisor',
+    control: 'value={v2Meas[role].breakupDivisorNote}',
+    parent: 'a stated breakup divisor',
+    guard: "v2Meas[role].breakupDivisor.trim() !== '' &&",
+  },
+  {
+    row: 'manualWindow',
+    control: 'value={v2Meas[role].windowNote}',
+    parent: 'a stated manual window (reference, right edge or floor)',
+    guard: "(v2Meas[role].refTimeMs.trim() !== '' ||",
+  },
+  {
+    row: 'rotSym',
+    control: 'value={v2Meas[role].rotSym}',
+    parent: 'a stated vertical window — the vertical-lobing synthesis is its only reader',
+    guard: "engineV2Settings.verticalWindowDeg.trim() !== '' &&",
+  },
+  {
+    row: 'xo3Steps',
+    control: 'value={xo3Steps}',
+    parent: 'a pinned crossover or the full field — the exploration ignores the count (U-5b)',
+    guard: "(xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') &&",
+  },
+]);
+
 export const v1NoteFor = (id: string, engineV2Enabled: boolean): string | null => {
   if (!engineV2Enabled) return null;
   return V2_INPUT_REGISTER.find((r) => r.id === id && r.cls === 'v1-legacy')?.v1Note ?? null;

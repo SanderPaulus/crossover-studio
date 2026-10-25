@@ -254,6 +254,7 @@ import {
   emptyHelpFor,
   rowsOfClass,
   v1NoteFor,
+  rendersRow,
 } from './lib/v2InputRegister.ts';
 /* A5a — the per-branch measurement block. Its own module since U-3: a demo
  * bundle states some of these facts, and the guard that checks a bundle
@@ -2173,9 +2174,12 @@ export default function App() {
    */
   const v1Legacy = (id: string) => {
     const note = v1NoteFor(id, engineV2Enabled);
+    /* U-9 — the badge says what the MEASUREMENT says. A v1 knob the tuner
+     * still reads (`phasePriority`, finding N1) is not "not read". */
+    const halfRead = V2_INPUT_REGISTER.find((r) => r.id === id)?.effect === 'zoekt';
     return note ? (
       <span className="v2-warn" title={note}>
-        {' '}({t('v1 — not read by Engine v2')})
+        {' '}({halfRead ? t('v1 — on Engine v2 only the tuner reads this') : t('v1 — not read by Engine v2')})
       </span>
     ) : null;
   };
@@ -2527,6 +2531,9 @@ export default function App() {
    */
   const scanSteps2 = uiMode === 'guided' ? 9 : xoScanSteps;
   const scanSteps3 = uiMode === 'guided' ? 3 : xo3Steps;
+  /** U-9 — the scan-strategy field is never rendered (`effect: 'niets'`), so the
+   *  step-count label may not keep switching on its hidden value. */
+  const scan3Axes = rendersRow('scan3Mode') && scan3Mode === 'axes';
   /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
    *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
    *  components that reach the goal. */
@@ -8263,8 +8270,10 @@ export default function App() {
       ['ripple', targetRipple !== '2.5', `ripple target ${targetRipple} dB`, () => setTargetRipple('2.5')],
       ['phase', targetPhase !== '15', `phase target ${targetPhase}°`, () => setTargetPhase('15')],
       ['pin', xoRangeOn, `crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz`, () => setXoRangeOn(false)],
-      ['align', hpLpPref !== 'auto', `alignment forced to ${hpLpPref}`, () => setHpLpPref('auto')],
-      ['alignLow', hpLpPrefLow !== 'auto', `low alignment forced to ${hpLpPrefLow}`, () => setHpLpPrefLow('auto')],
+      /* U-9 — a field that is never rendered does not steer the run on any v2
+       * route, so it is not "steering the run" here either. */
+      ['align', rendersRow('hpLpPref') && hpLpPref !== 'auto', `alignment forced to ${hpLpPref}`, () => setHpLpPref('auto')],
+      ['alignLow', rendersRow('hpLpPref') && hpLpPrefLow !== 'auto', `low alignment forced to ${hpLpPrefLow}`, () => setHpLpPrefLow('auto')],
       ['guard', !breakupGuard, 'breakup guard off', () => setBreakupGuard(true)],
       ['dir', dirWeight !== 25, `in-room weight ${dirWeight}%`, () => setDirWeight(25)],
       ['ka', kaTier !== 'measured', `beaming tier ${kaTier}`, () => setKaTier('measured')],
@@ -9635,7 +9644,11 @@ export default function App() {
        * designer picks per run. So it is skipped on the v2 route and said out
        * loud, rather than quietly producing the v1 field under a v2 stamp. */
       const axesOnV2 = useV2 && scan3Mode === 'axes' && !!v2Generated;
-      if (axesOnV2) {
+      /* U-9 — the field is never rendered (`effect: 'niets'`), and 'axes' is its
+       * default, so a note about it on every three-way run would name a setting
+       * nobody can see. The branch itself is untouched: `axesOnV2` still keeps the
+       * v1 sweep off the v2 route, and the fallback still reads the field. */
+      if (axesOnV2 && rendersRow('scan3Mode')) {
         setV2RunNotes((prev) => [
           ...prev,
           'The axis-by-axis scan was not used: it is a v1 way of GENERATING candidates (sweep one ' +
@@ -15042,6 +15055,9 @@ export default function App() {
                                   onChange={(e) => setV2MeasField(role, 'minCrossoverHz', e.target.value)}
                                   style={{ width: '5rem' }}
                                 />
+                                {/* U-9 — the order only qualifies a stated frequency: without one it does nothing. */}
+                                {v2Meas[role].minCrossoverHz.trim() !== '' && (
+                                <>
                                 {' Hz · ' + t('stated at') + ' '}
                                 <select
                                   value={v2Meas[role].minCrossoverOrder}
@@ -15053,6 +15069,8 @@ export default function App() {
                                   <option value="3">{t('3rd order (18 dB/oct)')}</option>
                                   <option value="4">{t('4th order (24 dB/oct)')}</option>
                                 </select>
+                                </>
+                                )}
                                 {' · ' + t('up to') + ' '}
                                 <input
                                   type="number"
@@ -15195,6 +15213,8 @@ export default function App() {
                                 style={{ width: '5rem' }}
                               />
                               {' Hz '}
+                              {/* U-9 — the provenance of a window, so only once a window is stated. */}
+                              {(v2Meas[role].refTimeMs.trim() !== '' || v2Meas[role].rightWindowMs.trim() !== '' || v2Meas[role].floorHz.trim() !== '') && (
                               <input
                                 type="text"
                                 placeholder={t('where these came from')}
@@ -15202,6 +15222,7 @@ export default function App() {
                                 onChange={(e) => setV2MeasField(role, 'windowNote', e.target.value)}
                                 style={{ width: '10rem' }}
                               />
+                              )}
                             </span>
                           </>
                         )}
@@ -15484,6 +15505,8 @@ export default function App() {
                                 />
                                 {' mm'}
                               </span>{' '}
+                              {/* U-9 — the point-source assumption is read only by the vertical-lobing synthesis, which needs a stated window. */}
+                              {engineV2Settings.verticalWindowDeg.trim() !== '' && (
                               <span
                                 className="inline-num"
                                 title={t("Does this branch radiate rotationally symmetrically about its axis? M-F-final treats every source as a point at its acoustic centre, and that assumption is weakest where the radiation is not symmetric. Left unstated the metric says so as a limitation — it does not assume either answer.")}
@@ -15497,7 +15520,8 @@ export default function App() {
                                   <option value="yes">{t('yes')}</option>
                                   <option value="no">{t('no')}</option>
                                 </select>
-                              </span>{' '}
+                              </span>
+                              )}{' '}
                               <span
                                 className="inline-num"
                                 title={t("DC resistance measured with a meter, Ω. This OUTRANKS both sweep derivations: it is a measurement of the quantity itself, while everything read off an impedance sweep is inference. It moves M-E, the Q_es search bound, the vented loss indicator and the sealed alignment together, because all of them divide by it. Blank = the engine derives it and shows which way.")}
@@ -15619,6 +15643,8 @@ export default function App() {
                                   onChange={(e) => setV2MeasField(role, 'breakupDivisor', e.target.value)}
                                   style={{ width: '4rem' }}
                                 />{' '}
+                                {/* U-9 — the note travels only with a stated divisor. */}
+                                {v2Meas[role].breakupDivisor.trim() !== '' && (
                                 <input
                                   type="text"
                                   placeholder={t('when and how it was measured')}
@@ -15626,6 +15652,7 @@ export default function App() {
                                   onChange={(e) => setV2MeasField(role, 'breakupDivisorNote', e.target.value)}
                                   style={{ width: '11rem' }}
                                 />
+                                )}
                               </span>
                             </span>
                           </>
@@ -16928,6 +16955,12 @@ export default function App() {
                   </p>
                 );
               })()}
+              {/* U-9 — the alignment preference does nothing on any v2 route
+                * (`effect: 'niets'`), so neither it nor the sentence that
+                * contrasts it with the slopes is rendered. Its value stays in
+                * the project file. */}
+              {rendersRow('hpLpPref') && (
+              <>
               <p className="sub" style={{ marginBottom: '0.15rem' }}>
                 {t('The next two look alike but are NOT the same thing — one is how you build it, the other is what comes out:')}
               </p>
@@ -16943,6 +16976,8 @@ export default function App() {
                   ))}
                 </select>
               </p>
+              </>
+              )}
               <p style={{ margin: '0 0 0.1rem' }}>
                 <strong>{t('Acoustic slopes')}</strong>{' '}
                 <span className="sub">{t('— the MEASURED roll-off of driver + filter together (the result)')}</span>
@@ -17046,6 +17081,8 @@ export default function App() {
               {(() => {
                 const anySeries =
                   snapSeriesL !== 'auto' || snapSeriesC !== 'auto' || snapSeriesR !== 'auto';
+                /* U-9 — binding to a series only means something once a series is chosen. */
+                if (!anySeries) return null;
                 return (
                   <label
                     style={{ display: 'block', opacity: anySeries ? 1 : 0.5 }}
@@ -17113,11 +17150,16 @@ export default function App() {
                   : t('Crossover free')}
                 {tweeterHpFloor !== null && ` · ${t('HP floor {f} Hz', { f: tweeterHpFloor })}`}
                 <br />
-                {t('Alignment {a} · slopes mid {m} / tweeter {tw}', {
-                  a: hpLpPref === 'auto' ? t('Auto') : hpLpPref,
-                  m: acSlopeMid === 'auto' ? t('Auto') : `${acSlopeMid} dB/oct`,
-                  tw: acSlopeTweeter === 'auto' ? t('Auto') : `${acSlopeTweeter} dB/oct`,
-                })}
+                {rendersRow('hpLpPref')
+                  ? t('Alignment {a} · slopes mid {m} / tweeter {tw}', {
+                      a: hpLpPref === 'auto' ? t('Auto') : hpLpPref,
+                      m: acSlopeMid === 'auto' ? t('Auto') : `${acSlopeMid} dB/oct`,
+                      tw: acSlopeTweeter === 'auto' ? t('Auto') : `${acSlopeTweeter} dB/oct`,
+                    })
+                  : t('Slopes mid {m} / tweeter {tw}', {
+                      m: acSlopeMid === 'auto' ? t('Auto') : `${acSlopeMid} dB/oct`,
+                      tw: acSlopeTweeter === 'auto' ? t('Auto') : `${acSlopeTweeter} dB/oct`,
+                    })}
                 <br />
                 {catalogSnap && hasImportedCatalog()
                   ? t('catalog parts · profile {p}', { p: snapProfile })
@@ -20198,6 +20240,8 @@ export default function App() {
                     </>
                   )}
                 </label>
+                {/* U-9 — `effect: 'niets'`: never rendered; the value stays in the project. */}
+                {rendersRow('errorSmoothOct') && (
                 <label
                   className="inline-num"
                   title={t('Smoothing of the on-axis and energy-average magnitudes the SEARCH judges (Gaussian in log-f, applied before decimation to the inner grid). Diffraction ripple and measurement noise no filter can fix stop steering the search. Off = legacy raw points. Gates, staged targets and the safety gate always judge the raw full grid; the scan table shows the smoothed peak with the raw peak as tooltip.')}
@@ -20218,6 +20262,7 @@ export default function App() {
                   </select>
                   {v1Legacy('errorSmoothOct')}
                 </label>
+                )}
                 <label
                   className="inline-num"
                   title={t("Source resistance the LOW driver sees at its box tuning (real part of the Thevenin impedance looking back from its terminals): series R and coil DCR in the woofer branch add to Re and raise Qes — damping and efficiency lost, invisible to every response metric. Above this limit a scan candidate loses a ranking class (same mechanism as the Z floor) and a staged prune/escalation move that pushes it over is not accepted. Yellow from half the limit. Model estimate outside the measured band.")}
@@ -20365,7 +20410,7 @@ export default function App() {
                     }
                   />
                 </label>
-                {threeWay && (
+                {threeWay && rendersRow('hpLpPref') && (
                   <label title={t('Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.')}>
                     {t('HP/LP preference (low xo)')}
                     {v1Legacy('hpLpPref')}
@@ -20382,6 +20427,7 @@ export default function App() {
                     </select>
                   </label>
                 )}
+                {rendersRow('hpLpPref') && (
                 <label title={t('Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.')}>
                   {threeWay ? t('HP/LP preference (high xo)') : t('HP/LP preference')}
                   {v1Legacy('hpLpPref')}
@@ -20397,6 +20443,7 @@ export default function App() {
                     <option value="BS4">Bessel 4 (24 dB/oct)</option>
                   </select>
                 </label>
+                )}
                 <label title={t('Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.')}>
                   {threeWay ? t('Acoustic slope mid LP (high xo)') : t('Acoustic slope mid')}
                   <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)} disabled={!!soloDriver}>
@@ -21390,7 +21437,7 @@ export default function App() {
                     {t('tweeter kept above {n} Hz (2× its measured resonance)', { n: tweeterHpFloor })}
                   </span>
                 )}
-                {threeWay && (
+                {threeWay && rendersRow('scan3Mode') && (
                   <label title={t('How the 3-way scan searches the two handovers. Axis by axis: sweep W-M (M-T held at its anchor), then M-T with the best W-M, then a local 3×3 refinement around the pair (skipped when the sweeps show no coupling) — finer per axis for far fewer chains than a grid of the same resolution. Grid: every corner combination.')}>
                     {t('Scan strategy')}
                     {v1Legacy('scan3Mode')}
@@ -21407,15 +21454,17 @@ export default function App() {
                     </select>
                   </label>
                 )}
-                {threeWay && (
-                  <label title={scan3Mode === 'axes'
+                {/* U-9 — on Engine v2 the step count is read by the FULL field and by a
+                  * pinned crossover; the exploration ignores it (U-5b). */}
+                {threeWay && (xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') && (
+                  <label title={scan3Axes
                     ? t('Points per axis for the sweeps: 3/5/7 — the W-M sweep runs that many chains, the M-T sweep as many again, the refinement up to 9 more.')
                     : t('How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.')}>
-                    {scan3Mode === 'axes' ? t('Points per axis') : t('Handover candidates to try')}
+                    {scan3Axes ? t('Points per axis') : t('Handover candidates to try')}
                     <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
                       {[1, 2, 3].map((n) => (
                         <option key={n} value={n}>
-                          {scan3Mode === 'axes'
+                          {scan3Axes
                             ? `${1 + 2 * n} (${2 * (1 + 2 * n)}–${2 * (1 + 2 * n) + 9} sims)`
                             : `${n} (${n * n} sim${n * n > 1 ? 's' : ''})`}
                         </option>

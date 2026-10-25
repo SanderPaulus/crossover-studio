@@ -1,0 +1,8479 @@
+{
+ "format": "u9-field-effects/1",
+ "gemeten_op": "2026-10-25",
+ "rows": [
+  {
+   "row": "phasePriority",
+   "label": "Priority (amplitude ↔ phase)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "phasePriority=25",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "phasePriority"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "phasePriority",
+   "label": "Priority (amplitude ↔ phase)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "phasePriority=75",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "phasePriority"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "errorSmoothOct",
+   "label": "Error smoothing",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "errorSmoothOct=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "errorSmoothOct",
+   "label": "Error smoothing",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "errorSmoothOct=0.16666666666666666",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (high)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "hpLpPref=\"LR2\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (high)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "hpLpPref=\"BW3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (low)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "hpLpPrefLow=\"LR2\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (low)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "hpLpPrefLow=\"BW3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:dirWeight",
+   "label": "Directivity weight (energy average)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "dirWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "directivityWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dirWeight",
+   "label": "Directivity weight (energy average)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "dirWeight=60",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "directivityWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:ampTarget",
+   "label": "Amplitude target (on-axis / listening window)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "ampTarget=\"listeningWindow\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "ampTarget"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerMetric",
+   "label": "Power metric",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "powerMetric=\"legacy\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "powerMetric"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerFoldWeight",
+   "label": "Power-fold weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "powerFoldWeight=0.1",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "powerFoldWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerFoldWeight",
+   "label": "Power-fold weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "powerFoldWeight=2",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "powerFoldWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:costWeight",
+   "label": "Cost weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "costWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "costWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:costWeight",
+   "label": "Cost weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "costWeight=0.1",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "costWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dissipationWeight",
+   "label": "Dissipation weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "dissipationWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "dissipationWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dissipationWeight",
+   "label": "Dissipation weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "dissipationWeight=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "dissipationWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceLimitOhm",
+   "label": "Source R limit (audit tier)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "rSourceLimitOhm=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceLimitOhm",
+   "label": "Source R limit (audit tier)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "rSourceLimitOhm=3",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceDisqOhm",
+   "label": "Source R disqualify",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "rSourceDisqOhm=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "rSourceDisqualifyOhm"
+   ],
+   "tuner": [
+    "rSourceDisqualifyOhm"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceDisqOhm",
+   "label": "Source R disqualify",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "rSourceDisqOhm=6",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "rSourceDisqualifyOhm"
+   ],
+   "tuner": [
+    "rSourceDisqualifyOhm"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:diWeight",
+   "label": "DI anchor weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "diWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "diWeight"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:diWeight",
+   "label": "DI anchor weight",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "diWeight=1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "diWeight"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:vfEqBands",
+   "label": "EQ bands per driver",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "vfEqBands=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "eqBands"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:vfEqBands",
+   "label": "EQ bands per driver",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "vfEqBands=4",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "eqBands"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:breakupGuard",
+   "label": "Breakup guard",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "breakupGuard=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "breakupGuard"
+   ],
+   "tuner": [
+    "breakupGuard"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:phaseMetricMode",
+   "label": "Phase metric (band / overlap)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "phaseMetricMode=\"overlap\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "phaseMetric"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:synthMode",
+   "label": "Synthesis mode (filter / acoustic)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "synthMode=\"filter\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "synthMode"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "catalogSnap",
+   "label": "Snap to catalogue",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "catalogSnap=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "catalogSnap"
+   ],
+   "tuner": [
+    "catalogSnap"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapProfile",
+   "label": "Snap profile",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "snapProfile=\"premium\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapProfile",
+   "label": "Snap profile",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "snapProfile=\"budget\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapStacks",
+   "label": "Allow stacks",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "snapStacks=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:stagedOn",
+   "label": "Staged pass on/off",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "stagedOn=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetRipple",
+   "label": "Staged ripple target",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "targetRipple=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetRipple",
+   "label": "Staged ripple target",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "targetRipple=\"4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetPhase",
+   "label": "Staged phase target",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "targetPhase=\"5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetPhase",
+   "label": "Staged phase target",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "targetPhase=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:roomCorrection",
+   "label": "Room correction present",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "roomCorrection=true",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:roomRippleDb",
+   "label": "Room-correction ripple (only with room correction on)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "roomCorrection=true,roomRippleDb=6",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeMid=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeMid=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeTweeter=\"24\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeTweeter=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer (LP, 3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeWoofer=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer (LP, 3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeWoofer=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMidHp",
+   "label": "Acoustic slope mid (HP, 3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeMidHp=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMidHp",
+   "label": "Acoustic slope mid (HP, 3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "acSlopeMidHp=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "ampMinLoadOhm=2.6",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "ampMinLoadOhm",
+    "zFloorBarrier",
+    "zFloorBarrierImpedance",
+    "zFloorBarrierSource"
+   ],
+   "v2run": [
+    "gates.ampMinLoadOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "ampMinLoadOhm=4",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "ampMinLoadOhm",
+    "zFloorBarrier",
+    "zFloorBarrierImpedance",
+    "zFloorBarrierSource"
+   ],
+   "v2run": [
+    "gates.ampMinLoadOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:tweeterOffsetMm",
+   "label": "Tweeter adjustment: offset mm",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "offsetMm=10",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__tAdjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:tweeterTrimDb",
+   "label": "Tweeter adjustment: trim dB",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "trimDb=-1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__tAdjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:midOffsetMm",
+   "label": "Mid adjustment: offset mm (3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "midOffsetMm=10",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__midAdjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:midTrimDb",
+   "label": "Mid adjustment: trim dB (3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "midTrimDb=-1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__midAdjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:fbHzLow",
+   "label": "Box tuning f_b (low driver card)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "fbHzLow=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:fbHzLow",
+   "label": "Box tuning f_b (low driver card)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "fbHzLow=\"45\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (M-A)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "maxDissipationPct=\"35\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.maxDissipationFraction"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (M-A)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "maxDissipationPct=\"60\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.maxDissipationFraction"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "minEpdrOhm=\"1.6\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.minEpdrOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "minEpdrOhm=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.minEpdrOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (M-C)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "maxDriveOnFsDb=\"-18\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings"
+   ],
+   "v2run": [
+    "gates.maxDriveOnFsDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (M-C)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "maxDriveOnFsDb=\"-30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings"
+   ],
+   "v2run": [
+    "gates.maxDriveOnFsDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (zonder nominale last)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "amplifierPeakPowerW=\"160\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (zonder nominale last)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "amplifierPeakPowerW=\"400\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (mét nominale last 8 Ω)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "peak=160,nominal=8",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.peakInputVolts"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (mét nominale last 8 Ω)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "peak=400,nominal=8",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.peakInputVolts"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierNominalLoadOhm",
+   "label": "Amplifier nominal load (zonder piekvermogen)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "amplifierNominalLoadOhm=\"4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierNominalLoadOhm",
+   "label": "Amplifier nominal load (zonder piekvermogen)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "amplifierNominalLoadOhm=\"8\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (zonder marge)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "resistorClassW=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (zonder marge)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "resistorClassW=\"20\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (mét marge 0,5)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "class=10,margin=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW",
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin (zonder klasse)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "resistorPowerMargin=\"0.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin (zonder klasse)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "resistorPowerMargin=\"0.8\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (A)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "coilClassA=\"5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.coilClassA"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (A)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "coilClassA=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.coilClassA"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "resistorThermalPowerW=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorThermalPowerW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "resistorThermalPowerW=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorThermalPowerW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work on lowest way",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "lowestWayLevelWork=\"none\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work on lowest way",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "lowestWayLevelWork=\"series-r-max\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (onder series-r-max)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "series-r-max,1.0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (onder series-r-max)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "series-r-max,2.0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (zonder ouder)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "lowestWaySeriesRMaxOhm=\"1.0\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (M-D)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "lfBumpBudgetDb=\"1.4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "seriesInductanceBound",
+    "seriesInductanceCeilingSource",
+    "valueSoftCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.lfBumpBudgetDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (M-D)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "lfBumpBudgetDb=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "seriesInductanceBound",
+    "seriesInductanceCeilingSource",
+    "valueSoftCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.lfBumpBudgetDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es multiplier max (M-E)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "qesMultiplierMax=\"2.4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.qesMultiplierMax"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es multiplier max (M-E)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "qesMultiplierMax=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.qesMultiplierMax"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "dampingMarginDb=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.dampingMarginDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "dampingMarginDb=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.dampingMarginDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runSeed",
+   "label": "Run seed",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "runSeed=\"1\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "determinism.seed"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runSeed",
+   "label": "Run seed",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "runSeed=\"2\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "determinism.seed"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runBudgetEvals",
+   "label": "Run budget (evaluations)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "runBudgetEvals=\"500\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "maxIterations"
+   ],
+   "v2run": [
+    "determinism.budgetEvaluations"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runBudgetEvals",
+   "label": "Run budget (evaluations)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "runBudgetEvals=\"5000\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "maxIterations"
+   ],
+   "v2run": [
+    "determinism.budgetEvaluations"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "fieldMode",
+   "label": "Candidate field (exploration / full)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "fieldMode=\"full\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [
+    "xoRangePairs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "polarityArms",
+   "label": "Polarity arms (textbook / both)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "polarityArms=\"both\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "statedCrossings",
+   "label": "Stated crossings (drieweg)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "statedCrossings=\"300; 2200\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "crossoverPoint",
+   "label": "Crossover point (pin) on",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "xoRangeOn,2300±100",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "crossoverPoint",
+   "label": "Crossover point (pin) zonder vinkje",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "xoRangeOff,2300±100",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xo3Steps",
+   "label": "Scan steps (3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "steps=5 (verkenning)",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xo3Steps",
+   "label": "Scan steps (3-way)",
+   "route": "drieweg · casus 1 (m3)",
+   "arm": "steps=5 (vol veld)",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [
+    "xoRangePairs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "phasePriority",
+   "label": "Priority (amplitude ↔ phase)",
+   "route": "tweeweg · casus 1b",
+   "arm": "phasePriority=25",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "phasePriority"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "phasePriority",
+   "label": "Priority (amplitude ↔ phase)",
+   "route": "tweeweg · casus 1b",
+   "arm": "phasePriority=75",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "phasePriority"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "errorSmoothOct",
+   "label": "Error smoothing",
+   "route": "tweeweg · casus 1b",
+   "arm": "errorSmoothOct=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "errorSmoothOct",
+   "label": "Error smoothing",
+   "route": "tweeweg · casus 1b",
+   "arm": "errorSmoothOct=0.16666666666666666",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (high)",
+   "route": "tweeweg · casus 1b",
+   "arm": "hpLpPref=\"LR2\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (high)",
+   "route": "tweeweg · casus 1b",
+   "arm": "hpLpPref=\"BW3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:dirWeight",
+   "label": "Directivity weight (energy average)",
+   "route": "tweeweg · casus 1b",
+   "arm": "dirWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "directivityWeight"
+   ],
+   "tuner": [
+    "directivityWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dirWeight",
+   "label": "Directivity weight (energy average)",
+   "route": "tweeweg · casus 1b",
+   "arm": "dirWeight=60",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "directivityWeight"
+   ],
+   "tuner": [
+    "directivityWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:ampTarget",
+   "label": "Amplitude target (on-axis / listening window)",
+   "route": "tweeweg · casus 1b",
+   "arm": "ampTarget=\"listeningWindow\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "ampTarget"
+   ],
+   "tuner": [
+    "ampTarget"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerMetric",
+   "label": "Power metric",
+   "route": "tweeweg · casus 1b",
+   "arm": "powerMetric=\"legacy\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "powerMetric"
+   ],
+   "tuner": [
+    "powerMetric"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerFoldWeight",
+   "label": "Power-fold weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "powerFoldWeight=0.1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "powerFoldWeight"
+   ],
+   "tuner": [
+    "powerFoldWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerFoldWeight",
+   "label": "Power-fold weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "powerFoldWeight=2",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "powerFoldWeight"
+   ],
+   "tuner": [
+    "powerFoldWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:costWeight",
+   "label": "Cost weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "costWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "costWeight"
+   ],
+   "tuner": [
+    "costWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:costWeight",
+   "label": "Cost weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "costWeight=0.1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "costWeight"
+   ],
+   "tuner": [
+    "costWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dissipationWeight",
+   "label": "Dissipation weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "dissipationWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "dissipationWeight"
+   ],
+   "tuner": [
+    "dissipationWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dissipationWeight",
+   "label": "Dissipation weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "dissipationWeight=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "dissipationWeight"
+   ],
+   "tuner": [
+    "dissipationWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceLimitOhm",
+   "label": "Source R limit (audit tier)",
+   "route": "tweeweg · casus 1b",
+   "arm": "rSourceLimitOhm=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceLimitOhm",
+   "label": "Source R limit (audit tier)",
+   "route": "tweeweg · casus 1b",
+   "arm": "rSourceLimitOhm=3",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceDisqOhm",
+   "label": "Source R disqualify",
+   "route": "tweeweg · casus 1b",
+   "arm": "rSourceDisqOhm=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:rSourceDisqOhm",
+   "label": "Source R disqualify",
+   "route": "tweeweg · casus 1b",
+   "arm": "rSourceDisqOhm=6",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:diWeight",
+   "label": "DI anchor weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "diWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:diWeight",
+   "label": "DI anchor weight",
+   "route": "tweeweg · casus 1b",
+   "arm": "diWeight=1",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:vfEqBands",
+   "label": "EQ bands per driver",
+   "route": "tweeweg · casus 1b",
+   "arm": "vfEqBands=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "eqBandsPerDriver"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:vfEqBands",
+   "label": "EQ bands per driver",
+   "route": "tweeweg · casus 1b",
+   "arm": "vfEqBands=4",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "eqBandsPerDriver"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:breakupGuard",
+   "label": "Breakup guard",
+   "route": "tweeweg · casus 1b",
+   "arm": "breakupGuard=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "breakupGuard"
+   ],
+   "tuner": [
+    "breakupGuard"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:phaseMetricMode",
+   "label": "Phase metric (band / overlap)",
+   "route": "tweeweg · casus 1b",
+   "arm": "phaseMetricMode=\"overlap\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "phaseMetric"
+   ],
+   "tuner": [
+    "phaseMetric"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:synthMode",
+   "label": "Synthesis mode (filter / acoustic)",
+   "route": "tweeweg · casus 1b",
+   "arm": "synthMode=\"filter\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "synthMode"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "catalogSnap",
+   "label": "Snap to catalogue",
+   "route": "tweeweg · casus 1b",
+   "arm": "catalogSnap=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "catalogSnap"
+   ],
+   "tuner": [
+    "catalogSnap"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapProfile",
+   "label": "Snap profile",
+   "route": "tweeweg · casus 1b",
+   "arm": "snapProfile=\"premium\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapProfile",
+   "label": "Snap profile",
+   "route": "tweeweg · casus 1b",
+   "arm": "snapProfile=\"budget\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapStacks",
+   "label": "Allow stacks",
+   "route": "tweeweg · casus 1b",
+   "arm": "snapStacks=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:stagedOn",
+   "label": "Staged pass on/off",
+   "route": "tweeweg · casus 1b",
+   "arm": "stagedOn=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetRipple",
+   "label": "Staged ripple target",
+   "route": "tweeweg · casus 1b",
+   "arm": "targetRipple=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetRipple",
+   "label": "Staged ripple target",
+   "route": "tweeweg · casus 1b",
+   "arm": "targetRipple=\"4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetPhase",
+   "label": "Staged phase target",
+   "route": "tweeweg · casus 1b",
+   "arm": "targetPhase=\"5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetPhase",
+   "label": "Staged phase target",
+   "route": "tweeweg · casus 1b",
+   "arm": "targetPhase=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:roomCorrection",
+   "label": "Room correction present",
+   "route": "tweeweg · casus 1b",
+   "arm": "roomCorrection=true",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:roomRippleDb",
+   "label": "Room-correction ripple (only with room correction on)",
+   "route": "tweeweg · casus 1b",
+   "arm": "roomCorrection=true,roomRippleDb=6",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeMid=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeMid=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeTweeter=\"24\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeTweeter=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer (LP, 3-way)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeWoofer=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer (LP, 3-way)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeWoofer=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeMidHp",
+   "label": "Acoustic slope mid (HP, 3-way)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeMidHp=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeMidHp",
+   "label": "Acoustic slope mid (HP, 3-way)",
+   "route": "tweeweg · casus 1b",
+   "arm": "acSlopeMidHp=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load",
+   "route": "tweeweg · casus 1b",
+   "arm": "ampMinLoadOhm=2.6",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "ampMinLoadOhm"
+   ],
+   "tuner": [
+    "ampMinLoadOhm",
+    "zFloorBarrier",
+    "zFloorBarrierImpedance",
+    "zFloorBarrierSource"
+   ],
+   "v2run": [
+    "gates.ampMinLoadOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load",
+   "route": "tweeweg · casus 1b",
+   "arm": "ampMinLoadOhm=4",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "ampMinLoadOhm"
+   ],
+   "tuner": [
+    "ampMinLoadOhm",
+    "zFloorBarrier",
+    "zFloorBarrierImpedance",
+    "zFloorBarrierSource"
+   ],
+   "v2run": [
+    "gates.ampMinLoadOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:tweeterOffsetMm",
+   "label": "Tweeter adjustment: offset mm",
+   "route": "tweeweg · casus 1b",
+   "arm": "offsetMm=10",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__adjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:tweeterTrimDb",
+   "label": "Tweeter adjustment: trim dB",
+   "route": "tweeweg · casus 1b",
+   "arm": "trimDb=-1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__adjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:fbHzLow",
+   "label": "Box tuning f_b (low driver card)",
+   "route": "tweeweg · casus 1b",
+   "arm": "fbHzLow=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:fbHzLow",
+   "label": "Box tuning f_b (low driver card)",
+   "route": "tweeweg · casus 1b",
+   "arm": "fbHzLow=\"45\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (M-A)",
+   "route": "tweeweg · casus 1b",
+   "arm": "maxDissipationPct=\"35\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.maxDissipationFraction"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (M-A)",
+   "route": "tweeweg · casus 1b",
+   "arm": "maxDissipationPct=\"60\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.maxDissipationFraction"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR",
+   "route": "tweeweg · casus 1b",
+   "arm": "minEpdrOhm=\"1.6\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.minEpdrOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR",
+   "route": "tweeweg · casus 1b",
+   "arm": "minEpdrOhm=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.minEpdrOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (M-C)",
+   "route": "tweeweg · casus 1b",
+   "arm": "maxDriveOnFsDb=\"-18\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings"
+   ],
+   "v2run": [
+    "gates.maxDriveOnFsDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (M-C)",
+   "route": "tweeweg · casus 1b",
+   "arm": "maxDriveOnFsDb=\"-30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings"
+   ],
+   "v2run": [
+    "gates.maxDriveOnFsDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (zonder nominale last)",
+   "route": "tweeweg · casus 1b",
+   "arm": "amplifierPeakPowerW=\"160\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (zonder nominale last)",
+   "route": "tweeweg · casus 1b",
+   "arm": "amplifierPeakPowerW=\"400\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (mét nominale last 8 Ω)",
+   "route": "tweeweg · casus 1b",
+   "arm": "peak=160,nominal=8",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.peakInputVolts"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (mét nominale last 8 Ω)",
+   "route": "tweeweg · casus 1b",
+   "arm": "peak=400,nominal=8",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.peakInputVolts"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierNominalLoadOhm",
+   "label": "Amplifier nominal load (zonder piekvermogen)",
+   "route": "tweeweg · casus 1b",
+   "arm": "amplifierNominalLoadOhm=\"4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierNominalLoadOhm",
+   "label": "Amplifier nominal load (zonder piekvermogen)",
+   "route": "tweeweg · casus 1b",
+   "arm": "amplifierNominalLoadOhm=\"8\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (zonder marge)",
+   "route": "tweeweg · casus 1b",
+   "arm": "resistorClassW=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (zonder marge)",
+   "route": "tweeweg · casus 1b",
+   "arm": "resistorClassW=\"20\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (mét marge 0,5)",
+   "route": "tweeweg · casus 1b",
+   "arm": "class=10,margin=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW",
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin (zonder klasse)",
+   "route": "tweeweg · casus 1b",
+   "arm": "resistorPowerMargin=\"0.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin (zonder klasse)",
+   "route": "tweeweg · casus 1b",
+   "arm": "resistorPowerMargin=\"0.8\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (A)",
+   "route": "tweeweg · casus 1b",
+   "arm": "coilClassA=\"5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.coilClassA"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (A)",
+   "route": "tweeweg · casus 1b",
+   "arm": "coilClassA=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.coilClassA"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power",
+   "route": "tweeweg · casus 1b",
+   "arm": "resistorThermalPowerW=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorThermalPowerW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power",
+   "route": "tweeweg · casus 1b",
+   "arm": "resistorThermalPowerW=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorThermalPowerW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work on lowest way",
+   "route": "tweeweg · casus 1b",
+   "arm": "lowestWayLevelWork=\"none\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork",
+    "noShelfOnWoofer"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work on lowest way",
+   "route": "tweeweg · casus 1b",
+   "arm": "lowestWayLevelWork=\"series-r-max\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (onder series-r-max)",
+   "route": "tweeweg · casus 1b",
+   "arm": "series-r-max,1.0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork",
+    "noShelfOnWoofer"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (onder series-r-max)",
+   "route": "tweeweg · casus 1b",
+   "arm": "series-r-max,2.0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork",
+    "noShelfOnWoofer"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (zonder ouder)",
+   "route": "tweeweg · casus 1b",
+   "arm": "lowestWaySeriesRMaxOhm=\"1.0\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (M-D)",
+   "route": "tweeweg · casus 1b",
+   "arm": "lfBumpBudgetDb=\"1.4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "seriesInductanceBound",
+    "seriesInductanceCeilingSource",
+    "valueSoftCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.lfBumpBudgetDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (M-D)",
+   "route": "tweeweg · casus 1b",
+   "arm": "lfBumpBudgetDb=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "seriesInductanceBound",
+    "seriesInductanceCeilingSource",
+    "valueSoftCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.lfBumpBudgetDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es multiplier max (M-E)",
+   "route": "tweeweg · casus 1b",
+   "arm": "qesMultiplierMax=\"2.4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.qesMultiplierMax"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es multiplier max (M-E)",
+   "route": "tweeweg · casus 1b",
+   "arm": "qesMultiplierMax=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.qesMultiplierMax"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin",
+   "route": "tweeweg · casus 1b",
+   "arm": "dampingMarginDb=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.dampingMarginDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin",
+   "route": "tweeweg · casus 1b",
+   "arm": "dampingMarginDb=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.dampingMarginDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runSeed",
+   "label": "Run seed",
+   "route": "tweeweg · casus 1b",
+   "arm": "runSeed=\"1\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "determinism.seed"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runSeed",
+   "label": "Run seed",
+   "route": "tweeweg · casus 1b",
+   "arm": "runSeed=\"2\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "determinism.seed"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runBudgetEvals",
+   "label": "Run budget (evaluations)",
+   "route": "tweeweg · casus 1b",
+   "arm": "runBudgetEvals=\"500\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "maxIterations"
+   ],
+   "v2run": [
+    "determinism.budgetEvaluations"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runBudgetEvals",
+   "label": "Run budget (evaluations)",
+   "route": "tweeweg · casus 1b",
+   "arm": "runBudgetEvals=\"5000\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "maxIterations"
+   ],
+   "v2run": [
+    "determinism.budgetEvaluations"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "fieldMode",
+   "label": "Candidate field (exploration / full)",
+   "route": "tweeweg · casus 1b",
+   "arm": "fieldMode=\"full\"",
+   "layer": "payload",
+   "field": true,
+   "design": [
+    "xoRange"
+   ],
+   "tuner": [
+    "rippleTargetBandHz",
+    "xoRange",
+    "xoRangePairs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "polarityArms",
+   "label": "Polarity arms (textbook / both)",
+   "route": "tweeweg · casus 1b",
+   "arm": "polarityArms=\"both\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "statedCrossings",
+   "label": "Stated crossings",
+   "route": "tweeweg · casus 1b",
+   "arm": "statedCrossings=\"2200\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "statedCrossings",
+   "label": "Stated crossings",
+   "route": "tweeweg · casus 1b",
+   "arm": "statedCrossings=\"2000, 2400\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "crossoverPoint",
+   "label": "Crossover point (pin) on",
+   "route": "tweeweg · casus 1b",
+   "arm": "xoRangeOn,2300±100",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "crossoverPoint",
+   "label": "Crossover point (pin) zonder vinkje",
+   "route": "tweeweg · casus 1b",
+   "arm": "xoRangeOff,2300±100",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xoScanSteps",
+   "label": "Scan steps (2-way)",
+   "route": "tweeweg · casus 1b",
+   "arm": "steps=5 (pin uit)",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xoScanSteps",
+   "label": "Scan steps (2-way)",
+   "route": "tweeweg · casus 1b",
+   "arm": "steps=5 (pin aan)",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "xoScanSteps",
+   "label": "Scan steps (2-way)",
+   "route": "tweeweg · casus 1b",
+   "arm": "steps=5 (vol veld)",
+   "layer": "payload",
+   "field": true,
+   "design": [
+    "xoRange"
+   ],
+   "tuner": [
+    "rippleTargetBandHz",
+    "xoRange",
+    "xoRangePairs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "phasePriority",
+   "label": "Priority (amplitude ↔ phase)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "phasePriority=25",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "phasePriority"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "phasePriority",
+   "label": "Priority (amplitude ↔ phase)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "phasePriority=75",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "phasePriority"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "errorSmoothOct",
+   "label": "Error smoothing",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "errorSmoothOct=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "errorSmoothOct",
+   "label": "Error smoothing",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "errorSmoothOct=0.16666666666666666",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (high)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "hpLpPref=\"LR2\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "hpLpPref",
+   "label": "HP/LP preference (high)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "hpLpPref=\"BW3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:dirWeight",
+   "label": "Directivity weight (energy average)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "dirWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "directivityWeight"
+   ],
+   "tuner": [
+    "directivityWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dirWeight",
+   "label": "Directivity weight (energy average)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "dirWeight=60",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "directivityWeight"
+   ],
+   "tuner": [
+    "directivityWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:ampTarget",
+   "label": "Amplitude target (on-axis / listening window)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "ampTarget=\"listeningWindow\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "ampTarget"
+   ],
+   "tuner": [
+    "ampTarget"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerMetric",
+   "label": "Power metric",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "powerMetric=\"legacy\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "powerMetric"
+   ],
+   "tuner": [
+    "powerMetric"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerFoldWeight",
+   "label": "Power-fold weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "powerFoldWeight=0.1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "powerFoldWeight"
+   ],
+   "tuner": [
+    "powerFoldWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:powerFoldWeight",
+   "label": "Power-fold weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "powerFoldWeight=2",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "powerFoldWeight"
+   ],
+   "tuner": [
+    "powerFoldWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:costWeight",
+   "label": "Cost weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "costWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "costWeight"
+   ],
+   "tuner": [
+    "costWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:costWeight",
+   "label": "Cost weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "costWeight=0.1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "costWeight"
+   ],
+   "tuner": [
+    "costWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dissipationWeight",
+   "label": "Dissipation weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "dissipationWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "dissipationWeight"
+   ],
+   "tuner": [
+    "dissipationWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:dissipationWeight",
+   "label": "Dissipation weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "dissipationWeight=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "dissipationWeight"
+   ],
+   "tuner": [
+    "dissipationWeight"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceLimitOhm",
+   "label": "Source R limit (audit tier)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "rSourceLimitOhm=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceLimitOhm",
+   "label": "Source R limit (audit tier)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "rSourceLimitOhm=3",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:rSourceDisqOhm",
+   "label": "Source R disqualify",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "rSourceDisqOhm=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:rSourceDisqOhm",
+   "label": "Source R disqualify",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "rSourceDisqOhm=6",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:diWeight",
+   "label": "DI anchor weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "diWeight=0",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:diWeight",
+   "label": "DI anchor weight",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "diWeight=1",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:vfEqBands",
+   "label": "EQ bands per driver",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "vfEqBands=0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "eqBandsPerDriver"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:vfEqBands",
+   "label": "EQ bands per driver",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "vfEqBands=4",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "eqBandsPerDriver"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:breakupGuard",
+   "label": "Breakup guard",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "breakupGuard=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "breakupGuard"
+   ],
+   "tuner": [
+    "breakupGuard"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:phaseMetricMode",
+   "label": "Phase metric (band / overlap)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "phaseMetricMode=\"overlap\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "phaseMetric"
+   ],
+   "tuner": [
+    "phaseMetric"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:synthMode",
+   "label": "Synthesis mode (filter / acoustic)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "synthMode=\"filter\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "synthMode"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "catalogSnap",
+   "label": "Snap to catalogue",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "catalogSnap=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "catalogSnap"
+   ],
+   "tuner": [
+    "catalogSnap"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapProfile",
+   "label": "Snap profile",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "snapProfile=\"premium\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapProfile",
+   "label": "Snap profile",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "snapProfile=\"budget\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:snapStacks",
+   "label": "Allow stacks",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "snapStacks=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "snapPrefs"
+   ],
+   "tuner": [
+    "snapPrefs"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:stagedOn",
+   "label": "Staged pass on/off",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "stagedOn=false",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetRipple",
+   "label": "Staged ripple target",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "targetRipple=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetRipple",
+   "label": "Staged ripple target",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "targetRipple=\"4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetPhase",
+   "label": "Staged phase target",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "targetPhase=\"5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:targetPhase",
+   "label": "Staged phase target",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "targetPhase=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:roomCorrection",
+   "label": "Room correction present",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "roomCorrection=true",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:roomRippleDb",
+   "label": "Room-correction ripple (only with room correction on)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "roomCorrection=true,roomRippleDb=6",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "targets"
+   ],
+   "tuner": [
+    "staged"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeMid=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeMid=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeTweeter=\"24\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeTweeter=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "acousticSlopes"
+   ],
+   "tuner": [
+    "acousticSlopes"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer (LP, 3-way)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeWoofer=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer (LP, 3-way)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeWoofer=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeMidHp",
+   "label": "Acoustic slope mid (HP, 3-way)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeMidHp=\"12\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeMidHp",
+   "label": "Acoustic slope mid (HP, 3-way)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "acSlopeMidHp=\"auto\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "ampMinLoadOhm=2.6",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "ampMinLoadOhm"
+   ],
+   "tuner": [
+    "ampMinLoadOhm",
+    "zFloorBarrier",
+    "zFloorBarrierImpedance",
+    "zFloorBarrierSource"
+   ],
+   "v2run": [
+    "gates.ampMinLoadOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "ampMinLoadOhm=4",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "ampMinLoadOhm"
+   ],
+   "tuner": [
+    "ampMinLoadOhm",
+    "zFloorBarrier",
+    "zFloorBarrierImpedance",
+    "zFloorBarrierSource"
+   ],
+   "v2run": [
+    "gates.ampMinLoadOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:tweeterOffsetMm",
+   "label": "Tweeter adjustment: offset mm",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "offsetMm=10",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__adjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:tweeterTrimDb",
+   "label": "Tweeter adjustment: trim dB",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "trimDb=-1",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "__adjust"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:fbHzLow",
+   "label": "Box tuning f_b (low driver card)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "fbHzLow=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:fbHzLow",
+   "label": "Box tuning f_b (low driver card)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "fbHzLow=\"45\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "audit"
+   ],
+   "tuner": [
+    "audit"
+   ],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (M-A)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "maxDissipationPct=\"35\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.maxDissipationFraction"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (M-A)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "maxDissipationPct=\"60\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.maxDissipationFraction"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "minEpdrOhm=\"1.6\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.minEpdrOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "minEpdrOhm=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.minEpdrOhm"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (M-C)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "maxDriveOnFsDb=\"-18\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings"
+   ],
+   "v2run": [
+    "gates.maxDriveOnFsDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (M-C)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "maxDriveOnFsDb=\"-30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "valueCeilings"
+   ],
+   "v2run": [
+    "gates.maxDriveOnFsDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (zonder nominale last)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "amplifierPeakPowerW=\"160\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (zonder nominale last)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "amplifierPeakPowerW=\"400\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (mét nominale last 8 Ω)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "peak=160,nominal=8",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.peakInputVolts"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Amplifier peak power (mét nominale last 8 Ω)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "peak=400,nominal=8",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.peakInputVolts"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "amplifierNominalLoadOhm",
+   "label": "Amplifier nominal load (zonder piekvermogen)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "amplifierNominalLoadOhm=\"4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierNominalLoadOhm",
+   "label": "Amplifier nominal load (zonder piekvermogen)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "amplifierNominalLoadOhm=\"8\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (zonder marge)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "resistorClassW=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (zonder marge)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "resistorClassW=\"20\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class (mét marge 0,5)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "class=10,margin=0.5",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorClassW",
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin (zonder klasse)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "resistorPowerMargin=\"0.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin (zonder klasse)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "resistorPowerMargin=\"0.8\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorPowerMargin"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (A)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "coilClassA=\"5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.coilClassA"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (A)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "coilClassA=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.coilClassA"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "resistorThermalPowerW=\"10\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorThermalPowerW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "resistorThermalPowerW=\"30\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "gates.resistorThermalPowerW"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work on lowest way",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "lowestWayLevelWork=\"none\"",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork",
+    "noShelfOnWoofer"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work on lowest way",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "lowestWayLevelWork=\"series-r-max\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (onder series-r-max)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "series-r-max,1.0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork",
+    "noShelfOnWoofer"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (onder series-r-max)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "series-r-max,2.0",
+   "layer": "payload",
+   "field": false,
+   "design": [
+    "lowestWayLevelWork",
+    "noShelfOnWoofer"
+   ],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lowestWaySeriesRMaxOhm",
+   "label": "Max series R lowest way (zonder ouder)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "lowestWaySeriesRMaxOhm=\"1.0\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (M-D)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "lfBumpBudgetDb=\"1.4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "seriesInductanceBound",
+    "seriesInductanceCeilingSource",
+    "valueSoftCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.lfBumpBudgetDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (M-D)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "lfBumpBudgetDb=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "seriesInductanceBound",
+    "seriesInductanceCeilingSource",
+    "valueSoftCeilings",
+    "valueSumCeilings"
+   ],
+   "v2run": [
+    "budgets.lfBumpBudgetDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es multiplier max (M-E)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "qesMultiplierMax=\"2.4\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.qesMultiplierMax"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es multiplier max (M-E)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "qesMultiplierMax=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.qesMultiplierMax"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "dampingMarginDb=\"1.5\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.dampingMarginDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "dampingMarginDb=\"3\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "budgets.dampingMarginDb"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runSeed",
+   "label": "Run seed",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "runSeed=\"1\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "determinism.seed"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runSeed",
+   "label": "Run seed",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "runSeed=\"2\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [
+    "determinism.seed"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runBudgetEvals",
+   "label": "Run budget (evaluations)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "runBudgetEvals=\"500\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "maxIterations"
+   ],
+   "v2run": [
+    "determinism.budgetEvaluations"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "runBudgetEvals",
+   "label": "Run budget (evaluations)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "runBudgetEvals=\"5000\"",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [
+    "maxIterations"
+   ],
+   "v2run": [
+    "determinism.budgetEvaluations"
+   ],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "fieldMode",
+   "label": "Candidate field (exploration / full)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "fieldMode=\"full\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "polarityArms",
+   "label": "Polarity arms (textbook / both)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "polarityArms=\"both\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "statedCrossings",
+   "label": "Stated crossings",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "statedCrossings=\"2200\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "statedCrossings",
+   "label": "Stated crossings",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "statedCrossings=\"2000, 2400\"",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "crossoverPoint",
+   "label": "Crossover point (pin) on",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "xoRangeOn,2300±100",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "crossoverPoint",
+   "label": "Crossover point (pin) zonder vinkje",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "xoRangeOff,2300±100",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xoScanSteps",
+   "label": "Scan steps (2-way)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "steps=5 (pin uit)",
+   "layer": "payload",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xoScanSteps",
+   "label": "Scan steps (2-way)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "steps=5 (pin aan)",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "xoScanSteps",
+   "label": "Scan steps (2-way)",
+   "route": "hybride gemeten · casus 1h",
+   "arm": "steps=5 (vol veld)",
+   "layer": "payload",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "blTm",
+   "label": "Bl (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mmsG",
+   "label": "M_ms (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "blTm+mmsG",
+   "label": "Bl + M_ms (high), samen",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMm",
+   "label": "X_max (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "sd",
+   "label": "S_d (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (3 velden, high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (alleen W, high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Recommended min crossover (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Min crossover ORDE zonder Hz (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossover",
+   "label": "Recommended max crossover (mid)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Max crossover replaces breakup (mid, mét max)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Override ZONDER max (mid)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor (mid)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor note alleen (mid)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "measuredRe",
+   "label": "Measured R_e (low)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "facts",
+    "rest"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry mét verticaal venster 15°",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage + mic + volledige excursiekaart (route 2)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "acousticCentre",
+   "label": "Acoustic centre z (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring measured+desired (low)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring alleen gemeten (low)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "coilFamily",
+   "label": "Coil family (low)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveOnFsMaxDb-per-way",
+   "label": "M-C per way (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Manual window floor (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Window note alleen (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "nominalSize",
+   "label": "Nominal size (mid, inch)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "facts",
+    "rest"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "positions",
+   "label": "Driver y position (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width onder plateau-voicing",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Count (low)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Spacing (low)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Depth (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Tilt (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Facing (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "chamber",
+   "label": "Enclosure / f_b (low)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance",
+   "label": "Mic distance",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance+driveVoltageV",
+   "label": "Mic distance mét drive voltage",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micElevation",
+   "label": "Mic elevation",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "gateOverride",
+   "label": "Gate used (ms)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffleHeight",
+   "label": "Front panel height",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "referencePoint",
+   "label": "Reference from top",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "refDriver",
+   "label": "Reference driver",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "listeningPosition",
+   "label": "Listening distance",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "cabinetDepth",
+   "label": "Cabinet depth",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "verticalWindowDeg",
+   "label": "Vertical window (deg)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPowerW",
+   "label": "Amplifier continuous power",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMarginFraction",
+   "label": "X_max margin",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMarginFraction+peak",
+   "label": "X_max margin + peak/nominal + Bl/M_ms/X_max (high)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau 2.5 dB",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau zonder diepte",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class zonder marge (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class + marge (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin zonder klasse (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es max (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work none (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Peak power alleen (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW+nominal",
+   "label": "Peak + nominal (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load (rapport)",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP) → orderByPair",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP) → orderByPair",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer → orderByPair",
+   "route": "drieweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "blTm",
+   "label": "Bl (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mmsG",
+   "label": "M_ms (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "blTm+mmsG",
+   "label": "Bl + M_ms (high), samen",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMm",
+   "label": "X_max (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "sd",
+   "label": "S_d (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (3 velden, high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (alleen W, high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Recommended min crossover (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Min crossover ORDE zonder Hz (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossover",
+   "label": "Recommended max crossover (mid)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Max crossover replaces breakup (mid, mét max)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Override ZONDER max (mid)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor (mid)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor note alleen (mid)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "measuredRe",
+   "label": "Measured R_e (low)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "facts",
+    "metrics",
+    "rest"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry mét verticaal venster 15°",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage + mic + volledige excursiekaart (route 2)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "acousticCentre",
+   "label": "Acoustic centre z (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign",
+    "metrics"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring measured+desired (low)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring alleen gemeten (low)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "coilFamily",
+   "label": "Coil family (low)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveOnFsMaxDb-per-way",
+   "label": "M-C per way (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign",
+    "gates"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Manual window floor (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Window note alleen (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "nominalSize",
+   "label": "Nominal size (mid, inch)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "facts",
+    "metrics",
+    "rest"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "positions",
+   "label": "Driver y position (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign",
+    "metrics"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width onder plateau-voicing",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Count (low)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Spacing (low)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "mounting",
+   "label": "Depth (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Tilt (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Facing (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "chamber",
+   "label": "Enclosure / f_b (low)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance",
+   "label": "Mic distance",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance+driveVoltageV",
+   "label": "Mic distance mét drive voltage",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micElevation",
+   "label": "Mic elevation",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "gateOverride",
+   "label": "Gate used (ms)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffleHeight",
+   "label": "Front panel height",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "referencePoint",
+   "label": "Reference from top",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "refDriver",
+   "label": "Reference driver",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "listeningPosition",
+   "label": "Listening distance",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "cabinetDepth",
+   "label": "Cabinet depth",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "verticalWindowDeg",
+   "label": "Vertical window (deg)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPowerW",
+   "label": "Amplifier continuous power",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "xmaxMarginFraction",
+   "label": "X_max margin",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMarginFraction+peak",
+   "label": "X_max margin + peak/nominal + Bl/M_ms/X_max (high)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau 2.5 dB",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau zonder diepte",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign",
+    "gates"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class zonder marge (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class + marge (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin zonder klasse (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es max (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work none (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Peak power alleen (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW+nominal",
+   "label": "Peak + nominal (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load (rapport)",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP) → orderByPair",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP) → orderByPair",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer → orderByPair",
+   "route": "drieweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "blTm",
+   "label": "Bl (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mmsG",
+   "label": "M_ms (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "blTm+mmsG",
+   "label": "Bl + M_ms (high), samen",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMm",
+   "label": "X_max (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "sd",
+   "label": "S_d (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (3 velden, high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (alleen W, high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Recommended min crossover (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Min crossover ORDE zonder Hz (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossover",
+   "label": "Recommended max crossover (mid)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Max crossover replaces breakup (mid, mét max)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Override ZONDER max (mid)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor (mid)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor note alleen (mid)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "measuredRe",
+   "label": "Measured R_e (low)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "facts",
+    "rest"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry mét verticaal venster 15°",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage + mic + volledige excursiekaart (route 2)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "acousticCentre",
+   "label": "Acoustic centre z (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring measured+desired (low)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring alleen gemeten (low)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "coilFamily",
+   "label": "Coil family (low)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveOnFsMaxDb-per-way",
+   "label": "M-C per way (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Manual window floor (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Window note alleen (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "nominalSize",
+   "label": "Nominal size (mid, inch)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "positions",
+   "label": "Driver y position (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width onder plateau-voicing",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Count (low)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Spacing (low)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Depth (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Tilt (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Facing (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "chamber",
+   "label": "Enclosure / f_b (low)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance",
+   "label": "Mic distance",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance+driveVoltageV",
+   "label": "Mic distance mét drive voltage",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micElevation",
+   "label": "Mic elevation",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "gateOverride",
+   "label": "Gate used (ms)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffleHeight",
+   "label": "Front panel height",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "referencePoint",
+   "label": "Reference from top",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "refDriver",
+   "label": "Reference driver",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "listeningPosition",
+   "label": "Listening distance",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "cabinetDepth",
+   "label": "Cabinet depth",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "verticalWindowDeg",
+   "label": "Vertical window (deg)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPowerW",
+   "label": "Amplifier continuous power",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMarginFraction",
+   "label": "X_max margin",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMarginFraction+peak",
+   "label": "X_max margin + peak/nominal + Bl/M_ms/X_max (high)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau 2.5 dB",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau zonder diepte",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class zonder marge (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class + marge (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin zonder klasse (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es max (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work none (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Peak power alleen (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW+nominal",
+   "label": "Peak + nominal (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load (rapport)",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP) → orderByPair",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP) → orderByPair",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer → orderByPair",
+   "route": "tweeweg · KOAN-demo",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "blTm",
+   "label": "Bl (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mmsG",
+   "label": "M_ms (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "blTm+mmsG",
+   "label": "Bl + M_ms (high), samen",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMm",
+   "label": "X_max (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "sd",
+   "label": "S_d (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (3 velden, high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "powerRating",
+   "label": "Power rating (alleen W, high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Recommended min crossover (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "minCrossover",
+   "label": "Min crossover ORDE zonder Hz (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossover",
+   "label": "Recommended max crossover (mid)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Max crossover replaces breakup (mid, mét max)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "maxCrossoverOverride",
+   "label": "Override ZONDER max (mid)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor (mid)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "breakupDivisor",
+   "label": "Breakup divisor note alleen (mid)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "measuredRe",
+   "label": "Measured R_e (low)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "facts",
+    "metrics",
+    "rest"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "rotSym",
+   "label": "Rotational symmetry mét verticaal venster 15°",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage + mic + volledige excursiekaart (route 2)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "acousticCentre",
+   "label": "Acoustic centre z (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign",
+    "metrics"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "driveVoltageV",
+   "label": "Drive voltage (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring measured+desired (low)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "wiring",
+   "label": "Wiring alleen gemeten (low)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "coilFamily",
+   "label": "Coil family (low)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "driveOnFsMaxDb-per-way",
+   "label": "M-C per way (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign",
+    "gates"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Manual window floor (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "manualWindow",
+   "label": "Window note alleen (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "nominalSize",
+   "label": "Nominal size (mid, inch)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "positions",
+   "label": "Driver y position (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "predesign",
+    "metrics"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffle-width",
+   "label": "Baffle width onder plateau-voicing",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Count (low)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "sourceCount",
+   "label": "Spacing (low)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Depth (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Tilt (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "mounting",
+   "label": "Facing (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "chamber",
+   "label": "Enclosure / f_b (low)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance",
+   "label": "Mic distance",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micDistance+driveVoltageV",
+   "label": "Mic distance mét drive voltage",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "micElevation",
+   "label": "Mic elevation",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "gateOverride",
+   "label": "Gate used (ms)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "baffleHeight",
+   "label": "Front panel height",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "referencePoint",
+   "label": "Reference from top",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "refDriver",
+   "label": "Reference driver",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "listeningPosition",
+   "label": "Listening distance",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "cabinetDepth",
+   "label": "Cabinet depth",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "verticalWindowDeg",
+   "label": "Vertical window (deg)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPowerW",
+   "label": "Amplifier continuous power",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "xmaxMarginFraction",
+   "label": "X_max margin",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "xmaxMarginFraction+peak",
+   "label": "X_max margin + peak/nominal + Bl/M_ms/X_max (high)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau 2.5 dB",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "targetCurve",
+   "label": "Voicing bass-plateau zonder diepte",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign",
+    "rest"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDissipationPct",
+   "label": "Max dissipation (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "minEpdrOhm",
+   "label": "Min EPDR (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "maxDriveOnFsDb",
+   "label": "Max drive on f_s (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign",
+    "gates"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class zonder marge (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorClassW",
+   "label": "Resistor class + marge (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorPowerMargin",
+   "label": "Resistor margin zonder klasse (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "coilClassA",
+   "label": "Coil class (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "resistorThermalPowerW",
+   "label": "Resistor thermal power (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "lfBumpBudgetDb",
+   "label": "LF-bump budget (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "qesMultiplierMax",
+   "label": "Q_es max (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "dampingMarginDb",
+   "label": "Damping margin (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "lowestWayLevelWork",
+   "label": "Level work none (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "predesign"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "amplifierPeakPowerW",
+   "label": "Peak power alleen (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "amplifierPeakPowerW+nominal",
+   "label": "Peak + nominal (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates",
+    "metrics"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "ampMinLoadOhm",
+   "label": "Amplifier minimum load (rapport)",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "gates"
+   ],
+   "klasse": "OORDEELT"
+  },
+  {
+   "row": "geen:acSlopeMid",
+   "label": "Acoustic slope mid (LP) → orderByPair",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": true,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [
+    "windows",
+    "facts",
+    "predesign"
+   ],
+   "klasse": "ZOEKT"
+  },
+  {
+   "row": "geen:acSlopeTweeter",
+   "label": "Acoustic slope tweeter (HP) → orderByPair",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  },
+  {
+   "row": "geen:acSlopeWoofer",
+   "label": "Acoustic slope woofer → orderByPair",
+   "route": "tweeweg · KOAN-demo + netwerk",
+   "arm": "—",
+   "layer": "rapport",
+   "field": false,
+   "design": [],
+   "tuner": [],
+   "v2run": [],
+   "report": [],
+   "klasse": "NIETS"
+  }
+ ]
+}
