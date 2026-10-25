@@ -35,11 +35,16 @@ import { V2_JUDGEMENT_KEYS, V2_SETTING_KEYS, designLevelNote } from './v2Setting
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = readFileSync(join(HERE, '..', 'App.tsx'), 'utf-8');
 
-/** The v2 block of the options grid: everything under `{engineV2Enabled && (`. */
+/**
+ * The Filters panel, grouped since U-9 fase 2 — between its two markers.
+ * (V15: until U-9 fase 2 this sliced from the first `{engineV2Enabled && (` to
+ * the "Components" caption; that caption is gone with the other five v1
+ * headings, and a marker cannot be written by accident.)
+ */
 const V2_BLOCK = (() => {
-  const start = APP.indexOf('{engineV2Enabled && (');
+  const start = APP.indexOf('{/* I-1 FORM · V2 PANEL');
   expect(start).toBeGreaterThan(0);
-  const end = APP.indexOf("<span className=\"opt-group-cap\">{t('Components')}</span>", start);
+  const end = APP.indexOf('{/* I-1 FORM · V2 PANEL END */}', start);
   expect(end).toBeGreaterThan(start);
   return APP.slice(start, end);
 })();
@@ -109,22 +114,21 @@ describe('the register covers the form', () => {
     expect(rowForKey('runSeed')?.cls).toBe('nice');
   });
 
-  it('a v1 row carries what v1 does with it, and says it is not read by Engine v2', () => {
-    /* U-9 — ONE named exception, measured: the tuner reads the priority slider
-     * (finding N1), so its note may not say "not read" and says what the
-     * measurement found instead. Named, not loosened — the V47/V48 lesson. */
-    const HALF_READ = ['phasePriority'];
+  it('a v1 row carries what v1 does with it, says it is not read by Engine v2, and is never rendered (B-2)', () => {
+    /* V15 — WAS: one named exception, `phasePriority`, filed v1-legacy with a
+     * "half read" note (U-9 fase 1, finding N1). IS: no exception. U-9 fase 2
+     * (Sander, 25-10-2026) took the slider out of the class — the v2 tuner
+     * reads it, so it is not a v1 field (B-2.1) — and its badge now says what
+     * the measurement found (`effectNote`). WHY: a class whose members are
+     * partly read by v2 is not a class that can be hidden as a whole, and B-2.2
+     * hides it as a whole. */
     for (const r of rowsOfClass('v1-legacy')) {
       expect(r.v1Note, r.id).toBeTruthy();
-      if (HALF_READ.includes(r.id)) {
-        expect(r.effect, r.id).toBe('zoekt');
-        expect(r.v1Note!, r.id).toMatch(/Half read by Engine v2/);
-        expect(r.v1Note!, r.id).toMatch(/tuner/);
-      } else {
-        expect(r.v1Note!, r.id).toMatch(/not read by Engine v2/);
-      }
+      expect(r.v1Note!, r.id).toMatch(/not read by Engine v2|v1-uitfasering \(B-2\)/);
+      expect(r.effect, `${r.id}: a v1-legacy row is niets since B-2`).toBe('niets');
     }
-    expect(rowsOfClass('v1-legacy').filter((r) => r.effect === 'zoekt').map((r) => r.id)).toEqual(HALF_READ);
+    expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')?.cls).toBe('nice');
+    expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')?.effectNote).toMatch(/tuner reads this slider/);
     // …and no other class carries one: the note is what makes the class.
     for (const r of V2_INPUT_REGISTER) {
       if (r.cls !== 'v1-legacy') expect(r.v1Note, r.id).toBeUndefined();
@@ -161,55 +165,58 @@ describe('the register covers the form', () => {
 });
 
 describe('the panel is ordered by the register', () => {
-  it('the three v2 headings appear in the v2 block, in the order of the register', () => {
-    /* U-1 — THREE, NOT FOUR. The fourth heading was the v1 drawer's, and a
-       heading that offers "v1" is a route through the interface: exactly what
-       U-1 removed. The class is still in the register and still read (the badge
-       beside each v1 control, and the project-carryover notice), so this counts
-       the headings the PANEL prints rather than the classes that exist. */
-    const at = [
-      V2_BLOCK.indexOf('{V2_CLASS_HEADING.required}'),
-      V2_BLOCK.indexOf('{V2_CLASS_HEADING.judgement}'),
-      V2_BLOCK.indexOf('{V2_CLASS_HEADING.nice}'),
-    ];
-    for (const i of at) expect(i).toBeGreaterThan(-1);
-    expect([...at].sort((a, b) => a - b)).toEqual(at);
-    // …and the headings the panel prints are the register's own words.
+  it('the panel prints the eight group headings from the register, and no class heading', () => {
+    /* V15 — WAS (I-1, U-1): three class headings (necessary · judgement · nice)
+     * in the order of the register. IS (U-9 fase 2): the eight groups of
+     * `V2_FIELD_GROUPS`, mapped — the panel types no order of its own. WHY: the
+     * startprompt orders the panel by the order of designing, and a field's
+     * class is now a badge on the field (what it does, where its number
+     * comes from) rather than the heading above it. */
+    expect(V2_BLOCK).toContain('{V2_FIELD_GROUPS.map((g) => (');
+    expect(V2_BLOCK).toContain('{t(V2_GROUP_HEADING[g])}');
+    expect(APP).not.toMatch(/V2_CLASS_HEADING\./);
     for (const c of V2_INPUT_CLASSES) expect(V2_CLASS_HEADING[c].trim()).not.toBe('');
   });
 
-  it('the five captions the panel replaced are gone: one heading per class, not five ad-hoc groups', () => {
+  it('the captions the panel replaced are gone: the five v2 ad-hoc groups and the eight v1 sections', () => {
     for (const gone of [
       "{t('Engine v2 — hard gates')}",
       "{t('Engine v2 — search-space budgets')}",
       "{t('Engine v2 — requirements')}",
       "{t('Engine v2 — voicing (A5e.2)')}",
       "{t('Engine v2 — run')}",
+      // U-9 fase 2 — the v1 sections (B-2.1: a v1 heading over a field the v2 tuner steers says something false)
+      "{t('Goals & weighting')}",
+      "{t('Filter shape')}",
+      "{t('Targets')}",
+      "{t('Safety nets')}",
+      "{t('Engine')}",
+      "{t('Components')}",
+      "{t('Crossover')}",
+      "{t('Driver limits')}",
     ]) {
       expect(APP).not.toContain(`<span className="opt-group-cap">${gone}</span>`);
     }
-    // The finer captions survive as PRESENTATION inside the judgement group.
-    expect((V2_BLOCK.match(/className="v2-subcap"/g) ?? []).length).toBe(V2_JUDGEMENT_BANDS.length);
+    /* V15 — WAS: one sub-caption per judgement band (five). IS: one, the
+     * architecture statement, which says what the group is about in the H-2
+     * words; the other four bands are now groups of their own. */
+    expect((V2_BLOCK.match(/className="v2-subcap"/g) ?? []).length).toBe(1);
   });
 
-  it('U-1 — the v1 group is gone from the panel, and its per-field badges are not', () => {
-    /* The drawer was I-1's second rendering of the v1 class: a list beside the
-       controls. U-1 took the list and kept the badges, so the answer to "why
-       does this knob do nothing" now sits ON the knob. Both halves are asserted,
-       because dropping the drawer without the badges would lose the answer and
-       keeping both would restore the heading this file just stopped expecting. */
+  it('B-2 — every v1-legacy row is hidden, and the drawer stays gone', () => {
+    /* V15 — WAS (U-1): every v1 control carries `v1Legacy(id)` IN PLACE. IS
+     * (U-9 fase 2, B-2.2): every v1-legacy row is `niets` and never drawn, so
+     * a badge on it would have no reader; `u9FieldEffects.test.ts` pins that
+     * every remaining `v1Legacy(` call sits behind `rendersRow`. WHY: what
+     * serves only v1 is not shown at all (Sander, 25-10-2026). */
     expect(APP).not.toContain('<details className="v2-legacy"');
     expect(APP).not.toContain("{V2_CLASS_HEADING['v1-legacy']}");
-    // The class survives in the register and every v1 control still names it.
     expect(rowsOfClass('v1-legacy').length).toBeGreaterThan(0);
-    for (const r of rowsOfClass('v1-legacy')) {
-      if (r.id === 'excursionSpl') continue; // its own call site, pinned below
-      expect(APP, r.id).toContain(`{v1Legacy('${r.id}')}`);
-    }
+    for (const r of rowsOfClass('v1-legacy')) expect(r.effect, r.id).toBe('niets');
   });
 
-  it('the required group points at the tabs that hold those inputs, from the register', () => {
-    expect(V2_BLOCK).toContain("rowsOfClass('required')");
+  it('each group names the fields it holds on another tab, from the register', () => {
+    expect(V2_BLOCK).toContain('{groupElsewhere(g)}');
     for (const r of rowsOfClass('required')) expect(r.form).toMatch(/tab|header|implicit/);
   });
 
@@ -221,31 +228,16 @@ describe('the panel is ordered by the register', () => {
     // The help is the register's sentence, not a second one typed in the app.
     expect(APP).toContain('emptyHelpFor(key)');
     expect(emptyHelpFor('minEpdrOhm')).toMatch(/judges nothing/);
-  });
-
-  it('every v1 control in this panel carries its note beside itself', () => {
-    for (const r of rowsOfClass('v1-legacy')) {
-      if (r.id === 'excursionSpl') {
-        // E-2 marked this one first and `v2Settings.test.ts` pins its call
-        // site; it reads the same sentence through `designLevelNote`.
-        expect(APP).toContain('designLevelNote(engineV2Enabled)');
-        continue;
-      }
-      expect(APP, r.id).toContain(`{v1Legacy('${r.id}')}`);
-    }
     expect(APP).toContain("v1NoteFor(id, engineV2Enabled)");
   });
 
   it('the scans can see: the same queries hit where they are supposed to hit', () => {
-    /* Without this, "the caption is gone" is indistinguishable from "the scan
-     * looked at the wrong string", and every claim above would pass over an
-     * empty file. */
     expect(V2_BLOCK.length).toBeGreaterThan(1000);
     expect(V2_BLOCK).toContain("{t('Max dissipation %')}");
     expect(V2_BLOCK).toContain("{t('Run seed')}");
-    expect(APP).toContain("<span className=\"opt-group-cap\">{t('Components')}</span>");
-    // A caption the panel really does still use, in the same spelling the
+    expect(V2_BLOCK).toContain("{t('Dissipation weight')}");
+    // A caption the panel really does still print, in the same form the
     // "gone" assertion above searched for.
-    expect(APP).toContain("<span className=\"opt-group-cap\">{t('Driver limits')}</span>");
+    expect(APP).toContain('<span className="opt-group-cap">{t(V2_GROUP_HEADING[g])}</span>');
   });
 });

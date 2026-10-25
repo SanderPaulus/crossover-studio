@@ -129,8 +129,8 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
   {
     id: 'v1-ready',
     what: 'The green success line of a run that produced no shortlist (the v1 route).',
-    when: 'A scan table exists and there is no shortlist.',
-    token: '{chainScan && !v2Shortlist && (',
+    when: 'A scan table exists, there is no shortlist, and a candidate was loaded (U-9 fase 2: a rescued list loads nothing, and "the winner is loaded" would be untrue).',
+    token: "{chainScan && !v2Shortlist && chainScan.active !== '' && (",
     placement: 'top',
     why: 'Guarded on `!v2Shortlist` in the source: where a shortlist exists this line is not rendered, so it is never a text block above the table.',
     elements: 1,
@@ -170,7 +170,10 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
     id: 'nothing-loaded',
     what: 'No design was loaded and the Working tab is untouched.',
     when: 'A run finished and no shortlist row went into Working.',
-    token: "'No design was loaded: {n} of {m} candidates",
+    /* U-9 fase 2 — V15: WAS the sentence's own opening words; IS the guard,
+     * because since B-2.2 the sentence has two spellings (with and without the
+     * clause that pointed at the v1 ranking) and one block draws either. */
+    token: '{shortlistPick === null && (',
     placement: 'shortlist-head',
     why: 'A blockade about the state of the app, not an account of the run. Its green twin ("X is loaded") folds, because the table marks the loaded row itself.',
     blockade: true,
@@ -429,7 +432,7 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
   {
     id: 'v1-reading-heading',
     what: 'That the table below is the v1 ranking and not the route that made this run.',
-    when: 'A v2 shortlist and a scan table both exist.',
+    when: 'Never since U-9 fase 2 (B-2.2): it renders only while `v1ReadingShown()`, which is false once the knobs that sort it are niets.',
     token: 'className="v1-reading"',
     placement: 'about',
     why: 'It is the caption of the v1 table, and travels with it.',
@@ -437,10 +440,18 @@ export const V2_RESULT_BLOCKS: readonly V2ResultBlock[] = [
   {
     id: 'v1-reading-table',
     what: 'The v1 ranking over the same field, eight columns.',
-    when: 'A scan table exists.',
+    when: 'Never since U-9 fase 2 (B-2.2): behind `v1ReadingShown()`, with its caption and the knobs that sort it.',
     token: "scan-table-pick${v2Shortlist ? ' scan-table-v1-reading' : ''}",
     placement: 'about',
     why: 'UI-1 kept it as a SECOND READING of one’s own field. A second reading is exactly what a fold is for; on the v1 route (no shortlist) it is all there is, and the fold opens on nothing else.',
+  },
+  {
+    id: 'scan-bare',
+    what: 'The candidates of a run that left no shortlist (in practice: rescued from an interrupted scan), as a bare list in recorded order — a label and a load button, no rank, no v1 columns.',
+    when: 'A scan table exists, there is no shortlist, and the v1 reading is not shown (U-9 fase 2, Sander 25-10-2026).',
+    token: 'className="scan-bare"',
+    placement: 'about',
+    why: 'It is what scan-only shows instead of the v1 table: the same place, without the ranking B-2 hid.',
   },
   {
     id: 'v1-engine-note',

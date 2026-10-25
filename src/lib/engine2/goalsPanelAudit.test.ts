@@ -40,7 +40,7 @@ import { declareCandidateChainChoices } from './optimizer/candidateDeclaration.t
 import { CHAIN_CHOICE_KEYS, withDeclaredChainChoices } from './optimizer/chainChoices.ts';
 import { GREY_KEYS } from './optimizer/choices.ts';
 import { DEFAULT_PHASE_PRIORITY } from '../netOptimizer.ts';
-import { V2_INPUT_REGISTER, V2_UNGOVERNED_ROWS } from '../v2InputRegister.ts';
+import { V2_FORM_FIELDS, V2_INPUT_REGISTER, V2_UNGOVERNED_ROWS } from '../v2InputRegister.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = readFileSync(join(HERE, '..', '..', 'App.tsx'), 'utf-8');
@@ -67,8 +67,13 @@ const GOALS: readonly {
     control: 'Priority: response · phase',
     state: 'phasePriority',
     reaches: 'phasePriority',
-    status: 'v1-only',
-    why: 'de ketenverklaring stelt DEFAULT_PHASE_PRIORITY onvoorwaardelijk (M-4) en de app geeft de schuif niet mee',
+    /* U-9 fase 2 — V15: WAS 'v1-only' (U-5c). IS 'read': U-9 mat (N1) dat de
+     * TUNER de schuif leest — `network.weights` komt uit de ruwe invoer en de
+     * hook spreidt ze als laatste — terwijl de ontwerpstap en de synthese de
+     * verklaarde 50/50 krijgen. Het gebrek dat U-5c vond staat er nog (de
+     * verklaring leest de schuif niet), maar "doet niets" was half waar. */
+    status: 'read',
+    why: 'de tuner leest hem (U-9, N1); ontwerpstap en synthese krijgen de verklaarde DEFAULT_PHASE_PRIORITY (M-4)',
   },
   { control: 'Phase metric', state: 'phaseMetricMode', reaches: 'phaseMetric', status: 'read', why: 'de kandidaat STELT hem uit de ketensettings (put)' },
   { control: 'Amplitude target', state: 'ampTarget', reaches: 'ampTarget', status: 'read', why: 'idem' },
@@ -113,10 +118,15 @@ const GOALS: readonly {
   },
 ];
 
-/** De regio "Goals & weighting" van het expertpaneel, als bron. */
+/**
+ * Het gegroepeerde Filters-paneel, als bron. U-9 fase 2 — V15: WAS de regio
+ * tussen de koppen "Goals & weighting" en "Filter shape"; IS het hele paneel
+ * tussen zijn markers, want die v1-koppen zijn weg en hun velden staan in de
+ * groep waar hun gemeten effect ze plaatst (B-2.1).
+ */
 function goalsRegion(): string {
-  const start = APP.indexOf("<span className=\"opt-group-cap\">{t('Goals & weighting')}</span>");
-  const end = APP.indexOf("<span className=\"opt-group-cap\">{t('Filter shape')}</span>", start);
+  const start = APP.indexOf('{/* I-1 FORM · V2 PANEL');
+  const end = APP.indexOf('{/* I-1 FORM · V2 PANEL END */}', start);
   expect(start).toBeGreaterThan(0);
   expect(end).toBeGreaterThan(start);
   return APP.slice(start, end);
@@ -134,14 +144,14 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     /* De U-3b-vorm: de SCAN telt de besturingselementen van de regio en de
      * inventaris moet er evenveel dragen. Een knop die aan dit paneel wordt
      * toegevoegd zonder status valt hier om in plaats van stil mee te liften. */
+    /* U-9 fase 2 — V15: WAS "de regio telt evenveel besturingselementen als de
+     * inventaris". IS: élk geïnventariseerd veld staat in het paneel; het
+     * paneel draagt nu ook de velden van de andere v1-secties, en die telt de
+     * app-brede driftguard (`u9Fase2.test.ts`) tegen het register. */
     const region = goalsRegion();
-    const controls = [...region.matchAll(/\n\s*(?:value|checked)=\{/g)].length;
-    /* `Correction bands per driver` staat in "Filter shape" en niet in
-     * "Goals & weighting" — hij hoort inhoudelijk bij deze audit (hij is de
-     * knop die zegt hoeveel correctie de zoektocht mag kopen) en wordt daarom
-     * apart geteld in plaats van de regio op te rekken. */
-    expect(GOALS.filter((g) => g.state !== 'vfEqBands')).toHaveLength(controls);
-    expect(region).toContain('vfEqBands' in {} ? '' : 'dissipationWeight');
+    for (const g of GOALS) {
+      expect(region, g.control).toMatch(new RegExp(`(?:value|checked)=\\{(?:String\\()?${g.state}\\b`));
+    }
   });
 
   it('élke GELEZEN sleutel staat in de ketensettings die de app bouwt', () => {
@@ -188,33 +198,32 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     expect(declareCandidateChainChoices({ stated: { eqBands: 3, phasePriority: 0.25 } }).stated.phasePriority).toBe(0.25);
   });
 
-  it('élk V1-ALLEEN-veld draagt zijn badge, en élk GELEZEN veld draagt er geen', () => {
+  it('élk V1-ALLEEN-veld is verborgen, en élk GELEZEN veld draagt zijn effectbadge', () => {
+    /* U-9 fase 2 — V15: WAS "élk v1-only veld draagt `v1Legacy` op beide
+     * plaatsen". IS: het ene v1-only veld (`errorSmoothOct`) is `niets` en wordt
+     * nergens getekend (fase 1), en élk gelezen veld van het paneel draagt de
+     * badge die zegt wat het doet (`fieldBadge`). De schuif draagt sinds N1 geen
+     * v1-badge meer maar de gemeten notitie, op het paneel én in de wizard. */
     for (const g of GOALS) {
       const row = V2_INPUT_REGISTER.find((r) => r.id === g.state);
       if (g.status === 'v1-only') {
         expect(row, `${g.control} heeft geen registerrij`).toBeDefined();
         expect(row!.cls, g.control).toBe('v1-legacy');
-        expect(APP, `${g.control} is niet gebadged`).toContain(`v1Legacy('${g.state}')`);
-        /* EN OP ÉLKE PLAATS WAAR DE KNOP STAAT, niet "ergens". De eerste versie
-         * van deze claim zocht de badge in het HELE bestand, en een opzettelijke
-         * breuk — de badge van het expertpaneel weghalen — liet haar groen: de
-         * schuif staat óók in de wizard en die tweede badge droeg de claim in
-         * haar eentje. Een guard die de helft van zijn onderwerp niet ziet is
-         * geen guard (nagemeten, en daarom staat hij er zo). */
-        if (g.state === 'phasePriority') {
-          const badge = `v1Legacy('${g.state}')`;
-          expect(APP.split(badge).length - 1, 'de schuif staat op TWEE plaatsen').toBe(2);
-          expect(goalsRegion(), 'het expertpaneel draagt de badge niet').toContain(badge);
-          const w = APP.indexOf('name="wiz-priority"');
-          expect(w).toBeGreaterThan(0);
-          expect(APP.slice(w, w + 2500), 'de Goals-stap van de wizard draagt de badge niet').toContain(badge);
-        }
+        expect(row!.effect, g.control).toBe('niets');
+        expect(APP).toContain(`{rendersRow('${g.state}') && (`);
       } else {
         expect(APP, `${g.control} draagt een v1-badge die hij niet verdient`).not.toContain(
           `v1Legacy('${g.state}')`,
         );
       }
     }
+    const badge = "fieldBadge('phasePriority')";
+    expect(APP.split(badge).length - 1, 'de schuif staat op TWEE plaatsen').toBe(2);
+    expect(goalsRegion(), 'het expertpaneel draagt de badge niet').toContain(badge);
+    const w = APP.indexOf('name="wiz-priority"');
+    expect(w).toBeGreaterThan(0);
+    expect(APP.slice(w, w + 2500), 'de Goals-stap van de wizard draagt de badge niet').toContain(badge);
+    expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')!.effectNote).toMatch(/tuner reads this slider/);
   });
 
   it('GEEN ENKEL VELD IS DOOD: élke sleutel wordt door een echte lezer gelezen', () => {
@@ -257,9 +266,14 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     const three = APP.slice(APP.indexOf('rSourceDisqualifyOhm: rSourceDisqOhm') - 4000, APP.indexOf('rSourceDisqualifyOhm: rSourceDisqOhm') + 2000);
     expect(three).toContain('rSourceDisqualifyOhm: rSourceDisqOhm');
     expect(three).toContain('diWeight');
-    // En de melding staat er, alleen op een tweeweg en alleen op de v2-route.
-    expect(APP).toContain('not read on the two-way Engine v2 route');
-    expect(APP).toContain('{engineV2Enabled && !threeWay && (');
+    /* U-9 fase 2 — V15: WAS "de melding staat er op een tweeweg" (U-5c). IS:
+     * de knop is op de tweeweg en de hybride VERBORGEN, net als `diWeight`
+     * (Sander, 25-10-2026: één regel voor alle vier de per-route velden), dus
+     * de melding is weg met de knop. */
+    expect(APP).not.toContain('not read on the two-way Engine v2 route');
+    const k = APP.indexOf("{t('Source R disqualify ≥')}");
+    expect(k).toBeGreaterThan(0);
+    expect(APP.slice(Math.max(0, k - 900), k)).toContain('{threeWay && !v2Hybrid && (');
   });
 
   it('de DRIEWEG-only knop is ook drieweg-only gerenderd, en dat is waarom hij geen badge krijgt', () => {
@@ -269,12 +283,18 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
      * misleid worden. */
     const i = APP.indexOf("{t('DI anchor weight')}");
     expect(i).toBeGreaterThan(0);
-    expect(APP.slice(Math.max(0, i - 900), i)).toContain('{threeWay && (');
+    /* U-9 fase 2 — V15: WAS `{threeWay && (`; IS `{threeWay && !v2Hybrid && (` —
+     * een hybride draait de tweewegketen, waar hij niets doet. */
+    expect(APP.slice(Math.max(0, i - 900), i)).toContain('{threeWay && !v2Hybrid && (');
   });
 
-  it('de zes v1-knoppen staan als ONGEREGULEERD geboekt, met de zesde erbij', () => {
+  it('de zes knoppen van toen staan sinds U-9 fase 2 in het BESTUURDE paneel', () => {
+    /* V15: WAS "ongereguleerd geboekt" (U-1/U-5c). IS: het gegroepeerde Filters-
+     * paneel is het bestuurde formulier, dus elk van de zes is een
+     * geïnventariseerd besturingselement en geen uitzondering meer. */
     for (const id of ['errorSmoothOct', 'hpLpPref', 'scan3Mode', 'bomCapEur', 'excursionSpl', 'phasePriority']) {
-      expect(V2_UNGOVERNED_ROWS, id).toContain(id);
+      expect(V2_UNGOVERNED_ROWS, id).not.toContain(id);
+      expect(V2_FORM_FIELDS.some((f) => f.row === id && f.form === 'v2-panel'), id).toBe(true);
     }
   });
 });

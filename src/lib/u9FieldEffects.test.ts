@@ -131,12 +131,18 @@ describe('U-9 (1): every register row carries a measured effect', () => {
   it('every row has exactly one of the four effects', () => {
     for (const r of V2_INPUT_REGISTER) expect(EFFECTS, r.id).toContain(r.effect);
   });
-  it('every field of a governed form has a row with an effect, and none of them is a niets row', () => {
+  it('every field of a governed form has a row with an effect, and a niets one only behind its guard', () => {
+    /* U-9 fase 2 — V15: WAS "no governed field is a niets row". IS: since the
+     * whole grouped Filters panel is a governed form, the hidden fields that
+     * stood in its v1 sections are inventoried controls of it — and every one of
+     * them must be a NIETS_CONTROLS entry below, i.e. sit behind `rendersRow`.
+     * WHY: the drift guard needs every control of the region in the inventory,
+     * and "never rendered" is pinned per control in (2). */
     for (const f of V2_FORM_FIELDS) {
       const row = V2_INPUT_REGISTER.find((r) => r.id === f.row);
       expect(row, f.row).toBeDefined();
       expect(EFFECTS, f.row).toContain(row!.effect);
-      expect(row!.effect, `${f.row} is drawn by a governed form and may not be niets`).not.toBe('niets');
+      if (row!.effect === 'niets') expect(NIETS_CONTROLS[f.row], `${f.row} is niets and not guarded below`).toContain(f.control);
     }
   });
   it('rendersRow answers from the register and THROWS on an unknown id', () => {
@@ -154,11 +160,26 @@ const NIETS_CONTROLS: Record<string, string[]> = {
   errorSmoothOct: ['value={String(errorSmoothOct)}'],
   hpLpPref: ['value={hpLpPref}', 'value={hpLpPrefLow}'],
   scan3Mode: ['value={scan3Mode}'],
+  /* U-9 fase 2 (B-2.2, Sander 25-10-2026) — the v1 comparison: the knobs that
+   * sorted the v1 table, hidden together with the table. */
+  bomCapEur: ['value={bomCapEur}'],
+  excursionSpl: ['value={excursionSpl}'],
+  v1Thresholds: [
+    'value={kaTier}',
+    'value={ctcK}',
+    'value={breakupLimitOn ? breakupHarmonic',
+    'value={xoWinThr.arrayK}',
+    'value={xoWinThr.ctcLambdaDiv',
+    'value={xoWinThr.fsK}',
+    'value={xoWinThr.breakupDiv}',
+  ],
 };
 
 describe('U-9 (2): a niets row is never rendered', () => {
   it('the niets set is exactly the approved one, by name (Sander, 25-10-2026)', () => {
-    expect([...V2_NIETS_ROWS].sort()).toEqual(['errorSmoothOct', 'hpLpPref', 'scan3Mode']);
+    /* U-9 fase 2 — V15: WAS the three of fase 1. IS those three plus the three
+     * of B-2.2 (the v1 comparison). */
+    expect([...V2_NIETS_ROWS].sort()).toEqual(['bomCapEur', 'errorSmoothOct', 'excursionSpl', 'hpLpPref', 'scan3Mode', 'v1Thresholds']);
     expect(Object.keys(NIETS_CONTROLS).sort()).toEqual([...V2_NIETS_ROWS].sort());
   });
   it.each(Object.entries(NIETS_CONTROLS))('%s: every control that draws it sits behind rendersRow', (id, controls) => {

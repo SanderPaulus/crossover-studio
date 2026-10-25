@@ -362,3 +362,52 @@ Sander keurde de NIETS-lijst van vier goed. De drie velden die alleen de v1-lees
   - De 50 velden zonder registerrij staan nog zonder rij; test (1) dekt daarom het register en de bestuurde formulieren, niet de hele app. Dat is grondwerk voor fase 2.
   - N1 is niet als V-nummer in het casusboek geboekt.
   - De 2W-scanstappen staan alleen onder de pin, terwijl het volle veld ze ook leest.
+
+## Fase 2 — uitgevoerd (25-10-2026)
+
+**Besluiten van Sander (stap 0 en onderweg):**
+- Velden die op een route niets doen worden **op die route verborgen** (één regel voor alle vier). #103 DI-anker en #120/#121 de drieweg-hellingen stonden op de tweeweg al verborgen; ze krijgen nu ook `!v2Hybrid`, want een hybride draait de tweewegketen. #102 Source-R-diskwalificatie is losgemaakt van de Source-R-limiet en staat alleen nog op de drieweg zonder hybride. De U-5c-melding ("not read on the two-way Engine v2 route") is daarmee weg.
+- De **Priority-schuif blijft**, met een badge die de meting zegt (`effectNote`): de tuner leest hem, ontwerpstap en synthese draaien op 50/50. Hij is uit de klasse v1-legacy gehaald (B-2.1). Het engine-besluit ligt nog open.
+- **Scan-only** (geredde kandidaten van een onderbroken scan, U-6b): een **kale lijst** in opgenomen volgorde, met label en laadknop. Geen rangorde en geen v1-kolommen. Die rangorde las het verborgen BOM-plafond.
+
+**Stap 1 — een rij voor elk veld dat iets doet.**
+- Het register heeft 124 rijen, en elke rij heeft een `group`.
+- Nieuw zijn 41 rijen (`U9_ROWS`) voor #2, #7, #9–#12, #50–#54, #95–#121 en #127–#138, plus `v1Thresholds` (#126). Het effect komt uit deze tabel.
+- Rechtgezet in bestaande rijen:
+  - N4 (S_d): de travels zeggen nu wat de route leest. De klasse blijft NOODZAKELIJK; die verandert niet zonder meting.
+  - N5 (f_b): de travels noemen nu de audit en de tweeweg-ontwerpstap.
+  - N3, N6 en N7 staan in de nieuwe rijen (`acSlope*`, `viewFmax`, `tweeterAdjust`/`midAdjust`).
+- Dependency gerepareerd: de tweeweg-stappen verschijnen nu bij een pin **of** het volle veld (`V2_DEPENDENT_CONTROLS`). Ze staan los van de pin-span.
+- App-brede driftguard (`u9Fase2.test.ts` (1)): elk `<input>`/`<select>`/`<textarea>` van App.tsx en de componenten raakt precies één token uit `V2_FORM_FIELDS` ∪ `V2_APP_CONTROLS`, of het bestand staat als geheel onder één rij (`V2_FILE_ROWS`). Drie uitzonderingen staan bij naam:
+  - de Wizard (fase 3);
+  - de guided-eisenrenderer (`v2RequirementField`);
+  - de kasthulpjes `veld` en `refTopVeld`. Die worden bij hun aanroep gescand.
+
+**Stap 2 — groepen uit het register.** `V2_FIELD_GROUPS` geeft de volgorde: Architectuur → Metingen & geometrie → Versterker & belasting → Driverbescherming → Kruisvenster & topologie → Bouwbaarheid → Doelcurve & voicing → Run & shortlist.
+- Het Filters-paneel mapt over die lijst. `App.tsx` typt geen volgorde, alleen per groep welk blok erbij hoort.
+- De koppen van de zes v1-secties en van de klassen (noodzakelijk/oordeel/nice) zijn weg.
+- Elke groep noemt in één regel wat bij haar hoort maar elders wordt ingevuld (`groupElsewhere`).
+- Een veld staat op één plek. De bouwmodus stond er twee keer; het paneel "Passive synthesis" leest hem nu alleen terug.
+
+**Stap 3 — elk veld zegt wat het doet.**
+- Elk getoond paneelveld heeft een badge: zoekt / oordeelt / toont · datasheet / typeplaatje / meting / jouw keuze.
+- De 20 zoekrijen met een app-startwaarde (`appDefaults.ts`, één bron met vier lezers) zeggen "app default — not stated by you (waarde)". Een eerste bewerking stempelt "stated by you on <datum>". Een oude waarde die al van de startwaarde af stond, leest "stated by you (date not recorded)".
+- De datums reizen mee in het projectbestand (`fieldStatedAt`).
+- Geen run beweegt hierdoor: de startwaarden zijn dezelfde getallen, maar komen nu uit één bron.
+
+**B-2.2 — v1 uit beeld.**
+- Verborgen in elke modus (`effect: 'niets'`, reden "v1-uitfasering (B-2)"): #93 BOM-plafond (ook het stripitem), #94 Ontwerpniveau (met de excursievloerregel) en #126 de v1-drempels (met het v1-fysicavenster dat ze voedden).
+- Samen met die velden staan de v1-ranglijst, haar kop, de per-rij-noot en de verwijzende zin achter `v1ReadingShown()`, en die is false.
+- De waarden blijven in het projectbestand. De U-1-melding noemt nu ook `kaTier` en `breakupHarmonic`.
+- Gevonden en **niet** gerepareerd: `ctcK` heeft twee startwaarden, 'auto' in `useState` en '0.5' in `applyProject`. Daarom staat hij niet in de melding. `breakupLimitOn` is een boolean en staat er om die reden ook niet in.
+
+**Bijvangst van de browsercontrole — een crash op de tweewegroute sinds H-4.**
+- Wat er gebeurde: `polarityBranchOf` (de pre-design fasereading van de tweewegroute) las `tAdjust`, en die `const` wordt pas ~200 regels later in dezelfde scope gedeclareerd. `buildCandidateField` roept de reader daarvóór aan. Het resultaat was een `ReferenceError` in de temporal dead zone: elke tweeweg-v2-run stopte stil, terwijl de overlay bleef staan.
+- Sinds wanneer: H-4 (`8e6cc62`, 20-09-2026). H-5 noteerde een tweewegrun die "na 21 minuten afgebroken" was; dat was deze crash.
+- Reproductie: na een volledige herlaadbeurt, op HEAD, vóór de reparatie.
+- Reparatie: `branchAdj.tweeter` (dezelfde waarde). Daarna liep de run.
+- Geen testbestand ving dit, omdat geen test `runVfOptimize` uitvoert.
+
+**Open punt U-10 — de v1-motor verwijderen.** `runChainScan`, `runChain3Scan`, de v1-ranking, de terugval zonder A5d.3-venster en `toggleRegression` staan ongewijzigd. Verwijderen vraagt eerst twee dingen:
+- (a) v2 moet in de terugval zelf melden of weigeren, in plaats van stil v1 te lezen;
+- (b) de toggle-invariant moet een nieuwe vorm krijgen. Die bewijst zich nu dóór v1 te draaien.

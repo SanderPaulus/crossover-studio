@@ -106,8 +106,68 @@ export type V2InputPlacement = 'always' | 'more' | 'conditional';
  */
 export type V2InputEffect = 'zoekt' | 'oordeelt' | 'toont' | 'niets';
 
+/**
+ * U-9 fase 2 — WHERE A FIELD BELONGS IN THE ORDER OF DESIGNING.
+ *
+ * Eight groups, and the ORDER is data (`V2_FIELD_GROUPS`): the Filters panel
+ * maps over this list and types no order of its own. Architecture comes first
+ * because it decides WHAT is designed before anything judges it (the H-2
+ * rule); run & shortlist comes last because it is how you look at the answer.
+ * There is deliberately no v1 group (B-2): a field that steers the v2 search
+ * is filed where its effect places it, and what serves only v1 is not shown.
+ *
+ * A field that belongs to a measurement (Setup, the driver card, the Network
+ * tab, the chart range) STAYS where it is filled in — moving it would put one
+ * field in two places, the U-3b failure — and its row still names its group,
+ * so the panel can say "on the driver card" under the right heading.
+ */
+export type V2FieldGroup =
+  | 'architecture'
+  | 'measurement'
+  | 'amplifier'
+  | 'protection'
+  | 'crossover'
+  | 'buildability'
+  | 'voicing'
+  | 'run';
+
+/** The groups in the order of designing. The panel reads this and nothing else. */
+export const V2_FIELD_GROUPS: readonly V2FieldGroup[] = Object.freeze([
+  'architecture',
+  'measurement',
+  'amplifier',
+  'protection',
+  'crossover',
+  'buildability',
+  'voicing',
+  'run',
+]);
+
+/** The heading the panel puts on each group. */
+export const V2_GROUP_HEADING: Readonly<Record<V2FieldGroup, string>> = Object.freeze({
+  architecture: 'Architecture — which ways, and which of them the passive network drives',
+  measurement: 'Measurements & geometry',
+  amplifier: 'Amplifier & load',
+  protection: 'Driver protection',
+  crossover: 'Crossover window & topology',
+  buildability: 'Buildability',
+  voicing: 'Target curve & voicing',
+  run: 'Run & shortlist',
+});
+
+/** One input, as it is written below; `group` is attached from `GROUP_OF`. */
+export type V2InputRowDef = Omit<V2InputRow, 'group'>;
+
 /** One input, with everything a reader needs to act on it. */
 export interface V2InputRow {
+  /** U-9 fase 2 — the group it belongs to (`V2_FIELD_GROUPS`). */
+  group: V2FieldGroup;
+  /**
+   * U-9 — a measured qualification of `effect` that the badge must say,
+   * because the effect alone would mislead (N1: the tuner reads the Priority
+   * slider and the design step does not). Never a v1 note.
+   */
+  effectNote?: string;
   /** Stable id, used by the panel and by the tests. Never shown. */
   id: string;
   /** The label the app puts on the field, verbatim where there is a field. */
@@ -150,7 +210,7 @@ export interface V2InputRow {
  * 1 — REQUIRED: no run without it
  * ==================================================================== */
 
-const REQUIRED: readonly V2InputRow[] = [
+const REQUIRED: readonly V2InputRowDef[] = [
   {
     id: 'responses',
     label: 'On-axis response per way (FRD)',
@@ -218,12 +278,17 @@ const REQUIRED: readonly V2InputRow[] = [
     id: 'sd',
     label: 'S_d per driver',
     form: 'Setup tab → driver card',
-    travels: 'sdCm2 → AdapterBranch.driverCard.sdCm2 → piston diameter → the beaming ceiling; M-C route 2',
+    travels:
+      'sdCm2 → AdapterBranch.driverCard.sdCm2 → M-C route 2 (only with a documented drive voltage ' +
+      'and mic distance) and the excursion card. U-9 (N4, measured): the beaming ceiling in engine2 ' +
+      'reads the NOMINAL diameter (nominalSize), not S_d; S_d ×2 on the tweeter moved nothing in the ' +
+      'report of either demo, with or without a network. Filed as REQUIRED since I-1; that class is ' +
+      'not changed without a measurement that argues it.',
     cls: 'required',
     effect: 'oordeelt',
     emptyMeans:
-      'no cone diameter, so the measured beaming ceiling falls back to the nominal size select ' +
-      'and, without that too, the window has no directivity ceiling.',
+      'M-C route 2 has no cone area and stays off with a reason; on the v2 route that is all a ' +
+      'blank S_d costs (U-9, N4).',
     source: 'datasheet',
   },
   {
@@ -247,7 +312,7 @@ const REQUIRED: readonly V2InputRow[] = [
 /** The sub-heading a judgement row sits under. Presentation only. */
 export type V2JudgementBand = 'architecture' | 'gates' | 'budgets' | 'requirements' | 'voicing';
 
-const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
+const JUDGEMENT: readonly (V2InputRowDef & { band: V2JudgementBand })[] = [
   /* ---- H-2: WHAT THE DESIGN IS, before anything judges it ----------------
    *
    * A band of its own, and first, because these three answer a question that
@@ -624,7 +689,16 @@ const JUDGEMENT: readonly (V2InputRow & { band: V2JudgementBand })[] = [
  * 3 — NICE TO HAVE: enriches, never blocks
  * ==================================================================== */
 
-const NICE: readonly V2InputRow[] = [
+/** U-9 fase 2 — the placement override of a field that steers the search on an
+ *  app start value. Shared with `STEERS_ON_APP_DEFAULT` below. */
+const STEERS_ON_APP_DEFAULT_PLACEMENT = {
+  placement: 'always' as const,
+  placementWhy:
+    'it steers the v2 search on an app start value nobody stated (U-9, N2), and P4 asks such a ' +
+    'value to stay in view and say what it is rather than sit behind a fold.',
+};
+
+const NICE: readonly V2InputRowDef[] = [
   {
     id: 'blTm',
     label: 'Bl',
@@ -932,6 +1006,11 @@ const NICE: readonly V2InputRow[] = [
     effect: 'zoekt',
     emptyMeans: 'the window keeps its measured beaming ceiling, or has none and says so.',
     source: 'datasheet',
+    placement: 'conditional',
+    condition: 'a three-way whose woofer ceiling is not measured and whose S_d gives no piston diameter',
+    placementWhy:
+      'it is the fallback for a missing cone area, and a permanently visible fallback invites a guess ' +
+      'over the figure it stands in for (A3h).',
   },
   {
     id: 'catalogSnap',
@@ -944,6 +1023,7 @@ const NICE: readonly V2InputRow[] = [
     effect: 'zoekt',
     emptyMeans: 'the design keeps continuous values; nothing is judged against a purchasable part.',
     source: 'choice',
+    ...STEERS_ON_APP_DEFAULT_PLACEMENT,
   },
   {
     id: 'verticalWindowDeg',
@@ -1206,7 +1286,10 @@ const NICE: readonly V2InputRow[] = [
     id: 'chamber',
     label: 'Chamber (sealed / ported, and its corner)',
     form: 'Setup tab → driver card',
-    travels: 'cabinet.drivers[role].enclosure / fbHz → what the box itself already filters, and the excursion warning',
+    travels:
+      'cabinet.drivers[role].enclosure / fbHz → what the box itself already filters, and the excursion ' +
+      'warning; U-9 (N5, measured): f_b of the LOW driver → audit.fbHz → the tuner’s part audit on ' +
+      'every route, and on the two-way route the design step as well',
     cls: 'nice',
     effect: 'zoekt',
     emptyMeans:
@@ -1245,6 +1328,9 @@ const NICE: readonly V2InputRow[] = [
       'read by the FULL field only; an exploration uses its own chain budget and ignores this ' +
       'number — except as the step count of a pinned crossover point, which both modes read.',
     source: 'choice',
+    placement: 'conditional',
+    condition: 'a pinned crossover or the full field (U-9: the exploration ignores the count)',
+    placementWhy: 'a count that nothing reads until its parent is set waits out of sight (U-9, point 5).',
   },
   {
     id: 'crossoverPoint',
@@ -1261,6 +1347,10 @@ const NICE: readonly V2InputRow[] = [
       'the short way of writing the "Crossings you state" list: N stated positions across the ' +
       'band, each a full chain run past the window and past the chain budget (U-5b).',
     source: 'choice',
+    placement: 'always',
+    placementWhy:
+      'a pin states crossings, and whether one is stated is something the designer has to see ' +
+      'without opening anything (U-5b).',
   },
   {
     id: 'xoScanSteps',
@@ -1273,6 +1363,507 @@ const NICE: readonly V2InputRow[] = [
       'it is a select and is never empty. With the crossover point OFF it states nothing at all; ' +
       'with it on, this is how many positions you asked for and how many chain runs that costs.',
     source: 'choice',
+    placement: 'conditional',
+    condition: 'a two-way with a pinned crossover or the full field (U-9: the exploration ignores the count)',
+    placementWhy: 'a count that nothing reads until its parent is set waits out of sight (U-9, point 5).',
+  },
+];
+
+/* ==================================================================== *
+ * 3b — U-9 fase 2: EVERY FIELD THAT DOES SOMETHING, AND HAD NO ROW
+ * ==================================================================== *
+ *
+ * I-1 called this register "every input the v2 route can reach", and the U-9
+ * phase-0 measurement found fifty fields it did not hold — thirty-five of them
+ * steering the search (finding N2). Each row below takes its EFFECT from that
+ * measurement (`docs/U-9_veldinventaris.md`, the number in the comment is its
+ * row there) and not from an estimate made while writing it.
+ *
+ * Most of the searching ones start on a value the APP chose (a `useState`
+ * initial, `appDefaults.ts`), not one anybody stated — and still steer the
+ * search. They are neither hidden nor changed: they say what they are
+ * ("app default — not stated by you"), and they stay in the default view for
+ * the P4 reason, which is the placement override they all carry.
+ */
+
+/** Shared by every row that steers the search on an app start value (N2). */
+const STEERS_ON_APP_DEFAULT = STEERS_ON_APP_DEFAULT_PLACEMENT;
+
+const U9_ROWS: readonly V2InputRowDef[] = [
+  /* ---- 1. Project / Import and the measurement slots ---- */
+  {
+    id: 'offAxisSets', // #2
+    label: 'Angle set per way (off-axis files)',
+    form: 'Drivers tab — angle slots',
+    travels:
+      'offAxis → the directivity ceiling of the A5d.3 window; on the three-way also diAnchorHz and the ' +
+      'angle data the tuner’s in-room terms read',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans:
+      'no directivity ceiling in the window (it says so), and the in-room terms of the tuner stay off.',
+    source: 'measurement',
+  },
+  {
+    id: 'mergeStepModel', // #7
+    label: 'Step model on/off (near-field merge)',
+    form: 'Drivers tab — near-field merge',
+    travels: 'stepOn → the minimum-phase shelf of nfMerge → the merged file → its validity floor',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'it is a tick and never blank; off, the merge splices without a baffle-step shelf and says so.',
+    source: 'choice',
+  },
+  {
+    id: 'fileNote', // #9
+    label: 'File note',
+    form: 'Drivers tab — beside each file',
+    travels: 'stored with the project as provenance; no reader in a run',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'no note; nothing in a run reads it.',
+    source: 'choice',
+  },
+  {
+    id: 'catalog', // #10
+    label: 'Parts catalogue (import and manage)',
+    form: 'Components tab → catalogue manager',
+    travels: 'the imported catalogue → the coil-family fits (the DCR model, A5e.3) and the snap',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans:
+      'no catalogue: nothing to snap to and no fitted coil family, so the design keeps continuous ' +
+      'values and the DCR model stays off with its reason.',
+    source: 'choice',
+  },
+  {
+    id: 'networkSource', // #11
+    label: 'Filter / VituixCAD import, variant, design and project to open',
+    form: 'Project tab and the design tabs',
+    travels: 'which network the report judges',
+    cls: 'nice',
+    effect: 'oordeelt',
+    emptyMeans: 'no network loaded: the report judges the measurements alone and says so.',
+    source: 'choice',
+  },
+  {
+    id: 'referenceFile', // #12
+    label: 'Verification / reference file',
+    form: 'Network tab',
+    travels: 'a chart overlay',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'no overlay.',
+    source: 'measurement',
+  },
+  /* ---- 4. Setup → the tweeter / mid adjustment (N7) ---- */
+  {
+    id: 'phaseMode', // #50
+    label: 'Phase: measured or minimum',
+    form: 'Setup tab → driver phase',
+    travels: 'phaseMode → minimum-phase branches in the chain feed',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'it is a select and never blank.',
+    source: 'choice',
+  },
+  {
+    id: 'tweeterAdjust', // #51, #52
+    label: 'Tweeter offset (mm) and trim (dB)',
+    form: 'Setup tab → tweeter adjustment',
+    travels:
+      'tAdjust (three-way) / adjust (two-way) → the chain feed. U-9 (N7, measured): offset and trim reach ' +
+      'the chain; the polarity in the same object is overwritten by the stated arm (H-5), these are not',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'zero offset and zero trim are app start values; the fields hold numbers and are never blank.',
+    source: 'measurement',
+  },
+  {
+    id: 'midAdjust', // #53
+    label: 'Mid offset (mm) and trim (dB)',
+    form: 'Setup tab → midrange adjustment (three-way)',
+    travels: 'midAdjust → the three-way chain feed (N7)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'zero offset and zero trim are app start values; the fields hold numbers and are never blank.',
+    source: 'measurement',
+  },
+  {
+    id: 'seatTiming', // #54
+    label: 'Seat timing',
+    form: 'Setup tab → driver phase',
+    travels: 'the v1 display of arrival times at the seat',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'nothing in a run reads it.',
+    source: 'measurement',
+  },
+  /* ---- 6. Filters: the fields that used to sit under v1 headings (N2) ---- */
+  {
+    id: 'dirWeight', // #95
+    label: 'Weight for in-room sound (%)',
+    form: 'Filters → ⚙ Settings',
+    travels: 'dirWeight → network.weights → the tuner; on the two-way route the design step as well',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a slider, never blank; it acts only with an angle set loaded.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'ampTarget', // #96
+    label: 'Amplitude target (on-axis / listening window)',
+    form: 'Filters → ⚙ Settings',
+    travels: 'ampTarget → the tuner’s amplitude term',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a select, never blank; it acts only with an angle set loaded.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'powerMetric', // #97, #98
+    label: 'Power response metric and DI-fold weight',
+    form: 'Filters → ⚙ Settings',
+    travels: 'powerMetric / powerFoldWeight → the tuner’s in-room term',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'never blank; it acts only with an angle set loaded.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'costWeight', // #99
+    label: 'Snap cost pressure',
+    form: 'Filters → ⚙ Settings',
+    travels: 'costWeight → the catalogue snap’s tiebreak, score ×(1 + w·ΣEUR)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a number, never blank; 0 = no cost pressure.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'dissipationWeight', // #100
+    label: 'Dissipation weight',
+    form: 'Filters → ⚙ Settings',
+    travels: 'dissipationWeight → a GREY weight in the tuner objective (A3j: taken over explicitly)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a number, never blank; 0 = the term is off.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'rSourceLimit', // #101
+    label: 'Source R limit (audit tier)',
+    form: 'Filters → ⚙ Settings',
+    travels: 'rSourceLimitOhm → the tuner’s part audit (audit tier)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a number, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'rSourceDisq', // #102
+    label: 'Source R disqualify',
+    form: 'Filters → ⚙ Settings (three-way only)',
+    travels:
+      'rSourceDisqualifyOhm → the THREE-WAY chain settings only. On the two-way and hybrid routes the ' +
+      'candidate declares it ABSENT (V34, U-5c), so it is drawn on the three-way only (Sander, 25-10-2026: ' +
+      'a field that does nothing on a route is hidden there)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a number, never blank; 0 = off.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'diWeight', // #103
+    label: 'DI anchor weight',
+    form: 'Filters → ⚙ Settings (three-way only)',
+    travels: 'diWeight → the three-way structure search; the two-way and hybrid routes do not read it',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a number, never blank; 0 = off.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'eqBands', // #104
+    label: 'Correction bands per driver (max)',
+    form: 'Filters → ⚙ Settings',
+    travels: 'vfEqBands → the design step’s EQ slots',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a number, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'breakupGuard', // #105
+    label: 'Keep cone breakup ≥20 dB down',
+    form: 'Filters → ⚙ Settings',
+    travels: 'breakupGuard → the chain settings → the tuner',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a tick, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'phaseMetric', // #106
+    label: 'Phase metric (integration band / classic)',
+    form: 'Filters → ⚙ Settings',
+    travels: 'phaseMetricMode → the chain settings → the tuner’s phase term',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a select, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'synthMode', // #107
+    label: 'Build mode (acoustic result / filter curve)',
+    form: 'Filters toolbar, next to Optimize',
+    travels: 'synthMode → the synthesis step of the chain',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a select, never blank.',
+    source: 'choice',
+  },
+  {
+    id: 'snapProfile', // #109
+    label: 'Snap profile',
+    form: '🧙 Wizard → components',
+    travels: 'snapProfile → snapPrefs → the catalogue snap',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a select, never blank; acts only with the snap on.',
+    source: 'choice',
+  },
+  {
+    id: 'snapSeries', // #110
+    label: 'Series preference L / C / R',
+    form: '🧙 Wizard → components',
+    travels: 'snapSeriesL/C/R → snapPrefs.seriesByKind → the catalogue snap',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'auto: no preference; acts only with the snap on.',
+    source: 'choice',
+  },
+  {
+    id: 'snapBoundToSeries', // #111
+    label: 'Bind to series',
+    form: '🧙 Wizard → components',
+    travels: 'snapBoundToSeries → snapPrefs → the catalogue snap, only with a chosen series',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a tick, never blank; acts only with a series chosen.',
+    source: 'choice',
+  },
+  {
+    id: 'snapStacks', // #112
+    label: 'Allow stacks',
+    form: '🧙 Wizard → components',
+    travels: 'snapStacks → snapPrefs.allowStacks → the catalogue snap',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a tick, never blank; acts only with the snap on.',
+    source: 'choice',
+  },
+  {
+    id: 'stagedOn', // #113, #114, #115
+    label: 'Use as few components as possible, and its ripple / phase goals',
+    form: 'Filters → ⚙ Settings',
+    travels: 'stagedOn + targetRipple / targetPhase → targets / staged → the step method in the tuner',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a tick and two numbers, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'roomCorrection', // #116, #117
+    label: 'Room correction present, and its ripple goal',
+    form: 'Filters → ⚙ Settings',
+    travels: 'roomCorrection / roomRippleDb → widens the step method’s ripple goal; the phase goal stays',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a tick, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'acSlopeMid', // #118
+    label: 'Acoustic slope mid (LP at the high crossing)',
+    form: 'Filters → ⚙ Settings',
+    travels:
+      'acSlopeMid → acousticSlopes → the tuner; U-9 (N3, measured): ALSO orderByPair → the order the ' +
+      'A5d.3 f_s floor assumes, so the candidate field moves; on the two-way route the design step too',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'auto: free; a select, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'acSlopeTweeter', // #119
+    label: 'Acoustic slope tweeter',
+    form: 'Filters → ⚙ Settings',
+    travels: 'acSlopeTweeter → acousticSlopes → the tuner (N3)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'auto: free; a select, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'acSlopeWoofer', // #120
+    label: 'Acoustic slope woofer (low crossing)',
+    form: 'Filters → ⚙ Settings (three-way only)',
+    travels:
+      'acSlopeWoofer → acousticSlopes.low → the tuner and orderByPair → the windows (N3); three-way only, ' +
+      'hidden on the two-way and hybrid routes where nothing reads it',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'auto: free; a select, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'acSlopeMidHp', // #121
+    label: 'Acoustic slope mid HP (low crossing)',
+    form: 'Filters → ⚙ Settings (three-way only)',
+    travels: 'acSlopeMidHp → acousticSlopes.low → the tuner and orderByPair → the windows (N3); three-way only',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'auto: free; a select, never blank.',
+    source: 'choice',
+    ...STEERS_ON_APP_DEFAULT,
+  },
+  {
+    id: 'phasePriority',
+    label: 'Priority: response % · phase %',
+    form: 'Filters → Goals & weighting (and the wizard’s Goals step)',
+    travels:
+      'chain settings.phasePriority → OVERWRITTEN for the design and synthesis steps by the chain ' +
+      'declaration (DEFAULT_PHASE_PRIORITY, declareCandidateChainChoices, M-4) — but the TUNER reads ' +
+      'the slider: the worker builds `network.weights` from the raw `input.settings` before the ' +
+      'declaration is applied, and the hook spreads those weights last (U-9, finding N1, measured on ' +
+      'the three-way, the two-way and the hybrid route)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'not applicable: the slider always holds a value.',
+    source: 'choice',
+    /* U-9 fase 2 (Sander, 25-10-2026): the slider STAYS, and its badge says what
+     * the measurement found. It is not a v1 field — the v2 tuner reads it — so
+     * it carries no v1 badge any more (B-2.1). */
+    effectNote:
+      'The tuner reads this slider; the design step and the synthesis run on the engine’s own ' +
+      '50/50 split (M-4). Measured on all three routes (U-9, N1). Whether the design step should ' +
+      'follow it is an engine decision, not made here.',
+    placement: 'always',
+    placementWhy:
+      'it steers the v2 tuner on an app start value nobody stated (U-9, N2), and P4 asks such a ' +
+      'value to stay in view and say what it is.',
+  },
+  /* ---- 7. The Network tab, the editor and the chart controls ---- */
+  {
+    id: 'networkTemplate', // #127
+    label: 'New from template (ways, order)',
+    form: 'Network tab',
+    travels: 'builds the network the report judges (H-3: in Hybrid mode acoustically seeded)',
+    cls: 'nice',
+    effect: 'oordeelt',
+    emptyMeans: 'an action, not a value.',
+    source: 'choice',
+  },
+  {
+    id: 'networkEditor', // #128
+    label: 'Network editor: model, polarity, value, realisation, LCR notch',
+    form: 'Network tab → schematic editor',
+    travels: 'edits the network the report judges',
+    cls: 'nice',
+    effect: 'oordeelt',
+    emptyMeans: 'an edit, not a value.',
+    source: 'choice',
+  },
+  {
+    id: 'partLock', // #129
+    label: 'Lock a part',
+    form: 'Network tab → schematic editor',
+    travels: 'locked → v2TuneNetlist (⚙ Optimize components) leaves the part out of the tune',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'unlocked: the tune may change it.',
+    source: 'choice',
+  },
+  {
+    id: 'simDisplay', // #130, #131
+    label: 'Network active, compare tabs, tolerance band, save as / rename',
+    form: 'Network tab',
+    travels: 'the simulation display and the design’s name',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'nothing in a run reads it.',
+    source: 'choice',
+  },
+  {
+    id: 'viewFmax', // #132
+    label: 'View range f max',
+    form: 'Setup tab → view range',
+    travels:
+      'fMax → v2ChainFrame keeps the caller’s ceiling, so it is the CEILING OF THE JUDGED BAND (E-5, by ' +
+      'design; U-9, N6)',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans: 'a number, never blank.',
+    source: 'choice',
+  },
+  {
+    id: 'viewFmin', // #133
+    label: 'View range f min',
+    form: 'Setup tab → view range',
+    travels: 'fMin → the chart; the grid floor only when it lies below the validity floor (E-5)',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'a number, never blank.',
+    source: 'choice',
+  },
+  {
+    id: 'chartDisplay', // #134, #135, #136
+    label: 'Chart range, Pareto axis, sonogram, bypass, solo floor',
+    form: 'the chart panels and the solo controls',
+    travels: 'the charts and the single-driver display',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'nothing in a run reads it.',
+    source: 'choice',
+  },
+  {
+    id: 'bandForms', // #137
+    label: 'Filter bands (per-driver HP/LP/EQ forms)',
+    form: 'Filters → Filter bands',
+    travels:
+      'the simulation without a network; follows the polarity rule (H-4b). The v2 chain feed gets ' +
+      'seed: defaultVFilters(), not these',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'nothing in a run reads it.',
+    source: 'choice',
+  },
+  {
+    id: 'navigation', // #138
+    label: 'Search fields, command palette, measuring-guide sliders, view toggles',
+    form: 'every tab',
+    travels: 'navigation and explanation',
+    cls: 'nice',
+    effect: 'toont',
+    emptyMeans: 'nothing in a run reads it.',
+    source: 'choice',
   },
 ];
 
@@ -1280,7 +1871,7 @@ const NICE: readonly V2InputRow[] = [
  * 4 — V1 LEGACY: the v2 route does not read it
  * ==================================================================== */
 
-const V1_LEGACY: readonly V2InputRow[] = [
+const V1_LEGACY: readonly V2InputRowDef[] = [
   {
     id: 'errorSmoothOct',
     label: 'Error smoothing',
@@ -1297,26 +1888,6 @@ const V1_LEGACY: readonly V2InputRow[] = [
       'v1 — not read by Engine v2 since V38-fix: the candidate states the search-smoothing width ' +
       'itself (0 — the summed curve every judgement reads). It is read only in the fallback where ' +
       'no A5d.3 window could be derived and no declaration travels.',
-  },
-  {
-    id: 'phasePriority',
-    label: 'Priority: response % · phase %',
-    form: 'Filters → Goals & weighting (and the wizard’s Goals step)',
-    travels:
-      'chain settings.phasePriority → OVERWRITTEN for the design and synthesis steps by the chain ' +
-      'declaration (DEFAULT_PHASE_PRIORITY, declareCandidateChainChoices, M-4) — but the TUNER reads ' +
-      'the slider: the worker builds `network.weights` from the raw `input.settings` before the ' +
-      'declaration is applied, and the hook spreads those weights last (U-9, finding N1, measured on ' +
-      'the three-way, the two-way and the hybrid route)',
-    cls: 'v1-legacy',
-    effect: 'zoekt',
-    emptyMeans: 'not applicable: the slider always holds a value.',
-    source: 'choice',
-    v1Note:
-      'Half read by Engine v2 (U-9, measured): the design and synthesis steps run on the engine’s ' +
-      'own 50/50 split (M-4), while the tuner runs on this slider. U-5c read it as not read at all; ' +
-      'the measurement says otherwise. Whether the design step should follow the slider, or the tuner ' +
-      'should stop following it, is an engine decision and not a UI one.',
   },
   {
     id: 'hpLpPref',
@@ -1353,20 +1924,22 @@ const V1_LEGACY: readonly V2InputRow[] = [
     form: 'Filters → Targets',
     travels: 'rankChain3Results → the v1 scan TABLE only; it reaches no gate and no shortlist',
     cls: 'v1-legacy',
-    effect: 'toont',
+    effect: 'niets',
     emptyMeans: 'not applicable to the shortlist.',
     source: 'choice',
     v1Note:
-      'v1 — not read by Engine v2’s shortlist: it orders the v1 scan table beside it. No v2 ' +
-      'requirement, gate or budget reads a price.',
+      'v1 — not read by Engine v2’s shortlist: it ordered the v1 scan table beside it, which is no ' +
+      'longer shown (v1-uitfasering (B-2)). No v2 requirement, gate or budget reads a price.',
   },
   {
     id: 'excursionSpl',
     label: 'Design for … dB',
     form: 'Filters → Driver limits',
-    travels: 'excursionFloorHz → the v1 physics window floor; the v2 window floor is M-C v2.0’s ceiling',
+    travels:
+      'excursionFloorHz → the v1 physics window floor → judgeWindows → the v1 scan table; the v2 window ' +
+      'floor is M-C v2.0’s ceiling. Hidden since B-2 (v1-uitfasering (B-2)), together with the table.',
     cls: 'v1-legacy',
-    effect: 'toont',
+    effect: 'niets',
     emptyMeans: 'not applicable.',
     source: 'choice',
     /* THE SENTENCE HAS ONE HOME AND TWO READERS. E-2 gave this field its note
@@ -1377,23 +1950,177 @@ const V1_LEGACY: readonly V2InputRow[] = [
      * is non-null by construction — it returns null only on the v1 route. */
     v1Note: designLevelNote(true)!,
   },
+  {
+    id: 'v1Thresholds', // #126
+    label: 'v1 window thresholds: beaming tier, lobing strictness, breakup harmonic, array k, λ-divisor, fs ×, breakup divisor',
+    form: 'Filters → Driver limits / Crossover (no longer shown)',
+    travels:
+      'the v1 physics window → judgeWindows → xoWindowOk → the v1 scan table only. Hidden since B-2 ' +
+      '(v1-uitfasering (B-2)), together with the table; the v2 window is A5d.3’s and reads none of them',
+    cls: 'v1-legacy',
+    effect: 'niets',
+    emptyMeans: 'not applicable: no v2 window, gate or shortlist reads them.',
+    source: 'choice',
+    v1Note: 'v1 — v1-uitfasering (B-2): these sorted the v1 scan table, which is no longer shown.',
+  },
 ];
+
+/**
+ * U-9 fase 2 — every row's group, by id. Data, not a convention: a row added
+ * above without an entry here THROWS when the register is built, so a field
+ * cannot reach the panel without a place in the order of designing.
+ */
+const GROUP_OF: Readonly<Record<string, V2FieldGroup>> = Object.freeze({
+  // architecture
+  'ways': 'architecture',
+  'activeSideOn': 'architecture',
+  'activeHandoverHz': 'architecture',
+  'activeHandoverShape': 'architecture',
+  'activeFlankBudgetDbRms': 'architecture',
+  'activeProcessorLatencyMs': 'architecture',
+  'wiring': 'architecture',
+  // measurement
+  'responses': 'measurement',
+  'validity': 'measurement',
+  'impedance': 'measurement',
+  'positions': 'measurement',
+  'sd': 'measurement',
+  'baffle-width': 'measurement',
+  'nearFieldCone': 'measurement',
+  'nearFieldPort': 'measurement',
+  'spliceBand': 'measurement',
+  'mergeValidFrom': 'measurement',
+  'measuredRe': 'measurement',
+  'rotSym': 'measurement',
+  'acousticCentre': 'measurement',
+  'micDistance': 'measurement',
+  'gateOverride': 'measurement',
+  'micElevation': 'measurement',
+  'baffleHeight': 'measurement',
+  'referencePoint': 'measurement',
+  'refDriver': 'measurement',
+  'cabinetDepth': 'measurement',
+  'listeningPosition': 'measurement',
+  'sourceCount': 'measurement',
+  'mounting': 'measurement',
+  'chamber': 'measurement',
+  'manualWindow': 'measurement',
+  'driveVoltageV': 'measurement',
+  'offAxisSets': 'measurement',
+  'mergeStepModel': 'measurement',
+  'fileNote': 'measurement',
+  'referenceFile': 'measurement',
+  'phaseMode': 'measurement',
+  'tweeterAdjust': 'measurement',
+  'midAdjust': 'measurement',
+  'seatTiming': 'measurement',
+  // amplifier
+  'ampMinLoadOhm': 'amplifier',
+  'maxDissipationPct': 'amplifier',
+  'minEpdrOhm': 'amplifier',
+  'amplifierPeakPowerW': 'amplifier',
+  'amplifierNominalLoadOhm': 'amplifier',
+  'amplifierPowerW': 'amplifier',
+  'dissipationWeight': 'amplifier',
+  // protection
+  'maxDriveOnFsDb': 'protection',
+  'driveOnFsMaxDb-per-way': 'protection',
+  'xmaxMarginFraction': 'protection',
+  'xmaxMm': 'protection',
+  'blTm': 'protection',
+  'mmsG': 'protection',
+  'powerRating': 'protection',
+  'lfBumpBudgetDb': 'protection',
+  'qesMultiplierMax': 'protection',
+  'dampingMarginDb': 'protection',
+  'rSourceLimit': 'protection',
+  'rSourceDisq': 'protection',
+  'breakupGuard': 'protection',
+  // crossover
+  'lowestWayLevelWork': 'crossover',
+  'lowestWaySeriesRMaxOhm': 'crossover',
+  'minCrossover': 'crossover',
+  'maxCrossover': 'crossover',
+  'maxCrossoverOverride': 'crossover',
+  'breakupDivisor': 'crossover',
+  'nominalSize': 'crossover',
+  'crossoverPoint': 'crossover',
+  'xoScanSteps': 'crossover',
+  'xo3Steps': 'crossover',
+  'hpLpPref': 'crossover',
+  'scan3Mode': 'crossover',
+  'diWeight': 'crossover',
+  'eqBands': 'crossover',
+  'synthMode': 'crossover',
+  'acSlopeMid': 'crossover',
+  'acSlopeTweeter': 'crossover',
+  'acSlopeWoofer': 'crossover',
+  'acSlopeMidHp': 'crossover',
+  'v1Thresholds': 'crossover',
+  'excursionSpl': 'crossover',
+  // buildability
+  'resistorClassW': 'buildability',
+  'resistorPowerMargin': 'buildability',
+  'coilClassA': 'buildability',
+  'resistorThermalPowerW': 'buildability',
+  'coilFamily': 'buildability',
+  'catalogSnap': 'buildability',
+  'catalog': 'buildability',
+  'costWeight': 'buildability',
+  'snapProfile': 'buildability',
+  'snapSeries': 'buildability',
+  'snapBoundToSeries': 'buildability',
+  'snapStacks': 'buildability',
+  'stagedOn': 'buildability',
+  'networkSource': 'buildability',
+  'networkTemplate': 'buildability',
+  'networkEditor': 'buildability',
+  'partLock': 'buildability',
+  'simDisplay': 'buildability',
+  'bomCapEur': 'buildability',
+  // voicing
+  'targetCurve': 'voicing',
+  'plateauDepthDb': 'voicing',
+  'splWindowPlusMinusDb': 'voicing',
+  'maxPhaseTrackingDeg': 'voicing',
+  'verticalWindowDeg': 'voicing',
+  'dirWeight': 'voicing',
+  'ampTarget': 'voicing',
+  'powerMetric': 'voicing',
+  'phaseMetric': 'voicing',
+  'roomCorrection': 'voicing',
+  // run
+  'shortlistSize': 'run',
+  'runSeed': 'run',
+  'runBudgetEvals': 'run',
+  'fieldMode': 'run',
+  'polarityArms': 'run',
+  'statedCrossings': 'run',
+  'errorSmoothOct': 'run',
+  'phasePriority': 'run',
+  'viewFmax': 'run',
+  'viewFmin': 'run',
+  'chartDisplay': 'run',
+  'bandForms': 'run',
+  'navigation': 'run',
+});
 
 /* ==================================================================== *
  * The register, and the readers
  * ==================================================================== */
 
 /** Every input, in class order. */
-export const V2_INPUT_REGISTER: readonly V2InputRow[] = Object.freeze([
-  ...REQUIRED,
-  ...JUDGEMENT,
-  ...NICE,
-  ...V1_LEGACY,
-]);
+export const V2_INPUT_REGISTER: readonly V2InputRow[] = Object.freeze(
+  [...REQUIRED, ...JUDGEMENT, ...NICE, ...U9_ROWS, ...V1_LEGACY].map((r) => {
+    const group = GROUP_OF[r.id];
+    if (!group) throw new Error(`v2InputRegister: row "${r.id}" has no group`);
+    return { ...r, group };
+  }),
+);
 
 /** The judgement rows with the sub-heading each sits under. */
 export const V2_JUDGEMENT_ROWS: readonly (V2InputRow & { band: V2JudgementBand })[] =
-  Object.freeze([...JUDGEMENT]);
+  Object.freeze(JUDGEMENT.map((r) => ({ ...r, group: GROUP_OF[r.id] })));
 
 /** The sub-headings of the judgement group, in order. */
 export const V2_JUDGEMENT_BANDS: readonly V2JudgementBand[] = [
@@ -1411,6 +2138,33 @@ export const V2_CLASS_HEADING: Readonly<Record<V2InputClass, string>> = Object.f
   nice: 'Engine v2 — 3. nice to have (enriches, never blocks)',
   'v1-legacy': 'v1 (not read by Engine v2)',
 });
+
+/** U-9 fase 2 — the badge words, one per effect and one per source. */
+export const EFFECT_WORD: Readonly<Record<V2InputEffect, string>> = Object.freeze({
+  zoekt: 'searches',
+  oordeelt: 'judges',
+  toont: 'shows',
+  niets: 'nothing',
+});
+export const SOURCE_WORD: Readonly<Record<V2InputSource, string>> = Object.freeze({
+  datasheet: 'datasheet',
+  nameplate: 'nameplate',
+  measurement: 'measurement',
+  choice: 'your choice',
+});
+
+/** U-9 fase 2 — the rendered rows of one group, in register order. */
+export const rowsOfGroup = (g: V2FieldGroup): readonly V2InputRow[] =>
+  V2_INPUT_REGISTER.filter((r) => r.group === g && r.effect !== 'niets');
+
+/**
+ * U-9 fase 2 — the rendered rows of a group whose controls are NOT in the
+ * Filters panel: the panel names them under their group heading.
+ */
+export const rowsElsewhere = (g: V2FieldGroup): readonly V2InputRow[] => {
+  const inPanel = new Set(V2_FORM_FIELDS.filter((f) => f.form === 'v2-panel').map((f) => f.row));
+  return rowsOfGroup(g).filter((r) => !inPanel.has(r.id));
+};
 
 /** The rows of one class, in register order. */
 export const rowsOfClass = (cls: V2InputClass): readonly V2InputRow[] =>
@@ -1449,6 +2203,14 @@ export const rendersRow = (id: string): boolean => {
   if (!row) throw new Error(`rendersRow: no register row "${id}"`);
   return row.effect !== 'niets';
 };
+
+/**
+ * U-9 fase 2 (B-2.2) — IS THE v1 READING OF A RUN SHOWN AT ALL? The v1 ranking
+ * beside the shortlist is drawn only while the knobs that sort it are: a table
+ * nobody can explain any more is as dead as knobs without their table, so the
+ * two go together. Since B-2 both rows are `niets`, and this is false.
+ */
+export const v1ReadingShown = (): boolean => rendersRow('bomCapEur') && rendersRow('v1Thresholds');
 
 /** U-9 — the rows that are never rendered (Sander's approval, 25-10-2026). */
 export const V2_NIETS_ROWS: readonly string[] = Object.freeze(
@@ -1507,6 +2269,15 @@ export const V2_DEPENDENT_CONTROLS: readonly V2DependentControl[] = Object.freez
     control: 'value={xo3Steps}',
     parent: 'a pinned crossover or the full field — the exploration ignores the count (U-5b)',
     guard: "(xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') &&",
+  },
+  /* U-9 fase 2 — fase 1 put the two-way count under the PIN alone; the full
+   * field reads it too (`fieldModeSettings(full)` as stepsPerAxis), so it waits
+   * for either parent, exactly as the three-way count above. */
+  {
+    row: 'xoScanSteps',
+    control: 'value={xoScanSteps}',
+    parent: 'a pinned crossover or the full field — the exploration ignores the count (U-5b)',
+    guard: "!threeWay && (xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') &&",
   },
 ]);
 
@@ -1705,7 +2476,52 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'activeHandoverShape', form: 'v2-panel', control: 'value={engineV2Settings.activeHandoverShape}' },
   // ---- H-3b: the flank-error budget, behind the same tick ----
   { row: 'activeFlankBudgetDbRms', form: 'v2-panel', control: 'value={engineV2Settings.activeFlankBudgetDbRms}' },
-  { row: 'activeProcessorLatencyMs', form: 'v2-panel', control: 'value={engineV2Settings.activeProcessorLatencyMs}' },
+  { row: 'activeProcessorLatencyMs', form: 'v2-panel', control: 'value={engineV2Settings.activeProcessorLatencyMs}' },  // ---- U-9 fase 2: the fields that sat under the v1 headings, now in their groups ----
+  { row: 'phasePriority', form: 'v2-panel', control: 'value={phasePriority}' },
+  { row: 'phaseMetric', form: 'v2-panel', control: 'value={phaseMetricMode}' },
+  { row: 'ampTarget', form: 'v2-panel', control: 'value={ampTarget}' },
+  { row: 'dirWeight', form: 'v2-panel', control: 'value={dirWeight}' },
+  { row: 'powerMetric', form: 'v2-panel', control: 'value={powerMetric}' },
+  { row: 'powerMetric', form: 'v2-panel', control: 'value={powerFoldWeight}' },
+  { row: 'errorSmoothOct', form: 'v2-panel', control: 'value={String(errorSmoothOct)}' },
+  { row: 'rSourceLimit', form: 'v2-panel', control: 'value={rSourceLimitOhm}' },
+  { row: 'rSourceDisq', form: 'v2-panel', control: 'value={rSourceDisqOhm}' },
+  { row: 'ampMinLoadOhm', form: 'v2-panel', control: "value={ampMinLoadOhm ?? ''}" },
+  { row: 'dissipationWeight', form: 'v2-panel', control: 'value={dissipationWeight}' },
+  { row: 'diWeight', form: 'v2-panel', control: 'value={diWeight}' },
+  { row: 'eqBands', form: 'v2-panel', control: 'value={vfEqBands}' },
+  { row: 'hpLpPref', form: 'v2-panel', control: 'value={hpLpPrefLow}' },
+  { row: 'hpLpPref', form: 'v2-panel', control: 'value={hpLpPref}' },
+  { row: 'acSlopeMid', form: 'v2-panel', control: 'value={acSlopeMid}' },
+  { row: 'acSlopeTweeter', form: 'v2-panel', control: 'value={acSlopeTweeter}' },
+  { row: 'acSlopeWoofer', form: 'v2-panel', control: 'value={acSlopeWoofer}' },
+  { row: 'acSlopeMidHp', form: 'v2-panel', control: 'value={acSlopeMidHp}' },
+  { row: 'stagedOn', form: 'v2-panel', control: 'checked={stagedOn}' },
+  { row: 'stagedOn', form: 'v2-panel', control: 'value={targetRipple}' },
+  { row: 'stagedOn', form: 'v2-panel', control: 'value={targetPhase}' },
+  { row: 'roomCorrection', form: 'v2-panel', control: 'checked={roomCorrection}' },
+  { row: 'roomCorrection', form: 'v2-panel', control: 'value={roomRippleDb}' },
+  { row: 'costWeight', form: 'v2-panel', control: 'value={costWeight}' },
+  { row: 'bomCapEur', form: 'v2-panel', control: 'value={bomCapEur}' },
+  { row: 'breakupGuard', form: 'v2-panel', control: 'checked={breakupGuard}' },
+  { row: 'catalogSnap', form: 'v2-panel', control: 'checked={catalogSnap && hasImportedCatalog()}' },
+  { row: 'crossoverPoint', form: 'v2-panel', control: 'checked={xoRangeOn}' },
+  { row: 'crossoverPoint', form: 'v2-panel', control: 'value={xoLowFreqHz}' },
+  { row: 'crossoverPoint', form: 'v2-panel', control: 'value={xoLowMarginHz}' },
+  { row: 'crossoverPoint', form: 'v2-panel', control: 'value={xoFreqHz}' },
+  { row: 'crossoverPoint', form: 'v2-panel', control: 'value={xoMarginHz}' },
+  { row: 'scan3Mode', form: 'v2-panel', control: 'value={scan3Mode}' },
+  { row: 'xo3Steps', form: 'v2-panel', control: 'value={xo3Steps}' },
+  { row: 'xoScanSteps', form: 'v2-panel', control: 'value={xoScanSteps}' },
+  { row: 'v1Thresholds', form: 'v2-panel', control: 'value={xoWinThr.arrayK}' },
+  { row: 'v1Thresholds', form: 'v2-panel', control: 'value={xoWinThr.ctcLambdaDiv' },
+  { row: 'v1Thresholds', form: 'v2-panel', control: 'value={xoWinThr.fsK}' },
+  { row: 'v1Thresholds', form: 'v2-panel', control: 'value={kaTier}' },
+  { row: 'v1Thresholds', form: 'v2-panel', control: 'value={ctcK}' },
+  { row: 'v1Thresholds', form: 'v2-panel', control: 'value={breakupLimitOn ? breakupHarmonic' },
+  { row: 'v1Thresholds', form: 'v2-panel', control: 'value={xoWinThr.breakupDiv}' },
+  { row: 'excursionSpl', form: 'v2-panel', control: 'value={excursionSpl}' },
+  { row: 'nominalSize', form: 'v2-panel', control: 'value={wooferSizeInch}' },
 ]);
 
 /**
@@ -1723,15 +2539,102 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   // measurements and files, not settings: the Import tab's own slots
   'responses', 'validity', 'impedance', 'ways',
   'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom',
-  // Filters sections older than the v2 panel
-  'nominalSize', 'catalogSnap', 'xo3Steps', 'crossoverPoint', 'xoScanSteps',
-  /* The amplifier floor is a JUDGEMENT row and it IS shown — but it lives in
-   * "Goals & weighting", above the v2 block, because it predates it. Worth
-   * noting rather than moving: it is the one judgement input of the minimal
-   * set, and the only one not beside the gates it arms. */
-  'ampMinLoadOhm',
-  // the five v1 controls, each already badged where it stands (U-1)
-  'errorSmoothOct', 'hpLpPref', 'scan3Mode', 'bomCapEur', 'excursionSpl',
-  // U-5c — the sixth, found by the goals-panel audit and badged where it stands
-  'phasePriority',
+  /* U-9 fase 2 — the v1 Filters sections are gone: every field that stood
+   * there is now a control of the governed panel, in its group (B-2.1), and the
+   * amplifier floor sits beside the gates it arms, under "Amplifier & load".
+   * What remains here is drawn on another tab or in the guided wizard, where it
+   * is measured or set, and its group names it in the panel. */
+  'offAxisSets', 'mergeStepModel', 'fileNote', 'catalog', 'networkSource', 'referenceFile',
+  'phaseMode', 'tweeterAdjust', 'midAdjust', 'seatTiming',
+  'synthMode', 'snapProfile', 'snapSeries', 'snapBoundToSeries', 'snapStacks',
+  'networkTemplate', 'networkEditor', 'partLock', 'simDisplay',
+  'viewFmax', 'viewFmin', 'chartDisplay', 'bandForms', 'navigation',
 ]);
+
+/**
+ * U-9 fase 2 — EVERY OTHER CONTROL OF THE APP, filed under the row it serves.
+ *
+ * The U-3b drift guard over the WHOLE app (startprompt fase 2, step 1): every
+ * `<input>`/`<select>`/`<textarea>` outside the governed forms must match
+ * exactly one token here, so a control added anywhere without a register row
+ * fails the build. The token is a fragment of the control's own opening tag.
+ * Component files whose every control serves one row are filed whole in
+ * `V2_FILE_ROWS` — and a component that grows a control for another row has to
+ * move off that list, which is when someone looks.
+ */
+export interface V2AppControl {
+  row: string;
+  /** Source file, relative to `src/`. */
+  file: string;
+  control: string;
+}
+export const V2_APP_CONTROLS: readonly V2AppControl[] = Object.freeze([
+  // ---- App.tsx: the Drivers / Import tab ----
+  { row: 'responses', file: 'App.tsx', control: 'onChange={loadDriverFiles(' },
+  { row: 'referenceFile', file: 'App.tsx', control: 'void loadVerificationFile(f)' },
+  { row: 'nearFieldCone', file: 'App.tsx', control: "loadNearField(e, role, 'cone')" },
+  { row: 'nearFieldPort', file: 'App.tsx', control: "loadNearField(e, role, 'port')" },
+  { row: 'nearFieldPort', file: 'App.tsx', control: 'value={slot.portDiaMm}' },
+  { row: 'nearFieldPort', file: 'App.tsx', control: 'value={slot.portSharedBy}' },
+  { row: 'spliceBand', file: 'App.tsx', control: 'Number(slot.blendOctaves) || 1)[0]' },
+  { row: 'spliceBand', file: 'App.tsx', control: 'Number(slot.blendOctaves) || 1)[1]' },
+  { row: 'mergeStepModel', file: 'App.tsx', control: 'checked={slot.stepOn}' },
+  { row: 'mergeValidFrom', file: 'App.tsx', control: 'value={slot.validFromHz}' },
+  { row: 'fileNote', file: 'App.tsx', control: 'value={fileNotes[r.key]' },
+  { row: 'networkSource', file: 'App.tsx', control: 'onChange={loadVituixFiles}' },
+  { row: 'networkSource', file: 'App.tsx', control: 'onChange={loadProjectFromFile}' },
+  { row: 'networkSource', file: 'App.tsx', control: 'onChange={importFilterFromFile}' },
+  { row: 'networkSource', file: 'App.tsx', control: "value={activeDesignId ?? ''}" },
+  { row: 'networkSource', file: 'App.tsx', control: 'value={xoName}' },
+  { row: 'referenceFile', file: 'App.tsx', control: 'onChange={loadReference}' },
+  { row: 'referenceFile', file: 'App.tsx', control: 'onChange={loadVerification}' },
+  { row: 'catalog', file: 'App.tsx', control: 'onChange={importCatalogFromFile}' },
+  // ---- App.tsx: Setup ----
+  { row: 'viewFmin', file: 'App.tsx', control: 'value={fMin}' },
+  { row: 'viewFmax', file: 'App.tsx', control: 'value={fMax}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'value={splMin}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'value={splMax}' },
+  { row: 'phaseMode', file: 'App.tsx', control: 'value={phaseMode}' },
+  { row: 'tweeterAdjust', file: 'App.tsx', control: 'value={offsetMm}' },
+  { row: 'tweeterAdjust', file: 'App.tsx', control: 'value={trimDb}' },
+  { row: 'midAdjust', file: 'App.tsx', control: 'value={midOffsetMm}' },
+  { row: 'midAdjust', file: 'App.tsx', control: 'value={midTrimDb}' },
+  { row: 'seatTiming', file: 'App.tsx', control: 'checked={seatTiming}' },
+  // ---- App.tsx: Filters toolbar, the solo controls, the Network tab and the charts ----
+  { row: 'synthMode', file: 'App.tsx', control: 'value={synthMode}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'checked={vfBypass}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'value={soloSensDb}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'checked={soloFloorOn}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'value={soloFloorDb}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'value={paretoY}' },
+  { row: 'chartDisplay', file: 'App.tsx', control: 'value={sonogramMode}' },
+  { row: 'networkTemplate', file: 'App.tsx', control: 'value={threeWay ? 3 : templateWays}' },
+  { row: 'networkTemplate', file: 'App.tsx', control: 'value={soloDriver ? 0 : templateOrder}' },
+  { row: 'networkEditor', file: 'App.tsx', control: 'value={trapModel}' },
+  { row: 'networkEditor', file: 'App.tsx', control: 'value={trapFreq}' },
+  { row: 'networkEditor', file: 'App.tsx', control: 'value={trapDepth}' },
+  { row: 'networkEditor', file: 'App.tsx', control: 'value={trapQ}' },
+  { row: 'simDisplay', file: 'App.tsx', control: 'checked={networkActive}' },
+  { row: 'simDisplay', file: 'App.tsx', control: 'checked={compareTabs}' },
+  { row: 'simDisplay', file: 'App.tsx', control: 'checked={tolOn}' },
+  { row: 'simDisplay', file: 'App.tsx', control: 'value={tolPct}' },
+  { row: 'simDisplay', file: 'App.tsx', control: 'value={saveNameDraft}' },
+  { row: 'simDisplay', file: 'App.tsx', control: 'value={draft}' },
+  { row: 'navigation', file: 'App.tsx', control: 'value={palQuery}' },
+  // ---- the schematic editor ----
+  { row: 'networkEditor', file: 'components/SchematicEditor.tsx', control: "value={selPart.model ?? ''}" },
+  { row: 'networkEditor', file: 'components/SchematicEditor.tsx', control: 'checked={selPart.inverted ?? false}' },
+  { row: 'networkEditor', file: 'components/SchematicEditor.tsx', control: 'value={prefSeries[catKind]}' },
+  { row: 'networkEditor', file: 'components/SchematicEditor.tsx', control: 'value={String(stackN)}' },
+  { row: 'networkEditor', file: 'components/SchematicEditor.tsx', control: 'value={value}' },
+  { row: 'networkEditor', file: 'components/SchematicEditor.tsx', control: 'className="cat-parts"' },
+  { row: 'partLock', file: 'components/SchematicEditor.tsx', control: 'checked={selPart.locked ?? false}' },
+]);
+
+/** U-9 fase 2 — component files whose every control serves one row. */
+export const V2_FILE_ROWS: Readonly<Record<string, string>> = Object.freeze({
+  'components/CatalogManager.tsx': 'catalog',
+  'components/FilterControls.tsx': 'bandForms',
+  'components/HelpPanel.tsx': 'navigation',
+  'components/MeasuringGuide.tsx': 'navigation',
+});

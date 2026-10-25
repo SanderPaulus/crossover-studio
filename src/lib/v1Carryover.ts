@@ -45,7 +45,7 @@ import { V2_INPUT_REGISTER, type V2InputRow } from './v2InputRegister.ts';
  * in the file, so a project cannot carry them and this notice cannot honestly
  * claim it does.
  */
-export type V1FieldKey = 'hpLpPref' | 'hpLpPrefLow' | 'excursionSpl';
+export type V1FieldKey = 'hpLpPref' | 'hpLpPrefLow' | 'excursionSpl' | 'kaTier' | 'breakupHarmonic';
 
 export const V1_FIELD_DEFAULTS: Readonly<Record<V1FieldKey, string>> = Object.freeze({
   /** Preferred HP/LP alignment, high (mid-tweeter) crossing. 'auto' = free. */
@@ -54,6 +54,16 @@ export const V1_FIELD_DEFAULTS: Readonly<Record<V1FieldKey, string>> = Object.fr
   hpLpPrefLow: 'auto',
   /** The SPL the v1 excursion floor is computed for (dB). */
   excursionSpl: '96',
+  /* U-9 fase 2 (B-2.2) — two of the hidden v1 window thresholds a project FILE
+   * carries, each with ONE start value in the app (useState and restore agree).
+   * The other two it carries are NOT here, and that is named rather than
+   * smoothed: `ctcK` starts at 'auto' in `useState` and falls back to '0.5' in
+   * `applyProject` — two defaults for one field, so "unchanged" has no single
+   * meaning to compare against — and `breakupLimitOn` is a boolean. */
+  /** When a cone counts as beaming (the v1 ka tier). */
+  kaTier: 'measured',
+  /** The v1 breakup margin harmonic. */
+  breakupHarmonic: '3',
 });
 
 /** Which register row explains a carried field. Two keys share one row. */
@@ -61,6 +71,8 @@ const ROW_OF: Readonly<Record<V1FieldKey, string>> = Object.freeze({
   hpLpPref: 'hpLpPref',
   hpLpPrefLow: 'hpLpPref',
   excursionSpl: 'excursionSpl',
+  kaTier: 'v1Thresholds',
+  breakupHarmonic: 'v1Thresholds',
 });
 
 /**
@@ -74,6 +86,8 @@ const WHICH_OF: Readonly<Record<V1FieldKey, string>> = Object.freeze({
   hpLpPref: 'high crossing',
   hpLpPrefLow: 'low crossing',
   excursionSpl: '',
+  kaTier: 'beaming tier',
+  breakupHarmonic: 'breakup harmonic',
 });
 
 /** One carried field: what the file holds, and the register's own sentence. */
@@ -98,6 +112,8 @@ export interface V1CarryoverInput {
   readonly hpLpPref?: string;
   readonly hpLpPrefLow?: string;
   readonly excursionSpl?: string;
+  readonly kaTier?: string;
+  readonly breakupHarmonic?: string;
 }
 
 const rowById = (id: string): V2InputRow => {

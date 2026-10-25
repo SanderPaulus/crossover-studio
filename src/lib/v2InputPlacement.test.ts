@@ -62,7 +62,11 @@ const REGION: Record<V2GovernedForm, [string, string]> = {
      disclosures and a file input — and said so by failing three claims at once,
      none of which was about the wizard. The marker is in `App.tsx` beside the
      form it names. */
-  'v2-panel': ['{/* I-1 FORM · V2 PANEL', '<span className="opt-group-cap">{t(\'Components\')}</span>'],
+  /* U-9 fase 2 — V15: WAS the v2 block up to the "Components" caption; IS the
+     whole grouped Filters panel, between two markers. The v1 sections that
+     stood around the block are now groups of the same panel, so the governed
+     form is the panel. */
+  'v2-panel': ['{/* I-1 FORM · V2 PANEL', '{/* I-1 FORM · V2 PANEL END */}'],
 };
 
 function sliceOf(form: V2GovernedForm): string {
@@ -125,6 +129,13 @@ describe('U-3b — the placement rule', () => {
        * permanently visible switch that is usually inert is a switch someone
        * reaches for. */
       'maxCrossoverOverride',
+      /* U-9 fase 2 — three more, and all three wait for a parent: the two step
+       * counts read nothing until a crossover is pinned or the full field runs
+       * (U-9 point 5), and the nominal size is the fallback for a missing cone
+       * area (A3h). */
+      'nominalSize',
+      'xo3Steps',
+      'xoScanSteps',
     ]);
   });
 
@@ -152,9 +163,17 @@ describe('U-3b — the placement rule', () => {
      * below states it as a rule, so a datasheet row added later inherits it
      * instead of quietly landing behind the fold. */
     const shown = rowsOfClass('nice').filter((r) => placementOf(r) === 'always').map((r) => r.id);
+    /* U-9 fase 2 — V15: WAS eleven; IS those eleven plus the governed panel's
+     * search fields that start on an APP value (N2) — they stay in view for the
+     * P4 reason every one of them names — and the crossover pin (U-5b). Named,
+     * not counted. */
     expect(shown.sort()).toEqual(
       ['baffleHeight', 'blTm', 'maxCrossover', 'micDistance', 'minCrossover', 'mmsG', 'powerRating',
-        'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm'].sort(),
+        'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm',
+        'phasePriority', 'dirWeight', 'ampTarget', 'powerMetric', 'costWeight', 'dissipationWeight',
+        'rSourceLimit', 'rSourceDisq', 'diWeight', 'eqBands', 'breakupGuard', 'phaseMetric',
+        'stagedOn', 'roomCorrection', 'acSlopeMid', 'acSlopeTweeter', 'acSlopeWoofer', 'acSlopeMidHp',
+        'catalogSnap', 'crossoverPoint'].sort(),
     );
     for (const id of shown) expect(rowById(id)!.placementWhy, id).toBeTruthy();
   });
@@ -171,9 +190,17 @@ describe('U-3b — the placement rule', () => {
      * later in an ungoverned form fails this line, which is when someone should
      * look. */
     const governed = new Set(V2_FORM_FIELDS.map((f) => f.row));
-    expect(sheet.filter((r) => !governed.has(r.id)).map((r) => r.id)).toEqual(['nominalSize']);
+    /* U-9 fase 2 — V15: WAS `nominalSize` as the one datasheet row in an
+     * ungoverned form; IS every datasheet row governed, since the Filters panel
+     * is the governed form now — and `nominalSize` is the one CONDITIONAL
+     * datasheet row, named: it is the fallback for a missing S_d, which is why
+     * it waits rather than sits in the default view. */
+    expect(sheet.filter((r) => !governed.has(r.id)).map((r) => r.id)).toEqual([]);
     for (const r of sheet) {
-      if (!governed.has(r.id)) continue;
+      if (r.id === 'nominalSize') {
+        expect(placementOf(r)).toBe('conditional');
+        continue;
+      }
       expect(placementOf(r), r.id).toBe('always');
     }
     /* The four that describe ONE driver read as one row, because a spec sheet
@@ -311,12 +338,19 @@ function moreRegions(slice: string): string[] {
 }
 
 describe('U-3b — the app puts each control where its placement says', () => {
-  it('each governed form carries exactly one "more" disclosure, headed by the register’s own words', () => {
+  it('each governed form carries its "more" disclosure(s), headed by the register’s own words', () => {
+    /* U-9 fase 2 — V15: WAS exactly one disclosure per governed form; IS one for
+     * the cabinet form and the driver card, and one PER GROUP that holds a nice
+     * row in the grouped panel — today the voicing group (the vertical window)
+     * and the run group (shortlist, seed, budget, field, arms, stated
+     * crossings). A fold in the middle of an unrelated group would be a field
+     * filed away from its group. */
+    const expected: Record<string, number> = { cabinet: 1, 'driver-card': 1, 'v2-panel': 2 };
     for (const form of V2_GOVERNED_FORMS) {
       const R = sliceOf(form);
       const more = moreRegions(R);
-      expect(more.length, `${form}: one disclosure`).toBe(1);
-      expect(more[0], `${form}: the heading is the register's`).toContain('V2_MORE_HEADING');
+      expect(more.length, `${form}: its disclosures`).toBe(expected[form]);
+      for (const m of more) expect(m, `${form}: the heading is the register's`).toContain('V2_MORE_HEADING');
     }
     // The heading itself says what the disclosure holds, in Sander's terms.
     expect(V2_MORE_HEADING).toMatch(/not needed to build a filter/);
@@ -375,9 +409,14 @@ describe('U-3b — the app puts each control where its placement says', () => {
 
     for (const form of V2_GOVERNED_FORMS) {
       const R = sliceOf(form);
-      const more = moreRegions(R)[0];
-      const moreAt = R.indexOf(more);
+      const mores = moreRegions(R);
+      const spans = mores.map((m) => [R.indexOf(m), R.indexOf(m) + m.length] as const);
+      const more = mores.join('\n');
+      const inMore = (at: number) => spans.some(([a, b]) => at >= a && at < b);
       for (const f of fieldsOf(form)) {
+        /* U-9 — a niets row is never rendered, in any mode (`u9FieldEffects`
+         * pins its guard); it has no placement to obey. */
+        if (rowById(f.row)!.effect === 'niets') continue;
         const p = placementOf(rowById(f.row)!);
         const uses = usesOf(R, f.control);
         expect(uses.length, `${form}: ${f.control} is rendered at all`).toBeGreaterThan(0);
@@ -388,10 +427,7 @@ describe('U-3b — the app puts each control where its placement says', () => {
           expect(more.includes(f.control), `${form}: ${f.control} (${f.row}) is behind the form's own disclosure`).toBe(true);
         } else if (p === 'always') {
           for (const at of uses) {
-            expect(
-              at >= moreAt && at < moreAt + more.length,
-              `${form}: ${f.control} (${f.row}) should be in the default view`,
-            ).toBe(false);
+            expect(inMore(at), `${form}: ${f.control} (${f.row}) should be in the default view`).toBe(false);
           }
         }
       }
@@ -416,6 +452,11 @@ describe('U-3b — the app puts each control where its placement says', () => {
        * mode is ticked. On a fully passive project a latency field answers a
        * case that does not exist. */
       activeProcessorLatencyMs: "engineV2Settings.activeSideOn === 'on' &&",
+      /* U-9 fase 2 — the parents named in `V2_DEPENDENT_CONTROLS`, and the
+       * nominal size's own fallback condition. */
+      xo3Steps: "(xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') &&",
+      xoScanSteps: "!threeWay && (xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') &&",
+      nominalSize: '!physWin3?.lowCeilMeasured &&',
     };
     for (const f of V2_FORM_FIELDS) {
       const p = placementOf(rowById(f.row)!);
@@ -437,7 +478,7 @@ describe('U-3b — the app puts each control where its placement says', () => {
         expect(inside, `${f.row}: the use at offset ${at} is outside its guard`).toBe(true);
       }
       // …and the control is NOT also rendered unconditionally beside it.
-      expect(moreRegions(R)[0].includes(f.control), `${f.row} is conditional, not hidden`).toBe(false);
+      expect(moreRegions(R).some((m) => m.includes(f.control)), `${f.row} is conditional, not hidden`).toBe(false);
     }
     /* The condition is computed once, from the readers the app already uses,
      * rather than re-derived at the field. */

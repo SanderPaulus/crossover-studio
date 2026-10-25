@@ -2388,6 +2388,12 @@ select {
   align-items: center;
   gap: 0.35rem;
 }
+/* U-9 fase 2 — a badge and an app-default mark on a narrow row wrap to the
+ * next line rather than run off the column. */
+.inline-num:has(> .v2-badge),
+.opt-settings label:has(> .v2-badge) {
+  flex-wrap: wrap;
+}
 
 .unit-suffix {
   font-size: 0.75rem;
@@ -4630,6 +4636,51 @@ details.cabinet-driver > .derived strong,
   font-size: 0.68rem;
   font-style: italic;
   color: var(--muted);
+}
+/* U-9 fase 2 — what a field does and where its number comes from, read from
+ * the register. Small and quiet: it labels the field, it is not the field. */
+.v2-badge {
+  font-size: 0.62rem;
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.v2-badge-zoekt {
+  border-color: color-mix(in srgb, var(--accent, #4d8df0) 55%, transparent);
+  color: var(--accent, #4d8df0);
+}
+.v2-badge-oordeelt {
+  border-color: color-mix(in srgb, var(--good, #6cbf7a) 55%, transparent);
+  color: var(--good, #6cbf7a);
+}
+/* U-9 fase 2 — a number nobody stated that still steers the search (N2, P4):
+ * visibly NOT the green of "stated by you". */
+.v2-app-default {
+  font-size: 0.68rem;
+  color: #ec835a;
+  margin-left: 0.35rem;
+  font-style: italic;
+  /* wraps: in Dutch the sentence is long, and a narrow column must not scroll */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.v2-elsewhere {
+  font-size: 0.75rem;
+}
+ul.scan-bare {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+ul.scan-bare button {
+  text-align: left;
+  white-space: normal;
 }
 .v2-empty {
   font-size: 0.68rem;

@@ -8604,3 +8604,87 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   drie claims die haar dragen), de schaduw uit `runVfOptimize` (1) en `v2ReportNow` dat niet meer
   ter plekke bouwt (4).
 
+
+### U-9 fase 2-guards (Expert: alles wat iets doet, in de volgorde van het ontwerpen; v1 uit beeld — alleen UI/register)
+
+- **HET REGISTER IS NU COMPLEET EN DRAAGT EEN GROEP.** `v2InputRegister.ts` telt 124 rijen. Elke rij
+  heeft een `group` uit `GROUP_OF`; een rij zonder groep laat het register bij het bouwen GOOIEN.
+  De groepen staan als data in `V2_FIELD_GROUPS` (Architectuur → Metingen & geometrie → Versterker &
+  belasting → Driverbescherming → Kruisvenster & topologie → Bouwbaarheid → Doelcurve & voicing →
+  Run & shortlist), met de koppen in `V2_GROUP_HEADING`. Er is **geen v1-groep**.
+  De 41 nieuwe rijen (`U9_ROWS`) nemen hun effect over uit `docs/U-9_veldinventaris.md` en niet uit
+  een schatting. De rechtzettingen N4 (S_d leest nauwelijks; de klasse blijft NOODZAKELIJK tot een
+  meting anders zegt), N5 (f_b → audit en tweeweg-ontwerpstap), N3, N6 en N7 staan in de travels.
+- **HET FILTERS-PANEEL MAPT OVER `V2_FIELD_GROUPS` EN TYPT ZELF GEEN VOLGORDE.** Per groep staat er
+  een blok `{g === '<id>' && (…)}`. Het bestuurde formulier `v2-panel` is nu het hele paneel tussen
+  `{/* I-1 FORM · V2 PANEL` en `{/* I-1 FORM · V2 PANEL END */}`. De zes v1-koppen en de
+  klassenkoppen zijn weg. Een veld dat bij een meting hoort (Setup, driverkaart, Network,
+  grafiekbereik) blijft waar het staat, en zijn groep noemt het in één regel (`groupElsewhere`,
+  `rowsElsewhere`). **Eén veld, één plek:** de bouwmodus stond twee keer en wordt nu alleen naast
+  Optimize getekend.
+- **ELK VELD ZEGT WAT HET DOET** (`fieldBadge`): zoekt / oordeelt / toont · datasheet / typeplaatje /
+  meting / jouw keuze. Een rij met `effectNote` draagt die notitie in de tooltip; dat is de
+  Priority-schuif (N1: de tuner leest hem, de ontwerpstap draait op 50/50).
+- **`src/lib/appDefaults.ts` — DE APP-STARTWAARDE ZEGT WAT ZIJ IS (N2, P4).** `APP_DEFAULTS` is één
+  bron met vier lezers: de `useState`-initialen, de `localStorage`-terugvallen, de guided
+  niet-standaardlijst en de markering. `appDefault(row)` toont een van drie toestanden:
+  - "app default — not stated by you (waarde)", oranje en cursief;
+  - "stated by you on <datum>", groen;
+  - "stated by you (date not recorded)", voor een oude waarde die al van de startwaarde af stond (de
+    E-2-regel).
+
+  De eerste bewerking stempelt via `onChangeCapture={fieldStamp(row)}` op het label. De datums reizen
+  mee in het project (`fieldStatedAt`). Het is een **weergave**: geen run beweegt, want de getallen
+  zijn dezelfde, uit één bron.
+- **PER ROUTE VERBORGEN WAT DAAR NIETS DOET** (Sander, 25-10-2026, één regel voor alle vier):
+  Source-R-diskwalificatie, DI-anker en de woofer- en mid-HP-helling staan achter
+  `threeWay && !v2Hybrid`. Een hybride draait de tweewegketen. De U-5c-melding is weg met het veld.
+- **B-2 — v1 UIT BEELD, MOTOR ONAANGEROERD.**
+  - **Verborgen** (`niets`, "v1-uitfasering (B-2)"): het BOM-plafond (ook zijn stripitem), het
+    ontwerpniveau (met de excursievloerregel) en `v1Thresholds` (ka-tier, c-t-c, breakup-harmonische,
+    `xoWinThr`, plus het v1-fysicavenster dat ze toonden).
+  - **Samen met die velden verborgen:** de v1-ranglijst, haar kop, de per-rij-noot en de zin die
+    ernaar verwees, allemaal achter `v1ReadingShown()` (false).
+  - **Scan-only:** geredde kandidaten verschijnen als **kale lijst** (`className="scan-bare"`), in
+    opgenomen volgorde en zonder rang (Sander).
+  - **De U-1-melding** noemt nu ook `kaTier` en `breakupHarmonic`. NIET `ctcK`: die heeft twee
+    startwaarden ('auto' in `useState`, '0.5' in `applyProject`). Dat is gemeld en niet gerepareerd,
+    omdat het de v1-terugval raakt. `selection.test.ts` pint UI-1 onveranderd; `toggleRegression`
+    staat.
+- **`src/lib/u9Fase2.test.ts` (29 claims)** draagt de acceptatie:
+  1. de **app-brede driftguard**: elk besturingselement van App.tsx en de componenten raakt precies
+     één token (`V2_FORM_FIELDS` ∪ `V2_APP_CONTROLS`, of `V2_FILE_ROWS` voor een heel bestand). Drie
+     uitzonderingen staan bij naam en zijn als regio geassert: de Wizard (fase 3), de
+     guided-eisenrenderer en de kasthulpjes;
+  2. één tekenpunt per token;
+  3. de groepsvolgorde uit het register;
+  4. B-2, met de **perturbatie**: de verborgen drempels bereiken v2 alleen via `judgeWindows`, en
+     de keten leest die pas ná de tune. Drie verschillende vensters laten ontwerpstap en tuner
+     byte-identiek;
+  5. de app-default-markering;
+  6. de per-route-regel.
+
+  **Nagemeten met vijf opzettelijke breuken:** een `<input>` zonder rij (2 rood), een tweede
+  tekenpunt (1), een getypte groepsvolgorde (2), een v1-tabel zonder guard (2) en een weggehaalde
+  markering (1).
+- **`npm run test:fast` NÁ U-9 FASE 2 (25-10-2026): 541 s — 214 bestanden (213 geslaagd,
+  1 overgeslagen), 2964 tests (2960 geslaagd, 4 overgeslagen), IN ÉÉN KEER GROEN, alleen gedraaid
+  met de dev-server gestopt.** De laatste bronbewerking was om 11:15:51 en de run startte om
+  11:16:39 (de H-2-regel). +1 bestand (`u9Fase2.test.ts`). GEEN nieuwe referentie: de V43-waarde
+  van 289 s blijft staan. Geen volle run: er is geen engine- of zoekwijziging.
+- **AANGEPAST IN DE V15-VORM** (wat er stond, wat er staat, waarom): `v2InputRegister`,
+  `v2InputPlacement`, `u9FieldEffects`, `v1Carryover`, `goalsPanelAudit` en `v2ResultLayout`. Geen
+  claim is versoepeld.
+- **BIJVANGST — EEN CRASH OP DE TWEEWEGROUTE SINDS H-4, GEREPAREERD.** `polarityBranchOf` op de
+  tweewegroute las `tAdjust`, een `const` die verderop in dezelfde scope wordt gedeclareerd.
+  `buildCandidateField` roept de reader daarvóór aan, dus elke tweeweg-v2-run in de app gaf een
+  `ReferenceError` (temporal dead zone) en de overlay bleef stil hangen.
+  - Sinds H-4 (`8e6cc62`). Dit is ook de tweewegrun die H-5 "na 21 minuten afbrak".
+  - Gereproduceerd op HEAD na een volledige herlaadbeurt.
+  - Gerepareerd met `branchAdj.tweeter`: dezelfde waarde, geen gedragswijziging buiten "het crasht
+    niet meer".
+  - Geen test voert `runVfOptimize` uit, dus alleen een browserrun kon het vinden.
+- **OPEN PUNT U-10 — DE v1-MOTOR VERWIJDEREN** (`runChainScan`, `runChain3Scan`, de v1-ranking, de
+  terugval zonder A5d.3-venster, `toggleRegression`). Daarvoor moet eerst:
+  - (a) v2 in de terugval zelf melden of weigeren, in plaats van stil v1 te lezen;
+  - (b) de toggle-invariant een nieuwe vorm krijgen. Die bewijst zich nu dóór v1 te draaien.

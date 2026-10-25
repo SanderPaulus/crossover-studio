@@ -25,7 +25,7 @@ import {
   v1CarryoverOf,
   type V1FieldKey,
 } from './v1Carryover.ts';
-import { rowsOfClass } from './v2InputRegister.ts';
+import { rowsOfClass, v1ReadingShown } from './v2InputRegister.ts';
 import { selectEngine } from './engine2/facade.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -111,7 +111,8 @@ describe('U-1 — the v1 starting values have one home', () => {
        how "unchanged" and "carried" come to disagree about the same project:
        the notice would fire on a value the app itself calls the default. */
     for (const key of Object.keys(V1_FIELD_DEFAULTS) as V1FieldKey[]) {
-      expect(APP, key).toContain(`useState(V1_FIELD_DEFAULTS.${key})`);
+      /* U-9 fase 2 — a typed initial (`useState<KaTier>(…)`) reads the same home. */
+      expect(APP, key).toMatch(new RegExp(`useState(<[^>]*>)?\\(V1_FIELD_DEFAULTS\\.${key}\\b`));
       expect(APP, key).toContain(`?? V1_FIELD_DEFAULTS.${key}`);
     }
     // …and the literals they replaced are not sitting beside them any more.
@@ -128,13 +129,17 @@ describe('U-1 — the v1 starting values have one home', () => {
        consequence: adding `phasePriority` to the v1 class turned this claim red
        on the spot, which is what a counted guard is for. And it caught the
        second half too — see the claim below. */
-    const inFile = new Set(['hpLpPref', 'excursionSpl', 'phasePriority']);
+    /* U-9 fase 2 — V15: WAS six rows with `phasePriority` among them, three in
+       the file. IS six rows WITHOUT it — the v2 tuner reads the slider (N1), so
+       it left the class — and with `v1Thresholds` in its place (B-2.2), which
+       the file carries too. WHY: the class is now exactly what B-2 hides. */
+    const inFile = new Set(['hpLpPref', 'excursionSpl', 'v1Thresholds']);
     const rows = rowsOfClass('v1-legacy').map((r) => r.id);
     expect(rows.length).toBe(6);
     expect(rows.filter((id) => inFile.has(id)).sort()).toEqual([
       'excursionSpl',
       'hpLpPref',
-      'phasePriority',
+      'v1Thresholds',
     ]);
   });
 
@@ -151,8 +156,12 @@ describe('U-1 — the v1 starting values have one home', () => {
     expect(PROJECT).toContain('phasePriority: number;');
     expect(APP).toContain('setPhasePriority(d.phasePriority)');
     expect(Object.keys(V1_FIELD_DEFAULTS)).not.toContain('phasePriority');
-    // …and the badge IS there, which is what this session did instead.
-    expect(APP).toContain("v1Legacy('phasePriority')");
+    /* U-9 fase 2 — V15: WAS "the v1 badge IS there". IS: the slider is not a v1
+       field (the tuner reads it, N1), carries the measured badge instead
+       (`fieldBadge`), and its project value is the designer's — so the gap this
+       claim names is no longer a gap in the v1 notice at all. */
+    expect(APP).not.toContain("v1Legacy('phasePriority')");
+    expect(APP).toContain("{fieldBadge('phasePriority')}");
   });
 });
 
@@ -180,7 +189,9 @@ describe('U-1 — no v1 route is reachable from the visible UI', () => {
   });
 
   it('the engine group states which engine runs instead of offering a choice', () => {
-    const cap = APP.indexOf("<span className=\"opt-group-cap\">{t('Engine')}</span>");
+    /* U-9 fase 2 — V15: WAS the "Engine" caption; IS the statement standing
+       above the grouped panel, its caption gone with the other v1 headings. */
+    const cap = APP.indexOf('{/* ---- U-1: ONE ENGINE, AND NO SWITCH');
     expect(cap).toBeGreaterThan(-1);
     const group = APP.slice(cap, cap + 2000);
     expect(group).toContain('Engine v2 runs every optimisation');
@@ -207,10 +218,20 @@ describe('U-1 — no v1 route is reachable from the visible UI', () => {
        is not a stand-in for an empty shortlist. Each of them is a comparison a
        designer asked for; each of them says out loud that it decided nothing —
        which is exactly what UI-1 had to repair when the top row WAS loaded. */
+    /* U-9 fase 2 — V15: WAS "the three surfaces are in the app". IS: they are in
+       the SOURCE, unchanged, and none of them is rendered — each sits behind
+       `v1ReadingShown()`, which is false since the knobs that sort the table
+       are niets (B-2.2, Sander 25-10-2026). WHY: a table nobody can explain is
+       as dead as knobs without their table, so they went together. The ranking
+       itself (the v1 motor) stays, untouched, for U-10. */
     expect(APP).toContain('v1 reading — not the route that made this run');
     expect(APP).toContain('v1 note (not applied on this route)');
     expect(APP).toContain('the v1 ranking below has no knowledge of your gates');
     expect(APP).toContain('rankChain3Results(');
+    expect(v1ReadingShown()).toBe(false);
+    expect(APP).toContain('{v1ReadingShown() && chainScan && v2Shortlist && (');
+    expect(APP).toContain('{v1ReadingShown() && chainScan && (');
+    expect(APP).toMatch(/\{v1ReadingShown\(\)\s*\? t\('No design was loaded: \{n\} of \{m\} candidates meet the requirements you stated\. The Working tab is untouched — the v1 ranking below/);
   });
 
   it('the flag is still switchable in code, and false is still the v1 engine', () => {

@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -248,11 +249,16 @@ import { DEMO_ROLES, demoBundleState, type DemoBundle, type DemoFile } from './l
  * field and for the "v1 (not read by Engine v2)" drawer; nothing here decides
  * anything (`v2InputRegister.ts`). */
 import {
-  V2_CLASS_HEADING,
   V2_INPUT_REGISTER,
+  V2_FIELD_GROUPS,
+  V2_GROUP_HEADING,
+  EFFECT_WORD,
+  SOURCE_WORD,
+  rowsElsewhere,
+  v1ReadingShown,
+  type V2FieldGroup,
   V2_MORE_HEADING,
   emptyHelpFor,
-  rowsOfClass,
   v1NoteFor,
   rendersRow,
 } from './lib/v2InputRegister.ts';
@@ -414,8 +420,6 @@ import type { MinimizeResult } from './lib/minimize.ts';
 import {
   sourceResistanceOhm,
   type NetworkAudit,
-  DEFAULT_R_SOURCE_DISQUALIFY_OHM,
-  DEFAULT_R_SOURCE_TIER_OHM,
 } from './lib/partAudit.ts';
 import type { Chain3Result } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
@@ -456,7 +460,8 @@ import { synthesize, formatComponent, type SynthesisResult, type SynthesizedComp
 import { computePhaseStats } from './lib/phaseStats.ts';
 import { computeResponseStats } from './lib/responseStats.ts';
 import { toleranceBand } from './lib/tolerance.ts';
-import { DEFAULT_EQ_BANDS_PER_DRIVER, type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
+import { type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
+import { APP_DEFAULTS, appDefaultMark, restoreFieldStatedAt, stampField, type FieldStatedAt } from './lib/appDefaults.ts';
 import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
 import {
   serializeProject,
@@ -2009,7 +2014,7 @@ export default function App() {
    *  parts. Only ever effective when a catalog is imported — the engine calls
    *  guard with hasImportedCatalog(), so without one the design stays at
    *  theoretically ideal (continuous) values. */
-  const [catalogSnap, setCatalogSnap] = useState(true);
+  const [catalogSnap, setCatalogSnap] = useState(APP_DEFAULTS.catalogSnap);
   /** A5e.3 — bumped whenever the catalogue module state is replaced, so the
    *  coil-family fits (a memo over `catalogParts()`) follow an import. */
   const [catalogRev, setCatalogRev] = useState(0);
@@ -2019,7 +2024,7 @@ export default function App() {
   };
   /** Breakup guard: stopband leakage beside the crossover must stay ≥20 dB
    *  down — resonance phase can't be filtered, only made irrelevant. */
-  const [breakupGuard, setBreakupGuard] = useState(true);
+  const [breakupGuard, setBreakupGuard] = useState(APP_DEFAULTS.breakupGuard);
   /**
    * ENGINE V2 (experimental) — off unless the designer turns it on (P4).
    *
@@ -2088,6 +2093,15 @@ export default function App() {
    */
   const [engineV2StatedAt, setEngineV2StatedAt] = useState<V2StatedAt>({});
   /**
+   * U-9 fase 2 — WHEN each search field that starts on an APP value was
+   * stated, by register row id. The v2 block has `engineV2StatedAt`; these
+   * fields are ordinary `useState`s and never had a date, so a field still on
+   * the value the app chose could not be told apart from one the designer set
+   * (finding N2). Stamped on the first edit (`fieldStamp`), carried with the
+   * project; the mark itself is `appDefaultMark` (`appDefaults.ts`).
+   */
+  const [fieldStatedAt, setFieldStatedAt] = useState<FieldStatedAt>({});
+  /**
    * U-3 — WHO stated each v2 field, when it was not the person at the keyboard.
    * Empty for everything the viewer typed (which is every field until a demo
    * bundle could state requirements) and filled by `applyDemoBundle` for the
@@ -2150,6 +2164,85 @@ export default function App() {
     ) : null;
   };
   /**
+   * U-9 fase 2 — THE VALUES THE APP STARTS A SEARCH FIELD AT, read here so the
+   * mark can compare. One object, keyed as `APP_DEFAULTS` is; nothing typed.
+   */
+  /* A function and not a value: most of these states are declared further
+   * down the component, and only a closure may read them before then. */
+  const appDefaultValues = () => ({
+    phasePriority, dirWeight, ampTarget, powerMetric, powerFoldWeight, costWeight,
+    dissipationWeight, rSourceLimitOhm, rSourceDisqOhm, diWeight, vfEqBands, breakupGuard,
+    phaseMetricMode, synthMode, stagedOn, targetRipple, targetPhase, roomCorrection,
+    roomRippleDb, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, catalogSnap,
+  });
+  /** U-9 fase 2 — stamp a row as stated today; wired as `onChangeCapture` on its label. */
+  const fieldStamp = (rowId: string) => () => setFieldStatedAt((prev) => stampField(prev, rowId));
+  /**
+   * U-9 fase 2 — "app default — not stated by you (value)" or "stated by you
+   * on <date>" beside a search field. Visibly different on purpose: the
+   * first is a number nobody chose that still steers the search (P4, N2).
+   */
+  const appDefault = (rowId: string) => {
+    const m = appDefaultMark(rowId, appDefaultValues(), fieldStatedAt);
+    return (
+      <span
+        className={m.kind === 'app-default' ? 'v2-app-default' : 'v2-stated'}
+        title={
+          m.kind === 'app-default'
+            ? t('Nobody stated this value: it is where the app starts, and it still steers the search. Change it and it becomes yours, with a date.')
+            : t('This value is yours.')
+        }
+      >
+        {m.kind === 'app-default'
+          ? t('app default — not stated by you ({v})', { v: m.value })
+          : m.date
+            ? t('stated by you on {d}', { d: m.date })
+            : t('stated by you (date not recorded)')}
+      </span>
+    );
+  };
+  /**
+   * U-9 fase 2 — WHAT A FIELD DOES AND WHERE ITS NUMBER COMES FROM, as one
+   * small badge read from the register: searches / judges / shows, and
+   * datasheet / nameplate / measurement / choice. A row with an `effectNote`
+   * (N1) carries it in the tooltip, because the effect alone would mislead.
+   */
+  const fieldBadge = (rowId: string) => {
+    const r = V2_INPUT_REGISTER.find((x) => x.id === rowId);
+    if (!r) throw new Error(`fieldBadge: no register row "${rowId}"`);
+    if (r.effect === 'niets') return null;
+    return (
+      <span className={`v2-badge v2-badge-${r.effect}`} title={r.effectNote ? t(r.effectNote) : t(r.travels)}>
+        {t(EFFECT_WORD[r.effect])} · {t(SOURCE_WORD[r.source])}
+        {r.effectNote ? ' ⓘ' : ''}
+      </span>
+    );
+  };
+  /**
+   * U-9 fase 2 — THE FIELDS OF A GROUP THAT ARE FILLED IN ELSEWHERE. A field
+   * that belongs to a measurement stays on the tab that holds it (one field,
+   * one place — the U-3b failure is a field drawn in two), and its group names
+   * it here in one line so the order of designing is still complete.
+   */
+  const groupElsewhere = (g: V2FieldGroup) => {
+    const rows = rowsElsewhere(g);
+    if (rows.length === 0) return null;
+    /* Folded: the measurement group alone names thirty-odd fields, and a wall
+     * of text above the amplifier fields buries them. The summary still says
+     * how many there are; nothing is hidden that the click does not show. */
+    return (
+      <details className="derived v2-elsewhere" style={{ flexBasis: '100%' }}>
+        <summary>{t('{n} more in this group, filled in where they are measured', { n: String(rows.length) })}</summary>
+        {rows.map((r, i) => (
+          <span key={r.id} title={t(r.travels)}>
+            {i > 0 ? ' · ' : ''}
+            {t(r.label)} <span className="v2-muted">({t(r.form)})</span>
+          </span>
+        ))}
+      </details>
+    );
+  };
+  /**
    * I-1 — THE HELP BESIDE AN EMPTY FIELD: what its blankness costs.
    *
    * Shown ONLY while the field is empty, and that is the design rather than a
@@ -2174,12 +2267,14 @@ export default function App() {
    */
   const v1Legacy = (id: string) => {
     const note = v1NoteFor(id, engineV2Enabled);
-    /* U-9 — the badge says what the MEASUREMENT says. A v1 knob the tuner
-     * still reads (`phasePriority`, finding N1) is not "not read". */
-    const halfRead = V2_INPUT_REGISTER.find((r) => r.id === id)?.effect === 'zoekt';
+    /* U-9 fase 2 (B-2) — only a v1-legacy row has a note, and since B-2 every
+     * v1-legacy row is `niets` and never rendered: this badge has no visible
+     * reader left. It stays as the one place such a note would be drawn, and
+     * `u9FieldEffects.test.ts` pins that every call sits behind `rendersRow`.
+     * The Priority slider (N1) is not a v1 field and carries `fieldBadge`. */
     return note ? (
       <span className="v2-warn" title={note}>
-        {' '}({halfRead ? t('v1 — on Engine v2 only the tuner reads this') : t('v1 — not read by Engine v2')})
+        {' '}({t('v1 — not read by Engine v2')})
       </span>
     ) : null;
   };
@@ -2537,15 +2632,15 @@ export default function App() {
   /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
    *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
    *  components that reach the goal. */
-  const [stagedOn, setStagedOn] = useState(true);
+  const [stagedOn, setStagedOn] = useState(APP_DEFAULTS.stagedOn);
   /** Phase metric for both optimizers: 'band' = the panel's avg + P95 over
    *  the overlap window (what the user reads); 'overlap' = classic weighted
    *  mean, kept as an easy fallback. */
-  const [phaseMetricMode, setPhaseMetricMode] = useState<'band' | 'overlap'>('band');
+  const [phaseMetricMode, setPhaseMetricMode] = useState<'band' | 'overlap'>(APP_DEFAULTS.phaseMetricMode);
   /** Target ACOUSTIC slopes beside the crossing (dB/oct, 'auto' = free) —
    *  the "akoestisch 4e orde bij de tweeter"-knop. */
-  const [acSlopeMid, setAcSlopeMid] = useState('24');
-  const [acSlopeTweeter, setAcSlopeTweeter] = useState('12');
+  const [acSlopeMid, setAcSlopeMid] = useState(APP_DEFAULTS.acSlopeMid);
+  const [acSlopeTweeter, setAcSlopeTweeter] = useState(APP_DEFAULTS.acSlopeTweeter);
   /** 3-way: the LOW handover's own pin and slope targets (Sanders: "een
    *  3-weg heeft twee akoestische flanken op de mid" — the mid has an HP
    *  flank at the low crossing AND an LP flank at the high one, and the
@@ -2553,8 +2648,8 @@ export default function App() {
    *  acSlopeMid/acSlopeTweeter keep steering the HIGH (mid-tweeter) pair. */
   const [xoLowFreqHz, setXoLowFreqHz] = useState<string>(V1_PIN_DEFAULTS_LEGACY.lowFreqHz);
   const [xoLowMarginHz, setXoLowMarginHz] = useState<string>(V1_PIN_DEFAULTS_LEGACY.lowMarginHz);
-  const [acSlopeWoofer, setAcSlopeWoofer] = useState('24');
-  const [acSlopeMidHp, setAcSlopeMidHp] = useState('24');
+  const [acSlopeWoofer, setAcSlopeWoofer] = useState(APP_DEFAULTS.acSlopeWoofer);
+  const [acSlopeMidHp, setAcSlopeMidHp] = useState(APP_DEFAULTS.acSlopeMidHp);
   /** Datasheet numbers for the excursion floor — the level-aware version of
    *  "cross a tweeter at 2-3x Fs". Two fields per driver, and without them the
    *  criterion simply does not apply. */
@@ -2591,7 +2686,7 @@ export default function App() {
    *  empirical 4 dB, NOT the theoretically stricter ka = 2 — measured on a real
    *  3-way set the tight tiers fire on baffle diffraction and declare an
    *  ordinary design impossible (see KA_TIERS). */
-  const [kaTier, setKaTier] = useState<KaTier>('measured');
+  const [kaTier, setKaTier] = useState<KaTier>(V1_FIELD_DEFAULTS.kaTier as KaTier);
   /**
    * Cabinet geometry + measurement context — the facts the designer KNOWS and
    * the app would otherwise infer. One object rather than fifteen useStates:
@@ -2675,7 +2770,7 @@ export default function App() {
   const [seatTiming, setSeatTiming] = useState(false);
   /** Cone breakup as an upper limit: cross at or below f_b / harmonic. */
   const [breakupLimitOn, setBreakupLimitOn] = useState(true);
-  const [breakupHarmonic, setBreakupHarmonic] = useState('3');
+  const [breakupHarmonic, setBreakupHarmonic] = useState(V1_FIELD_DEFAULTS.breakupHarmonic);
   const wooferXoCeiling = useMemo(() => {
     // Same rule as midXoCeiling: entered Sd beats the nominal-size dropdown.
     const dia = pistonDiameterMm(Number(sdCm2.low));
@@ -2892,7 +2987,7 @@ export default function App() {
      missed anyway. 1.5 dB was calibrated on the KOAN's top-tier drivers
      (0.88 dB / 3.6° delivered); anything less than that would be priced out
      of its own default. */
-  const [targetRipple, setTargetRipple] = useState('2.5');
+  const [targetRipple, setTargetRipple] = useState(APP_DEFAULTS.targetRipple);
   /** Single-driver mode: sensitivity a correction may spend for flatness. */
   const [soloSensDb, setSoloSensDb] = useState('6');
   /** Single-driver mode: absolute target level instead of the relative budget
@@ -2900,7 +2995,7 @@ export default function App() {
    *  and it sets how far the correctable band reaches in one number). */
   const [soloFloorOn, setSoloFloorOn] = useState(false);
   const [soloFloorDb, setSoloFloorDb] = useState('');
-  const [targetPhase, setTargetPhase] = useState('15');
+  const [targetPhase, setTargetPhase] = useState(APP_DEFAULTS.targetPhase);
 
   /** Editable schematic networks (step 6), as TABS: every design lives in its
    *  own tab (imports and passive builds open a new one), the active tab is
@@ -8087,8 +8182,8 @@ export default function App() {
     error?: string;
   }
   const [synth, setSynth] = useState<SynthState | null>(null);
-  const [synthMode, setSynthMode] = useState<'filter' | 'acoustic'>('acoustic');
-  const [phasePriority, setPhasePriority] = useState(50); // % of budget to phase
+  const [synthMode, setSynthMode] = useState<'filter' | 'acoustic'>(APP_DEFAULTS.synthMode);
+  const [phasePriority, setPhasePriority] = useState(APP_DEFAULTS.phasePriority); // % of budget to phase
   // Results describe a specific target — invalidate when the knobs move.
   // Exception: the optimizer flow sets new vFilters AND builds for them in
   // one go; that build is fresh, not stale (the ref skips one invalidation).
@@ -8142,8 +8237,8 @@ export default function App() {
   const [vfRunStats, setVfRunStats] = useState<{ rounds: number; evals: number } | null>(null);
   // EQ bands the optimizer may use per driver. The default has one home since
   // V41 (`vfOptimizer.ts`), because the v2 candidate states the same number.
-  const [vfEqBands, setVfEqBands] = useState(DEFAULT_EQ_BANDS_PER_DRIVER);
-  const [dirWeight, setDirWeight] = useState(25); // % of amplitude budget on the energy average
+  const [vfEqBands, setVfEqBands] = useState(APP_DEFAULTS.vfEqBands);
+  const [dirWeight, setDirWeight] = useState(APP_DEFAULTS.dirWeight); // % of amplitude budget on the energy average
   /** Power-response metric: 'smooth' (detrended residual + DI fold, slope
    *  free — the crossover owns smoothness, the room owns the slope) or
    *  'legacy' (std of the raw energy average, pre-aug-2026, for A/B). Both
@@ -8152,7 +8247,7 @@ export default function App() {
    *  wDI · log2(knee / DI anchor)² per handover with an anchor. Default 0.3. */
   const [diWeight, setDiWeight] = useState<number>(() => {
     const v = Number(localStorage.getItem('ads-di-weight'));
-    return Number.isFinite(v) && v >= 0 && localStorage.getItem('ads-di-weight') !== null ? v : 0.3;
+    return Number.isFinite(v) && v >= 0 && localStorage.getItem('ads-di-weight') !== null ? v : APP_DEFAULTS.diWeight;
   });
   /** Error smoothing for the search objectives (oct): 0 = off (legacy raw
    *  points), 1/24, 1/12 (default), 1/6. Preference (localStorage). */
@@ -8198,17 +8293,17 @@ export default function App() {
   const [dissipationWeight, setDissipationWeight] = useState<number>(() => {
     const raw = localStorage.getItem('ads-diss-weight');
     const v = raw === null ? NaN : Number(raw);
-    return Number.isFinite(v) && v >= 0 ? v : 0.05;
+    return Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.dissipationWeight;
   });
   const [rSourceDisqOhm, setRSourceDisqOhm] = useState<number>(() => {
     const raw = localStorage.getItem('ads-rsource-disq');
     const v = raw === null ? NaN : Number(raw);
-    return Number.isFinite(v) && v >= 0 ? v : DEFAULT_R_SOURCE_DISQUALIFY_OHM;
+    return Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.rSourceDisqOhm;
   });
   const [rSourceLimitOhm, setRSourceLimitOhm] = useState<number>(() => {
     const raw = localStorage.getItem('ads-rsource-limit');
     const v = raw === null ? NaN : Number(raw);
-    return Number.isFinite(v) && v >= 0 ? v : DEFAULT_R_SOURCE_TIER_OHM;
+    return Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.rSourceLimitOhm;
   });
   /** B1 — BOM cap per channel (EUR; 0 = off): class loss in the ranking above
    *  it, shown in the strip. A design decision, not a weight. */
@@ -8221,10 +8316,13 @@ export default function App() {
    *  (default 2.5 → 3.5 dB) because on-axis residual ripple is corrected by
    *  the room system; PHASE targets stay — driver integration across a
    *  handover is set passively and no room correction repairs it. */
-  const [roomCorrection, setRoomCorrection] = useState<boolean>(() => localStorage.getItem('ads-room-corr') === '1');
+  const [roomCorrection, setRoomCorrection] = useState<boolean>(() => {
+    const raw = localStorage.getItem('ads-room-corr');
+    return raw === null ? APP_DEFAULTS.roomCorrection : raw === '1';
+  });
   const [roomRippleDb, setRoomRippleDb] = useState<number>(() => {
     const v = Number(localStorage.getItem('ads-room-ripple'));
-    return Number.isFinite(v) && v > 0 ? v : 3.5;
+    return Number.isFinite(v) && v > 0 ? v : APP_DEFAULTS.roomRippleDb;
   });
   /** Effective staged RIPPLE target: widened to roomRippleDb when room
    *  correction is present (never narrowed); phase target untouched. */
@@ -8240,16 +8338,16 @@ export default function App() {
     // Default 0.015 (B2 curve on the KOAN set: BOM 165 → 160 € with the best
     // peak; 0.05+ lands in another basin at 165 €). The tuner's own default
     // stays 0.0015 for legacy callers.
-    return Number.isFinite(v) && v >= 0 ? v : 0.015;
+    return Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.costWeight;
   });
   const [powerMetric, setPowerMetric] = useState<'smooth' | 'legacy'>(() =>
-    localStorage.getItem('ads-power-metric') === 'legacy' ? 'legacy' : 'smooth',
+    localStorage.getItem('ads-power-metric') === 'legacy' ? 'legacy' : APP_DEFAULTS.powerMetric,
   );
   const [powerFoldWeight, setPowerFoldWeight] = useState<number>(() => {
     const v = Number(localStorage.getItem('ads-power-fold'));
-    return Number.isFinite(v) && v > 0 ? v : 0.5;
+    return Number.isFinite(v) && v > 0 ? v : APP_DEFAULTS.powerFoldWeight;
   });
-  const [ampTarget, setAmpTarget] = useState<'onAxis' | 'listeningWindow'>('onAxis');
+  const [ampTarget, setAmpTarget] = useState<'onAxis' | 'listeningWindow'>(APP_DEFAULTS.ampTarget);
 
   /**
    * Guided is meant to BE the standard setting (Sanders point). It is not
@@ -8265,28 +8363,28 @@ export default function App() {
    */
   const nonStandard = (
     [
-      ['priority', phasePriority !== 50, `priority ${100 - phasePriority}/${phasePriority}`, () => setPhasePriority(50)],
-      ['staged', !stagedOn, 'staged targets off', () => setStagedOn(true)],
-      ['ripple', targetRipple !== '2.5', `ripple target ${targetRipple} dB`, () => setTargetRipple('2.5')],
-      ['phase', targetPhase !== '15', `phase target ${targetPhase}°`, () => setTargetPhase('15')],
+      ['priority', phasePriority !== APP_DEFAULTS.phasePriority, `priority ${100 - phasePriority}/${phasePriority}`, () => setPhasePriority(APP_DEFAULTS.phasePriority)],
+      ['staged', stagedOn !== APP_DEFAULTS.stagedOn, 'staged targets off', () => setStagedOn(APP_DEFAULTS.stagedOn)],
+      ['ripple', targetRipple !== APP_DEFAULTS.targetRipple, `ripple target ${targetRipple} dB`, () => setTargetRipple(APP_DEFAULTS.targetRipple)],
+      ['phase', targetPhase !== APP_DEFAULTS.targetPhase, `phase target ${targetPhase}°`, () => setTargetPhase(APP_DEFAULTS.targetPhase)],
       ['pin', xoRangeOn, `crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz`, () => setXoRangeOn(false)],
       /* U-9 — a field that is never rendered does not steer the run on any v2
        * route, so it is not "steering the run" here either. */
       ['align', rendersRow('hpLpPref') && hpLpPref !== 'auto', `alignment forced to ${hpLpPref}`, () => setHpLpPref('auto')],
       ['alignLow', rendersRow('hpLpPref') && hpLpPrefLow !== 'auto', `low alignment forced to ${hpLpPrefLow}`, () => setHpLpPrefLow('auto')],
-      ['guard', !breakupGuard, 'breakup guard off', () => setBreakupGuard(true)],
-      ['dir', dirWeight !== 25, `in-room weight ${dirWeight}%`, () => setDirWeight(25)],
-      ['ka', kaTier !== 'measured', `beaming tier ${kaTier}`, () => setKaTier('measured')],
-      ['ctc', ctcK !== 'auto', `lobing k ${ctcK}`, () => setCtcK('auto')],
-      ['eq', vfEqBands !== 2, `${vfEqBands} EQ bands per driver`, () => setVfEqBands(2)],
-      ['slopeMid', acSlopeMid !== '24', `mid slope ${acSlopeMid}`, () => setAcSlopeMid('24')],
-      ['slopeTw', acSlopeTweeter !== '12', `tweeter slope ${acSlopeTweeter}`, () => setAcSlopeTweeter('12')],
-      ['slopeWf', acSlopeWoofer !== '24', `woofer slope ${acSlopeWoofer}`, () => setAcSlopeWoofer('24')],
-      ['slopeMidHp', acSlopeMidHp !== '24', `mid HP slope ${acSlopeMidHp}`, () => setAcSlopeMidHp('24')],
-      ['metric', phaseMetricMode !== 'band', `phase metric ${phaseMetricMode}`, () => setPhaseMetricMode('band')],
-      ['ampT', ampTarget !== 'onAxis', 'amplitude target = listening window', () => setAmpTarget('onAxis')],
-      ['snap', !catalogSnap, 'catalog snap off', () => setCatalogSnap(true)],
-      ['breakLim', !breakupLimitOn, 'breakup limit off', () => setBreakupLimitOn(true)],
+      ['guard', breakupGuard !== APP_DEFAULTS.breakupGuard, 'breakup guard off', () => setBreakupGuard(APP_DEFAULTS.breakupGuard)],
+      ['dir', dirWeight !== APP_DEFAULTS.dirWeight, `in-room weight ${dirWeight}%`, () => setDirWeight(APP_DEFAULTS.dirWeight)],
+      /* B-2 — the beaming tier and the lobing strictness sort only the v1 scan
+       * table, which is no longer shown; a hidden v1 knob does not steer a
+       * guided v2 run, so it is not named here (the U-9 niets rule). */
+      ['eq', vfEqBands !== APP_DEFAULTS.vfEqBands, `${vfEqBands} EQ bands per driver`, () => setVfEqBands(APP_DEFAULTS.vfEqBands)],
+      ['slopeMid', acSlopeMid !== APP_DEFAULTS.acSlopeMid, `mid slope ${acSlopeMid}`, () => setAcSlopeMid(APP_DEFAULTS.acSlopeMid)],
+      ['slopeTw', acSlopeTweeter !== APP_DEFAULTS.acSlopeTweeter, `tweeter slope ${acSlopeTweeter}`, () => setAcSlopeTweeter(APP_DEFAULTS.acSlopeTweeter)],
+      ['slopeWf', acSlopeWoofer !== APP_DEFAULTS.acSlopeWoofer, `woofer slope ${acSlopeWoofer}`, () => setAcSlopeWoofer(APP_DEFAULTS.acSlopeWoofer)],
+      ['slopeMidHp', acSlopeMidHp !== APP_DEFAULTS.acSlopeMidHp, `mid HP slope ${acSlopeMidHp}`, () => setAcSlopeMidHp(APP_DEFAULTS.acSlopeMidHp)],
+      ['metric', phaseMetricMode !== APP_DEFAULTS.phaseMetricMode, `phase metric ${phaseMetricMode}`, () => setPhaseMetricMode(APP_DEFAULTS.phaseMetricMode)],
+      ['ampT', ampTarget !== APP_DEFAULTS.ampTarget, 'amplitude target = listening window', () => setAmpTarget(APP_DEFAULTS.ampTarget)],
+      ['snap', catalogSnap !== APP_DEFAULTS.catalogSnap, 'catalog snap off', () => setCatalogSnap(APP_DEFAULTS.catalogSnap)],
       ['profile', snapProfile !== 'auto', `component profile ${snapProfile}`, () => setSnapProfile('auto')],
       ['stacks', !snapStacks, 'stacking off', () => setSnapStacks(true)],
       ['sL', snapSeriesL !== 'auto', 'coil series bound', () => setSnapSeriesL('auto')],
@@ -8516,6 +8614,7 @@ export default function App() {
         engineV2: { ...engineV2Settings },
         engineV2StatedAt: { ...engineV2StatedAt },
         engineV2StatedBy: { ...engineV2StatedBy },
+        fieldStatedAt: { ...fieldStatedAt },
         v2Measurement: {
           low: { ...v2Meas.low },
           mid: { ...v2Meas.mid },
@@ -8696,6 +8795,9 @@ export default function App() {
       setEngineV2Settings(restored.settings);
       setEngineV2StatedAt(restored.statedAt);
       setEngineV2StatedBy(restored.statedBy);
+      /* U-9 fase 2 — a file from before U-9 carries no dates; then a moved
+       * value reads "stated by you (date not recorded)", E-2's rule. */
+      setFieldStatedAt(restoreFieldStatedAt(d.fieldStatedAt));
     }
     // A5a metadata (F3b). Additive: a project from before F3b has no block and
     // every field falls back to '', which is what "not stated" means (P4).
@@ -8732,12 +8834,16 @@ export default function App() {
     setXoLowMarginHz(d.xoLowMarginHz ?? V1_PIN_DEFAULTS_LEGACY.lowMarginHz);
     setMidSizeInch(d.midSizeInch ?? '');
     setWooferSizeInch(d.wooferSizeInch ?? '');
-    setKaTier((d.kaTier as KaTier) in KA_TIERS ? (d.kaTier as KaTier) : 'measured');
+    {
+      /* An unknown tier falls back to the start value, as it always did. */
+      const tier = (d.kaTier ?? V1_FIELD_DEFAULTS.kaTier) as KaTier;
+      setKaTier(tier in KA_TIERS ? tier : (V1_FIELD_DEFAULTS.kaTier as KaTier));
+    }
     setCabinet(mergeCabinet(d.cabinet));
     setCtcK(d.ctcK ?? '0.5');
     setSeatTiming(d.seatTiming ?? false);
     setBreakupLimitOn(d.breakupLimitOn ?? true);
-    setBreakupHarmonic(d.breakupHarmonic ?? '3');
+    setBreakupHarmonic(d.breakupHarmonic ?? V1_FIELD_DEFAULTS.breakupHarmonic);
     setSdCm2({ low: d.sdCm2?.low ?? '', mid: d.sdCm2?.mid ?? '', high: d.sdCm2?.high ?? '' });
     setXmaxMm({ low: d.xmaxMm?.low ?? '', mid: d.xmaxMm?.mid ?? '', high: d.xmaxMm?.high ?? '' });
     setExcursionSpl(d.excursionSpl ?? V1_FIELD_DEFAULTS.excursionSpl);
@@ -8863,7 +8969,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, engineV2StatedAt, engineV2StatedBy, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, engineV2StatedAt, engineV2StatedBy, fieldStatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -10730,7 +10836,12 @@ export default function App() {
           const polarityBranchOf = (driver: string): PolarityBranch | null => {
             const role = v2Roles.find((r) => engineV2Report?.driverIds?.[r] === driver);
             if (role === passiveLowRole) return { response: w, adjust: {} };
-            if (role === (hybridRoles?.highest ?? 'high')) return { response: t, adjust: tAdjust };
+            /* `branchAdj.tweeter` and not `tAdjust`: that const is declared further
+             * down this scope, and the field calls this reader BEFORE it is — a
+             * temporal-dead-zone ReferenceError that crashed every two-way v2 run
+             * silently since H-4 (found by U-9 fase 2's browser check). Same value
+             * (`const tAdjust = branchAdj.tweeter`), no behaviour change. */
+            if (role === (hybridRoles?.highest ?? 'high')) return { response: t, adjust: branchAdj.tweeter };
             return null;
           };
           const fieldSettings = fieldModeSettings(
@@ -16658,7 +16769,7 @@ export default function App() {
                   own 50/50 and overwrites whatever is chosen here. A wizard
                   that asks a question the run does not read is worse than one
                   that does not ask it. */}
-              {!soloDriver && <p className="sub">{v1Legacy('phasePriority')}</p>}
+              {!soloDriver && <p className="sub">{fieldBadge('phasePriority')}</p>}
               {!soloDriver && ![25, 50, 75].includes(phasePriority) && (
                 <p className="sub">
                   {t('Currently')}{' '}
@@ -20009,12 +20120,19 @@ export default function App() {
                   <select
                     className={uiMode === 'guided' ? 'expert-only' : undefined}
                     value={synthMode}
+                    onChangeCapture={fieldStamp('synthMode')}
                     onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
                     title={t('What the passive build optimises for: the acoustic result on the measured driver, or an exact reproduction of the filter curve')}
                   >
                     <option value="acoustic">{t('Acoustic result (flatten measured driver)')}</option>
                     <option value="filter">{t('Filter curve (reproduce target exactly)')}</option>
                   </select>
+                  {uiMode !== 'guided' && (
+                    <>
+                      {fieldBadge('synthMode')}
+                      {appDefault('synthMode')}
+                    </>
+                  )}
                 </div>
               </div>
               <div className={`tool-group${uiMode === 'guided' ? ' expert-only' : ''}`}>
@@ -20151,167 +20269,178 @@ export default function App() {
                     )}
                   </>
                 )}
-                <span className="opt-group-cap">{t('Goals & weighting')}</span>
-                <label title={soloDriver ? t('Single-driver mode: relative phase does not exist — the solo objective is response flatness only') : t('The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.')}>
-                  {t('Priority: response {a}% · phase {b}%', { a: 100 - phasePriority, b: phasePriority })}
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={phasePriority}
-                    onChange={(e) => setPhasePriority(Number(e.target.value))}
-                    disabled={!!soloDriver}
-                    style={{ width: '14rem', accentColor: 'var(--accent)' }}
-                  />
-                  {v1Legacy('phasePriority')}
-                </label>
-                <label title={t("How phase error is judged. Integration band = the panel's average + excursions over the WHOLE overlap window (flat across the handover, matches the numbers you read). Classic = overlap-weighted mean, centre-heavy (the old behaviour, kept as fallback).")}>
-                  {t('Phase metric')}
-                  <select
-                    value={phaseMetricMode}
-                    onChange={(e) => setPhaseMetricMode(e.target.value as 'band' | 'overlap')}
-                    disabled={!!soloDriver}
-                  >
-                    <option value="band">{t('Integration band (avg + P95)')}</option>
-                    <option value="overlap">{t('Classic (overlap-weighted)')}</option>
-                  </select>
-                </label>
-                <label>
-                  {t('Amplitude target')}
-                  <select
-                    value={ampTarget}
-                    onChange={(e) => setAmpTarget(e.target.value as 'onAxis' | 'listeningWindow')}
-                    disabled={!angleSets || !!soloDriver}
-                    title={soloDriver ? t('Single-driver mode: directivity terms pair both drivers — on-axis only for now') : angleSets ? '' : t('Load angle measurements to enable')}
-                  >
-                    <option value="onAxis">{t('On-axis (0°)')}</option>
-                    <option value="listeningWindow">{t('Listening window (0–30°)')}</option>
-                  </select>
-                </label>
-                <label title={soloDriver ? t('Single-driver mode: directivity terms pair both drivers — disabled for now') : angleSets ? '' : t('Load angle measurements to enable')}>
-                  {t('Weight for in-room sound: {n}% (energy average)', { n: dirWeight })}
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={dirWeight}
-                    onChange={(e) => setDirWeight(Number(e.target.value))}
-                    disabled={!angleSets || !!soloDriver}
-                    style={{ width: '11rem', accentColor: 'var(--accent)' }}
-                  />
-                </label>
-                <label
-                  className="inline-num"
-                  title={t("How the energy average is judged. Smooth (default): the trend of the power response (dB/decade) is fitted and left FREE — a rising DI makes it fall, and the slope is your room correction's business — and only the RESIDUAL counts: its std plus a fold term near each crossing (a DI step no room EQ can undo). Legacy: std of the raw power response (flatness), the pre-Aug-2026 behaviour, for A/B on existing projects.")}
-                >
-                  {t('Power response')}
-                  <select
-                    value={powerMetric}
-                    onChange={(e) => {
-                      const v = e.target.value === 'legacy' ? 'legacy' : 'smooth';
-                      setPowerMetric(v);
-                      localStorage.setItem('ads-power-metric', v);
-                    }}
-                    disabled={!angleSets || !!soloDriver}
-                  >
-                    <option value="smooth">{t('smooth (slope free, fold penalised)')}</option>
-                    <option value="legacy">{t('legacy (flat)')}</option>
-                  </select>
-                  {powerMetric === 'smooth' && (
-                    <>
-                      {' '}{t('fold ×')}
+                {/* ---- U-1: ONE ENGINE, AND NO SWITCH ---------------------------------
+                  * The checkbox that stood here until U-1 let a designer put the app
+                  * back on the v1 optimiser. It is gone, not disabled: a control that
+                  * cannot be operated still reads as a choice, and there is no choice
+                  * left to make. What replaces it is a STATEMENT — which engine runs,
+                  * and what that means for the v1 controls further up this panel.
+                  *
+                  * The v1 engine itself is untouched on the far side of `selectEngine`,
+                  * and `toggleRegression.test.ts` still turns the flag off in code to
+                  * prove the byte-identical reference run. See the note on the
+                  * `engineV2Enabled` state for why the flag survives its own switch. */}
+                <span className="derived" style={{ flexBasis: '100%' }}>
+                  {t('Engine v2 runs every optimisation: the measurement-ingest pass, the metric library, the pre-design blocks and the hard gates (M-A dissipation, M-B EPDR beside the plain |Z| floor, M-C drive on a driver’s resonance). It arms no limit by itself — every gate and every budget below is blank until you state one.')}
+                </span>
+                {/* I-1 FORM · V2 PANEL — the landmark `v2InputPlacement.test.ts`
+                    slices this governed form by. It used to slice on the
+                    `engineV2Enabled` guard below, which is a spelling that can
+                    legitimately occur anywhere in the file: H-2 added one in the
+                    wizard and the slice silently grew to span three thousand
+                    lines and a file input. A marker cannot be written by
+                    accident. */}
+                {/* ---- U-9 fase 2: THE PANEL IN THE ORDER OF DESIGNING --------------------
+                  * Eight groups, read from the register (`V2_FIELD_GROUPS`): this
+                  * file types no order of its own, it only says which fields a
+                  * group holds. The six v1 headings (Goals & weighting, Filter
+                  * shape, Targets, Components, Crossover, Driver limits) are gone:
+                  * a field that steers the v2 search sits under the group its
+                  * MEASURED effect places it in (B-2.1), and what served only v1 is
+                  * not rendered (B-2.2). Each field carries its badge (what it does,
+                  * where the number comes from) and, if it starts on an app value,
+                  * says so. A field filled in on another tab stays there, and the
+                  * group names it in one line. */}
+                {V2_FIELD_GROUPS.map((g) => (
+                  <Fragment key={g}>
+                <span className="opt-group-cap">{t(V2_GROUP_HEADING[g])}</span>
+                {g === 'architecture' && (
+                <>
+                {engineV2Enabled && (
+                  <>
+                    {/* ---- H-2: WHAT THE DESIGN IS, before anything judges it ----
+                      * Three fields and one statement: this loudspeaker's LOWEST
+                      * way is driven by its own amplifier and a DSP, so the
+                      * passive network is the ways above it. The handover is
+                      * STATED and never searched — the processor realises it, and
+                      * a search that moved it would be searching a filter this app
+                      * does not program — and the shape is stated ONCE for both
+                      * flanks, so the passive high-pass and the DSP low-pass
+                      * cannot disagree about which alignment they are halves of.
+                      * Unticked is the app every project has always had (P4). */}
+                    <span className="v2-subcap">{t('what the design is — which ways the passive network carries at all')}</span>
+                    <label title={t('H-1/H-2/H-2b — tick this when the lowest way has its own amplifier and DSP. The app then designs the PASSIVE network of the ways above it and hands you the DSP numbers. The FORM follows from what is measured: with the active way measured beside the others it is modelled and every acoustic sum contains it (nothing electrical does); with only the passive pair measured — the LEAN form — nothing is modelled, the lowest passive way is designed to the stated high-pass and judged on its target-flank error, and every sum figure reads NOT JUDGED.')}>
                       <input
-                        type="number"
-                        min={0}
-                        max={3}
-                        step={0.1}
-                        value={powerFoldWeight}
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          const nv = Number.isFinite(v) && v >= 0 ? v : 0.5;
-                          setPowerFoldWeight(nv);
-                          localStorage.setItem('ads-power-fold', String(nv));
-                        }}
-                        style={{ width: '3.6rem' }}
-                        title={t('Weight of the DI-fold term (max |residual| within ×/÷1.6 of a crossing) as a share of the in-room weight. Default 0.5.')}
+                        type="checkbox"
+                        checked={engineV2Settings.activeSideOn === 'on'}
+                        onChange={(e) => setV2Field('activeSideOn', e.target.checked ? 'on' : '')}
                       />
-                    </>
-                  )}
-                </label>
-                {/* U-9 — `effect: 'niets'`: never rendered; the value stays in the project. */}
-                {rendersRow('errorSmoothOct') && (
-                <label
-                  className="inline-num"
-                  title={t('Smoothing of the on-axis and energy-average magnitudes the SEARCH judges (Gaussian in log-f, applied before decimation to the inner grid). Diffraction ripple and measurement noise no filter can fix stop steering the search. Off = legacy raw points. Gates, staged targets and the safety gate always judge the raw full grid; the scan table shows the smoothed peak with the raw peak as tooltip.')}
-                >
-                  {t('Error smoothing')}
-                  <select
-                    value={String(errorSmoothOct)}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setErrorSmoothOct(v);
-                      localStorage.setItem('ads-err-smooth', String(v));
-                    }}
-                  >
-                    <option value="0">{t('off (legacy)')}</option>
-                    <option value={String(1 / 24)}>1/24 oct</option>
-                    <option value={String(1 / 12)}>1/12 oct</option>
-                    <option value={String(1 / 6)}>1/6 oct</option>
-                  </select>
-                  {v1Legacy('errorSmoothOct')}
-                </label>
+                      {t('Hybrid mode')}
+                      {v2Stated('activeSideOn')}
+                      {v2Empty('activeSideOn')}
+{fieldBadge('activeSideOn')}
+                    </label>
+                    {engineV2Settings.activeSideOn === 'on' && (
+                      <>
+                        <label title={t('The acoustic handover(s) to the active side, Hz — a LIST. A comma is a DECIMAL comma (362,3 = 362.3 Hz); separate frequencies with a semicolon or a space (“362,3; 400”). A comma that could be either is refused with an explanation. Each handover is a separate run of the whole passive field, so three handovers multiply the field by three. Stated verbatim; nothing is rounded.')}>
+                          {t('Handover(s) to the active side (Hz)')}
+                          <input
+                            type="text"
+                            value={engineV2Settings.activeHandoverHz}
+                            placeholder={V2_GHOSTS.activeHandoverHz}
+                            onChange={(e) => setV2Field('activeHandoverHz', e.target.value)}
+                            style={{ width: '9rem' }}
+                          />
+                          {/* H-2b — THE LIST READ BACK, exactly as the app understood it. */}
+                          {v2ActiveSide.read && <span className="derived"> {t(v2ActiveSide.read)}</span>}
+                          {v2Stated('activeHandoverHz')}
+                          {v2Empty('activeHandoverHz')}
+{fieldBadge('activeHandoverHz')}
+                        </label>
+                        <label title={t('The ACOUSTIC target of BOTH flanks at the handover: the high-pass the passive way must arrive at, and the low-pass mirror the DSP must realise. Stated once and read twice, so the two halves cannot disagree.')}>
+                          {t('Acoustic target shape of the handover')}
+                          <select
+                            value={engineV2Settings.activeHandoverShape}
+                            onChange={(e) => setV2Field('activeHandoverShape', e.target.value)}
+                          >
+                            <option value="">{t('not stated')}</option>
+                            {ACTIVE_SIDE_SHAPES.map((sh) => (
+                              <option key={sh.value} value={sh.value}>
+                                {t(sh.label)}
+                              </option>
+                            ))}
+                          </select>
+                          {v2Stated('activeHandoverShape')}
+                          {v2Empty('activeHandoverShape')}
+{fieldBadge('activeHandoverShape')}
+                        </label>
+                        {/* H-3b — THE FLANK-ERROR BUDGET: how far the lowest passive
+                          * way's realised flank may stray from the stated high-pass,
+                          * dB rms over the handover band. A JUDGEMENT: stated, every
+                          * delivered or tuned network of a hybrid run is held to it
+                          * and refused with the number when it lies above; blank, the
+                          * flank is measured and reported and nothing judges it (P4).
+                          * The tuner carries the same number as a wall in its
+                          * objective, so the search is kept out of the region the
+                          * requirement would refuse. */}
+                        <label title={t('H-3b — the target-flank error of the lowest passive way (its measured response times the delivered network, against the same response times the stated high-pass, level-matched, dB rms over half an octave either side of the handover) must stay at or under this. A hard requirement on every delivered or tuned network in Hybrid mode: above it the network is REFUSED with the number, on the shortlist and on the Network tab’s ⚙ tune alike. Blank = the flank is measured and reported, and nothing judges it. H-3 measured the unbudgeted tune moving the flank from 0.84 to 3.7 dB rms on the two-way demo.')}>
+                          {t('Flank-error budget (dB rms over the handover band)')}
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={engineV2Settings.activeFlankBudgetDbRms}
+                            placeholder={V2_GHOSTS.activeFlankBudgetDbRms}
+                            onChange={(e) => setV2Field('activeFlankBudgetDbRms', e.target.value)}
+                            style={{ width: '5rem' }}
+                          />
+                          {v2Stated('activeFlankBudgetDbRms')}
+                          {v2Empty('activeFlankBudgetDbRms')}
+{fieldBadge('activeFlankBudgetDbRms')}
+                        </label>
+                        {/* H-2b — THE PROCESSOR'S OWN LATENCY on the active side. A
+                          * stated number, subtracted from the delay to dial in and
+                          * named apart in the DSP block; blank = printed without it,
+                          * and the block says so (P4). The hint lives in the title
+                          * and the empty-field sentence, never in the placeholder
+                          * (E-2: a number in a field reads as a number in the field). */}
+                        <label title={t('The processor’s own latency on the active side, ms — from its spec sheet (the Hypex FA251 with an analogue input is about 0.35 ms). The DSP target block subtracts it from the delay to dial in and names it apart. Blank = the delay is printed without it, and the block says so.')}>
+                          {t('Processor latency on the active side (ms)')}
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={engineV2Settings.activeProcessorLatencyMs}
+                            placeholder={V2_GHOSTS.activeProcessorLatencyMs}
+                            onChange={(e) => setV2Field('activeProcessorLatencyMs', e.target.value)}
+                            style={{ width: '5rem' }}
+                          />
+                          {v2Stated('activeProcessorLatencyMs')}
+                          {v2Empty('activeProcessorLatencyMs')}
+{fieldBadge('activeProcessorLatencyMs')}
+                        </label>
+                        {/* H-2b — WHICH FORM what is measured admits, said before
+                          * anything runs. */}
+                        {v2ActiveSide.armed && (
+                          <span className="derived" style={{ flexBasis: '100%' }}>
+                            {t(describeActiveSide(v2ActiveSide))}
+                          </span>
+                        )}
+                        {/* WHAT IS MISSING, BY NAME — never a silent refusal to
+                          * model, and never a guess at the missing input (P4). */}
+                        {!v2ActiveSide.armed && (
+                          <span className="v2-warn" style={{ flexBasis: '100%' }}>
+                            {t('Hybrid mode is not assembled yet:')}{' '}
+                            {v2ActiveSide.off.join(' ')}
+                          </span>
+                        )}
+                        {v2ActiveSide.problems.length > 0 && (
+                          <span className="v2-warn" style={{ flexBasis: '100%' }}>
+                            {v2ActiveSide.problems.join(' ')}
+                          </span>
+                        )}
+                        {v2ActiveSide.armed && (
+                          <span className="derived" style={{ flexBasis: '100%' }}>
+                            {describeActiveSide(v2ActiveSide)}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
-                <label
-                  className="inline-num"
-                  title={t("Source resistance the LOW driver sees at its box tuning (real part of the Thevenin impedance looking back from its terminals): series R and coil DCR in the woofer branch add to Re and raise Qes — damping and efficiency lost, invisible to every response metric. Above this limit a scan candidate loses a ranking class (same mechanism as the Z floor) and a staged prune/escalation move that pushes it over is not accepted. Yellow from half the limit. Model estimate outside the measured band.")}
-                >
-                  {t('Source R limit')}
-                  <input
-                    type="number"
-                    min={0}
-                    max={5}
-                    step={0.1}
-                    value={rSourceLimitOhm}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      const nv = Number.isFinite(v) && v >= 0 ? v : 1.0;
-                      setRSourceLimitOhm(nv);
-                      localStorage.setItem('ads-rsource-limit', String(nv));
-                    }}
-                    style={{ width: '3.6rem' }}
-                  />{' '}Ω
-                  {' · '}{t('disqualify ≥')}
-                  <input
-                    type="number"
-                    min={0}
-                    max={10}
-                    step={0.1}
-                    value={rSourceDisqOhm}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      const nv = Number.isFinite(v) && v >= 0 ? v : 2.0;
-                      setRSourceDisqOhm(nv);
-                      localStorage.setItem('ads-rsource-disq', String(nv));
-                    }}
-                    style={{ width: '3.6rem' }}
-                    title={t('Hard tier: a candidate with at least this much source resistance in front of the low driver is disqualified from the ranking — it stays in the table, struck through, with the reason. 0 = off.')}
-                  />{' '}Ω
-                  {/* U-5c — the goals-panel audit found this one: the field is
-                      shown on every project and only the THREE-WAY chain
-                      settings carry it, so on a two-way v2 run the candidate
-                      declares it ABSENT and nothing is disqualified. Said where
-                      it stands rather than repaired: wiring it would start
-                      disqualifying two-way candidates that are not being
-                      disqualified today, and that is a run-behaviour change. */}
-                  {engineV2Enabled && !threeWay && (
-                    <span className="derived">
-                      {' '}
-                      {t('not read on the two-way Engine v2 route — only the three-way chain settings carry it (U-5c)')}
-                    </span>
-                  )}
-                </label>
+                </>
+                )}
+                {g === 'amplifier' && (
+                <>
                 <label
                   className="inline-num"
                   title={t("The minimum load your AMPLIFIER is rated for, from its own spec sheet. Leave EMPTY and the engine holds the design to nothing — the delivered impedance minimum is still measured and shown, it just does not decide anything. Filled: a design that dips below it is repaired if that is possible, loses a ranking class if it is not, and every refusal says the number came from you. There is deliberately no default: a tube amp, a PA amp and a class-D module want different answers and this app cannot see which one you own.")}
@@ -20344,8 +20473,9 @@ export default function App() {
                       ? t('— empty: no floor is applied, the minimum is only reported')
                       : t('— designs below it are repaired, or lose a ranking class')}
                   </span>
-                </label>
-                <label
+                {fieldBadge('ampMinLoadOhm')}
+</label>
+                <label onChangeCapture={fieldStamp('dissipationWeight')}
                   className="inline-num"
                   title={t('Dissipation term: a soft objective penalty on series resistance in front of the LOWEST branch — weight × (Rs/Re)² at the level reference (Fb or the Z peak). Steers the tuner away from matching levels by burning power in the woofer branch (efficiency and damping), before the hard tiers have to act. 0 = off (legacy).')}
                 >
@@ -20358,15 +20488,275 @@ export default function App() {
                     value={dissipationWeight}
                     onChange={(e) => {
                       const v = Number(e.target.value);
-                      const nv = Number.isFinite(v) && v >= 0 ? v : 0.05;
+                      const nv = Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.dissipationWeight;
                       setDissipationWeight(nv);
                       localStorage.setItem('ads-diss-weight', String(nv));
                     }}
                     style={{ width: '3.6rem' }}
                   />
+                {fieldBadge('dissipationWeight')}{appDefault('dissipationWeight')}
+</label>
+                {engineV2Enabled && (
+                  <>
+                    {/* ---- F2: the GATES (A4 M-A/M-B/M-C, spec A2 P2/P4) ----
+                      * Every one of these is blank by default and blank means
+                      * ABSENT, not zero and not a default: the gate is off,
+                      * the report still shows what the design reads, and it
+                      * says "no limit set" beside it. The `placeholder` text
+                      * is a GHOST — a suggestion the designer can see and the
+                      * engine never receives (P4). Type nothing and nothing
+                      * judges the design. */}
+                    <label title={t('Amplifier power the dissipation metric (M-A) converts its fraction into watts with. Empty = only the fraction is reported, which is scale-free anyway.')}>
+                      {t('Amplifier power W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.amplifierPowerW}
+                        placeholder={V2_GHOSTS.amplifierPowerW}
+                        onChange={(e) =>
+                          setV2Field('amplifierPowerW', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('amplifierPowerW')}
+                      {v2Empty('amplifierPowerW')}
+                    {fieldBadge('amplifierPowerW')}
+</label>
+                    <label title={t('M-A — the largest share of the amplifier power that may be burnt in the filter resistors, IEC-weighted. A hard gate: no candidate and no polish step may exceed it, whatever it wins elsewhere. Empty = no limit; the percentage is still reported.')}>
+                      {t('Max dissipation %')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={engineV2Settings.maxDissipationPct}
+                        placeholder={V2_GHOSTS.maxDissipationPct}
+                        onChange={(e) =>
+                          setV2Field('maxDissipationPct', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('maxDissipationPct')}
+                      {v2Empty('maxDissipationPct')}
+                    {fieldBadge('maxDissipationPct')}
+</label>
+                    <label title={t('M-B — the EPDR floor in ohms: |Z|/(2·cos²φ), the resistance that would cost the output devices the same peak dissipation as this reactive load does. Independent of the amplifier rating above, which stays the plain |Z| floor; both are judged by one rule. Empty = no limit.')}>
+                      {t('Min EPDR Ω')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.minEpdrOhm}
+                        placeholder={V2_GHOSTS.minEpdrOhm}
+                        onChange={(e) =>
+                          setV2Field('minEpdrOhm', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('minEpdrOhm')}
+                      {v2Empty('minEpdrOhm')}
+                    {fieldBadge('minEpdrOhm')}
+</label>
+                    {/* ---- V49: M-C v2.0 — the limit DERIVED from excursion ----
+                      * Three stated numbers, none defaulted. With all three
+                      * and a driver card (Sd/Xmax on the Setup tab, Bl/M_ms in
+                      * the per-branch measurement block) the report derives a
+                      * ceiling per way from the measured resonance, and the
+                      * STRICTER of that ceiling and the stated dB figure
+                      * judges. The ghosts below are what is customary, never
+                      * a value. */}
+                    <label title={t('M-C v2.0 — the amplifier\'s brief PEAK power (e.g. its IHF dynamic rating), W. With the nominal load beside it this sets the peak input voltage √2·√(P·R) the excursion requirement is judged at: on that voltage every high-passed way must keep its cone within X_max × margin on its own resonance. Empty = no derived limit; the stated dB figure alone judges.')}>
+                      {t('Amplifier peak power W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.amplifierPeakPowerW}
+                        placeholder={V2_GHOSTS.amplifierPeakPowerW}
+                        onChange={(e) =>
+                          setV2Field('amplifierPeakPowerW', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('amplifierPeakPowerW')}
+                      {v2Empty('amplifierPeakPowerW')}
+                    {fieldBadge('amplifierPeakPowerW')}
+</label>
+                    <label title={t('M-C v2.0 — the load the peak power is specified into, Ω. Together with the peak power it gives the peak input voltage. Empty = no derived limit.')}>
+                      {t('Nominal load Ω')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={engineV2Settings.amplifierNominalLoadOhm}
+                        placeholder={V2_GHOSTS.amplifierNominalLoadOhm}
+                        onChange={(e) =>
+                          setV2Field('amplifierNominalLoadOhm', e.target.value)
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                      {v2Stated('amplifierNominalLoadOhm')}
+                      {v2Empty('amplifierNominalLoadOhm')}
+                    {fieldBadge('amplifierNominalLoadOhm')}
+</label>
+                  </>
+                )}
+                </>
+                )}
+                {g === 'protection' && (
+                <>
+                <label onChangeCapture={fieldStamp('rSourceLimit')}
+                  className="inline-num"
+                  title={t("Source resistance the LOW driver sees at its box tuning (real part of the Thevenin impedance looking back from its terminals): series R and coil DCR in the woofer branch add to Re and raise Qes — damping and efficiency lost, invisible to every response metric. Above this limit a scan candidate loses a ranking class (same mechanism as the Z floor) and a staged prune/escalation move that pushes it over is not accepted. Yellow from half the limit. Model estimate outside the measured band.")}
+                >
+                  {t('Source R limit')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    value={rSourceLimitOhm}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.rSourceLimitOhm;
+                      setRSourceLimitOhm(nv);
+                      localStorage.setItem('ads-rsource-limit', String(nv));
+                    }}
+                    style={{ width: '3.6rem' }}
+                  />{' '}Ω
+                  {fieldBadge('rSourceLimit')}{appDefault('rSourceLimit')}
                 </label>
-                {threeWay && (
-                  <label
+                {/* U-9 fase 2 (Sander, 25-10-2026): a field that does nothing on a route
+                  * is HIDDEN on that route. Only the three-way chain settings carry the
+                  * disqualify tier; on the two-way and hybrid routes the candidate
+                  * declares it ABSENT (V34), so it is drawn on the three-way only — and
+                  * U-5c's "not read on the two-way route" sentence goes with it. */}
+                {threeWay && !v2Hybrid && (
+                <label onChangeCapture={fieldStamp('rSourceDisq')} className="inline-num">
+                  {t('Source R disqualify ≥')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    value={rSourceDisqOhm}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.rSourceDisqOhm;
+                      setRSourceDisqOhm(nv);
+                      localStorage.setItem('ads-rsource-disq', String(nv));
+                    }}
+                    style={{ width: '3.6rem' }}
+                    title={t('Hard tier: a candidate with at least this much source resistance in front of the low driver is disqualified from the ranking — it stays in the table, struck through, with the reason. 0 = off.')}
+                  />{' '}Ω
+                  {fieldBadge('rSourceDisq')}{appDefault('rSourceDisq')}
+                </label>
+                )}
+                <label onChangeCapture={fieldStamp('breakupGuard')} title={t('Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level')}>
+                  <input
+                    type="checkbox"
+                    checked={breakupGuard}
+                    onChange={(e) => setBreakupGuard(e.target.checked)}
+                    disabled={!!soloDriver}
+                  />{' '}
+                  {t('Keep cone breakup ≥20 dB down')}
+                {fieldBadge('breakupGuard')}{appDefault('breakupGuard')}
+</label>
+                {engineV2Enabled && (
+                  <>
+                    <label title={t('M-C — the largest drive voltage on a driver’s own resonance, in dB relative to that way’s passband (so −18 means "at least 18 dB down"). Applies to every way the CIRCUIT high-passes, derived from the branch transfers rather than from a list of names. Empty = no limit.')}>
+                      {t('Max drive on f_s dB')}
+                      <input
+                        type="number"
+                        max={0}
+                        value={engineV2Settings.maxDriveOnFsDb}
+                        placeholder={V2_GHOSTS.maxDriveOnFsDb}
+                        onChange={(e) =>
+                          setV2Field('maxDriveOnFsDb', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('maxDriveOnFsDb')}
+                      {v2Empty('maxDriveOnFsDb')}
+                    {fieldBadge('maxDriveOnFsDb')}
+</label>
+                    <label title={t('M-C v2.0 — the fraction of X_max a design may use on the resonance. X_max is a geometric figure (coil overhang); distortion rises quickly above it, and manufacturers define it differently, so a fraction below 1 is customary. Empty = no derived limit.')}>
+                      {t('X_max margin')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={engineV2Settings.xmaxMarginFraction}
+                        placeholder={V2_GHOSTS.xmaxMarginFraction}
+                        onChange={(e) =>
+                          setV2Field('xmaxMarginFraction', e.target.value)
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                      {v2Stated('xmaxMarginFraction')}
+                      {v2Empty('xmaxMarginFraction')}
+                    {fieldBadge('xmaxMarginFraction')}
+</label>
+
+                    <label title={t('How much extra low-frequency lift the filter and the source impedance may add on top of the bare driver-in-box behaviour (M-D). Inverted through the measured impedance peak and near field into a maximum series inductance. Empty = no bound.')}>
+                      {t('LF lift budget dB')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.lfBumpBudgetDb}
+                        placeholder={V2_GHOSTS.lfBumpBudgetDb}
+                        onChange={(e) =>
+                          setV2Field('lfBumpBudgetDb', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('lfBumpBudgetDb')}
+                      {v2Empty('lfBumpBudgetDb')}
+                    {fieldBadge('lfBumpBudgetDb')}
+</label>
+                    <label title={t('The largest factor the filter’s source resistance may multiply Q_es by (M-E). Inverted exactly into a maximum TOTAL series resistance in the lowest path: R_s ≤ R_e·(q−1). Needs the driver’s measured DC resistance. Empty = no bound.')}>
+                      {t('Max Q_es ×')}
+                      <input
+                        type="number"
+                        min={1}
+                        step={0.1}
+                        value={engineV2Settings.qesMultiplierMax}
+                        placeholder={V2_GHOSTS.qesMultiplierMax}
+                        onChange={(e) =>
+                          setV2Field('qesMultiplierMax', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('qesMultiplierMax')}
+                      {v2Empty('qesMultiplierMax')}
+                    {fieldBadge('qesMultiplierMax')}
+</label>
+                    <label title={t('How much attenuation a way may spend ON TOP OF its measured sensitivity gap to the anchor (A5d.4). Inverted into a maximum pad resistance against that way’s own passband impedance. Empty = no bound.')}>
+                      {t('Damping margin dB')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.dampingMarginDb}
+                        placeholder={V2_GHOSTS.dampingMarginDb}
+                        onChange={(e) =>
+                          setV2Field('dampingMarginDb', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('dampingMarginDb')}
+                      {v2Empty('dampingMarginDb')}
+                    {fieldBadge('dampingMarginDb')}
+</label>
+
+                  </>
+                )}
+                </>
+                )}
+                {g === 'crossover' && (
+                <>
+                {threeWay && !v2Hybrid && (
+                  <label onChangeCapture={fieldStamp('diWeight')}
                     className="inline-num"
                     title={t("Directivity in the STRUCTURE search (3-way): each handover pays weight × log2(knee / DI anchor)², the anchor being where the lower driver's DI meets the upper's (from the angle sets). In the literature directivity match is the first crossover criterion, not an afterthought of the tuner. 0 = off.")}
                   >
@@ -20379,7 +20769,7 @@ export default function App() {
                       value={diWeight}
                       onChange={(e) => {
                         const v = Number(e.target.value);
-                        const nv = Number.isFinite(v) && v >= 0 ? v : 0.3;
+                        const nv = Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.diWeight;
                         setDiWeight(nv);
                         localStorage.setItem('ads-di-weight', String(nv));
                       }}
@@ -20391,10 +20781,10 @@ export default function App() {
                     {physWin3?.angleSets && physWin3.diAnchor.low === null && physWin3.diAnchor.high === null && (
                       <span className="derived"> {t('no DI match found in the measured band — structure choice on-axis')}</span>
                     )}
-                  </label>
+                  {fieldBadge('diWeight')}{appDefault('diWeight')}
+</label>
                 )}
-                <span className="opt-group-cap">{t('Filter shape')}</span>
-                <label
+                <label onChangeCapture={fieldStamp('eqBands')}
                   className="inline-num"
                   title={t('Hard cap on EQ bands per driver the optimizer may spend — more bands = finer correction but a bigger search (and more passive components later)')}
                 >
@@ -20409,7 +20799,8 @@ export default function App() {
                       setVfEqBands(Math.max(0, Math.min(8, Math.round(Number(e.target.value)))))
                     }
                   />
-                </label>
+                {fieldBadge('eqBands')}{appDefault('eqBands')}
+</label>
                 {threeWay && rendersRow('hpLpPref') && (
                   <label title={t('Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.')}>
                     {t('HP/LP preference (low xo)')}
@@ -20444,7 +20835,7 @@ export default function App() {
                   </select>
                 </label>
                 )}
-                <label title={t('Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.')}>
+                <label onChangeCapture={fieldStamp('acSlopeMid')} title={t('Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.')}>
                   {threeWay ? t('Acoustic slope mid LP (high xo)') : t('Acoustic slope mid')}
                   <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
@@ -20454,8 +20845,9 @@ export default function App() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label title={t("Target ACOUSTIC slope of the tweeter below the crossing — the classic 'acoustic 4th order at the tweeter' rule is 24 dB/oct. Check the result in 🎯 Targets. Auto = free.")}>
+                {fieldBadge('acSlopeMid')}{appDefault('acSlopeMid')}
+</label>
+                <label onChangeCapture={fieldStamp('acSlopeTweeter')} title={t("Target ACOUSTIC slope of the tweeter below the crossing — the classic 'acoustic 4th order at the tweeter' rule is 24 dB/oct. Check the result in 🎯 Targets. Auto = free.")}>
                   {t('Acoustic slope tweeter')}
                   <select value={acSlopeTweeter} onChange={(e) => setAcSlopeTweeter(e.target.value)} disabled={!!soloDriver}>
                     <option value="auto">Auto</option>
@@ -20465,10 +20857,14 @@ export default function App() {
                       </option>
                     ))}
                   </select>
-                </label>
-                {threeWay && (
+                {fieldBadge('acSlopeTweeter')}{appDefault('acSlopeTweeter')}
+</label>
+                {/* U-9 fase 2 — three-way only, and not on the hybrid route: a hybrid
+                  * runs the two-way chain, where nothing reads the low crossing's
+                  * slopes (Sander, 25-10-2026: hidden where it does nothing). */}
+                {threeWay && !v2Hybrid && (
                   <>
-                    <label title={t('3-way: target ACOUSTIC slope of the WOOFER above the low crossing (its LP flank). Auto = free.')}>
+                    <label onChangeCapture={fieldStamp('acSlopeWoofer')} title={t('3-way: target ACOUSTIC slope of the WOOFER above the low crossing (its LP flank). Auto = free.')}>
                       {t('Acoustic slope woofer (low xo)')}
                       <select value={acSlopeWoofer} onChange={(e) => setAcSlopeWoofer(e.target.value)}>
                         <option value="auto">Auto</option>
@@ -20478,8 +20874,9 @@ export default function App() {
                           </option>
                         ))}
                       </select>
+                      {fieldBadge('acSlopeWoofer')}{appDefault('acSlopeWoofer')}
                     </label>
-                    <label title={t("3-way: target ACOUSTIC slope of the MID below the low crossing (its HP flank) — the mid's second flank.")}>
+                    <label onChangeCapture={fieldStamp('acSlopeMidHp')} title={t("3-way: target ACOUSTIC slope of the MID below the low crossing (its HP flank) — the mid's second flank.")}>
                       {t('Acoustic slope mid HP (low xo)')}
                       <select value={acSlopeMidHp} onChange={(e) => setAcSlopeMidHp(e.target.value)}>
                         <option value="auto">Auto</option>
@@ -20489,517 +20886,12 @@ export default function App() {
                           </option>
                         ))}
                       </select>
+                      {fieldBadge('acSlopeMidHp')}{appDefault('acSlopeMidHp')}
                     </label>
                   </>
                 )}
-                <span className="opt-group-cap">{t('Targets')}</span>
-                <label title={t('Staged design (step method): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.')}>
-                  <input
-                    type="checkbox"
-                    checked={stagedOn}
-                    onChange={(e) => setStagedOn(e.target.checked)}
-                  />{' '}
-                  {t('Use as few components as possible')}
-                </label>
-                {stagedOn && (
-                  <span className="inline-num" title={t("'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call")}>
-                    ≤{' '}
-                    <input
-                      type="number"
-                      min={0.1}
-                      max={6}
-                      step={0.1}
-                      value={targetRipple}
-                      onChange={(e) => setTargetRipple(e.target.value)}
-                    />{' '}
-                    ±dB
-                    {/* Solo: no relative phase, so no phase target. */}
-                    {!soloDriver && (
-                      <>
-                        {' '}·{' '}
-                        <input
-                          type="number"
-                          min={1}
-                          max={90}
-                          step={1}
-                          value={targetPhase}
-                          onChange={(e) => setTargetPhase(e.target.value)}
-                        />
-                        °
-                      </>
-                    )}
-                  </span>
-                )}
-                {stagedOn && (
-                  <span className="derived" style={{ flexBasis: '100%' }}>
-                    {t('a stopping point, not a limit — tighter means more parts and more money (it keeps escalating while unmet, and only prunes once met); looser stops sooner and builds simpler, but may leave performance on the table')}
-                  </span>
-                )}
-                <label
-                  title={t('This system plays behind room correction (Dirac Live etc.). The RIPPLE target may then be wider — on-axis residual ripple is corrected by the room system — while the PHASE targets stay exactly as they are: phase tracking across a handover is set passively and no room correction repairs it. Amplitude corrects the room; driver integration does not.')}
-                >
-                  <input
-                    type="checkbox"
-                    checked={roomCorrection}
-                    onChange={(e) => {
-                      setRoomCorrection(e.target.checked);
-                      localStorage.setItem('ads-room-corr', e.target.checked ? '1' : '0');
-                    }}
-                  />{' '}
-                  {t('Room correction present')}
-                  {roomCorrection && (
-                    <>
-                      {' · '}{t('ripple target')}{' '}
-                      <input
-                        type="number"
-                        min={1}
-                        max={8}
-                        step={0.5}
-                        value={roomRippleDb}
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          const nv = Number.isFinite(v) && v > 0 ? v : 3.5;
-                          setRoomRippleDb(nv);
-                          localStorage.setItem('ads-room-ripple', String(nv));
-                        }}
-                        style={{ width: '4rem' }}
-                      />{' '}dB
-                    </>
-                  )}
-                </label>
-                {roomCorrection && (
-                  <span className="derived" style={{ flexBasis: '100%' }}>
-                    {t('amplitude corrects the room, driver integration does not — ripple target now {r} dB, phase target unchanged', { r: rippleTargetEff().toFixed(1) })}
-                  </span>
-                )}
-                <label
-                  className="inline-num"
-                  title={t('B2 — cost pressure in the catalog snap: candidate score ×(1 + w·ΣEUR). A tiebreak between near-equal purchasable realisations, never a quality trade. Until Aug 2026 this knob was not wired from the UI — the tuner silently ran 0.0015.')}
-                >
-                  {t('Snap cost pressure')}
-                  <input
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.0005}
-                    value={costWeight}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      const nv = Number.isFinite(v) && v >= 0 ? v : 0.015;
-                      setCostWeight(nv);
-                      localStorage.setItem('ads-cost-weight', String(nv));
-                    }}
-                    style={{ width: '5rem' }}
-                  />
-                </label>
-                <label
-                  className="inline-num"
-                  title={t('B1 — BOM cap per channel. Above it a scan candidate loses a ranking class (same mechanism as the Z floor and the source-R limit) — a decision, not a weight. 0 = off. Unpriced candidates are never punished; missing prices show as [NO PRICE].')}
-                >
-                  {t('BOM cap per channel')} €
-                  {v1Legacy('bomCapEur')}
-                  <input
-                    type="number"
-                    min={0}
-                    max={5000}
-                    step={10}
-                    value={bomCapEur}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      const nv = Number.isFinite(v) && v >= 0 ? v : 0;
-                      setBomCapEur(nv);
-                      localStorage.setItem('ads-bom-cap', String(nv));
-                    }}
-                    style={{ width: '5rem' }}
-                  />
-                  {bomCapEur === 0 && <span className="derived"> {t('off')}</span>}
-                </label>
-                <span className="opt-group-cap">{t('Safety nets')}</span>
-                <label title={t('Stopband leakage beside the crossover must stay ≥20 dB below the combined — cone-breakup phase cannot be filtered away, it can only be made irrelevant in level')}>
-                  <input
-                    type="checkbox"
-                    checked={breakupGuard}
-                    onChange={(e) => setBreakupGuard(e.target.checked)}
-                    disabled={!!soloDriver}
-                  />{' '}
-                  {t('Keep cone breakup ≥20 dB down')}
-                </label>
-                <span className="opt-group-cap">{t('Engine')}</span>
-                {/* ---- U-1: ONE ENGINE, AND NO SWITCH ---------------------------------
-                  * The checkbox that stood here until U-1 let a designer put the app
-                  * back on the v1 optimiser. It is gone, not disabled: a control that
-                  * cannot be operated still reads as a choice, and there is no choice
-                  * left to make. What replaces it is a STATEMENT — which engine runs,
-                  * and what that means for the v1 controls further up this panel.
-                  *
-                  * The v1 engine itself is untouched on the far side of `selectEngine`,
-                  * and `toggleRegression.test.ts` still turns the flag off in code to
-                  * prove the byte-identical reference run. See the note on the
-                  * `engineV2Enabled` state for why the flag survives its own switch. */}
-                <span className="derived" style={{ flexBasis: '100%' }}>
-                  {t('Engine v2 runs every optimisation: the measurement-ingest pass, the metric library, the pre-design blocks and the hard gates (M-A dissipation, M-B EPDR beside the plain |Z| floor, M-C drive on a driver’s resonance). It arms no limit by itself — every gate and every budget below is blank until you state one.')}
-                </span>
-                {/* I-1 FORM · V2 PANEL — the landmark `v2InputPlacement.test.ts`
-                    slices this governed form by. It used to slice on the
-                    `engineV2Enabled` guard below, which is a spelling that can
-                    legitimately occur anywhere in the file: H-2 added one in the
-                    wizard and the slice silently grew to span three thousand
-                    lines and a file input. A marker cannot be written by
-                    accident. */}
                 {engineV2Enabled && (
                   <>
-                    {/* ---- I-1: THE PANEL IS ORDERED BY WHAT A FIELD DOES ----------------
-                      * Four groups and nothing else, in the order of the register
-                      * (`v2InputRegister.ts`): what a run cannot start without, what only
-                      * judges because you stated it, what enriches without blocking, and the
-                      * v1 controls this route does not read. The headings ARE the
-                      * explanation; the finer captions below them are presentation and
-                      * nothing more.
-                      *
-                      * Not one field moved between forms and not one line of logic moved:
-                      * every input still lives where it lived, and what changed is that a
-                      * reader can now see which regime it feeds. */}
-                    <span className="opt-group-cap">{V2_CLASS_HEADING.required}</span>
-                    <span className="derived" style={{ flexBasis: '100%' }}>
-                      {t('These are measurements and geometry, not settings, so they live on the tabs that hold them — a run without them does not start. The report panel above says which are missing.')}
-                    </span>
-                    <ul className="v2-need">
-                      {rowsOfClass('required').map((r) => (
-                        <li key={r.id} title={r.travels}>
-                          <strong>{r.label}</strong> — <span className="v2-muted">{r.form}</span>
-                          <span className="v2-empty"> · {r.emptyMeans}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <span className="opt-group-cap">{V2_CLASS_HEADING.judgement}</span>
-                    <span className="derived" style={{ flexBasis: '100%' }}>
-                      {t('Every field here is blank until you fill it in, and blank means NOT JUDGED — the value is still measured and shown, and the gate row says "no limit set". Nothing below has a default (P4).')}
-                    </span>
-                    {/* ---- H-2: WHAT THE DESIGN IS, before anything judges it ----
-                      * Three fields and one statement: this loudspeaker's LOWEST
-                      * way is driven by its own amplifier and a DSP, so the
-                      * passive network is the ways above it. The handover is
-                      * STATED and never searched — the processor realises it, and
-                      * a search that moved it would be searching a filter this app
-                      * does not program — and the shape is stated ONCE for both
-                      * flanks, so the passive high-pass and the DSP low-pass
-                      * cannot disagree about which alignment they are halves of.
-                      * Unticked is the app every project has always had (P4). */}
-                    <span className="v2-subcap">{t('what the design is — which ways the passive network carries at all')}</span>
-                    <label title={t('H-1/H-2/H-2b — tick this when the lowest way has its own amplifier and DSP. The app then designs the PASSIVE network of the ways above it and hands you the DSP numbers. The FORM follows from what is measured: with the active way measured beside the others it is modelled and every acoustic sum contains it (nothing electrical does); with only the passive pair measured — the LEAN form — nothing is modelled, the lowest passive way is designed to the stated high-pass and judged on its target-flank error, and every sum figure reads NOT JUDGED.')}>
-                      <input
-                        type="checkbox"
-                        checked={engineV2Settings.activeSideOn === 'on'}
-                        onChange={(e) => setV2Field('activeSideOn', e.target.checked ? 'on' : '')}
-                      />
-                      {t('Hybrid mode')}
-                      {v2Stated('activeSideOn')}
-                      {v2Empty('activeSideOn')}
-                    </label>
-                    {engineV2Settings.activeSideOn === 'on' && (
-                      <>
-                        <label title={t('The acoustic handover(s) to the active side, Hz — a LIST. A comma is a DECIMAL comma (362,3 = 362.3 Hz); separate frequencies with a semicolon or a space (“362,3; 400”). A comma that could be either is refused with an explanation. Each handover is a separate run of the whole passive field, so three handovers multiply the field by three. Stated verbatim; nothing is rounded.')}>
-                          {t('Handover(s) to the active side (Hz)')}
-                          <input
-                            type="text"
-                            value={engineV2Settings.activeHandoverHz}
-                            placeholder={V2_GHOSTS.activeHandoverHz}
-                            onChange={(e) => setV2Field('activeHandoverHz', e.target.value)}
-                            style={{ width: '9rem' }}
-                          />
-                          {/* H-2b — THE LIST READ BACK, exactly as the app understood it. */}
-                          {v2ActiveSide.read && <span className="derived"> {t(v2ActiveSide.read)}</span>}
-                          {v2Stated('activeHandoverHz')}
-                          {v2Empty('activeHandoverHz')}
-                        </label>
-                        <label title={t('The ACOUSTIC target of BOTH flanks at the handover: the high-pass the passive way must arrive at, and the low-pass mirror the DSP must realise. Stated once and read twice, so the two halves cannot disagree.')}>
-                          {t('Acoustic target shape of the handover')}
-                          <select
-                            value={engineV2Settings.activeHandoverShape}
-                            onChange={(e) => setV2Field('activeHandoverShape', e.target.value)}
-                          >
-                            <option value="">{t('not stated')}</option>
-                            {ACTIVE_SIDE_SHAPES.map((sh) => (
-                              <option key={sh.value} value={sh.value}>
-                                {t(sh.label)}
-                              </option>
-                            ))}
-                          </select>
-                          {v2Stated('activeHandoverShape')}
-                          {v2Empty('activeHandoverShape')}
-                        </label>
-                        {/* H-3b — THE FLANK-ERROR BUDGET: how far the lowest passive
-                          * way's realised flank may stray from the stated high-pass,
-                          * dB rms over the handover band. A JUDGEMENT: stated, every
-                          * delivered or tuned network of a hybrid run is held to it
-                          * and refused with the number when it lies above; blank, the
-                          * flank is measured and reported and nothing judges it (P4).
-                          * The tuner carries the same number as a wall in its
-                          * objective, so the search is kept out of the region the
-                          * requirement would refuse. */}
-                        <label title={t('H-3b — the target-flank error of the lowest passive way (its measured response times the delivered network, against the same response times the stated high-pass, level-matched, dB rms over half an octave either side of the handover) must stay at or under this. A hard requirement on every delivered or tuned network in Hybrid mode: above it the network is REFUSED with the number, on the shortlist and on the Network tab’s ⚙ tune alike. Blank = the flank is measured and reported, and nothing judges it. H-3 measured the unbudgeted tune moving the flank from 0.84 to 3.7 dB rms on the two-way demo.')}>
-                          {t('Flank-error budget (dB rms over the handover band)')}
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.1}
-                            value={engineV2Settings.activeFlankBudgetDbRms}
-                            placeholder={V2_GHOSTS.activeFlankBudgetDbRms}
-                            onChange={(e) => setV2Field('activeFlankBudgetDbRms', e.target.value)}
-                            style={{ width: '5rem' }}
-                          />
-                          {v2Stated('activeFlankBudgetDbRms')}
-                          {v2Empty('activeFlankBudgetDbRms')}
-                        </label>
-                        {/* H-2b — THE PROCESSOR'S OWN LATENCY on the active side. A
-                          * stated number, subtracted from the delay to dial in and
-                          * named apart in the DSP block; blank = printed without it,
-                          * and the block says so (P4). The hint lives in the title
-                          * and the empty-field sentence, never in the placeholder
-                          * (E-2: a number in a field reads as a number in the field). */}
-                        <label title={t('The processor’s own latency on the active side, ms — from its spec sheet (the Hypex FA251 with an analogue input is about 0.35 ms). The DSP target block subtracts it from the delay to dial in and names it apart. Blank = the delay is printed without it, and the block says so.')}>
-                          {t('Processor latency on the active side (ms)')}
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={engineV2Settings.activeProcessorLatencyMs}
-                            placeholder={V2_GHOSTS.activeProcessorLatencyMs}
-                            onChange={(e) => setV2Field('activeProcessorLatencyMs', e.target.value)}
-                            style={{ width: '5rem' }}
-                          />
-                          {v2Stated('activeProcessorLatencyMs')}
-                          {v2Empty('activeProcessorLatencyMs')}
-                        </label>
-                        {/* H-2b — WHICH FORM what is measured admits, said before
-                          * anything runs. */}
-                        {v2ActiveSide.armed && (
-                          <span className="derived" style={{ flexBasis: '100%' }}>
-                            {t(describeActiveSide(v2ActiveSide))}
-                          </span>
-                        )}
-                        {/* WHAT IS MISSING, BY NAME — never a silent refusal to
-                          * model, and never a guess at the missing input (P4). */}
-                        {!v2ActiveSide.armed && (
-                          <span className="v2-warn" style={{ flexBasis: '100%' }}>
-                            {t('Hybrid mode is not assembled yet:')}{' '}
-                            {v2ActiveSide.off.join(' ')}
-                          </span>
-                        )}
-                        {v2ActiveSide.problems.length > 0 && (
-                          <span className="v2-warn" style={{ flexBasis: '100%' }}>
-                            {v2ActiveSide.problems.join(' ')}
-                          </span>
-                        )}
-                        {v2ActiveSide.armed && (
-                          <span className="derived" style={{ flexBasis: '100%' }}>
-                            {describeActiveSide(v2ActiveSide)}
-                          </span>
-                        )}
-                      </>
-                    )}
-                    <span className="v2-subcap">{t('hard gates — they protect the hardware and are never relaxed')}</span>
-                    {/* ---- F2: the GATES (A4 M-A/M-B/M-C, spec A2 P2/P4) ----
-                      * Every one of these is blank by default and blank means
-                      * ABSENT, not zero and not a default: the gate is off,
-                      * the report still shows what the design reads, and it
-                      * says "no limit set" beside it. The `placeholder` text
-                      * is a GHOST — a suggestion the designer can see and the
-                      * engine never receives (P4). Type nothing and nothing
-                      * judges the design. */}
-                    <label title={t('Amplifier power the dissipation metric (M-A) converts its fraction into watts with. Empty = only the fraction is reported, which is scale-free anyway.')}>
-                      {t('Amplifier power W')}
-                      <input
-                        type="number"
-                        min={0}
-                        value={engineV2Settings.amplifierPowerW}
-                        placeholder={V2_GHOSTS.amplifierPowerW}
-                        onChange={(e) =>
-                          setV2Field('amplifierPowerW', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('amplifierPowerW')}
-                      {v2Empty('amplifierPowerW')}
-                    </label>
-                    <label title={t('M-A — the largest share of the amplifier power that may be burnt in the filter resistors, IEC-weighted. A hard gate: no candidate and no polish step may exceed it, whatever it wins elsewhere. Empty = no limit; the percentage is still reported.')}>
-                      {t('Max dissipation %')}
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={engineV2Settings.maxDissipationPct}
-                        placeholder={V2_GHOSTS.maxDissipationPct}
-                        onChange={(e) =>
-                          setV2Field('maxDissipationPct', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('maxDissipationPct')}
-                      {v2Empty('maxDissipationPct')}
-                    </label>
-                    <label title={t('M-B — the EPDR floor in ohms: |Z|/(2·cos²φ), the resistance that would cost the output devices the same peak dissipation as this reactive load does. Independent of the amplifier rating above, which stays the plain |Z| floor; both are judged by one rule. Empty = no limit.')}>
-                      {t('Min EPDR Ω')}
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={engineV2Settings.minEpdrOhm}
-                        placeholder={V2_GHOSTS.minEpdrOhm}
-                        onChange={(e) =>
-                          setV2Field('minEpdrOhm', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('minEpdrOhm')}
-                      {v2Empty('minEpdrOhm')}
-                    </label>
-                    <label title={t('M-C — the largest drive voltage on a driver’s own resonance, in dB relative to that way’s passband (so −18 means "at least 18 dB down"). Applies to every way the CIRCUIT high-passes, derived from the branch transfers rather than from a list of names. Empty = no limit.')}>
-                      {t('Max drive on f_s dB')}
-                      <input
-                        type="number"
-                        max={0}
-                        value={engineV2Settings.maxDriveOnFsDb}
-                        placeholder={V2_GHOSTS.maxDriveOnFsDb}
-                        onChange={(e) =>
-                          setV2Field('maxDriveOnFsDb', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('maxDriveOnFsDb')}
-                      {v2Empty('maxDriveOnFsDb')}
-                    </label>
-                    {/* ---- V49: M-C v2.0 — the limit DERIVED from excursion ----
-                      * Three stated numbers, none defaulted. With all three
-                      * and a driver card (Sd/Xmax on the Setup tab, Bl/M_ms in
-                      * the per-branch measurement block) the report derives a
-                      * ceiling per way from the measured resonance, and the
-                      * STRICTER of that ceiling and the stated dB figure
-                      * judges. The ghosts below are what is customary, never
-                      * a value. */}
-                    <label title={t('M-C v2.0 — the amplifier\'s brief PEAK power (e.g. its IHF dynamic rating), W. With the nominal load beside it this sets the peak input voltage √2·√(P·R) the excursion requirement is judged at: on that voltage every high-passed way must keep its cone within X_max × margin on its own resonance. Empty = no derived limit; the stated dB figure alone judges.')}>
-                      {t('Amplifier peak power W')}
-                      <input
-                        type="number"
-                        min={0}
-                        value={engineV2Settings.amplifierPeakPowerW}
-                        placeholder={V2_GHOSTS.amplifierPeakPowerW}
-                        onChange={(e) =>
-                          setV2Field('amplifierPeakPowerW', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('amplifierPeakPowerW')}
-                      {v2Empty('amplifierPeakPowerW')}
-                    </label>
-                    <label title={t('M-C v2.0 — the load the peak power is specified into, Ω. Together with the peak power it gives the peak input voltage. Empty = no derived limit.')}>
-                      {t('Nominal load Ω')}
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={engineV2Settings.amplifierNominalLoadOhm}
-                        placeholder={V2_GHOSTS.amplifierNominalLoadOhm}
-                        onChange={(e) =>
-                          setV2Field('amplifierNominalLoadOhm', e.target.value)
-                        }
-                        style={{ width: '4rem' }}
-                      />
-                      {v2Stated('amplifierNominalLoadOhm')}
-                      {v2Empty('amplifierNominalLoadOhm')}
-                    </label>
-                    <label title={t('M-C v2.0 — the fraction of X_max a design may use on the resonance. X_max is a geometric figure (coil overhang); distortion rises quickly above it, and manufacturers define it differently, so a fraction below 1 is customary. Empty = no derived limit.')}>
-                      {t('X_max margin')}
-                      <input
-                        type="number"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={engineV2Settings.xmaxMarginFraction}
-                        placeholder={V2_GHOSTS.xmaxMarginFraction}
-                        onChange={(e) =>
-                          setV2Field('xmaxMarginFraction', e.target.value)
-                        }
-                        style={{ width: '4rem' }}
-                      />
-                      {v2Stated('xmaxMarginFraction')}
-                      {v2Empty('xmaxMarginFraction')}
-                    </label>
-
-                    {/* ---- V50: BUILDABILITY — the parts on the schematic have
-                      * to be buyable. Two gates: the watts in each resistor
-                      * against the class it is built with (times the margin),
-                      * and the peak current through each cored coil against
-                      * its saturation figure. With the catalogue snap ON a
-                      * rated SKU is judged on its own rating instead. Blank =
-                      * the figures are still shown, nothing judges. */}
-                    <label title={t('M-A/part (V50) — the power rating of the resistor series you build with, W continuous (e.g. 10 W for MOX/Superes, 20 W for MResist Supreme). Every discrete resistor is judged against this class × the margin, at the continuous amplifier power above; a resistor snapped to a rated catalogue part is judged on that part\'s rating instead. Blank = no allowance, nothing judged, watts still shown.')}>
-                      {t('Resistor class W')}
-                      <input
-                        type="number"
-                        min={0}
-                        value={engineV2Settings.resistorClassW}
-                        placeholder={V2_GHOSTS.resistorClassW}
-                        onChange={(e) =>
-                          setV2Field('resistorClassW', e.target.value)
-                        }
-                        style={{ width: '4rem' }}
-                      />
-                      {v2Stated('resistorClassW')}
-                      {v2Empty('resistorClassW')}
-                    </label>
-                    <label title={t('M-A/part (V50) — the fraction of its rating a filter resistor may run at. A resistor inside a closed cabinet without airflow runs hot at half its rating; how much of that you accept is your decision, so there is no default. Blank = no allowance, nothing judged.')}>
-                      {t('Resistor margin')}
-                      <input
-                        type="number"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={engineV2Settings.resistorPowerMargin}
-                        placeholder={V2_GHOSTS.resistorPowerMargin}
-                        onChange={(e) =>
-                          setV2Field('resistorPowerMargin', e.target.value)
-                        }
-                        style={{ width: '4rem' }}
-                      />
-                      {v2Stated('resistorPowerMargin')}
-                      {v2Empty('resistorPowerMargin')}
-                    </label>
-                    <label title={t('M-L (V50) — the saturation / maximum current of the CORED coils you build with, A. The peak current through every coil at the amplifier\'s peak input (peak power × nominal load, above) is judged against it; a coil snapped to a rated catalogue part is judged on that rating instead. Air-cored coils have no saturation current and are never judged. Blank = nothing judged, the currents are still shown.')}>
-                      {t('Coil current class A')}
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={engineV2Settings.coilClassA}
-                        placeholder={V2_GHOSTS.coilClassA}
-                        onChange={(e) =>
-                          setV2Field('coilClassA', e.target.value)
-                        }
-                        style={{ width: '4rem' }}
-                      />
-                      {v2Stated('coilClassA')}
-                      {v2Empty('coilClassA')}
-                    </label>
-                    {/* V51 — the THERMAL DESIGN POWER: thermal load is a mean
-                      * over the listening time, and the amplifier's continuous
-                      * rating above is what it CAN deliver, not what the
-                      * design runs at. Blank = the gate judges at the rating
-                      * (V50); the watt column keeps printing at the rating. */}
-                    <label title={t('M-A/part (V51) — the average listening power, W, the per-resistor watts are JUDGED at. Blank = judged at the amplifier power above (V50). The watts shown in the M-A column stay at the amplifier power either way; the gate row says which power it read.')}>
-                      {t('Thermal design power W')}
-                      <input
-                        type="number"
-                        min={0}
-                        value={engineV2Settings.resistorThermalPowerW}
-                        placeholder={V2_GHOSTS.resistorThermalPowerW}
-                        onChange={(e) =>
-                          setV2Field('resistorThermalPowerW', e.target.value)
-                        }
-                        style={{ width: '4rem' }}
-                      />
-                      {v2Stated('resistorThermalPowerW')}
-                      {v2Empty('resistorThermalPowerW')}
-                    </label>
                     {/* V51 — the TOPOLOGY requirement on the lowest way. A
                       * choice, not a limit: it reaches the design and synthesis
                       * steps, which then place no pad there; a candidate that
@@ -21020,6 +20912,7 @@ export default function App() {
                       </select>
                       {v2Stated('lowestWayLevelWork')}
                       {v2Empty('lowestWayLevelWork')}
+{fieldBadge('lowestWayLevelWork')}
                     </label>
                     {/* V51b — the maximum that makes 'series-r-max' a statement:
                       * the TOTAL series resistance the lowest way's driver may
@@ -21041,385 +20934,15 @@ export default function App() {
                         />
                         {v2Stated('lowestWaySeriesRMaxOhm')}
                         {v2Empty('lowestWaySeriesRMaxOhm')}
+{fieldBadge('lowestWaySeriesRMaxOhm')}
                         {engineV2Gates.lowestWayLevelWork === undefined && (
                           <span className="v2-warn"> {t('no maximum — reads as not stated')}</span>
                         )}
                       </label>
                     )}
 
-                    {/* ---- F2: the SEARCH-SPACE BUDGETS (spec A5d.6) ----
-                      * These do not judge a design; they are inverted through
-                      * the measured impedance and near field into ceilings on
-                      * component values, so the search never visits ground the
-                      * budget forbids. Blank = that bound is off and the box
-                      * is exactly the app's own. */}
-                    <span className="v2-subcap">{t('search-space budgets — inverted into bounds, so the search never visits ground the budget forbids')}</span>
-                    <label title={t('How much extra low-frequency lift the filter and the source impedance may add on top of the bare driver-in-box behaviour (M-D). Inverted through the measured impedance peak and near field into a maximum series inductance. Empty = no bound.')}>
-                      {t('LF lift budget dB')}
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={engineV2Settings.lfBumpBudgetDb}
-                        placeholder={V2_GHOSTS.lfBumpBudgetDb}
-                        onChange={(e) =>
-                          setV2Field('lfBumpBudgetDb', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('lfBumpBudgetDb')}
-                      {v2Empty('lfBumpBudgetDb')}
-                    </label>
-                    <label title={t('The largest factor the filter’s source resistance may multiply Q_es by (M-E). Inverted exactly into a maximum TOTAL series resistance in the lowest path: R_s ≤ R_e·(q−1). Needs the driver’s measured DC resistance. Empty = no bound.')}>
-                      {t('Max Q_es ×')}
-                      <input
-                        type="number"
-                        min={1}
-                        step={0.1}
-                        value={engineV2Settings.qesMultiplierMax}
-                        placeholder={V2_GHOSTS.qesMultiplierMax}
-                        onChange={(e) =>
-                          setV2Field('qesMultiplierMax', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('qesMultiplierMax')}
-                      {v2Empty('qesMultiplierMax')}
-                    </label>
-                    <label title={t('How much attenuation a way may spend ON TOP OF its measured sensitivity gap to the anchor (A5d.4). Inverted into a maximum pad resistance against that way’s own passband impedance. Empty = no bound.')}>
-                      {t('Damping margin dB')}
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={engineV2Settings.dampingMarginDb}
-                        placeholder={V2_GHOSTS.dampingMarginDb}
-                        onChange={(e) =>
-                          setV2Field('dampingMarginDb', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('dampingMarginDb')}
-                      {v2Empty('dampingMarginDb')}
-                    </label>
-
-                    {/* ---- F3: the REQUIREMENTS (spec A5e.1) ----
-                      * Acceptance limits on the OUTCOME, and the third kind of
-                      * number in this panel: a gate protects the hardware and
-                      * is never relaxed, a budget shapes the search box, and a
-                      * requirement decides which finished designs you are
-                      * shown. Blank = not asked. There is no weight here and
-                      * there is none anywhere else either — the engine returns
-                      * everything that qualifies and you pick. */}
-                    <span className="v2-subcap">{t('requirements — which finished designs the shortlist shows you')}</span>
-                    <label title={t('The SPL window you will accept, in ±dB against the target curve, judged peak-to-peak on the 1/6-octave-smoothed system response. Narrow features fall outside this judgement on purpose: narrow peaks are reported in their own column, narrow dips are forgiven. Empty = not asked; the value is still shown.')}>
-                      {t('SPL window ±dB')}
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={engineV2Settings.splWindowPlusMinusDb}
-                        placeholder={V2_GHOSTS.splWindowPlusMinusDb}
-                        onChange={(e) =>
-                          setV2Field('splWindowPlusMinusDb', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('splWindowPlusMinusDb')}
-                      {v2Empty('splWindowPlusMinusDb')}
-                    </label>
-                    <label title={t('The largest phase-tracking error you will accept in a crossover region, in degrees — mean |Δφ| over ±1 octave, clipped to measurement validity. Judged PER handover: a three-way that tracks well at one and badly at the other has not met it. Empty = not asked.')}>
-                      {t('Max phase error °')}
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        value={engineV2Settings.maxPhaseTrackingDeg}
-                        placeholder={V2_GHOSTS.maxPhaseTrackingDeg}
-                        onChange={(e) =>
-                          setV2Field('maxPhaseTrackingDeg', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Stated('maxPhaseTrackingDeg')}
-                      {v2Empty('maxPhaseTrackingDeg')}
-                    </label>
-                    <span className="v2-subcap">{t('voicing (A5e.2) — what “flat” MEANS for all three of the above')}</span>
-                    {/* ---- A5e.2 — THE VOICING (UI-1) ----
-                      * The fourth kind of number in this panel and the only one
-                      * that is not a limit: a gate protects the hardware, a
-                      * budget shapes the search box, a requirement decides which
-                      * finished designs you are shown — and this decides what
-                      * "flat" MEANS for all three of them.
-                      *
-                      * V45 gave the engine `bass-plateau`, made the curve steer
-                      * the search as well as the verdict, and closed A5e.2 on
-                      * it. What V45 did NOT do was give anyone a way to state
-                      * one: the app read `activeDesign.targetCurve` in four
-                      * places and wrote it in none, the persistence type did not
-                      * know the shape, and this line printed "Target curve:
-                      * flat" as a fact about every run ever made. Sander went
-                      * looking for the field and there was no field.
-                      *
-                      * ON THE DESIGN AND NOT ON THE PROJECT (A5e.2): two
-                      * voicings of one loudspeaker have to sit side by side and
-                      * be compared, so this control writes to the design tab
-                      * that is open and Save-as-new keeps a voicing with it. */}
-                    <label title={t('The reference every window, RMS and search judges against. FLAT is the neutral reference, not a missing answer. BASS PLATEAU is the on-axis voicing of a speaker meant to stand near a wall: the bass sits deliberately below the flat part, and the wall fills it back in. It hangs on the DESIGN, so two voicings of one loudspeaker can be compared side by side.')}>
-                      {t('Target curve')}
-                      <select
-                        value={activeTargetCurve.type}
-                        disabled={!activeDesign}
-                        onChange={(e) => {
-                          const type = e.target.value as TargetCurve['type'];
-                          if (!activeDesign) return;
-                          setDesigns((ds) =>
-                            ds.map((d) =>
-                              d.id !== activeDesign.id
-                                ? d
-                                : type === 'flat'
-                                  ? { ...d, targetCurve: { type: 'flat' } }
-                                  : {
-                                      ...d,
-                                      targetCurve: {
-                                        ...(d.targetCurve ?? {}),
-                                        type,
-                                      },
-                                    },
-                            ),
-                          );
-                        }}
-                      >
-                        <option value="flat">{t('flat')}</option>
-                        <option value="bass-plateau">{t('bass plateau')}</option>
-                      </select>
-                    </label>
-                    {activeTargetCurve.type === 'bass-plateau' && (
-                      <label title={t('How far BELOW the flat part the bass is meant to sit, in dB — a positive depth. STATED: it is a decision about where this loudspeaker will stand and no measurement can produce it. The TRANSITION is not asked for here: it is the baffle step of your cabinet front, derived from the width in the Cabinet form and from nothing else. Empty = the curve produces no offsets and says which half was missing.')}>
-                        {t('Bass plateau depth dB')}
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.1}
-                          value={
-                            activeTargetCurve.plateauDepthDb === undefined
-                              ? ''
-                              : String(activeTargetCurve.plateauDepthDb)
-                          }
-                          /* U-3b — a JUDGEMENT field, so its placeholder is the
-                             unset mark and not a number. E-2 took the six
-                             numeric ghosts out of the v2 settings block; this
-                             one survived because the voicing lives on the
-                             DESIGN and is not a `V2SettingKey`, so E-2's guard
-                             never looked at it. */
-                          placeholder={UNSET_GHOST}
-                          onChange={(e) => {
-                            if (!activeDesign) return;
-                            const raw = e.target.value;
-                            const v = Number(raw);
-                            setDesigns((ds) =>
-                              ds.map((d) => {
-                                if (d.id !== activeDesign.id) return d;
-                                const base = { ...(d.targetCurve ?? {}), type: 'bass-plateau' as const };
-                                // An empty field is ABSENT, never zero: a
-                                // plateau of 0 dB is a stated voicing that
-                                // happens to be flat, and "not stated yet" is
-                                // a different thing to say (P4).
-                                if (raw.trim() === '' || !Number.isFinite(v) || v < 0) {
-                                  const { plateauDepthDb: _drop, ...rest } = base;
-                                  void _drop;
-                                  return { ...d, targetCurve: rest };
-                                }
-                                return { ...d, targetCurve: { ...base, plateauDepthDb: v } };
-                              }),
-                            );
-                          }}
-                          style={{ width: '5rem' }}
-                        />
-                      </label>
-                    )}
-                    <span className="derived" style={{ fontSize: '0.85em' }}>
-                      {t('Target curve')}: {describeTargetCurve(activeTargetCurve)}
-                      {!activeDesign && ` — ${t('open a design tab to state one')}`}
-                    </span>
-
-                    {/* ---- U-3b: NICE TO HAVE, BEHIND ONE DISCLOSURE ------
-                      * Sander's rule of 09-09-2026: the default view holds what
-                      * a filter is built from. Everything under this heading
-                      * enriches a judgement or runs a published default and
-                      * reports it, so none of it belongs in the first screen a
-                      * designer reads. Nothing about what these fields feed
-                      * changed; only whether they are open when the panel is. */}
-                    <details className="v2-more" style={{ flexBasis: '100%' }}>
-                      <summary className="opt-group-cap">
-                        {V2_CLASS_HEADING.nice} — {t(V2_MORE_HEADING)}
-                      </summary>
-                      <div className="opt-more-body">
-                    <span className="derived" style={{ flexBasis: '100%' }}>
-                      {t('Blank here never stops a run: the metric that needs it stays off with a reason, or a published default runs and is reported.')}
-                    </span>
-                    <label title={t('Observation angles the vertical-lobing synthesis (M-F) evaluates, in degrees off the reference axis. Comma separated, e.g. "-15, 15". Empty = the metric stays off and says so.')}>
-                      {t('Vertical window °')}
-                      <input
-                        type="text"
-                        value={engineV2Settings.verticalWindowDeg}
-                        placeholder={V2_GHOSTS.verticalWindowDeg}
-                        onChange={(e) =>
-                          setV2Field('verticalWindowDeg', e.target.value)
-                        }
-                        style={{ width: '6rem' }}
-                      />
-                      {v2Stated('verticalWindowDeg')}
-                      {v2Empty('verticalWindowDeg')}
-                    </label>
-                    <label title={t('How many designs the shortlist holds. They are spread over topology classes first (order per flank, polarity included) and then over normalised component space — different designs, not variations of one. Empty = 10.')}>
-                      {t('Shortlist size')}
-                      <input
-                        type="number"
-                        min={1}
-                        value={engineV2Settings.shortlistSize}
-                        placeholder={String(DEFAULT_SHORTLIST_SIZE)}
-                        onChange={(e) =>
-                          setV2Field('shortlistSize', e.target.value)
-                        }
-                        style={{ width: '5rem' }}
-                      />
-                      {v2Empty('shortlistSize')}
-                    </label>
-                    {/* ---- F2: determinism (spec A5e.4) ---- */}
-                    <label title={t('The run seed. Same input and same seed give a byte-identical result. This is the ONE setting where blank does not mean off: blank uses the published default and reports it, because "no seed" would mean "not reproducible".')}>
-                      {t('Run seed')}
-                      <input
-                        type="number"
-                        value={engineV2Settings.runSeed}
-                        placeholder={String(DEFAULT_RUN_SEED)}
-                        onChange={(e) =>
-                          setV2Field('runSeed', e.target.value)
-                        }
-                        style={{ width: '7rem' }}
-                      />
-                      {v2Empty('runSeed')}
-                    </label>
-                    <label title={t('Objective evaluations the search may spend per starting point. Empty = the tuner’s own policy, exactly as a v1 run. A budget bounds effort, never what counts as acceptable.')}>
-                      {t('Budget (evals)')}
-                      <input
-                        type="number"
-                        min={0}
-                        value={engineV2Settings.runBudgetEvals}
-                        placeholder={t('tuner')}
-                        onChange={(e) =>
-                          setV2Field('runBudgetEvals', e.target.value)
-                        }
-                        style={{ width: '6rem' }}
-                      />
-                      {v2Empty('runBudgetEvals')}
-                    </label>
-                    {/* E-2 — THE FIELD MODE. A v2 run takes ten to thirty
-                      * minutes per candidate and the full field has twenty and
-                      * more of them; the exploration is a SMALLER field — the
-                      * window centres first, one alignment per handover, the
-                      * same requirements — and the shortlist says which mode
-                      * made it and offers the full field as the next step. */}
-                    <label title={t('Exploration: a chain budget of {n}, the geometric centre of each window first (where the order derivation reads its demands) and then its nearest neighbours, one alignment per handover — minutes to half an hour on casus 1. Full: the "steps per axis" above raised to the number of handovers, every window spread edge to edge, every admitted order — hours. Same requirements, same gates, same seed in both; the shortlist says which mode made it.', { n: String(EXPLORATION_CHAIN_BUDGET) })}>
-                      {t('Candidate field')}
-                      <select
-                        value={fieldModeOf(engineV2Settings.fieldMode)}
-                        onChange={(e) => setV2Field('fieldMode', e.target.value)}
-                      >
-                        <option value="exploration">
-                          {t('exploration — {n} chains, window centres first, one alignment per handover', { n: String(EXPLORATION_CHAIN_BUDGET) })}
-                        </option>
-                        <option value="full">{t('full — every window edge to edge, every admitted order')}</option>
-                      </select>
-                    </label>
-                    {/* H-5 — THE POLARITY ARMS. The textbook rule decides the
-                      * polarity of every candidate: LR2 asks for one reversal,
-                      * LR4 for none, and the design step is bound to it rather
-                      * than settling it on an internal tie-break over ideal
-                      * filters. "Both" builds the mirrored arm beside it —
-                      * M-5 measured a casus where ONLY the mirror delivers,
-                      * and another 240 Hz away where only the textbook arm
-                      * does, so the choice stays reachable and costs nothing
-                      * on a run that does not ask for it. */}
-                    <label title={t('Textbook: every candidate is designed at the polarity its alignments ask for (LR2 one reversal, LR4 none), and the shortlist names the rule beside each row. Both: the mirrored arm is designed, tuned and judged beside it — an exploration always runs the single-driver reversal (the mid of a three-way, the tweeter of a two-way) plus any handover the pre-design phase reading leaves open, and the full field runs every configuration. The run count MULTIPLIES rather than adds.')}>
-                      {t('Polarity arms')}
-                      <select
-                        value={polarityArmsChoiceOf(engineV2Settings.polarityArms)}
-                        onChange={(e) => setV2Field('polarityArms', e.target.value)}
-                      >
-                        {POLARITY_ARMS_CHOICES.map((c) => (
-                          <option key={c} value={c}>
-                            {c === 'textbook'
-                              ? t('textbook — the polarity each alignment asks for, no mirrored arm')
-                              : t('both — the mirrored arm beside it, judged in its own right')}
-                          </option>
-                        ))}
-                      </select>
-                      {v2Stated('polarityArms')}
-                      {v2Empty('polarityArms')}
-                    </label>
-                    {/* U-5 — THE CROSSINGS YOU STATE, beside the derived field.
-                      * The generated positions stay exactly as they are; every
-                      * frequency typed here becomes ONE MORE candidate, tuned
-                      * and judged in full. Inside a feasible window it is
-                      * treated as a generated one; outside it, it still runs,
-                      * and every limit it is past is answered in that limit's
-                      * own unit beside it — never a silent refusal. */}
-                    <label title={t('One line per handover, low to high (a semicolon does the same as a newline); separate the frequencies on a line with commas. Every stated position becomes an extra candidate: inside a feasible window it is judged exactly as a derived one, outside it the tune still runs and the shortlist lists it separately with what each limit it is past asks for, measured on the network it delivered. Requirements stay requirements — a stated crossing that misses one is marked as missing it, and its network is still handed over so you can look at it.')}>
-                      {t('Crossings you state (Hz, per handover)')}
-                      <textarea
-                        rows={v2StatedAxisLabels.length > 1 ? 2 : 1}
-                        value={engineV2Settings.statedCrossings}
-                        placeholder={UNSET_GHOST}
-                        onChange={(e) => setV2Field('statedCrossings', e.target.value)}
-                        style={{ width: '14rem', fontFamily: 'inherit' }}
-                      />
-                      {v2StatedAxisLabels.length > 0 && (
-                        <span className="derived">
-                          {t('one line per handover, low to high: {labels}', {
-                            labels: v2StatedAxisLabels.join(', '),
-                          })}
-                        </span>
-                      )}
-                      {v2Stated('statedCrossings')}
-                      {v2Empty('statedCrossings')}
-                    </label>
-                      </div>
-                    </details>
-                    {/* U-1 — THE v1 DRAWER IS GONE FROM THE PANEL, and its work moved
-                      * one step closer to the question. I-1 put the five v1 controls in a
-                      * collapsed list here so a designer who wondered why a knob did
-                      * nothing found the answer somewhere. With one engine left there is
-                      * no v1 run to steer at all, and a heading that offers "v1" reads as
-                      * a route — which is precisely what U-1 removed.
-                      *
-                      * WHAT DID NOT GO: the controls themselves and the badge each of
-                      * them carries. `v1Legacy(id)` still marks every one of them in
-                      * place, with the register's own sentence in its tooltip, so the
-                      * answer now sits ON the knob rather than in a list beside it. The
-                      * register still holds the class, and its rows are still read — by
-                      * the badge and by the project notice — so nothing about I-1's
-                      * inventory was lost, only its second rendering. */}
                   </>
                 )}
-                <span className="opt-group-cap">{t('Components')}</span>
-                <label
-                  style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
-                  title={
-                    hasImportedCatalog()
-                      ? t('Snap the passive build to purchasable catalog values, simulated with their real DCR/ESR — the fit error against real parts becomes visible instead of assumed away')
-                      : t('Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values')
-                  }
-                >
-                  <input
-                    type="checkbox"
-                    checked={catalogSnap && hasImportedCatalog()}
-                    disabled={!hasImportedCatalog()}
-                    onChange={(e) => setCatalogSnap(e.target.checked)}
-                  />{' '}
-                  {t('Use real catalog parts')}{!hasImportedCatalog() && ` ${t('(needs import)')}`}
-                </label>
-                <span className="opt-group-cap">{t('Crossover')}</span>
                 <label title={t('Pin the ACOUSTIC crossover. On Engine v2 this is the short way of writing the "Crossings you state" list (U-5b): centre ± margin in N steps is expanded into N stated positions, each of which gets a full chain run, the full gate evaluation and the full requirement evaluation — past the feasible window and past the chain budget, exactly as a frequency typed into that list. The positions it will use are printed below. Off = nothing is stated and the derived field is the whole field.')}>
                   <input
                     type="checkbox"
@@ -21428,6 +20951,7 @@ export default function App() {
                     disabled={!!soloDriver}
                   />{' '}
                   {threeWay ? t('Crossover points (low + high)') : t('Crossover point')}
+                  {fieldBadge('crossoverPoint')}
                 </label>
                 {tweeterHpFloor !== null && (
                   <span
@@ -21470,8 +20994,12 @@ export default function App() {
                         </option>
                       ))}
                     </select>
-                  </label>
+                  {fieldBadge('xo3Steps')}
+</label>
                 )}
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('v1Thresholds') && (
+                <>
                 {threeWay && physWin3 && (
                   <span
                     className="derived"
@@ -21549,6 +21077,8 @@ export default function App() {
                     </span>
                   </span>
                 )}
+                </>
+                )}
                 {xoRangeOn && threeWay && (
                   <span
                     className="inline-num"
@@ -21599,12 +21129,14 @@ export default function App() {
                       onChange={(e) => setXoMarginHz(e.target.value)}
                     />{' '}
                     Hz
-                    {/* Candidate count: 2-way sweeps ONE axis from here; 3-way
-                        has its own per-crossing control above (two axes, and
-                        it must work unpinned too). */}
-                    {!threeWay && (
-                      <>
-                        {' · '}
+                  </span>
+                )}
+                {/* U-9 fase 2 — the two-way step count, out of the pin's span: the FULL
+                  * field reads it as well as a pinned crossover (U-5b), exactly as the
+                  * three-way count above, and fase 1 had it under the pin alone. */}
+                {!threeWay && (xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') && (
+                  <label className="inline-num">
+                    {t('Steps')}
                         <select
                           value={xoScanSteps}
                           onChange={(e) => setXoScanSteps(Number(e.target.value))}
@@ -21619,9 +21151,8 @@ export default function App() {
                         {xoScanSteps > 3 && (
                           <span className="derived"> ⏱ ~{Math.max(1, Math.ceil(xoScanSteps / poolSize()))}× {t('runtime')}</span>
                         )}
-                      </>
-                    )}
-                  </span>
+                    {fieldBadge('xoScanSteps')}
+                  </label>
                 )}
                 {/* U-5b — WHAT THIS FORM WILL ACTUALLY RUN, beside the fields
                   * that set it. Until U-5b the crossover point reached nothing
@@ -21659,7 +21190,6 @@ export default function App() {
                   smoothing={v2Smoothing}
                   t={t}
                 />
-                <span className="opt-group-cap">{t('Driver limits')}</span>
                 {threeWay && !physWin3?.lowCeilMeasured &&
                   pistonDiameterMm(Number(sdCm2.low)) === null && (
                   <label title={t("Woofer nominal size — sets the W-M handover's beaming CEILING (a cone is practically usable to ~3× its beaming onset), the mirror of the mid-size rule for the high crossing. With the 2×Fs floor from the measured mid impedance this gives the free scan a physics window instead of a guess.")}>
@@ -21672,8 +21202,12 @@ export default function App() {
                         </option>
                       ))}
                     </select>
-                  </label>
+                  {fieldBadge('nominalSize')}
+</label>
                 )}
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('v1Thresholds') && (
+                <>
                 {threeWay && (
                   <label title={t("Directivity philosophy for the MEASURED beaming ceiling — the on-axis minus 30° difference at which a driver counts as beaming. Default is the empirical 4 dB, NOT the theoretically stricter ka = 2, and that is deliberate: the ka figures come from an ideal piston in an infinite baffle, while a real measured 0−30° difference at low frequency is mostly baffle diffraction. Measured on a real 3-way set, ka = 2 puts the woofer's ceiling at 304 Hz — below the mid's own 2×Fs floor — declaring an ordinary design impossible; 4 dB gives 628 Hz. The strict tiers stay available for a conservative philosophy or clean anechoic data. (For reference: '−6 dB at 30°' is ka = 4.43, past every published limit — that defines BEAMWIDTH, not a crossover ceiling.)")}>
                     {t('When a cone counts as beaming')}
@@ -21686,6 +21220,11 @@ export default function App() {
                     </select>
                   </label>
                 )}
+                </>
+                )}
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('v1Thresholds') && (
+                <>
                 {threeWay && (
                   <span
                     className="inline-num"
@@ -21736,6 +21275,11 @@ export default function App() {
                     )}
                   </span>
                 )}
+                </>
+                )}
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('v1Thresholds') && (
+                <>
                 {threeWay && (
                   <label title={t('Cone breakup as an upper limit. A resonance at f_b is excited as the THIRD harmonic of a fundamental at f_b/3 (Purifi measured exactly this: breakups at 5 and 10 kHz produce HD3 peaks at 1.6 and 3.3 kHz), so the distortion penalty lands more than an octave BELOW the peak. A notch does not repair it — it attenuates the fundamental at the breakup, not the harmonics arriving there from lower fundamentals. NOTE: no published algorithm exists for finding breakup in an SPL curve; this is our own criterion, which is why it is switchable and the detected frequency is shown.')}>
                     {t('Breakup margin — driver card & limits (harmonic)')}
@@ -21755,6 +21299,11 @@ export default function App() {
                     </select>
                   </label>
                 )}
+                </>
+                )}
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('v1Thresholds') && (
+                <>
                 {threeWay && (
                   <label
                     className="inline-num"
@@ -21772,6 +21321,11 @@ export default function App() {
                     />
                   </label>
                 )}
+                </>
+                )}
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('excursionSpl') && (
+                <>
                 {threeWay && (
                   <span
                     className="inline-num"
@@ -21798,6 +21352,11 @@ export default function App() {
                     )}
                   </span>
                 )}
+                </>
+                )}
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('excursionSpl') && (
+                <>
                 {threeWay && (
                   <span className="derived" style={{ flexBasis: '100%' }}>
                     {sdCm2.mid && sdCm2.high
@@ -21813,11 +21372,665 @@ export default function App() {
                       : t('enter Sd and Xmax per driver on the Setup tab to use this criterion')}
                   </span>
                 )}
+                </>
+                )}
                 {vfEqBands > 4 && (
                   <span className="derived">
                     {t('{a} bands = {b} search dimensions — slower, may need a second run', { a: vfEqBands, b: 3 + 6 * vfEqBands })}
                   </span>
                 )}
+                </>
+                )}
+                {g === 'buildability' && (
+                <>
+                <label onChangeCapture={fieldStamp('stagedOn')} title={t('Staged design (step method): HP/LP structure first; EQ bands, Zobel/LCR networks and bypass caps are only added while the targets below are unmet — the fewest components that reach the goal, with a per-stage report.')}>
+                  <input
+                    type="checkbox"
+                    checked={stagedOn}
+                    onChange={(e) => setStagedOn(e.target.checked)}
+                  />{' '}
+                  {t('Use as few components as possible')}
+                  {fieldBadge('stagedOn')}{appDefault('stagedOn')}
+                </label>
+                {stagedOn && (
+                  <span className="inline-num" onChangeCapture={fieldStamp('stagedOn')} title={t("'Good enough' targets: stop escalating once ripple (peak ±dB, the same number the SPL strip shows) AND average phase error (°) are both met — variable per project, this is the designer's call")}>
+                    ≤{' '}
+                    <input
+                      type="number"
+                      min={0.1}
+                      max={6}
+                      step={0.1}
+                      value={targetRipple}
+                      onChange={(e) => setTargetRipple(e.target.value)}
+                    />{' '}
+                    ±dB
+                    {/* Solo: no relative phase, so no phase target. */}
+                    {!soloDriver && (
+                      <>
+                        {' '}·{' '}
+                        <input
+                          type="number"
+                          min={1}
+                          max={90}
+                          step={1}
+                          value={targetPhase}
+                          onChange={(e) => setTargetPhase(e.target.value)}
+                        />
+                        °
+                      </>
+                    )}
+                  </span>
+                )}
+                {stagedOn && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    {t('a stopping point, not a limit — tighter means more parts and more money (it keeps escalating while unmet, and only prunes once met); looser stops sooner and builds simpler, but may leave performance on the table')}
+</span>
+                )}
+                <label onChangeCapture={fieldStamp('costWeight')}
+                  className="inline-num"
+                  title={t('B2 — cost pressure in the catalog snap: candidate score ×(1 + w·ΣEUR). A tiebreak between near-equal purchasable realisations, never a quality trade. Until Aug 2026 this knob was not wired from the UI — the tuner silently ran 0.0015.')}
+                >
+                  {t('Snap cost pressure')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.0005}
+                    value={costWeight}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.costWeight;
+                      setCostWeight(nv);
+                      localStorage.setItem('ads-cost-weight', String(nv));
+                    }}
+                    style={{ width: '5rem' }}
+                  />
+                {fieldBadge('costWeight')}{appDefault('costWeight')}
+</label>
+                {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
+                {rendersRow('bomCapEur') && (
+                <>
+                <label
+                  className="inline-num"
+                  title={t('B1 — BOM cap per channel. Above it a scan candidate loses a ranking class (same mechanism as the Z floor and the source-R limit) — a decision, not a weight. 0 = off. Unpriced candidates are never punished; missing prices show as [NO PRICE].')}
+                >
+                  {t('BOM cap per channel')} €
+                  {v1Legacy('bomCapEur')}
+                  <input
+                    type="number"
+                    min={0}
+                    max={5000}
+                    step={10}
+                    value={bomCapEur}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      const nv = Number.isFinite(v) && v >= 0 ? v : 0;
+                      setBomCapEur(nv);
+                      localStorage.setItem('ads-bom-cap', String(nv));
+                    }}
+                    style={{ width: '5rem' }}
+                  />
+                  {bomCapEur === 0 && <span className="derived"> {t('off')}</span>}
+                </label>
+                </>
+                )}
+                {engineV2Enabled && (
+                  <>
+                    {/* ---- V50: BUILDABILITY — the parts on the schematic have
+                      * to be buyable. Two gates: the watts in each resistor
+                      * against the class it is built with (times the margin),
+                      * and the peak current through each cored coil against
+                      * its saturation figure. With the catalogue snap ON a
+                      * rated SKU is judged on its own rating instead. Blank =
+                      * the figures are still shown, nothing judges. */}
+                    <label title={t('M-A/part (V50) — the power rating of the resistor series you build with, W continuous (e.g. 10 W for MOX/Superes, 20 W for MResist Supreme). Every discrete resistor is judged against this class × the margin, at the continuous amplifier power above; a resistor snapped to a rated catalogue part is judged on that part\'s rating instead. Blank = no allowance, nothing judged, watts still shown.')}>
+                      {t('Resistor class W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.resistorClassW}
+                        placeholder={V2_GHOSTS.resistorClassW}
+                        onChange={(e) =>
+                          setV2Field('resistorClassW', e.target.value)
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                      {v2Stated('resistorClassW')}
+                      {v2Empty('resistorClassW')}
+                    {fieldBadge('resistorClassW')}
+</label>
+                    <label title={t('M-A/part (V50) — the fraction of its rating a filter resistor may run at. A resistor inside a closed cabinet without airflow runs hot at half its rating; how much of that you accept is your decision, so there is no default. Blank = no allowance, nothing judged.')}>
+                      {t('Resistor margin')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={engineV2Settings.resistorPowerMargin}
+                        placeholder={V2_GHOSTS.resistorPowerMargin}
+                        onChange={(e) =>
+                          setV2Field('resistorPowerMargin', e.target.value)
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                      {v2Stated('resistorPowerMargin')}
+                      {v2Empty('resistorPowerMargin')}
+                    {fieldBadge('resistorPowerMargin')}
+</label>
+                    <label title={t('M-L (V50) — the saturation / maximum current of the CORED coils you build with, A. The peak current through every coil at the amplifier\'s peak input (peak power × nominal load, above) is judged against it; a coil snapped to a rated catalogue part is judged on that rating instead. Air-cored coils have no saturation current and are never judged. Blank = nothing judged, the currents are still shown.')}>
+                      {t('Coil current class A')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.coilClassA}
+                        placeholder={V2_GHOSTS.coilClassA}
+                        onChange={(e) =>
+                          setV2Field('coilClassA', e.target.value)
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                      {v2Stated('coilClassA')}
+                      {v2Empty('coilClassA')}
+                    {fieldBadge('coilClassA')}
+</label>
+                    {/* V51 — the THERMAL DESIGN POWER: thermal load is a mean
+                      * over the listening time, and the amplifier's continuous
+                      * rating above is what it CAN deliver, not what the
+                      * design runs at. Blank = the gate judges at the rating
+                      * (V50); the watt column keeps printing at the rating. */}
+                    <label title={t('M-A/part (V51) — the average listening power, W, the per-resistor watts are JUDGED at. Blank = judged at the amplifier power above (V50). The watts shown in the M-A column stay at the amplifier power either way; the gate row says which power it read.')}>
+                      {t('Thermal design power W')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.resistorThermalPowerW}
+                        placeholder={V2_GHOSTS.resistorThermalPowerW}
+                        onChange={(e) =>
+                          setV2Field('resistorThermalPowerW', e.target.value)
+                        }
+                        style={{ width: '4rem' }}
+                      />
+                      {v2Stated('resistorThermalPowerW')}
+                      {v2Empty('resistorThermalPowerW')}
+                    {fieldBadge('resistorThermalPowerW')}
+</label>
+                  </>
+                )}
+                <label
+                  onChangeCapture={fieldStamp('catalogSnap')}
+                  style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
+                  title={
+                    hasImportedCatalog()
+                      ? t('Snap the passive build to purchasable catalog values, simulated with their real DCR/ESR — the fit error against real parts becomes visible instead of assumed away')
+                      : t('Import a catalog first — without one there are no real parts to snap to, so the design keeps theoretically ideal (continuous) values')
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={catalogSnap && hasImportedCatalog()}
+                    disabled={!hasImportedCatalog()}
+                    onChange={(e) => setCatalogSnap(e.target.checked)}
+                  />{' '}
+                  {t('Use real catalog parts')}{!hasImportedCatalog() && ` ${t('(needs import)')}`}
+                {fieldBadge('catalogSnap')}{appDefault('catalogSnap')}
+</label>
+                </>
+                )}
+                {g === 'voicing' && (
+                <>
+                <label onChangeCapture={fieldStamp('phaseMetric')} title={t("How phase error is judged. Integration band = the panel's average + excursions over the WHOLE overlap window (flat across the handover, matches the numbers you read). Classic = overlap-weighted mean, centre-heavy (the old behaviour, kept as fallback).")}>
+                  {t('Phase metric')}
+                  <select
+                    value={phaseMetricMode}
+                    onChange={(e) => setPhaseMetricMode(e.target.value as 'band' | 'overlap')}
+                    disabled={!!soloDriver}
+                  >
+                    <option value="band">{t('Integration band (avg + P95)')}</option>
+                    <option value="overlap">{t('Classic (overlap-weighted)')}</option>
+                  </select>
+                {fieldBadge('phaseMetric')}{appDefault('phaseMetric')}
+</label>
+                <label onChangeCapture={fieldStamp('ampTarget')}>
+                  {t('Amplitude target')}
+                  <select
+                    value={ampTarget}
+                    onChange={(e) => setAmpTarget(e.target.value as 'onAxis' | 'listeningWindow')}
+                    disabled={!angleSets || !!soloDriver}
+                    title={soloDriver ? t('Single-driver mode: directivity terms pair both drivers — on-axis only for now') : angleSets ? '' : t('Load angle measurements to enable')}
+                  >
+                    <option value="onAxis">{t('On-axis (0°)')}</option>
+                    <option value="listeningWindow">{t('Listening window (0–30°)')}</option>
+                  </select>
+                {fieldBadge('ampTarget')}{appDefault('ampTarget')}
+</label>
+                <label onChangeCapture={fieldStamp('dirWeight')} title={soloDriver ? t('Single-driver mode: directivity terms pair both drivers — disabled for now') : angleSets ? '' : t('Load angle measurements to enable')}>
+                  {t('Weight for in-room sound: {n}% (energy average)', { n: dirWeight })}
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={dirWeight}
+                    onChange={(e) => setDirWeight(Number(e.target.value))}
+                    disabled={!angleSets || !!soloDriver}
+                    style={{ width: '11rem', accentColor: 'var(--accent)' }}
+                  />
+                {fieldBadge('dirWeight')}{appDefault('dirWeight')}
+</label>
+                <label onChangeCapture={fieldStamp('powerMetric')}
+                  className="inline-num"
+                  title={t("How the energy average is judged. Smooth (default): the trend of the power response (dB/decade) is fitted and left FREE — a rising DI makes it fall, and the slope is your room correction's business — and only the RESIDUAL counts: its std plus a fold term near each crossing (a DI step no room EQ can undo). Legacy: std of the raw power response (flatness), the pre-Aug-2026 behaviour, for A/B on existing projects.")}
+                >
+                  {t('Power response')}
+                  <select
+                    value={powerMetric}
+                    onChange={(e) => {
+                      const v = e.target.value === 'legacy' ? 'legacy' : 'smooth';
+                      setPowerMetric(v);
+                      localStorage.setItem('ads-power-metric', v);
+                    }}
+                    disabled={!angleSets || !!soloDriver}
+                  >
+                    <option value="smooth">{t('smooth (slope free, fold penalised)')}</option>
+                    <option value="legacy">{t('legacy (flat)')}</option>
+                  </select>
+                  {powerMetric === 'smooth' && (
+                    <>
+                      {' '}{t('fold ×')}
+                      <input
+                        type="number"
+                        min={0}
+                        max={3}
+                        step={0.1}
+                        value={powerFoldWeight}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          const nv = Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.powerFoldWeight;
+                          setPowerFoldWeight(nv);
+                          localStorage.setItem('ads-power-fold', String(nv));
+                        }}
+                        style={{ width: '3.6rem' }}
+                        title={t('Weight of the DI-fold term (max |residual| within ×/÷1.6 of a crossing) as a share of the in-room weight. Default 0.5.')}
+                      />
+                    </>
+                  )}
+                {fieldBadge('powerMetric')}{appDefault('powerMetric')}
+</label>
+                <label onChangeCapture={fieldStamp('roomCorrection')}
+                  title={t('This system plays behind room correction (Dirac Live etc.). The RIPPLE target may then be wider — on-axis residual ripple is corrected by the room system — while the PHASE targets stay exactly as they are: phase tracking across a handover is set passively and no room correction repairs it. Amplitude corrects the room; driver integration does not.')}
+                >
+                  <input
+                    type="checkbox"
+                    checked={roomCorrection}
+                    onChange={(e) => {
+                      setRoomCorrection(e.target.checked);
+                      localStorage.setItem('ads-room-corr', e.target.checked ? '1' : '0');
+                    }}
+                  />{' '}
+                  {t('Room correction present')}
+                  {fieldBadge('roomCorrection')}{appDefault('roomCorrection')}
+                  {roomCorrection && (
+                    <>
+                      {' · '}{t('ripple target')}{' '}
+                      <input
+                        type="number"
+                        min={1}
+                        max={8}
+                        step={0.5}
+                        value={roomRippleDb}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          const nv = Number.isFinite(v) && v > 0 ? v : APP_DEFAULTS.roomRippleDb;
+                          setRoomRippleDb(nv);
+                          localStorage.setItem('ads-room-ripple', String(nv));
+                        }}
+                        style={{ width: '4rem' }}
+                      />{' '}dB
+                    </>
+                  )}
+                </label>
+                {roomCorrection && (
+                  <span className="derived" style={{ flexBasis: '100%' }}>
+                    {t('amplitude corrects the room, driver integration does not — ripple target now {r} dB, phase target unchanged', { r: rippleTargetEff().toFixed(1) })}
+</span>
+                )}
+                {engineV2Enabled && (
+                  <>
+                    <label title={t('The SPL window you will accept, in ±dB against the target curve, judged peak-to-peak on the 1/6-octave-smoothed system response. Narrow features fall outside this judgement on purpose: narrow peaks are reported in their own column, narrow dips are forgiven. Empty = not asked; the value is still shown.')}>
+                      {t('SPL window ±dB')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        value={engineV2Settings.splWindowPlusMinusDb}
+                        placeholder={V2_GHOSTS.splWindowPlusMinusDb}
+                        onChange={(e) =>
+                          setV2Field('splWindowPlusMinusDb', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('splWindowPlusMinusDb')}
+                      {v2Empty('splWindowPlusMinusDb')}
+                    {fieldBadge('splWindowPlusMinusDb')}
+</label>
+                    <label title={t('The largest phase-tracking error you will accept in a crossover region, in degrees — mean |Δφ| over ±1 octave, clipped to measurement validity. Judged PER handover: a three-way that tracks well at one and badly at the other has not met it. Empty = not asked.')}>
+                      {t('Max phase error °')}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={engineV2Settings.maxPhaseTrackingDeg}
+                        placeholder={V2_GHOSTS.maxPhaseTrackingDeg}
+                        onChange={(e) =>
+                          setV2Field('maxPhaseTrackingDeg', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Stated('maxPhaseTrackingDeg')}
+                      {v2Empty('maxPhaseTrackingDeg')}
+                    {fieldBadge('maxPhaseTrackingDeg')}
+</label>
+                    {/* ---- A5e.2 — THE VOICING (UI-1) ----
+                      * The fourth kind of number in this panel and the only one
+                      * that is not a limit: a gate protects the hardware, a
+                      * budget shapes the search box, a requirement decides which
+                      * finished designs you are shown — and this decides what
+                      * "flat" MEANS for all three of them.
+                      *
+                      * V45 gave the engine `bass-plateau`, made the curve steer
+                      * the search as well as the verdict, and closed A5e.2 on
+                      * it. What V45 did NOT do was give anyone a way to state
+                      * one: the app read `activeDesign.targetCurve` in four
+                      * places and wrote it in none, the persistence type did not
+                      * know the shape, and this line printed "Target curve:
+                      * flat" as a fact about every run ever made. Sander went
+                      * looking for the field and there was no field.
+                      *
+                      * ON THE DESIGN AND NOT ON THE PROJECT (A5e.2): two
+                      * voicings of one loudspeaker have to sit side by side and
+                      * be compared, so this control writes to the design tab
+                      * that is open and Save-as-new keeps a voicing with it. */}
+                    <label title={t('The reference every window, RMS and search judges against. FLAT is the neutral reference, not a missing answer. BASS PLATEAU is the on-axis voicing of a speaker meant to stand near a wall: the bass sits deliberately below the flat part, and the wall fills it back in. It hangs on the DESIGN, so two voicings of one loudspeaker can be compared side by side.')}>
+                      {t('Target curve')}
+                      <select
+                        value={activeTargetCurve.type}
+                        disabled={!activeDesign}
+                        onChange={(e) => {
+                          const type = e.target.value as TargetCurve['type'];
+                          if (!activeDesign) return;
+                          setDesigns((ds) =>
+                            ds.map((d) =>
+                              d.id !== activeDesign.id
+                                ? d
+                                : type === 'flat'
+                                  ? { ...d, targetCurve: { type: 'flat' } }
+                                  : {
+                                      ...d,
+                                      targetCurve: {
+                                        ...(d.targetCurve ?? {}),
+                                        type,
+                                      },
+                                    },
+                            ),
+                          );
+                        }}
+                      >
+                        <option value="flat">{t('flat')}</option>
+                        <option value="bass-plateau">{t('bass plateau')}</option>
+                      </select>
+                      {fieldBadge('targetCurve')}
+                    </label>
+                    {activeTargetCurve.type === 'bass-plateau' && (
+                      <label title={t('How far BELOW the flat part the bass is meant to sit, in dB — a positive depth. STATED: it is a decision about where this loudspeaker will stand and no measurement can produce it. The TRANSITION is not asked for here: it is the baffle step of your cabinet front, derived from the width in the Cabinet form and from nothing else. Empty = the curve produces no offsets and says which half was missing.')}>
+                        {t('Bass plateau depth dB')}
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={
+                            activeTargetCurve.plateauDepthDb === undefined
+                              ? ''
+                              : String(activeTargetCurve.plateauDepthDb)
+                          }
+                          /* U-3b — a JUDGEMENT field, so its placeholder is the
+                             unset mark and not a number. E-2 took the six
+                             numeric ghosts out of the v2 settings block; this
+                             one survived because the voicing lives on the
+                             DESIGN and is not a `V2SettingKey`, so E-2's guard
+                             never looked at it. */
+                          placeholder={UNSET_GHOST}
+                          onChange={(e) => {
+                            if (!activeDesign) return;
+                            const raw = e.target.value;
+                            const v = Number(raw);
+                            setDesigns((ds) =>
+                              ds.map((d) => {
+                                if (d.id !== activeDesign.id) return d;
+                                const base = { ...(d.targetCurve ?? {}), type: 'bass-plateau' as const };
+                                // An empty field is ABSENT, never zero: a
+                                // plateau of 0 dB is a stated voicing that
+                                // happens to be flat, and "not stated yet" is
+                                // a different thing to say (P4).
+                                if (raw.trim() === '' || !Number.isFinite(v) || v < 0) {
+                                  const { plateauDepthDb: _drop, ...rest } = base;
+                                  void _drop;
+                                  return { ...d, targetCurve: rest };
+                                }
+                                return { ...d, targetCurve: { ...base, plateauDepthDb: v } };
+                              }),
+                            );
+                          }}
+                          style={{ width: '5rem' }}
+                        />
+                        {fieldBadge('plateauDepthDb')}
+                      </label>
+                    )}
+                    <span className="derived" style={{ fontSize: '0.85em' }}>
+                      {t('Target curve')}: {describeTargetCurve(activeTargetCurve)}
+                      {!activeDesign && ` — ${t('open a design tab to state one')}`}
+                    </span>
+
+                  </>
+                )}
+                {engineV2Enabled && (
+                <details className="v2-more" style={{ flexBasis: '100%' }}>
+                  <summary className="opt-group-cap">
+                    {t(V2_GROUP_HEADING[g])} — {t(V2_MORE_HEADING)}
+                  </summary>
+                  <div className="opt-more-body">
+                    <label title={t('Observation angles the vertical-lobing synthesis (M-F) evaluates, in degrees off the reference axis. Comma separated, e.g. "-15, 15". Empty = the metric stays off and says so.')}>
+                      {t('Vertical window °')}
+                      <input
+                        type="text"
+                        value={engineV2Settings.verticalWindowDeg}
+                        placeholder={V2_GHOSTS.verticalWindowDeg}
+                        onChange={(e) =>
+                          setV2Field('verticalWindowDeg', e.target.value)
+                        }
+                        style={{ width: '6rem' }}
+                      />
+                      {v2Stated('verticalWindowDeg')}
+                      {v2Empty('verticalWindowDeg')}
+                    {fieldBadge('verticalWindowDeg')}
+</label>
+                  </div>
+                </details>
+                )}
+                </>
+                )}
+                {g === 'run' && (
+                <>
+                <label onChangeCapture={fieldStamp('phasePriority')} title={soloDriver ? t('Single-driver mode: relative phase does not exist — the solo objective is response flatness only') : t('The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.')}>
+                  {t('Priority: response {a}% · phase {b}%', { a: 100 - phasePriority, b: phasePriority })}
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={phasePriority}
+                    onChange={(e) => setPhasePriority(Number(e.target.value))}
+                    disabled={!!soloDriver}
+                    style={{ width: '14rem', accentColor: 'var(--accent)' }}
+                  />
+                {fieldBadge('phasePriority')}{appDefault('phasePriority')}
+</label>
+                {/* U-9 — `effect: 'niets'`: never rendered; the value stays in the project. */}
+                {rendersRow('errorSmoothOct') && (
+                <label
+                  className="inline-num"
+                  title={t('Smoothing of the on-axis and energy-average magnitudes the SEARCH judges (Gaussian in log-f, applied before decimation to the inner grid). Diffraction ripple and measurement noise no filter can fix stop steering the search. Off = legacy raw points. Gates, staged targets and the safety gate always judge the raw full grid; the scan table shows the smoothed peak with the raw peak as tooltip.')}
+                >
+                  {t('Error smoothing')}
+                  <select
+                    value={String(errorSmoothOct)}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setErrorSmoothOct(v);
+                      localStorage.setItem('ads-err-smooth', String(v));
+                    }}
+                  >
+                    <option value="0">{t('off (legacy)')}</option>
+                    <option value={String(1 / 24)}>1/24 oct</option>
+                    <option value={String(1 / 12)}>1/12 oct</option>
+                    <option value={String(1 / 6)}>1/6 oct</option>
+                  </select>
+                  {v1Legacy('errorSmoothOct')}
+                </label>
+                )}
+                {engineV2Enabled && (
+                <details className="v2-more" style={{ flexBasis: '100%' }}>
+                  <summary className="opt-group-cap">
+                    {t(V2_GROUP_HEADING[g])} — {t(V2_MORE_HEADING)}
+                  </summary>
+                  <div className="opt-more-body">
+                    <label title={t('How many designs the shortlist holds. They are spread over topology classes first (order per flank, polarity included) and then over normalised component space — different designs, not variations of one. Empty = 10.')}>
+                      {t('Shortlist size')}
+                      <input
+                        type="number"
+                        min={1}
+                        value={engineV2Settings.shortlistSize}
+                        placeholder={String(DEFAULT_SHORTLIST_SIZE)}
+                        onChange={(e) =>
+                          setV2Field('shortlistSize', e.target.value)
+                        }
+                        style={{ width: '5rem' }}
+                      />
+                      {v2Empty('shortlistSize')}
+                    {fieldBadge('shortlistSize')}
+</label>
+                    {/* ---- F2: determinism (spec A5e.4) ---- */}
+                    <label title={t('The run seed. Same input and same seed give a byte-identical result. This is the ONE setting where blank does not mean off: blank uses the published default and reports it, because "no seed" would mean "not reproducible".')}>
+                      {t('Run seed')}
+                      <input
+                        type="number"
+                        value={engineV2Settings.runSeed}
+                        placeholder={String(DEFAULT_RUN_SEED)}
+                        onChange={(e) =>
+                          setV2Field('runSeed', e.target.value)
+                        }
+                        style={{ width: '7rem' }}
+                      />
+                      {v2Empty('runSeed')}
+                    {fieldBadge('runSeed')}
+</label>
+                    <label title={t('Objective evaluations the search may spend per starting point. Empty = the tuner’s own policy, exactly as a v1 run. A budget bounds effort, never what counts as acceptable.')}>
+                      {t('Budget (evals)')}
+                      <input
+                        type="number"
+                        min={0}
+                        value={engineV2Settings.runBudgetEvals}
+                        placeholder={t('tuner')}
+                        onChange={(e) =>
+                          setV2Field('runBudgetEvals', e.target.value)
+                        }
+                        style={{ width: '6rem' }}
+                      />
+                      {v2Empty('runBudgetEvals')}
+                    {fieldBadge('runBudgetEvals')}
+</label>
+                    {/* E-2 — THE FIELD MODE. A v2 run takes ten to thirty
+                      * minutes per candidate and the full field has twenty and
+                      * more of them; the exploration is a SMALLER field — the
+                      * window centres first, one alignment per handover, the
+                      * same requirements — and the shortlist says which mode
+                      * made it and offers the full field as the next step. */}
+                    <label title={t('Exploration: a chain budget of {n}, the geometric centre of each window first (where the order derivation reads its demands) and then its nearest neighbours, one alignment per handover — minutes to half an hour on casus 1. Full: the "steps per axis" above raised to the number of handovers, every window spread edge to edge, every admitted order — hours. Same requirements, same gates, same seed in both; the shortlist says which mode made it.', { n: String(EXPLORATION_CHAIN_BUDGET) })}>
+                      {t('Candidate field')}
+                      <select
+                        value={fieldModeOf(engineV2Settings.fieldMode)}
+                        onChange={(e) => setV2Field('fieldMode', e.target.value)}
+                      >
+                        <option value="exploration">
+                          {t('exploration — {n} chains, window centres first, one alignment per handover', { n: String(EXPLORATION_CHAIN_BUDGET) })}
+                        </option>
+                        <option value="full">{t('full — every window edge to edge, every admitted order')}</option>
+                      </select>
+                    {fieldBadge('fieldMode')}
+</label>
+                    {/* H-5 — THE POLARITY ARMS. The textbook rule decides the
+                      * polarity of every candidate: LR2 asks for one reversal,
+                      * LR4 for none, and the design step is bound to it rather
+                      * than settling it on an internal tie-break over ideal
+                      * filters. "Both" builds the mirrored arm beside it —
+                      * M-5 measured a casus where ONLY the mirror delivers,
+                      * and another 240 Hz away where only the textbook arm
+                      * does, so the choice stays reachable and costs nothing
+                      * on a run that does not ask for it. */}
+                    <label title={t('Textbook: every candidate is designed at the polarity its alignments ask for (LR2 one reversal, LR4 none), and the shortlist names the rule beside each row. Both: the mirrored arm is designed, tuned and judged beside it — an exploration always runs the single-driver reversal (the mid of a three-way, the tweeter of a two-way) plus any handover the pre-design phase reading leaves open, and the full field runs every configuration. The run count MULTIPLIES rather than adds.')}>
+                      {t('Polarity arms')}
+                      <select
+                        value={polarityArmsChoiceOf(engineV2Settings.polarityArms)}
+                        onChange={(e) => setV2Field('polarityArms', e.target.value)}
+                      >
+                        {POLARITY_ARMS_CHOICES.map((c) => (
+                          <option key={c} value={c}>
+                            {c === 'textbook'
+                              ? t('textbook — the polarity each alignment asks for, no mirrored arm')
+                              : t('both — the mirrored arm beside it, judged in its own right')}
+                          </option>
+                        ))}
+                      </select>
+                      {v2Stated('polarityArms')}
+                      {v2Empty('polarityArms')}
+                    {fieldBadge('polarityArms')}
+</label>
+                    {/* U-5 — THE CROSSINGS YOU STATE, beside the derived field.
+                      * The generated positions stay exactly as they are; every
+                      * frequency typed here becomes ONE MORE candidate, tuned
+                      * and judged in full. Inside a feasible window it is
+                      * treated as a generated one; outside it, it still runs,
+                      * and every limit it is past is answered in that limit's
+                      * own unit beside it — never a silent refusal. */}
+                    <label title={t('One line per handover, low to high (a semicolon does the same as a newline); separate the frequencies on a line with commas. Every stated position becomes an extra candidate: inside a feasible window it is judged exactly as a derived one, outside it the tune still runs and the shortlist lists it separately with what each limit it is past asks for, measured on the network it delivered. Requirements stay requirements — a stated crossing that misses one is marked as missing it, and its network is still handed over so you can look at it.')}>
+                      {t('Crossings you state (Hz, per handover)')}
+                      <textarea
+                        rows={v2StatedAxisLabels.length > 1 ? 2 : 1}
+                        value={engineV2Settings.statedCrossings}
+                        placeholder={UNSET_GHOST}
+                        onChange={(e) => setV2Field('statedCrossings', e.target.value)}
+                        style={{ width: '14rem', fontFamily: 'inherit' }}
+                      />
+                      {v2StatedAxisLabels.length > 0 && (
+                        <span className="derived">
+                          {t('one line per handover, low to high: {labels}', {
+                            labels: v2StatedAxisLabels.join(', '),
+                          })}
+                        </span>
+                      )}
+                      {v2Stated('statedCrossings')}
+                      {v2Empty('statedCrossings')}
+                    {fieldBadge('statedCrossings')}
+</label>
+                  </div>
+                </details>
+                )}
+                </>
+                )}
+                {groupElsewhere(g)}
+                  </Fragment>
+                ))}
+                {/* I-1 FORM · V2 PANEL END */}
               </div>
             )}
             {vfError && <p className="error">{vfError}</p>}
@@ -21976,14 +22189,14 @@ export default function App() {
                   : t('Re-designs while building: real components are fitted so the MEASURED driver comes out flat against the ideal HP/LP shape. Enabled EQ bands only grant correction slots (their freq/gain/Q are re-tuned) — the result deliberately differs from the virtual sim above.')}
               </p>
               <div className="row" style={{ marginBottom: '0.9rem' }}>
-                <select
-                  value={synthMode}
-                  onChange={(e) => setSynthMode(e.target.value as 'filter' | 'acoustic')}
-                  title={t('What this build optimises for — same setting as the dropdown next to Optimize')}
-                >
-                  <option value="acoustic">{t('Acoustic result (flatten measured driver)')}</option>
-                  <option value="filter">{t('Filter curve (reproduce target exactly)')}</option>
-                </select>
+                {/* U-9 fase 2 — ONE FIELD, ONE PLACE. The build mode was drawn twice,
+                    here and next to Optimize; it is set there, and this says which
+                    one the build will use. */}
+                <span className="derived" title={t('What this build optimises for — set with the dropdown next to Optimize')}>
+                  {synthMode === 'acoustic'
+                    ? t('Build mode: acoustic result (set next to Optimize)')
+                    : t('Build mode: filter curve (set next to Optimize)')}
+                </span>
                 <button
                   type="button"
                   onClick={() => {
@@ -22127,20 +22340,11 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    const ranked = rankChain3Results(
-                      rescued.rows,
-                      stagedOn ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) } : undefined,
-                      phasePriority / 100,
-                      dirWeight / 100,
-                      rSourceLimitOhm,
-                      bomCapEur,
-                      ampMinLoadOhm ?? 0,
-                    );
-                    // No winner crown: this field is partial, and a crown on a
-                    // partial field is the "ranking is not approving" mistake
-                    // this session already wrote down twice.
+                    /* U-9 fase 2 (Sander, 25-10-2026) — no rank: the v1 ranking read
+                       hidden v1 knobs (the BOM cap), and a partial field gets no
+                       crown in any case. Listed in the order the scan recorded them. */
                     setScanSort(null);
-                    setChainScan({ rows: ranked.map((rr) => chain3ScanRow(rr, null)), active: '' });
+                    setChainScan({ rows: rescued.rows.map((rr) => chain3ScanRow(rr, null)), active: '' });
                     void dropScanRun(rescued.runId);
                     setRescued(null);
                   }}
@@ -22158,7 +22362,7 @@ export default function App() {
                 </button>
               </p>
             )}
-            {chainScan && !v2Shortlist && (
+            {chainScan && !v2Shortlist && chainScan.active !== '' && (
               /* The success moment of a multi-minute run deserves its own
                  visual register — one green line that says it worked, where
                  the result lives, and that the table below is a MENU, before
@@ -22209,10 +22413,17 @@ export default function App() {
                 {shortlistPick === null && (
                   <p className="result-warn">
                     ⚠{' '}
-                    {t('No design was loaded: {n} of {m} candidates meet the requirements you stated. The Working tab is untouched — the v1 ranking below has no knowledge of your gates or requirements, so its top row is not a stand-in for an empty shortlist.', {
-                      n: String(v2Shortlist.rows.length),
-                      m: String(v2Shortlist.consideredCount),
-                    })}
+                    {/* U-9 fase 2 (B-2.2) — the clause that pointed at the v1 ranking
+                        goes with the ranking. */}
+                    {v1ReadingShown()
+                      ? t('No design was loaded: {n} of {m} candidates meet the requirements you stated. The Working tab is untouched — the v1 ranking below has no knowledge of your gates or requirements, so its top row is not a stand-in for an empty shortlist.', {
+                          n: String(v2Shortlist.rows.length),
+                          m: String(v2Shortlist.consideredCount),
+                        })
+                      : t('No design was loaded: {n} of {m} candidates meet the requirements you stated. The Working tab is untouched.', {
+                          n: String(v2Shortlist.rows.length),
+                          m: String(v2Shortlist.consideredCount),
+                        })}
                   </p>
                 )}
                 {/* U-6b — A RUN THAT DELIVERED NOTHING SAYS SO, even when the
@@ -23448,7 +23659,9 @@ export default function App() {
                       </div>
                     );
                   })()}
-                  {chainScan && v2Shortlist && (
+                  {/* U-9 fase 2 (B-2.2) — the v1 reading is not rendered: v1ReadingShown()
+                      is false since the knobs that sort it are niets. */}
+                  {v1ReadingShown() && chainScan && v2Shortlist && (
                     /* UI-1 — WHAT THIS TABLE IS ON THE v2 ROUTE, said above it.
                      *
                      * It is the v1 ranking over the same field: one weighted order,
@@ -23469,7 +23682,7 @@ export default function App() {
                       </p>
                     </div>
                   )}
-                  {chainScan && (
+                  {v1ReadingShown() && chainScan && (
                     <table
                       className={`scan-table scan-table-pick${v2Shortlist ? ' scan-table-v1-reading' : ''}`}
                       title={t("Full-chain crossover scan — click a row to load that candidate's complete design (filters + tuned network) into Working; click a header to sort")}
@@ -23672,6 +23885,32 @@ export default function App() {
                       </tbody>
                     </table>
                   )}
+                  {/* U-9 fase 2 (Sander, 25-10-2026) — SCAN-ONLY WITHOUT THE v1 TABLE.
+                      A run that left no shortlist (U-6b) — in practice the candidates
+                      rescued from an interrupted scan — used to be shown ONLY in the v1
+                      table, ranked by the v1 score (which reads the hidden BOM cap).
+                      Now they are a bare list in the order they were recorded: a
+                      label and a button that loads it, no rank, no v1 columns, no v1
+                      notes. Nothing here judges them; the shortlist does that. */}
+                  {!v1ReadingShown() && chainScan && !v2Shortlist && (
+                    <ul className="scan-bare">
+                      {chainScan.rows.map((r) => (
+                        <li key={r.label}>
+                          <button
+                            type="button"
+                            className={chainScan.active === r.label ? 'active-toggle' : ''}
+                            onClick={() => applyScanCandidate(r)}
+                            title={t('Load the {label} design into Working (undo-able)', { label: r.label })}
+                          >
+                            {r.label}
+                          </button>
+                          {chainScan.active === r.label && (
+                            <span className="derived"> {t('This candidate is loaded in Working')}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {/* F2b — when the façade selects v2 but the table came from a v1
                       route, SAY SO. The two-way scan still runs on the v1 worker
                       (see TODO(F2c) below); a table with no gate column and no
@@ -23699,7 +23938,9 @@ export default function App() {
                   <section className="v2-about v2-about-bare">
                     <h4>{t('About this run')}</h4>
                     <p className="sub">
-                      {t('This run left no shortlist, so the v1 reading below is the only table it produced — shown open rather than folded away.')}
+                      {v1ReadingShown()
+                        ? t('This run left no shortlist, so the v1 reading below is the only table it produced — shown open rather than folded away.')
+                        : t('This run left no shortlist, so its candidates are listed below as they were recorded — unranked, and judged by nothing until a run builds a shortlist.')}
                     </p>
                     {body}
                   </section>
@@ -23718,7 +23959,9 @@ export default function App() {
                   <summary>
                     {t('About this run')}{' '}
                     <span className="derived">
-                      {t('origin and fingerprint · what the ladder relaxed · what went unjudged · the crossings you stated · the v1 reading of the same field')}
+                      {v1ReadingShown()
+                        ? t('origin and fingerprint · what the ladder relaxed · what went unjudged · the crossings you stated · the v1 reading of the same field')
+                        : t('origin and fingerprint · what the ladder relaxed · what went unjudged · the crossings you stated')}
                     </span>
                   </summary>
                   {body}
@@ -23995,7 +24238,8 @@ export default function App() {
                     {sumGroupDelay.at8k !== null ? `${(sumGroupDelay.at8k * 1000).toFixed(0)} µs` : '—'}
                   </span>
                 )}
-                {bomCapEur > 0 && (() => {
+                {/* U-9 fase 2 (B-2.2) — the BOM cap is a hidden v1 knob; its strip item goes with it. */}
+                {rendersRow('bomCapEur') && bomCapEur > 0 && (() => {
                   const bom = schematic ? bomFor(schematic.parts) : null;
                   const tot = bom?.totalEur ?? null;
                   const over = tot !== null && tot > bomCapEur;

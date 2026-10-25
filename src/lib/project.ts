@@ -261,6 +261,13 @@ export interface ProjectDesign {
    */
   engineV2StatedAt?: Partial<Record<string, string>>;
   /**
+   * U-9 fase 2 — WHEN each search field with an app start value was stated
+   * (ISO date per register row id, `appDefaults.ts`). Absent = never edited
+   * here: at its start value it reads "app default — not stated by you", away
+   * from it "stated by you (date not recorded)".
+   */
+  fieldStatedAt?: Partial<Record<string, string>>;
+  /**
    * U-3 — WHO stated each `engineV2` field, when it was not the person at the
    * keyboard. Absent = the viewer, which is what every value meant until a demo
    * bundle could state requirements; a demo writes its own name here so the

@@ -171,7 +171,10 @@ describe('problems stay visible; accountability folds', () => {
     /* They are the only things allowed before the shortlist, and the reason is
        structural rather than a promise: neither can be on screen together with
        a shortlist. Read the guards, do not take the inventory's word for it. */
-    expect(AREA).toContain('{chainScan && !v2Shortlist && (');
+    /* U-9 fase 2 — V15: WAS `{chainScan && !v2Shortlist && (`; IS the same guard
+       plus `chainScan.active !== ''` — a rescued list loads nothing, so "the
+       winner is loaded" would be untrue. The structural reason stands. */
+    expect(AREA).toContain("{chainScan && !v2Shortlist && chainScan.active !== '' && (");
     expect(AREA).toContain('{rescued && !chainScan && !vfBusy && (');
     for (const b of blocksAt('top')) {
       expect(AREA.indexOf(b.token)).toBeLessThan(markerAt('U-6 RESULT · SHORTLIST'));
