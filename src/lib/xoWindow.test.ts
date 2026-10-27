@@ -8,7 +8,6 @@ import { logspace, resample } from './dsp.ts';
 import { breakupHz } from './driverLimits.ts';
 import { beamingCeilingHz, diMatchHz } from './directivity.ts';
 import {
-  candidateCentres,
   dataFloorFromGateMs,
   deriveXoWindow,
   DEFAULT_XO_WINDOW_THRESHOLDS,
@@ -85,8 +84,8 @@ describe('xoWindow — the physics window is the intersection of every limiter (
     expect(w.floorHz!).toBeGreaterThanOrEqual(df);
     expect(w.userClampedByData).toBe(true);
     expect(w.banner).toMatch(/measure lower/);
-    // No candidate below the floor.
-    for (const c of candidateCentres(w.floorHz!, w.ceilHz!, 3)) expect(c).toBeGreaterThanOrEqual(df - 1e-9);
+    /* U-10 fase 3 — the v1 placement (`candidateCentres`) is gone; the window
+     * itself is what keeps candidates above the floor, asserted above. */
     // Rule 7 without rule 1: the user window stands as typed.
     const free = deriveXoWindow({ userWindow: [280, 420], arraySpacingMm: 275.75, rails: [150, 2000] });
     expect(free.floorHz).toBe(280);
@@ -106,9 +105,7 @@ describe('xoWindow — the physics window is the intersection of every limiter (
     });
     expect(w.ceilHz!).toBeLessThanOrEqual(3200);
     expect(w.ceilBy?.rule).toBe('breakup');
-    const cs = candidateCentres(w.floorHz!, w.ceilHz!, 3);
-    expect(Math.max(...cs)).toBeLessThanOrEqual(3200);
-    expect(cs.some((c) => c > 6900)).toBe(false);
+    // U-10 fase 3 — was checked on `candidateCentres` too (removed); the ceiling above IS the claim.
     // With the old /3 rule the fs floor (2×951 = 1902) and breakup/3 (1887)
     // collided and the whole window used to vanish; now it is a named
     // conflict, never a silent fallback.
@@ -194,17 +191,7 @@ describe('xoWindow — the physics window is the intersection of every limiter (
     expect(beam!).toBeGreaterThan(4000);
   });
 
-  it('candidate placement: corners + log-mid + warm start inside the window', () => {
-    const cs = candidateCentres(400, 620, 3, 560);
-    expect(cs[0]).toBeCloseTo(400, 6);
-    expect(cs[cs.length - 1]).toBeCloseTo(620, 6);
-    expect(cs).toContain(560);
-    // A warm start within 2% of a grid point is folded into it (no duplicate chain).
-    expect(candidateCentres(400, 620, 3, 499)).toHaveLength(3);
-    expect(cs.some((c) => Math.abs(c - Math.sqrt(400 * 620)) < 1)).toBe(true);
-    // A warm start outside the window is ignored.
-    expect(candidateCentres(400, 620, 2, 900)).toHaveLength(2);
-  });
+  /* U-10 fase 3 — REMOVED: 'candidate placement: corners + log-mid + warm start inside the window' (v1 `candidateCentres`). */
 });
 
 describe('the gate floor accounts for the window taper (4D b)', () => {

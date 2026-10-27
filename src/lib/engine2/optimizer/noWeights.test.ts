@@ -162,11 +162,14 @@ describe('A5e.1 - no weights on the satisficing surface', () => {
     expect(hits('// weight\n/* priority */\nconst m = "objective";')).toHaveLength(0);
   });
 
-  it('the v1 ranking is deliberately OUTSIDE this lint, and says so', () => {
-    // The boundary is the decision. If `rankChain3Results` ever stops being
-    // v1-only, this comment is where the next reader will look.
-    const chain = readFileSync(join(ENGINE2, '..', 'threeWayChain.ts'), 'utf-8');
-    expect(chain).toContain('rankChain3Results');
-    expect(chain).toMatch(/v1-only|A5e\.1/);
+  /* U-10 fase 3 (V15) — WAS: "the v1 ranking is deliberately OUTSIDE this lint,
+   * and says so" (`rankChain3Results` lived in `threeWayChain.ts` with a note).
+   * The v1 rankings are gone, so there is no weighted aggregation left outside
+   * the lint to exempt — the claim is now that none exists. */
+  it('no v1 weighted ranking is left beside the lint', () => {
+    for (const f of ['threeWayChain.ts', 'designChain.ts']) {
+      const text = readFileSync(join(ENGINE2, '..', f), 'utf-8');
+      expect(text, f).not.toMatch(/export function rankChain3?Results\b/);
+    }
   });
 });

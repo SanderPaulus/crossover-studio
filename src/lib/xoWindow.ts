@@ -653,26 +653,3 @@ export function dataFloorFromGateMs(
   return effectiveMs > 0 ? 2000 / effectiveMs : null;
 }
 
-/**
- * Candidate centres inside a window: corners, the log-midpoint, and a warm
- * start (an existing design's crossing) when it falls inside. Sorted, unique
- * within 2%. `n` = requested steps: 1 → mid only, 2 → corners, ≥3 → corners +
- * log-mid (+ intermediate log steps for n > 3).
- */
-export function candidateCentres(
-  lo: number,
-  hi: number,
-  n: number,
-  warmHz?: number | null,
-): number[] {
-  const out: number[] = [];
-  if (!(hi > lo)) return [Math.sqrt(Math.max(lo, 1) * Math.max(hi, 1))];
-  const L = Math.log(lo);
-  const H = Math.log(hi);
-  const k = Math.max(1, Math.round(n));
-  if (k === 1) out.push(Math.exp((L + H) / 2));
-  else for (let i = 0; i < k; i++) out.push(Math.exp(L + (i * (H - L)) / (k - 1)));
-  if (warmHz && warmHz >= lo && warmHz <= hi) out.push(warmHz);
-  out.sort((a, b) => a - b);
-  return out.filter((v, i) => i === 0 || v / out[i - 1] > 1.02);
-}

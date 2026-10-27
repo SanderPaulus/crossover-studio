@@ -45,7 +45,31 @@ import {
   mergeStatedCrossings,
   parseStatedCrossings,
 } from '../src/lib/engine2/predesign/statedCrossings.ts';
-import { crossoverVariants } from '../src/lib/designChain.ts';
+/* U-10 fase 3 — the v1 slicer `crossoverVariants` left `designChain.ts` with
+ * the v1 two-way scan. This measurement is a dated record of what the v1 route
+ * WOULD have done with the pin (U-5b), so it keeps a verbatim copy here rather
+ * than a reader in the app. */
+function crossoverVariants(
+  xoRange: [number, number] | undefined,
+  steps = 3,
+): { label: string; xoRange?: [number, number] }[] {
+  if (!xoRange) return [{ label: 'free' }];
+  const n = Math.max(3, Math.min(11, Math.round(steps) | 1)); // odd, 3..11
+  const lo = Math.max(300, Math.min(...xoRange));
+  const hi = Math.min(12000, Math.max(...xoRange));
+  const spacing = (hi - lo) / (n - 1);
+  const half = spacing / 2;
+  const out: { label: string; xoRange?: [number, number] }[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < n; i++) {
+    const centre = lo + spacing * i;
+    let label = `${Math.round(centre)} Hz`;
+    while (seen.has(label)) label = `${label}·`;
+    seen.add(label);
+    out.push({ label, xoRange: [Math.max(lo, centre - half), Math.min(hi, centre + half)] });
+  }
+  return out;
+}
 import { stableJson } from '../src/lib/engine2/optimizer/determinism.ts';
 import { KOAN_2WAY_DEMO } from '../src/demo2way.ts';
 import { AUTO_STRUCTS } from '../src/lib/threeWayDesign.ts';
