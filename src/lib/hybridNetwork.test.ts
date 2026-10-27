@@ -276,7 +276,8 @@ describe('H-3 — App.tsx reads Hybrid mode on the Network tab', () => {
   });
 
   it('the source-resistance rule names the stated Q_es maximum at BOTH sites, and only on the v2 route', () => {
-    expect(APP).toContain('const v2QesStatedMax = engineV2Enabled ? engineV2Gates.qesMultiplierMax : undefined;');
+    // U-10 fase 3 (V15) — WAS "only on the v2 route" via `engineV2Enabled ?`; v2 is the only route.
+    expect(APP).toContain('const v2QesStatedMax = engineV2Gates.qesMultiplierMax;');
     expect(APP).toContain('const qes = describeQesFactor(netOptAudit.qesFactor, v2QesStatedMax);');
     expect(APP).toContain("const qes = describeQesFactor(r.audit?.qesFactor ?? null, v2QesStatedMax);");
     expect(APP).toContain("<span className={netOptAudit.rSourceWarn || qes?.failed ? 'audit-warn' : 'audit-ok'}>");
@@ -296,7 +297,8 @@ describe('H-3 — App.tsx reads Hybrid mode on the Network tab', () => {
     expect(fn).toContain("if (!v2Hybrid || !v2ActiveSide.roles || !v2ActiveSide.shape || !result) return null;");
     /* Without a handover the textbook path is unchanged and says so — on the v2 route only. */
     expect(fn).toContain('const xo = filterTemplate({ order, wayCount: threeWay ? 3 : templateWays, models });');
-    expect(fn).toContain('if (engineV2Enabled) {');
+    // U-10 fase 3 — WAS `if (engineV2Enabled) {`: the note now always applies.
+    expect(fn).not.toContain('engineV2Enabled');
     expect(fn).toContain('`New from template — ${TEMPLATE_NOMINAL_NOTE}`');
   });
 

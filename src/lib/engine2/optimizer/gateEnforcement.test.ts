@@ -33,7 +33,6 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { selectEngine } from '../facade.ts';
 import { stableJson } from './determinism.ts';
 import { evaluateGates, type GateSettings, type GateVerdict } from './gates.ts';
 import { invertBudgets, searchBoxFor } from './bounds.ts';
@@ -41,7 +40,6 @@ import { runV2Optimization, type V2OptimizeResult } from './run.ts';
 import { v2DriverZ, v2GateReference, v2Netlist, v2Responses, v2SeedParts, V2_GRID } from './v2.fixture.ts';
 import type { VxpPart } from '../../parsers/vxp.ts';
 
-const ON = selectEngine(true);
 const reference = v2GateReference();
 const { wBase, tBase } = v2Responses();
 const driverZ = v2DriverZ();
@@ -101,7 +99,6 @@ function optimise(args: {
 }): V2OptimizeResult {
   const bounds = args.qesMax === undefined ? [] : boundsFor(args.qesMax);
   return runV2Optimization({
-    selection: ON,
     seedParts: v2SeedParts(),
     grid: V2_GRID,
     wBase,

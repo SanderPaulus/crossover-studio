@@ -19,7 +19,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { selectEngine } from '../src/lib/engine2/facade.ts';
 import { stableJson } from '../src/lib/engine2/optimizer/determinism.ts';
 import { runV2Optimization } from '../src/lib/engine2/optimizer/run.ts';
 import {
@@ -39,7 +38,6 @@ const baseline = JSON.parse(readFileSync(PATH, 'utf-8')) as {
   verdicts_sinds_V50?: unknown;
 } & Record<string, unknown>;
 
-const ON = selectEngine(true);
 const reference = v2GateReference();
 const { wBase, tBase } = v2Responses();
 const driverZ = v2DriverZ();
@@ -51,7 +49,6 @@ const CHOICE = { staged: { rippleDb: 0.8, phaseDeg: 8 } };
 const runs: Record<string, unknown> = {};
 for (const seed of baseline.seeds) {
   const r = runV2Optimization({
-    selection: ON,
     seedParts: v2SeedParts(),
     grid: V2_GRID,
     wBase,

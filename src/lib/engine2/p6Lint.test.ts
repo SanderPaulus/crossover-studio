@@ -292,19 +292,13 @@ describe('P6 lint - no project numbers in engine2', () => {
       const start = text.indexOf('const xoPinsValue = ()');
       expect(start).toBeGreaterThan(0);
       const body = text.slice(start, text.indexOf('const xoRangeValue = ()', start));
-      expect(body).toContain('useV2Pins');
-      // The legacy values are CONSUMED only inside the `!useV2Pins` arm. Their
-      // names appear earlier as parameters, which is why the check is on the
-      // arm's contents rather than on first occurrence — the parameter list
-      // proves nothing about which branch reads them.
-      const guard = body.indexOf('if (!useV2Pins) {');
-      expect(guard).toBeGreaterThan(0);
-      const arm = body.slice(guard, body.indexOf('\n      }', guard));
-      expect(arm).toContain('legacyFreq');
-      expect(arm).toContain('legacyMargin');
-      // Everything outside that arm derives or refuses; it never substitutes.
-      const outside = body.slice(0, guard) + body.slice(guard + arm.length);
-      expect(outside).not.toContain('num(freqField, Number(legacyFreq))');
+      /* U-10 fase 3 (V15 form) — WAS: the legacy values are consumed only
+       * inside the `!useV2Pins` arm. That arm went with the engine flag, so the
+       * claim is now the stronger one: `xoPinsValue` does not read the legacy
+       * block at all. */
+      expect(body).not.toContain('useV2Pins');
+      expect(body).not.toContain('V1_PIN_DEFAULTS_LEGACY');
+      expect(body).not.toContain('legacyFreq');
       expect(body).toContain('const derived = fromWindow(side);');
       // ...and the refusal path exists and says so rather than substituting.
       expect(body).toContain('NOT pinned');

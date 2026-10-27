@@ -158,9 +158,9 @@ describe('a value says who stated it and when', () => {
 });
 
 describe('the v1 design level on the v2 route', () => {
-  it('is marked as not read by Engine v2, and unmarked on v1', () => {
-    expect(designLevelNote(true)).toMatch(/not read by Engine v2 since V49/);
-    expect(designLevelNote(false)).toBeNull();
-    expect(APP).toMatch(/designLevelNote\(engineV2Enabled\)/);
+  /* U-10 fase 3 (V15 form) — WAS: "and unmarked on v1". No v1 route any more. */
+  it('is marked as not read by Engine v2', () => {
+    expect(designLevelNote()).toMatch(/not read by Engine v2 since V49/);
+    expect(APP).toMatch(/designLevelNote\(\)/);
   });
 });

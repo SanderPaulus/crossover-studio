@@ -340,8 +340,7 @@ export function statedMarkFor(value: string, d: string | undefined, who: string 
  * removes; so on the v2 route the field carries this note. Null on v1, where
  * the field is what it always was (toggle invariant).
  */
-export function designLevelNote(engineV2Enabled: boolean): string | null {
-  return engineV2Enabled
-    ? 'v1 design level — not read by Engine v2 since V49; M-C v2.0 derives the excursion limit from the driver card and the amplifier peak'
-    : null;
+/** U-10 fase 3 — the engine flag is gone, so the note always applies. */
+export function designLevelNote(): string {
+  return 'v1 design level — not read by Engine v2 since V49; M-C v2.0 derives the excursion limit from the driver card and the amplifier peak';
 }

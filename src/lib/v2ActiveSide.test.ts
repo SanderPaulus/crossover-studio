@@ -397,7 +397,8 @@ describe('H-2b — "Hybrid mode" everywhere, and the fields are filed', () => {
 describe('H-2 / H-2b — App.tsx routes a hybrid', () => {
   it('a hybrid falls through to the TWO-WAY branch instead of designing all three ways passively', () => {
     expect(APP).toContain('if (!v2Hybrid && threeWay && sim && sim.mid && midDrv && result) {');
-    expect(APP).toContain('const v2Hybrid = engineV2Enabled && v2ActiveSide.armed;');
+    // U-10 fase 3 — `engineV2Enabled &&` went with the flag.
+    expect(APP).toContain('const v2Hybrid = v2ActiveSide.armed;');
   });
 
   it('the form is read off what is MEASURED, and the roles come out of the statement', () => {

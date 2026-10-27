@@ -80,7 +80,6 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { selectEngine } from '../facade.ts';
 import { stableJson } from './determinism.ts';
 import { runV2Optimization, type V2OptimizeResult } from './run.ts';
 import { v2DriverZ, v2GateReference, v2Responses, v2SeedParts, V2_GRID } from './v2.fixture.ts';
@@ -125,7 +124,6 @@ interface Baseline {
 
 const BASELINE = JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')) as Baseline;
 
-const ON = selectEngine(true);
 const reference = v2GateReference();
 const { wBase, tBase } = v2Responses();
 const driverZ = v2DriverZ();
@@ -148,7 +146,6 @@ const CHOICE = { staged: { rippleDb: 0.8, phaseDeg: 8 } };
  * produced.
  */
 const base = (seed: number) => ({
-  selection: ON,
   seedParts: v2SeedParts(),
   grid: V2_GRID,
   wBase,

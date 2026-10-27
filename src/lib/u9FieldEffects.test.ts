@@ -348,13 +348,14 @@ describe('U-9 (3): perturbing a niets field leaves what the v2 route builds byte
   });
   it('scan3Mode: with a generated field every branch on it is neutralised by axesOnV2', () => {
     const start = APP.indexOf('async function runVfOptimize(');
-    const body = APP.slice(start, APP.indexOf('function runNetOptimizeHybrid', start));
+    const body = APP.slice(start, APP.indexOf('function runNetOptimizeV2(', start));
     expect(body.length).toBeGreaterThan(1000);
     const reads = body.match(/scan3Mode === 'axes'[^\n]*/g) ?? [];
     expect(reads.length).toBeGreaterThan(0);
     for (const r of reads) {
       expect(r.startsWith("scan3Mode === 'axes' && !axesOnV2") || r.startsWith("scan3Mode === 'axes' && !!v2Generated"), r).toBe(true);
     }
-    expect(APP).toContain("const axesOnV2 = useV2 && scan3Mode === 'axes' && !!v2Generated;");
+    // U-10 fase 3 — `useV2 &&` went with the flag.
+    expect(APP).toContain("const axesOnV2 = scan3Mode === 'axes' && !!v2Generated;");
   });
 });

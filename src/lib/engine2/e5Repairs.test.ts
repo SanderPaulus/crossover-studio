@@ -254,17 +254,18 @@ describe('E-5 — the app says which limits collided', () => {
      * needs no ternary of its own — the guard is the branch that enters it. */
     /* U-10 (V15 form) — was three; the drawn THREE-WAY tune is the fourth reader. */
     expect(APP.split('v2ChainFrame({').length - 1).toBe(4);
+    /* U-10 fase 3 (V15) — WAS: each scan reads the frame behind a `useV2`
+     * ternary. The engine decision is gone; the frame is read unconditionally. */
     for (const name of ['v2Frame', 'twoWayFrame']) {
-      const at = APP.indexOf(`const ${name} = useV2`);
+      const at = APP.indexOf(`const ${name} = v2ChainFrame({`);
       expect(at, name).toBeGreaterThan(0);
-      expect(APP.slice(at, at + 160), name).toContain('? v2ChainFrame({');
     }
     const drawn2 = APP.slice(APP.indexOf("function runNetOptimizeV2(pass"), APP.indexOf('function runNetOptimizeV2_3('));
     expect(drawn2.split('v2ChainFrame({').length - 1).toBe(1);
     const drawn3 = APP.slice(APP.indexOf('function runNetOptimizeV2_3('), APP.indexOf('/** User-imported catalog series survive across sessions and projects. */'));
     expect(drawn3.split('v2ChainFrame({').length - 1).toBe(1);
     expect(APP).toContain("    if (!soloDriver && (v2Hybrid || !threeWay)) {\n      runNetOptimizeV2('tune');\n      return;\n    }");
-    expect(APP).toContain('const v2Hybrid = engineV2Enabled && v2ActiveSide.armed;');
+    expect(APP).toContain('const v2Hybrid = v2ActiveSide.armed;');
     // And the chain input reads the frame rather than the plot grid.
     expect(APP).toContain('grid: [...chainGrid]');
     expect(APP).toContain('driverZ: chainBranches.z');

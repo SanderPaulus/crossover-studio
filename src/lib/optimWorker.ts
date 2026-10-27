@@ -13,7 +13,7 @@
 import type { Complex } from './complex.ts';
 import type { GriddedResponse, TweeterAdjust } from './dsp.ts';
 import type { VxpPart } from './parsers/vxp.ts';
-import { runDesignChain, type ChainInput, type ChainStageProgress } from './designChain.ts';
+import type { ChainStageProgress } from './designChain.ts';
 import { runSoloChain, type SoloChainInput } from './soloOptimizer.ts';
 import {
   optimizeVfCluster,
@@ -24,7 +24,6 @@ import {
 } from './vfOptimizer.ts';
 import { minimizeNetwork, type MinimizeOptions } from './minimize.ts';
 import { optimizeNetworkValues, type NetOptimizeOptions } from './netOptimizer.ts';
-import { runThreeWayChain, type Chain3Input } from './threeWayChain.ts';
 import { applyCatalogPayload, type CatalogPart, type CatalogSeries } from './catalog.ts';
 
 export interface CatalogPayload {
@@ -36,15 +35,6 @@ export interface CatalogPayload {
    *  "€94" priced with switched-off electrolytics, the real BOM read €114
    *  after the main thread re-matched against the filtered pool. */
   disabled?: string[];
-}
-
-export interface ChainOnePayload {
-  input: ChainInput;
-  label: string;
-}
-
-export interface Chain3OnePayload {
-  input: Chain3Input;
 }
 
 export interface VfSeed {
@@ -99,8 +89,6 @@ export interface VfProgressMsg {
 }
 
 export type OptimRequest = { id: number; catalog?: CatalogPayload | null } & (
-  | { kind: 'chainOne'; payload: ChainOnePayload }
-  | { kind: 'chain3One'; payload: Chain3OnePayload }
   | { kind: 'vfRounds'; payload: VfRoundsPayload }
   | { kind: 'netOptimize'; payload: NetOptimizePayload }
   | { kind: 'minimize'; payload: MinimizePayload }
@@ -171,20 +159,6 @@ self.onmessage = (e: MessageEvent<OptimRequest>) => {
     if (req.catalog) applyCatalogPayload(req.catalog);
     let data: unknown;
     switch (req.kind) {
-      case 'chainOne': {
-        const { input, label } = req.payload;
-        data = runDesignChain(input, label, (pr) =>
-          post({ id: req.id, kind: 'progress', data: { ...pr, variant: label } }),
-        );
-        break;
-      }
-      case 'chain3One': {
-        const p = req.payload;
-        data = runThreeWayChain(p.input, (pr) =>
-          post({ id: req.id, kind: 'progress', data: { ...pr, variant: p.input.label } }),
-        );
-        break;
-      }
       case 'vfRounds':
         data = runVfRounds(req.payload, (d) => post({ id: req.id, kind: 'progress', data: d }));
         break;

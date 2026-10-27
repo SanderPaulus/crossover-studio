@@ -26,7 +26,6 @@ import {
   type V1FieldKey,
 } from './v1Carryover.ts';
 import { rowsOfClass, v1ReadingShown } from './v2InputRegister.ts';
-import { selectEngine } from './engine2/facade.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = readFileSync(join(HERE, '..', 'App.tsx'), 'utf-8');
@@ -170,22 +169,14 @@ describe('U-1 — the v1 starting values have one home', () => {
  * ==================================================================== */
 
 describe('U-1 — no v1 route is reachable from the visible UI', () => {
-  it('the flag starts ON and every project opens on v2', () => {
-    expect(APP).toContain('const [engineV2Enabled, setEngineV2Enabled] = useState(true);');
-    expect(APP).toContain('setEngineV2Enabled(true);');
-    // The line this replaced would put a saved v1 project back on v1.
-    expect(APP).not.toContain('setEngineV2Enabled(d.engineV2Enabled === true)');
-  });
-
-  it('nothing in the app writes the flag false, and no control is bound to it', () => {
-    /* Exactly ONE call: `applyProject`. The declaration destructures the setter
-       without calling it, so a second call is either a handler (a switch by
-       another name) or a second opinion about which engine is running. */
-    const writes = APP.match(/setEngineV2Enabled\(/g) ?? [];
-    expect(writes.length).toBe(1);
-    expect(APP).not.toContain('setEngineV2Enabled(false)');
-    expect(APP).not.toContain('checked={engineV2Enabled}');
-    expect(APP).not.toContain('setEngineV2Enabled(e.target.checked)');
+  /* U-10 fase 3 (V15 form) — WAS two claims on the flag: "the flag starts ON and
+   * every project opens on v2" and "nothing in the app writes the flag false".
+   * IS: the flag no longer exists, and a saved project still says v2 to an
+   * OLDER build that opens it. */
+  it('the engine flag is gone from the app, and a save still writes v2 for older builds', () => {
+    expect(APP).not.toMatch(/setEngineV2Enabled|const \[engineV2Enabled/);
+    expect(APP).not.toMatch(/\bengineV2Enabled &&|!engineV2Enabled\b/);
+    expect(APP).toContain('engineV2Enabled: true,');
   });
 
   it('the engine group states which engine runs instead of offering a choice', () => {
@@ -200,16 +191,9 @@ describe('U-1 — no v1 route is reachable from the visible UI', () => {
     expect(group).not.toContain('Engine v2 (experimental) — metrics + hard gates');
   });
 
-  it('the guarded v1 branches are STILL IN THE TREE — dead, not deleted', () => {
-    /* The point of the toggle invariant is that the app can still render the
-       v1 route with the flag off, and a test that only proved "no v1 visible"
-       would be satisfied by ripping those branches out. Both guarded blocks
-       are pinned here as well as in `v2Guided.test.ts`. */
-    expect(APP).toContain("{uiMode === 'guided' && !engineV2Enabled && (");
-    expect(APP).toContain('guidedStages(engineV2Enabled)');
-    expect(APP).toContain('designLevelNote(engineV2Enabled)');
-    expect(APP).toContain('v1NoteFor(id, engineV2Enabled)');
-  });
+  /* U-10 fase 3 — REMOVED, deliberately: "the guarded v1 branches are STILL IN
+   * THE TREE — dead, not deleted". U-10 is the session that deletes them; the
+   * v1 guided walk and the flag-guarded branches are gone (inventory §4). */
 
   it('the v1 READING beside the shortlist stays, and still crowns nothing', () => {
     /* U-1 removed v1 as a ROUTE, not as a REFERENCE. Three surfaces survive on
@@ -234,16 +218,9 @@ describe('U-1 — no v1 route is reachable from the visible UI', () => {
     expect(APP).toMatch(/\{v1ReadingShown\(\)\s*\? t\('No design was loaded: \{n\} of \{m\} candidates meet the requirements you stated\. The Working tab is untouched — the v1 ranking below/);
   });
 
-  it('the flag is still switchable in code, and false is still the v1 engine', () => {
-    /* The capability U-1 did NOT remove. `selectEngine` is untouched: absence
-       and false are one thing and only ON routes the optimiser to v2 — which
-       is what keeps `toggleRegression`'s byte-identical reference run a
-       statement about this app rather than about a deleted branch. */
-    expect(selectEngine(false).optimizer).toBe('v1');
-    expect(selectEngine(undefined).optimizer).toBe('v1');
-    expect(selectEngine(true).optimizer).toBe('v2');
-    expect(APP).toMatch(/setEngineV2Enabled\] = useState\(true\)/);
-  });
+  /* U-10 fase 3 — REMOVED, deliberately: "the flag is still switchable in code,
+   * and false is still the v1 engine". It was the half of U-1's pair that kept
+   * the v1 branch alive; U-10 is the session that removes it (inventory §4). */
 });
 
 /* ==================================================================== *

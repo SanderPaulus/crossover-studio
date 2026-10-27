@@ -285,16 +285,15 @@ describe('UI-1 / E-3b — the two-way v2 route loads through the shortlist, not 
      * own indentation so the chain frame could be settled beside the grid it
      * replaces, so the branch is anchored on its guard alone. The claims below
      * are unchanged; only where the branch starts moved. */
-    const start = APP.indexOf('      if (useV2) {\n        /* SHOW THE CARD BEFORE THE SETUP');
+    /* U-10 fase 3 (V15) — WAS anchored on `if (useV2) {` and ended at the v1
+     * variant list; the engine decision and the v1 tail are gone, so the
+     * branch is a bare block and ends where the virtual-filter route begins. */
+    const start = APP.indexOf('      {\n        /* SHOW THE CARD BEFORE THE SETUP');
     expect(start).toBeGreaterThan(0);
     /* The end is the v1 variant list, which sits at the component's own
      * indentation — the same call appears INSIDE the branch as the no-window
      * fallback, one level deeper, so the anchor carries its indentation. */
-    const end = APP.indexOf(
-      '      const variants: { label: string; xoRange?: [number, number] }[] =\n' +
-        '        crossoverVariants(userXo ?? saneFree, scanSteps2);',
-      start,
-    );
+    const end = APP.indexOf('/* ---- No measured impedances: virtual-filter rounds only', start);
     expect(end).toBeGreaterThan(start);
     return APP.slice(start, end);
   };
@@ -312,8 +311,9 @@ describe('UI-1 / E-3b — the two-way v2 route loads through the shortlist, not 
     // The v1 two-way client is NOT called from inside it: the rescue semantics
     // are a candidate strategy and generation belongs to A5d on this route.
     expect(block).not.toContain('runChainScan(');
-    // ...and the v1 call still exists, outside the branch, for the v1 route.
-    expect(APP).toContain('runChainScan(');
+    // U-10 fase 3 (V15) — WAS "the v1 call still exists, outside the branch":
+    // the v1 two-way scan is gone from the app.
+    expect(APP).not.toContain('runChainScan(');
   });
 
   it('what lands in Working is the SELECTION, and `ranked` is only a second reading', () => {

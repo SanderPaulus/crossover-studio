@@ -135,17 +135,17 @@ describe('the register covers the form', () => {
     }
   });
 
-  it('the note beside a v1 field is null on v1 (the toggle invariant, as the designer sees it)', () => {
-    expect(v1NoteFor('errorSmoothOct', true)).toMatch(/not read by Engine v2 since V38-fix/);
-    expect(v1NoteFor('errorSmoothOct', false)).toBeNull();
-    // …and a row of another class never produces one, whatever the flag says.
-    expect(v1NoteFor('minEpdrOhm', true)).toBeNull();
-    expect(v1NoteFor('not-a-row', true)).toBeNull();
+  /* U-10 fase 3 (V15 form) — WAS: the note is null on v1. The flag is gone;
+   * what remains is that only a v1-legacy row carries a note. */
+  it('the note beside a v1 field comes from its row, and no other class has one', () => {
+    expect(v1NoteFor('errorSmoothOct')).toMatch(/not read by Engine v2 since V38-fix/);
+    expect(v1NoteFor('minEpdrOhm')).toBeNull();
+    expect(v1NoteFor('not-a-row')).toBeNull();
   });
 
   it('the design-level sentence has ONE home: the register reads E-2’s own function', () => {
     expect(rowsOfClass('v1-legacy').find((r) => r.id === 'excursionSpl')?.v1Note).toBe(
-      designLevelNote(true),
+      designLevelNote(),
     );
   });
 
@@ -228,7 +228,7 @@ describe('the panel is ordered by the register', () => {
     // The help is the register's sentence, not a second one typed in the app.
     expect(APP).toContain('emptyHelpFor(key)');
     expect(emptyHelpFor('minEpdrOhm')).toMatch(/judges nothing/);
-    expect(APP).toContain("v1NoteFor(id, engineV2Enabled)");
+    expect(APP).toContain("v1NoteFor(id)");
   });
 
   it('the scans can see: the same queries hit where they are supposed to hit', () => {

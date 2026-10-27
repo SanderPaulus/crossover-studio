@@ -98,9 +98,12 @@ describe('U-3d — the app does not apply it a second time', () => {
    * two are unreachable from the interface, which is why they were left alone
    * rather than deleted — the same rule U-1 applied to the v1 engine itself.
    * Named here so a later reader does not "fix" them too. */
+  /* U-10 fase 3 (V15) — WAS three v1 feeds; the v1 two-way scan's
+   * (`setInverted(win.vf.inverted)`) went with it. The two left are the three-way
+   * no-shortlist path and the virtual-filter route (a named exception). */
   it('the v1 feeds are untouched: on those routes the checkbox IS the carrier', () => {
     const app = stripComments(APP);
-    expect(app).toContain('setInverted(win.vf.inverted)');
+    expect(app).not.toContain('setInverted(win.vf.inverted)');
     expect(app).toContain('setInverted(win.tweeterInverted)');
     expect(app).toContain('setInverted(best.inverted)');
   });

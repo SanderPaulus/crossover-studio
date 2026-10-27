@@ -141,7 +141,7 @@ import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
 import { releaseAfterPaint, shouldDeferOnBoot } from './lib/bootDefer.ts';
 import { EngineV2Panel } from './components/EngineV2Panel.tsx';
-import { selectEngine } from './lib/engine2/facade.ts';
+import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from './lib/engine2/version.ts';
 import { buildReport, type EngineV2ReportInput } from './lib/engine2/report.ts';
 import {
   buildEngineV2Input,
@@ -405,7 +405,6 @@ import { fitCoilDcrFamilies } from './lib/coilDcr.ts';
 import {
   cancelOptimTasks,
   CancelledError,
-  runChainScan,
   runChainScanV2,
   runNetOptimizeTask,
   runTuneNetlistV2,
@@ -413,7 +412,6 @@ import {
   runMinimizeTask,
   runSoloChainTask,
   runVfRoundsTask,
-  runChain3Scan,
   runChain3ScanV2,
   type V2ChainItem,
   type V2ScanSettings,
@@ -2068,25 +2066,11 @@ export default function App() {
   // the report has to be able to show it. Moved rather than duplicated — the
   // same number in two places is how the two come to disagree.
 
-  /**
-   * U-1 — THE FLAG IS ON, AND THE INTERFACE NO LONGER OFFERS THE CHOICE.
-   *
-   * Engine v2 is the only route a designer can start since U-1: the checkbox
-   * that used to sit under "Engine" is gone, `applyProject` opens every file on
-   * v2 whatever it was saved on, and nothing in the visible UI writes `false`
-   * here any more.
-   *
-   * THE FLAG ITSELF IS NOT GONE, and that is deliberate rather than left over.
-   * `selectEngine` is still the one boundary between the two engines, the v1
-   * branches on the far side of it are still compiled and still tested, and
-   * `toggleRegression.test.ts` still proves the invariant by choosing `false`
-   * programmatically. What U-1 removed is a ROUTE THROUGH THE INTERFACE, not a
-   * capability: `setEngineV2Enabled` is still here, and a test or a console can
-   * still reach it. A flag nobody can flip from the screen is not the same
-   * thing as a flag that no longer exists, and the difference is what keeps the
-   * byte-identical v1 reference run meaningful.
-   */
-  const [engineV2Enabled, setEngineV2Enabled] = useState(true);
+  /* U-10 fase 3 — THE ENGINE FLAG IS GONE. Since U-1 it was always on and no
+   * route through the interface could switch it; since U-10 fase 1 no UI route
+   * reaches the v1 search except the two named exceptions (the two-way without
+   * impedances, the solo design), and since fase 2 the invariant it served is
+   * the motor boundary (CLAUDE.md, hard rules). Every former reader reads v2. */
   /**
    * The v2 project settings. EMPTY = ABSENT, everywhere and always (P4): the
    * metric that needs it stays off, the gate that needs it is not judging, the
@@ -2153,9 +2137,9 @@ export default function App() {
    * off in a session that never had it on this never fires.
    */
   useEffect(() => {
-    if (designTab === 'requirements' && !(uiMode === 'guided' && engineV2Enabled))
+    if (designTab === 'requirements' && uiMode !== 'guided')
       setDesignTab('filters');
-  }, [designTab, uiMode, engineV2Enabled]);
+  }, [designTab, uiMode]);
   /** E-2 — the one way a v2 field is edited: the value, and the date it was stated. */
   const setV2Field = (key: V2SettingKey, value: string) => {
     setEngineV2Settings((v) => ({ ...v, [key]: value }));
@@ -2308,7 +2292,7 @@ export default function App() {
    * the field is what it always was.
    */
   const v1Legacy = (id: string) => {
-    const note = v1NoteFor(id, engineV2Enabled);
+    const note = v1NoteFor(id);
     /* U-9 fase 2 (B-2) — only a v1-legacy row has a note, and since B-2 every
      * v1-legacy row is `niets` and never rendered: this badge has no visible
      * reader left. It stays as the one place such a note would be drawn, and
@@ -4108,7 +4092,6 @@ export default function App() {
    * nothing is filled in. A branch without an impedance file simply has none,
    * and the capability matrix says which metrics that switches off (P4).
    * ------------------------------------------------------------------ */
-  const engineSelection = useMemo(() => selectEngine(engineV2Enabled), [engineV2Enabled]);
 
   /**
    * The v2 gate limits and budgets, parsed ONCE.
@@ -4172,7 +4155,7 @@ export default function App() {
    * active side runs the passive ways alone and says so (`passiveOnlyNotice`),
    * rather than refusing or pretending.
    */
-  const v2Hybrid = engineV2Enabled && v2ActiveSide.armed;
+  const v2Hybrid = v2ActiveSide.armed;
 
   const engineV2Gates = useMemo(() => {
     const stated = (raw: string, scale = 1): number | undefined => {
@@ -4471,7 +4454,6 @@ export default function App() {
      */
     activeHandoverHz?: number,
   ) => {
-    if (!engineSelection.reporting) return null;
     try {
       const asResponse = (name: string, frd: Parsed): AdapterResponse => ({
         name,
@@ -4828,7 +4810,6 @@ export default function App() {
       };
     }
   }, [
-    engineSelection,
     woofer,
     midDrv,
     tweeter,
@@ -5016,7 +4997,6 @@ export default function App() {
   } => {
     if (!xoRangeOn) return { notes: [] };
     const notes: string[] = [];
-    const useV2Pins = engineSelection.optimizer === 'v2';
 
     /** The recommended band as a pin, or null when no window could be derived. */
     const fromWindow = (side: 'low' | 'high'): { freq: number; margin: number } | null => {
@@ -5026,19 +5006,17 @@ export default function App() {
       return { freq: (seg[0] + seg[1]) / 2, margin: (seg[1] - seg[0]) / 2 };
     };
 
+    /* U-10 fase 3 — the v1 arm (which substituted the legacy defaults) is gone
+     * with the flag: an unstated handover is pinned from the
+     * A5d.3 window or not at all. */
     const pinFor = (
       side: 'low' | 'high',
       freqField: string,
       marginField: string,
-      legacyFreq: string,
-      legacyMargin: string,
     ): { freq: number; margin: number } | undefined => {
       const f = num(freqField, NaN);
       const m = num(marginField, NaN);
       if (Number.isFinite(f) && f > 0 && Number.isFinite(m)) return { freq: f, margin: m };
-      if (!useV2Pins) {
-        return { freq: num(freqField, Number(legacyFreq)), margin: num(marginField, Number(legacyMargin)) };
-      }
       const derived = fromWindow(side);
       if (derived) {
         notes.push(
@@ -5056,20 +5034,8 @@ export default function App() {
       return undefined;
     };
 
-    const low = pinFor(
-      'low',
-      xoLowFreqHz,
-      xoLowMarginHz,
-      V1_PIN_DEFAULTS_LEGACY.lowFreqHz,
-      V1_PIN_DEFAULTS_LEGACY.lowMarginHz,
-    );
-    const high = pinFor(
-      'high',
-      xoFreqHz,
-      xoMarginHz,
-      V1_PIN_DEFAULTS_LEGACY.highFreqHz,
-      V1_PIN_DEFAULTS_LEGACY.highMarginHz,
-    );
+    const low = pinFor('low', xoLowFreqHz, xoLowMarginHz);
+    const high = pinFor('high', xoFreqHz, xoMarginHz);
     return {
       ...(low ? { low } : {}),
       ...(high ? { high } : {}),
@@ -7275,13 +7241,12 @@ export default function App() {
    * with the engine off the dialog must be what it always was, to the pixel.
    */
   const v2Windows = useMemo((): { low: XoWindowResult | null; high: XoWindowResult | null } | null => {
-    if (!engineSelection.reporting) return null;
     const ws = engineV2Report?.report?.predesign.windows ?? [];
     if (ws.length === 0) return null;
     return threeWay
       ? { low: ws[0] ?? null, high: ws[1] ?? null }
       : { low: null, high: ws[ws.length - 1] ?? null };
-  }, [engineSelection.reporting, engineV2Report, threeWay]);
+  }, [engineV2Report, threeWay]);
 
   /**
    * U-3e — WHERE THE SEARCH MAY PUT A HANDOVER, BESIDE THE BUTTON THAT SEARCHES.
@@ -7315,7 +7280,6 @@ export default function App() {
    */
   const fsConventionDb = useMemo(() => fsConventionDbRange(), []);
   const v2WindowLines = useMemo((): { pair: string; text: string; convention: boolean }[] => {
-    if (!engineSelection.reporting) return [];
     const ws = engineV2Report?.report?.predesign.windows ?? [];
     return ws.map((w) => {
       const hz = (v: number | null) => (v === null ? '—' : `${Math.round(v)} Hz`);
@@ -7342,7 +7306,7 @@ export default function App() {
         convention: w.floorBy?.rule === 'fs',
       };
     });
-  }, [engineSelection.reporting, engineV2Report, t]);
+  }, [engineV2Report, t]);
 
   /** The search range the designer stated for one handover, or null if unpinned. */
   const v2RangeFor = (side: 'low' | 'high'): [number, number] | null => {
@@ -7393,7 +7357,7 @@ export default function App() {
    */
   const v2StatedRangeLines = useMemo(() => {
     const n = v2StatedAxisLabels.length;
-    if (!engineV2Enabled || !xoRangeOn || n === 0) return [];
+    if (!xoRangeOn || n === 0) return [];
     const ranges = v2StatedRanges(n);
     return v2StatedAxisLabels.flatMap((label, i) => {
       const r = ranges[i];
@@ -7405,7 +7369,6 @@ export default function App() {
      * than the helper itself: the helper is rebuilt on every render, so naming
      * it would recompute this on every keystroke anywhere in the app. */
   }, [
-    engineV2Enabled,
     xoRangeOn,
     v2StatedAxisLabels,
     xoFreqHz,
@@ -7752,7 +7715,7 @@ export default function App() {
    * `floorComparison.ts` for why resolving it would be the mistake.
    */
   const v2Floors = useMemo((): FloorComparison[] => {
-    if (!engineSelection.reporting || !v2Windows) return [];
+    if (!v2Windows) return [];
     return (['low', 'high'] as const).flatMap((side) => {
       const w2 = v2Windows[side];
       const w1 = physWin3?.win[side];
@@ -7788,7 +7751,7 @@ export default function App() {
       ];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engineSelection.reporting, v2Windows, physWin3]);
+  }, [v2Windows, physWin3]);
 
 
   /* The SAME physics window for the TWO-WAY pair (woofer↔tweeter). The
@@ -8045,7 +8008,7 @@ export default function App() {
     [hybridStrip, engineV2Report],
   );
   /** H-3 — the stated Q_es maximum the source-resistance rule names; absent off the v2 route. */
-  const v2QesStatedMax = engineV2Enabled ? engineV2Gates.qesMultiplierMax : undefined;
+  const v2QesStatedMax = engineV2Gates.qesMultiplierMax;
 
   /** Model vs measurement (VALIDATIE.md loop): the loaded verification FRD
    *  against the simulated combined, level-aligned and delay-fitted over the
@@ -8342,9 +8305,7 @@ export default function App() {
    * window block because it has to be declared after the state it reads, and
    * a `useState` moved up the file to please a comment is a worse trade.
    */
-  const v2Smoothing: SmoothingNotice | null = !engineSelection.reporting
-    ? null
-    : smoothingConsistency(
+  const v2Smoothing: SmoothingNotice | null = smoothingConsistency(
         /* V38-fix — the line has to name the width the RUN will search on, not
          * the one the preference holds. With the v2 optimiser selected the
          * candidate states its own (`declareCandidateChoices`), and stating a
@@ -8354,10 +8315,9 @@ export default function App() {
          * ONE CASE OVERSTATES, and it is named rather than hidden: when no
          * A5d.3 window can be derived, the v2 route falls back to the v1
          * candidate generator, no declaration travels, and the run searches on
-         * the preference after all. That fallback already announces itself
-         * loudly in the run notes at the moment it happens — which is where a
-         * reader is, and this line is rendered before the run. */
-        engineSelection.optimizer === 'v2' ? SEARCH_SMOOTHING_OCTAVES : errorSmoothOct,
+         * the preference after all. U-10: that fallback refuses since fase 1,
+         * so the run never searches on the preference any more. */
+        SEARCH_SMOOTHING_OCTAVES,
       );
   /** Source-resistance limit at the low driver (Ω): above it a candidate
    *  loses a ranking class and a staged structure move is not "safe" (point
@@ -8686,7 +8646,9 @@ export default function App() {
         snapStacks,
         snapBoundToSeries,
         stagedOn,
-        engineV2Enabled,
+        /* U-10 — written as true so an OLDER build opening this file reads it
+         * on v2 (an absent field reads as false there, i.e. as v1). */
+        engineV2Enabled: true,
         engineV2: { ...engineV2Settings },
         engineV2StatedAt: { ...engineV2StatedAt },
         engineV2StatedBy: { ...engineV2StatedBy },
@@ -8860,7 +8822,6 @@ export default function App() {
      * opened from (`v1Carryover.ts`). Converting a v1 setting into a v2
      * requirement would be the app guessing what the designer meant, and the
      * whole point of P4 is that it does not. */
-    setEngineV2Enabled(true);
     setV1CarryNote(describeCarryover(d));
     /* E-2 — one restore for the whole block (`v2Settings.ts`): every key
      * present, unknown keys dropped, an absent block = every field EMPTY —
@@ -9050,7 +9011,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Enabled, engineV2Settings, engineV2StatedAt, engineV2StatedBy, fieldStatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Settings, engineV2StatedAt, engineV2StatedBy, fieldStatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -9331,23 +9292,19 @@ export default function App() {
        * only thing it changed was where the candidates were sent; since F4d it
        * also decides who MAKES them, and the first thing that depends on it is
        * the pin two lines below. */
-      const useV2 = engineSelection.optimizer === 'v2';
       /* E-5 — ON THE v2 ROUTE THE CHAIN LOOKS AND JUDGES WHERE THE MEASUREMENT
        * SAYS, not where the plot range and the validity intersection put it.
        * One implementation, both routes (`v2ChainFrame`); with no report it
        * returns this grid and this band unchanged, so the v1 route stays byte
        * for byte what it was. */
-      const v2Frame = useV2
-        ? v2ChainFrame({ report: engineV2Report?.report, simGrid: grid, fallbackBand: v1Band })
-        : { grid: grid as readonly number[], band: v1Band, notes: [] as string[] };
+      const v2Frame = v2ChainFrame({ report: engineV2Report?.report, simGrid: grid, fallbackBand: v1Band });
       const chainGrid = v2Frame.grid;
       const band = v2Frame.band;
       const pinsRaw = xoPinsValue();
       // F4b — a substituted or refused pin is a fact about the run, so it is
       // reported rather than left to be inferred from the delivered crossings.
       setV2RunNotes(
-        useV2
-          ? [
+        [
               /* UI-1 — WHICH VOICING THIS RUN SEARCHED AGAINST, said out loud
                * at the top of its own notes. Since V45 the target curve steers
                * the AMPLITUDE TERM as well as the window and the RMS, so it is
@@ -9368,8 +9325,7 @@ export default function App() {
                 ? [passiveOnlyNotice(v2ActiveSide.off)]
                 : []),
               ...pinsRaw.notes,
-            ]
-          : [],
+            ],
       );
       /* THE v1 DATA-FLOOR CLAMP, AND WHY IT IS NOW v1-ONLY (F4d, audit §6.3).
        *
@@ -9389,20 +9345,10 @@ export default function App() {
        * reported beside it as a counter-judgement the designer reads
        * (`floorComparison.ts`, and the block below). On the v1 route this is
        * byte-identical to what it always did. */
-      const clampPin = (
-        pin: { freq: number; margin: number } | undefined,
-        win: { floorHz: number | null; ceilHz: number | null; userClampedByData: boolean } | undefined,
-      ) => {
-        if (useV2) return pin;
-        if (!pin || !win || !win.userClampedByData || win.floorHz === null) return pin;
-        const lo = win.floorHz;
-        const hi = Math.max(win.ceilHz ?? lo, lo * 1.02);
-        return { freq: (lo + hi) / 2, margin: (hi - lo) / 2 };
-      };
-      const pins = {
-        low: clampPin(pinsRaw.low, physWin3?.win.low),
-        high: clampPin(pinsRaw.high, physWin3?.win.high),
-      };
+      /* U-10 fase 3 — the v1 data clamp (`clampPin`) went with the flag: on the
+       * v2 route nothing is clamped, the candidates are generated against the
+       * A5d.3 floor (see the note above). */
+      const pins = { low: pinsRaw.low, high: pinsRaw.high };
       const settings = threeWayChainSettings({ band, safety, pins });
       const tAdj = branchAdj.tweeter;
       const mAdj = branchAdj.mid;
@@ -9454,7 +9400,6 @@ export default function App() {
       /* E-2 — the field REQUEST, kept apart from the field so the run export
        * can carry exactly what the generator was handed (`runExport.ts`). */
       const v2FieldRequest = (() => {
-        if (!useV2) return null;
         const wis = engineV2Report?.report?.predesign.windowInputs ?? [];
         if (wis.length === 0) {
           /* NO WINDOWS, SO NO FIELD — and the fallback to the v1 generator is
@@ -9574,7 +9519,7 @@ export default function App() {
               : {}),
           })
         : null;
-      if (useV2) {
+      {
         /* V26 ROW 38 — the chain grid's lower edge, stated instead of silent.
          *
          * The grid is built from the measurement extents and the designer's
@@ -9870,7 +9815,7 @@ export default function App() {
        * because the mode is a remembered UI setting rather than something the
        * designer picks per run. So it is skipped on the v2 route and said out
        * loud, rather than quietly producing the v1 field under a v2 stamp. */
-      const axesOnV2 = useV2 && scan3Mode === 'axes' && !!v2Generated;
+      const axesOnV2 = scan3Mode === 'axes' && !!v2Generated;
       /* U-9 — the field is never rendered (`effect: 'niets'`), and 'axes' is its
        * default, so a note about it on every three-way run would name a setting
        * nobody can see. The branch itself is untouched: `axesOnV2` still keeps the
@@ -9937,8 +9882,7 @@ export default function App() {
       const v2GatesByLabel: Record<string, { verdicts: GateVerdict[]; violation: string | null }> = {};
       const v2Field: ShortlistInput<Chain3Result>[] = [];
       let v2Stamp: V2RunStamp | null = null;
-      const v2ScanSettings = useV2
-        ? {
+      const v2ScanSettings = {
             /* E-3b — the gates, the budgets, the determinism, the measured
              * facts, the voicing, the judged band and the reporting power: one
              * assembly for both routes (`scanRequest.ts`). The three IDENTITY
@@ -9988,8 +9932,7 @@ export default function App() {
             ...(v2Generated
               ? { candidateFieldKey: stableJson(candidateFieldKey(v2Generated.field)) }
               : {}),
-          }
-        : null;
+          };
       /* E-2 — THE RUN, EXPORTABLE (the V48 gap). Everything the generator was
        * handed and everything the worker was told, as plain data, so
        * `scripts/replay-app-run.ts` can rebuild this field in the repository
@@ -9997,7 +9940,7 @@ export default function App() {
        * stamp and the shortlist are filled in when the run ends and the
        * designer clicks "Export run". */
       const v2RunExport: RunExport | null =
-        useV2 && v2Generated && v2FieldRequest && v2ScanSettings && engineV2Report?.input
+        v2Generated && v2FieldRequest && v2ScanSettings && engineV2Report?.input
           ? (() => {
               const input = engineV2Report.input;
               const { programmeWeight: _pw, ...reportSettings } = input.settings;
@@ -10076,7 +10019,6 @@ export default function App() {
         ins: V2Chain3Item[],
         onProgress: (d: ScanProgress) => void,
       ): Promise<Chain3Result[]> => {
-        if (!useV2 || !v2ScanSettings) return runChain3Scan(ins.map((i) => i.input), onProgress);
         return runChain3ScanV2(ins, v2ScanSettings, onProgress).then((r) => {
           /* E-3b — the fold into gate map, shortlist field and notes is
            * `collectV2Scan` (`scanRequest.ts`): generic in the chain result,
@@ -10679,7 +10621,6 @@ export default function App() {
      * frame can be decided here: the grid and the judged band are the first
      * things that depend on it (the same move the three-way route made at
      * F4d for the pin). One decision, read from here down. */
-    const useV2 = engineSelection.optimizer === 'v2';
     const v1Band: [number, number] = evalBand
       ? [evalBand.fromHz, evalBand.toHz]
       : [Math.max(300, simGrid[0]), Math.min(simGrid[simGrid.length - 1] * 0.975, num(fMax, 20000))];
@@ -10687,9 +10628,7 @@ export default function App() {
      * says (`v2ChainFrame`, one implementation for both routes). With no
      * report it hands back this grid and this band, so the v1 two-way route is
      * byte for byte what it was. */
-    const twoWayFrame = useV2
-      ? v2ChainFrame({ report: engineV2Report?.report, simGrid, fallbackBand: v1Band })
-      : { grid: simGrid as readonly number[], band: v1Band, notes: [] as string[] };
+    const twoWayFrame = v2ChainFrame({ report: engineV2Report?.report, simGrid, fallbackBand: v1Band });
     const grid = twoWayFrame.grid;
     /* Outside its own measured extent a branch is SILENT rather than
      * extrapolated — the two-way grid used to be the INTERSECTION of the two
@@ -10864,7 +10803,7 @@ export default function App() {
        * generation belongs to A5d — the same reason the three-way route skips
        * its axis-by-axis mode and says so.
        * ================================================================ */
-      if (useV2) {
+      {
         /* SHOW THE CARD BEFORE THE SETUP: everything below is synchronous
          * main-thread work and until it finishes React cannot paint. */
         await nextPaint();
@@ -11597,129 +11536,6 @@ export default function App() {
           });
         return;
       }
-      const variants: { label: string; xoRange?: [number, number] }[] =
-        crossoverVariants(userXo ?? saneFree, scanSteps2);
-      const adjust = branchAdj.tweeter;
-      // The whole scan runs in the optimizer WORKER (variants loop + the
-      // truly-free rescue logic live there): the UI stays responsive, the
-      // per-variant counter ticks via progress messages, and Cancel simply
-      // terminates the worker.
-      runChainScan(
-        {
-          base: {
-            grid: [...grid],
-            w,
-            t,
-            driverZ: zOnGrid,
-            adjust,
-            seed: defaultVFilters(),
-            settings,
-            // A pin is the designer's promise; the measured window is the
-            // drivers'. A degenerate window judges nothing (three-way lesson).
-            judgeWindow: userXo
-              ? { floorHz: userXo[0], ceilHz: userXo[1] }
-              : measuredFree
-                ? { floorHz: measuredFree[0], ceilHz: measuredFree[1] }
-                : null,
-          },
-          variants,
-          targets,
-        },
-        (d) => setVfProgress(d),
-      )
-        .then(({ results, totalRounds, totalSims, stoppedEarly, requested }) => {
-          // Stopped before anything landed: commit nothing and say so (same
-          // rule as the three-way scan) — the design stays as it was.
-          if (results.length === 0) {
-            setNetOptNote(
-              tx('Stopped before any candidate finished — nothing was changed. Your design is exactly as it was.'),
-            );
-            return;
-          }
-          // Winner: targets met first, then blended score at the priority.
-          const ranked = rankChainResults(
-            results,
-            targets,
-            phasePriority / 100,
-            tweeterHpFloor ?? undefined,
-            rSourceLimitOhm,
-            rSourceDisqOhm,
-            bomCapEur,
-            ampMinLoadOhm ?? 0,
-          );
-          const win = ranked[0];
-          setVFilters((p) => ({ ...p, ...win.vf.specs }));
-          setInverted(win.vf.inverted);
-          setVfOpt(win.vf);
-          setVfRunStats({ rounds: totalRounds, evals: totalSims });
-          synthFresh.current = true;
-          setSynth({ mode: synthMode, woofer: win.synthWoofer, tweeter: win.synthTweeter });
-          setWorkingDesign(win.parts);
-          setNetOptAudit(win.net.audit ?? null);
-          setVfBypass(true); // the BUILT network is the result on screen
-          setScanSort(null);
-          setChainScan(
-            results.length > 1
-              ? {
-                  rows: ranked.map((rr) => chainScanRow(rr, win)),
-                  active: win.label,
-                }
-              : null,
-          );
-          setNetOptDiff(null); // fresh design — an old tune-diff would lie
-          // Same visibility rule as the three-way scan: a class the designer
-          // cannot read reorders silently.
-          const zLow2 =
-            ampMinLoadOhm !== null && win.zMinOhm !== null && !meetsAmpFloor(win.zMinOhm, ampMinLoadOhm);
-          const anySane2 = ranked.some(
-            (r) => r.zMinOhm !== null && ampMinLoadOhm !== null && meetsAmpFloor(r.zMinOhm, ampMinLoadOhm),
-          );
-          const zNote2 = !zLow2
-            ? ''
-            : `\n⚠ amplifier load: the winner dips to ${win.zMinOhm!.toFixed(1)} Ω ` +
-              `(your amplifier is rated to ${ampMinLoadOhm!.toFixed(1)} Ω)` +
-              (anySane2
-                ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
-                : ' — no candidate stayed above it; check the Impedance panel.');
-          const xoNote2 =
-            win.xoWindowOk !== false
-              ? ''
-              : `\n⚠ handover: the delivered crossing (${
-                  win.net.after.xoHz ? Math.round(win.net.after.xoHz) : '—'
-                } Hz) sits outside its window` +
-                (ranked.some((r) => r.xoWindowOk !== false)
-                  ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
-                  : ' — no candidate stayed inside; check the Driver limits or pin the crossing.');
-          const partialNote = stoppedEarly
-            ? `\n⏹ stopped early — ranked the ${results.length} candidate${results.length > 1 ? 's' : ''} that finished, of ${requested}; the rest was never computed`
-            : '';
-          setNetOptNote(
-            (results.length > 1
-              ? `crossover scan — winner xo ${win.label}`
-              : `peak ${win.net.after.rippleDb.toFixed(2)} dB` +
-                (win.net.after.avgDevDb !== undefined
-                  ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
-                  : '') +
-                ` / ${win.net.after.phaseDeg.toFixed(1)}°` +
-                (win.bomTotalEur !== null ? ` · BOM €${Math.round(win.bomTotalEur)}` : '')) +
-              (win.net.snapNote ? ` · ${win.net.snapNote}` : '') +
-              (win.net.valueWindowNote ? ` · ${win.net.valueWindowNote}` : '') +
-              (win.net.safetyNote ? ` · ⚠ ${win.net.safetyNote}` : '') +
-              (win.net.ampFloorNote ? ` · ⚠ ${win.net.ampFloorNote}` : '') +
-              zNote2 +
-              xoNote2 +
-              partialNote,
-          );
-        })
-        .catch((e) => {
-          if (!(e instanceof CancelledError))
-            setVfError(e instanceof Error ? e.message : String(e));
-        })
-        .finally(() => {
-          setVfProgress(null);
-          setVfBusy(false);
-        });
-      return;
     }
 
     /* ---- No measured impedances: virtual-filter rounds only (no build). ----
@@ -12057,7 +11873,7 @@ export default function App() {
     /* H-3 — a textbook template SAYS what it is instead of breaking an
      * expectation silently. Only on the v2 route: with the flag off the app
      * is what it always was. */
-    if (engineV2Enabled) {
+    {
       setNetOptNote(
         `New from template — ${TEMPLATE_NOMINAL_NOTE}` +
           (hybridSeed && 'fallback' in hybridSeed ? ` (Hybrid mode: ${hybridSeed.fallback})` : ''),
@@ -15457,8 +15273,7 @@ export default function App() {
                               onChange={(e) => setXmaxMm((q) => ({ ...q, [role]: e.target.value }))}
                             />
                             {' mm'}
-                            {engineSelection.reporting && (
-                              <>
+                            <>
                                 {' · '}
                                 <span
                                   className="inline-num"
@@ -15493,7 +15308,7 @@ export default function App() {
                                   {' g'}
                                 </span>
                               </>
-                            )}
+                            
                           </span>
                           {/* ---- M-M: THE DRIVER'S OWN POWER RATING ------------
                             * Three numbers off ONE line of the datasheet and its
@@ -15505,8 +15320,7 @@ export default function App() {
                             * In the default view for the U-3c reason — every
                             * `source: 'datasheet'` row is, because a number you
                             * copy off a sheet is generic data every project has. */}
-                          {engineSelection.reporting && (
-                            <>
+                          <>
                               <span className="cd-label">{t('Power rating')}</span>
                               <span
                                 className="cd-fields"
@@ -15549,7 +15363,7 @@ export default function App() {
                                 </span>
                               </span>
                             </>
-                          )}
+                          
                           {/* ---- U-3g / U-4: THE RECOMMENDED RANGE --------------
                             * ONE line off the datasheet with TWO ends, and the
                             * app reads both. The BOTTOM binds the window in
@@ -15570,8 +15384,7 @@ export default function App() {
                             *
                             * In the default view for the U-3c reason — every
                             * `source: 'datasheet'` row is. */}
-                          {engineSelection.reporting && (
-                            <>
+                          <>
                               <span className="cd-label">{t('Recommended range')}</span>
                               <span
                                 className="cd-fields"
@@ -15619,7 +15432,7 @@ export default function App() {
                                 </span>
                               </span>
                             </>
-                          )}
+                          
                           {/* ---- U-4: THE OVERRULE ------------------------------
                             * The first stated overrule of a DERIVED limit in
                             * this project, and it exists because the limit it
@@ -15635,7 +15448,7 @@ export default function App() {
                             * a switch someone reaches for. Never on by itself
                             * (P4) — a stated ceiling on its own is simply read
                             * beside the derived ones and the strictest binds. */}
-                          {engineSelection.reporting && v2Meas[role].maxCrossoverHz.trim() !== '' && (
+                          {v2Meas[role].maxCrossoverHz.trim() !== '' && (
                             <>
                               <span className="cd-label" />
                               <span className="cd-fields">
@@ -15678,8 +15491,7 @@ export default function App() {
                           * V49 derives — so state the convention for the way it
                           * belongs to and leave the others to the derived
                           * ceiling. */}
-                        {engineSelection.reporting && (
-                          <>
+                        <>
                             <span className="cd-label">{t('Max drive on f_s')}</span>
                             <span
                               className="cd-fields"
@@ -15701,7 +15513,7 @@ export default function App() {
                               {role === 'high' && v2StatedExtra('driveOnFsMaxDb:high', v2Meas.high.driveOnFsMaxDb)}
                             </span>
                           </>
-                        )}
+                        
                         {/* U-3b — A FALLBACK, SHOWN ONLY WHEN THE CASE EXISTS.
                           * It answers "this file's header states no window", and
                           * a permanently visible fallback invites someone to type
@@ -15710,7 +15522,7 @@ export default function App() {
                           * is `sourceMeta`'s own decision, in its own order: a
                           * declared merge block first (P-1), then the ARTA
                           * window. */}
-                        {engineSelection.reporting && cabinetInfo.windowless.includes(role) && (
+                        {cabinetInfo.windowless.includes(role) && (
                           <>
                             <span className="cd-label">{t('Window (no header)')}</span>
                             <span
@@ -16018,8 +15830,7 @@ export default function App() {
                           * they sit in the geometry form beside the cabinet
                           * facts they belong with rather than in the optimizer
                           * options, which are settings of a search. */}
-                        {engineSelection.reporting && (
-                          <>
+                        <>
                             <span className="cd-label">{t('Engine v2 — measurement')}</span>
                             <span
                               className="cd-fields"
@@ -16192,7 +16003,7 @@ export default function App() {
                               </span>
                             </span>
                           </>
-                        )}
+                        
                           </div>
                         </details>
                         </div>
@@ -16262,7 +16073,7 @@ export default function App() {
      its Filters panel — so its list is unchanged. */
   const gotoKeys: DesignTab[] =
     uiMode === 'guided'
-      ? guidedStages(engineV2Enabled).map((st) => st.tab)
+      ? guidedStages().map((st) => st.tab)
       : ['import', 'data', 'filters', 'network'];
 
   type PaletteAction = { id: string; label: string; hint?: string; run: () => void };
@@ -16827,11 +16638,10 @@ export default function App() {
                   the question at the requirement list has already counted their
                   ways as passive. It states the shape and points at the tick;
                   it decides nothing (`v2ActiveSide.ts`). */}
-              {engineV2Enabled && (
-                <p className="sub" style={{ marginBottom: '0.4rem' }}>
+              <p className="sub" style={{ marginBottom: '0.4rem' }}>
                   {t(ACTIVE_SIDE_GUIDED_LINE)}
                 </p>
-              )}
+              
               <p className="sub" style={{ marginBottom: '0.4rem' }}>
                 <strong>{t('Measurements')}</strong>{' '}
                 {t('— load a 0° FRD per driver; include the .ZMA impedance and any angle files in the SAME pick to unlock more (recognised by extension and filename).')}
@@ -18171,7 +17981,7 @@ export default function App() {
                    Null on v1, exactly as `designLevelNote` and `v1NoteFor`:
                    with the flag off the app is what it always was, and that
                    covers the words on a tooltip. */
-                title={[t(tip), m === 'guided' ? guidedEngineNote(engineV2Enabled) : null]
+                title={[t(tip), m === 'guided' ? guidedEngineNote() : null]
                   .filter((x): x is string => !!x)
                   .map((x) => t(x))
                   .join(' ')}
@@ -18423,7 +18233,7 @@ export default function App() {
            the flag off `guidedStages` returns the five it always did, in the
            same order, with the same labels and the same ticks. */
         <nav className="pane-steps step-bar" aria-label={t('Design steps')}>
-          {guidedStages(engineV2Enabled).map((stage, i) => {
+          {guidedStages().map((stage, i) => {
             const done = guidedDone[stage.id];
             return (
               <button
@@ -18500,7 +18310,6 @@ export default function App() {
               * sentence about what its absence costs. Guided on the v2 route
               * only — with the flag off this step is what it always was. */}
             {uiMode === 'guided' &&
-              engineV2Enabled &&
               (() => {
                 const stage = V2_GUIDED_STAGES.find((st) => st.tab === designTab);
                 const need = stage ? requiredRowsOfStage(stage.id) : [];
@@ -20224,7 +20033,7 @@ export default function App() {
               * It renders only under `engineV2Enabled`: with the flag off this
               * tab is not in the route, not in the palette and not reachable.
               * ================================================================ */}
-            {designTab === 'requirements' && engineV2Enabled && (() => {
+            {designTab === 'requirements' && (() => {
               /* U-9 fase 3 — FIVE QUESTIONS IN CONCEPTS, NOT SIXTEEN NUMBERS.
                * Each answer writes registered rows through a guided profile
                * (`guidedProfiles.ts`) or a plain choice, shows those rows and
@@ -20578,13 +20387,6 @@ export default function App() {
             >
               {t('Charts show:')} <strong>{simSource}</strong>
             </p>
-            {uiMode === 'guided' && !engineV2Enabled && (
-              <p className="sub">
-                {t('One button. The app works out where the drivers should hand over to each other, what shape each filter needs and which real parts to buy — using your measurements, not rules of thumb. It builds and measures')}{' '}
-                <strong>{t('nine complete designs')}</strong>{' '}
-                {t('across the crossover range your drivers allow and keeps the best — the widest search it offers, because here you are not going to hand-tune one. Expect several minutes; you can watch each candidate come in, and cancel at any time.')}
-              </p>
-            )}
             {/* I-3 — WHAT THE GUIDED RUN IS ON ENGINE v2, AND WHAT IT COSTS.
               * The v1 sentence above describes a v1 scan ("nine complete
               * designs") and is wrong here in every particular: the v2 route
@@ -20593,7 +20395,7 @@ export default function App() {
               * and always has been (`fieldModeOf('')`); what was missing was
               * saying so, and saying what it costs in numbers that were
               * measured rather than in "several minutes". */}
-            {uiMode === 'guided' && engineV2Enabled && (
+            {uiMode === 'guided' && (
               <div className="sub v2-run-choice">
                 <p>
                   {t('One button. The app derives the crossover windows your measurements allow, builds a field of candidate designs inside them, tunes each one and judges it against what you stated on the previous step — then shows the shortlist that survived. You can watch each candidate come in, and cancel at any time.')}
@@ -20907,8 +20709,7 @@ export default function App() {
                 <span className="opt-group-cap">{t(V2_GROUP_HEADING[g])}</span>
                 {g === 'architecture' && (
                 <>
-                {engineV2Enabled && (
-                  <>
+                <>
                     {/* ---- H-2: WHAT THE DESIGN IS, before anything judges it ----
                       * Three fields and one statement: this loudspeaker's LOWEST
                       * way is driven by its own amplifier and a DSP, so the
@@ -21037,7 +20838,7 @@ export default function App() {
                       </>
                     )}
                   </>
-                )}
+                
                 </>
                 )}
                 {g === 'amplifier' && (
@@ -21099,8 +20900,7 @@ export default function App() {
                   />
                 {fieldBadge('dissipationWeight')}{appDefault('dissipationWeight')}
 </label>
-                {engineV2Enabled && (
-                  <>
+                <>
                     {/* ---- F2: the GATES (A4 M-A/M-B/M-C, spec A2 P2/P4) ----
                       * Every one of these is blank by default and blank means
                       * ABSENT, not zero and not a default: the gate is off,
@@ -21201,7 +21001,7 @@ export default function App() {
                     {fieldBadge('amplifierNominalLoadOhm')}
 </label>
                   </>
-                )}
+                
                 </>
                 )}
                 {g === 'protection' && (
@@ -21263,8 +21063,7 @@ export default function App() {
                   {t('Keep cone breakup ≥20 dB down')}
                 {fieldBadge('breakupGuard')}{appDefault('breakupGuard')}
 </label>
-                {engineV2Enabled && (
-                  <>
+                <>
                     <label title={t('M-C — the largest drive voltage on a driver’s own resonance, in dB relative to that way’s passband (so −18 means "at least 18 dB down"). Applies to every way the CIRCUIT high-passes, derived from the branch transfers rather than from a list of names. Empty = no limit.')}>
                       {t('Max drive on f_s dB')}
                       <input
@@ -21353,7 +21152,7 @@ export default function App() {
 </label>
 
                   </>
-                )}
+                
                 </>
                 )}
                 {g === 'crossover' && (
@@ -21493,8 +21292,7 @@ export default function App() {
                     </label>
                   </>
                 )}
-                {engineV2Enabled && (
-                  <>
+                <>
                     {/* V51 — the TOPOLOGY requirement on the lowest way. A
                       * choice, not a limit: it reaches the design and synthesis
                       * steps, which then place no pad there; a candidate that
@@ -21545,7 +21343,7 @@ export default function App() {
                     )}
 
                   </>
-                )}
+                
                 <label title={t('Pin the ACOUSTIC crossover. On Engine v2 this is the short way of writing the "Crossings you state" list (U-5b): centre ± margin in N steps is expanded into N stated positions, each of which gets a full chain run, the full gate evaluation and the full requirement evaluation — past the feasible window and past the chain budget, exactly as a frequency typed into that list. The positions it will use are printed below. Off = nothing is stated and the derived field is the whole field.')}>
                   <input
                     type="checkbox"
@@ -21947,8 +21745,8 @@ export default function App() {
                     {/* E-2 — a v1 default ('96') that the v2 route stopped
                       * reading at V49: marked, so it cannot pass for a v2
                       * input with a default. Unmarked on v1 (toggle invariant). */}
-                    {designLevelNote(engineV2Enabled) && (
-                      <span className="v2-warn" title={designLevelNote(engineV2Enabled) ?? ''}>
+                    {designLevelNote() && (
+                      <span className="v2-warn" title={designLevelNote() ?? ''}>
                         {' '}
                         ({t('v1 — not read by Engine v2 since V49')})
                       </span>
@@ -22077,8 +21875,7 @@ export default function App() {
                 </label>
                 </>
                 )}
-                {engineV2Enabled && (
-                  <>
+                <>
                     {/* ---- V50: BUILDABILITY — the parts on the schematic have
                       * to be buyable. Two gates: the watts in each resistor
                       * against the class it is built with (times the margin),
@@ -22159,7 +21956,7 @@ export default function App() {
                     {fieldBadge('resistorThermalPowerW')}
 </label>
                   </>
-                )}
+                
                 <label
                   onChangeCapture={fieldStamp('catalogSnap')}
                   style={{ opacity: hasImportedCatalog() ? 1 : 0.5 }}
@@ -22298,8 +22095,7 @@ export default function App() {
                     {t('amplitude corrects the room, driver integration does not — ripple target now {r} dB, phase target unchanged', { r: rippleTargetEff().toFixed(1) })}
 </span>
                 )}
-                {engineV2Enabled && (
-                  <>
+                <>
                     <label title={t('The SPL window you will accept, in ±dB against the target curve, judged peak-to-peak on the 1/6-octave-smoothed system response. Narrow features fall outside this judgement on purpose: narrow peaks are reported in their own column, narrow dips are forgiven. Empty = not asked; the value is still shown.')}>
                       {t('SPL window ±dB')}
                       <input
@@ -22435,8 +22231,7 @@ export default function App() {
                     </span>
 
                   </>
-                )}
-                {engineV2Enabled && (
+                
                 <details className="v2-more" style={{ flexBasis: '100%' }}>
                   <summary className="opt-group-cap">
                     {t(V2_GROUP_HEADING[g])} — {t(V2_MORE_HEADING)}
@@ -22459,7 +22254,7 @@ export default function App() {
 </label>
                   </div>
                 </details>
-                )}
+                
                 </>
                 )}
                 {g === 'run' && (
@@ -22501,7 +22296,6 @@ export default function App() {
                   {v1Legacy('errorSmoothOct')}
                 </label>
                 )}
-                {engineV2Enabled && (
                 <details className="v2-more" style={{ flexBasis: '100%' }}>
                   <summary className="opt-group-cap">
                     {t(V2_GROUP_HEADING[g])} — {t(V2_MORE_HEADING)}
@@ -22627,7 +22421,7 @@ export default function App() {
 </label>
                   </div>
                 </details>
-                )}
+                
                 </>
                 )}
                 {groupElsewhere(g)}
@@ -24103,8 +23897,7 @@ export default function App() {
                           wants at this moment: how many of the questions they were
                           asked went unanswered, and which. One line, and null when
                           everything was answered — "0 skipped" is noise. */}
-                      {engineV2Enabled &&
-                        (() => {
+                      {(() => {
                           const line = describeSkipped(v2GuidedValues);
                           return line ? <p className="sub v2-req-skipped">{line}</p> : null;
                         })()}
@@ -24566,7 +24359,7 @@ export default function App() {
                       (see TODO(F2c) below); a table with no gate column and no
                       stamp is already truthful, but silence about WHY invites the
                       reader to assume the gates ran and found nothing. */}
-                  {engineSelection.optimizer === 'v2' && chainScan && !v2Run && (
+                  {chainScan && !v2Run && (
                     <p className="sub">
                       {t('Engine v2 is on, but this scan ran on the v1 engine — so no gate judged these candidates.')}{' '}
                       {t('The gates run on the three-way scan; the two-way route is not wired to them yet.')}
@@ -24635,7 +24428,7 @@ export default function App() {
                    to its five labels, which is precisely what the comment on
                    `GUIDED_STEP_LABEL` warns against; the requirements step
                    would have been reachable from the bar and invisible here. */
-                const order = guidedStages(engineV2Enabled);
+                const order = guidedStages();
                 const next = order[order.findIndex((st) => st.tab === designTab) + 1];
                 if (!next) return null;
                 /* U-9 fase 3 — ONE primary button per screen: the requirements
@@ -25647,17 +25440,17 @@ export default function App() {
           absent. With the report deferred for a painted frame this block would
           otherwise render nothing at all, and on a restored project a missing
           Engine v2 panel reads as "v2 has nothing to say about this design". */}
-      {engineSelection.reporting && v2ReportDeferred && (
+      {v2ReportDeferred && (
         <div className="panel v2-panel">
           <div className="v2-head">
-            <h3>{engineSelection.label}</h3>
-            <div className="v2-stamp">{engineSelection.version}</div>
+            <h3>{ENGINE_V2_LABEL}</h3>
+            <div className="v2-stamp">{ENGINE_V2_VERSION}</div>
           </div>
           <p className="sub">{t('Solving… — the restored project is on screen; this panel fills when the report lands.')}</p>
         </div>
       )}
 
-      {engineSelection.reporting && engineV2Report && (
+      {engineV2Report && (
         engineV2Report.report ? (
           <EngineV2Panel
             report={engineV2Report.report}
@@ -25669,8 +25462,8 @@ export default function App() {
         ) : (
           <div className="panel v2-panel">
             <div className="v2-head">
-              <h3>{engineSelection.label}</h3>
-              <div className="v2-stamp">{engineSelection.version}</div>
+              <h3>{ENGINE_V2_LABEL}</h3>
+              <div className="v2-stamp">{ENGINE_V2_VERSION}</div>
             </div>
             <p className="v2-problem">
               {t('The v2 report could not be built: {msg}', { msg: engineV2Report.error ?? '' })}
@@ -25678,11 +25471,11 @@ export default function App() {
           </div>
         )
       )}
-      {engineSelection.reporting && !engineV2Report && (
+      {!engineV2Report && (
         <div className="panel v2-panel">
           <div className="v2-head">
-            <h3>{engineSelection.label}</h3>
-            <div className="v2-stamp">{engineSelection.version}</div>
+            <h3>{ENGINE_V2_LABEL}</h3>
+            <div className="v2-stamp">{ENGINE_V2_VERSION}</div>
           </div>
           <p className="v2-muted">
             {t('Load at least one driver measurement or impedance sweep — the v2 pass derives everything from the files, so with none there is nothing to derive.')}

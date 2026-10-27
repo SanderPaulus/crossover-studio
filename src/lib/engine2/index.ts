@@ -17,8 +17,7 @@
 export { ENGINE_V2_LABEL, ENGINE_V2_VERSION, ESTIMATOR_VERSIONS, estimatorFingerprint, estimatorVersion, stamp } from './version.ts';
 export type { EstimatorId, EstimatorStamp } from './version.ts';
 
-export { ENGINE_V1_ONLY, engineV2Mark, selectEngine } from './facade.ts';
-export type { EngineId, EngineSelection } from './facade.ts';
+export { engineV2Mark } from './facade.ts';
 
 export * from './constants.ts';
 export * from './util.ts';

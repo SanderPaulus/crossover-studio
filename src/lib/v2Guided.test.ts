@@ -62,7 +62,8 @@ const APP = readFileSync(join(HERE, '..', 'App.tsx'), 'utf-8');
 
 /** The guided requirements pane: everything the new tab renders. */
 const REQ_PANE = (() => {
-  const start = APP.indexOf("{designTab === 'requirements' && engineV2Enabled && (() => {");
+  // U-10 fase 3 — the `engineV2Enabled &&` guard went with the flag.
+  const start = APP.indexOf("{designTab === 'requirements' && (() => {");
   expect(start, 'the requirements pane is rendered').toBeGreaterThan(0);
   const end = APP.indexOf("{designTab === 'filters' && !result && (", start);
   expect(end).toBeGreaterThan(start);
@@ -300,25 +301,11 @@ describe('reading the project back per screen', () => {
  * ==================================================================== */
 
 describe('the route', () => {
-  it('with Engine v2 OFF it is the five steps guided always had, in order', () => {
-    expect(guidedStages(false).map((s) => s.tab)).toEqual([
-      'import',
-      'data',
-      'drivers',
-      'filters',
-      'network',
-    ]);
-    expect(guidedStages(false).map((s) => s.label)).toEqual([
-      'Your project',
-      'Your cabinet',
-      'Your drivers',
-      'Design it',
-      'Your build',
-    ]);
-  });
-
-  it('with Engine v2 ON the requirements step sits between the facts and the run', () => {
-    const on = guidedStages(true).map((s) => s.id);
+  /* U-10 fase 3 — REMOVED: "with Engine v2 OFF it is the five steps guided
+   * always had". It guarded the v1 guided walk (no requirements step), which
+   * went with the engine flag. */
+  it('the requirements step sits between the facts and the run', () => {
+    const on = guidedStages().map((s) => s.id);
     expect(on).toHaveLength(V2_GUIDED_STAGES.length);
     expect(on.indexOf('requirements')).toBe(on.indexOf('drivers') + 1);
     expect(on.indexOf('design')).toBe(on.indexOf('requirements') + 1);
@@ -355,9 +342,11 @@ describe('the route', () => {
     expect(V2_REQUIRED_BY_STAGE.requirements).toBeUndefined();
   });
 
-  it('the engine note is NULL on v1 — the toggle invariant, in words as well as bytes', () => {
-    expect(guidedEngineNote(false)).toBeNull();
-    expect(guidedEngineNote(true)).toContain('Engine v2');
+  /* U-10 fase 3 (V15 form) — WAS: the note is null on v1 (the toggle
+   * invariant in words). There is no v1 guided route any more. */
+  it('the engine note always says Engine v2 runs, and names the polarity rule', () => {
+    expect(guidedEngineNote()).toContain('Engine v2');
+    expect(guidedEngineNote()).toContain('textbook rule');
   });
 });
 
@@ -397,23 +386,20 @@ describe('what a run costs', () => {
  * ==================================================================== */
 
 describe('App.tsx walks this route', () => {
-  it('the requirements pane renders only under the v2 flag, and the tab is guarded', () => {
-    expect(APP).toContain("{designTab === 'requirements' && engineV2Enabled && (() => {");
-    /* Persisted like every other tab, so a session that left the browser
-       standing there and came back with the flag off must not land on a pane
-       that renders nothing. */
-    expect(APP).toContain(
-      "if (designTab === 'requirements' && !(uiMode === 'guided' && engineV2Enabled))",
-    );
+  /* U-10 fase 3 (V15) — WAS "only under the v2 flag"; the flag is gone, the
+   * tab is still guarded so a persisted tab outside guided never lands on it. */
+  it('the requirements pane renders, and the tab is guarded to guided mode', () => {
+    expect(APP).toContain("{designTab === 'requirements' && (() => {");
+    expect(APP).toContain("if (designTab === 'requirements' && uiMode !== 'guided')");
   });
 
   it('the step bar, the palette and the Next button all read ONE route', () => {
     /* A second copy of the route is how the palette becomes a second map —
        the warning on `GUIDED_STEP_LABEL` — and the new step would have been
        the first thing a copy lost. Three readers, one list. */
-    expect(APP).toContain('{guidedStages(engineV2Enabled).map((stage, i) => {');
-    expect(APP).toContain('? guidedStages(engineV2Enabled).map((st) => st.tab)');
-    expect(APP).toContain('const order = guidedStages(engineV2Enabled);');
+    expect(APP).toContain('{guidedStages().map((stage, i) => {');
+    expect(APP).toContain('? guidedStages().map((st) => st.tab)');
+    expect(APP).toContain('const order = guidedStages();');
     /* …and the five hard-coded labels the Next row carried are gone. */
     expect(APP).not.toContain("const labels: Record<(typeof order)[number], string> = {");
   });
@@ -482,19 +468,18 @@ describe('App.tsx walks this route', () => {
     expect(APP).toContain("localStorage.setItem('ads-v2-req-ix', String(clamped));");
   });
 
-  it('each step shows what Engine v2 needs from it, under the flag', () => {
-    expect(APP).toContain("{uiMode === 'guided' &&\n              engineV2Enabled &&");
+  it('each step shows what Engine v2 needs from it', () => {
+    expect(APP).toContain("{uiMode === 'guided' &&\n              (() => {\n                const stage = V2_GUIDED_STAGES");
     expect(APP).toContain('requiredRowsOfStage(stage.id)');
     expect(APP).toContain("{t('Engine v2 needs from this step')}");
   });
 
   it('the run step says the exploration is the standard, with the measured cost', () => {
-    expect(APP).toContain("{uiMode === 'guided' && engineV2Enabled && (");
     expect(APP).toContain("describeRunChoice('exploration', EXPLORATION_CHAIN_BUDGET)");
     expect(APP).toContain("describeRunChoice('full', EXPLORATION_CHAIN_BUDGET)");
-    /* …and the v1 sentence ("nine complete designs") no longer describes a v2
-       run: it is a v1 scan and wrong here in every particular. */
-    expect(APP).toContain("{uiMode === 'guided' && !engineV2Enabled && (");
+    /* U-10 fase 3 (V15) — WAS: the v1 sentence ("nine complete designs") sits
+       behind `!engineV2Enabled`. IS: it is gone with the v1 guided walk. */
+    expect(APP).not.toContain('nine complete designs');
   });
 
   it('the shortlist names the requirements that went unanswered', () => {
@@ -503,8 +488,8 @@ describe('App.tsx walks this route', () => {
     expect(shortlist).toContain("{t('Continue in Expert →')}");
   });
 
-  it('the mode switch says which engine is behind guided, and nothing on v1', () => {
-    expect(APP).toContain("m === 'guided' ? guidedEngineNote(engineV2Enabled) : null");
+  it('the mode switch says which engine is behind guided', () => {
+    expect(APP).toContain("m === 'guided' ? guidedEngineNote() : null");
   });
 });
 

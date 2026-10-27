@@ -207,7 +207,8 @@ describe('D-0 — the app is wired to it', () => {
   it('says the panel is coming instead of rendering nothing', () => {
     /* Anchored on the opening brace, so a block dead-coded with a `false &&`
        in front of the condition fails here rather than reading as present. */
-    expect(src).toMatch(/\{engineSelection\.reporting && v2ReportDeferred && \(/);
+    // U-10 fase 3 — `engineSelection.reporting &&` went with the flag.
+    expect(src).toMatch(/\{v2ReportDeferred && \(/);
     expect(src).toContain('Solving…');
   });
 

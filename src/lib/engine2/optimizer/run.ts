@@ -21,12 +21,8 @@
  * the dependency arrow only points this way, and `toggleRegression.test.ts`
  * still pins it.
  *
- * WHY THE FAÇADE IS A GUARD AND NOT A LABEL. `runV2Optimization` refuses to
- * run unless the selection it is handed says `optimizer: 'v2'`. That keeps
- * `EngineSelection.optimizer` load-bearing rather than decorative: there is
- * no path into this file that does not go through the flag, so "with the
- * toggle off the app is byte-identical" stays a statement about code that
- * cannot be reached rather than about code that chooses not to act.
+ * U-10 fase 3 — the `selection` guard that stood here went with the engine
+ * flag; the motor boundary is proved by `toggleRegression.test.ts`.
  */
 
 import type { Complex } from '../../complex.ts';
@@ -41,7 +37,6 @@ import {
   type NetOptimizeResult,
 } from '../../netOptimizer.ts';
 import { RUN_START_JITTER_DECADES } from '../constants.ts';
-import type { EngineSelection } from '../facade.ts';
 import {
   fingerprintComponents,
   fingerprintOf,
@@ -72,8 +67,6 @@ import {
 import { budgetSettingsKey, searchBoxFor, type BudgetSettings, type InvertedBound, type SearchBox } from './bounds.ts';
 
 export interface V2OptimizeInput {
-  /** The engine selection. Anything but `optimizer: 'v2'` is refused. */
-  selection: EngineSelection;
   /** The design the run starts from. */
   seedParts: readonly VxpPart[];
   grid: readonly number[];
@@ -161,7 +154,6 @@ export interface V2OptimizeResult {
   notes: string[];
 }
 
-export class EngineSelectionError extends Error {}
 
 /**
  * Nudge every free component value by a seeded amount, in log space.
@@ -232,14 +224,6 @@ function measurementKey(input: V2OptimizeInput): string {
 }
 
 export function runV2Optimization(input: V2OptimizeInput): V2OptimizeResult {
-  if (input.selection.optimizer !== 'v2') {
-    throw new EngineSelectionError(
-      'The v2 optimisation path was called with a selection that routes the optimiser to v1. ' +
-        'This is a guard, not an inconvenience: it is what keeps "engine v2 off = the app is ' +
-        'byte-identical" a statement about unreachable code (see facade.ts).',
-    );
-  }
-
   const gates = input.gates ?? {};
   const budgets = input.budgets ?? {};
   const determinism = resolveDeterminism(input.determinism);

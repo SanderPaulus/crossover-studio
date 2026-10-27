@@ -1,5 +1,21 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Chain3Input, Chain3Result } from './threeWayChain.ts';
+import type { Chain3Input } from './threeWayChain.ts';
+import type { V2ScanSettings, V2Chain3Item } from './optimClient.ts';
+
+/* U-10 fase 3 (V15 form) — WAS: these claims drove `runChain3Scan`, the v1
+ * scan. It is gone; the same bookkeeping (one pool, "stop and keep", a hard
+ * cancel) is `runScanV2`'s, so the claims now drive `runChain3ScanV2`. What
+ * they guard is unchanged: a stopped scan keeps what finished. */
+const V2: V2ScanSettings = {
+  gates: {},
+  budgets: {},
+  determinism: {},
+  designKey: 'test',
+  measurementKey: 'test',
+  tuningKey: 'test',
+} as V2ScanSettings;
+const items = (labels: string[]): V2Chain3Item[] =>
+  labels.map((label) => ({ input: { label } as unknown as Chain3Input }));
 
 /**
  * "Stop and keep what finished": the scan must resolve with the candidates
@@ -31,10 +47,9 @@ class FakeWorker {
  *  fields the client reads. */
 function complete(p: Posted, worker: FakeWorker) {
   const data = {
-    label: p.label,
-    zOk: true,
-    net: { evaluations: 100, after: { rippleDb: 1.5, phaseDeg: 9 } },
-  } as unknown as Chain3Result;
+    result: { label: p.label, zOk: true, net: { evaluations: 100, after: { rippleDb: 1.5, phaseDeg: 9 } } },
+    violation: null,
+  };
   worker.onmessage?.({ data: { id: p.id, kind: 'done', data } });
 }
 
@@ -57,12 +72,9 @@ describe('stopKeepingResults', () => {
         }
       },
     );
-    const { runChain3Scan, stopKeepingResults, scanStopped } = await import('./optimClient.ts');
+    const { runChain3ScanV2, stopKeepingResults, scanStopped } = await import('./optimClient.ts');
 
-    const inputs = ['a', 'b', 'c', 'd', 'e', 'f'].map(
-      (label) => ({ label }) as unknown as Chain3Input,
-    );
-    const scan = runChain3Scan(inputs);
+    const scan = runChain3ScanV2(items(['a', 'b', 'c', 'd', 'e', 'f']), V2);
     await flush();
 
     // Let three land, whatever the pool size on this machine happens to be.
@@ -78,9 +90,9 @@ describe('stopKeepingResults', () => {
     expect(done).toHaveLength(3);
 
     stopKeepingResults();
-    const results = await scan;
+    const results = (await scan).candidates;
 
-    expect(results.map((r) => r.label).sort()).toEqual(done.sort());
+    expect(results.map((r) => r.result.label).sort()).toEqual(done.sort());
     expect(scanStopped()).toBe(true);
     expect(terminated).toBeGreaterThan(0); // in-flight compute really stopped
     vi.unstubAllGlobals();
@@ -88,22 +100,20 @@ describe('stopKeepingResults', () => {
 
   it('resolves empty when nothing finished — the caller commits nothing', async () => {
     vi.stubGlobal('Worker', FakeWorker);
-    const { runChain3Scan, stopKeepingResults } = await import('./optimClient.ts');
-    const inputs = ['x', 'y'].map((label) => ({ label }) as unknown as Chain3Input);
-    const scan = runChain3Scan(inputs);
+    const { runChain3ScanV2, stopKeepingResults } = await import('./optimClient.ts');
+    const scan = runChain3ScanV2(items(['x', 'y']), V2);
     await flush();
     stopKeepingResults();
-    expect(await scan).toEqual([]);
+    expect((await scan).candidates).toEqual([]);
     vi.unstubAllGlobals();
   });
 
   it('a hard cancel still rejects — the two must not be confused', async () => {
     vi.stubGlobal('Worker', FakeWorker);
-    const { runChain3Scan, cancelOptimTasks, CancelledError, scanStopped } = await import(
+    const { runChain3ScanV2, cancelOptimTasks, CancelledError, scanStopped } = await import(
       './optimClient.ts'
     );
-    const inputs = ['p'].map((label) => ({ label }) as unknown as Chain3Input);
-    const scan = runChain3Scan(inputs);
+    const scan = runChain3ScanV2(items(['p']), V2);
     await flush();
     cancelOptimTasks();
     await expect(scan).rejects.toBeInstanceOf(CancelledError);

@@ -167,9 +167,9 @@ export const requiredRowsOfStage = (stage: string): readonly V2InputRow[] =>
     .map((id) => V2_INPUT_REGISTER.find((r) => r.id === id))
     .filter((r): r is V2InputRow => r !== undefined);
 
-/** The steps of the guided route, with the requirements step only on v2. */
-export const guidedStages = (engineV2Enabled: boolean): readonly V2GuidedStage[] =>
-  engineV2Enabled ? V2_GUIDED_STAGES : V2_GUIDED_STAGES.filter((s) => s.id !== 'requirements');
+/** The steps of the guided route. U-10 fase 3: the v1 walk (without the
+ * requirements step) went with the engine flag. */
+export const guidedStages = (): readonly V2GuidedStage[] => V2_GUIDED_STAGES;
 
 /**
  * Which engine is behind the mode, said on the mode switch itself.
@@ -186,9 +186,8 @@ export const guidedStages = (engineV2Enabled: boolean): readonly V2GuidedStage[]
  * named in the entry: a guided user with the flag off is told nothing about
  * v2 from here, and finds it where it has always lived.
  */
-export const guidedEngineNote = (engineV2Enabled: boolean): string | null =>
-  engineV2Enabled
-    ? 'Engine v2 is on: guided asks what the design must meet, one requirement at a time, and judges the run against your answers. ' +
+export const guidedEngineNote = (): string =>
+  'Engine v2 is on: guided asks what the design must meet, one requirement at a time, and judges the run against your answers. ' +
       /* H-5 — THE ONE DESIGN RULE GUIDED STATES WITHOUT ASKING, and it is
        * stated for that reason. Every other sentence on this path is a
        * QUESTION; the polarity is not asked because the textbook answers it,
@@ -197,8 +196,7 @@ export const guidedEngineNote = (engineV2Enabled: boolean): string | null =>
        * closed door. */
       'The polarity of each handover is not asked: it follows the textbook rule of the alignment ' +
       '(LR2 one reversal, LR4 none), and every candidate is designed at it. Building the mirrored ' +
-      'arm beside it is the “Polarity arms” choice in expert mode.'
-    : null;
+      'arm beside it is the “Polarity arms” choice in expert mode.';
 
 /* ==================================================================== *
  * 2 — THE REQUIREMENT SCREENS

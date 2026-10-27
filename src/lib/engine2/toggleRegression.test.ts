@@ -42,8 +42,7 @@
  *      boundary is not only "nothing outside" but "these, by name, exist and
  *      import nothing", which a later allow-list widening cannot slip past.
  * The third — the flag's own semantics — and the F3b/F3c guards that surfaces
- * hang off the flag still hold while the flag exists, and go WITH the flag in
- * U-10 fase 3, each by name in that commit. The two named v1 routes (the
+ * hang off the flag went WITH the flag in U-10 fase 3, each by name below. The two named v1 routes (the
  * two-way without impedances and the solo design) are pinned by
  * `v2RouteRefusal.test.ts`, which is where their routing is decided.
  *
@@ -60,7 +59,6 @@ import { logspace, resample } from '../dsp.ts';
 import { fromPolar } from '../complex.ts';
 import type { VxpPart } from '../parsers/vxp.ts';
 import { optimizeNetworkValues } from '../netOptimizer.ts';
-import { ENGINE_V1_ONLY, selectEngine } from './facade.ts';
 
 const LIB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(LIB, '..');
@@ -314,114 +312,15 @@ describe('engine v2 toggle — off means unchanged (since U-10: the motor bounda
    * as `noAppWideFloor.test.ts` and the import scan above — a review rule does
    * not survive; a test does.
    * ------------------------------------------------------------------ */
-  /* U-10 — these guards go WITH the flag in fase 3: they pin that a surface
-   * hangs off `engineSelection.reporting`, a guard that disappears with it. */
-  describe('F3b - the new dialog and panel surfaces are behind the flag', () => {
-    const app = () => readFileSync(join(SRC, 'App.tsx'), 'utf-8');
-
-    it('the window annotation, the take-over and the estimate all hang off `v2Windows`', () => {
-      const text = app();
-      // The one gate: `v2Windows` is null unless the selection says reporting.
-      expect(text).toMatch(
-        /const v2Windows = useMemo\([\s\S]{0,400}?if \(!engineSelection\.reporting\) return null;/,
-      );
-      // Every consumer reads it, and none of them reaches past it.
-      expect(text).toContain('const v2WindowPairs: XoWindowPair[] | null = !v2Windows');
-      expect(text).toContain('if (v2Windows && !runOpts.acknowledgedWindowNotice)');
-      // `v2Advice` and the take-over both refuse without a window, so a render
-      // path that slipped past the guard would still produce nothing.
-      expect(text).toMatch(/const w = v2Windows\?\.\[side\];\s*\n\s*if \(!w\) return null;/);
-      // The markup is the component's, and App does not spell the class
-      // itself - so the runtime assert in `xoWindowAnnotation.test.tsx` covers
-      // every path that can draw it.
-      expect(text).toContain('<XoWindowAnnotation');
-      expect(text).not.toContain("'v2-xo-window'");
-      expect(text).not.toContain('v2-xo-window"');
-    });
-
-    /* F3c added two more surfaces to the same dialog: the recommended band
-     * under each window (with a second take-over button) and the smoothing
-     * consistency line. Both are v2 reporting, so both must vanish with the
-     * flag — and both must vanish through a value that is NULL rather than
-     * through a `&&` somewhere in the markup, because only the first kind is
-     * provable by the runtime assert in `xoWindowAnnotation.test.tsx`. */
-    it('F3c - the recommended band and the smoothing line hang off the same flag', () => {
-      const text = app();
-      // The band is derived from the WINDOW, so it is null exactly when the
-      // window is - the same guard, not a parallel one that could drift.
-      expect(text).toMatch(
-        /const v2Recommended = \(side: 'low' \| 'high'\): RecommendedBandResult \| null => \{\s*\n\s*const w = v2Windows\?\.\[side\];\s*\n\s*if \(!w\) return null;/,
-      );
-      // The smoothing line reads a v1 preference, so it carries its own copy
-      // of the one gate rather than borrowing a window's.
-      expect(text).toMatch(
-        /const v2Smoothing: SmoothingNotice \| null = !engineSelection\.reporting\s*\n\s*\? null/,
-      );
-      // The take-over refuses without a band, so a render path that slipped
-      // past the guard would still write nothing into the fields.
-      expect(text).toContain('const band = v2Recommended(side)?.effectiveHz[segment];');
-      expect(text).toContain('if (!band) return;');
-      // The markup stays the component's: App spells neither new class, so the
-      // runtime assert covers every path that can draw them.
-      expect(text).not.toContain('v2-xo-recommended');
-      expect(text).not.toContain('v2-smoothing-note');
-    });
-
-    it('the pre-start notice can only be set from inside that guard', () => {
-      const text = app();
-      /* E-3b — COUNTED PER KIND INSTEAD OF IN TOTAL, and each ARM is checked
-       * against the guard that must precede it.
-       *
-       * The claim has always been "nothing arms this notice outside the window
-       * check"; the assert was a total of three call sites, which held while
-       * there was one scan route that could arm it. E-3b gives the two-way
-       * scan the same door, so there are two arms and two clears beside them —
-       * and a total that moves with the number of routes is a number somebody
-       * bumps rather than a claim somebody checks. The shape below cannot be
-       * satisfied by adding a route that arms the notice unguarded. */
-      const guards = [...text.matchAll(/if \(v2Windows && !runOpts\.acknowledgedWindowNotice\)/g)].map(
-        (m) => m.index!,
-      );
-      const arms = [...text.matchAll(/setV2PreStart\(\{/g)].map((m) => m.index!);
-      const clears = [...text.matchAll(/setV2PreStart\(null\)/g)].map((m) => m.index!);
-      // One guard and one arm per scan route (two-way and three-way), and one
-      // clear beside each arm plus the Cancel button that dismisses it.
-      expect(guards.length).toBe(2);
-      expect(arms.length).toBe(2);
-      expect(clears.length).toBe(3);
-      expect(arms.length + clears.length).toBe([...text.matchAll(/setV2PreStart\(/g)].length);
-      // EVERY arm sits after a guard, and no two arms share one: the nearest
-      // preceding guard of arm n is guard n.
-      for (let i = 0; i < arms.length; i++) {
-        const nearest = guards.filter((g) => g < arms[i]).pop();
-        expect(nearest).toBe(guards[i]);
-      }
-      // ...and it renders behind its own null check, so an unset notice draws
-      // nothing at all.
-      expect(text).toContain('{v2PreStart && (');
-    });
-
-    it('the A5a measurement form is behind `engineSelection.reporting`', () => {
-      const text = app();
-      const form = text.indexOf("t('Engine v2 — measurement')");
-      expect(form).toBeGreaterThan(0);
-      const guard = text.lastIndexOf('{engineSelection.reporting && (', form);
-      expect(guard).toBeGreaterThan(0);
-      // The guard is the nearest opening before the form, and nothing closes
-      // between them - a crude proximity check, but it catches the one way
-      // this breaks: someone moving the fields out of the block.
-      expect(form - guard).toBeLessThan(1200);
-    });
-
-    it('this guard is reading the file it thinks it is', () => {
-      // A scan that quietly read an empty string would keep every assertion
-      // above green.
-      const text = app();
-      expect(text.length).toBeGreaterThan(100000);
-      expect(text).toContain('engineSelection');
-    });
-  });
-
+  /* U-10 fase 3 — REMOVED WITH THE FLAG, by name: the F3b/F3c guards
+   *   · "the window annotation, the take-over and the estimate all hang off `v2Windows`"
+   *   · "F3c - the recommended band and the smoothing line hang off the same flag"
+   *   · "the pre-start notice can only be set from inside that guard"
+   *   · "the A5a measurement form is behind `engineSelection.reporting`"
+   *   · "this guard is reading the file it thinks it is"
+   * They pinned that a v2 surface hangs off `engineSelection.reporting`, a guard
+   * that no longer exists: those surfaces now render on every run. What they
+   * protected — that the v1 app was unchanged — has no subject without the flag. */
   it('the import scan actually walks the tree', () => {
     // A walker that quietly found nothing would keep the test above green.
     const files = walk(SRC).map((f) => relative(SRC, f));
@@ -437,19 +336,6 @@ describe('engine v2 toggle — off means unchanged (since U-10: the motor bounda
     expect(scanned).toContain('App.tsx');
   });
 
-  /* U-10 — goes WITH the flag in fase 3 (by name in that commit): it pins the
-   * semantics of a selection the interface can no longer make. */
-  it('absent, false and off are the same selection; only ON routes the optimiser to v2', () => {
-    expect(selectEngine(undefined)).toEqual(ENGINE_V1_ONLY);
-    expect(selectEngine(false)).toEqual(ENGINE_V1_ONLY);
-    expect(selectEngine(false).reporting).toBe(false);
-    expect(selectEngine(false).optimizer).toBe('v1');
-    const on = selectEngine(true);
-    expect(on.reporting).toBe(true);
-    // F1 pinned this to 'v1' because F1 shipped no optimiser change. F2 ships
-    // the v2 optimisation path, and this field is the guard on it: the claim
-    // that matters — off is v1 — is asserted above and is unchanged.
-    expect(on.optimizer).toBe('v2');
-    expect(on.version).toBe(ENGINE_V1_ONLY.version);
-  });
+  /* U-10 fase 3 — REMOVED WITH THE FLAG: "absent, false and off are the same
+   * selection; only ON routes the optimiser to v2" (`selectEngine` is gone). */
 });

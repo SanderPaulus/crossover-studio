@@ -49,13 +49,11 @@ import type { NetOptimizeResult } from './netOptimizer.ts';
 import type { Chain3Input, Chain3Result } from './threeWayChain.ts';
 import type { SoloChainInput, SoloChainResult } from './soloOptimizer.ts';
 import {
-  followupVariantsFor,
   type ChainInput,
   type ChainResult,
   type ChainStageProgress,
 } from './designChain.ts';
 import { customCatalogParts, customSeries, disabledSeries } from './catalog.ts';
-import { meetsAmpFloor } from './impedanceFloor.ts';
 /* F2b — this file is on the engine2 allow-list; see the note at the top and
  * the reason recorded in `toggleRegression.test.ts`. */
 import {
@@ -243,7 +241,7 @@ function catalogPayload(): CatalogPayload {
 
 function run<T>(
   slot: number,
-  kind: 'chainOne' | 'chain3One' | 'vfRounds' | 'netOptimize' | 'soloChain' | 'minimize',
+  kind: 'vfRounds' | 'netOptimize' | 'soloChain' | 'minimize',
   payload: unknown,
   onProgress?: (d: unknown) => void,
 ): Promise<T> {
@@ -253,23 +251,6 @@ function run<T>(
     pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onProgress });
     wk.postMessage({ id, kind, catalog: catalogPayload(), payload });
   });
-}
-
-export interface ChainScanInput {
-  base: Omit<ChainInput, 'xoRange'>;
-  variants: { label: string; xoRange?: [number, number] }[];
-  targets?: { rippleDb: number; phaseDeg: number };
-}
-
-export interface ChainScanResult {
-  results: ChainResult[];
-  totalRounds: number;
-  totalSims: number;
-  /** The designer pressed "stop and use what finished" — `results` is the
-   *  partial field, not the whole scan. */
-  stoppedEarly: boolean;
-  /** How many candidates the scan set out to run. */
-  requested: number;
 }
 
 /** Aggregated live view over concurrently running candidates. */
@@ -302,191 +283,9 @@ const stageText = (p: ChainOneProgress): string =>
         ? `tune (${p.detail})`
         : 'tune';
 
-/**
- * Crossover scan over the worker pool. Candidates run CONCURRENTLY (one per
- * worker, up to cores−1); the truly-free single-candidate run keeps its
- * rescue semantics: run first, and only when it misses the staged targets
- * append the pinned follow-ups (those then run in parallel).
- */
-export function runChainScan(
-  input: ChainScanInput,
-  onProgress?: (d: ScanProgress) => void,
-): Promise<ChainScanResult> {
-  stoppedEarly = false;
-  const size = poolSize();
-  const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
-  let lastRipple: number | undefined;
-  let lastPhase: number | undefined;
-  // THROTTLED (trailing, ~12/s): four workers burst progress messages, and
-  // every emit re-renders the whole app under a blurred overlay — unthrottled
-  // bursts caused visible paint stutter ("flikkeren"). The timer reads the
-  // CURRENT state map when it fires, so the last update is never lost.
-  let emitQueued = false;
-  const emit = () => {
-    if (!onProgress || emitQueued) return;
-    emitQueued = true;
-    setTimeout(() => {
-      emitQueued = false;
-      let evals = 0;
-      let done = 0;
-      const items: { label: string; text: string; done: boolean; warn?: string }[] = [];
-      for (const [label, st] of state) {
-        evals += st.evals;
-        if (st.done) done++;
-        items.push({ label, text: st.text, done: st.done, warn: st.warn });
-      }
-      onProgress({ round: done, evals, rippleDb: lastRipple, phaseDeg: lastPhase, items });
-    }, 80);
-  };
-  const runOne = (v: { label: string; xoRange?: [number, number] }, slot: number) => {
-    state.set(v.label, { evals: 0, text: 'starting', done: false });
-    emit();
-    return run<ChainResult>(
-      slot,
-      'chainOne',
-      { input: { ...input.base, xoRange: v.xoRange }, label: v.label },
-      (d) => {
-        const p = d as ChainOneProgress;
-        const st = state.get(v.label);
-        if (!st) return;
-        st.evals = p.evals;
-        st.text = stageText(p);
-        if (p.rippleDb !== undefined) lastRipple = p.rippleDb;
-        if (p.phaseDeg !== undefined) lastPhase = p.phaseDeg;
-        emit();
-      },
-    ).then((r) => {
-      const st = state.get(v.label);
-      if (st) {
-        st.evals = r.evaluations;
-        st.text = `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
-        st.done = true;
-      }
-      // Same live warning the three-way scan shows: a candidate whose
-      // amplifier load or delivered handover failed is flagged while it
-      // lands, not only in the final table.
-      //
-      // The floor is the one the DESIGNER stated, via the same single rule the
-      // ranking and the scan table use. This badge used to carry its own
-      // hard-coded 2.5 Ω instead, which meant it could flag a candidate the
-      // final table then passed — and it judged at all even when no amplifier
-      // had been named. No rating stated = no badge, same as everywhere else.
-      const st2 = state.get(v.label);
-      if (st2) {
-        st2.warn =
-          !r.zOk || !meetsAmpFloor(r.zMinOhm, input.base.settings.ampMinLoadOhm)
-            ? '⚠Z'
-            : r.xoWindowOk === false
-              ? '⚠xo'
-              : undefined;
-      }
-      lastRipple = r.net.after.rippleDb;
-      lastPhase = r.net.after.phaseDeg;
-      emit();
-      return r;
-    });
-  };
-  /* A candidate that was killed by "stop and keep" is not a failure — it just
-   * has no result. Drop it and let the finished ones through. */
-  const runOneOrDropped = (v: { label: string; xoRange?: [number, number] }, slot: number) =>
-    runOne(v, slot).catch((e: unknown) => {
-      if (e instanceof StoppedEarlyError) return null;
-      throw e;
-    });
-
-  const finish = (results: (ChainResult | null | undefined)[]): ChainScanResult => {
-    const done = results.filter((r): r is ChainResult => !!r);
-    return {
-      results: done,
-      totalRounds: done.reduce((a, r) => a + r.rounds, 0),
-      totalSims: done.reduce((a, r) => a + r.evaluations, 0),
-      stoppedEarly,
-      requested: input.variants.length,
-    };
-  };
-
-  const vs = input.variants;
-  // Truly-free single run with rescue semantics (see designChain doc).
-  if (vs.length === 1 && !vs[0].xoRange && input.targets) {
-    const targets = input.targets;
-    return runOneOrDropped(vs[0], 0).then((first) => {
-      if (!first) return finish([]);
-      const met =
-        first.net.after.rippleDb <= targets.rippleDb && first.net.after.phaseDeg <= targets.phaseDeg;
-      if (met || !first.net.after.xoHz || stoppedEarly) return finish([first]);
-      const follow = followupVariantsFor(first.net.after.xoHz);
-      return runPooled(
-        follow,
-        size,
-        (v, slot) => runOneOrDropped(v, slot),
-        () => stoppedEarly,
-      ).then((rest) => finish([first, ...rest]));
-    });
-  }
-  // Mark every candidate queued up front so the progress card lists them all.
-  for (const v of vs) state.set(v.label, { evals: 0, text: 'queued', done: false });
-  return runPooled(vs, size, (v, slot) => runOneOrDropped(v, slot), () => stoppedEarly).then(finish);
-}
-
-/** 3-way 2D crossover scan (trede 4c): every (low, high) candidate runs a
- *  full chain concurrently over the pool; same throttled aggregate progress
- *  as the 2-way scan. No rescue semantics — the 2D grid IS the competition. */
-export function runChain3Scan(
-  inputs: Chain3Input[],
-  onProgress?: (d: ScanProgress) => void,
-): Promise<Chain3Result[]> {
-  stoppedEarly = false;
-  const size = poolSize();
-  const state = new Map<string, { evals: number; text: string; done: boolean; warn?: string }>();
-  let emitQueued = false;
-  const emit = () => {
-    if (!onProgress || emitQueued) return;
-    emitQueued = true;
-    setTimeout(() => {
-      emitQueued = false;
-      let evals = 0;
-      let done = 0;
-      const rows: { label: string; text: string; done: boolean; warn?: string }[] = [];
-      for (const [label, st] of state) {
-        evals += st.evals;
-        if (st.done) done++;
-        rows.push({ label, text: st.text, done: st.done, warn: st.warn });
-      }
-      onProgress({ round: done, evals, items: rows });
-    }, 80);
-  };
-  for (const input of inputs) state.set(input.label, { evals: 0, text: 'queued', done: false });
-  emit();
-  return runPooled(inputs, size, (input, slot) => {
-      const st0 = state.get(input.label);
-      if (st0) st0.text = 'starting';
-      emit();
-      return run<Chain3Result>(slot, 'chain3One', { input }, (d) => {
-        const p = d as ChainOneProgress;
-        const st = state.get(input.label);
-        if (!st) return;
-        // Live evaluation count from the tuner's heartbeat — the only proof
-        // of life a long prune sweep gives.
-        if (p.evals > st.evals) st.evals = p.evals;
-        st.text = stageText(p);
-        emit();
-      }).then((r) => {
-        const st = state.get(input.label);
-        if (st) {
-          st.evals = r.net.evaluations;
-          st.text = `✓ ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
-          st.warn = r.zOk ? undefined : '⚠Z';
-          st.done = true;
-        }
-        emit();
-        return r;
-      }).catch((e: unknown) => {
-        // Killed by "stop and keep": no result, not a failure (see runChainScan).
-        if (e instanceof StoppedEarlyError) return null;
-        throw e;
-      });
-  }, () => stoppedEarly).then((rs) => rs.filter((r): r is Chain3Result => !!r));
-}
+/* U-10 fase 3 — the v1 scans (`runChainScan`, `runChain3Scan`) and their
+ * worker tasks (`chainOne`, `chain3One`) are gone: since U-10 fase 1 no UI route
+ * reaches them, and every scan goes through `runScanV2` below. */
 
 /* ================================================================== *
  * F2b — the v2 scan route

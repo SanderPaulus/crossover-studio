@@ -1960,9 +1960,8 @@ const V1_LEGACY: readonly V2InputRowDef[] = [
      * before the register existed and `v2Settings.test.ts` pins both the
      * function and its call site in `App.tsx`; re-typing the words here would
      * be a second copy that can drift. So the drawer and the field say the
-     * same thing because they read the same function. `designLevelNote(true)`
-     * is non-null by construction — it returns null only on the v1 route. */
-    v1Note: designLevelNote(true)!,
+     * same thing because they read the same function. */
+    v1Note: designLevelNote(),
   },
   {
     id: 'v1Thresholds', // #126
@@ -2296,8 +2295,8 @@ export const V2_DEPENDENT_CONTROLS: readonly V2DependentControl[] = Object.freez
   },
 ]);
 
-export const v1NoteFor = (id: string, engineV2Enabled: boolean): string | null => {
-  if (!engineV2Enabled) return null;
+/** U-10 fase 3 — no flag argument any more: the app always runs v2. */
+export const v1NoteFor = (id: string): string | null => {
   return V2_INPUT_REGISTER.find((r) => r.id === id && r.cls === 'v1-legacy')?.v1Note ?? null;
 };
 

@@ -19,7 +19,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { selectEngine } from '../facade.ts';
 import {
   fingerprintComponents,
   fingerprintOf,
@@ -30,10 +29,9 @@ import {
 } from './determinism.ts';
 import { measurementFactsKey, type MeasurementFactsPayload } from './measurementFacts.ts';
 import { DEFAULT_RUN_SEED, DEFAULT_RUN_STARTS } from '../constants.ts';
-import { runV2Optimization, EngineSelectionError, type V2OptimizeResult } from './run.ts';
+import { runV2Optimization, type V2OptimizeResult } from './run.ts';
 import { v2DriverZ, v2GateReference, v2Responses, v2SeedParts, V2_GRID } from './v2.fixture.ts';
 
-const ON = selectEngine(true);
 const reference = v2GateReference();
 const { wBase, tBase } = v2Responses();
 const driverZ = v2DriverZ();
@@ -41,7 +39,6 @@ const driverZ = v2DriverZ();
 /** A full v2 run at a given seed. Small budget: this test is about identity. */
 function run(seed: number, starts = 2): V2OptimizeResult {
   return runV2Optimization({
-    selection: ON,
     seedParts: v2SeedParts(),
     grid: V2_GRID,
     wBase,
@@ -81,21 +78,10 @@ function serialise(r: V2OptimizeResult): string {
 }
 
 describe('A5e.4 - the v2 optimisation path is deterministic', () => {
-  it('the facade is a GUARD: the v2 path refuses to run on a v1 selection', () => {
-    expect(() =>
-      runV2Optimization({
-        selection: selectEngine(false),
-        seedParts: v2SeedParts(),
-        grid: V2_GRID,
-        wBase,
-        tBase,
-        driverZ,
-        adjust: { offsetMm: 0, trimDb: 0, inverted: false },
-        gateReference: reference,
-      }),
-    ).toThrow(EngineSelectionError);
-  });
-
+  /* U-10 fase 3 — REMOVED: "the facade is a GUARD: the v2 path refuses to run
+   * on a v1 selection". It guarded the `selection` parameter, which went with
+   * the engine flag; the boundary it served is the motor-boundary invariant
+   * (`toggleRegression.test.ts`). */
   it('same input, same seed: two runs are byte-identical', () => {
     const a = serialise(run(4242));
     const b = serialise(run(4242));
@@ -142,7 +128,6 @@ describe('A5e.4 - the v2 optimisation path is deterministic', () => {
     // fewer evaluations, or it is not a budget.
     const small = run(4242, 1);
     const large = runV2Optimization({
-      selection: ON,
       seedParts: v2SeedParts(),
       grid: V2_GRID,
       wBase,
