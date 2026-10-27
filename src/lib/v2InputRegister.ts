@@ -1887,63 +1887,19 @@ const U9_ROWS: readonly V2InputRowDef[] = [
 
 const V1_LEGACY: readonly V2InputRowDef[] = [
   {
-    id: 'errorSmoothOct',
-    label: 'Error smoothing',
-    form: 'Filters → Goals & weighting',
-    travels:
-      'settings.errorSmoothOct → OVERWRITTEN by the candidate, which states SEARCH_SMOOTHING_OCTAVES ' +
-      'unconditionally (declareCandidateChoices) and, on the two-way route, writes it back into the ' +
-      'chain settings (withDeclaredSearchSmoothing)',
-    cls: 'v1-legacy',
-    effect: 'niets',
-    emptyMeans: 'not applicable: the v2 route states its own width whatever this holds.',
-    source: 'choice',
-    v1Note:
-      'v1 — not read by Engine v2 since V38-fix: the candidate states the search-smoothing width ' +
-      'itself (0 — the summed curve every judgement reads). It is read only in the fallback where ' +
-      'no A5d.3 window could be derived and no declaration travels.',
-  },
-  {
     id: 'hpLpPref',
     label: 'HP/LP preference (low xo / high xo)',
-    form: 'Filters → Filter shape',
+    form: 'no control since U-10 (carried in the project file only)',
     travels:
-      'settings.structureLow/structureHigh → OVERRIDDEN per candidate by the alignment A5d.3 ' +
-      'derived (chainInputFor: alignmentOf(i) ?? settings.structureLow)',
+      'U-10 fase 3 — no longer state: a project that holds it carries it unread to the next save ' +
+      '(B-4.3); every candidate states its own alignment, and the virtual-filter exception runs on auto',
     cls: 'v1-legacy',
     effect: 'niets',
     emptyMeans: 'not applicable: the candidate brings its own alignment and order.',
     source: 'choice',
     v1Note:
       'v1 — not read by Engine v2 since F4d: the candidate field derives the alignment and the ' +
-      'order per handover, and the candidate overrides this. It applies only in the fallback where ' +
-      'no A5d.3 window could be derived.',
-  },
-  {
-    id: 'scan3Mode',
-    label: 'Scan strategy',
-    form: 'Filters → Crossover',
-    travels: 'skipped on the v2 route, with a note in the run notes',
-    cls: 'v1-legacy',
-    effect: 'niets',
-    emptyMeans: 'not applicable.',
-    source: 'choice',
-    v1Note:
-      'v1 — not read by Engine v2: the axis-by-axis sweep is a v1 way of GENERATING candidates, ' +
-      'and on the v2 route the field comes from A5d. The run says so out loud when it skips it.',
-  },
-  {
-    id: 'bomCapEur',
-    label: 'BOM cap per channel',
-    form: 'Filters → Targets',
-    travels: 'rankChain3Results → the v1 scan TABLE only; it reaches no gate and no shortlist',
-    cls: 'v1-legacy',
-    effect: 'niets',
-    emptyMeans: 'not applicable to the shortlist.',
-    source: 'choice',
-    v1Note:
-      'v1 — not read by Engine v2’s shortlist: it ordered the v1 scan table beside it, which is no ' +
-      'longer shown (v1-uitfasering (B-2)). No v2 requirement, gate or budget reads a price.',
+      'order per handover. Since U-10 it is carried in the project file and read by nothing.',
   },
   {
     id: 'excursionSpl',
@@ -2061,7 +2017,6 @@ const GROUP_OF: Readonly<Record<string, V2FieldGroup>> = Object.freeze({
   'xoScanSteps': 'crossover',
   'xo3Steps': 'crossover',
   'hpLpPref': 'crossover',
-  'scan3Mode': 'crossover',
   'diWeight': 'crossover',
   'eqBands': 'crossover',
   'synthMode': 'crossover',
@@ -2090,7 +2045,6 @@ const GROUP_OF: Readonly<Record<string, V2FieldGroup>> = Object.freeze({
   'networkEditor': 'buildability',
   'partLock': 'buildability',
   'simDisplay': 'buildability',
-  'bomCapEur': 'buildability',
   // voicing
   'targetCurve': 'voicing',
   'plateauDepthDb': 'voicing',
@@ -2109,7 +2063,6 @@ const GROUP_OF: Readonly<Record<string, V2FieldGroup>> = Object.freeze({
   'fieldMode': 'run',
   'polarityArms': 'run',
   'statedCrossings': 'run',
-  'errorSmoothOct': 'run',
   'phasePriority': 'run',
   'viewFmax': 'run',
   'viewFmin': 'run',
@@ -2224,7 +2177,9 @@ export const rendersRow = (id: string): boolean => {
  * nobody can explain any more is as dead as knobs without their table, so the
  * two go together. Since B-2 both rows are `niets`, and this is false.
  */
-export const v1ReadingShown = (): boolean => rendersRow('bomCapEur') && rendersRow('v1Thresholds');
+/* U-10 fase 3 — the v1 ranking and the BOM cap are gone, so the v1 reading has
+ * nothing left to show; kept as the one switch the hidden table hangs off. */
+export const v1ReadingShown = (): boolean => false;
 
 /** U-9 — the rows that are never rendered (Sander's approval, 25-10-2026). */
 export const V2_NIETS_ROWS: readonly string[] = Object.freeze(
@@ -2497,15 +2452,12 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'dirWeight', form: 'v2-panel', control: 'value={dirWeight}' },
   { row: 'powerMetric', form: 'v2-panel', control: 'value={powerMetric}' },
   { row: 'powerMetric', form: 'v2-panel', control: 'value={powerFoldWeight}' },
-  { row: 'errorSmoothOct', form: 'v2-panel', control: 'value={String(errorSmoothOct)}' },
   { row: 'rSourceLimit', form: 'v2-panel', control: 'value={rSourceLimitOhm}' },
   { row: 'rSourceDisq', form: 'v2-panel', control: 'value={rSourceDisqOhm}' },
   { row: 'ampMinLoadOhm', form: 'v2-panel', control: "value={ampMinLoadOhm ?? ''}" },
   { row: 'dissipationWeight', form: 'v2-panel', control: 'value={dissipationWeight}' },
   { row: 'diWeight', form: 'v2-panel', control: 'value={diWeight}' },
   { row: 'eqBands', form: 'v2-panel', control: 'value={vfEqBands}' },
-  { row: 'hpLpPref', form: 'v2-panel', control: 'value={hpLpPrefLow}' },
-  { row: 'hpLpPref', form: 'v2-panel', control: 'value={hpLpPref}' },
   { row: 'acSlopeMid', form: 'v2-panel', control: 'value={acSlopeMid}' },
   { row: 'acSlopeTweeter', form: 'v2-panel', control: 'value={acSlopeTweeter}' },
   { row: 'acSlopeWoofer', form: 'v2-panel', control: 'value={acSlopeWoofer}' },
@@ -2516,7 +2468,6 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'roomCorrection', form: 'v2-panel', control: 'checked={roomCorrection}' },
   { row: 'roomCorrection', form: 'v2-panel', control: 'value={roomRippleDb}' },
   { row: 'costWeight', form: 'v2-panel', control: 'value={costWeight}' },
-  { row: 'bomCapEur', form: 'v2-panel', control: 'value={bomCapEur}' },
   { row: 'breakupGuard', form: 'v2-panel', control: 'checked={breakupGuard}' },
   { row: 'catalogSnap', form: 'v2-panel', control: 'checked={catalogSnap && hasImportedCatalog()}' },
   { row: 'crossoverPoint', form: 'v2-panel', control: 'checked={xoRangeOn}' },
@@ -2524,7 +2475,6 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'crossoverPoint', form: 'v2-panel', control: 'value={xoLowMarginHz}' },
   { row: 'crossoverPoint', form: 'v2-panel', control: 'value={xoFreqHz}' },
   { row: 'crossoverPoint', form: 'v2-panel', control: 'value={xoMarginHz}' },
-  { row: 'scan3Mode', form: 'v2-panel', control: 'value={scan3Mode}' },
   { row: 'xo3Steps', form: 'v2-panel', control: 'value={xo3Steps}' },
   { row: 'xoScanSteps', form: 'v2-panel', control: 'value={xoScanSteps}' },
   { row: 'v1Thresholds', form: 'v2-panel', control: 'value={xoWinThr.arrayK}' },
@@ -2563,6 +2513,10 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   'synthMode', 'snapProfile', 'snapSeries', 'snapBoundToSeries', 'snapStacks',
   'networkTemplate', 'networkEditor', 'partLock', 'simDisplay',
   'viewFmax', 'viewFmin', 'chartDisplay', 'bandForms', 'navigation', 'guidedShortlistOrder',
+  /* U-10 fase 3 — drawn NOWHERE: the field lost its control and is carried in
+   * the project file unread (B-4.3), so it is a row with no place rather than a
+   * control of any form. */
+  'hpLpPref',
 ]);
 
 /**

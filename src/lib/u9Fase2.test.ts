@@ -294,9 +294,10 @@ describe('U-9 fase 2 (3): the group order is read from the register', () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('U-9 fase 2 (4): nothing v1-only is on screen in any mode', () => {
+  /* U-10 fase 3 (V15) — the BOM-cap row is gone (no register row left to ask);
+   * the v1 reading stays hidden because the ranking it showed is gone. */
   it('the v1 reading is not shown, and it is the knobs that hide it', () => {
     expect(v1ReadingShown()).toBe(false);
-    expect(rendersRow('bomCapEur')).toBe(false);
     expect(rendersRow('v1Thresholds')).toBe(false);
     expect(rendersRow('excursionSpl')).toBe(false);
   });
@@ -320,15 +321,13 @@ describe('U-9 fase 2 (4): nothing v1-only is on screen in any mode', () => {
     expect(tableGuard).toBeGreaterThan(headGuard);
   });
 
-  it('every v1Legacy( call sits behind the rendersRow guard of its own row', () => {
-    const calls = [...APP.matchAll(/v1Legacy\('([A-Za-z0-9]+)'\)/g)];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const m of calls) {
-      const id = m[1];
-      expect(rendersRow(id), id).toBe(false);
-      const guard = APP.lastIndexOf(`rendersRow('${id}') &&`, m.index);
-      expect(guard, `${id} at ${m.index} has no guard before it`).toBeGreaterThan(-1);
-      expect(m.index! - guard, `${id}: guard too far away`).toBeLessThan(1500);
+  /* U-10 fase 3 (V15) — WAS: every `v1Legacy(` call sits behind its row's
+   * `rendersRow` guard. IS: the last v1 controls are removed, and with them
+   * the badge helper; there is nothing v1-only left to guard. */
+  it('no v1 control and no v1Legacy badge is left in the app', () => {
+    expect(APP).not.toMatch(/v1Legacy\(/);
+    for (const ctl of ['value={String(errorSmoothOct)}', 'value={hpLpPref}', 'value={hpLpPrefLow}', 'value={scan3Mode}', 'value={bomCapEur}']) {
+      expect(APP, ctl).not.toContain(ctl);
     }
   });
 
@@ -404,27 +403,10 @@ describe('U-9 fase 2 (4): nothing v1-only is on screen in any mode', () => {
     for (const s of seen) expect(s).toBe(seen[0]);
   });
 
-  it('the BOM cap reaches nothing but the v1 rankings', () => {
-    /* Inside a `rendersRow('bomCapEur')` expression is never rendered (B-2.2). */
-    const hidden = [...APP.matchAll(/rendersRow\('bomCapEur'\) &&/g)].map((m) => {
-      const open = APP.lastIndexOf('{', m.index!);
-      let depth = 0;
-      for (let i = open; i < APP.length; i++) {
-        if (APP[i] === '{') depth++;
-        else if (APP[i] === '}' && --depth === 0) return [open, i] as const;
-      }
-      return [open, open] as const;
-    });
-    expect(hidden.length).toBeGreaterThan(1);
-    const uses = [...APP.matchAll(/\bbomCapEur\b/g)].map((m) => m.index!).filter((at) => !hidden.some(([a, b]) => at > a && at < b));
-    for (const at of uses) {
-      const line = APP.slice(APP.lastIndexOf('\n', at) + 1, APP.indexOf('\n', at));
-      const ctx = APP.slice(Math.max(0, at - 400), at);
-      const ok =
-        /rankChain3?Results\(/.test(ctx) || // an argument of a v1 ranking
-        /useState|setBomCapEur|localStorage|value=\{bomCapEur\}|bomCapEur === 0|bomCapEur,$|bomCapEur\]|const nv|rendersRow\('bomCapEur'\)|v1Legacy\('bomCapEur'\)/.test(line);
-      expect(ok, `bomCapEur read at ${at}: ${line.trim()}`).toBe(true);
-    }
+  /* U-10 fase 3 (V15) — WAS: "the BOM cap reaches nothing but the v1
+   * rankings". Both are gone; the claim is that the cap no longer exists. */
+  it('the BOM cap is gone with the v1 rankings it sorted', () => {
+    expect(APP).not.toMatch(/\bbomCapEur\b/);
   });
 });
 

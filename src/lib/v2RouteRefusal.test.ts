@@ -115,7 +115,13 @@ describe('U-10 — the app applies it (source scan)', () => {
     expect(CODE).toMatch(/vfRunStats\?\.solo && \([\s\S]{0,120}t\(SOLO_DESIGN_NOTE\)/);
   });
   it('the hidden "Error smoothing" steers neither exception', () => {
-    expect(CODE).toMatch(/opts: \{ \.\.\.opts, errorSmoothOct: SEARCH_SMOOTHING_OCTAVES \}/);
+    /* U-10 fase 3 (V15) — WAS: the vfRounds call overrode `opts` with
+     * `{ ...opts, errorSmoothOct: SEARCH_SMOOTHING_OCTAVES }`. IS: the v1 state
+     * is gone, so the opts object itself states the v2 width and there is no
+     * hidden knob left to override. */
+    const run = fnBody('async function runVfOptimize(');
+    expect(run).toMatch(/errorSmoothOct: SEARCH_SMOOTHING_OCTAVES/);
+    expect(CODE).not.toMatch(/\[errorSmoothOct, setErrorSmoothOct\]/);
     const opts = CODE.slice(CODE.indexOf('const buildNetOptOpts = '), CODE.indexOf('const buildNetOptOpts = ') + 2500);
     expect(opts).toMatch(/errorSmoothOct: SEARCH_SMOOTHING_OCTAVES/);
     expect(opts).not.toMatch(/^\s*errorSmoothOct,$/m);

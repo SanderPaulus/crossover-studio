@@ -138,7 +138,10 @@ describe('the register covers the form', () => {
   /* U-10 fase 3 (V15 form) — WAS: the note is null on v1. The flag is gone;
    * what remains is that only a v1-legacy row carries a note. */
   it('the note beside a v1 field comes from its row, and no other class has one', () => {
-    expect(v1NoteFor('errorSmoothOct')).toMatch(/not read by Engine v2 since V38-fix/);
+    /* U-10 fase 3 (V15) — WAS errorSmoothOct; that row is gone with its control,
+     * and hpLpPref is the v1 row that remains carried in the project file. */
+    expect(v1NoteFor('hpLpPref')).toMatch(/carried in the project file and read by nothing/);
+    expect(v1NoteFor('errorSmoothOct')).toBeNull();
     expect(v1NoteFor('minEpdrOhm')).toBeNull();
     expect(v1NoteFor('not-a-row')).toBeNull();
   });
@@ -228,7 +231,9 @@ describe('the panel is ordered by the register', () => {
     // The help is the register's sentence, not a second one typed in the app.
     expect(APP).toContain('emptyHelpFor(key)');
     expect(emptyHelpFor('minEpdrOhm')).toMatch(/judges nothing/);
-    expect(APP).toContain("v1NoteFor(id)");
+    /* U-10 fase 3 (V15) — WAS: the app reads `v1NoteFor(id)` (through v1Legacy).
+     * IS: the five v1 controls are gone, so the app badges none of them. */
+    expect(APP).not.toContain("v1NoteFor(id)");
   });
 
   it('the scans can see: the same queries hit where they are supposed to hit', () => {

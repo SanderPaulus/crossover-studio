@@ -80,13 +80,9 @@ const GOALS: readonly {
   { control: 'Weight for in-room sound', state: 'dirWeight', reaches: 'directivityWeight', status: 'read', why: 'GREY: expliciet overgenomen, nooit verklaard' },
   { control: 'Power response', state: 'powerMetric', reaches: 'powerMetric', status: 'read', why: 'de kandidaat STELT hem uit de ketensettings (put)' },
   { control: 'DI-fold weight', state: 'powerFoldWeight', reaches: 'powerFoldWeight', status: 'read', why: 'GREY' },
-  {
-    control: 'Error smoothing',
-    state: 'errorSmoothOct',
-    reaches: 'errorSmoothOct',
-    status: 'v1-only',
-    why: 'de kandidaat stelt SEARCH_SMOOTHING_OCTAVES onvoorwaardelijk (V38-fix) — I-1 markeerde hem al',
-  },
+  /* U-10 fase 3 (V15) — WAS: 'Error smoothing' (errorSmoothOct), v1-only. IS:
+   * het besturingselement en zijn state zijn weg; elke route leest
+   * SEARCH_SMOOTHING_OCTAVES. Er is geen v1-only rij meer in dit paneel. */
   { control: 'Source R limit', state: 'rSourceLimitOhm', reaches: 'audit', status: 'read', why: 'reist als audit.thresholds.rSourceOhm en wordt als `audit` gesteld' },
   {
     control: 'Source R disqualify',
@@ -290,13 +286,20 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     expect(APP.slice(Math.max(0, i - 900), i)).toContain('{threeWay && !v2Hybrid && (');
   });
 
-  it('de zes knoppen van toen staan sinds U-9 fase 2 in het BESTUURDE paneel', () => {
-    /* V15: WAS "ongereguleerd geboekt" (U-1/U-5c). IS: het gegroepeerde Filters-
-     * paneel is het bestuurde formulier, dus elk van de zes is een
-     * geïnventariseerd besturingselement en geen uitzondering meer. */
-    for (const id of ['errorSmoothOct', 'hpLpPref', 'scan3Mode', 'bomCapEur', 'excursionSpl', 'phasePriority']) {
+  it('van de zes knoppen van toen staan er twee in het BESTUURDE paneel; vier zijn weg', () => {
+    /* V15: WAS "ongereguleerd geboekt" (U-1/U-5c), daarna (U-9 fase 2) alle zes
+     * in het bestuurde paneel. IS (U-10 fase 3.4): errorSmoothOct, scan3Mode en
+     * bomCapEur hebben geen registerrij meer, hpLpPref is een rij zonder
+     * besturingselement (verliesvrij in het projectbestand, B-4.3), en
+     * excursionSpl en phasePriority staan nog in het paneel. */
+    for (const id of ['excursionSpl', 'phasePriority']) {
       expect(V2_UNGOVERNED_ROWS, id).not.toContain(id);
       expect(V2_FORM_FIELDS.some((f) => f.row === id && f.form === 'v2-panel'), id).toBe(true);
     }
+    for (const id of ['errorSmoothOct', 'scan3Mode', 'bomCapEur']) {
+      expect(V2_INPUT_REGISTER.some((r) => r.id === id), id).toBe(false);
+    }
+    expect(V2_UNGOVERNED_ROWS).toContain('hpLpPref');
+    expect(V2_FORM_FIELDS.some((f) => f.row === 'hpLpPref')).toBe(false);
   });
 });

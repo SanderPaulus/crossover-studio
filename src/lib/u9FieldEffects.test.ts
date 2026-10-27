@@ -147,7 +147,7 @@ describe('U-9 (1): every register row carries a measured effect', () => {
   });
   it('rendersRow answers from the register and THROWS on an unknown id', () => {
     expect(rendersRow('ampMinLoadOhm')).toBe(true);
-    expect(rendersRow('errorSmoothOct')).toBe(false);
+    expect(rendersRow('excursionSpl')).toBe(false);
     expect(() => rendersRow('no-such-row')).toThrow(/no register row/);
   });
 });
@@ -157,12 +157,9 @@ describe('U-9 (1): every register row carries a measured effect', () => {
  * ================================================================== */
 /** The source fragments that draw each niets row's controls — by name, the V47/V48 lesson. */
 const NIETS_CONTROLS: Record<string, string[]> = {
-  errorSmoothOct: ['value={String(errorSmoothOct)}'],
-  hpLpPref: ['value={hpLpPref}', 'value={hpLpPrefLow}'],
-  scan3Mode: ['value={scan3Mode}'],
-  /* U-9 fase 2 (B-2.2, Sander 25-10-2026) — the v1 comparison: the knobs that
-   * sorted the v1 table, hidden together with the table. */
-  bomCapEur: ['value={bomCapEur}'],
+  /* U-10 fase 3 (3.4, V15) — WAS also errorSmoothOct, hpLpPref, scan3Mode and
+   * bomCapEur here. Their controls (and three of their rows) are removed; the
+   * hpLpPref row stays niets with no control, as a carried project field. */
   excursionSpl: ['value={excursionSpl}'],
   v1Thresholds: [
     'value={kaTier}',
@@ -179,8 +176,10 @@ describe('U-9 (2): a niets row is never rendered', () => {
   it('the niets set is exactly the approved one, by name (Sander, 25-10-2026)', () => {
     /* U-9 fase 2 — V15: WAS the three of fase 1. IS those three plus the three
      * of B-2.2 (the v1 comparison). */
-    expect([...V2_NIETS_ROWS].sort()).toEqual(['bomCapEur', 'errorSmoothOct', 'excursionSpl', 'hpLpPref', 'scan3Mode', 'v1Thresholds']);
-    expect(Object.keys(NIETS_CONTROLS).sort()).toEqual([...V2_NIETS_ROWS].sort());
+    /* U-10 fase 3 — three niets rows removed with their fields; hpLpPref is niets
+     * and has no control any more (it is carried in the project file only). */
+    expect([...V2_NIETS_ROWS].sort()).toEqual(['excursionSpl', 'hpLpPref', 'v1Thresholds']);
+    expect(Object.keys(NIETS_CONTROLS).sort()).toEqual(['excursionSpl', 'v1Thresholds']);
   });
   it.each(Object.entries(NIETS_CONTROLS))('%s: every control that draws it sits behind rendersRow', (id, controls) => {
     for (const c of controls) {
@@ -189,14 +188,21 @@ describe('U-9 (2): a niets row is never rendered', () => {
       expect(outside, `${c} is drawn outside rendersRow('${id}')`).toEqual([]);
     }
   });
-  it('hidden is not deleted: the values still travel in the project file', () => {
-    expect(APP).toMatch(/^\s+hpLpPref,\n\s+hpLpPrefLow,$/m);
-    expect(APP).toContain("localStorage.setItem('ads-err-smooth'");
-    expect(APP).toContain("localStorage.setItem('ads-scan3-mode'");
+  /* U-10 fase 3 (3.4, V15) — WAS: hidden is not deleted, the values still
+   * travel (the project fields from state, the localStorage keys written).
+   * IS (B-4.3): the project fields are carried UNREAD from load to save; the
+   * three localStorage keys are no longer written or read. */
+  it('a carried v1 field travels unread from load to save (B-4.3)', () => {
+    expect(APP).toContain('const v1CarriedRef = useRef<{ hpLpPref?: string; hpLpPrefLow?: string }>({});');
+    expect(APP).toContain('...v1CarriedRef.current,');
+    expect(APP).toContain('...(d.hpLpPref !== undefined ? { hpLpPref: d.hpLpPref } : {}),');
+    for (const key of ["'ads-err-smooth'", "'ads-scan3-mode'", "'ads-bom-cap'"]) {
+      expect(APP, key).not.toContain(`localStorage.setItem(${key}`);
+    }
   });
-  it('the guided non-standard list does not name a field that is never rendered', () => {
-    expect(APP).toContain("['align', rendersRow('hpLpPref') && hpLpPref !== 'auto',");
-    expect(APP).toContain("['alignLow', rendersRow('hpLpPref') && hpLpPrefLow !== 'auto',");
+  it('the guided non-standard list names no removed v1 field', () => {
+    expect(APP).not.toContain("['align', ");
+    expect(APP).not.toContain("['alignLow', ");
   });
   it.each(V2_DEPENDENT_CONTROLS.map((d) => [d.row, d] as const))(
     '%s: the dependent control renders only once its parent is set',

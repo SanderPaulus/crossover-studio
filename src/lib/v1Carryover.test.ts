@@ -109,7 +109,15 @@ describe('U-1 — the v1 starting values have one home', () => {
     /* Three `useState` initialisers and three `??` fallbacks. A fourth copy is
        how "unchanged" and "carried" come to disagree about the same project:
        the notice would fire on a value the app itself calls the default. */
+    /* U-10 fase 3 (3.4, V15) — `hpLpPref` and `hpLpPrefLow` are no longer state:
+       they are carried unread (B-4.3), so they have no initialiser to read. The
+       other three still do. */
+    const CARRIED_UNREAD: readonly V1FieldKey[] = ['hpLpPref', 'hpLpPrefLow'];
     for (const key of Object.keys(V1_FIELD_DEFAULTS) as V1FieldKey[]) {
+      if (CARRIED_UNREAD.includes(key)) {
+        expect(APP, key).not.toMatch(new RegExp(`useState(<[^>]*>)?\\(V1_FIELD_DEFAULTS\\.${key}\\b`));
+        continue;
+      }
       /* U-9 fase 2 — a typed initial (`useState<KaTier>(…)`) reads the same home. */
       expect(APP, key).toMatch(new RegExp(`useState(<[^>]*>)?\\(V1_FIELD_DEFAULTS\\.${key}\\b`));
       expect(APP, key).toContain(`?? V1_FIELD_DEFAULTS.${key}`);
@@ -132,9 +140,12 @@ describe('U-1 — the v1 starting values have one home', () => {
        the file. IS six rows WITHOUT it — the v2 tuner reads the slider (N1), so
        it left the class — and with `v1Thresholds` in its place (B-2.2), which
        the file carries too. WHY: the class is now exactly what B-2 hides. */
+    /* U-10 fase 3 (3.4, V15) — WAS six rows; the three localStorage-only rows
+       (errorSmoothOct, scan3Mode, bomCapEur) are gone with their fields, so the
+       class is exactly the three the project file carries. */
     const inFile = new Set(['hpLpPref', 'excursionSpl', 'v1Thresholds']);
     const rows = rowsOfClass('v1-legacy').map((r) => r.id);
-    expect(rows.length).toBe(6);
+    expect(rows.length).toBe(3);
     expect(rows.filter((id) => inFile.has(id)).sort()).toEqual([
       'excursionSpl',
       'hpLpPref',

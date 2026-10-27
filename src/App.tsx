@@ -260,7 +260,6 @@ import {
   type V2FieldGroup,
   V2_MORE_HEADING,
   emptyHelpFor,
-  v1NoteFor,
   rendersRow,
 } from './lib/v2InputRegister.ts';
 /* A5a — the per-branch measurement block. Its own module since U-3: a demo
@@ -506,12 +505,6 @@ type ParsedZma = ReturnType<typeof parseZma>;
 const ordinal = (n: number): string =>
   n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
 
-/** 'LR4' → {kind:'LR', order:4}; 'auto' (or anything unparsable) → undefined. */
-function parseHpLpPref(pref: string): StructChoice | undefined {
-  const m = /^(LR|BW|BS)([1-4])$/.exec(pref);
-  if (!m) return undefined;
-  return { kind: m[1] as FilterKind, order: Number(m[2]) as 1 | 2 | 3 | 4 };
-}
 interface Loaded {
   name: string;
   raw: string;
@@ -2258,28 +2251,8 @@ export default function App() {
     const help = emptyHelpFor(key);
     return help ? <span className="v2-empty">{t('empty')} — {help}</span> : null;
   };
-  /**
-   * I-1 — THE NOTE BESIDE A v1 CONTROL ON THE v2 ROUTE.
-   *
-   * The generalisation of E-2's `designLevelNote`, which marked exactly one
-   * such field. There are five, they are scattered over three groups of this
-   * panel, and until now four of them read as v2 knobs — a designer who tunes
-   * one believes they are steering a run that never sees it. Null on v1, where
-   * the field is what it always was.
-   */
-  const v1Legacy = (id: string) => {
-    const note = v1NoteFor(id);
-    /* U-9 fase 2 (B-2) — only a v1-legacy row has a note, and since B-2 every
-     * v1-legacy row is `niets` and never rendered: this badge has no visible
-     * reader left. It stays as the one place such a note would be drawn, and
-     * `u9FieldEffects.test.ts` pins that every call sits behind `rendersRow`.
-     * The Priority slider (N1) is not a v1 field and carries `fieldBadge`. */
-    return note ? (
-      <span className="v2-warn" title={note}>
-        {' '}({t('v1 — not read by Engine v2')})
-      </span>
-    ) : null;
-  };
+  /* U-10 fase 3 (3.4) — `v1Legacy`, the badge beside a v1 control, is gone:
+   * its last callers were the v1 controls removed here. */
   /**
    * I-3 — ONE REQUIREMENT INPUT, RENDERED FOR THE GUIDED WALK.
    *
@@ -2604,21 +2577,19 @@ export default function App() {
    *  'auto' = free enumeration over the alignment library. In 3-way this is
    *  the HIGH (mid-tweeter) crossing — same convention as acSlopeMid/Tweeter,
    *  which have always meant the top pair. */
-  const [hpLpPref, setHpLpPref] = useState(V1_FIELD_DEFAULTS.hpLpPref);
-  /** 3-way: alignment preference for the LOW (woofer-mid) crossing. Two
-   *  handovers are two independent foundations to choose. */
-  const [hpLpPrefLow, setHpLpPrefLow] = useState(V1_FIELD_DEFAULTS.hpLpPrefLow);
+  /* U-10 fase 3 (3.4, Sander 27-10-2026) — the v1 alignment preferences
+   * (`hpLpPref`, `hpLpPrefLow`) are no longer state: no route reads them (every
+   * candidate states its own alignment, and the virtual-filter exception runs
+   * on 'auto'). A project that carries them keeps them, unread and unchanged
+   * (B-4.3): `v1CarriedRef` holds what the file said and the save writes it back. */
+  const v1CarriedRef = useRef<{ hpLpPref?: string; hpLpPrefLow?: string }>({});
   /** 3-way scan: candidate steps PER CROSSING (1/2/3 → 1/4/9 full chains).
    *  Independent of the crossover pin — every candidate is caged in its own
    *  slice either way, so "how many" is always a meaningful cost knob. */
   const [xo3Steps, setXo3Steps] = useState(2);
-  /** 3-way scan strategy: 'axes' = sweep W-M (M-T held at its anchor), then
-   *  M-T with the best W-M, then a local 3×3 refinement (skipped when the two
-   *  sweeps show no coupling) — finer per axis for far fewer chains than a
-   *  grid of the same resolution; 'grid' = the classic corners grid. */
-  const [scan3Mode, setScan3Mode] = useState<'axes' | 'grid'>(() =>
-    localStorage.getItem('ads-scan3-mode') === 'grid' ? 'grid' : 'axes',
-  );
+  /* U-10 fase 3 (3.4) — the v1 scan strategy (`scan3Mode`, localStorage) is gone
+   * with the axis-by-axis scan it chose; a stored value is left where it is. */
+
   /**
    * How many crossover candidates the scan actually explores.
    *
@@ -2634,9 +2605,6 @@ export default function App() {
    */
   const scanSteps2 = uiMode === 'guided' ? 9 : xoScanSteps;
   const scanSteps3 = uiMode === 'guided' ? 3 : xo3Steps;
-  /** U-9 — the scan-strategy field is never rendered (`effect: 'niets'`), so the
-   *  step-count label may not keep switching on its hidden value. */
-  const scan3Axes = rendersRow('scan3Mode') && scan3Mode === 'axes';
   /** Staged design ("trapmethode"): HP/LP first, every next layer (EQ,
    *  Zobel/LCR, bypass-C) only while the targets are unmet — fewest
    *  components that reach the goal. */
@@ -8264,13 +8232,10 @@ export default function App() {
     const v = Number(localStorage.getItem('ads-di-weight'));
     return Number.isFinite(v) && v >= 0 && localStorage.getItem('ads-di-weight') !== null ? v : APP_DEFAULTS.diWeight;
   });
-  /** Error smoothing for the search objectives (oct): 0 = off (legacy raw
-   *  points), 1/24, 1/12 (default), 1/6. Preference (localStorage). */
-  const [errorSmoothOct, setErrorSmoothOct] = useState<number>(() => {
-    const raw = localStorage.getItem('ads-err-smooth');
-    const v = raw === null ? NaN : Number(raw);
-    return Number.isFinite(v) && v >= 0 ? v : 1 / 12;
-  });
+  /* U-10 fase 3 (3.4) — the v1 "Error smoothing" preference is gone: every
+   * route, the two named exceptions included, searches at the v2 width
+   * (`SEARCH_SMOOTHING_OCTAVES`). A stored `ads-err-smooth` is left unread. */
+
 
   /**
    * The tuner-vs-acceptance smoothing line (F3c, deliverable 3).
@@ -8317,13 +8282,9 @@ export default function App() {
     const v = raw === null ? NaN : Number(raw);
     return Number.isFinite(v) && v >= 0 ? v : APP_DEFAULTS.rSourceLimitOhm;
   });
-  /** B1 — BOM cap per channel (EUR; 0 = off): class loss in the ranking above
-   *  it, shown in the strip. A design decision, not a weight. */
-  const [bomCapEur, setBomCapEur] = useState<number>(() => {
-    const raw = localStorage.getItem('ads-bom-cap');
-    const v = raw === null ? NaN : Number(raw);
-    return Number.isFinite(v) && v >= 0 ? v : 0;
-  });
+  /* U-10 fase 3 (3.4) — the v1 BOM cap per channel is gone with the v1 ranking
+   * it sorted; a stored `ads-bom-cap` is left unread. */
+
   /** D — room correction present (Dirac etc.): the RIPPLE target may widen
    *  (default 2.5 → 3.5 dB) because on-axis residual ripple is corrected by
    *  the room system; PHASE targets stay — driver integration across a
@@ -8382,8 +8343,6 @@ export default function App() {
       ['pin', xoRangeOn, `crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz`, () => setXoRangeOn(false)],
       /* U-9 — a field that is never rendered does not steer the run on any v2
        * route, so it is not "steering the run" here either. */
-      ['align', rendersRow('hpLpPref') && hpLpPref !== 'auto', `alignment forced to ${hpLpPref}`, () => setHpLpPref('auto')],
-      ['alignLow', rendersRow('hpLpPref') && hpLpPrefLow !== 'auto', `low alignment forced to ${hpLpPrefLow}`, () => setHpLpPrefLow('auto')],
       ['guard', breakupGuard !== APP_DEFAULTS.breakupGuard, 'breakup guard off', () => setBreakupGuard(APP_DEFAULTS.breakupGuard)],
       ['dir', dirWeight !== APP_DEFAULTS.dirWeight, `in-room weight ${dirWeight}%`, () => setDirWeight(APP_DEFAULTS.dirWeight)],
       /* B-2 — the beaming tier and the lobing strictness sort only the v1 scan
@@ -8595,8 +8554,7 @@ export default function App() {
         xoMarginHz,
         xoScanSteps,
         xo3Steps,
-        hpLpPref,
-        hpLpPrefLow,
+        ...v1CarriedRef.current,
         phaseMetric: phaseMetricMode,
         acSlopeMid,
         acSlopeTweeter,
@@ -8836,8 +8794,10 @@ export default function App() {
       setXoFreqHz(V1_PIN_DEFAULTS_LEGACY.highFreqHz);
       setXoMarginHz(V1_PIN_DEFAULTS_LEGACY.highMarginHz);
     }
-    setHpLpPref(d.hpLpPref ?? V1_FIELD_DEFAULTS.hpLpPref);
-    setHpLpPrefLow(d.hpLpPrefLow ?? V1_FIELD_DEFAULTS.hpLpPrefLow);
+    v1CarriedRef.current = {
+      ...(d.hpLpPref !== undefined ? { hpLpPref: d.hpLpPref } : {}),
+      ...(d.hpLpPrefLow !== undefined ? { hpLpPrefLow: d.hpLpPrefLow } : {}),
+    };
     setPhaseMetricMode(d.phaseMetric ?? 'band');
     setAcSlopeMid(d.acSlopeMid ?? '24');
     setAcSlopeTweeter(d.acSlopeTweeter ?? '12');
@@ -8987,7 +8947,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, hpLpPref, hpLpPrefLow, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Settings, engineV2StatedAt, engineV2StatedBy, fieldStatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Settings, engineV2StatedAt, engineV2StatedBy, fieldStatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -9086,8 +9046,8 @@ export default function App() {
     xoLowPin: pins.low,
     xoHighPin: pins.high,
     hpFloorHz: tweeterHpFloor ?? undefined,
-    structureLow: parseHpLpPref(hpLpPrefLow),
-    structureHigh: parseHpLpPref(hpLpPref),
+    structureLow: undefined,
+    structureHigh: undefined,
     breakupGuard,
     eqBands: vfEqBands,
     // Directivity into the structure search (3-way): anchors from the
@@ -9109,7 +9069,7 @@ export default function App() {
     directivityWeight: dirWeight / 100,
     powerMetric,
     powerFoldWeight,
-    errorSmoothOct,
+    errorSmoothOct: SEARCH_SMOOTHING_OCTAVES,
   costWeight,
     dissipationWeight,
     ampMinLoadOhm: ampMinLoadOhm ?? undefined,
@@ -9145,7 +9105,7 @@ export default function App() {
     directivityWeight: dirWeight / 100,
     powerMetric,
     powerFoldWeight,
-    errorSmoothOct,
+    errorSmoothOct: SEARCH_SMOOTHING_OCTAVES,
     costWeight,
     dissipationWeight,
     ampMinLoadOhm: ampMinLoadOhm ?? undefined,
@@ -9156,7 +9116,7 @@ export default function App() {
     ampTarget,
     cutOnly: true, // passive-only: EQ may never boost
     breakupGuard,
-    structurePreference: parseHpLpPref(hpLpPref),
+    structurePreference: undefined,
     targets: args.targets,
     hpFloorHz: tweeterHpFloor ?? undefined,
     phaseMetric: phaseMetricMode,
@@ -10467,7 +10427,7 @@ export default function App() {
       directivityWeight: dirWeight / 100,
       powerMetric,
       powerFoldWeight,
-      errorSmoothOct,
+      errorSmoothOct: SEARCH_SMOOTHING_OCTAVES,
       costWeight,
       dissipationWeight,
       ampMinLoadOhm: ampMinLoadOhm ?? undefined,
@@ -10478,7 +10438,7 @@ export default function App() {
       ampTarget,
       cutOnly: true, // passive-only: EQ may never boost
       breakupGuard,
-      structurePreference: parseHpLpPref(hpLpPref),
+      structurePreference: undefined,
       targets: stagedOn
         ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) }
         : undefined,
@@ -11367,7 +11327,7 @@ export default function App() {
         /* U-10 — the named exception (`isVirtualFilterOnlyRoute`) reads the v2
          * search smoothing, never the hidden v1 "Error smoothing" (U-9 hid the
          * field; this route was the last one it steered unseen). */
-        opts: { ...opts, errorSmoothOct: SEARCH_SMOOTHING_OCTAVES },
+        opts,
         seedQueue,
         // Shared branch adjustment (seat re-timing included) — the optimizer
         // must design for the same listener the simulation draws.
@@ -17104,25 +17064,6 @@ export default function App() {
                 * (`effect: 'niets'`), so neither it nor the sentence that
                 * contrasts it with the slopes is rendered. Its value stays in
                 * the project file. */}
-              {rendersRow('hpLpPref') && (
-              <>
-              <p className="sub" style={{ marginBottom: '0.15rem' }}>
-                {t('The next two look alike but are NOT the same thing — one is how you build it, the other is what comes out:')}
-              </p>
-              <p style={{ margin: '0 0 0.1rem' }}>
-                <strong>{t('HP/LP alignment')}</strong>{' '}
-                <span className="sub">{t('— the ELECTRICAL filter you build (topology & part count; binding)')}</span>{' '}
-                <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)}>
-                  <option value="auto">{t('Auto (library)')}</option>
-                  {['LR2', 'LR4', 'BW2', 'BW3', 'BW4', 'BS2', 'BS3', 'BS4'].map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-              </p>
-              </>
-              )}
               <p style={{ margin: '0 0 0.1rem' }}>
                 <strong>{t('Acoustic slopes')}</strong>{' '}
                 <span className="sub">{t('— the MEASURED roll-off of driver + filter together (the result)')}</span>
@@ -17295,13 +17236,7 @@ export default function App() {
                   : t('Crossover free')}
                 {tweeterHpFloor !== null && ` · ${t('HP floor {f} Hz', { f: tweeterHpFloor })}`}
                 <br />
-                {rendersRow('hpLpPref')
-                  ? t('Alignment {a} · slopes mid {m} / tweeter {tw}', {
-                      a: hpLpPref === 'auto' ? t('Auto') : hpLpPref,
-                      m: acSlopeMid === 'auto' ? t('Auto') : `${acSlopeMid} dB/oct`,
-                      tw: acSlopeTweeter === 'auto' ? t('Auto') : `${acSlopeTweeter} dB/oct`,
-                    })
-                  : t('Slopes mid {m} / tweeter {tw}', {
+                {t('Slopes mid {m} / tweeter {tw}', {
                       m: acSlopeMid === 'auto' ? t('Auto') : `${acSlopeMid} dB/oct`,
                       tw: acSlopeTweeter === 'auto' ? t('Auto') : `${acSlopeTweeter} dB/oct`,
                     })}
@@ -20998,40 +20933,6 @@ export default function App() {
                   />
                 {fieldBadge('eqBands')}{appDefault('eqBands')}
 </label>
-                {threeWay && rendersRow('hpLpPref') && (
-                  <label title={t('Preferred alignment for the LOW (woofer-mid) handover — binding: the designer picks the foundation, the optimizer keeps knees, level and polarity free. Auto = free choice from the library.')}>
-                    {t('HP/LP preference (low xo)')}
-                    {v1Legacy('hpLpPref')}
-                    <select value={hpLpPrefLow} onChange={(e) => setHpLpPrefLow(e.target.value)}>
-                      <option value="auto">{t('Auto (library)')}</option>
-                      <option value="LR2">LR2 (12 dB/oct)</option>
-                      <option value="LR4">LR4 (24 dB/oct)</option>
-                      <option value="BW2">BW2 (12 dB/oct)</option>
-                      <option value="BW3">BW3 (18 dB/oct)</option>
-                      <option value="BW4">BW4 (24 dB/oct)</option>
-                      <option value="BS2">Bessel 2 (12 dB/oct)</option>
-                      <option value="BS3">Bessel 3 (18 dB/oct)</option>
-                      <option value="BS4">Bessel 4 (24 dB/oct)</option>
-                    </select>
-                  </label>
-                )}
-                {rendersRow('hpLpPref') && (
-                <label title={t('Preferred HP/LP alignment — binding: the designer picks the foundation, the optimizer designs the best crossover on it (knees, level, polarity and EQ stay free). Auto = free choice from the library.')}>
-                  {threeWay ? t('HP/LP preference (high xo)') : t('HP/LP preference')}
-                  {v1Legacy('hpLpPref')}
-                  <select value={hpLpPref} onChange={(e) => setHpLpPref(e.target.value)} disabled={!!soloDriver}>
-                    <option value="auto">{t('Auto (library)')}</option>
-                    <option value="LR2">LR2 (12 dB/oct)</option>
-                    <option value="LR4">LR4 (24 dB/oct)</option>
-                    <option value="BW2">BW2 (12 dB/oct)</option>
-                    <option value="BW3">BW3 (18 dB/oct)</option>
-                    <option value="BW4">BW4 (24 dB/oct)</option>
-                    <option value="BS2">Bessel 2 (12 dB/oct)</option>
-                    <option value="BS3">Bessel 3 (18 dB/oct)</option>
-                    <option value="BS4">Bessel 4 (24 dB/oct)</option>
-                  </select>
-                </label>
-                )}
                 <label onChangeCapture={fieldStamp('acSlopeMid')} title={t('Target ACOUSTIC slope of the mid above the crossing — the measured rolloff (driver + filter), not the electrical order. Falling short costs more than being steeper. Auto = free.')}>
                   {threeWay ? t('Acoustic slope mid LP (high xo)') : t('Acoustic slope mid')}
                   <select value={acSlopeMid} onChange={(e) => setAcSlopeMid(e.target.value)} disabled={!!soloDriver}>
@@ -21157,36 +21058,15 @@ export default function App() {
                     {t('tweeter kept above {n} Hz (2× its measured resonance)', { n: tweeterHpFloor })}
                   </span>
                 )}
-                {threeWay && rendersRow('scan3Mode') && (
-                  <label title={t('How the 3-way scan searches the two handovers. Axis by axis: sweep W-M (M-T held at its anchor), then M-T with the best W-M, then a local 3×3 refinement around the pair (skipped when the sweeps show no coupling) — finer per axis for far fewer chains than a grid of the same resolution. Grid: every corner combination.')}>
-                    {t('Scan strategy')}
-                    {v1Legacy('scan3Mode')}
-                    <select
-                      value={scan3Mode}
-                      onChange={(e) => {
-                        const v = e.target.value === 'grid' ? 'grid' : 'axes';
-                        setScan3Mode(v);
-                        localStorage.setItem('ads-scan3-mode', v);
-                      }}
-                    >
-                      <option value="axes">{t('axis by axis (W-M sweep → M-T sweep → refine)')}</option>
-                      <option value="grid">{t('grid (corners)')}</option>
-                    </select>
-                  </label>
-                )}
                 {/* U-9 — on Engine v2 the step count is read by the FULL field and by a
                   * pinned crossover; the exploration ignores it (U-5b). */}
                 {threeWay && (xoRangeOn || fieldModeOf(engineV2Settings.fieldMode) === 'full') && (
-                  <label title={scan3Axes
-                    ? t('Points per axis for the sweeps: 3/5/7 — the W-M sweep runs that many chains, the M-T sweep as many again, the refinement up to 9 more.')
-                    : t('How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.')}>
-                    {scan3Axes ? t('Points per axis') : t('Handover candidates to try')}
+                  <label title={t('How many handover candidates the 3-way scan simulates PER crossing. Each candidate runs the full design chain inside its own slice of the search range, so the count is squared: 2 steps = 4 chains. Works pinned or unpinned — without a pin the range is the neighbourhood of the raw crossings.')}>
+                    {t('Handover candidates to try')}
                     <select value={xo3Steps} onChange={(e) => setXo3Steps(Number(e.target.value))}>
                       {[1, 2, 3].map((n) => (
                         <option key={n} value={n}>
-                          {scan3Axes
-                            ? `${1 + 2 * n} (${2 * (1 + 2 * n)}–${2 * (1 + 2 * n) + 9} sims)`
-                            : `${n} (${n * n} sim${n * n > 1 ? 's' : ''})`}
+                          {`${n} (${n * n} sim${n * n > 1 ? 's' : ''})`}
                         </option>
                       ))}
                     </select>
@@ -21644,32 +21524,6 @@ export default function App() {
                 {fieldBadge('costWeight')}{appDefault('costWeight')}
 </label>
                 {/* U-9 fase 2 (B-2) — v1-uitfasering: never rendered, the value stays in the project. */}
-                {rendersRow('bomCapEur') && (
-                <>
-                <label
-                  className="inline-num"
-                  title={t('B1 — BOM cap per channel. Above it a scan candidate loses a ranking class (same mechanism as the Z floor and the source-R limit) — a decision, not a weight. 0 = off. Unpriced candidates are never punished; missing prices show as [NO PRICE].')}
-                >
-                  {t('BOM cap per channel')} €
-                  {v1Legacy('bomCapEur')}
-                  <input
-                    type="number"
-                    min={0}
-                    max={5000}
-                    step={10}
-                    value={bomCapEur}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      const nv = Number.isFinite(v) && v >= 0 ? v : 0;
-                      setBomCapEur(nv);
-                      localStorage.setItem('ads-bom-cap', String(nv));
-                    }}
-                    style={{ width: '5rem' }}
-                  />
-                  {bomCapEur === 0 && <span className="derived"> {t('off')}</span>}
-                </label>
-                </>
-                )}
                 <>
                     {/* ---- V50: BUILDABILITY — the parts on the schematic have
                       * to be buyable. Two gates: the watts in each resistor
@@ -22069,28 +21923,6 @@ export default function App() {
                 {fieldBadge('phasePriority')}{appDefault('phasePriority')}
 </label>
                 {/* U-9 — `effect: 'niets'`: never rendered; the value stays in the project. */}
-                {rendersRow('errorSmoothOct') && (
-                <label
-                  className="inline-num"
-                  title={t('Smoothing of the on-axis and energy-average magnitudes the SEARCH judges (Gaussian in log-f, applied before decimation to the inner grid). Diffraction ripple and measurement noise no filter can fix stop steering the search. Off = legacy raw points. Gates, staged targets and the safety gate always judge the raw full grid; the scan table shows the smoothed peak with the raw peak as tooltip.')}
-                >
-                  {t('Error smoothing')}
-                  <select
-                    value={String(errorSmoothOct)}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setErrorSmoothOct(v);
-                      localStorage.setItem('ads-err-smooth', String(v));
-                    }}
-                  >
-                    <option value="0">{t('off (legacy)')}</option>
-                    <option value={String(1 / 24)}>1/24 oct</option>
-                    <option value={String(1 / 12)}>1/12 oct</option>
-                    <option value={String(1 / 6)}>1/6 oct</option>
-                  </select>
-                  {v1Legacy('errorSmoothOct')}
-                </label>
-                )}
                 <details className="v2-more" style={{ flexBasis: '100%' }}>
                   <summary className="opt-group-cap">
                     {t(V2_GROUP_HEADING[g])} — {t(V2_MORE_HEADING)}
@@ -24485,20 +24317,6 @@ export default function App() {
                   </span>
                 )}
                 {/* U-9 fase 2 (B-2.2) — the BOM cap is a hidden v1 knob; its strip item goes with it. */}
-                {rendersRow('bomCapEur') && bomCapEur > 0 && (() => {
-                  const bom = schematic ? bomFor(schematic.parts) : null;
-                  const tot = bom?.totalEur ?? null;
-                  const over = tot !== null && tot > bomCapEur;
-                  return (
-                    <span
-                      className={`strip-item${over ? ' alert' : ''}`}
-                      title={t('BOM cap per channel (B1): above it a candidate loses a ranking class. Priced rows only; unpriced parts are listed as [NO PRICE] in the BOM.')}
-                    >
-                      {over ? '⚠ ' : ''}BOM {tot !== null ? `€${Math.round(tot)}` : '[NO PRICE]'} / {t('cap')} €{bomCapEur}
-                      {bom && bom.unmatchedCount > 0 ? ` · ${bom.unmatchedCount} [NO PRICE]` : ''}
-                    </span>
-                  );
-                })()}
                 {powerTrend && (
                   <span
                     className={`strip-item${powerTrend.slopeDbPerDecade > 1 ? ' alert' : ''}`}
