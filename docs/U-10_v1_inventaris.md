@@ -448,3 +448,35 @@ garandeert, is dat elke gewapende poort binnen is. De v1-tune kende geen poort.
 - `toggleRegression.test.ts` is aangepast in de V15-vorm. Er is één claim bij gekomen: de
   gedeelde motor bij naam, negen bestanden. Daarvan is gemeten dat hij kan falen.
 - De vlagclaims blijven staan tot fase 3.
+
+## 12. Fase 3 — wat er verwijderd is (27-10-2026)
+
+Vier commits, samen **40 bestanden, +500 / −3262 regels** (`git diff --shortstat d414dbc..a88107d -- src scripts`).
+
+| commit | wat er wegging | regels |
+| --- | --- | --- |
+| `bde4574` (1–3a) | de vlag `engineV2Enabled` met `selectEngine`/`ENGINE_V1_ONLY`/`EngineSelection`; de v1-guided-wandeling; `runChainScan`, `runChain3Scan` en de workertaken `chainOne`/`chain3One` | +259 / −1106 |
+| `fe4d5a7` (3b) | de v1-ranglijsten in de app (`rankChain3Results`/`rankChainResults`, de laatste `ranked[0]`), de as-voor-as-scan, de v1-terugvalgenerator en de xo-vensterwaarschuwing op verborgen drempels | +88 / −284 |
+| `518eb96` (3c) | de dode v1-functies uit de gedeelde motor: `crossover3Variants`, `variantsFromPoints`, `rankChain3Results`, `sliceAxis`, `crossoverVariants`, `followupVariantsFor`, `rankChainResults`, `candidateCentres` | +40 / −1544 |
+| `a88107d` (3.4) | de vijf verborgen v1-velden: `errorSmoothOct`, `scan3Mode`, `bomCapEur` (localStorage, niet meer gelezen) en `hpLpPref`/`hpLpPrefLow` (verliesvrij gedragen in het projectbestand, geen lezer) | +123 / −338 |
+
+**Verwijderde tests, met wat zij bewaakten** (elk ook in zijn commit genoemd):
+
+- `optimClient.ampFloor.test.ts` (3): de client-side ⚠Z-regel van de v1-tweewegscan.
+- `determinism`: "the facade is a GUARD" — de selection-parameter, weg met de vlag.
+- `v2Guided`: de vijf stappen van de v1-wandeling.
+- `toggleRegression` (6): de vlagclaims (F3b/F3c, "absent = false = off").
+- `v1Carryover` (3): de claims over de vlagstand van een oud project.
+- `threeWayChain.test.ts` (16) en `designChain.test.ts` (8): de v1-kandidaatgeneratoren en v1-ranglijsten.
+- `xoWindow.test.ts` (1): "candidate placement"; de drie claims ernaast bewaken meer dan de helper en zijn met de hand bijgewerkt.
+
+**Wat bewust NIET is verwijderd, en waarom:**
+
+- De twee benoemde uitzonderingen (`vfRounds` met `runSynthesis`, en `soloChain` met de v1-tune en -minimalisatie van een solonetwerk) en de v1-code die zij nodig hebben (§9).
+- `physWin3`/`arrayLobe` en de drempels `kaTier`, `ctcK`, `breakupHarmonic`, `excursionSpl`: Sanders keuze "alleen de vijf, nu". Een latere sessie.
+- `V1_PIN_DEFAULTS_LEGACY`: het zaait nog zichtbare pinvelden.
+- `toggleRegression.test.ts` houdt zijn naam en bewijst de motorgrens (fase 2).
+
+**Metingen.** Volle run na 3c (de gedeelde motor geraakt): 1841 s, 216 bestanden, 2964 tests, groen, alle vier de live ketenruns byte-identiek. Snelle laag na 3.4: 544 s, 2960 tests (2956 + 4 overgeslagen), groen. CI op `d414dbc` (fase 0–2): groen, 2984 geslaagd + 19 overgeslagen = 3003.
+
+**Open punten:** een v2-versie van de tweeweg zonder impedanties; `physWin3` en de vier drempels verwijderen; `ctcK` heeft nog twee startwaarden ('auto' en '0.5').

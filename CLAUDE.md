@@ -7,7 +7,7 @@
 
 ## Harde regels (altijd)
 - **P6:** geen letterlijke frequenties, componentgrenzen of andere projectgetallen in engine-/metriekcode. Alles afgeleid uit projectdata of expliciete projectinstelling. Whitelist: eenheidsconversies, c=343.
-- **Motorgrens-invariant (U-10, vervangt de toggle-invariant):** de gedeelde motor — de ketens (`designChain.ts`, `threeWayChain.ts`, `threeWayDesign.ts`), de tuner (`netOptimizer.ts`), `vfOptimizer.ts`, `minimize.ts`, `soloOptimizer.ts`, de synthese (`synthesis.ts`) en de audit (`partAudit.ts`) — importeert niets uit `engine2/`, en een referentierun ervan is byte-identiek met en zonder `engine2/` in de modulegraaf. Alleen de UI-ingangen (`App.tsx`, `EngineV2Panel.tsx`, `XoWindowAnnotation.tsx`, `optimClient.ts`) importeren engine2. Engine2 mag de motor *aanroepen* en *sturen via gestelde opties*, nooit stil veranderen. **Twee benoemde v1-routes blijven, en zijn de enige:** de tweeweg zónder impedanties (`vfRounds`, virtuele filters) en het solo-ontwerp (`soloChain`, plus de v1-tune en -minimalisatie van een solonetwerk); zij en de v1-code die zij nodig hebben worden niet verwijderd, zeggen bij elke run zichtbaar wat zij zijn, en lezen geen verborgen knop. Elke wijziging die dit raakt vereist `toggleRegression.test.ts`. *(Tot U-10 fase 3 bestaat de vlag `engineV2Enabled` nog en staat hij altijd aan; de oude regel "met de vlag uit is app-gedrag byte-identiek" had zonder bedienbare vlag geen onderwerp meer — zie `docs/U-10_v1_inventaris.md` §7.)*
+- **Motorgrens-invariant (U-10, vervangt de toggle-invariant):** de gedeelde motor — de ketens (`designChain.ts`, `threeWayChain.ts`, `threeWayDesign.ts`), de tuner (`netOptimizer.ts`), `vfOptimizer.ts`, `minimize.ts`, `soloOptimizer.ts`, de synthese (`synthesis.ts`) en de audit (`partAudit.ts`) — importeert niets uit `engine2/`, en een referentierun ervan is byte-identiek met en zonder `engine2/` in de modulegraaf. Alleen de UI-ingangen (`App.tsx`, `EngineV2Panel.tsx`, `XoWindowAnnotation.tsx`, `optimClient.ts`) importeren engine2. Engine2 mag de motor *aanroepen* en *sturen via gestelde opties*, nooit stil veranderen. **Twee benoemde v1-routes blijven, en zijn de enige:** de tweeweg zónder impedanties (`vfRounds`, virtuele filters) en het solo-ontwerp (`soloChain`, plus de v1-tune en -minimalisatie van een solonetwerk); zij en de v1-code die zij nodig hebben worden niet verwijderd, zeggen bij elke run zichtbaar wat zij zijn, en lezen geen verborgen knop. Elke wijziging die dit raakt vereist `toggleRegression.test.ts`. *(Sinds U-10 fase 3 bestaat de vlag `engineV2Enabled` niet meer; de oude regel "met de vlag uit is app-gedrag byte-identiek" had zonder vlag geen onderwerp — zie `docs/U-10_v1_inventaris.md` §7 en §12.)*
 - **Schatter-versionering:** elke extractor exporteert een versiestring; gedragswijziging = versiebump = cache-invalidatie.
 - **A5e-besluiten** (aggregatie, doelcurve, catalogus-schema, determinisme-beleid) zijn geparkeerd: niet eigenmachtig invullen, TODO met verwijzing.
 - N-weg-agnostisch: nergens een aanname van drie wegen.
@@ -2138,6 +2138,9 @@ grotere ingreep — hij raakt élk commando in dit project — en is deze sessie
   hele rekensom: H-1 voegt precies ÉÉN getagde test toe en zij draagt BEIDE tags (casus 1h's live
   reproductie door de hybride route), dus de VERENIGING groeit met één en niet met twee. Achttien
   was de M-3-stand.
+  **GEMETEN IN CI OP ubuntu/Node 22 (27-10-2026, U-10 fase 0–2, `d414dbc`, run 40490648905):
+  GROEN, 2984 geslaagd + 19 overgeslagen = 3003.** Negentien is weer het H-1-getal: U-10 tagt
+  niets. Fase 0 en 1 hebben geen eigen run (samen met fase 2 gepusht).
   **GEMETEN IN CI OP ubuntu/Node 22 (25-10-2026, U-9): twee runs, beide GROEN.** Fase 2
   (`65eadca`, run 40186114574): 214 bestanden (213 geslaagd, 1 overgeslagen), 2945 geslaagd,
   19 overgeslagen, 3627 s. Fase 3 (`709ad9c`, run 40214694098): 215 bestanden (214 geslaagd,
@@ -8820,3 +8823,23 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   generieke scan allebei op rood.
 - **De vlagclaims blijven tot fase 3** (F3b/F3c, en "absent = false = off"). De vlag bestaat nog
   en de claims zijn nog waar. Ze verdwijnen mét de vlag, elk bij naam in die commit.
+
+### U-10 fase 3-guards (de v1-motor uit de app en uit de gedeelde motor; twee benoemde routes blijven)
+
+- **Weg, in vier commits** (`bde4574`, `fe4d5a7`, `518eb96`, `a88107d`; samen −3262 regels): de
+  vlag `engineV2Enabled` en de facade-keuze, de v1-guided-wandeling, `runChainScan`/`runChain3Scan`
+  en hun workertaken, de v1-ranglijsten en de v1-terugvalgenerator, de dode v1-functies in de
+  gedeelde motor, en de vijf verborgen v1-velden. De tabel en de verwijderde tests per commit staan
+  in `docs/U-10_v1_inventaris.md` §12.
+- **`hpLpPref`/`hpLpPrefLow` reizen verliesvrij** (B-4.3): `v1CarriedRef` neemt ze bij het openen
+  over en schrijft ze bij het bewaren terug; niets leest ze. De registerrij staat in
+  `V2_UNGOVERNED_ROWS`, want zij heeft geen besturingselement meer. `errorSmoothOct`, `scan3Mode` en
+  `bomCapEur` leefden in `localStorage` en worden niet meer gelezen.
+- **Blijft, met reden:** de twee benoemde v1-routes (`vfRounds`, `soloChain`) en hun code;
+  `physWin3`/`arrayLobe` en de drempels `kaTier`, `ctcK`, `breakupHarmonic`, `excursionSpl`
+  (Sanders keuze: later); `V1_PIN_DEFAULTS_LEGACY` (zaait nog zichtbare pinvelden).
+- **Gemeten:** volle run na 3c 1841 s, 216 bestanden, 2964 tests, groen, de vier live ketenruns
+  byte-identiek; snelle laag na 3.4 544 s, 2960 tests (2956 + 4 overgeslagen), groen.
+- **Open:** een v2-versie van de tweeweg zonder impedanties; de vier drempels en `physWin3`;
+  `ctcK` heeft twee startwaarden ('auto' in `useState`, '0.5' in `applyProject`).
+
