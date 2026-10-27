@@ -92,7 +92,6 @@ import {
   type KaTier,
 } from './lib/driverLimits.ts';
 import {
-  candidateCentres,
   deriveXoWindow,
   gateMsFromHeader,
   readGateHeader,
@@ -421,7 +420,7 @@ import {
   scanStopped,
   poolSize,
 } from './lib/optimClient.ts';
-import { crossover3Variants, rankChain3Results, variantsFromPoints, type Chain3Input, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
+import { type Chain3Input, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
 import {
   optimizeNetworkValues,
   type NetOptimizeOptions,
@@ -433,7 +432,7 @@ import {
 } from './lib/partAudit.ts';
 import type { Chain3Result, Chain3Settings } from './lib/threeWayChain.ts';
 import { buildSoloNetwork, optimizeSoloFilter, reachableBandFor } from './lib/soloOptimizer.ts';
-import { crossoverVariants, rankChainResults, type ChainInput, type ChainResult, type ChainSettings } from './lib/designChain.ts';
+import { type ChainInput, type ChainResult, type ChainSettings } from './lib/designChain.ts';
 import { deserializeCatalog, serializeCatalog } from './lib/catalogFile.ts';
 import { fromPolar, abs as cAbs, mul as cMul, type Complex } from './lib/complex.ts';
 import {
@@ -950,29 +949,6 @@ export interface ScanTableRow {
   result: ChainResult | Chain3Result;
 }
 
-/* E-3b — reads only `net` and `zOk`, which both chain results carry; the
- * signature said `Chain3Result` because that was the only caller. */
-function scanRowVerdict(r: ChainResult | Chain3Result): { text: string; warn?: string } {
-    const nums = `${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°`;
-    const kinds = r.net.safetyKinds ?? [];
-    const LABEL: Record<string, string> = {
-      crossing: t('⚠ crossing lost'),
-      valley: t('⚠ crossing hole'),
-      protection: t('⚠ tweeter'),
-      load: t('⚠ amp load'),
-    };
-    if (kinds.length > 0) {
-      // The tune was thrown away: these are the seed's numbers.
-      return { text: `${t('seed')} ${nums}`, warn: kinds.map((k) => LABEL[k]).join(' ') };
-    }
-    if (r.net.ampFloorRepair === 'failed' || r.net.ampFloorRepair === 'refused') {
-      return { text: `✓ ${nums}`, warn: t('⚠ amp load') };
-    }
-    // zOk false with no kinds and no repair verdict should not happen; say
-    // so rather than inventing a category.
-    if (!r.zOk) return { text: `✓ ${nums}`, warn: t('⚠ rejected') };
-    return { text: `✓ ${nums}` };
-}
 
 /**
  * F2b — the scan table's GATE cell, as text.
@@ -9366,12 +9342,6 @@ export default function App() {
       // Warm start: the crossings of whatever design is in the sim right now
       // (the pair chips' overlap centres) — tried as an extra candidate when
       // they fall inside the windows.
-      const warm3 = designShaped && pairScores
-        ? {
-            low: pairScores.low?.integ.overlapCentreHz ?? null,
-            high: pairScores.high?.integ.overlapCentreHz ?? null,
-          }
-        : undefined;
       /* ================================================================ *
        * F4d — WHO MAKES THE CANDIDATES
        *
@@ -9563,27 +9533,21 @@ export default function App() {
         ];
         if (lines.length > 0) setV2RunNotes((prev) => [...prev, ...lines]);
       }
-      const v2Candidates: GeneratedCandidate[] = v2Generated?.field.candidates ?? [];
-      const variants = v2Generated
-        ? v2Candidates.map((c) => ({
-            label: c.label,
-            xoLow: c.crossings[0].hz,
-            xoHigh: c.crossings[c.crossings.length - 1].hz,
-            xoLowRange: c.crossings[0].cageHz,
-            xoHighRange: c.crossings[c.crossings.length - 1].cageHz,
-          }))
-        : crossover3Variants(
-            sim.base.w,
-            sim.base.m!,
-            sim.base.t,
-            pins,
-            tweeterHpFloor ?? undefined,
-            scanSteps3,
-            lowWin3,
-            highWin3,
-            warm3,
-            physWin3?.diAnchor,
-          );
+      /* U-10 fase 3 — the v1 fallback generator (`crossover3Variants`) is gone:
+       * a run without an A5d.3 field refuses before it gets here
+       * (`v2RouteRefusal`), so a missing field at this point is a bug, said. */
+      if (!v2Generated) {
+        setVfError('Cannot optimise yet — no candidate field could be derived (no A5d.3 window).');
+        return;
+      }
+      const v2Candidates: GeneratedCandidate[] = v2Generated.field.candidates;
+      const variants = v2Candidates.map((c) => ({
+        label: c.label,
+        xoLow: c.crossings[0].hz,
+        xoHigh: c.crossings[c.crossings.length - 1].hz,
+        xoLowRange: c.crossings[0].cageHz,
+        xoHighRange: c.crossings[c.crossings.length - 1].cageHz,
+      }));
       /* DELIVERABLE 3 — the pre-start estimate.
        *
        * Counted on the candidate list that is ABOUT TO RUN, not on a
@@ -9815,20 +9779,8 @@ export default function App() {
        * because the mode is a remembered UI setting rather than something the
        * designer picks per run. So it is skipped on the v2 route and said out
        * loud, rather than quietly producing the v1 field under a v2 stamp. */
-      const axesOnV2 = scan3Mode === 'axes' && !!v2Generated;
-      /* U-9 — the field is never rendered (`effect: 'niets'`), and 'axes' is its
-       * default, so a note about it on every three-way run would name a setting
-       * nobody can see. The branch itself is untouched: `axesOnV2` still keeps the
-       * v1 sweep off the v2 route, and the fallback still reads the field. */
-      if (axesOnV2 && rendersRow('scan3Mode')) {
-        setV2RunNotes((prev) => [
-          ...prev,
-          'The axis-by-axis scan was not used: it is a v1 way of GENERATING candidates (sweep one ' +
-            'handover against an anchor, then refine), and on the v2 route the field comes from ' +
-            'A5d. The candidates below are the generated field; switch the optimiser to v1 to use ' +
-            'the axis sweep.',
-        ]);
-      }
+      /* U-10 fase 3 — the v1 axis-by-axis scan (`runAxes`, behind the hidden
+       * `scan3Mode`) is gone: generation belongs to A5d on every run. */
       setVfBusy(true);
       setVfError(null);
       setVfProgress(null);
@@ -9850,9 +9802,6 @@ export default function App() {
        * the coupling through the shared mid instead of assuming it away —
        * skipped when the two sweeps land within half a step of their aims.
        * Progress rows from finished rounds stay in the busy table. */
-      const inputOf = (v: Chain3Variant) => chainInputFor(v);
-      const rankAll = (rs: Chain3Result[]) =>
-        rankChain3Results(rs, settings.targets, settings.phasePriority, angleSets3 ? settings.directivityWeight : 0, rSourceLimitOhm, bomCapEur, ampMinLoadOhm ?? 0);
 
       /* ---- F2b: WHICH ENGINE THIS SCAN RUNS ON --------------------------
        * The façade decides, once, here. With v2 selected the candidates go to
@@ -10049,89 +9998,14 @@ export default function App() {
         runId,
         at: Date.now(),
         status: 'running',
-        planned: scan3Mode === 'axes' && !axesOnV2 ? null : inputs.length,
-        label:
-          scan3Mode === 'axes' && !axesOnV2
-            ? 'axis-by-axis scan'
-            : `${inputs.length}-candidate scan`,
+        planned: inputs.length,
+        label: `${inputs.length}-candidate scan`,
       });
-      const runAxes = async (): Promise<Chain3Result[]> => {
-        const nPts = 1 + 2 * Math.max(1, Math.min(3, scanSteps3)); // 3/5/7
-        const clampSpan = (w: { floorHz: number | null; ceilHz: number | null } | null | undefined, rail: [number, number]): [number, number] => {
-          const lo = Math.max(rail[0], w?.floorHz ?? rail[0]);
-          const hi = Math.min(rail[1], w?.ceilHz ?? rail[1]);
-          return hi > lo * 1.03 ? [lo, hi] : [lo, lo * 1.03];
-        };
-        const lowSpan = pins.low
-          ? ([pins.low.freq - pins.low.margin, pins.low.freq + pins.low.margin] as [number, number])
-          : clampSpan(lowWin3, [250, 2000]);
-        const highSpan0 = pins.high
-          ? ([pins.high.freq - pins.high.margin, pins.high.freq + pins.high.margin] as [number, number])
-          : clampSpan(highWin3, [Math.max(1200, tweeterHpFloor ?? 0), 12000]);
-        const highSpan: [number, number] = [Math.max(highSpan0[0], lowSpan[0] * 2.5), Math.max(highSpan0[1], lowSpan[0] * 2.5 * 1.03)];
-        const pts = (span: [number, number], warm?: number | null) => candidateCentres(span[0], span[1], nPts, warm);
-        const inside = (v: number | null | undefined, sp: [number, number]) =>
-          typeof v === 'number' && v >= sp[0] && v <= sp[1] ? v : null;
-        const midOf = (sp: [number, number]) => Math.sqrt(sp[0] * sp[1]);
-        // Anchors for the axis being HELD: pin → DI match → warm start → log-mid.
-        // (point 5a) The held M-T sits on the DI anchor — clamped INTO the
-        // window when the match lies just outside it (Sanders' set: DI match
-        // 3.5 kHz vs breakup ceiling 3.1 kHz) — then warm start, then log-mid.
-        const clampIn = (v: number | null | undefined, sp: [number, number]) =>
-          typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.min(sp[1], Math.max(sp[0], v)) : null;
-        const highAnchor = pins.high ? pins.high.freq : clampIn(physWin3?.diAnchor.high, highSpan) ?? inside(warm3?.high, highSpan) ?? midOf(highSpan);
-        const merged: Chain3Result[] = [];
-        const doneItems: { label: string; text: string; done: boolean; warn?: string }[] = [];
-        let doneEvals = 0;
-        const runRound = async (vs: Chain3Variant[], phase?: { label: string; n: number; total: string }) => {
-          const rs = await scan3(vs.map((v) => ({ input: inputOf(v) })), (d) =>
-            setVfProgress({ round: doneItems.filter((x) => x.done).length + d.round, evals: doneEvals + d.evals, items: [...doneItems, ...d.items], round3: phase }),
-          );
-          for (const r of rs) doneItems.push({ label: r.label, ...scanRowVerdict(r), done: true });
-          /* Each finished candidate goes to disk NOW. A sleeping laptop cost
-           * Sander 18 of these once; from here on an interruption costs the
-           * chain that was in flight and nothing behind it. Never awaited on
-           * the critical path — a failing store may not stall a scan. */
+      scan3(inputs, (d) => setVfProgress({ round: d.round, evals: d.evals, items: d.items }))
+        .then((rs) => {
           for (const r of rs) void putScanRow(runId, scanSeq++, r);
-          doneEvals += rs.reduce((a, r) => a + r.net.evaluations, 0);
-          merged.push(...rs);
           return rs;
-        };
-        const stepRatio = (sp: [number, number]) => Math.pow(sp[1] / sp[0], 1 / Math.max(1, nPts - 1));
-        // Round 1 — W-M sweep.
-        const r1 = await runRound(variantsFromPoints(pts(lowSpan, warm3?.low), [highAnchor], lowSpan, highSpan, 'W-M sweep'), { label: 'W-M sweep', n: 1, total: '2–3' });
-        // "Stop and keep what finished" must not be undone by the next round:
-        // starting one respawns the workers this just killed.
-        if (r1.length === 0 || scanStopped()) return merged;
-        const w1 = rankAll(r1)[0];
-        const bestLow = w1.net.after.xoHzPairs?.[0] ?? w1.xoLow;
-        // Round 2 — M-T sweep with the best W-M held (delivered value, not aim).
-        const r2 = await runRound(variantsFromPoints([bestLow], pts(highSpan, warm3?.high), lowSpan, highSpan, 'M-T sweep'), { label: 'M-T sweep', n: 2, total: '2–3' });
-        const w2 = rankAll(r2.length ? r2 : r1)[0];
-        if (scanStopped()) return merged;
-        const bestHigh = w2.net.after.xoHzPairs?.[1] ?? w2.xoHigh;
-        // Round 3 — local refinement, only if the sweeps show coupling: did
-        // the M-T sweep move the W-M off round 1's best, or its own delivery
-        // off its aim, by more than half a step?
-        const rL = Math.sqrt(stepRatio(lowSpan));
-        const rH = Math.sqrt(stepRatio(highSpan));
-        const dLow = w2.net.after.xoHzPairs?.[0] ?? w2.xoLow;
-        const drift = Math.abs(Math.log(dLow / bestLow)) > Math.log(rL) || Math.abs(Math.log(bestHigh / w2.xoHigh)) > Math.log(rH);
-        if (drift && nPts >= 5) {
-          const around = (c: number, r: number, sp: [number, number]) =>
-            [c / r, c, c * r].map((v) => Math.min(sp[1], Math.max(sp[0], v)));
-          await runRound(variantsFromPoints(around(bestLow, rL, lowSpan), around(bestHigh, rH, highSpan), lowSpan, highSpan, 'refine'), { label: 'refine', n: 3, total: '3' });
-        }
-        return merged;
-      };
-      (scan3Mode === 'axes' && !axesOnV2
-        ? runAxes()
-        : scan3(inputs, (d) =>
-            setVfProgress({ round: d.round, evals: d.evals, items: d.items }),
-          ).then((rs) => {
-            for (const r of rs) void putScanRow(runId, scanSeq++, r);
-            return rs;
-          }))
+        })
         .then((results) => {
           /* F2b: the run stamp lands with the results, or not at all. An
            * ABORTED run keeps its status here — A5e.4 asks for it explicitly
@@ -10196,59 +10070,20 @@ export default function App() {
             );
             return;
           }
-          const ranked = rankChain3Results(
-            results,
-            settings.targets,
-            settings.phasePriority,
-            angleSets3 ? settings.directivityWeight : 0,
-            rSourceLimitOhm,
-            bomCapEur,
-            ampMinLoadOhm ?? 0,
-          );
-          const win = ranked[0];
-          /* ---- UI-1: WHAT LANDS IN THE WORKING TAB --------------------------
-           *
-           * On the v2 route: the SHORTLIST decides, and if it delivers nothing
-           * then nothing is loaded. On the v1 route: `win`, exactly as before
-           * and byte for byte — `shortlist` is null there and this branch is
-           * not entered, which is what keeps the toggle invariant.
-           *
-           * WHY THIS EXISTS. Until UI-1 both routes ended here, at
-           * `setWorkingDesign(win.parts)` — the v1 ranking, which has no gate,
-           * no requirement and no notion of a wholesale refusal. On the v2
-           * route it could and did crown a candidate v2 had thrown away, and
-           * V31 blanks a refused candidate's part list before it leaves the
-           * worker. So `win.parts` was `[]`, `setWorkingDesign` set
-           * `networkActive` behind it anyway, the Working tab said "No
-           * generator — add a source element", every chart summed the
-           * unfiltered drivers, and one green line read "Design ready — the
-           * winner is loaded in the Working tab". See `selection.ts`. */
+          /* U-10 fase 3 — THE v1 RANKING IS GONE FROM THIS ROUTE. It read the
+           * hidden BOM cap and the hidden v1 window thresholds, and without a
+           * shortlist it LOADED its top row (`win`) — the v1 crowning UI-1
+           * forbade on the row route. Since U-10 the candidates are listed in the
+           * order they were recorded, and what lands in Working is the
+           * SHORTLIST's selection or nothing (see `selection.ts`). */
+          const ranked = results;
           const selection = shortlist ? selectFromShortlist(shortlist) : null;
-          if (selection) {
-            if (selection.kind === 'design') {
-              applyScanCandidate({ label: selection.label, result: selection.result });
-              setShortlistPick(selection.label);
-            } else {
-              /* NOTHING IS LOADED, and the design on screen stays exactly as it
-               * was. Falling back to `win` here is the whole bug. */
-              setShortlistPick(null);
-            }
+          if (selection?.kind === 'design') {
+            applyScanCandidate({ label: selection.label, result: selection.result });
+            setShortlistPick(selection.label);
           } else {
-            setVFilters((prev) => ({ ...prev, ...win.specs }));
-            // The design step CHOSE the polarities; the sim must sum the design
-            // that was actually fitted, so the checkboxes follow it.
-            setMidInverted(win.midInverted);
-            setInverted(win.tweeterInverted);
-            setSynth({
-              mode: synthMode,
-              woofer: win.synthWoofer,
-              mid: win.synthMid,
-              tweeter: win.synthTweeter,
-            });
-            setWorkingDesign(win.parts);
-            setNetOptAudit(win.net.audit ?? null);
-            setNetworkActive(true);
-            setVfBypass(true);
+            /* NOTHING IS LOADED, and the design on screen stays exactly as it was. */
+            setShortlistPick(null);
           }
           setVfOpt(null);
           setVfRunStats(null);
@@ -10268,12 +10103,8 @@ export default function App() {
                    * is worth having; it may not crown anything, and its `active`
                    * row is whatever the SHORTLIST loaded — which is often not
                    * its own top row and is sometimes nothing at all. */
-                  rows: ranked.map((rr) => chain3ScanRow(rr, shortlist ? null : win)),
-                  active: shortlist
-                    ? selection?.kind === 'design'
-                      ? selection.label
-                      : ''
-                    : win.label,
+                  rows: ranked.map((rr) => chain3ScanRow(rr, null)),
+                  active: selection?.kind === 'design' ? selection.label : '',
                 }
               : null,
           );
@@ -10285,13 +10116,13 @@ export default function App() {
           // DELIVERED handovers, not just the candidate label: a design can
           // meet every flatness target while its crossings sit an octave off
           // the knees it was built on, and that is invisible in the numbers.
-          const crossings = (r: typeof win): string => {
+          const crossings = (r: Chain3Result): string => {
             const xo = r.net.after.xoHzPairs;
             if (!xo || xo.length !== 2) return '';
             const f = (v: number | null) => (v == null ? '—' : `${Math.round(v)}`);
             return ` · crosses ${f(xo[0])}/${f(xo[1])} Hz`;
           };
-          const line = (r: typeof win): string =>
+          const line = (r: Chain3Result): string =>
             `${r.label}: ${r.net.after.rippleDb.toFixed(2)} dB/${r.net.after.phaseDeg.toFixed(1)}°` +
             (r.net.after.pairPhaseDeg && r.net.after.pairPhaseDeg.length === 2
               ? ` (W-M ${r.net.after.pairPhaseDeg[0].toFixed(1)}° · M-T ${r.net.after.pairPhaseDeg[1].toFixed(1)}°)`
@@ -10321,8 +10152,7 @@ export default function App() {
            * the shortlist delivered nothing there is no design to warn about —
            * so the reader gets the shortlist's own diagnosis instead of an
            * amplifier-load warning about a network nobody has. */
-          const loaded: Chain3Result | null =
-            shortlist ? (selection?.kind === 'design' ? selection.result : null) : win;
+          const loaded: Chain3Result | null = selection?.kind === 'design' ? selection.result : null;
           const zLow =
             loaded !== null &&
             ampMinLoadOhm !== null && loaded.zMinOhm !== null && !meetsAmpFloor(loaded.zMinOhm, ampMinLoadOhm);
@@ -10334,25 +10164,15 @@ export default function App() {
             : `⚠ amplifier load: the loaded design dips to ${loaded!.zMinOhm!.toFixed(1)} Ω ` +
               `(your amplifier is rated to ${ampMinLoadOhm!.toFixed(1)} Ω)` +
               (anySane
-                ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
+                ? ' — a candidate with a sane load exists in the table.'
                 : ' — no candidate in this scan stayed above it, so this is a design-level ' +
                   'property of these drivers in this topology, not a tuning miss. Three branches ' +
                   'in parallel around a handover is the usual cause; check the Impedance panel.');
           /* Handover physics on the winner: same visibility rule as the Z
            * floor — a class the designer cannot read reorders silently. */
-          const anyXoSane = ranked.some((r) => r.xoWindowOk !== false);
-          const xoWinNote =
-            loaded === null || loaded.xoWindowOk !== false
-              ? ''
-              : `⚠ handover: a delivered crossing sits outside its physics window` +
-                (anyXoSane
-                  ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
-                  : ' — no candidate stayed inside; the drivers or the window settings disagree ' +
-                    'with every reachable design. Check the ⚙ window readout.');
           const waarschuwingen = [
             ...brokenWindows,
             zNote,
-            xoWinNote,
             loaded?.xoPinNote ? `⚠ PIN: ${loaded.xoPinNote}` : '',
             loaded?.net.snapNote ?? '',
             loaded?.net.safetyNote ? `⚠ ${loaded.net.safetyNote}` : '',
@@ -10391,12 +10211,9 @@ export default function App() {
                     ...shortlist.diagnosis.map((d) => `        ${d}`),
                   ]
                 : [
-                    `winner  xo ${win.label} · ${win.structureLabel}` +
-                      (win.net.after.avgDevDb !== undefined
-                        ? ` · avg ${win.net.after.avgDevDb.toFixed(2)} dB`
-                        : ''),
-                    `        ${line(win)}`,
-                    ...ranked.slice(1).map((r, i) => `${i === 0 ? 'others  ' : '        '}${line(r)}`),
+                    'loaded     NOTHING — the run carried no stamp, so there is no shortlist to load ' +
+                      'from; the candidates are listed as they were recorded, unranked',
+                    ...ranked.map((r) => `        ${line(r)}`),
                   ]),
               ...waarschuwingen,
             ].join('\n'),
@@ -10756,19 +10573,6 @@ export default function App() {
         physWin2.ceilHz > physWin2.floorHz * 1.05
           ? [physWin2.floorHz, physWin2.ceilHz]
           : undefined;
-      const saneFree: [number, number] | undefined = (() => {
-        if (measuredFree) return measuredFree;
-        if (tweeterHpFloor === null) return undefined;
-        const floor = tweeterHpFloor; // tweeter: ≥2×Fs
-        // Mid beaming ceiling when the mid size is known (the physically-right
-        // upper bound); else fall back to a tweeter-anchored estimate.
-        const ceil = Math.max(midXoCeiling ?? floor * 1.7, floor * 1.2);
-        // Aim at the CENTRE of the driver window (its geometric mean — for KOAN
-        // + 5" that is ~2400 Hz, exactly the sweet spot), with ±~0.28 oct room
-        // so the metric can fine-tune without drifting to an extreme edge.
-        const centre = Math.sqrt(floor * ceil);
-        return [centre / 1.22, centre * 1.22];
-      })();
       // Scan THREE crossover candidates across the driver window (like a pin
       // does), not one chain — Sander measured that a pinned 2100±200 runs far
       // more sims and comes back with a better filter (SPL AND phase), because
@@ -10978,9 +10782,16 @@ export default function App() {
          * cage is the generated candidate's own (one spacing wide in an
          * exploration); without a field it is the v1 free/pinned band, which is
          * the fallback the note above announced. */
-        const v2Variants: { label: string; xoRange?: [number, number] }[] = v2Generated
-          ? v2Candidates.map((c) => ({ label: c.label, xoRange: [c.crossings[0].cageHz[0], c.crossings[0].cageHz[1]] }))
-          : crossoverVariants(userXo ?? saneFree, scanSteps2);
+        /* U-10 fase 3 — the v1 free/pinned fallback (`crossoverVariants`) is
+         * gone; a run without a field refuses before it gets here. */
+        if (!v2Generated) {
+          setVfError('Cannot optimise yet — no candidate field could be derived (no A5d.3 window).');
+          return;
+        }
+        const v2Variants: { label: string; xoRange?: [number, number] }[] = v2Candidates.map((c) => ({
+          label: c.label,
+          xoRange: [c.crossings[0].cageHz[0], c.crossings[0].cageHz[1]],
+        }));
         /* DELIVERABLE 3 — the pre-start estimate, on the list that is ABOUT TO
          * RUN. It STOPS NOTHING: "start anyway" is an ordinary button. A
          * two-way has one handover, so the estimate has one pair. */
@@ -11426,16 +11237,9 @@ export default function App() {
              * gate, no requirement and no notion of a refused tune. It stays
              * visible because a second reading of one's own field is worth
              * having; it may not crown anything (UI-1). */
-            const ranked = rankChainResults(
-              results,
-              targets,
-              phasePriority / 100,
-              tweeterHpFloor ?? undefined,
-              rSourceLimitOhm,
-              rSourceDisqOhm,
-              bomCapEur,
-              ampMinLoadOhm ?? 0,
-            );
+            /* U-10 fase 3 — the v1 ranking (hidden BOM cap, hidden window
+             * thresholds) is gone: the table lists the candidates as recorded. */
+            const ranked = results;
             /* ---- UI-1: WHAT LANDS IN THE WORKING TAB ----------------------
              * The SHORTLIST decides, and if it delivers nothing then nothing
              * is loaded. Falling back to the v1 ranking's top row here is the
@@ -11489,17 +11293,8 @@ export default function App() {
               : `⚠ amplifier load: the loaded design dips to ${loaded!.zMinOhm!.toFixed(1)} Ω ` +
                 `(your amplifier is rated to ${ampMinLoadOhm!.toFixed(1)} Ω)` +
                 (anySane
-                  ? ' — a candidate with a sane load exists in the table; it ranks lower on flatness.'
+                  ? ' — a candidate with a sane load exists in the table.'
                   : ' — no candidate stayed above it; check the Impedance panel.');
-            const xoNote =
-              loaded === null || loaded.xoWindowOk !== false
-                ? ''
-                : `⚠ handover: the delivered crossing (${
-                    loaded.net.after.xoHz ? Math.round(loaded.net.after.xoHz) : '—'
-                  } Hz) sits outside its window` +
-                  (ranked.some((rr) => rr.xoWindowOk !== false)
-                    ? ' — an in-window candidate exists in the table; it ranks lower on flatness.'
-                    : ' — no candidate stayed inside; check the Driver limits or pin the crossing.');
             setNetOptNote(
               [
                 `2-way scan — ${results.length} candidate${results.length > 1 ? 's' : ''}` +
@@ -11519,7 +11314,7 @@ export default function App() {
                   : `loaded     NOTHING — ${selection.describe}`,
                 ...(loaded ? [`        ${line(loaded)}`] : []),
                 ...shortlist.diagnosis.map((d) => `        ${d}`),
-                ...[zNote, xoNote, loaded?.net.snapNote ?? '',
+                ...[zNote, loaded?.net.snapNote ?? '',
                   loaded?.net.safetyNote ? `⚠ ${loaded.net.safetyNote}` : '',
                   loaded?.net.ampFloorNote ? `⚠ ${loaded.net.ampFloorNote}` : ''].filter(Boolean),
               ].join('\n'),

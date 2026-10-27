@@ -211,7 +211,9 @@ describe('U-1 — no v1 route is reachable from the visible UI', () => {
     expect(APP).toContain('v1 reading — not the route that made this run');
     expect(APP).toContain('v1 note (not applied on this route)');
     expect(APP).toContain('the v1 ranking below has no knowledge of your gates');
-    expect(APP).toContain('rankChain3Results(');
+    /* U-10 fase 3 (V15) — WAS `rankChain3Results(` in the source: the v1
+     * ranking is gone from the app; the hidden table now lists the recorded order. */
+    expect(APP).not.toContain('rankChain3Results(');
     expect(v1ReadingShown()).toBe(false);
     expect(APP).toContain('{v1ReadingShown() && chainScan && v2Shortlist && (');
     expect(APP).toContain('{v1ReadingShown() && chainScan && (');

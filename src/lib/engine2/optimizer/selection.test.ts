@@ -325,7 +325,9 @@ describe('UI-1 / E-3b — the two-way v2 route loads through the shortlist, not 
      * ranking's top row may never be loaded, applied, or used as a fallback on
      * this route. `ranked` is computed — it fills the scan table, the second
      * reading UI-1 kept — but nothing takes its first element. */
-    expect(block).toContain('const ranked = rankChainResults(');
+    /* U-10 fase 3 (V15) — WAS `const ranked = rankChainResults(`: the v1
+     * ranking is gone; `ranked` is the recorded order. */
+    expect(block).toContain('const ranked = results;');
     expect(block).not.toContain('ranked[0]');
     expect(block).not.toContain('setWorkingDesign(');
     expect(block).not.toContain('setVFilters(');

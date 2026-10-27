@@ -338,11 +338,13 @@ describe('U-9 fase 2 (4): nothing v1-only is on screen in any mode', () => {
     expect(APP.slice(i - 600, i)).not.toContain('rankChain3Results(');
   });
 
-  it('the v1 motor stays, untouched: the rankings and the scans are still in the source (U-10)', () => {
-    expect(APP).toContain('rankChain3Results(');
-    expect(APP).toContain('rankChainResults(');
-    expect(APP).toContain('runChain3Scan');
-    expect(APP).toContain('runChainScan');
+  /* U-10 fase 3 (V15) — WAS "the v1 motor stays, untouched: the rankings and
+   * the scans are still in the source (U-10)". U-10 is the session that removes
+   * them from the app; the claim is now that they are gone. */
+  it('the v1 rankings and scans are gone from the app (U-10)', () => {
+    for (const gone of ['rankChain3Results(', 'rankChainResults(', 'runChain3Scan(', 'runChainScan(']) {
+      expect(APP, gone).not.toContain(gone);
+    }
   });
 
   /* THE PERTURBATION. The hidden v1 thresholds (and the design level, through

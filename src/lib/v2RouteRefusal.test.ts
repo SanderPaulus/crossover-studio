@@ -101,8 +101,13 @@ describe('U-10 — the app applies it (source scan)', () => {
     const run = fnBody('async function runVfOptimize(');
     const ask = run.indexOf('v2RouteRefusal({');
     expect(ask).toBeGreaterThan(-1);
-    for (const later of ['crossover3Variants(', 'crossoverVariants(', 'runChain3ScanV2(', 'runChainScanV2(', 'runVfRoundsTask(', 'runSoloChainTask(']) {
+    for (const later of ['runChain3ScanV2(', 'runChainScanV2(', 'runVfRoundsTask(', 'runSoloChainTask(']) {
       expect(run.indexOf(later), later).toBeGreaterThan(ask);
+    }
+    /* U-10 fase 3 — and the v1 fallback generators it used to fall through to
+     * are gone from the run entirely. */
+    for (const gone of ['crossover3Variants(', 'crossoverVariants(', 'runAxes(', 'rankChain3Results(', 'rankChainResults(']) {
+      expect(run, gone).not.toContain(gone);
     }
   });
   it('both exceptions print their sentence where the result lands', () => {
