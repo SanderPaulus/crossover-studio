@@ -56,8 +56,9 @@ gewapend, min |Z| = M-B/|Z| tegen de vloer 2,6 Ω):
 | alle op s | 0,75 | geleverd | 0,699 | 3,76 | **3,404** | **25** | **39,75** | 129 |
 
 De ± -kolom leest op casus 1b in alle geleverde armen 70,5–70,7 dB. Dat is niet de
-schuif (de arm die er niets aan verandert leest het ook). Het is een bijvangst die
-niet is uitgezocht.
+schuif (de arm die er niets aan verandert leest het ook). **Uitgezocht in E-7 (V53):** het
+dode 20-kHz-punt werd in de gladding meegenomen. Ná de reparatie: "alle op 0,5" ±1,18, "alle op
+0,75" ±1,55, netlists ongewijzigd.
 
 **Referentie, niet herhaald:** M-4 (16-09-2026) draaide op casus 1 "alle op 0,75" op twee
 gestelde kruispunten. 362,3 Hz werd geweigerd op M-D; 518,8 Hz leverde en was

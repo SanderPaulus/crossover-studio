@@ -28,6 +28,23 @@ import { NARROW_PEAK_MIN_DB, WINDOW_SMOOTHING_OCTAVES } from '../constants.ts';
 import { coverageOf, type Coverage } from '../ingest/validity.ts';
 import { targetOffsetsDb, type TargetCurve } from './targetCurve.ts';
 
+/**
+ * The judgement's own version (A5e.5 — the estimator-versioning rule applied
+ * to a requirement metric). It rides in the shortlist stamp, so a window read
+ * by one version cannot pass for one read by another.
+ *
+ * 1.0: F3 — the smoothing ran over the WHOLE grid it was handed, and only the
+ *      reading was clipped to the band.
+ * 1.1: E-7 (V53) — the smoothing runs over the BAND POINTS ONLY. Every repo
+ *      fixture grid ends on 20 000 Hz, one point past the far fields, and that
+ *      point is a −400 dB silent ghost; the 1/6-octave kernel pulled it across
+ *      the band edge and the worker read ±70–77 dB on designs whose RMS was
+ *      0.6 dB. The V38-fix mechanism, one reader on: restrict BEFORE the trend.
+ *      MINOR: the shape is unchanged, the window moves (and the narrow-peak
+ *      residual with it, near the band edges).
+ */
+export const RESPONSE_JUDGEMENT_VERSION = 'response-judgement/1.1';
+
 export interface ResponseJudgement {
   /**
    * Peak-to-peak of the smoothed deviation from the target, dB. This is the
@@ -101,8 +118,21 @@ export function judgeResponse(
   const mean = sum / idx.length;
   const rel = dev.map((v) => v - mean);
 
-  /* ---- the window: on the SMOOTHED curve ---- */
-  const smoothed = smoothDbGaussian(grid, rel, octaves);
+  /* ---- the window: on the SMOOTHED curve ----
+   * E-7 (V53) — smoothed over the band points ONLY. What lies outside the band
+   * is not judged, so it may not be averaged into what is: a dead grid point
+   * past a far field's extent sits at −400 dB and a kernel that reaches it
+   * carries it across the edge. Outside the band the smoothed curve is not
+   * defined (NaN) and nothing below reads it there. */
+  const smoothedInBand = smoothDbGaussian(
+    idx.map((i) => grid[i]),
+    idx.map((i) => rel[i]),
+    octaves,
+  );
+  const smoothed = grid.map(() => Number.NaN);
+  idx.forEach((i, k) => {
+    smoothed[i] = smoothedInBand[k];
+  });
   let hi = -Infinity;
   let lo = Infinity;
   let hiAt = grid[idx[0]];

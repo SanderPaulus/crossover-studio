@@ -56,6 +56,7 @@ import {
 } from './diversity.ts';
 import type { GateVerdict } from './gates.ts';
 import type { StatedCrossingReport } from '../predesign/statedCrossings.ts';
+import { RESPONSE_JUDGEMENT_VERSION } from '../requirements/response.ts';
 import { relaxUntil, type RelaxationOptions, type RelaxationOutcome } from './relaxation.ts';
 
 /**
@@ -608,6 +609,11 @@ export function buildShortlist<T>(
       name: 'selection',
       value: SHORTLIST_SELECTION_VERSION,
       describe: 'the version of the filtering and spreading rules',
+    },
+    {
+      name: 'judgement',
+      value: RESPONSE_JUDGEMENT_VERSION,
+      describe: 'the version of the window/RMS judgement every response row was read by (E-7)',
     },
     {
       name: 'target',

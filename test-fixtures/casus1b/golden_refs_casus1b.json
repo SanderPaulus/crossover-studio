@@ -382,7 +382,7 @@
    "V_tweeter_op_fs_dB": -25.06,
    "V_mid_op_fs_dB": -27.86,
    "rms_vlakheid_dB": 0.96,
-   "spl_venster_pm_dB": 2.56,
+   "spl_venster_pm_dB": 2.24,
    "mt_fase_oct": 7.03,
    "mt_fase_kruispunt_hz": 2250.2,
    "mt_fase_oct_octaafgeknipt_V43": 7.03,
@@ -409,7 +409,10 @@
      "grens": 5,
      "geslaagd": true
     }
-   ]
+   ],
+   "_waarden_F3_tot_E7": {
+    "spl_venster_pm_dB": 2.56
+   }
   },
   "_parameters": {
    "klasse": "B",
@@ -435,7 +438,7 @@
    "V_tweeter_op_fs_dB": -40.46,
    "V_mid_op_fs_dB": 1.63,
    "rms_vlakheid_dB": 0.61,
-   "spl_venster_pm_dB": 1.21,
+   "spl_venster_pm_dB": 1.2,
    "mt_fase_oct": 2.83,
    "mt_fase_kruispunt_hz": 1995.9,
    "mt_fase_oct_octaafgeknipt_V43": 9.63,
@@ -455,7 +458,10 @@
      "grens": 5,
      "geslaagd": true
     }
-   ]
+   ],
+   "_waarden_F3_tot_E7": {
+    "spl_venster_pm_dB": 1.21
+   }
   }
  },
  "v1_baseline": {

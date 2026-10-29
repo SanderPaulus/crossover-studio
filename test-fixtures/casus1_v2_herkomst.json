@@ -379,11 +379,15 @@
    "reason": "the delivered network amplifies woofer's reflex peak by 4.42 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
    "rejectedTune": {
     "minZOhm": null,
-    "windowPlusMinusDb": 75.63305976234194,
+    "windowPlusMinusDb": 6.285510366488649,
     "rmsDeviationDb": 2.2896755779652467,
     "rippleDb": null,
     "phaseDeg": null,
     "driveOnFsDb": -16.571178174691674
+   },
+   "_waarden_F3_tot_E7": {
+    "windowPlusMinusDb": 75.63305976234194,
+    "_": "E-7 (V53): het venster van deze geweigerde tune is herleid door de live verwerpingsrun (casus1V2Refusal.test.ts) onder response-judgement/1.1. De ANDERE windowPlusMinusDb-waarden in dit bestand zijn gelezen onder 1.0, met het dode 20-kHz-punt meegegladd (71-77 dB), en zijn een record van hun run: hun netwerken bestaan buiten een ketenrun niet."
    }
   },
   {
@@ -523,7 +527,7 @@
     "reden": "the delivered network amplifies woofer's reflex peak by 4.42 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)",
     "geweigerde_tune": {
      "minZOhm": null,
-     "windowPlusMinusDb": 75.63305976234194,
+     "windowPlusMinusDb": 6.285510366488649,
      "rmsDeviationDb": 2.2896755779652467,
      "rippleDb": null,
      "phaseDeg": null,

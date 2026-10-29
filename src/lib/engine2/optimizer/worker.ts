@@ -1846,8 +1846,13 @@ function seriesPathResistance(parts: readonly VxpPart[], model: string): number 
  * thread because this worker already has the netlist and the impedances in
  * hand, and re-solving every candidate just to sort a table would double the
  * cost of the scan for a column.
+ *
+ * Exported for ONE reader outside this file: `windowGhost.test.ts` (E-7), which
+ * holds the worker's window against the report's on the same netlist. A test
+ * that rebuilt this sum would be a second implementation of the thing it
+ * checks (A3g).
  */
-function summedResponse(
+export function summedResponse(
   parts: readonly VxpPart[],
   grid: readonly number[],
   branches: { model: string; response: GriddedResponse }[],

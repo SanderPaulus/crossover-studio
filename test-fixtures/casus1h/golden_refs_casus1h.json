@@ -745,7 +745,7 @@
     "tweeter"
    ],
    "rms_vlakheid_dB": 0.64,
-   "spl_venster_pm_dB": 1.05,
+   "spl_venster_pm_dB": 1.06,
    "wm_fase_oct": 76.43,
    "wm_fase_kruispunt_hz": 500,
    "mt_fase_oct": 3.16,
@@ -813,6 +813,9 @@
      "The DELIVERED network would prefer -0.008 ms and -4.12 dB (+0.406 ms, +0.00 dB against what it was judged with). THE DELAY IS THE ONE TO DIAL IN: the gain above is already levelled against the branch that was built, so a residual there is rounding, but the DELAY was fitted before the network existed and the realised high-pass carries phase the ideal shape does not. Sweeping for the deepest null in the cabinet is what settles it, and this is the model's own best estimate of where that sweep lands.",
      "The active side's own excursion, thermal and protection limits belong to its amplifier and its DSP. This app designs the passive network and judges what the main amplifier sees; nothing here is a statement about what the active amplifier may do."
     ]
+   },
+   "_waarden_F3_tot_E7": {
+    "spl_venster_pm_dB": 1.05
    }
   }
  },

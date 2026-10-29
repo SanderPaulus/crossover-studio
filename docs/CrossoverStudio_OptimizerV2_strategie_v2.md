@@ -11432,6 +11432,62 @@ keer de BOM.
    staat in geen enkele rij van deze tabel.
 
 
+### V53 — het ±venster van de worker smoothet over een dood rasterpunt (E-7, 29-10-2026; gerepareerd in fase 1)
+
+**Wat er stond.** De ±venster-kolom van de shortlist leest op casus 1b 70,5–70,7 dB terwijl rms (0,56–0,70 dB)
+en M-K op dezelfde netwerken goed zijn (E-6). E-3 noteerde ±70,5 dB vóór en ±1,20 ná `foldDriverPolarity`.
+
+**Wat het is — niet de polariteit.** `judgeResponse` (`requirements/response.ts`) smoothet de afwijking over
+het HELE raster dat het krijgt en kiest daarna alleen de bandpunten. Het ketenraster van elke repo-casus loopt
+tot 20 000 Hz (`GRID_TOP_HZ`), de geoordeelde band tot 19 500 Hz, en élk ver veld eindigt net onder 20 kHz
+(casus 1/1b/1h 19 999,51, casus 2 19 998,05). Het toppunt is dus een stille geest van −400 dB, en de
+1/6-octaafkern (σ 1/12 okt, reikwijdte 0,25 okt) trekt die over de bandrand: het minimum landt op 19 055 Hz.
+Rms leest de ongegladde punten in de band en ziet de geest niet. Het mechanisme van V38-fix, één lezer verder.
+
+**Bewijs** (`scripts/measure-e7-window.ts`, het bevroren casus-1b-`KAND-V2-1`, dezelfde som als `summedResponse`):
+
+| lezing | ± dB | rms dB |
+| --- | ---: | ---: |
+| (a) zoals de worker | 70,533 | 0,588 |
+| (b) tweeter-polariteit omgedraaid | 70,485 | 3,701 |
+| (e) alleen het geestpunt weg | 1,274 | 0,588 |
+| (d) alleen bandpunten | 1,182 | 0,588 |
+| (c) `buildReport` | 1,208 | 0,610 |
+
+(b) beweegt het venster niet en rms wél (3,70 is E-3's getal): de E-3-"±1,20" was de rapportlezing, de worker
+las vóór én ná de vouw ±70,5. De levende punten buiten de band (60–88 Hz) dragen 0,09 dB bij.
+
+**Reikwijdte.** Elke worker-lezing op een repo-fixtureraster sinds F3 (`61a3ea4`, `judgeResponse` in de
+worker): de herkomsten van casus 1 (71–77 dB), 1b (70,1–70,2), de gedateerde corpora en `rejectedTune` van elke
+verwerping. Geen gestelde eis leest het: geen casus stelt `splWindowPlusMinusDb`, de shortlist sorteert op rms.
+De klasse-B-referenties `spl_venster_pm_dB` komen van `buildReport` en zijn schoon. De app-route heeft geen
+dood toppunt (tweeweg: doorsnede, drieweg: unie van de gemeten toppen), dus daar leest de kolom plausibel;
+de kleine lek van levende punten buiten de band (zoals (e) − (d)) geldt daar wel.
+
+**Reparatie (E-7 fase 1, Sander akkoord B-6).** `judgeResponse` smoothet sinds `response-judgement/1.1`
+over de BANDPUNTEN alleen; buiten de band is de gegladde kromme niet gedefinieerd. Eén functie, beide
+lezers (worker en rapport) ongewijzigd erop aangesloten. De versie rijdt mee in de shortlist-stempel
+(component `judgement`). Gevolgen, gemeten:
+
+- **E-6-armen op casus 1b, opnieuw gedraaid:** "alle op 0,5" ±70,53 → **±1,18** (rms 0,588, digest
+  `c1464f54` ongewijzigd); "alle op 0,75" ±70,74 → **±1,55** (rms 0,699, digest `a7774021` ongewijzigd).
+- **Het rapport verschuift aan de bandranden.** Bruggen `_waarden_F3_tot_E7` (`scripts/record-e7-window-bridge.ts`,
+  idempotent, gooit als de RMS niet reproduceert): casus 1 `KAND_V2_2` 2,08 → 2,02 en `_F3…HUIDIG_2e`
+  1,173 → 1,175; casus 1b `HUIDIG_MT` 2,56 → 2,24 en `KAND_V2_1` 1,21 → 1,20; casus 1h `H_KAND_4` 1,05 → 1,06.
+  De gedateerde casus-1-corpora zijn niet herleid: geen test houdt hun venster tegen een verse lezing.
+- **De live verwerping** (156,7 Hz, `casus1V2Refusal`) leest ±6,29 waar 75,63 stond; herleid met brug in
+  `casus1_v2_herkomst.json`. De andere vensters in de herkomsten zijn records onder 1.0.
+- **Geen poort, geen zoektocht, geen gestelde eis op een corpus beweegt**: `judgeResponse` zit niet in de
+  tuner; geen casus stelt `splWindowPlusMinusDb`; de shortlist sorteert op rms. Volle run groen, alle vier
+  de live ketenruns byte-identiek.
+- **Browser** (tweewegdemo, polariteitsarmen `both`): 10 van 10 geleverd, vensters ±1,03–2,37, de vijf
+  spiegelarmen ±1,29–2,37. Console leeg.
+
+**Wat blijft:** worker en rapport oordelen op verschillende banden (keten 88,8–19 500 Hz, rapport de
+gemeenschappelijke band vanaf 396,7 Hz). Op een vlakke som komen zij binnen de dB-klasse samen; op een som
+die uitdooft niet (KAND_V2_1 zonder omkering: ±9,24 tegen ±9,99). Dat is een bandkeuze, geen defect.
+
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 

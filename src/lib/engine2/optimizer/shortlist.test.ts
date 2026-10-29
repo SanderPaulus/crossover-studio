@@ -242,6 +242,7 @@ describe('the shortlist', () => {
       );
       expect(relaxed.stamp.shortlistFingerprint).not.toBe(base.stamp.shortlistFingerprint);
       expect(base.stamp.components.map((c) => c.name).sort()).toEqual([
+        'judgement',
         'relaxation',
         'requirements',
         'run',

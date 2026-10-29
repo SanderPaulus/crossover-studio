@@ -8907,3 +8907,32 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   console-fout.
 - **Niet gedaan:** `DEFAULT_PHASE_PRIORITY` zelf blijft 0,5. De ± -kolom van casus 1b leest
   70,5–70,7 dB in elke geleverde arm van de E-6-meting; niet uitgezocht.
+
+### E-7-guards (het ±venster smoothet op de band die het oordeelt; V53)
+
+- **V53** staat in de nota (vóór "Casus S1"). De hypothese van de startprompt (polariteit) was FOUT.
+  `judgeResponse` smoothte over het hele raster; het toppunt (20 000 Hz) van elk repo-fixtureraster
+  (casus 1, 1b, 1h, 2) is een −400 dB-geest net boven het verre veld, en de 1/6-octaafkern trok die de band
+  in. Worker ±70,53 / rms 0,59 op casus 1b `KAND-V2-1`; tweeter omgedraaid ±70,49; zonder het geestpunt ±1,27;
+  bandpunten ±1,18; `buildReport` ±1,21. E-3's "±1,20" was de rapportlezing. De app-route had geen dood
+  toppunt (tweeweg: doorsnede, drieweg: unie van de gemeten toppen). Sonde: `scripts/measure-e7-window.ts`.
+- **Reparatie:** `requirements/response.ts` smoothet alleen bandpunten; `RESPONSE_JUDGEMENT_VERSION`
+  `response-judgement/1.1`, als component `judgement` in de shortlist-stempel. `summedResponse` in
+  `worker.ts` is geëxporteerd voor één testlezer.
+- **Bruggen:** `scripts/record-e7-window-bridge.ts` (idempotent, gooit als de RMS niet reproduceert) zette
+  `_waarden_F3_tot_E7` op vijf blokken in de golden refs van casus 1, 1b en 1h. Met de hand gezet: de
+  live verwerping in `casus1_v2_herkomst.json`, ±75,63 → ±6,29, door `casus1V2Refusal` gemeten. De andere
+  vensters in de herkomsten blijven records onder 1.0 (hun netwerken bestaan buiten een ketenrun niet).
+- `src/lib/engine2/requirements/windowGhost.test.ts` (5 claims): de versie, de handberekening (vlak plus
+  één dood punt buiten de band = venster 0), de premisse (het dode toppunt bestaat), worker en rapport
+  binnen de dB-klasse op een netlist met de omkering in het Driver-onderdeel, en de tegenproef (zonder
+  omkering springen béíde > 3 dB). **Opzettelijke breuk** (weer over het hele raster smoothen): 3 rood.
+- **Gemeten 29-10-2026:** `npm run test:fast` 537 s, 218 bestanden (217 + 1 overgeslagen), 2974 tests
+  (2970 + 4), groen (+1 bestand, +5 tests). `npx vitest run` 1814 s, 218 bestanden, 2974 tests, groen,
+  alleen gedraaid; alle vier de live ketenruns byte-identiek, `f4cRegression`, `workerRouteRegression`,
+  `toggleRegression` staan. Geen nieuwe tag: de CI-telling blijft 19.
+- **E-6-armen opnieuw** (shards, `e6_phase_priority.json` niet herschreven): ±70,53 → ±1,18 en
+  ±70,74 → ±1,55, digests ongewijzigd. **Browser** (tweewegdemo, armen `both`): 10/10 geleverd, ±1,03–2,37,
+  console leeg.
+- **Niet gedaan:** de gedateerde casus-1-corpora en de overige herkomstvensters zijn niet herleid; worker en
+  rapport oordelen nog steeds op verschillende banden (bandkeuze, geen defect).

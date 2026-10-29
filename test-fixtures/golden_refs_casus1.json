@@ -828,7 +828,10 @@
    "overige_kandidaten": {
     "HUIDIG_2e": {
      "rms_vlakheid_dB": 0.552,
-     "spl_venster_pm_dB": 1.173
+     "spl_venster_pm_dB": 1.175,
+     "_waarden_F3_tot_E7": {
+      "spl_venster_pm_dB": 1.173
+     }
     },
     "KAND_A_2e": {
      "rms_vlakheid_dB": 0.792,
@@ -4106,7 +4109,7 @@
    "lf_opslingering_dB": -0.94,
    "V_tweeter_op_fs_dB": -33.55,
    "rms_vlakheid_dB": 1,
-   "spl_venster_pm_dB": 2.08,
+   "spl_venster_pm_dB": 2.02,
    "wm_fase_oct": 13.12,
    "mt_fase_oct": 5.41,
    "wm_fase_oct_octaafgeknipt_V43": 13,
@@ -4118,6 +4121,9 @@
     "wm_fase_oct": 12.89,
     "wm_fase_oct_octaafgeknipt_V43": 12.77,
     "wm_fase_overlapvenster_V43": 20.7
+   },
+   "_waarden_F3_tot_E7": {
+    "spl_venster_pm_dB": 2.08
    }
   },
   "KAND_V2_3": {
