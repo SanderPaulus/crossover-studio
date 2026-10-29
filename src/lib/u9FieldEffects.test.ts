@@ -178,7 +178,8 @@ describe('U-9 (2): a niets row is never rendered', () => {
      * of B-2.2 (the v1 comparison). */
     /* U-10 fase 3 — three niets rows removed with their fields; hpLpPref is niets
      * and has no control any more (it is carried in the project file only). */
-    expect([...V2_NIETS_ROWS].sort()).toEqual(['excursionSpl', 'hpLpPref', 'v1Thresholds']);
+    /* E-6 — `phasePriority` is niets since B-5 = B; carried in the file only. */
+    expect([...V2_NIETS_ROWS].sort()).toEqual(['excursionSpl', 'hpLpPref', 'phasePriority', 'v1Thresholds']);
     expect(Object.keys(NIETS_CONTROLS).sort()).toEqual(['excursionSpl', 'v1Thresholds']);
   });
   it.each(Object.entries(NIETS_CONTROLS))('%s: every control that draws it sits behind rendersRow', (id, controls) => {
@@ -193,7 +194,9 @@ describe('U-9 (2): a niets row is never rendered', () => {
    * IS (B-4.3): the project fields are carried UNREAD from load to save; the
    * three localStorage keys are no longer written or read. */
   it('a carried v1 field travels unread from load to save (B-4.3)', () => {
-    expect(APP).toContain('const v1CarriedRef = useRef<{ hpLpPref?: string; hpLpPrefLow?: string }>({});');
+    /* E-6 — the slider's value is carried the same way. */
+    expect(APP).toContain('const v1CarriedRef = useRef<{ hpLpPref?: string; hpLpPrefLow?: string; phasePriority?: number }>({});');
+    expect(APP).toContain('...(d.phasePriority !== undefined ? { phasePriority: d.phasePriority } : {}),');
     expect(APP).toContain('...v1CarriedRef.current,');
     expect(APP).toContain('...(d.hpLpPref !== undefined ? { hpLpPref: d.hpLpPref } : {}),');
     for (const key of ["'ads-err-smooth'", "'ads-scan3-mode'", "'ads-bom-cap'"]) {

@@ -2020,6 +2020,16 @@ function threeWayNetworkFacts(
    * the crossings out, exactly as the two-way drawn route has none (no cage). */
   crossingsKnown = true,
 ): { network: NetworkFacts; chainInput: Chain3Input } {
+  /* V34 — the candidate's declaration overrides the chain's own default
+   * for the one CHOICE key the chain resolves outside the tuner. Identity
+   * when there is no candidate, so every other caller is untouched.
+   *
+   * V41 — and the two the chain resolves before the tuner exists at all.
+   * Same shape, same identity: no candidate, no rewrite. */
+  const chainInput = withDeclaredChainChoices(
+    withDeclaredSourceLimit(input, candidate?.declaration),
+    candidate?.chainDeclaration,
+  );
   /* The candidate's own network facts. The key mapping is the same one
    * `branchDb` above uses — on the three-way chain the seed's way names
    * ARE the model names `driverZ` is keyed by. The tweeter has no
@@ -2064,7 +2074,12 @@ function threeWayNetworkFacts(
       rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
     }),
     weights: pruneUndefinedValues({
-      phasePriority: input.settings.phasePriority,
+      /* E-6 (V52) — the DECLARED value, never the raw settings: the design
+       * step and the synthesis read `chainInput.settings.phasePriority`, and
+       * the tuner reads this one through the hook, so the three readers read
+       * one number. Without a candidate the declaration is the identity and
+       * this is the caller's own setting, as before. */
+      phasePriority: chainInput.settings.phasePriority,
       directivityWeight: input.settings.directivityWeight,
       powerFoldWeight: input.settings.powerFoldWeight,
       dissipationWeight: input.settings.dissipationWeight,
@@ -2081,16 +2096,6 @@ function threeWayNetworkFacts(
         }
       : {}),
   };
-  /* V34 — the candidate's declaration overrides the chain's own default
-   * for the one CHOICE key the chain resolves outside the tuner. Identity
-   * when there is no candidate, so every other caller is untouched.
-   *
-   * V41 — and the two the chain resolves before the tuner exists at all.
-   * Same shape, same identity: no candidate, no rewrite. */
-  const chainInput = withDeclaredChainChoices(
-    withDeclaredSourceLimit(input, candidate?.declaration),
-    candidate?.chainDeclaration,
-  );
   return { network, chainInput };
 }
 
@@ -2173,6 +2178,22 @@ function twoWayNetworkFacts(
   input: ChainInput,
   candidate: V2CandidatePayload | undefined,
 ): { network: NetworkFacts; chainInput: ChainInput } {
+  /* V34 — see the three-way branch; same rule, same reason.
+   *
+   * E-3 — V41 IS APPLIED HERE SINCE E-3, in the two-way chain's own vocabulary
+   * (`withDeclaredChainChoicesTwoWay`: `eqBands` → `eqBandsPerDriver`, and the
+   * three keys `designChain.ts` learned at E-3). And the declared SEARCH
+   * SMOOTHING reaches the design step (`withDeclaredSearchSmoothing`):
+   * `vfOptimizer.ts` is the second reader of `errorSmoothOct` on this chain,
+   * the one V38-fix left outside its repair. Both are the identity without a
+   * candidate, so a payload without one runs exactly the route it ran before. */
+  const chainInput = withDeclaredSearchSmoothing(
+    withDeclaredChainChoicesTwoWay(
+      withDeclaredSourceLimit(input, candidate?.declaration),
+      candidate?.chainDeclaration,
+    ),
+    candidate?.declaration,
+  );
   /* Two-way: the low way is called `woofer` in the seed and `mid` in the
    * impedance map — `canonicalModelForRole` is the reason, and the mapping here
    * is the same one `branchDb` makes. The candidate states a RANGE rather than
@@ -2204,7 +2225,12 @@ function twoWayNetworkFacts(
       rSourceDisqualifyOhm: input.settings.rSourceDisqualifyOhm,
     }),
     weights: pruneUndefinedValues({
-      phasePriority: input.settings.phasePriority,
+      /* E-6 (V52) — the DECLARED value, never the raw settings: the design
+       * step and the synthesis read `chainInput.settings.phasePriority`, and
+       * the tuner reads this one through the hook, so the three readers read
+       * one number. Without a candidate the declaration is the identity and
+       * this is the caller's own setting, as before. */
+      phasePriority: chainInput.settings.phasePriority,
       directivityWeight: input.settings.directivityWeight,
       powerFoldWeight: input.settings.powerFoldWeight,
       dissipationWeight: input.settings.dissipationWeight,
@@ -2224,22 +2250,6 @@ function twoWayNetworkFacts(
         }
       : {}),
   };
-  /* V34 — see the three-way branch; same rule, same reason.
-   *
-   * E-3 — V41 IS APPLIED HERE SINCE E-3, in the two-way chain's own vocabulary
-   * (`withDeclaredChainChoicesTwoWay`: `eqBands` → `eqBandsPerDriver`, and the
-   * three keys `designChain.ts` learned at E-3). And the declared SEARCH
-   * SMOOTHING reaches the design step (`withDeclaredSearchSmoothing`):
-   * `vfOptimizer.ts` is the second reader of `errorSmoothOct` on this chain,
-   * the one V38-fix left outside its repair. Both are the identity without a
-   * candidate, so a payload without one runs exactly the route it ran before. */
-  const chainInput = withDeclaredSearchSmoothing(
-    withDeclaredChainChoicesTwoWay(
-      withDeclaredSourceLimit(input, candidate?.declaration),
-      candidate?.chainDeclaration,
-    ),
-    candidate?.declaration,
-  );
   return { network, chainInput };
 }
 

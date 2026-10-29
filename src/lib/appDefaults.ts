@@ -29,7 +29,6 @@ import { isoDay } from './v2Settings.ts';
 
 /** The app start value of every search field that has one. */
 export interface AppDefaults {
-  phasePriority: number;
   dirWeight: number;
   ampTarget: 'onAxis' | 'listeningWindow';
   powerMetric: 'smooth' | 'legacy';
@@ -56,7 +55,6 @@ export interface AppDefaults {
 }
 
 export const APP_DEFAULTS: Readonly<AppDefaults> = Object.freeze({
-  phasePriority: 50,
   dirWeight: 25,
   ampTarget: 'onAxis',
   powerMetric: 'smooth',
@@ -91,7 +89,6 @@ export type AppDefaultKey = keyof AppDefaults;
  * the designer's own.
  */
 export const APP_DEFAULT_ROWS: Readonly<Record<string, readonly AppDefaultKey[]>> = Object.freeze({
-  phasePriority: ['phasePriority'],
   dirWeight: ['dirWeight'],
   ampTarget: ['ampTarget'],
   powerMetric: ['powerMetric', 'powerFoldWeight'],

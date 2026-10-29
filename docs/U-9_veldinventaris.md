@@ -168,6 +168,7 @@ Dit is de grootste groep **zonder registerrij** (N2). Ze staan in het expertpane
 | # | Veld | Registerrij | Gemeten effect (3W / 2W / HybG) | Klasse per route | Ouder | Zichtbaar G / E | Voorstel | Bekend |
 |---|---|---|---|---|---|---|---|---|
 | 88 | Priority-schuif + Wizard-radio | `phasePriority` (v1-legacy) | m: **tuner Z op alle drie**; ontwerpstap en synthese krijgen de verklaarde 0,5 | Z | — | Wizard / E | **badge is onjuist**, zie N1 | U-5c (**gedeeltelijk weerlegd**) |
+|  | *E-6 (29-10-2026, B-5 = B):* schuif en Wizard-radio **weg**; alle drie de lezers lezen `DEFAULT_PHASE_PRIORITY`, een oude waarde wordt verliesvrij gedragen en in de openmelding genoemd (V52, `docs/E-6_meting.md`) |  |  |  |  |  |  |  |
 | 89 | Error smoothing | `errorSmoothOct` (v1-legacy) | m: N / N / N | N (terugval: Z) | — | E | NIETS-lijst | I-1 |
 | 90 | HP/LP-voorkeur hoog | `hpLpPref` (v1-legacy) | m: N / N / N | N (terugval: Z) | — | Wizard / E | NIETS-lijst | I-1 |
 | 91 | HP/LP-voorkeur laag (3W) | `hpLpPref` (v1-legacy) | m: N | N (terugval: Z) | drieweg | E | NIETS-lijst | I-1 |
@@ -226,7 +227,7 @@ Dit is de grootste groep **zonder registerrij** (N2). Ze staan in het expertpane
 
 ## Nieuwe bevindingen (niet in eerdere sessies)
 
-**N1 — De Priority-schuif doet op de v2-route wél iets: hij stuurt de tuner.**
+**N1 — De Priority-schuif doet op de v2-route wél iets: hij stuurt de tuner.** *(Geboekt als V52 en opgelost bij E-6, 29-10-2026: optie B, zie `docs/E-6_meting.md`.)*
 
 U-5c schreef "de Priority-schuif doet op de v2-route niets" en markeerde hem met de v1-badge. Gemeten op alle drie de routes is dat half waar.
 

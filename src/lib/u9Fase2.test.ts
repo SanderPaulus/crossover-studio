@@ -417,13 +417,15 @@ describe('U-9 fase 2 (5): a search field on the app start value says so', () => 
   const values = { ...APP_DEFAULTS } as Record<AppDefaultKey, unknown>;
 
   it('on the start value: "app default — not stated by you", with the value', () => {
-    expect(appDefaultMark('phasePriority', values, {})).toEqual({ kind: 'app-default', text: 'app default — not stated by you (50)', value: '50' });
+    /* E-6 (V15) — WAS on `phasePriority`; that row has no start value since the
+     * slider is gone (B-5 = B). IS on `dirWeight`, the same shape. */
+    expect(appDefaultMark('dirWeight', values, {})).toEqual({ kind: 'app-default', text: 'app default — not stated by you (25)', value: '25' });
     expect(appDefaultMark('stagedOn', values, {}).text).toBe('app default — not stated by you (on · 2.5 · 15)');
   });
 
   it('a first edit is stated with its date, whatever the value (stampStated’s way)', () => {
-    const at = stampField({}, 'phasePriority', '2026-10-25');
-    expect(appDefaultMark('phasePriority', values, at)).toEqual({ kind: 'stated', text: 'stated by you on 2026-10-25', date: '2026-10-25' });
+    const at = stampField({}, 'dirWeight', '2026-10-25');
+    expect(appDefaultMark('dirWeight', values, at)).toEqual({ kind: 'stated', text: 'stated by you on 2026-10-25', date: '2026-10-25' });
   });
 
   it('an old project away from the start value reads as stated, date not recorded (E-2’s rule)', () => {

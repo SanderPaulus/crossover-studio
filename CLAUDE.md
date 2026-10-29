@@ -8843,3 +8843,67 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Open:** een v2-versie van de tweeweg zonder impedanties; de vier drempels en `physWin3`;
   `ctcK` heeft twee startwaarden ('auto' in `useState`, '0.5' in `applyProject`).
 
+
+### E-6 fase 0 — V52: de Priority-schuif heeft twee getallen (geboekt, niet gerepareerd)
+
+- **V52 (U-9 fase 0, bevinding N1; geboekt bij E-6, 29-10-2026).** `phasePriority` heeft drie
+  lezers en die lezen twee getallen.
+  - **Ontwerpstap** (`designThreeWay`, `optimizeVirtualFilters`) en **synthese** (`synthesize`)
+    lezen `settings.phasePriority` ná `withDeclaredChainChoices(TwoWay)`, dus de verklaarde
+    waarde. De app geeft de schuif nooit aan `declareCandidateChainChoices` (App.tsx, de drie
+    `chainDecl`-bouwers), dus die is altijd `DEFAULT_PHASE_PRIORITY` (0,5;
+    `candidateDeclaration.ts` `stated.phasePriority = s.phasePriority ?? DEFAULT_PHASE_PRIORITY`).
+  - **De tuner** (`optimizeNetworkValues`, en de `tuneOpts` van `minimizeNetwork`) krijgt zijn
+    gewicht uit de hook. Die spreidt `network.weights.phasePriority` (worker.ts, `weights` in
+    `runCandidate`), en `network.weights` wordt gebouwd uit de RUWE `input.settings`
+    (`threeWayNetworkFacts` en `twoWayNetworkFacts`), vóór de verklaring. De hook staat als
+    laatste, dus in de tuner wint de schuif.
+  - **Gemeten** (`scripts/measure-e6-phase-priority.ts`, `test-fixtures/e6_phase_priority.json`)
+    op alle zeven routes (drieweg-, tweeweg- en hybride scan, ⚙ en ✂ op twee- en drieweg): bij
+    schuif 0,25 / 0,75 krijgen ontwerpstap en synthese 0,5 en de tuner 0,25 / 0,75. Op 0,5 is er
+    geen splitsing. Op ⚙ en ✂ draaien ontwerpstap en synthese niet, dus daar is er alleen de
+    tuner en die leest de schuif.
+  - **P2:** casus 1, 1b, 1h en 2 stellen `phasePriority: 0,5` in hun settings en verklaren 0,5,
+    dus geen corpus en geen live ketenrun kan door een reparatie bewegen. `chainDeclarationKey`
+    beweegt niet met de schuif (de app verklaart hem niet); de run-vingerafdruk wél, via de
+    grijze gewichten.
+  - **Besluit B-5 (Sander, 29-10-2026): optie B, de motor** — zie hieronder.
+
+### E-6 fase 1-guards (één waarde, drie lezers: `DEFAULT_PHASE_PRIORITY`)
+
+- **De reparatie zit op één plek.** `threeWayNetworkFacts` en `twoWayNetworkFacts` (worker.ts)
+  bouwen eerst de verklaarde ketenvoer en lezen de tunergewichten daaruit
+  (`chainInput.settings.phasePriority`). Eén bron, `declareCandidateChainChoices`; zonder kandidaat
+  is de verklaring de identiteit en leest de tuner de instelling van de aanroeper, zoals vóór E-6.
+- **De app** zet `DEFAULT_PHASE_PRIORITY` op alle zes plaatsen waar zij keteninstellingen bouwt,
+  ook op de twee benoemde v1-routes (`vfRounds`, `soloChain`): ook die lezen geen verborgen knop.
+  Schuif, Wizard-radio, stripregel en het `nonStandard`-item zijn weg; `APP_DEFAULTS` kent hem niet.
+- **Een oud project** draagt zijn waarde verliesvrij (`v1CarriedRef`, B-4.3; `project.ts`
+  `phasePriority?: number`). `v1Carryover.ts` noemt hem (`V1_FIELD_DEFAULTS.phasePriority = '50'`),
+  dus het U-5c-gat is gesloten. Een nieuw project schrijft hem niet. De kop van de melding heet
+  "Settings this app no longer reads", want de schuif was geen v1-veld.
+- **Register:** rij `phasePriority` is `niets`, reden E-6, zonder besturingselement
+  (`V2_UNGOVERNED_ROWS`).
+- `src/lib/engine2/optimizer/phasePriorityReaders.test.ts` (9 claims, < 1 s): de bronscan (worker.ts
+  leest nooit `input.settings.phasePriority`; precies twee literals lezen
+  `chainInput.settings.phasePriority`); door de echte route met observatoren — drieweg-scan, ⚙
+  tweeweg, ✂ drieweg — krijgen ontwerpstap, synthese en tuner 0,5 bij een ruwe 0,25 of 0,75; en P2
+  (zonder kandidaat leest de tuner de eigen instelling). **Opzettelijke breuk:** één literal terug
+  op de ruwe invoer zet 6 van de 9 op rood.
+- **Aangepast in de V15-vorm:** `goalsPanelAudit`, `v1Carryover`, `u9Fase2`, `u9FieldEffects`,
+  `v2InputRegister`, `v2InputPlacement`.
+- **Gemeten 29-10-2026:** `npm run test:fast` 576 s, 217 bestanden (216 + 1 overgeslagen), 2969 tests
+  (2965 + 4 overgeslagen), in één keer groen — +1 bestand en +9 tests, exact de nieuwe guard.
+  `npx vitest run` 1932 s, 217 bestanden, 2969 tests, niets overgeslagen, in één keer groen, alleen
+  gedraaid; **alle vier de live ketenruns byte-identiek**, `f4cRegression`, `workerRouteRegression`,
+  `toggleRegression` en de twee live armen van `chainChoices` staan. Geen nieuwe tag: de
+  CI-telling blijft 19 overgeslagen.
+- **Vingerafdruk:** geen herkomst veroudert. Alle casussen stellen 0,5 in settings én verklaring,
+  dus `chainDeclarationKey` en de grijze gewichten in de run-vingerafdruk zijn ongewijzigd — de vier
+  byte-reproducties zijn de meting.
+- **Browsercontrole (tweewegdemo, een project met 75 geopend):** de melding noemt "set to "75"", een
+  save schrijft 75 terug; de run stuurt settings = verklaring = 0,5 naar `v2ChainOne` (5 van 5
+  geleverd), ⚙ stuurt 0,5 naar `v2TuneNetlist` en levert met elke gewapende poort binnen. Geen
+  console-fout.
+- **Niet gedaan:** `DEFAULT_PHASE_PRIORITY` zelf blijft 0,5. De ± -kolom van casus 1b leest
+  70,5–70,7 dB in elke geleverde arm van de E-6-meting; niet uitgezocht.

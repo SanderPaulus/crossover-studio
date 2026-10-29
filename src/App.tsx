@@ -421,6 +421,7 @@ import {
 } from './lib/optimClient.ts';
 import { type Chain3Input, type Chain3Variant, deliveredLabel } from './lib/threeWayChain.ts';
 import {
+  DEFAULT_PHASE_PRIORITY,
   optimizeNetworkValues,
   type NetOptimizeOptions,
 } from './lib/netOptimizer.ts';
@@ -2165,7 +2166,7 @@ export default function App() {
   /* A function and not a value: most of these states are declared further
    * down the component, and only a closure may read them before then. */
   const appDefaultValues = () => ({
-    phasePriority, dirWeight, ampTarget, powerMetric, powerFoldWeight, costWeight,
+    dirWeight, ampTarget, powerMetric, powerFoldWeight, costWeight,
     dissipationWeight, rSourceLimitOhm, rSourceDisqOhm, diWeight, vfEqBands, breakupGuard,
     phaseMetricMode, synthMode, stagedOn, targetRipple, targetPhase, roomCorrection,
     roomRippleDb, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, catalogSnap,
@@ -2582,7 +2583,7 @@ export default function App() {
    * candidate states its own alignment, and the virtual-filter exception runs
    * on 'auto'). A project that carries them keeps them, unread and unchanged
    * (B-4.3): `v1CarriedRef` holds what the file said and the save writes it back. */
-  const v1CarriedRef = useRef<{ hpLpPref?: string; hpLpPrefLow?: string }>({});
+  const v1CarriedRef = useRef<{ hpLpPref?: string; hpLpPrefLow?: string; phasePriority?: number }>({});
   /** 3-way scan: candidate steps PER CROSSING (1/2/3 → 1/4/9 full chains).
    *  Independent of the crossover pin — every candidate is caged in its own
    *  slice either way, so "how many" is always a meaningful cost knob. */
@@ -8166,7 +8167,9 @@ export default function App() {
   }
   const [synth, setSynth] = useState<SynthState | null>(null);
   const [synthMode, setSynthMode] = useState<'filter' | 'acoustic'>(APP_DEFAULTS.synthMode);
-  const [phasePriority, setPhasePriority] = useState(APP_DEFAULTS.phasePriority); // % of budget to phase
+  /* E-6 (V52, B-5 = B) — no response/phase slider any more: every run, on every
+   * route, reads DEFAULT_PHASE_PRIORITY (the engine's own 50/50). A project that
+   * holds a value carries it unread in `v1CarriedRef` (B-4.3). */
   // Results describe a specific target — invalidate when the knobs move.
   // Exception: the optimizer flow sets new vFilters AND builds for them in
   // one go; that build is fresh, not stale (the ref skips one invalidation).
@@ -8177,7 +8180,7 @@ export default function App() {
       return;
     }
     setSynth(null);
-  }, [vFilters, synthMode, phasePriority]);
+  }, [vFilters, synthMode]);
 
   const [vfOpt, setVfOpt] = useState<VfOptimizeResult | null>(null);
   const [vfBusy, setVfBusy] = useState(false);
@@ -8336,7 +8339,6 @@ export default function App() {
    */
   const nonStandard = (
     [
-      ['priority', phasePriority !== APP_DEFAULTS.phasePriority, `priority ${100 - phasePriority}/${phasePriority}`, () => setPhasePriority(APP_DEFAULTS.phasePriority)],
       ['staged', stagedOn !== APP_DEFAULTS.stagedOn, 'staged targets off', () => setStagedOn(APP_DEFAULTS.stagedOn)],
       ['ripple', targetRipple !== APP_DEFAULTS.targetRipple, `ripple target ${targetRipple} dB`, () => setTargetRipple(APP_DEFAULTS.targetRipple)],
       ['phase', targetPhase !== APP_DEFAULTS.targetPhase, `phase target ${targetPhase}°`, () => setTargetPhase(APP_DEFAULTS.targetPhase)],
@@ -8536,7 +8538,6 @@ export default function App() {
         fMax,
         splMin,
         splMax,
-        phasePriority,
         vfEqBands,
         phaseMode,
         dirWeight,
@@ -8717,7 +8718,6 @@ export default function App() {
     setFMax(d.fMax);
     setSplMin(d.splMin);
     setSplMax(d.splMax);
-    setPhasePriority(d.phasePriority);
     setVfEqBands(d.vfEqBands);
     setPhaseMode(d.phaseMode ?? 'measured');
     setDirWeight(d.dirWeight ?? 25);
@@ -8795,6 +8795,7 @@ export default function App() {
       setXoMarginHz(V1_PIN_DEFAULTS_LEGACY.highMarginHz);
     }
     v1CarriedRef.current = {
+      ...(d.phasePriority !== undefined ? { phasePriority: d.phasePriority } : {}),
       ...(d.hpLpPref !== undefined ? { hpLpPref: d.hpLpPref } : {}),
       ...(d.hpLpPrefLow !== undefined ? { hpLpPrefLow: d.hpLpPrefLow } : {}),
     };
@@ -8947,7 +8948,7 @@ export default function App() {
     }, 800);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, phasePriority, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Settings, engineV2StatedAt, engineV2StatedBy, fieldStatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
+  }, [woofer, midDrv, tweeter, project, zStandalone, angleSets, fileNotes, verifyList, verifyIx, vFilters, xoName, offsetMm, trimDb, inverted, midOffsetMm, midTrimDb, midInverted, fMin, fMax, splMin, splMax, vfEqBands, phaseMode, dirWeight, ampTarget, sonogramMode, designs, activeDesignId, lastSavedId, networkActive, vfBypass, catalogSnap, breakupGuard, xoRangeOn, xoFreqHz, xoMarginHz, xoScanSteps, xo3Steps, phaseMetricMode, acSlopeMid, acSlopeTweeter, acSlopeWoofer, acSlopeMidHp, xoLowFreqHz, xoLowMarginHz, midSizeInch, wooferSizeInch, kaTier, cabinet, nearField, ctcK, seatTiming, breakupLimitOn, breakupHarmonic, sdCm2, xmaxMm, excursionSpl, snapProfile, snapSeriesL, snapSeriesC, snapSeriesR, snapStacks, snapBoundToSeries, stagedOn, engineV2Settings, engineV2StatedAt, engineV2StatedBy, fieldStatedAt, v2Meas, targetRipple, targetPhase, soloSensDb, soloFloorOn, soloFloorDb]);
 
   function resetProject() {
     localStorage.removeItem(AUTOSAVE_KEY);
@@ -9038,7 +9039,7 @@ export default function App() {
   }) => {
     const { band, safety, pins } = args;
     return {
-    phasePriority: phasePriority / 100,
+    phasePriority: DEFAULT_PHASE_PRIORITY,
     targets: stagedOn
       ? { rippleDb: rippleTargetEff(), phaseDeg: num(targetPhase, 10) }
       : undefined,
@@ -9099,7 +9100,7 @@ export default function App() {
     safety: ChainSettings['safety'];
     targets: ChainSettings['targets'];
   }): ChainSettings => ({
-    phasePriority: phasePriority / 100,
+    phasePriority: DEFAULT_PHASE_PRIORITY,
     eqBandsPerDriver: vfEqBands,
     angleData: args.angleData,
     directivityWeight: dirWeight / 100,
@@ -10421,7 +10422,7 @@ export default function App() {
     // The optimizer targets what you look at: the view range is the
     // evaluation band (top edge backed off 2.5% from the grid edge).
     const opts = {
-      phasePriority: phasePriority / 100,
+      phasePriority: DEFAULT_PHASE_PRIORITY,
       eqBandsPerDriver: vfEqBands,
       angleData,
       directivityWeight: dirWeight / 100,
@@ -11427,7 +11428,7 @@ export default function App() {
         resample(l.frd.freq, l.frd.spl, l.frd.phase, grid, threeWay ? { clampEdges: true } : undefined).spl;
       const opts = (l: Loaded) => ({
         mode: synthMode,
-        phasePriority: phasePriority / 100,
+        phasePriority: DEFAULT_PHASE_PRIORITY,
         catalogSnap: catalogSnap && hasImportedCatalog(),
         // Staged design: Zobel/LCR/top-octave hold only when the bare HP/LP
         // ladder demonstrably falls short (trede 2 van de trapmethode).
@@ -11599,7 +11600,7 @@ export default function App() {
           driverZ: resampleImpedance(z.freq, z.magnitude, z.phase, grid).z,
           driverSplDb: resample(lowLoaded.frd.freq, lowLoaded.frd.spl, lowLoaded.frd.phase, grid).spl,
           upperKnee: { enabled: true, kind: 'BW', order, freq: TEMPLATE_REFERENCE.fcHz },
-          phasePriority: phasePriority / 100,
+          phasePriority: DEFAULT_PHASE_PRIORITY,
           label: lowModel,
         });
         const xo = filterTemplate({
@@ -12315,7 +12316,7 @@ export default function App() {
             ? Math.max(0, soloFloorInfo.median - soloFloorInfo.floor)
             : num(soloSensDb, 6),
         soloTargetLevelDb: soloFloorOn && soloFloorInfo ? soloFloorInfo.floor : undefined,
-        phasePriority: phasePriority / 100,
+        phasePriority: DEFAULT_PHASE_PRIORITY,
         angleData: angleResponsesOn(grid) ?? undefined,
         directivityWeight: dirWeight / 100,
         powerMetric,
@@ -16719,64 +16720,12 @@ export default function App() {
                   {t('filter — the app keeps adding EQ bands and parts while the target is unmet, and it only strips the parts it does not need once the target IS met. Looser numbers stop sooner and build simpler, but may leave performance on the table that a band or two would have been free to take. For reference, on top-tier drivers this engine delivers about 0.9 dB / 4°; on ordinary drivers or a rough cabinet, 2–3 dB is a realistic place to stop.')}
                 </p>
               )}
-              {soloDriver ? (
-                <p className="sub">
-                  {t("Single-driver mode: relative phase does not exist, so the priority trade-off doesn't apply — the solo engine optimises response flatness with cut-only EQ/shelves.")}
-                </p>
-              ) : (
-              <p style={{ marginBottom: '0.1rem' }}>{t('What should the optimizer favour?')}</p>
-              )}
-              {!soloDriver &&
-                (
-                  [
-                    ['flat', 25, 'Flattest on-axis response', 'the tightest ±dB straight ahead'],
-                    ['bal', 50, 'Balanced', 'equal weight — a good default'],
-                    [
-                      'phase',
-                      75,
-                      'Tightest phase & off-axis',
-                      'best driver phase-tracking / vertical spread (often near-free)',
-                    ],
-                  ] as const
-                ).map(([key, val, label, hint]) => (
-                  /* Checked only on an EXACT match. The old version bucketed
-                     (<40 / 40-60 / >60), so a slider left at 45/55 in expert
-                     showed "Balanced — equal weight" while 45/55 is what
-                     actually ran: the screen said one thing and the optimizer
-                     did another. A value between the presets now selects
-                     nothing, and the line below states it. */
-                  <label key={key} style={{ display: 'block' }}>
-                    <input
-                      type="radio"
-                      name="wiz-priority"
-                      checked={phasePriority === val}
-                      onChange={() => setPhasePriority(val)}
-                    />{' '}
-                    {t(label)}{' '}
-                    <span className="sub">
-                      — {t(hint)} ({100 - val}/{val})
-                    </span>
-                  </label>
-                ))}
-              {/* U-5c — the SAME badge the expert slider carries, because this is
-                  the same knob: since M-4 the v2 candidate states the engine's
-                  own 50/50 and overwrites whatever is chosen here. A wizard
-                  that asks a question the run does not read is worse than one
-                  that does not ask it. */}
-              {!soloDriver && <p className="sub">{fieldBadge('phasePriority')}</p>}
-              {!soloDriver && ![25, 50, 75].includes(phasePriority) && (
-                <p className="sub">
-                  {t('Currently')}{' '}
-                  <strong>
-                    {t('response {r}% · phase {p}%', { r: 100 - phasePriority, p: phasePriority })}
-                  </strong>{' '}
-                  {t('— set on the slider in ⚙ Settings, so none of the three above is selected. Pick one to replace it.')}
-                </p>
-              )}
+              {/* E-6 (V52, B-5 = B) — the wizard no longer asks how to split the
+                  budget between response and phase: every run reads the
+                  engine's own 50/50, on every route. The question it asked
+                  reached the tuner and nothing else (U-9, N1). */}
               {!soloDriver && (
-              <p className="sub">
-                {t("On real measurements a smooth response already buys most of the phase, so these differ less than you'd expect — fine control (any %) lives in ⚙ Settings.")}
-              </p>
+                <p className="sub">{t('Response and phase are weighed 50/50 on every run — the engine’s own split.')}</p>
               )}
               {angleSets ? (
                 <>
@@ -17229,7 +17178,6 @@ export default function App() {
                 {stagedOn
                   ? t('Staged: targets ≤ {r} dB / {p}°', { r: targetRipple, p: targetPhase })
                   : t('Classic full-budget run')}{' '}
-                · {t('priority {r}/{p}', { r: 100 - phasePriority, p: phasePriority })}
                 <br />
                 {xoRangeOn
                   ? t('Crossover pinned at {f} ± {m} Hz', { f: xoFreqHz, m: xoMarginHz })
@@ -18875,7 +18823,9 @@ export default function App() {
             value — see `v1Carryover.ts`. */}
         {v1CarryNote && (
           <div className="verdict mismatch" style={{ margin: '0.6rem 0' }}>
-            <strong>{t('This project carries v1 settings')}</strong> — {v1CarryNote}
+            {/* E-6 — not "v1 settings": since E-6 the notice also names the
+                response/phase slider, which was a v2 control (U-9, N1). */}
+            <strong>{t('Settings this app no longer reads')}</strong> — {v1CarryNote}
             <div className="row" style={{ marginTop: '0.4rem' }}>
               <button type="button" onClick={() => setV1CarryNote(null)}>
                 {t('Got it')}
@@ -21908,20 +21858,8 @@ export default function App() {
                 )}
                 {g === 'run' && (
                 <>
-                <label onChangeCapture={fieldStamp('phasePriority')} title={soloDriver ? t('Single-driver mode: relative phase does not exist — the solo objective is response flatness only') : t('The big trade-off: budget split between a flat response and flat phase. More phase = flatter phase but more amplitude ripple. Both ends are anchored (100% phase = 90/10 internally): with the response weight at true zero the optimizer would trade a wrecked response for a phase metric it can then game.')}>
-                  {t('Priority: response {a}% · phase {b}%', { a: 100 - phasePriority, b: phasePriority })}
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={phasePriority}
-                    onChange={(e) => setPhasePriority(Number(e.target.value))}
-                    disabled={!!soloDriver}
-                    style={{ width: '14rem', accentColor: 'var(--accent)' }}
-                  />
-                {fieldBadge('phasePriority')}{appDefault('phasePriority')}
-</label>
+                {/* E-6 (V52, B-5 = B) — the response/phase slider is gone; every run reads
+                    the engine's own 50/50 (register row `phasePriority`, effect `niets`). */}
                 {/* U-9 — `effect: 'niets'`: never rendered; the value stays in the project. */}
                 <details className="v2-more" style={{ flexBasis: '100%' }}>
                   <summary className="opt-group-cap">

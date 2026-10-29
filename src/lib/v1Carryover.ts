@@ -45,7 +45,7 @@ import { V2_INPUT_REGISTER, type V2InputRow } from './v2InputRegister.ts';
  * in the file, so a project cannot carry them and this notice cannot honestly
  * claim it does.
  */
-export type V1FieldKey = 'hpLpPref' | 'hpLpPrefLow' | 'excursionSpl' | 'kaTier' | 'breakupHarmonic';
+export type V1FieldKey = 'hpLpPref' | 'hpLpPrefLow' | 'excursionSpl' | 'kaTier' | 'breakupHarmonic' | 'phasePriority';
 
 export const V1_FIELD_DEFAULTS: Readonly<Record<V1FieldKey, string>> = Object.freeze({
   /** Preferred HP/LP alignment, high (mid-tweeter) crossing. 'auto' = free. */
@@ -64,6 +64,12 @@ export const V1_FIELD_DEFAULTS: Readonly<Record<V1FieldKey, string>> = Object.fr
   kaTier: 'measured',
   /** The v1 breakup margin harmonic. */
   breakupHarmonic: '3',
+  /* E-6 (V52, B-5 = B) — the response/phase slider. NOT a v1 control: until
+   * E-6 the v2 tuner read it (U-9, N1). Since E-6 nothing reads it and every
+   * run takes the engine's own 50/50, so a file that holds another value is
+   * exactly what this notice is for. Its start value was 50 (% phase), held
+   * here as the string the comparison below reads. */
+  phasePriority: '50',
 });
 
 /** Which register row explains a carried field. Two keys share one row. */
@@ -73,6 +79,7 @@ const ROW_OF: Readonly<Record<V1FieldKey, string>> = Object.freeze({
   excursionSpl: 'excursionSpl',
   kaTier: 'v1Thresholds',
   breakupHarmonic: 'v1Thresholds',
+  phasePriority: 'phasePriority',
 });
 
 /**
@@ -88,6 +95,7 @@ const WHICH_OF: Readonly<Record<V1FieldKey, string>> = Object.freeze({
   excursionSpl: '',
   kaTier: 'beaming tier',
   breakupHarmonic: 'breakup harmonic',
+  phasePriority: 'phase share in %',
 });
 
 /** One carried field: what the file holds, and the register's own sentence. */
@@ -114,6 +122,8 @@ export interface V1CarryoverInput {
   readonly excursionSpl?: string;
   readonly kaTier?: string;
   readonly breakupHarmonic?: string;
+  /** E-6 — a number in the file, compared as its string. */
+  readonly phasePriority?: number | string;
 }
 
 const rowById = (id: string): V2InputRow => {
@@ -133,7 +143,8 @@ export function v1CarryoverOf(file: V1CarryoverInput): V1Carryover | null {
   const savedOnV1 = file.engineV2Enabled !== true;
   const fields: V1CarriedField[] = [];
   for (const key of Object.keys(V1_FIELD_DEFAULTS) as V1FieldKey[]) {
-    const held = file[key];
+    const raw = file[key];
+    const held = raw === undefined ? undefined : String(raw);
     /* Absent is the starting value, not a carried one: a file written before
        the field existed says nothing about it. */
     if (held === undefined || held === V1_FIELD_DEFAULTS[key]) continue;
@@ -153,7 +164,7 @@ export function v1CarryoverOf(file: V1CarryoverInput): V1Carryover | null {
 export function describeV1Carryover(c: V1Carryover): string {
   const head = c.savedOnV1
     ? 'This project was saved on engine v1. The app now runs engine v2 only.'
-    : 'This project carries v1 controls that engine v2 does not read.';
+    : 'This project carries controls that engine v2 does not read.';
   if (c.fields.length === 0) {
     return `${head} Nothing was changed or converted; every setting it holds is still in the project exactly as it was written.`;
   }

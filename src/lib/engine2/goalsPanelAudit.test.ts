@@ -63,18 +63,9 @@ const GOALS: readonly {
   status: Status;
   why: string;
 }[] = [
-  {
-    control: 'Priority: response · phase',
-    state: 'phasePriority',
-    reaches: 'phasePriority',
-    /* U-9 fase 2 — V15: WAS 'v1-only' (U-5c). IS 'read': U-9 mat (N1) dat de
-     * TUNER de schuif leest — `network.weights` komt uit de ruwe invoer en de
-     * hook spreidt ze als laatste — terwijl de ontwerpstap en de synthese de
-     * verklaarde 50/50 krijgen. Het gebrek dat U-5c vond staat er nog (de
-     * verklaring leest de schuif niet), maar "doet niets" was half waar. */
-    status: 'read',
-    why: 'de tuner leest hem (U-9, N1); ontwerpstap en synthese krijgen de verklaarde DEFAULT_PHASE_PRIORITY (M-4)',
-  },
+  /* E-6 (V15) — WAS de eerste rij, 'Priority: response · phase' (`phasePriority`,
+   * 'read': de tuner las hem, U-9 N1). IS: geen besturingselement meer (B-5 = B);
+   * élke run leest DEFAULT_PHASE_PRIORITY, en de rij staat in V2_UNGOVERNED_ROWS. */
   { control: 'Phase metric', state: 'phaseMetricMode', reaches: 'phaseMetric', status: 'read', why: 'de kandidaat STELT hem uit de ketensettings (put)' },
   { control: 'Amplitude target', state: 'ampTarget', reaches: 'ampTarget', status: 'read', why: 'idem' },
   { control: 'Weight for in-room sound', state: 'dirWeight', reaches: 'directivityWeight', status: 'read', why: 'GREY: expliciet overgenomen, nooit verklaard' },
@@ -161,20 +152,21 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     }
   });
 
-  it('DE VONDST — `phasePriority` bereikt de settings en wordt door de VERKLARING overschreven', () => {
-    /* Beide helften, want alleen samen zijn zij het gebrek: de app ZET hem
-     * (dus het is niet vergeten), en de verklaring SCHRIJFT hem terug. */
-    expect(TWO_WAY).toContain('phasePriority: phasePriority / 100');
+  it('E-6 — `phasePriority` is ÉÉN getal: de app zet de motorwaarde en de verklaring stelt dezelfde', () => {
+    /* V15. WAS (U-5c/U-9): de app zette de schuif in de settings, de verklaring
+     * schreef 0,5 terug voor ontwerpstap en synthese, en de tuner las de ruwe
+     * schuif (N1, V52). IS (E-6, B-5 = B): er is geen schuif; de app zet
+     * DEFAULT_PHASE_PRIORITY, de verklaring stelt dezelfde, en de worker bouwt
+     * de tunergewichten uit de VERKLAARDE waarde (`phasePriorityReaders.test.ts`). */
+    expect(TWO_WAY).toContain('phasePriority: DEFAULT_PHASE_PRIORITY');
+    expect(APP).not.toContain('phasePriority / 100');
     const decl = declareCandidateChainChoices({ stated: { eqBands: 3 } });
     expect(decl.stated.phasePriority).toBe(DEFAULT_PHASE_PRIORITY);
-    /* En de overschrijving gebeurt werkelijk: een ketensetting van 0,25 komt
-     * er als de motor-default weer uit. */
     const after = withDeclaredChainChoices(
       { settings: { phasePriority: 0.25 } } as never,
       decl,
     ) as { settings: { phasePriority?: number } };
     expect(after.settings.phasePriority).toBe(DEFAULT_PHASE_PRIORITY);
-    expect(after.settings.phasePriority).not.toBe(0.25);
   });
 
   it('…en de app geeft de schuif nergens aan de verklaring mee — op geen van de vier routes', () => {
@@ -215,13 +207,14 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
         );
       }
     }
-    const badge = "fieldBadge('phasePriority')";
-    expect(APP.split(badge).length - 1, 'de schuif staat op TWEE plaatsen').toBe(2);
-    expect(goalsRegion(), 'het expertpaneel draagt de badge niet').toContain(badge);
-    const w = APP.indexOf('name="wiz-priority"');
-    expect(w).toBeGreaterThan(0);
-    expect(APP.slice(w, w + 2500), 'de Goals-stap van de wizard draagt de badge niet').toContain(badge);
-    expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')!.effectNote).toMatch(/tuner reads this slider/);
+    /* E-6 (V15) — WAS: de schuif op TWEE plaatsen (paneel en wizard) met zijn
+     * gemeten badge. IS: op geen enkele plaats; de rij is `niets` met reden E-6. */
+    expect(APP).not.toContain("fieldBadge('phasePriority')");
+    expect(APP).not.toContain('name="wiz-priority"');
+    expect(goalsRegion()).not.toContain('value={phasePriority}');
+    const row = V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')!;
+    expect(row.effect).toBe('niets');
+    expect(row.effectNote).toMatch(/E-6/);
   });
 
   it('GEEN ENKEL VELD IS DOOD: élke sleutel wordt door een echte lezer gelezen', () => {
@@ -286,20 +279,24 @@ describe('U-5c — welke velden van Goals & weighting de v2-route werkelijk lees
     expect(APP.slice(Math.max(0, i - 900), i)).toContain('{threeWay && !v2Hybrid && (');
   });
 
-  it('van de zes knoppen van toen staan er twee in het BESTUURDE paneel; vier zijn weg', () => {
+  it('van de zes knoppen van toen staat er één in het BESTUURDE paneel; vijf zijn weg', () => {
     /* V15: WAS "ongereguleerd geboekt" (U-1/U-5c), daarna (U-9 fase 2) alle zes
      * in het bestuurde paneel. IS (U-10 fase 3.4): errorSmoothOct, scan3Mode en
      * bomCapEur hebben geen registerrij meer, hpLpPref is een rij zonder
      * besturingselement (verliesvrij in het projectbestand, B-4.3), en
-     * excursionSpl en phasePriority staan nog in het paneel. */
-    for (const id of ['excursionSpl', 'phasePriority']) {
+     * excursionSpl en phasePriority staan nog in het paneel.
+     * E-6 (V15) — en phasePriority volgt hpLpPref: geen besturingselement,
+     * verliesvrij in het projectbestand. Eén staat er nog in het paneel. */
+    for (const id of ['excursionSpl']) {
       expect(V2_UNGOVERNED_ROWS, id).not.toContain(id);
       expect(V2_FORM_FIELDS.some((f) => f.row === id && f.form === 'v2-panel'), id).toBe(true);
     }
     for (const id of ['errorSmoothOct', 'scan3Mode', 'bomCapEur']) {
       expect(V2_INPUT_REGISTER.some((r) => r.id === id), id).toBe(false);
     }
-    expect(V2_UNGOVERNED_ROWS).toContain('hpLpPref');
-    expect(V2_FORM_FIELDS.some((f) => f.row === 'hpLpPref')).toBe(false);
+    for (const id of ['hpLpPref', 'phasePriority']) {
+      expect(V2_UNGOVERNED_ROWS, id).toContain(id);
+      expect(V2_FORM_FIELDS.some((f) => f.row === id), id).toBe(false);
+    }
   });
 });

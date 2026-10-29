@@ -341,6 +341,8 @@ export const nl: Record<string, string> = {
   "Single-driver mode: relative phase does not exist, so the priority trade-off doesn't apply — the solo engine optimises response flatness with cut-only EQ/shelves.":
     'Eén-driver-modus: relatieve fase bestaat niet, dus de prioriteitsafweging is niet van toepassing — de solo-engine optimaliseert responsvlakheid met alleen-verzwakkende EQ/shelves.',
   'What should the optimizer favour?': 'Wat moet de optimizer bevoordelen?',
+  'Settings this app no longer reads': 'Instellingen die de app niet meer leest',
+  'Response and phase are weighed 50/50 on every run — the engine’s own split.': 'Respons en fase wegen bij elke run 50/50 — de eigen verdeling van de motor.',
   'Flattest on-axis response': 'Vlakste on-axis-respons',
   'the tightest ±dB straight ahead': 'de strakste ±dB recht vooruit',
   Balanced: 'Gebalanceerd',

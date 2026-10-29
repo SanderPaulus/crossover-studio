@@ -1747,28 +1747,25 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'phasePriority',
     label: 'Priority: response % · phase %',
-    form: 'Filters → Goals & weighting (and the wizard’s Goals step)',
+    form: 'no control since E-6 (carried in the project file only)',
     travels:
-      'chain settings.phasePriority → OVERWRITTEN for the design and synthesis steps by the chain ' +
-      'declaration (DEFAULT_PHASE_PRIORITY, declareCandidateChainChoices, M-4) — but the TUNER reads ' +
-      'the slider: the worker builds `network.weights` from the raw `input.settings` before the ' +
-      'declaration is applied, and the hook spreads those weights last (U-9, finding N1, measured on ' +
-      'the three-way, the two-way and the hybrid route)',
+      'E-6 (V52, B-5 option B) — no longer state and no longer a control. The design step, the ' +
+      'synthesis and the tuner all read DEFAULT_PHASE_PRIORITY, the engine\u2019s own 50/50, from ' +
+      'one place: the chain declaration (declareCandidateChainChoices), which the worker also builds ' +
+      'its tuner weights from. A project that holds a value carries it unread to the next save ' +
+      '(B-4.3) and the open notice names it.',
     cls: 'nice',
-    effect: 'zoekt',
-    emptyMeans: 'not applicable: the slider always holds a value.',
+    effect: 'niets',
+    emptyMeans: 'not applicable: every run reads the engine\u2019s own 50/50.',
     source: 'choice',
-    /* U-9 fase 2 (Sander, 25-10-2026): the slider STAYS, and its badge says what
-     * the measurement found. It is not a v1 field — the v2 tuner reads it — so
-     * it carries no v1 badge any more (B-2.1). */
+    /* E-6 (Sander, 29-10-2026, B-5 = B). Until E-6 the slider reached the
+     * tuner and nothing else (U-9, N1 / V52); the measurement that chose B is
+     * docs/E-6_meting.md — on casus 1b the direction of its effect on the BOM
+     * flips against casus 1 (M-4), and 0.25 cost the candidate its delivery. */
     effectNote:
-      'The tuner reads this slider; the design step and the synthesis run on the engine’s own ' +
-      '50/50 split (M-4). Measured on all three routes (U-9, N1). Whether the design step should ' +
-      'follow it is an engine decision, not made here.',
-    placement: 'always',
-    placementWhy:
-      'it steers the v2 tuner on an app start value nobody stated (U-9, N2), and P4 asks such a ' +
-      'value to stay in view and say what it is.',
+      'E-6 — removed. Measured: the slider split the search (design on 50/50, tune on the slider), ' +
+      'and moving all three readers changed direction between two cases. Every run now reads the ' +
+      'engine\u2019s own 50/50.',
   },
   /* ---- 7. The Network tab, the editor and the chart controls ---- */
   {
@@ -2446,7 +2443,6 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   // ---- H-3b: the flank-error budget, behind the same tick ----
   { row: 'activeFlankBudgetDbRms', form: 'v2-panel', control: 'value={engineV2Settings.activeFlankBudgetDbRms}' },
   { row: 'activeProcessorLatencyMs', form: 'v2-panel', control: 'value={engineV2Settings.activeProcessorLatencyMs}' },  // ---- U-9 fase 2: the fields that sat under the v1 headings, now in their groups ----
-  { row: 'phasePriority', form: 'v2-panel', control: 'value={phasePriority}' },
   { row: 'phaseMetric', form: 'v2-panel', control: 'value={phaseMetricMode}' },
   { row: 'ampTarget', form: 'v2-panel', control: 'value={ampTarget}' },
   { row: 'dirWeight', form: 'v2-panel', control: 'value={dirWeight}' },
@@ -2517,6 +2513,8 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
    * the project file unread (B-4.3), so it is a row with no place rather than a
    * control of any form. */
   'hpLpPref',
+  /* E-6 — no control; carried in the project file only. */
+  'phasePriority',
 ]);
 
 /**

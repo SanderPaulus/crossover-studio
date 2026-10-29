@@ -97,7 +97,10 @@ export interface ProjectDesign {
   fMax: string;
   splMin: string;
   splMax: string;
-  phasePriority: number;
+  /** E-6 — optional and read by nothing since E-6: the response/phase slider is
+   * gone and every run reads the engine's own 50/50. A file that holds a value
+   * carries it unread to the next save (B-4.3). */
+  phasePriority?: number;
   vfEqBands: number;
   /** Optional since v1 files predating it; default 'measured'. */
   phaseMode?: 'measured' | 'minimum';

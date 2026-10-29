@@ -170,7 +170,8 @@ describe('U-3b — the placement rule', () => {
     expect(shown.sort()).toEqual(
       ['baffleHeight', 'blTm', 'maxCrossover', 'micDistance', 'minCrossover', 'mmsG', 'powerRating',
         'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm',
-        'phasePriority', 'dirWeight', 'ampTarget', 'powerMetric', 'costWeight', 'dissipationWeight',
+        /* E-6 — `phasePriority` left with its slider (no placement to make). */
+        'dirWeight', 'ampTarget', 'powerMetric', 'costWeight', 'dissipationWeight',
         'rSourceLimit', 'rSourceDisq', 'diWeight', 'eqBands', 'breakupGuard', 'phaseMetric',
         'stagedOn', 'roomCorrection', 'acSlopeMid', 'acSlopeTweeter', 'acSlopeWoofer', 'acSlopeMidHp',
         'catalogSnap', 'crossoverPoint'].sort(),

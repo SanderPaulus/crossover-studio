@@ -128,7 +128,10 @@ describe('the register covers the form', () => {
       expect(r.effect, `${r.id}: a v1-legacy row is niets since B-2`).toBe('niets');
     }
     expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')?.cls).toBe('nice');
-    expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')?.effectNote).toMatch(/tuner reads this slider/);
+    /* E-6 (V15) — WAS: the note said the tuner reads the slider (N1). IS: the
+     * slider is gone (B-5 = B), the row is niets, and the note says E-6. */
+    expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')?.effectNote).toMatch(/E-6/);
+    expect(V2_INPUT_REGISTER.find((r) => r.id === 'phasePriority')?.effect).toBe('niets');
     // …and no other class carries one: the note is what makes the class.
     for (const r of V2_INPUT_REGISTER) {
       if (r.cls !== 'v1-legacy') expect(r.v1Note, r.id).toBeUndefined();

@@ -112,7 +112,8 @@ describe('U-1 — the v1 starting values have one home', () => {
     /* U-10 fase 3 (3.4, V15) — `hpLpPref` and `hpLpPrefLow` are no longer state:
        they are carried unread (B-4.3), so they have no initialiser to read. The
        other three still do. */
-    const CARRIED_UNREAD: readonly V1FieldKey[] = ['hpLpPref', 'hpLpPrefLow'];
+    /* E-6 — `phasePriority` joins them: no state, carried unread (B-4.3). */
+    const CARRIED_UNREAD: readonly V1FieldKey[] = ['hpLpPref', 'hpLpPrefLow', 'phasePriority'];
     for (const key of Object.keys(V1_FIELD_DEFAULTS) as V1FieldKey[]) {
       if (CARRIED_UNREAD.includes(key)) {
         expect(APP, key).not.toMatch(new RegExp(`useState(<[^>]*>)?\\(V1_FIELD_DEFAULTS\\.${key}\\b`));
@@ -153,25 +154,23 @@ describe('U-1 — the v1 starting values have one home', () => {
     ]);
   });
 
-  it('U-5c — `phasePriority` IS in the project file and the notice does NOT report it', () => {
-    /* THE GAP, STATED RATHER THAN CLOSED. `project.ts` carries `phasePriority`
-       and `applyProject` restores it, so a project written on v1 brings a moved
-       slider along — and since M-4 the v2 route overwrites it with the engine's
-       own 50/50, so it is exactly the kind of value this notice exists to
-       report. It is NOT in `V1_FIELD_DEFAULTS`, so the notice stays silent.
-       Adding it would make the notice fire on every project with a moved
-       slider, which is a behaviour change on existing files; U-5c MARKS the
-       control where it stands (the badge, on both the expert panel and the
-       wizard) and leaves the notice alone. Whoever closes it finds this claim. */
-    expect(PROJECT).toContain('phasePriority: number;');
-    expect(APP).toContain('setPhasePriority(d.phasePriority)');
-    expect(Object.keys(V1_FIELD_DEFAULTS)).not.toContain('phasePriority');
-    /* U-9 fase 2 — V15: WAS "the v1 badge IS there". IS: the slider is not a v1
-       field (the tuner reads it, N1), carries the measured badge instead
-       (`fieldBadge`), and its project value is the designer's — so the gap this
-       claim names is no longer a gap in the v1 notice at all. */
-    expect(APP).not.toContain("v1Legacy('phasePriority')");
-    expect(APP).toContain("{fieldBadge('phasePriority')}");
+  it('E-6 — `phasePriority` is carried unread and the notice NAMES it (the U-5c gap, closed)', () => {
+    /* V15. WAS (U-5c): the file carries `phasePriority`, `applyProject` restores
+       it, and the notice stays silent — closing the gap would make the notice
+       fire on every project with a moved slider. IS (E-6, B-5 = B): the slider
+       is gone and every run reads the engine's own 50/50, so a moved value in a
+       file is exactly what this notice exists to report. WHY: the behaviour
+       change U-5c declined is the decision E-6 took. */
+    expect(PROJECT).toContain('phasePriority?: number;');
+    expect(APP).not.toContain('setPhasePriority');
+    expect(APP).toContain('...(d.phasePriority !== undefined ? { phasePriority: d.phasePriority } : {})');
+    expect(V1_FIELD_DEFAULTS.phasePriority).toBe('50');
+    const c = v1CarryoverOf({ engineV2Enabled: true, phasePriority: 75 });
+    expect(c!.fields.map((f) => f.key)).toEqual(['phasePriority']);
+    expect(describeV1Carryover(c!)).toContain('set to "75"');
+    // The start value is not carried, as a number or as a string.
+    expect(v1CarryoverOf({ engineV2Enabled: true, phasePriority: 50 })).toBeNull();
+    expect(APP).not.toContain("{fieldBadge('phasePriority')}");
   });
 });
 
