@@ -8936,3 +8936,30 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   console leeg.
 - **Niet gedaan:** de gedateerde casus-1-corpora en de overige herkomstvensters zijn niet herleid; worker en
   rapport oordelen nog steeds op verschillende banden (bandkeuze, geen defect).
+
+### S-1-guards (de solver op platte arrays; bit-identiek, 3,6× sneller per evaluatie; alleen `network.ts`)
+
+- **Aanleiding (05-11-2026).** Sander zag online een v2-driewegverkenning 36 000 sims halen in 3 minuten, waar
+  hij miljoenen gewend was. `scripts/measure-eval-cost.ts` (seconden, geen ketenrun) oogst de echte
+  tuner-opties van één casus-1-kandidaat en meet 300 evaluaties per arm, één optie anders per arm.
+  **Gemeten vóór: 12,9 ms/eval, waarvan ~9,5 ms de versterkervloer-barrière op het verlengde, verfijnde
+  veiligheidsraster** (~400 punten tegen 143 in het ketenraster); poortcheck ~1,3 ms, de rest < 1 ms.
+  "De barrière heeft alleen |Z| nodig" was het eerste vermoeden en is fout: |Z_in| vraagt de volle solve.
+- **De reparatie zit in de solver en verandert geen bit.** `solveNetwork` bouwde zijn admittantiematrix als
+  `Complex[][]` en elimineerde via `solveComplexLinear`, met een nieuw object per complexe bewerking. Sinds
+  S-1 doet hij dezelfde rekenkunde op platte `Float64Array`'s, bewerking voor bewerking in dezelfde volgorde;
+  de rijwissel gaat via een index (`rowOf`). `solveComplexLinear` blijft als leesbare referentie.
+- `src/lib/networkFlatSolve.test.ts` (2 claims) — de pre-S-1-solve VERBATIM als referentie (met een
+  pivot-teller), vergeleken op ÉLKE bevroren casus-1-netlist, beide tunerrasters, met en zonder internals
+  (720 solves), geserialiseerd met −0 apart van 0; plus de eis dat er minstens één pivotwissel gebeurde en
+  een kleine handgebouwde netlist. **Nagemeten dat hij kán falen:** één update herschreven als
+  `a − f·ar + fim·ai` in plaats van `a − (f·ar − fim·ai)` zet beide claims op rood.
+- **Gemeten ná:** 3,6 ms/eval (barrière op het ketenraster 1,4). `npm run test:fast` 273 s, 219 bestanden
+  (218 + 1 overgeslagen), 2976 tests (2972 + 4), groen — +1 bestand en +2 tests, exact de guard.
+  `npx vitest run` **442 s** (was 1814–1932 s), 219 bestanden, 2976 tests, niets overgeslagen, in één keer
+  groen; **alle vier de live ketenruns byte-identiek**, `f4cRegression`, `workerRouteRegression` en
+  `toggleRegression` staan. Geen corpus, geen vingerafdruk en geen versie beweegt: een bit-identieke solver
+  is per constructie geen gedragswijziging. **De tijdregels hierboven (snelle laag ~540 s, volle run
+  ~1800 s) zijn vanaf S-1 de vóór-stand.** Geen nieuwe tag: de CI-telling blijft 19.
+- **Niet gedaan:** de barrière leest nog steeds ~400 punten per evaluatie; een goedkopere LEZING (minder
+  punten, of alleen rond minima) verandert het oordeel en is dus een zoekwijziging met regeneratie.

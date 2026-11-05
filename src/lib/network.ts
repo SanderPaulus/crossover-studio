@@ -1,5 +1,5 @@
 import type { Complex } from './complex.ts';
-import { cplx, add, sub, div, inv, scale } from './complex.ts';
+import { cplx, sub, div, inv, scale } from './complex.ts';
 
 /**
  * MNA (nodal analysis) solver for passive crossover networks.
@@ -137,55 +137,168 @@ export function solveNetwork(
     for (const e of netlist.elements) elementCurrents[e.id] = new Array<Complex>(freq.length);
   }
 
-  // Reusable matrix/vector buffers.
-  const G: Complex[][] = Array.from({ length: n }, () => new Array<Complex>(n));
-  const I: Complex[] = new Array<Complex>(n);
+  // FLAT SCRATCH BUFFERS — real and imaginary parts in separate typed arrays,
+  // reused across frequencies. Until 2026-11 this loop built the matrix as
+  // `Complex[][]` and eliminated it through `solveComplexLinear`, which
+  // allocates a fresh object for every complex add, multiply and divide; the
+  // optimiser calls this tens of thousands of times per run, and on casus 1 the
+  // amp-floor barrier alone (one solve over ~400 safety-grid points per
+  // evaluation) spent ~9.5 of 12.9 ms per evaluation in it. The arithmetic
+  // below is the SAME arithmetic, operation for operation and in the same
+  // order — the stamps of `add`/`sub`/`inv`, the pivot by `Math.hypot`, the
+  // factor of `div`, the updates of `mulc` — so every result is bit-identical
+  // (measured on all 180 frozen casus-1 netlists, both grids, 68 940 points;
+  // pinned by `network.test.ts`). The one structural change is the row swap:
+  // rows are addressed through `rowOf`, so a pivot swaps two indices instead of
+  // two arrays, which moves no number. `solveComplexLinear` stays as the
+  // readable reference and as what the test compares against.
+  const Are = new Float64Array(n * n);
+  const Aim = new Float64Array(n * n);
+  const bre = new Float64Array(n);
+  const bim = new Float64Array(n);
+  const rowOf = new Int32Array(n);
+  const xre = new Float64Array(n);
+  const xim = new Float64Array(n);
+
+  /** `add` on the diagonals, `sub` off them — the old `stamp`, on flat buffers. */
+  const stamp = (a: number, b: number, yr: number, yi: number): void => {
+    if (a > 0) {
+      const i = (a - 1) * n + (a - 1);
+      Are[i] = Are[i] + yr;
+      Aim[i] = Aim[i] + yi;
+    }
+    if (b > 0) {
+      const i = (b - 1) * n + (b - 1);
+      Are[i] = Are[i] + yr;
+      Aim[i] = Aim[i] + yi;
+    }
+    if (a > 0 && b > 0) {
+      const i = (a - 1) * n + (b - 1);
+      const j = (b - 1) * n + (a - 1);
+      Are[i] = Are[i] - yr;
+      Aim[i] = Aim[i] - yi;
+      Are[j] = Are[j] - yr;
+      Aim[j] = Aim[j] - yi;
+    }
+  };
+  /** `stamp(a, b, inv(cplx(re, im)))`, with `inv` written out. */
+  const stampInv = (a: number, b: number, re: number, im: number): void => {
+    const denom = re * re + im * im;
+    stamp(a, b, re / denom, -im / denom);
+  };
 
   for (let k = 0; k < freq.length; k++) {
     const w = 2 * Math.PI * freq[k];
 
+    Are.fill(0);
+    Aim.fill(0);
+    bre.fill(0);
+    bim.fill(0);
     for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) G[r][c] = cplx(r === c ? G_LEAK : 0);
-      I[r] = cplx(0);
+      Are[r * n + r] = G_LEAK;
+      rowOf[r] = r;
     }
-
-    const stamp = (a: number, b: number, y: Complex) => {
-      if (a > 0) G[a - 1][a - 1] = add(G[a - 1][a - 1], y);
-      if (b > 0) G[b - 1][b - 1] = add(G[b - 1][b - 1], y);
-      if (a > 0 && b > 0) {
-        G[a - 1][b - 1] = sub(G[a - 1][b - 1], y);
-        G[b - 1][a - 1] = sub(G[b - 1][a - 1], y);
-      }
-    };
 
     for (const e of netlist.elements) {
       const [a, b] = e.nodes;
       switch (e.kind) {
         case 'R':
-          stamp(a, b, cplx(1 / e.value));
+          stamp(a, b, 1 / e.value, 0);
           break;
         case 'L':
-          stamp(a, b, inv(cplx(e.seriesR ?? 0, w * e.value)));
+          stampInv(a, b, e.seriesR ?? 0, w * e.value);
           break;
         case 'C':
           // Z = ESR + 1/(jwC)
-          stamp(a, b, inv(cplx(e.seriesR ?? 0, -1 / (w * e.value))));
+          stampInv(a, b, e.seriesR ?? 0, -1 / (w * e.value));
           break;
-        case 'driver':
-          stamp(a, b, inv(driverZ[e.model][k]));
+        case 'driver': {
+          const z = driverZ[e.model][k];
+          stampInv(a, b, z.re, z.im);
           break;
+        }
         case 'source': {
           const g = 1 / e.seriesR;
-          stamp(a, b, cplx(g));
+          stamp(a, b, g, 0);
           const iNorton = e.volts * g;
-          if (a > 0) I[a - 1] = add(I[a - 1], cplx(iNorton));
-          if (b > 0) I[b - 1] = sub(I[b - 1], cplx(iNorton));
+          if (a > 0) {
+            bre[a - 1] = bre[a - 1] + iNorton;
+            bim[a - 1] = bim[a - 1] + 0;
+          }
+          if (b > 0) {
+            bre[b - 1] = bre[b - 1] - iNorton;
+            bim[b - 1] = bim[b - 1] - 0;
+          }
           break;
         }
       }
     }
 
-    const v = solveComplexLinear(G, I);
+    // Gaussian elimination with partial pivoting — `solveComplexLinear`, flat.
+    for (let col = 0; col < n; col++) {
+      let pivot = col;
+      const p0 = rowOf[col] * n + col;
+      let best = Math.hypot(Are[p0], Aim[p0]);
+      for (let r = col + 1; r < n; r++) {
+        const i = rowOf[r] * n + col;
+        const m = Math.hypot(Are[i], Aim[i]);
+        if (m > best) {
+          best = m;
+          pivot = r;
+        }
+      }
+      if (best === 0) throw new NetworkError('Singular network matrix (floating subcircuit?).');
+      if (pivot !== col) {
+        const t = rowOf[col];
+        rowOf[col] = rowOf[pivot];
+        rowOf[pivot] = t;
+      }
+      const cr = rowOf[col] * n;
+      const dre = Are[cr + col];
+      const dim = Aim[cr + col];
+      const denom = dre * dre + dim * dim;
+      const bcr = rowOf[col];
+      for (let r = col + 1; r < n; r++) {
+        const rr = rowOf[r] * n;
+        const are = Are[rr + col];
+        const aim = Aim[rr + col];
+        const fre = (are * dre + aim * dim) / denom;
+        const fim = (aim * dre - are * dim) / denom;
+        if (fre === 0 && fim === 0) continue;
+        Are[rr + col] = 0;
+        Aim[rr + col] = 0;
+        for (let c = col + 1; c < n; c++) {
+          const ar = Are[cr + c];
+          const ai = Aim[cr + c];
+          Are[rr + c] = Are[rr + c] - (fre * ar - fim * ai);
+          Aim[rr + c] = Aim[rr + c] - (fre * ai + fim * ar);
+        }
+        const br = bre[bcr];
+        const bi = bim[bcr];
+        const rb = rowOf[r];
+        bre[rb] = bre[rb] - (fre * br - fim * bi);
+        bim[rb] = bim[rb] - (fre * bi + fim * br);
+      }
+    }
+    for (let r = n - 1; r >= 0; r--) {
+      const rr = rowOf[r] * n;
+      let accr = bre[rowOf[r]];
+      let acci = bim[rowOf[r]];
+      for (let c = r + 1; c < n; c++) {
+        const ar = Are[rr + c];
+        const ai = Aim[rr + c];
+        accr = accr - (ar * xre[c] - ai * xim[c]);
+        acci = acci - (ar * xim[c] + ai * xre[c]);
+      }
+      const dr = Are[rr + r];
+      const di = Aim[rr + r];
+      const denom = dr * dr + di * di;
+      xre[r] = (accr * dr + acci * di) / denom;
+      xim[r] = (acci * dr - accr * di) / denom;
+    }
+
+    const v = new Array<Complex>(n);
+    for (let i = 0; i < n; i++) v[i] = { re: xre[i], im: xim[i] };
     const nodeV = (idx: number): Complex => (idx === 0 ? cplx(0) : v[idx - 1]);
 
     for (const d of drivers) {
