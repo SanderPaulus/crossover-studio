@@ -2204,4 +2204,35 @@ export const nl: Record<string, string> = {
     '„Echte catalogusonderdelen gebruiken” staat uit (Expert → Filters → Componenten).',
   'The catalogue snap did not land on this design: real parts would break a hard limit (often the source resistance of thin coil wire) — the run notes say which.':
     'De catalogussnap is op dit ontwerp niet geland: echte onderdelen zouden een harde grens breken (vaak de bronweerstand van dunne spoeldraad) — de runnotities zeggen welke.',
+  // Guided component quality (guidedPartsQuality.ts)
+  'Component quality':
+    'Kwaliteit van de onderdelen',
+  'No preference':
+    'Geen voorkeur',
+  'The nearest value at the best price, from any series.':
+    'De dichtstbijzijnde waarde voor de beste prijs, uit elke serie.',
+  'Budget':
+    'Budget',
+  'The cheapest series first.':
+    'Eerst de goedkoopste series.',
+  'Standard':
+    'Standaard',
+  'The standard series.':
+    'De standaardseries.',
+  'Premium':
+    'Premium',
+  'The best series first.':
+    'Eerst de beste series.',
+  'Coils are not chosen by this: a cheaper coil means thinner wire, which changes the filter, so coils are picked on wire resistance. The choice steers capacitors and resistors.':
+    'Spoelen worden hier niet mee gekozen: een goedkopere spoel betekent dunnere draad, en dat verandert het filter, dus spoelen worden op draadweerstand gekozen. De keuze stuurt condensatoren en weerstanden.',
+  'This project uses the expert profile "{p}". Pick one above to replace it.':
+    'Dit project gebruikt het expertprofiel "{p}". Kies er hierboven een om het te vervangen.',
+  'Takes effect on the next run.':
+    'Werkt vanaf de volgende run.',
+  'No catalogue parts are used, so this choice does nothing yet: {why}':
+    'Er worden geen catalogusonderdelen gebruikt, dus deze keuze doet nog niets: {why}',
+  'Component quality on this run: {q}.':
+    'Kwaliteit van de onderdelen bij deze run: {q}.',
+  'expert profile {p}':
+    'expertprofiel {p}',
 };

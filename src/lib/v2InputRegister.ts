@@ -1637,7 +1637,9 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'snapProfile', // #109
     label: 'Snap profile',
-    form: '🧙 Wizard → components',
+    /* Since 07-11-2026 also guided's "Component quality" (four of the five
+     * profiles, `guidedPartsQuality.ts`): buttons, the same state. */
+    form: '🧙 Wizard → components; guided: Design it → Component quality',
     travels: 'snapProfile → snapPrefs → the catalogue snap',
     cls: 'nice',
     effect: 'zoekt',

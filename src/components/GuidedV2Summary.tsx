@@ -120,6 +120,11 @@ export interface GuidedV2SummaryProps {
    * why (no catalogue loaded, or the snap switched off). Null = no network.
    */
   parts?: { total: number; catalog: number; why: string | null } | null;
+  /**
+   * The component quality the RUN snapped with, already in words (guided
+   * label, or the expert profile by name); null when the run did not snap.
+   */
+  partsQuality?: string | null;
   /** The full panel, shown inside the details fold. */
   children: ReactNode;
 }
@@ -147,7 +152,7 @@ export function partsLine(p: { total: number; catalog: number; why: string | nul
   };
 }
 
-export function GuidedV2Summary({ report, notSimulated = null, limitProvenance = {}, parts = null, children }: GuidedV2SummaryProps) {
+export function GuidedV2Summary({ report, notSimulated = null, limitProvenance = {}, parts = null, partsQuality = null, children }: GuidedV2SummaryProps) {
   const { gates, system } = report;
   const stated = gates.verdicts.filter((v) => v.active);
   const unstated = [...new Set(gates.verdicts.filter((v) => !v.active).map((v) => gateLabel(v)))];
@@ -223,6 +228,11 @@ export function GuidedV2Summary({ report, notSimulated = null, limitProvenance =
 
           {parts && (
             <p className={`guided-parts ${partsLine(parts).ok ? 'v2-on' : 'v2-unjudged'}`}>{partsLine(parts).text}</p>
+          )}
+          {parts && parts.catalog > 0 && partsQuality && (
+            <p className="v2-muted guided-parts-quality-used">
+              {t('Component quality on this run: {q}.', { q: partsQuality })}
+            </p>
           )}
 
           {bottom !== null && (

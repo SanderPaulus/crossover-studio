@@ -9136,3 +9136,24 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   - `npx vitest run` 528 s: 223 bestanden, 3010 tests, groen; alle vier de live ketenruns
     byte-identiek. Casus 1/1b/1h/2 snappen niet, dus de tweede poging is daar per constructie
     afwezig.
+
+### G-3-guards (guided: een vereenvoudigde keuze in onderdelenkwaliteit; alleen UI, 07-11-2026)
+
+- **`src/lib/guidedPartsQuality.ts` (`guided-parts-quality/1.0`)**: guided biedt vier van de vijf
+  snapprofielen als knoppen op de ontwerpstap: Geen voorkeur (`auto`), Budget, Standaard
+  (`balanced`), Premium. De knop schrijft `snapProfile`, dezelfde staat als de Wizard in expert, dus
+  er is geen tweede mechanisme; de run leest hem via `snapPrefsValue()` zoals altijd.
+- **`position` blijft expert** (vraagt kennis van het serie-pad). Een project dat hem draagt opent in
+  guided zonder ingedrukte knop en zegt welk expertprofiel actief is.
+- **Spoelen volgen het profiel niet**, en de zin onder de knoppen zegt dat (`preferredPools`: de
+  tier van een spoel is zijn draad, en die kiest de snap op een DCR-budget).
+- Zonder catalogus of met de snap uit zegt de stap dat de keuze nog niets doet, en waarom.
+- **De run legt het profiel vast** (`v2Run.snapProfile`, null zonder snap) en het guided-resultaat
+  noemt het onder de onderdelenregel ("Component quality on this run: …").
+- In guided staan de vier aangeboden profielen niet meer onder "Not at the standard settings";
+  `position` wel.
+- `src/lib/guidedPartsQuality.test.ts` (6 claims). Knoppen, geen `<input>`, dus de U-9-driftguard
+  telt ze niet; de registerrij `snapProfile` noemt de tweede plek.
+- **Gemeten:** `npm run test:fast` 258 s, 225 bestanden (224 + 1), 3018 tests (3014 + 4), groen.
+  Browser: knoppen, `aria-pressed`, EN en NL, geen console-fout. De resultaatregel is NIET in een
+  volle run bekeken, alleen door de bronscan.

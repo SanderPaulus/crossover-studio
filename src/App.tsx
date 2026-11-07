@@ -142,6 +142,13 @@ import { releaseAfterPaint, shouldDeferOnBoot } from './lib/bootDefer.ts';
 import { EngineV2Panel } from './components/EngineV2Panel.tsx';
 import { partRatingsOf } from './lib/engine2/optimizer/partRatings.ts';
 import { GuidedV2Summary } from './components/GuidedV2Summary.tsx';
+import {
+  GUIDED_PARTS_QUALITY,
+  COILS_NOT_BY_QUALITY,
+  guidedPartsQualityLabel,
+  guidedPartsQualityNote,
+  isGuidedPartsQuality,
+} from './lib/guidedPartsQuality.ts';
 import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from './lib/engine2/version.ts';
 import { buildReport, type EngineV2ReportInput } from './lib/engine2/report.ts';
 import {
@@ -8386,7 +8393,10 @@ export default function App() {
       ['metric', phaseMetricMode !== APP_DEFAULTS.phaseMetricMode, `phase metric ${phaseMetricMode}`, () => setPhaseMetricMode(APP_DEFAULTS.phaseMetricMode)],
       ['ampT', ampTarget !== APP_DEFAULTS.ampTarget, 'amplitude target = listening window', () => setAmpTarget(APP_DEFAULTS.ampTarget)],
       ['snap', catalogSnap !== APP_DEFAULTS.catalogSnap, 'catalog snap off', () => setCatalogSnap(APP_DEFAULTS.catalogSnap)],
-      ['profile', snapProfile !== 'auto', `component profile ${snapProfile}`, () => setSnapProfile('auto')],
+      /* Guided offers four of the five profiles as its own choice (component
+       * quality, on the design step), so those four are not "hidden" there;
+       * the expert-only `position` profile still is. */
+      ['profile', snapProfile !== 'auto' && !(uiMode === 'guided' && isGuidedPartsQuality(snapProfile)), `component profile ${snapProfile}`, () => setSnapProfile('auto')],
       ['stacks', !snapStacks, 'stacking off', () => setSnapStacks(true)],
       ['sL', snapSeriesL !== 'auto', 'coil series bound', () => setSnapSeriesL('auto')],
       ['sC', snapSeriesC !== 'auto', 'cap series bound', () => setSnapSeriesC('auto')],
@@ -10045,6 +10055,7 @@ export default function App() {
                * construction: a hybrid falls through to the two-way route. */
               activeHandoverByLabel: {},
               activeSideForm: null,
+              snapProfile: catalogSnap && hasImportedCatalog() ? snapProfile : null,
             });
             setV2Shortlist(shortlist);
             setShortlistPick(null);
@@ -11210,6 +11221,7 @@ export default function App() {
               activeHandoverByLabel: { ...activeHandoverByLabel },
               /* H-2b — which form the run was, read off the run afterwards. */
               activeSideForm: hybrid && activeRuns.length > 0 ? v2ActiveSide.form : null,
+              snapProfile: catalogSnap && hasImportedCatalog() ? snapProfile : null,
             });
             setV2Shortlist(shortlist);
             setShortlistPick(null);
@@ -11759,6 +11771,12 @@ export default function App() {
      * On the RUN and not on the form, for the reason `activeHandoverByLabel` is.
      */
     activeSideForm: 'measured' | 'unmeasured' | null;
+    /**
+     * The snap profile this run used, or null when it did not snap (no
+     * catalogue, or the snap off). On the RUN and not read off the form, so
+     * the guided result names the quality of THIS design.
+     */
+    snapProfile: string | null;
   } | null>(null);
   /**
    * F3 — the SHORTLIST the last v2 scan produced: the feasible region, spread
@@ -20140,6 +20158,44 @@ export default function App() {
                   {' — '}
                   {describeRunChoice('full', EXPLORATION_CHAIN_BUDGET)}
                 </p>
+                {/* GUIDED — the component quality, four of the five snap
+                    profiles in plain words (`guidedPartsQuality.ts`). The
+                    button writes `snapProfile`, the one value expert writes;
+                    coils are not steered by it, and the sentence says so. */}
+                <div className="guided-parts-quality">
+                  <strong>{t('Component quality')}</strong>
+                  <div className="v2-profile-choices">
+                    {GUIDED_PARTS_QUALITY.map((q) => (
+                      <button
+                        key={q.id}
+                        type="button"
+                        className={`v2-profile${snapProfile === q.id ? ' active-toggle' : ''}`}
+                        aria-pressed={snapProfile === q.id}
+                        onClick={() => setSnapProfile(q.id)}
+                      >
+                        <span>{t(q.label)}</span>
+                        <small>{t(q.hint)}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="v2-muted">
+                    {t(COILS_NOT_BY_QUALITY)} {t('Takes effect on the next run.')}
+                  </p>
+                  {guidedPartsQualityNote(snapProfile) && (
+                    <p className="v2-muted">
+                      {t('This project uses the expert profile "{p}". Pick one above to replace it.', { p: snapProfile })}
+                    </p>
+                  )}
+                  {!(catalogSnap && hasImportedCatalog()) && (
+                    <p className="v2-unjudged">
+                      {t('No catalogue parts are used, so this choice does nothing yet: {why}', {
+                        why: !hasImportedCatalog()
+                          ? t('No catalogue is loaded — load one under Expert → Filters → Components.')
+                          : t('“Use real catalog parts” is switched off (Expert → Filters → Components).'),
+                      })}
+                    </p>
+                  )}
+                </div>
                 {(() => {
                   /* The questions that went unanswered, said BEFORE the run
                      rather than only after it: half an hour is a long time to
@@ -25060,6 +25116,11 @@ export default function App() {
             <GuidedV2Summary
               report={engineV2Report.report}
               parts={guidedPartsReality}
+              partsQuality={
+                v2Run?.snapProfile
+                  ? t(guidedPartsQualityLabel(v2Run.snapProfile) ?? 'expert profile {p}', { p: v2Run.snapProfile })
+                  : null
+              }
               notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
               limitProvenance={v2LimitProvenance}
             >
