@@ -2127,7 +2127,6 @@ export const nl: Record<string, string> = {
   "stated via {who}": "gesteld via {who}",
   "profile {name}": "profiel {name}",
   "dB (tweeter)": "dB (tweeter)",
-  "The voicing hangs on a design, and a design exists once the first run has loaded one. Until then the run is judged flat — the neutral reference. Come back here after the run to choose a bass plateau.": "De voicing hangt aan een ontwerp, en een ontwerp bestaat zodra de eerste run er een geladen heeft. Tot dan wordt de run vlak beoordeeld — de neutrale referentie. Kom na de run hier terug om een basplateau te kiezen.",
   "Next →": "Volgende →",
   "Next: Design it →": "Volgende: Ontwerp het →",
   "Requirements": "Eisen",
@@ -2235,4 +2234,6 @@ export const nl: Record<string, string> = {
     'Kwaliteit van de onderdelen bij deze run: {q}.',
   'expert profile {p}':
     'expertprofiel {p}',
+  'No design exists yet: your choice is used by the first run and saved on the design it loads.':
+    'Er is nog geen ontwerp: je keuze wordt door de eerste run gebruikt en bewaard op het ontwerp dat die laadt.',
 };

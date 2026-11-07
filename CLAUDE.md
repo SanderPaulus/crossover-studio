@@ -9194,3 +9194,14 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   ketenruns byte-identiek. **Browser:** de tweewegdemo met vloer 2,6 Ω stuurt `v2ChainOne` met
   `zFloorBarrierSource: 'safety-extended-refined-tracked'` (onderschept op `Worker.postMessage`), de run levert
   (1 van 1, 35 s), de runnotitie noemt "(tracked)", geen console-fout.
+
+### G-4-guards (guided vraag 5 heeft vóór de eerste run antwoorden; alleen UI, 07-11-2026)
+
+- De voicing hangt aan het ontwerp (A5e.2/V45), en op een vers project bestaat dat pas na de eerste run, dus
+  vraag 5 toonde geen knoppen. Sinds G-4 houdt `pendingVoicing` de keuze vast zolang er geen ontwerp is;
+  `activeTargetCurve` leest hem dan (de eerste run wordt erop gezocht en beoordeeld), en een effect schrijft
+  hem in het eerste ontwerp dat zonder eigen voicing binnenkomt, waarna hij leeg wordt. `applyProject` wist hem.
+  Niet in het projectbestand: zonder ontwerp is er niets om hem op te bewaren.
+- `src/lib/guidedVoicingPending.test.ts` (3 bronscans). **Gemeten:** `npm run test:fast` 317 s, 227 bestanden
+  (226 + 1), 3028 tests (3024 + 4), groen. Browser: tweewegdemo, vraag 5 vóór de run kiesbaar ("Bass plateau"
+  ingedrukt), na de run staat de keuze op het ontwerp en de "nog geen ontwerp"-regel is weg.

@@ -3009,7 +3009,27 @@ export default function App() {
   const activeDesign = useMemo(
     () => designs.find((d) => d.id === activeDesignId) ?? null,
     [designs, activeDesignId],
-  );  /**
+  );
+  /**
+   * The voicing chosen BEFORE any design exists (guided question 5).
+   *
+   * The voicing lives on the design (A5e.2 / V45), and on a fresh project the
+   * first design only appears when a run loads one — so guided asked a
+   * question it could not take an answer to. The answer is held here, read by
+   * `activeTargetCurve` as long as there is no design (so the FIRST run is
+   * searched and judged against it), and written into the first design that
+   * arrives without a voicing of its own; then this clears. Not saved in the
+   * project: before a design exists there is nothing to save it on.
+   */
+  const [pendingVoicing, setPendingVoicing] = useState<TargetCurve | null>(null);
+  useEffect(() => {
+    if (!activeDesign || !pendingVoicing) return;
+    if (!activeDesign.targetCurve) {
+      const tc = pendingVoicing;
+      setDesigns((ds) => ds.map((d) => (d.id === activeDesign.id && !d.targetCurve ? { ...d, targetCurve: { ...tc } } : d)));
+    }
+    setPendingVoicing(null);
+  }, [activeDesign, pendingVoicing]);  /**
    * GUIDED — are the loaded design's parts REAL? Counted off the parts
    * themselves (a snapped part carries its catalogue attribution), never off a
    * setting, so the line describes this network and not an intention.
@@ -3041,7 +3061,7 @@ export default function App() {
    * that has never stated a voicing means "judge me horizontal".
    */
   const activeTargetCurve: TargetCurve = useMemo(() => {
-    const stored = activeDesign?.targetCurve as TargetCurve | undefined;
+    const stored = (activeDesign ? activeDesign.targetCurve : pendingVoicing ?? undefined) as TargetCurve | undefined;
     if (!stored) return FLAT_TARGET;
     if (stored.type !== 'bass-plateau') return stored;
     /* UI-1 — THE MEASURED HALF IS DERIVED HERE AND STORED NOWHERE.
@@ -3059,7 +3079,7 @@ export default function App() {
      * better than a plateau at a corner nobody measured. */
     const step = baffleStepHz(Number(cabinet.baffleWidthMm));
     return step === null ? stored : { ...stored, stepHz: step };
-  }, [activeDesign, cabinet.baffleWidthMm]);
+  }, [activeDesign, pendingVoicing, cabinet.baffleWidthMm]);
   const schematic: VxpCrossover | null = useMemo(
     () => (activeDesign ? { name: activeDesign.name, parts: activeDesign.parts } : null),
     [activeDesign],
@@ -8661,6 +8681,7 @@ export default function App() {
   }
 
   function applyProject(state: ProjectState) {
+    setPendingVoicing(null);
     phaseAutoSkip.current = true; // restored phaseMode wins over the auto-switch
     offsetAutoSkip.current = true; // restored offset wins over the auto-fill
     const toLoaded = (f?: StoredFile): Loaded | null =>
@@ -19863,7 +19884,10 @@ export default function App() {
                 return ownOn(qid).length > 0 ? t('your own values (expert)') : null;
               };
               const setVoicing = (depth: number | null) => {
-                if (!activeDesign) return;
+                if (!activeDesign) {
+                  setPendingVoicing(depth === null ? { type: 'flat' } : { type: 'bass-plateau', plateauDepthDb: depth });
+                  return;
+                }
                 setDesigns((ds) =>
                   ds.map((d) =>
                     d.id !== activeDesign.id
@@ -20080,7 +20104,7 @@ export default function App() {
                             );
                           })()}
                           {q.kind === 'voicing' && (
-                            activeDesign ? (
+                            <>
                               <div className="v2-profile-choices">
                                 {VOICING_CHOICES.map((c) => {
                                   const on =
@@ -20106,11 +20130,12 @@ export default function App() {
                                   );
                                 })}
                               </div>
-                            ) : (
-                              <p className="v2-req-blocked">
-                                {t('The voicing hangs on a design, and a design exists once the first run has loaded one. Until then the run is judged flat — the neutral reference. Come back here after the run to choose a bass plateau.')}
-                              </p>
-                            )
+                              {!activeDesign && (
+                                <p className="v2-muted">
+                                  {t('No design exists yet: your choice is used by the first run and saved on the design it loads.')}
+                                </p>
+                              )}
+                            </>
                           )}
                           {nav(false)}
                         </div>
