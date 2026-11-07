@@ -1,4 +1,5 @@
 import { nelderMead } from './optimize.ts';
+import { rethrowIfPlatformError } from './platformError.ts';
 import { bandMedian, PHASE_ERROR_UNIT_DEG, powerShape, smoothDbGaussian, type PowerMetricMode } from './bandMetrics.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 import { solveNetwork, type NetElement, type PassiveElement } from './network.ts';
@@ -1560,7 +1561,8 @@ export function systemMinImpedanceOhm(
 ): number | null {
   try {
     return minImpedanceAt(solveNetwork(net, grid, driverZ).inputZ)?.ohm ?? null;
-  } catch {
+  } catch (caught) {
+    rethrowIfPlatformError(caught);
     return null;
   }
 }
@@ -1708,7 +1710,8 @@ export function refinedSystemMinImpedanceOhm(
   let mag: number[];
   try {
     mag = solveNetwork(net, coarse.grid, coarse.driverZ).inputZ.map((z) => Math.hypot(z.re, z.im));
-  } catch {
+  } catch (caught) {
+    rethrowIfPlatformError(caught);
     return null;
   }
   const coarseMin = minImpedanceAt(mag.map((m) => ({ re: m, im: 0 })));
@@ -1735,7 +1738,8 @@ export function refinedSystemMinImpedanceOhm(
   let fineMin: { ohm: number } | null;
   try {
     fineMin = minImpedanceAt(solveNetwork(net, sub.map((i) => fine.grid[i]), driverZ).inputZ);
-  } catch {
+  } catch (caught) {
+    rethrowIfPlatformError(caught);
     return null;
   }
   const ohm = fineMin && fineMin.ohm < coarseMin.ohm ? fineMin.ohm : coarseMin.ohm;
@@ -1881,7 +1885,8 @@ export function busTopology(parts: readonly VxpPart[]): {
 } {
   try {
     return busTopologyOfNetlist(crossoverToNetlist({ name: 'pos', parts: [...parts] }).netlist);
-  } catch {
+  } catch (caught) {
+    rethrowIfPlatformError(caught);
     // Position stays unknown → every part is treated as shunt (wide bounds).
     return busTopologyOfNetlist({ nodeCount: 0, elements: [] });
   }
@@ -2334,7 +2339,8 @@ export function optimizeNetworkValues(
         if (q.partId && bus.driversOf(q.partId).includes(low)) ids.add(q.partId);
       }
       return ids;
-    } catch {
+    } catch (caught) {
+      rethrowIfPlatformError(caught);
       return null;
     }
   })();
@@ -2354,7 +2360,8 @@ export function optimizeNetworkValues(
       );
       const slots = pickSlotsN(drivers);
       return (slots.woofer ?? slots.mid ?? slots.tweeter)?.model ?? null;
-    } catch {
+    } catch (caught) {
+      rethrowIfPlatformError(caught);
       return null;
     }
   })();
@@ -2616,7 +2623,8 @@ export function optimizeNetworkValues(
           const d = fl[i] - zm;
           if (d > out.shortOhm) out = { shortOhm: d, atHz: freqs[i], minOhm: zm, floorOhm: fl[i] };
         }
-      } catch {
+      } catch (caught) {
+        rethrowIfPlatformError(caught);
         /* unsolvable: other guards report that */
       }
     };
@@ -4221,7 +4229,8 @@ export function optimizeNetworkValues(
     if (barrier) {
       try {
         protRef = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive).protSqDb + 0.5;
-      } catch {
+      } catch (caught) {
+        rethrowIfPlatformError(caught);
         protRef = Infinity;
       }
     }
@@ -4246,7 +4255,8 @@ export function optimizeNetworkValues(
       let m;
       try {
         m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
-      } catch {
+      } catch (caught) {
+        rethrowIfPlatformError(caught);
         return 1e9;
       }
       let barr = 0;
@@ -4634,7 +4644,8 @@ export function optimizeNetworkValues(
       let m: Metrics;
       try {
         m = fullOf(trial);
-      } catch {
+      } catch (caught) {
+        rethrowIfPlatformError(caught);
         e.reasons.push('re-check failed to solve — kept');
         e.verdict = 'grey';
         continue;
@@ -4875,7 +4886,8 @@ export function optimizeNetworkValues(
             let fx: number;
             try {
               fx = quickFx(trial);
-            } catch {
+            } catch (caught) {
+              rethrowIfPlatformError(caught);
               continue;
             }
             if (fx > 1e8) continue;
@@ -5503,7 +5515,8 @@ export function optimizeNetworkValues(
       let zMin: number;
       try {
         ({ fx, zMin } = snapFxZ(applied(ch)));
-      } catch {
+      } catch (caught) {
+        rethrowIfPlatformError(caught);
         return 1e12;
       }
       const zShort = Math.max(0, zSnapTarget - zMin);

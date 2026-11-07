@@ -20,6 +20,7 @@
  * Nothing here writes to the stored design; the caller shows the report and
  * the user decides.
  */
+import { rethrowIfPlatformError } from './platformError.ts';
 import type { VxpPart } from './parsers/vxp.ts';
 import type { Complex } from './complex.ts';
 import type { GriddedResponse, TweeterAdjust } from './dsp.ts';
@@ -179,7 +180,7 @@ export function minimizeNetwork(
       for (const mode of ['open', 'shorted'] as const) {
         const trial = cur.parts.map((p) => (p.partId === id ? { ...p, [mode]: true } : p));
         let r: NetOptimizeResult;
-        try { r = tune(trial, true); } catch { continue; }
+        try { r = tune(trial, true); } catch (e) { rethrowIfPlatformError(e); continue; }
         const m = measure(r);
         if (!ok(m, before)) continue;
         // Materialise: open part gone, shorted part → wire.
@@ -240,7 +241,7 @@ export function minimizeNetwork(
           return { ...x, params, catalog: p.id };
         });
         let r: NetOptimizeResult;
-        try { r = tune(trial, false); } catch { continue; }
+        try { r = tune(trial, false); } catch (e) { rethrowIfPlatformError(e); continue; }
         const m = measure(r);
         if (!ok(m, before)) continue;
         const saving = curPrice !== null && p.priceEur !== undefined ? curPrice - p.priceEur : null;
@@ -274,7 +275,8 @@ export function minimizeNetwork(
         if (deg === 2) suggestions.push(`${L.id} + ${R.id} in series: a ${L.id} wound with ~${((L.seriesR ?? 0) + R.value).toFixed(2)} Ω DCR could do the flank and the level in one part (check the source-R limit before you do)`);
       }
     }
-  } catch {
+  } catch (caught) {
+    rethrowIfPlatformError(caught);
     /* no suggestions */
   }
 

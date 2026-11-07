@@ -9007,3 +9007,67 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Gemeten 07-11-2026:** `npm run test:fast` 268 s, 220 bestanden (219 + 1 overgeslagen), 2985 tests
   (2981 + 4), groen (+2 tests). In de browser staan alle velden gevuld op de Drivers-stap van de
   driewegdemo.
+
+### A5e.3-ratings-guards (tolerantie en nominale spanning in de catalogus; alleen data, 07-11-2026)
+
+- **`CatalogPart` en `CatalogSeries` dragen optioneel `tolerancePct` (± %) en `voltageV` (V)**,
+  in de vorm van `maxCurrentA` (V50). Een serie geeft ze door aan elk onderdeel van haar
+  waardenraster; een SKU draagt zijn eigen. **NIETS LEEST ZE:** geen poort, kolom of zoekgrens.
+- **Bestandsformaat v5** (`CATALOG_VERSION`), met beide spellingen (`tolerance_pct`/`voltage_v`).
+  - Een v4-bestand importeert zonder één van beide velden. Getest op de v4- en v8-fixture; de
+    notitietekst noemt de velden, de entries dragen ze niet.
+  - Aanwezig maar onbruikbaar (tekst, ≤ 0, tolerantie ≥ 100) wordt GEWEIGERD met de regel bij naam
+    (`ratingsOf`). Dat is strenger dan `currentOf`, dat stil negeert: een tikfout die verdwijnt
+    leest als "het blad zegt niets" (A3h).
+- De cataloguseditor (`CatalogManager.tsx`) heeft beide velden voor SKU en serie, met dezelfde
+  regels in `skuError`/`seriesGridError`.
+- **BIJVANGST, niet gerepareerd:** de editor laat `maxCurrentA` (V50) bij elke bewerking van een
+  SKU stil vallen. Hij heeft er geen veld voor en `fromSkuDraft` bouwt het onderdeel opnieuw op.
+- **Het voorstel voor gebruik** staat in `docs/A5e3_voorstel_spanning_tolerantie.md`: een kolom
+  "piekspanning tegen rating" naast U-5c's `capacitorLoads`, daarna eventueel een poort; en de
+  U-5c-tolerantiemeting per gekozen onderdeel. Er wacht een beslispunt: `voltageV` = DC-rating.
+- `fitFor` is getoetst en NIET gebouwd. De prompt wees naar de zaad-snap in `synthesis.ts`, maar
+  de geleverde snap zit in `netOptimizer.ts`; en onder het standaardprofiel `'auto'` is de
+  tier-cascade leeg.
+- **Gemeten 07-11-2026:** `npm run test:fast` 270 s, 220 bestanden (219 + 1 overgeslagen),
+  2996 tests (2992 + 4), groen (+11 tests).
+- **De eerste volle snelle run had één rode claim die NIETS met deze wijziging te maken heeft:**
+  `structureRetune.test.ts` claim 2 las 9742 tegen 9930 evaluaties, bij hetzelfde netwerk, in
+  hetzelfde proces. Los draaien was groen, de herhaling ook. Er is geen klok en geen toeval in de
+  motor (nagegaan), dus de oorzaak is onbekend. Het is een open punt voor A5e.4.
+  **Nagezocht dezelfde dag, en NIET gereproduceerd:**
+  - **Normaal is 9742.** Een probe draaide vier runs in één proces en las vier keer 9742 (11 383
+    voor `'capped'`). De afwijkende run was dus `search`, die al tijdens het VERZAMELEN draait,
+    niet `stated`.
+  - **Gezocht naar wat zo'n verschil kan geven, en niets gevonden:** geen klok, geen `Math.random`,
+    geen GC-afhankelijke cache in de tuner (`floorCache` is een WeakMap op array-identiteit, de
+    rest is run-scoped). Globale teststubs (`nextPaint`, `optimClient.stop`) raken de tuner niet.
+    Zaad en meetbestanden worden nergens geschreven.
+  - **32 losse runs met 8 tegelijk:** nul keer rood.
+  - **Twee volle snelle lagen** met een tijdelijke log op elke fout die het objectief van de tuner
+    opslikt: beide groen, en suitebreed nul opgeslikte fouten.
+  - **Hypothese, NIET bewezen:** S-1 wijst per oplossing `Float64Array`'s toe. Onder geheugendruk
+    kan zo'n toewijzing een VANGBARE `RangeError` geven, en de twaalf catch-alls van
+    `netOptimizer.ts` lezen elke fout als "geen oplossing". Hetzelfde netwerk met meer evaluaties
+    past bij één zo'n opgeslikte fout.
+  - **Gedicht zonder bewijs, op Sanders besluit (07-11-2026):** `src/lib/platformError.ts`.
+    - **De vorm is níet "alleen `NetworkError`".** De catch-alls vangen ook bedoelde
+      `VxpNetworkError`'s en kale `Error`'s uit `dsp.ts` (resample). Alleen `NetworkError` vangen
+      zou die runs breken.
+    - **De regel is het omgekeerde:** gooi de INGEBOUWDE JS-fouttypes door (`RangeError`,
+      `TypeError`, `ReferenceError`, `SyntaxError`, `EvalError`, `URIError`). Nergens in de
+      codebase worden die bewust gegooid (nagegaan). Domeinfouten worden afgehandeld als voorheen.
+    - Alle twaalf blokken in `netOptimizer.ts` en de drie in `minimize.ts` roepen eerst
+      `rethrowIfPlatformError` aan.
+    - **`src/lib/platformError.test.ts` (3 claims):**
+      - de indeling met de hand;
+      - een bronscan: geen kale `catch {` meer, en elke catch roept de helper eerst aan;
+      - een injectie via `vi.mock` op `solveNetwork`: een `NetworkError` op elke vijftigste oplossing
+        wordt opgeslikt en de run levert; een `RangeError` laat de run falen.
+    - **Opzettelijke breuk:** een helper die niets doorgooit zet de injectieclaim op rood.
+    - **Gemeten:** `npm run test:fast` 279 s, 221 bestanden (220 + 1), 2999 tests (2995 + 4), groen.
+      `npx vitest run` 453 s, 221 bestanden, 2999 tests, groen; alle vier de live ketenruns
+      byte-identiek, `f4cRegression`, `workerRouteRegression` en `toggleRegression` staan.
+    - **Wat dit wel en niet bewijst:** het bewijst dat een opgeslikte platformfout dit beeld NIET
+      MEER kan geven. Het bewijst niet dat dat de oorzaak wás. Keert de flake terug, dan is het iets
+      anders, en dan faalt de run nu luid als het een platformfout is.
