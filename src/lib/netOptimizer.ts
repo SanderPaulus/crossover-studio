@@ -5667,7 +5667,21 @@ export function optimizeNetworkValues(
      * answer than "this candidate does not work", but they are an HONEST one,
      * and the note says which it is. */
     let snapped = applied(picks);
-    let snapViolation = constraintViolation(snapped);
+    /* WHO BROKE THE LIMIT (07-11-2026). The rollback below is the answer to
+     * "real parts would break a hard limit" — and that premise needs the
+     * CONTINUOUS design to have held it. Measured on the three-way demo: the
+     * delivered network already read ~15–36 Ω source resistance against the
+     * 2.0 Ω limit before any snap (a series shelf, R ∥ C, in the woofer path),
+     * so every snap was refused and a design the run had ALREADY delivered came
+     * back unbuyable. A violation the snap did not cause is not the snap's to
+     * refuse: then it snaps, and the note says the limit was broken before. */
+    const preSnapViolation = constraintViolation(cur.parts);
+    let snapViolation = preSnapViolation ? null : constraintViolation(snapped);
+    if (preSnapViolation) {
+      snapNote =
+        (snapNote ? `${snapNote} · ` : '') +
+        `⚠ snapped although a hard limit was already broken BEFORE the snap: ${preSnapViolation}`;
+    }
     /* SECOND ATTEMPT BEFORE THE ROLLBACK (07-11-2026). The first choice is made
      * on fit, cost and the load target, and only THEN checked against the hard
      * constraints — so with a large catalogue it can land on cheap thin wire

@@ -9110,10 +9110,27 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
     bij die waarde, en weigert hij pas daarna.
   - De melding noemt sinds C-1 de grens die ECHT brak. Tot nu toe zei ze altijd
     "source-resistance".
-- **OPEN, en de reden dat de demo nog steeds niet snapt:** op de driewegdemo leest de
-  bronweerstandsprobe op het GESNAPTE netwerk **36,3 Ω** tegen de app-standaard van 2,0 Ω, en
-  36,4 Ω met de dikste draad. Dat is geen koper. Vermoedelijk schuift een val of resonantie door
-  de afgeronde waarden onder het meetpunt van de probe (V34-familie). Niet onderzocht.
+- **WAAROM DE DEMO NIET SNAPTE, uitgezocht dezelfde dag.** De probe las op het gesnapte netwerk
+  36,3 Ω tegen de app-standaard van 2,0 Ω, en met de dikste draad 36,4 Ω. Het CONTINUE ontwerp
+  las dat al vóór de snap (in de app nagerekend op het autosave-netwerk: ~15 Ω op een benaderd
+  raster). De oorzaak is een SERIËLE SHELF in het wooferpad: R5 (29 Ω) parallel aan C6 (68 µF),
+  niveauwerk van de synthese. Op f_p (52 Hz) ziet de driver daar tientallen ohm. De
+  snap-weigering ging uit van "echte onderdelen breken de grens", en die premisse klopte niet.
+  - **Reparatie:** `preSnapViolation`. Breekt het continue ontwerp de grens al, dan snapt de snap
+    toch, en de melding zegt *"snapped although a hard limit was already broken BEFORE the
+    snap: …"*. Hij weigert alleen nog wat HIJ veroorzaakt.
+  - **Test:** `src/lib/snapPreexisting.test.ts`, 2 claims. Met de reparatie uitgezet is de eerste
+    claim rood.
+  - **Gemeten in de browser:** de driewegdemo levert nu 32 van 32 catalogusonderdelen, €400,09
+    volledig geprijsd, en guided zegt "this list can be ordered".
+- **NOG OPEN, en dat is een ontwerpvraag en geen bug:** de v2-drieweg levert een ontwerp met
+  ~30 Ω bronweerstand op de woofer. De Q_es-vermenigvuldiging is enorm en de
+  2,0 Ω-standaardgrens (een v1-appstandaard die op de drieweg als gestelde keuze meereist,
+  U-5c (c)) wordt niet tijdens de zoektocht gehandhaafd. Of die seriële shelf op de laagste weg
+  mag, is de V51-vraag (`lowestWayLevelWork`), en die is in guided niet gesteld.
+- **Gemeten na de reparatie:** `npm run test:fast` 472 s (de machine was belast; GEEN nieuwe
+  referentie), 224 bestanden (223 + 1), 3012 tests (3008 + 4), groen. `npx vitest run` 719 s,
+  224 bestanden, 3012 tests, groen; alle vier de live ketenruns byte-identiek.
 - **Gemeten:**
   - `npm run test:fast` 265 s: 223 bestanden (222 + 1), 3010 tests (3006 + 4), groen.
   - `npx vitest run` 528 s: 223 bestanden, 3010 tests, groen; alle vier de live ketenruns
