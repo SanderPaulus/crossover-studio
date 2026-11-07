@@ -40,8 +40,7 @@ import {
 import type { PolarityArmPolicy } from './predesign/polarityArms.ts';
 import {
   declareCandidateChainChoices,
-  declareCandidateChoices,
-} from './optimizer/candidateDeclaration.ts';
+  declareCandidateChoices, PRE_S2_BARRIER_SOURCE } from './optimizer/candidateDeclaration.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
 import { chainGridFrom, judgedBandFloor } from './predesign/judgedBand.ts';
 import type {
@@ -1017,6 +1016,9 @@ export function casus1V2Declaration(
        * reads the judged band exactly as it always did (P4). */
       ...(CASUS1_RIPPLE_STOP_FROM_LOWEST_CROSSING ? { rippleStopFromLowestCrossing: true } : {}),
       stated: {
+        /* S-2 — the source this corpus was generated on, stated so the pin
+         * is explicit; the route derives the tracked source since S-2. */
+        zFloorBarrierSource: PRE_S2_BARRIER_SOURCE,
         band: CASUS1_V2_BAND_HZ,
         staged: CASUS1_V2_SETTINGS.targets,
         ampTarget: CASUS1_V2_SETTINGS.ampTarget,

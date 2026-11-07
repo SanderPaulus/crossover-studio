@@ -585,9 +585,16 @@ describe('F4d — a generated candidate declares every choice key', () => {
      * grid cell, and no netlist with a wider dip reads above it — and priced
      * three refinements. The cheapest closes it (twelve of the gate sweep's own
      * points in the two cells around the coarse minimum, +3 % per evaluation),
-     * and that is what the route now derives. Same two inputs, same silence
-     * when either is missing. */
-    expect(full().stated.zFloorBarrierSource).toBe('safety-extended-refined');
+     * and that is what the route derived until S-2. Same two inputs, same
+     * silence when either is missing.
+     *
+     * `'safety-extended-refined-tracked'` since S-2 (07-11-2026), and no longer
+     * `'safety-extended-refined'`: the same reading, with the coarse grid read
+     * only around the dips it follows; 2.5–2.6× faster per chain run on casus 1,
+     * two of three candidates the same network part for part
+     * (`floor_barrier_arms.json`). The casus fixtures state the pre-S-2 source
+     * explicitly (`PRE_S2_BARRIER_SOURCE`). */
+    expect(full().stated.zFloorBarrierSource).toBe('safety-extended-refined-tracked');
     expect(full().absent.some((a) => a.key === 'zFloorBarrierSource')).toBe(false);
 
     const d = bare();

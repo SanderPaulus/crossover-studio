@@ -205,6 +205,16 @@ const p4 = (key: ChoiceKey, what: string) => ({
     'here and in the tuner',
 });
 
+/**
+ * S-2 — the barrier source every recorded corpus was generated on
+ * (casus 1, 1b, 1h and 2, since C-2). The fixtures state it explicitly so
+ * their live byte reproductions stay the runs their generators made; the
+ * route derives `'safety-extended-refined-tracked'` since S-2. A guard pins
+ * that the two differ, so the pin cannot go quietly stale: the next
+ * regeneration is where the fixtures move and this constant goes.
+ */
+export const PRE_S2_BARRIER_SOURCE = 'safety-extended-refined' as const;
+
 export function declareCandidateChoices(input: CandidateDeclarationInput): ChoiceDeclaration {
   const s = input.stated;
   const stated: Partial<NetOptimizeOptions> = {};
@@ -411,7 +421,16 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
      * inert exactly as before (the V32 rule, no silent fallback). An explicit
      * `'safety-extended'` still wins, which keeps the A5e.3c corpus
      * reproducible as the run its generator made. */
-    stated.zFloorBarrierSource = 'safety-extended-refined';
+    /* S-2 (07-11-2026) — `'safety-extended-refined-tracked'`: the refined
+     * reading, with the coarse grid read only around the dips it follows and a
+     * full scan whenever the evaluation grid's own minimum, a topology change,
+     * a window edge or the rescan count says so. Measured as full chain runs on
+     * casus 1: 2.5–2.6× faster, two of three candidates the same network part
+     * for part, the third refused in both arms on a different gate
+     * (`test-fixtures/floor_barrier_arms.json`). The casus fixtures state
+     * `PRE_S2_BARRIER_SOURCE` explicitly, so their corpora stay the runs their
+     * generators made until the next regeneration moves them. */
+    stated.zFloorBarrierSource = 'safety-extended-refined-tracked';
   } else {
     absent.push({
       key: 'zFloorBarrierSource',

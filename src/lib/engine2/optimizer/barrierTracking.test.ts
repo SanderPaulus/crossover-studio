@@ -107,3 +107,28 @@ describe('tracked barrier source', () => {
     expect(trackedRefinedSystemMinImpedanceOhm(base, coarse, fine, st, far.f)!.full).toBe(true);
   });
 });
+
+describe('S-2 — the route derives the tracked source; the casus fixtures are pinned to the pre-S-2 one', () => {
+  it('a declaration with the floor armed and no stated source derives the tracked source', async () => {
+    const { declareCandidateChoices } = await import('./candidateDeclaration.ts');
+    const d = declareCandidateChoices({
+      cages: [null],
+      windowFloorsHz: [null],
+      multiWay: false,
+      stated: { ampMinLoadOhm: 2.6, safety: { freqs: [100], w: [], m: null, t: [], z: {} } } as never,
+    });
+    expect(d.stated.zFloorBarrier).toBe(true);
+    expect(d.stated.zFloorBarrierSource).toBe('safety-extended-refined-tracked');
+  });
+
+  it('every casus fixture states the pre-S-2 source, and it differs from what the route derives', async () => {
+    const { PRE_S2_BARRIER_SOURCE } = await import('./candidateDeclaration.ts');
+    expect(PRE_S2_BARRIER_SOURCE).not.toBe('safety-extended-refined-tracked');
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    for (const f of ['casus1V2', 'casus1b', 'casus1h', 'casus2']) {
+      const src = readFileSync(join(__dirname, '..', `${f}.fixture.ts`), 'utf-8');
+      expect(src, f).toContain('zFloorBarrierSource: PRE_S2_BARRIER_SOURCE,');
+    }
+  });
+});

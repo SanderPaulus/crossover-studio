@@ -59,7 +59,7 @@ import { peakInputVolts } from './metrics/driveExcursion.ts';
 import { buildCandidateField, type CandidateFieldResult } from './predesign/candidateField.ts';
 import { fieldModeSettings } from './predesign/fieldMode.ts';
 import type { GeneratedCandidate } from './predesign/candidates.ts';
-import { declareCandidateChainChoices, declareCandidateChoices } from './optimizer/candidateDeclaration.ts';
+import { declareCandidateChainChoices, declareCandidateChoices, PRE_S2_BARRIER_SOURCE } from './optimizer/candidateDeclaration.ts';
 import { factsForWorker, type MeasurementFactsPayload } from './optimizer/measurementFacts.ts';
 import type { TargetCurve } from './requirements/targetCurve.ts';
 import type { CoilDcrFit, CoilDcrModel } from '../coilDcr.ts';
@@ -440,6 +440,9 @@ export function casus2V2Declaration(
       windowFloorsHz: c.crossings.map((x) => x.windowHz[0]),
       multiWay: true,
       stated: {
+        /* S-2 — the source this corpus was generated on, stated so the pin
+         * is explicit; the route derives the tracked source since S-2. */
+        zFloorBarrierSource: PRE_S2_BARRIER_SOURCE,
         band: CASUS2_V2_BAND_HZ,
         staged: CASUS2_V2_SETTINGS.targets,
         ampTarget: CASUS2_V2_SETTINGS.ampTarget,

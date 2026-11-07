@@ -9183,5 +9183,14 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Gemeten:** `npm run test:fast` 267 s, 226 bestanden (225 + 1), 3023 tests (3019 + 4), groen.
   `npx vitest run` 439 s, 226 bestanden, 3023 tests, groen; alle vier de live ketenruns byte-identiek,
   `f4cRegression`, `workerRouteRegression`, `toggleRegression` staan.
-- **OPEN, en dat is Sanders besluit:** de route laten afleiden (`candidateDeclaration.ts`, één woord) vraagt een
-  regeneratie van casus 1/1b/1h/2, en verlegt het pad van sommige kandidaten (zie 518,8 Hz).
+- **OMGEZET (07-11-2026, Sanders "implementeer maar"), ZONDER regeneratie.** De route leidt sinds dan
+  `'safety-extended-refined-tracked'` af (`candidateDeclaration.ts`); de vier casus-fixtures (1, 1b, 1h, 2)
+  stellen `PRE_S2_BARRIER_SOURCE` (`'safety-extended-refined'`) EXPLICIET, dezelfde pinvorm als de meetset
+  (M-3) en de polariteit (H-5), zodat hun live byte-reproducties de runs blijven die hun generatoren maakten.
+  Niet geregenereerd omdat een regeneratie nu ook de wachtende meetset- en polariteitswissel meesleept — een eigen
+  sessie. `barrierTracking.test.ts` (+2 claims) pint dat de route de gevolgde bron afleidt en dat élke fixture de
+  oude expliciet stelt; `choiceKeyGuard.test.ts` in V15-vorm bijgewerkt. **Gemeten:** `npm run test:fast` 266 s,
+  226 bestanden (225 + 1), 3025 tests (3021 + 4), groen; `npx vitest run` 429 s, 3025 tests, groen, de vier live
+  ketenruns byte-identiek. **Browser:** de tweewegdemo met vloer 2,6 Ω stuurt `v2ChainOne` met
+  `zFloorBarrierSource: 'safety-extended-refined-tracked'` (onderschept op `Worker.postMessage`), de run levert
+  (1 van 1, 35 s), de runnotitie noemt "(tracked)", geen console-fout.
