@@ -170,7 +170,7 @@ export function casus2Manifest(golden: GoldenRefs2 = loadGolden2()): Manifest {
     }
     return entry;
   });
-  return { sessionId: 'casus2-synthetic-2026-09-08', entries };
+  return { sessionId: 'casus2-synthetic-2026-09-08', entries, fsFloorConvention: 'k-table' }; // 07-11-2026: the convention its corpus was generated on
 }
 
 /**

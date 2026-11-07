@@ -264,9 +264,11 @@ describe('rule 3 — several orders means several candidates', () => {
   });
 
   it('the window is re-derived PER ORDER — the k·f_s floor moves and so do the positions', () => {
-    /* The floor here is 1.4·f_s at order 4 and 2.0·f_s at order 2, so the two
-     * orders do not share a window. Generating both inside one window would put
-     * the second-order candidates under a floor computed for the fourth. */
+    /* The floor here is k·f_s with k per order, so the two orders do not share
+     * a window. Generating both inside one window would put the second-order
+     * candidates under a floor computed for the fourth. 07-11-2026 — V15: WAS
+     * the k-table (2.0 / 1.4 → 1000 / 700 Hz); IS the 18 dB trade rule
+     * (2^(18/12) / 2^(18/24) → 1414.2 / 840.9 Hz). */
     const win: XoWindowInput = {
       ...flatWindow(100, 4000),
       upperFsHz: 500,
@@ -276,8 +278,8 @@ describe('rule 3 — several orders means several candidates', () => {
     });
     const floorAt = (order: number) =>
       g.candidates.find((c) => c.crossings[0].order === order)!.crossings[0].windowHz[0];
-    expect(floorAt(2)).toBeCloseTo(1000, 0);
-    expect(floorAt(4)).toBeCloseTo(700, 0);
+    expect(floorAt(2)).toBeCloseTo(500 * 2 ** (18 / 12), 0);
+    expect(floorAt(4)).toBeCloseTo(500 * 2 ** (18 / 24), 0);
     expect(floorAt(2)).toBeGreaterThan(floorAt(4));
   });
 });

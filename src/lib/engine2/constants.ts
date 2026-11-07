@@ -187,6 +187,16 @@ export const XO_FS_FACTOR_BY_ORDER: Readonly<Record<number, number>> = {
 };
 
 /**
+ * 07-11-2026 — THE TRADE RULE THE k·f_s FLOOR FOLLOWS SINCE THEN: the upper
+ * driver's drive at its own resonance sits at least this far down, on the
+ * asymptotic slope of its flank — so k = 2^(dB / (6 · order)). The table above
+ * is the A5d.3 convention it replaces as the default; it was worth only
+ * 9.5–12.2 dB (U-3e, H-4b), LOOSER than the 18 dB the trade rule asks for.
+ * Sander, 07-11-2026: the default follows the trade rule. @p6 rule
+ */
+export const FS_FLOOR_TRADE_RULE_DB = 18;
+
+/**
  * A4 M-H / A5d.3 — the breakup ceiling divisor: the classic rule is f_break/3
  * for a severe peak and f_break/2 for a mild one, interpolated by severity.
  *

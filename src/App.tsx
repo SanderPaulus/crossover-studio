@@ -7188,7 +7188,7 @@ export default function App() {
    * compares it with the trade rule, and a comparison that carried its own
    * copy of the number would be the first thing to drift.
    */
-  const fsConventionDb = useMemo(() => fsConventionDbRange(), []);
+  const fsConventionDb = useMemo(() => fsConventionDbRange('trade-rule'), []);
   const v2WindowLines = useMemo((): { pair: string; text: string; convention: boolean }[] => {
     const ws = engineV2Report?.report?.predesign.windows ?? [];
     return ws.map((w) => {
@@ -20057,9 +20057,8 @@ export default function App() {
                           {l.convention && (
                             <em className="v2-window-conv">
                               {' '}
-                              {t('— a convention, not a measurement: nothing is stated or derived about this driver’s drive limit, so the window falls back to k·f_s, which is worth about {lo}–{hi} dB of attenuation at the resonance — LOOSER than the 18 dB the trade rule asks for. State “Max drive on f_s” on the driver card, or fill Bl, M_ms and X_max plus the amplifier peak, and the floor follows the driver instead.', {
-                                lo: fsConventionDb.minDb.toFixed(1),
-                                hi: fsConventionDb.maxDb.toFixed(1),
+                              {t('— from the measured resonance and the trade rule: the filter slope must put this driver {db} dB down at its own f_s. A stated “Max drive on f_s” on the driver card, or Bl, M_ms and X_max plus the amplifier peak, can make the floor stricter, never looser.', {
+                                db: fsConventionDb.perOrder[4] !== undefined ? fsConventionDb.perOrder[4].toFixed(0) : '18',
                               })}
                             </em>
                           )}

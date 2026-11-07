@@ -154,6 +154,7 @@ import {
 import {
   crossoverWindow,
   DEFAULT_SIGNIFICANT_BREAKUP_DB,
+  type FsFloorConvention,
   type XoWindowInput,
   type XoWindowResult,
 } from './predesign/xoWindow.ts';
@@ -191,6 +192,12 @@ import {
 } from '../activeSide.ts';
 
 export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSettings {
+  /**
+   * 07-11-2026 — the convention the k·f_s window floor follows. Absent = the
+   * trade rule (18 dB at f_s); `'k-table'` = the A5d.3 table every recorded
+   * casus corpus was generated on.
+   */
+  fsFloorConvention?: FsFloorConvention;
   /**
    * Measured DC resistance per driver, ohms. A4 lists R_e as M-E's DATA NEED,
    * and it is a genuinely different number from the derived R_e: the derived
@@ -1559,6 +1566,10 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
         statedCeilingSource:
           'the stated maximum handover for this pair (gestelde_eisen.max_kruispunt_hz_per_paar, E-1), ' +
           'through ReportSettings.maxCrossingHzByPair',
+        /* 07-11-2026 — the k·f_s convention; absent = the trade rule. */
+        ...((input.settings.fsFloorConvention ?? input.manifest.fsFloorConvention)
+          ? { fsFloorConvention: input.settings.fsFloorConvention ?? input.manifest.fsFloorConvention }
+          : {}),
         lowerBreakups: dLower?.breakups?.peaks.map((p) => ({ fHz: p.fHz, dB: p.dB })) ?? [],
         significantBreakupDb: input.settings.significantBreakupDb,
         lowerMinus6Hz: dir?.minus6Hz ?? null,

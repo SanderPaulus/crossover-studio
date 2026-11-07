@@ -29,6 +29,7 @@ import {
   SPEED_OF_SOUND_M_S,
   WINDOW_SMOOTHING_OCTAVES,
   XO_FS_FACTOR_BY_ORDER,
+  FS_FLOOR_TRADE_RULE_DB,
 } from '../constants.ts';
 import { breakupDivisor } from '../metrics/acoustic.ts';
 import { derivedPositionCount } from './positionCount.ts';
@@ -289,6 +290,14 @@ export interface XoWindowInput {
   /** Resonance of the UPPER driver, from its impedance sweep. */
   upperFsHz: number | null;
   /**
+   * 07-11-2026 — which convention the k·f_s floor follows. Absent = the trade
+   * rule (`FS_FLOOR_TRADE_RULE_DB` down at f_s on the asymptotic flank), the
+   * default since 07-11-2026; `'k-table'` = the A5d.3 table
+   * (`XO_FS_FACTOR_BY_ORDER`) every recorded casus corpus was generated on,
+   * which the casus fixtures state explicitly.
+   */
+  fsFloorConvention?: FsFloorConvention;
+  /**
    * A5e.3-veld — THE EXCURSION CEILING OF THE UPPER DRIVER (M-C v2.0, V49):
    * how far below the filter input its drive voltage must sit at its own
    * resonance, dB (negative), `DriveExcursionResult.ceiling.ceilingDbReInput`.
@@ -499,10 +508,26 @@ export function bindingBreakup(input: XoWindowInput): {
  * derived excursion ceiling is lower, so raising it would bite exactly where
  * the measurement says the driver is safe.
  */
-export function fsConventionDbRange(): { minDb: number; maxDb: number; perOrder: Record<number, number> } {
+export type FsFloorConvention = 'trade-rule' | 'k-table';
+
+/**
+ * The k of the k·f_s floor at an order, under a convention. The trade rule
+ * inverts its attenuation through the asymptotic slope; the k-table is the
+ * A5d.3 table. Undefined where the table has no entry for that order.
+ */
+export function fsFloorFactor(order: number, convention: FsFloorConvention = 'trade-rule'): number | undefined {
+  if (convention === 'k-table') return XO_FS_FACTOR_BY_ORDER[order];
+  if (!(Number.isFinite(order) && order > 0)) return undefined;
+  return 2 ** (FS_FLOOR_TRADE_RULE_DB / (DB_PER_OCTAVE_PER_ORDER * order));
+}
+
+export function fsConventionDbRange(
+  convention: FsFloorConvention = 'k-table',
+): { minDb: number; maxDb: number; perOrder: Record<number, number> } {
   const perOrder: Record<number, number> = {};
-  for (const [order, k] of Object.entries(XO_FS_FACTOR_BY_ORDER)) {
-    perOrder[Number(order)] = DB_PER_OCTAVE_PER_ORDER * Number(order) * Math.log2(k); // P6-OK: unit conversion
+  for (const order of Object.keys(XO_FS_FACTOR_BY_ORDER).map(Number)) {
+    const k = fsFloorFactor(order, convention)!;
+    perOrder[order] = DB_PER_OCTAVE_PER_ORDER * order * Math.log2(k); // P6-OK: unit conversion
   }
   const all = Object.values(perOrder);
   return { minDb: Math.min(...all), maxDb: Math.max(...all), perOrder };
@@ -520,15 +545,19 @@ export function crossoverWindow(input: XoWindowInput): XoWindowResult {
     });
   }
 
-  const k = XO_FS_FACTOR_BY_ORDER[input.order];
+  const fsConvention: FsFloorConvention = input.fsFloorConvention ?? 'trade-rule';
+  const k = fsFloorFactor(input.order, fsConvention);
   if (input.upperFsHz !== null && k !== undefined) {
     limits.push({
       side: 'floor',
       hz: k * input.upperFsHz,
       rule: 'fs',
       source:
-        `${k}x f_s of ${input.upper} (${input.upperFsHz.toFixed(0)} Hz) at order ${input.order} - ` +
-        'a steeper flank may sit closer to the resonance',
+        fsConvention === 'trade-rule'
+          ? `${k.toFixed(2)}x f_s of ${input.upper} (${input.upperFsHz.toFixed(0)} Hz) at order ${input.order} - ` +
+            `the trade rule: ${FS_FLOOR_TRADE_RULE_DB} dB down at the resonance on the asymptotic flank`
+          : `${k}x f_s of ${input.upper} (${input.upperFsHz.toFixed(0)} Hz) at order ${input.order} - ` +
+            'a steeper flank may sit closer to the resonance',
     });
   }
 

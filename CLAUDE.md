@@ -9223,3 +9223,20 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   `v1Carryover` (+1 claim). **Gemeten:** `npm run test:fast` 269 s, 227 bestanden (226 + 1), 3026 tests
   (3022 + 4), groen. Browser: geen "Power rating"/"Recommended range" op de driverkaart; de strip leest
   `mid→high 1294 Hz – 2287 Hz · floor: fs`; de run toont 6 kandidaten.
+
+### G-6-guards (de k·f_s-vloer volgt standaard de 18-dB-vakregel; casussen vastgezet; 07-11-2026)
+
+- **Sanders besluit:** "als we iets strenger zijn vind ik het niet heel erg; uiteindelijk willen we de tweeter
+  beschermen en de mid." De vloer van elk kruisvenster (per overname, voor de BOVENSTE driver) is standaard
+  k = 2^(`FS_FLOOR_TRADE_RULE_DB` / (6 · orde)) × f_s, dus 18 dB onder doorlaatniveau op de eigen f_s op de
+  asymptotische flank: orde 1/2/3/4 → 8 / 2,83 / 2,0 / 1,68 × f_s (was 3,0 / 2,0 / 1,6 / 1,4, ~9,5–12,2 dB).
+  `fsFloorFactor`, `FsFloorConvention` (`'trade-rule'` | `'k-table'`) in `xoWindow.ts`; `statedCrossings.ts`
+  leest dezelfde functie. Een strengere gestelde of afgeleide vloer wint nog steeds.
+- **Vastgezet, niet geregenereerd:** `Manifest.fsFloorConvention` (absent = trade-rule; `ReportSettings`
+  wint); `casus1Manifest`, `casus1bManifest` en `casus2Manifest` stellen `'k-table'` (casus 1h leest casus
+  1's manifest). Zonder pin bewogen de vensters van casus 1 (W-M-vloer) en casus 2.
+- Bijgewerkt in V15-vorm: `candidates`, `statedCrossings`, `statedMinCrossover`, `windowReadout`; de
+  vensterstrip naast Optimize noemt nu de vakregel in plaats van "een conventie, losser dan 18 dB".
+  `fsFloorConvention.test.ts` (3 claims). `docs/vuistregels_en_wat_de_engine_doet.md` bijgewerkt.
+- **Gemeten:** `npm run test:fast` 260 s, 3026 tests (3022 + 4), groen; `npx vitest run` 422 s, 3026 tests,
+  groen, de vier live ketenruns byte-identiek. Browser (driewegdemo): `mid→high 1555 Hz – 2287 Hz · floor: fs`.

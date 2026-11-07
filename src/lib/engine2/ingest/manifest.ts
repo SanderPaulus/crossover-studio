@@ -188,6 +188,14 @@ export interface Manifest {
   /** Opaque id of the measurement session these files belong to (A5.2). */
   sessionId: string;
   entries: readonly ManifestEntry[];
+  /**
+   * 07-11-2026 — the k·f_s window-floor convention this casus was recorded
+   * under. Absent = the trade rule (18 dB at f_s), the default since that day;
+   * the casus fixtures state `'k-table'`, the A5d.3 table every recorded
+   * corpus was generated on, so their windows and corpora stay as recorded.
+   * `ReportSettings.fsFloorConvention` wins over it.
+   */
+  fsFloorConvention?: 'trade-rule' | 'k-table';
 }
 
 /* ------------------------------------------------------------------ *

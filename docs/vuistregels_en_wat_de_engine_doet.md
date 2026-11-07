@@ -293,7 +293,7 @@ allebei op niveau zijn. Losser geformuleerd komt men ook "minder dan één golfl
 
 | Regel | Waar | Status | Waarde |
 | --- | --- | --- | --- |
-| k·f_s-vloer | `constants.ts` → `XO_FS_FACTOR_BY_ORDER` | **TOEGEPAST** (terugval) | orde 1: 3,0 · orde 2: 2,0 · orde 3: 1,6 · **orde 4: 1,4** — bindt alleen waar niets strengers gesteld of afgeleid is |
+| k·f_s-vloer | `constants.ts` → `FS_FLOOR_TRADE_RULE_DB` (18 dB); `xoWindow.ts` → `fsFloorFactor` | **TOEGEPAST** (terugval) | sinds 07-11-2026 de vakregel: k = 2^(18 / (6 · orde)), dus orde 1: 8 · orde 2: 2,83 · orde 3: 2,0 · **orde 4: 1,68** — bindt alleen waar niets strengers gesteld of afgeleid is. De oude tabel (3,0 / 2,0 / 1,6 / 1,4) blijft als `'k-table'`; de casus-fixtures stellen hem expliciet zodat hun corpora staan |
 | Aandrijfvloer (A5d.3(ii) omgekeerd) | `predesign/xoWindow.ts`, regel `'drive'` | **TOEGEPAST** | `f = f_s · 2^(|plafond| / (6 · orde))`, met het plafond uit M-C v2.0 — de **gemeten** excursiegrens van de driver |
 | Gestelde vloer | regel `'drive-stated'` (A5e.3b) | **GESTELD** | Hetzelfde, op het door de ontwerper gestelde dB-getal. Casus 1 stelt −20 dB op de tweeter. **M-5 mat wat die ene eis met de UITLIJNING doet: bij orde 2 legt hij de vloer op 2934,5 Hz tegen een breakup-plafond van 2304 — het venster is LEEG, dus LR2 is op mid→tweeter niet uitdrukbaar.** Een orde-keuze die niemand als orde-keuze heeft gesteld |
 | Aanbevolen minimum van het blad | regel `'stated-min'` (U-3g) | **GESTELD** | Verbatim als vloer, bij élke orde. **Casus 1 stelt er wél een: 2200 Hz op de tweeter, gevoed sinds M-2b** |
@@ -318,6 +318,20 @@ twee grenzen staan in verschillende eenheden en in verschillende tabellen, en de
 als het venster leeg is. Casusboek M-5 draagt de volle tabel.
 
 ### Waar wij afwijken — en dit is de scherpste van dit document
+
+> **BIJGEWERKT 07-11-2026 — de afwijking hieronder is opgeheven voor de app.** Sander: *"als we iets
+> strenger zijn vind ik het niet heel erg; uiteindelijk willen we de tweeter beschermen en de mid."*
+> De k·f_s-vloer volgt sindsdien standaard de 18-dB-regel (`FS_FLOOR_TRADE_RULE_DB`,
+> `fsFloorFactor`): op de demotweeter (f_s ≈ 924 Hz, LR4) ~1555 Hz in plaats van 1294 Hz, op de
+> casus-1-mid (88,8 Hz) ~149 Hz. De regel geldt per overname voor de BOVENSTE driver, dus voor mid én
+> tweeter. Een strengere gestelde of afgeleide vloer wint nog steeds. **Niet geregenereerd:** casus 1,
+> 1b, 1h en 2 stellen `fsFloorConvention: 'k-table'` op hun manifest, dus hun vensters en corpora zijn
+> de runs die hun generatoren maakten; de eerstvolgende regeneratie is waar zij meeverhuizen.
+> Vergeleken met de gangbare internettabellen ("2 × f_s bij 2e orde") is de regel overal iets strenger,
+> bij 1e orde veel strenger (8 × f_s). Of hij overeenkomt met wat een specifieke ontwerper (bv. Troels
+> Gravesen) doet, is NIET nagelopen.
+
+De tekst hieronder beschrijft de stand van vóór 07-11-2026.
 
 **Onze k·f_s-conventie is materieel losser dan de 18-dB-regel.** Uitgedrukt in de eenheid waarin de
 aandrijfvloeren rekenen is `XO_FS_FACTOR_BY_ORDER` een vrijwel constante verzwakking van

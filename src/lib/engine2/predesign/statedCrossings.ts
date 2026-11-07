@@ -50,7 +50,7 @@
  * product over the pairs. Nothing here counts to two or to three.
  */
 
-import { DB_PER_OCTAVE_PER_ORDER, XO_FS_FACTOR_BY_ORDER } from '../constants.ts';
+import { DB_PER_OCTAVE_PER_ORDER } from '../constants.ts';
 import {
   alignmentFor,
   orderPolicyChoice,
@@ -61,7 +61,7 @@ import {
   type CandidatePairInput,
   type GeneratedCandidate,
 } from './candidates.ts';
-import { bindingBreakup, crossoverWindow, type XoLimit, type XoWindowResult } from './xoWindow.ts';
+import { bindingBreakup, crossoverWindow, fsFloorFactor, type XoLimit, type XoWindowResult } from './xoWindow.ts';
 import { formatEdge, roundEdge } from './xoRangeAdvice.ts';
 import { parseFrequencyTokens } from '../../frequencyList.ts';
 
@@ -594,7 +594,7 @@ function demandOf(
       : none;
   switch (limit.rule) {
     case 'fs': {
-      const k = XO_FS_FACTOR_BY_ORDER[order];
+      const k = fsFloorFactor(order, wi.fsFloorConvention ?? 'trade-rule');
       if (fs === null || fs <= 0 || k === undefined || !(k > 0)) return none;
       // U-3e measured what this convention is worth in decibels: k·f_s at
       // order n holds `6·n·log2(k)` dB at the resonance — 9.5 to 12.2 dB over

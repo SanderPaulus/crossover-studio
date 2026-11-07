@@ -161,7 +161,7 @@ export function casus1bManifest(golden: GoldenRefs1b = loadGolden1b(), set: Casu
     }
     return entry;
   });
-  return { sessionId: set === 'merged' ? 'koan2951-2026-08-22-casus1b-M1-merge' : 'koan2951-2026-08-22-casus1b', entries };
+  return { sessionId: set === 'merged' ? 'koan2951-2026-08-22-casus1b-M1-merge' : 'koan2951-2026-08-22-casus1b', entries, fsFloorConvention: 'k-table' }; // 07-11-2026: the convention its corpus was generated on
 }
 
 /**

@@ -450,7 +450,7 @@ export function casus1Manifest(
       }
     }
   }
-  return { sessionId: CASUS1_SESSION_ID[set], entries };
+  return { sessionId: CASUS1_SESSION_ID[set], entries, fsFloorConvention: 'k-table' }; // 07-11-2026: the convention its corpus was generated on
 }
 
 /** Which set a manifest holds — read back from the session id it carries. */

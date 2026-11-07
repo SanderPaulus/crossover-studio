@@ -30,7 +30,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { crossoverWindow, fsConventionDbRange } from './xoWindow.ts';
+import { crossoverWindow, fsConventionDbRange, fsFloorFactor } from './xoWindow.ts';
 import { casus1MinCrossovers, loadGolden as casus1Golden } from '../casus1.fixture.ts';
 import type { XoWindowInput } from './xoWindow.ts';
 import { DB_PER_OCTAVE_PER_ORDER, XO_FS_FACTOR_BY_ORDER } from '../constants.ts';
@@ -130,7 +130,9 @@ describe('U-3g — absent changes nothing (P4/P2)', () => {
   it('with it absent the fs CONVENTION still binds on this dome — the U-3e finding, unchanged', () => {
     const w = crossoverWindow(BLIESMA);
     expect(w.floorBy?.rule).toBe('fs');
-    expect(w.floorHz).toBeCloseTo(XO_FS_FACTOR_BY_ORDER[4] * BLIESMA.upperFsHz!, 6);
+    /* 07-11-2026 — V15: WAS the k-table (1.4 · f_s = 1294 Hz); IS the 18 dB
+     * trade rule (2^(18/24) · f_s = 1554.5 Hz). */
+    expect(w.floorHz).toBeCloseTo(fsFloorFactor(4)! * BLIESMA.upperFsHz!, 6);
   });
 });
 
@@ -231,9 +233,12 @@ describe('H-4b — the k·f_s fallback in decibels, and the register row that qu
      * cannot say whether the app reads the function, and reading it is the
      * half that matters). */
     const APP = readFileSync(new URL('../../../App.tsx', import.meta.url), 'utf-8');
-    expect(APP).toContain('fsConventionDbRange()');
-    expect(APP).toContain('fsConventionDb.minDb.toFixed(1)');
+    /* 07-11-2026 — V15: WAS the k-table range (9.5–12.2 dB, "LOOSER than 18");
+     * IS the trade rule the app now uses, read from the same function. */
+    expect(APP).toContain("fsConventionDbRange('trade-rule')");
+    expect(APP).toContain('fsConventionDb.perOrder[4]');
     expect(APP).not.toContain('9.5–12.2');
+    expect(fsConventionDbRange('trade-rule').perOrder[4]).toBeCloseTo(18, 9);
   });
 
   it('CASUS 1 STATES ONE, and it is the floor of the mid→tweeter window (M-2b)', () => {

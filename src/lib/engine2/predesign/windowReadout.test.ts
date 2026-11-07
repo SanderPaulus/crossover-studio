@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { crossoverWindow } from './xoWindow.ts';
+import { crossoverWindow, fsFloorFactor } from './xoWindow.ts';
 import { XO_FS_FACTOR_BY_ORDER, DB_PER_OCTAVE_PER_ORDER } from '../constants.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
@@ -64,7 +64,8 @@ describe('U-3e — which floor is a convention, and what it is worth', () => {
   it('with nothing stated or derived, the fs convention binds — and it is named', () => {
     const w = crossoverWindow({ ...BASE, upperDriveCeilingDb: null, upperStatedDriveLimitDb: null });
     expect(w.floorBy?.rule).toBe('fs');
-    expect(w.floorHz).toBeCloseTo(XO_FS_FACTOR_BY_ORDER[4] * BASE.upperFsHz, 6);
+    /* 07-11-2026 — V15: WAS the k-table; IS the 18 dB trade rule. */
+    expect(w.floorHz).toBeCloseTo(fsFloorFactor(4)! * BASE.upperFsHz, 6);
   });
 
   it('a STATED figure takes the floor off the convention, and the rule says which', () => {
@@ -113,7 +114,9 @@ describe('U-3e — the app shows it where the run is started', () => {
     expect(group).toContain("t('Optimize — design for me')");
     expect(group).toContain('void runVfOptimize()');
     // …and the sentence that would have answered it says what to do about it.
-    expect(APP).toContain('a convention, not a measurement');
+    /* 07-11-2026 — V15: WAS "a convention, not a measurement"; IS the trade
+     * rule the floor follows since then, read off the measured resonance. */
+    expect(APP).toContain('from the measured resonance and the trade rule');
     expect(APP).toContain('Max drive on f_s');
   });
 

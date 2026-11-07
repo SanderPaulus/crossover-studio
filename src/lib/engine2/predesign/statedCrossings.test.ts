@@ -23,12 +23,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { DB_PER_OCTAVE_PER_ORDER, XO_FS_FACTOR_BY_ORDER } from '../constants.ts';
+import { DB_PER_OCTAVE_PER_ORDER } from '../constants.ts';
 import { buildCandidateField } from './candidateField.ts';
 import { describeFieldMode } from './fieldMode.ts';
 import { candidateFieldKey } from './candidateField.ts';
 import type { Alignment, CandidatePairInput } from './candidates.ts';
-import { crossoverWindow, type XoWindowInput } from './xoWindow.ts';
+import { crossoverWindow, fsFloorFactor, type XoWindowInput } from './xoWindow.ts';
 import { breachesAt, parseStatedCrossings, statedCandidates } from './statedCrossings.ts';
 import type { PairOrderResult } from './flankOrder.ts';
 import { stableJson } from '../optimizer/determinism.ts';
@@ -149,7 +149,9 @@ describe('U-5 — what a stated position is past, by hand', () => {
   });
 
   it('the k·f_s CONVENTION is breached too, and what it stands for is 6·order·log2(k) dB', () => {
-    const k = XO_FS_FACTOR_BY_ORDER[ORDER];
+    /* 07-11-2026 — V15: WAS the k-table entry; IS the trade-rule k, so the
+     * convention now stands for exactly 18 dB (the default since then). */
+    const k = fsFloorFactor(ORDER)!;
     const b = breachOf(FS_HZ, 'fs')!;
     expect(b.limitHz).toBeCloseTo(k * FS_HZ, 9);
     expect(b.octaves).toBeCloseTo(Math.log2(k), 9);
