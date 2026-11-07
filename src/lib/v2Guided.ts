@@ -923,7 +923,6 @@ export const GUIDED_DESTINATION: Readonly<Record<string, GuidedDestination>> = O
   plateauDepthDb: Q('voicing'),
   sd: M('drivers'),
   'baffle-width': M('cabinet'),
-  powerRating: M('drivers'),
   driveVoltageV: M('measurements'),
   rotSym: M('drivers'),
   sourceCount: M('drivers'),

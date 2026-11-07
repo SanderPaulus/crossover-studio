@@ -406,49 +406,28 @@ describe('U-4 — the datasheets, read', () => {
 /* ==================================================================== *
  * 6 — it reaches the window from the card the designer fills in
  * ==================================================================== */
-describe('U-4 — the app hands it over', () => {
-  it('the register carries all three rows, each where its rule puts it', () => {
-    const max = V2_INPUT_REGISTER.find((r) => r.id === 'maxCrossover')!;
-    expect(max.source).toBe('datasheet');
-    expect(placementOf(max)).toBe('always');
-
-    const ovr = V2_INPUT_REGISTER.find((r) => r.id === 'maxCrossoverOverride')!;
-    expect(ovr.source).toBe('choice');
-    expect(placementOf(ovr)).toBe('conditional');
-    expect(ovr.condition).toContain('maximum crossover');
-
+/* 07-11-2026 — V15: WAS "the app hands it over" for the maximum crossover and
+ * its overrule. IS: those two lost their fields (Sander); the MEASURED breakup
+ * divisor keeps its field and still travels. */
+describe('U-4 — the app hands over the measured divisor, and no longer the datasheet ceiling', () => {
+  it('the register: ceiling and overrule carried-only, the divisor a measurement behind the fold', () => {
+    for (const id of ['maxCrossover', 'maxCrossoverOverride']) {
+      expect(V2_INPUT_REGISTER.find((r) => r.id === id)!.effect, id).toBe('niets');
+    }
     const div = V2_INPUT_REGISTER.find((r) => r.id === 'breakupDivisor')!;
     expect(div.source).toBe('measurement');
     expect(placementOf(div)).toBe('more');
-
     const controls = V2_FORM_FIELDS.filter((f) =>
       ['maxCrossover', 'maxCrossoverOverride', 'breakupDivisor'].includes(f.row),
     ).map((f) => f.control);
-    expect(controls.sort()).toEqual(
-      [
-        "checked={v2Meas[role].maxCrossoverOverride === 'yes'}",
-        'value={v2Meas[role].breakupDivisor}',
-        'value={v2Meas[role].breakupDivisorNote}',
-        'value={v2Meas[role].maxCrossoverHz}',
-      ].sort(),
-    );
+    expect(controls.sort()).toEqual(['value={v2Meas[role].breakupDivisor}', 'value={v2Meas[role].breakupDivisorNote}'].sort());
   });
 
-  /* THE UI-1 IDIOM: a function test cannot say whether the app CALLS this. */
-  it('App.tsx builds both branch fields from the card and hands them to the adapter', () => {
-    expect(APP).toContain('const maxCrossoverByRole');
+  it('App.tsx hands the divisor to the adapter and no datasheet ceiling', () => {
     expect(APP).toContain('const breakupDivisorByRole');
-    expect(APP).toContain('maxCrossover: maxCrossoverByRole[role]');
     expect(APP).toContain('breakupDivisor: breakupDivisorByRole[role]');
-  });
-
-  it('the Hz travels ALONE, and the overrule only ever rides with it', () => {
-    const at = APP.indexOf('const maxCrossoverByRole');
-    const block = APP.slice(at, at + 900);
-    expect(block).toContain("m.maxCrossoverHz.trim() === ''");
-    /* The overrule is read INSIDE the block a stated ceiling opens, so it can
-     * never travel on its own — the shape the window relies on. */
-    expect(block).toContain("m.maxCrossoverOverride === 'yes' ? { overridesBreakup: true } : {}");
+    expect(APP).not.toContain('const maxCrossoverByRole');
+    expect(APP).not.toMatch(/maxCrossover: maxCrossoverByRole/);
   });
 
   it('the divisor’s note is free text and not a stamped date, and the reason is written down', () => {

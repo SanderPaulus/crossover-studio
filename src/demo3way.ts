@@ -186,12 +186,6 @@ export const KOAN_3WAY_BUNDLE: DemoBundle = {
     high: {
       blTm: '2.6',
       mmsG: '0.15',
-      ratedPowerW: '100',
-      testFilterOrder: '2',
-      testFilterHz: '2200',
-      minCrossoverHz: '2200',
-      minCrossoverOrder: '2',
-      maxCrossoverHz: '30000',
     },
   },
   ampMinLoadOhm: null,

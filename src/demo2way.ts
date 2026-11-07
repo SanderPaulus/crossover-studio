@@ -213,12 +213,6 @@ export const KOAN_2WAY_DEMO: DemoBundle = {
     high: {
       blTm: '2.6',
       mmsG: '0.15',
-      ratedPowerW: '100',
-      testFilterOrder: '2',
-      testFilterHz: '2200',
-      minCrossoverHz: '2200',
-      minCrossoverOrder: '2',
-      maxCrossoverHz: '30000',
     },
   },
   /** The amplifier's minimum load is the OWNER'S preference about a rack, not

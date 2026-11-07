@@ -178,7 +178,7 @@ describe('U-3 guard 1 — every demo measurement file states a validity the app 
  * ==================================================================== */
 
 /** G-2 — the datasheet rows a demo carries since 07-11-2026. */
-const DATASHEET_ROWS = ['xmaxMm', 'blTm', 'mmsG', 'powerRating', 'minCrossover', 'maxCrossover'];
+const DATASHEET_ROWS = ['xmaxMm', 'blTm', 'mmsG'];
 
 describe('U-3b guard 2 — a bundle carries measurements and geometry, and every other field of the state is empty', () => {
   it('every bearable row id and every carried row id is a real register row', () => {
@@ -334,7 +334,7 @@ describe('U-3b guard 2 — a bundle carries measurements and geometry, and every
   it.each([
     ['koan-3way', KOAN_3WAY_BUNDLE, { low: 'woofer', mid: 'mid', high: 'tweeter' }],
     ['koan-2way', KOAN_2WAY_DEMO, { low: 'mid', high: 'tweeter' }],
-  ] as const)('%s: X_max, Bl, M_ms, rating and range are the driver card', (_id, b, map) => {
+  ] as const)('%s: X_max, Bl and M_ms are the driver card; rating and range are not carried', (_id, b, map) => {
     const g = JSON.parse(readFileSync(join(ROOT, 'test-fixtures', 'golden_refs_casus1.json'), 'utf-8')) as {
       manifest_en_geometrie: { driverkaart: Record<string, Record<string, unknown>> };
     };
@@ -348,17 +348,11 @@ describe('U-3b guard 2 — a bundle carries measurements and geometry, and every
       expect(Number(s.xmaxMm[role]), `${b.id} ${role} X_max`).toBe(k.X_max_mm);
       expect(Number(s.v2Measurement[role].blTm), `${b.id} ${role} Bl`).toBe(k.Bl_Tm);
       expect(Number(s.v2Measurement[role].mmsG), `${b.id} ${role} M_ms`).toBe(k.M_ms_g);
-      const range = k.aanbevolen_kruisband;
-      const asText = (v: number | null | undefined) => (v === null || v === undefined ? '' : String(v));
-      expect(s.v2Measurement[role].minCrossoverHz, `${b.id} ${role} min`).toBe(asText(range?.ondergrens_hz));
-      expect(s.v2Measurement[role].minCrossoverOrder, `${b.id} ${role} min order`).toBe(
-        range?.ondergrens_hz ? asText(range.ondergrens_orde) : '',
-      );
-      expect(s.v2Measurement[role].maxCrossoverHz, `${b.id} ${role} max`).toBe(asText(range?.bovengrens_hz));
-      const rating = k.vermogensopgave ?? null;
-      expect(s.v2Measurement[role].ratedPowerW, `${b.id} ${role} rating`).toBe(asText(rating?.rated_power_W));
-      expect(s.v2Measurement[role].testFilterOrder).toBe(asText(rating?.testfilter_orde));
-      expect(s.v2Measurement[role].testFilterHz).toBe(asText(rating?.testfilter_hz));
+      /* 07-11-2026 — the recommended range and the power rating are NOT
+       * carried (Sander): the window comes from the measured impedance. Was:
+       * both equal to the driver card. Now: both empty on every role. */
+      for (const f of ['minCrossoverHz', 'minCrossoverOrder', 'maxCrossoverHz', 'ratedPowerW', 'testFilterOrder', 'testFilterHz'] as const)
+        expect(s.v2Measurement[role][f], `${b.id} ${role} ${f}`).toBe('');
     }
   });
 

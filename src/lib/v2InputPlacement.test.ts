@@ -123,12 +123,8 @@ describe('U-3b — the placement rule', () => {
       'cabinetDepth',
       'gateOverride',
       'manualWindow',
-      /* U-4 — the fourth, and it is the same shape as the other three: a
-       * control that answers a case which may not exist. With no stated
-       * maximum crossover for this driver there is nothing to overrule, and a
-       * permanently visible switch that is usually inert is a switch someone
-       * reaches for. */
-      'maxCrossoverOverride',
+      /* U-4 added `maxCrossoverOverride` here; it left on 07-11-2026 with the
+       * recommended-range fields (carried in the file only, no control). */
       /* U-9 fase 2 — three more, and all three wait for a parent: the two step
        * counts read nothing until a crossover is pinned or the full field runs
        * (U-9 point 5), and the nominal size is the fallback for a missing cone
@@ -168,7 +164,9 @@ describe('U-3b — the placement rule', () => {
      * P4 reason every one of them names — and the crossover pin (U-5b). Named,
      * not counted. */
     expect(shown.sort()).toEqual(
-      ['baffleHeight', 'blTm', 'maxCrossover', 'micDistance', 'minCrossover', 'mmsG', 'powerRating',
+      /* 07-11-2026 — V15: WAS also powerRating, minCrossover, maxCrossover; IS
+       * without them — they lost their fields and are carried only. */
+      ['baffleHeight', 'blTm', 'micDistance', 'mmsG',
         'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm',
         /* E-6 — `phasePriority` left with its slider (no placement to make). */
         'dirWeight', 'ampTarget', 'powerMetric', 'costWeight', 'dissipationWeight',
@@ -196,8 +194,14 @@ describe('U-3b — the placement rule', () => {
      * is the governed form now — and `nominalSize` is the one CONDITIONAL
      * datasheet row, named: it is the fallback for a missing S_d, which is why
      * it waits rather than sits in the default view. */
-    expect(sheet.filter((r) => !governed.has(r.id)).map((r) => r.id)).toEqual([]);
+    /* 07-11-2026 — the three datasheet rows whose fields were removed (power
+     * rating, recommended range) are carried in the file only: `niets`, no
+     * control, so no form. Named, not counted. */
+    const carriedOnly = ['maxCrossover', 'minCrossover', 'powerRating'];
+    expect(sheet.filter((r) => !governed.has(r.id)).map((r) => r.id).sort()).toEqual(carriedOnly);
+    for (const id of carriedOnly) expect(rowById(id)!.effect, id).toBe('niets');
     for (const r of sheet) {
+      if (carriedOnly.includes(r.id)) continue;
       if (r.id === 'nominalSize') {
         expect(placementOf(r)).toBe('conditional');
         continue;

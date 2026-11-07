@@ -252,8 +252,25 @@ describe('U-1 — the carryover notice reaches the screen', () => {
 
   it('the notice is built from the module and not re-worded in the app', () => {
     expect(APP).toContain('const c = v1CarryoverOf(d);');
-    expect(APP).toContain('return c ? describeV1Carryover(c) : null;');
+    /* 07-11-2026 — V15: WAS `return c ? describeV1Carryover(c) : null;`; IS
+     * the same sentence with the carried datasheet figures appended, both from
+     * the module. */
+    expect(APP).toContain('const head = c ? describeV1Carryover(c) : null;');
+    expect(APP).toContain('const sheet = describeCarriedDatasheetFields(d.v2Measurement);');
     // No second sentence about v1 settings typed into the JSX.
     expect(APP).not.toMatch(/does not read these[^`]*<\/div>/);
+  });
+});
+
+describe('07-11-2026 — datasheet figures the app no longer reads', () => {
+  it('names each held figure per way, and says nothing when none is held', async () => {
+    const { describeCarriedDatasheetFields } = await import('./v1Carryover.ts');
+    expect(describeCarriedDatasheetFields(undefined)).toBeNull();
+    expect(describeCarriedDatasheetFields({ high: { ratedPowerW: '', minCrossoverHz: ' ' } })).toBeNull();
+    const s = describeCarriedDatasheetFields({ high: { ratedPowerW: '100', minCrossoverHz: '2200' }, mid: { maxCrossoverHz: '4000' } })!;
+    expect(s).toContain('high: rated power (W) "100"');
+    expect(s).toContain('high: recommended minimum crossover (Hz) "2200"');
+    expect(s).toContain('mid: recommended maximum crossover (Hz) "4000"');
+    expect(s).toContain('stay in the project exactly as they were written');
   });
 });

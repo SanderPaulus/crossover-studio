@@ -34,7 +34,7 @@ import { crossoverWindow, fsConventionDbRange } from './xoWindow.ts';
 import { casus1MinCrossovers, loadGolden as casus1Golden } from '../casus1.fixture.ts';
 import type { XoWindowInput } from './xoWindow.ts';
 import { DB_PER_OCTAVE_PER_ORDER, XO_FS_FACTOR_BY_ORDER } from '../constants.ts';
-import { V2_INPUT_REGISTER, V2_FORM_FIELDS, placementOf } from '../../v2InputRegister.ts';
+import { V2_INPUT_REGISTER, V2_FORM_FIELDS } from '../../v2InputRegister.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const APP = readFileSync(join(ROOT, 'src', 'App.tsx'), 'utf-8');
@@ -183,34 +183,23 @@ describe('U-3g — the BlieSMa T25T-6, and why the inverting reading was refused
 /* ==================================================================== *
  * 4 — it reaches the window from the card the designer fills in
  * ==================================================================== */
-describe('U-3g — the app hands it over', () => {
-  it('the register carries the row, in the default view, as datasheet data', () => {
-    const row = V2_INPUT_REGISTER.find((r) => r.id === 'minCrossover');
-    expect(row).toBeDefined();
-    expect(row!.source).toBe('datasheet');
-    expect(placementOf(row!)).toBe('always');
-    const controls = V2_FORM_FIELDS.filter((f) => f.row === 'minCrossover').map((f) => f.control);
-    expect(controls.sort()).toEqual(
-      ['value={v2Meas[role].minCrossoverHz}', 'value={v2Meas[role].minCrossoverOrder}'].sort(),
-    );
+/* 07-11-2026 — V15: WAS "the app hands it over" (a driver-card field, a memo,
+ * an adapter line). IS the opposite, on Sanders call: the field is gone and the
+ * app hands nothing over — the window comes from the MEASURED impedance. The
+ * engine still reads the statement where a casus states it (sections 1–3 and
+ * casus 1's manifest below). */
+describe('U-3g — the app no longer hands it over (07-11-2026)', () => {
+  it('the register row is carried-only: niets, no control', () => {
+    const row = V2_INPUT_REGISTER.find((r) => r.id === 'minCrossover')!;
+    expect(row.source).toBe('datasheet');
+    expect(row.effect).toBe('niets');
+    expect(V2_FORM_FIELDS.filter((f) => f.row === 'minCrossover')).toEqual([]);
   });
 
-  /* THE UI-1 IDIOM: a function test cannot say whether the app CALLS this, and
-   * that is exactly the failure this project has paid for twice. */
-  it('App.tsx builds the branch field from the card and hands it to the adapter', () => {
-    expect(APP).toContain('const minCrossoverByRole');
-    expect(APP).toContain("v2Meas[role].minCrossoverHz");
-    expect(APP).toContain('minCrossover: minCrossoverByRole[role]');
-  });
-
-  it('the Hz travels ALONE — a missing order does not withhold the floor', () => {
-    /* The power rating is all-or-nothing because a rated power without its
-     * filter limits nothing; this is not, because a recommended range without
-     * a slope is still a complete statement. The memo has to say so. */
-    const at = APP.indexOf('const minCrossoverByRole');
-    const block = APP.slice(at, at + 900);
-    expect(block).toContain("m.minCrossoverHz.trim() === ''");
-    expect(block).not.toContain("m.minCrossoverOrder.trim() === '') continue");
+  it('App.tsx draws no field for it and hands no minCrossover to the adapter', () => {
+    expect(APP).not.toContain('const minCrossoverByRole');
+    expect(APP).not.toContain('value={v2Meas[role].minCrossoverHz}');
+    expect(APP).not.toMatch(/minCrossover: minCrossoverByRole/);
   });
 });
 
@@ -235,13 +224,9 @@ describe('H-4b — the k·f_s fallback in decibels, and the register row that qu
     for (const db of Object.values(r.perOrder)) expect(db).toBeLessThan(18);
   });
 
-  it('the register row and the window strip quote the derived figures, not their own', () => {
-    const r = fsConventionDbRange();
-    const row = V2_INPUT_REGISTER.find((x) => x.id === 'minCrossover')!;
-    /* The prose carries the numbers a designer reads; this is what stops it
-     * drifting from the constant when somebody moves a k. */
-    expect(row.emptyMeans).toContain(`${r.minDb.toFixed(1)}–${r.maxDb.toFixed(1)} dB`);
-    expect(row.emptyMeans).toContain('18 dB');
+  it('the window strip quotes the derived figures, not its own', () => {
+    /* 07-11-2026 — V15: WAS the register row AND the strip; the `minCrossover`
+     * row lost its field and its prose, so the strip is the one reader left. */
     /* The STRIP derives it instead of typing it (the UI-1 idiom: a unit test
      * cannot say whether the app reads the function, and reading it is the
      * half that matters). */

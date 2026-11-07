@@ -753,88 +753,62 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'powerRating',
     label: 'Power rating (W, rated through order @ Hz)',
-    form: 'Setup tab → driver card → Power rating',
+    form: 'no control since 07-11-2026 (carried in the project file only)',
     travels:
-      'v2Meas[role].ratedPowerW / testFilterOrder / testFilterHz → AdapterBranch.powerRating → ' +
-      'ReportSettings.driverPowerRatingByDriver → M-M (metrics/thermalLoad.ts)',
+      'was v2Meas[role].ratedPowerW / testFilterOrder / testFilterHz → M-M (metrics/thermalLoad.ts); the app no longer hands it over',
     cls: 'nice',
-    effect: 'oordeelt',
-    emptyMeans:
-      'M-M reports what this driver dissipates and judges it against nothing; the crossover floor ' +
-      'then rests on the k·f_s convention or on a stated dB figure, neither of which is a ' +
-      'measurement of this driver.',
+    effect: 'niets',
+    emptyMeans: 'not applicable: the app no longer reads it.',
     source: 'datasheet',
-    placement: 'always',
-    placementWhy:
-      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
-      'hiding it is the one placement that costs a newcomer something real: without these three ' +
-      'the excursion ceiling of M-C cannot be derived, A5d.3’s drive floor cannot arm, and the ' +
-      'crossover window falls back to k·f_s with nothing to reject a handover that under-protects ' +
-      'the driver (measured on casus 1b: floor 1647 → 1294 Hz).',
+    effectNote:
+      '07-11-2026 — no longer a field (Sander: a datasheet is not what a designer routinely has). The window is ' +
+      'derived from the MEASURED impedance (k·f_s and the drive floor); the engine still reads this where a casus ' +
+      'states it in its manifest. A project that holds a value carries it unread, and the open notice names it.',
   },
   {
     id: 'minCrossover',
     label: 'Minimum crossover (Hz, at order)',
-    form: 'Setup tab → driver card → Recommended range',
+    form: 'no control since 07-11-2026 (carried in the project file only)',
     travels:
-      'v2Meas[role].minCrossoverHz / minCrossoverOrder → AdapterBranch.minCrossover → ' +
-      "ReportSettings.driverMinCrossoverByDriver → the A5d.3 window floor (rule 'stated-min')",
+      'was v2Meas[role].minCrossoverHz / minCrossoverOrder → the A5d.3 window floor (rule stated-min); the app no longer hands it over',
     cls: 'nice',
-    effect: 'zoekt',
-    emptyMeans:
-      'nothing the manufacturer said about how low this driver may be crossed reaches the window; ' +
-      'its floor rests on whichever of the derived excursion ceiling, a stated dB figure and the ' +
-      'k·f_s CONVENTION demands most — and on a dome that is usually the convention. That ' +
-      'convention is worth about 9.5–12.2 dB of attenuation at the resonance, LOOSER than the ' +
-      '18 dB the trade rule asks for, so where nothing is stated the window takes the more ' +
-      'permissive of two published rules (H-4b; the figures are derived from ' +
-      'XO_FS_FACTOR_BY_ORDER by fsConventionDbRange and pinned against it).',
+    effect: 'niets',
+    emptyMeans: 'not applicable: the app no longer reads it.',
     source: 'datasheet',
-    placement: 'always',
-    placementWhy:
-      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
-      'hiding it is the one placement that costs a newcomer something real: it is the only ' +
-      'generic statement a sheet makes about how low the driver may go, and without it the ' +
-      'window floor is a convention (measured on casus 1b: 1294 Hz against a recommended 2200).',
+    effectNote:
+      '07-11-2026 — no longer a field (Sander: a datasheet is not what a designer routinely has). The window is ' +
+      'derived from the MEASURED impedance (k·f_s and the drive floor); the engine still reads this where a casus ' +
+      'states it in its manifest. A project that holds a value carries it unread, and the open notice names it.',
   },
   {
     id: 'maxCrossover',
     label: 'Maximum crossover (Hz)',
-    form: 'Setup tab → driver card → Recommended range',
+    form: 'no control since 07-11-2026 (carried in the project file only)',
     travels:
-      'v2Meas[role].maxCrossoverHz → AdapterBranch.maxCrossover → ' +
-      "ReportSettings.driverMaxCrossoverByDriver → the A5d.3 window ceiling (rule 'stated-max')",
+      'was v2Meas[role].maxCrossoverHz → the A5d.3 window ceiling (rule stated-max); the app no longer hands it over',
     cls: 'nice',
-    effect: 'zoekt',
-    emptyMeans:
-      'nothing the manufacturer said about how HIGH this driver may be crossed reaches the window; ' +
-      'its ceiling rests on whichever of the breakup derivation and the beaming limit is stricter — ' +
-      'and the breakup one divides by a ramp that has never been measured.',
+    effect: 'niets',
+    emptyMeans: 'not applicable: the app no longer reads it.',
     source: 'datasheet',
-    placement: 'always',
-    placementWhy:
-      'a number the designer copies off a spec sheet is GENERIC data every project has, so ' +
-      'hiding it is the one placement that costs a newcomer something real: it is the other end ' +
-      'of the line the minimum crossover is read off, and it sits in the same row.',
+    effectNote:
+      '07-11-2026 — no longer a field (Sander: a datasheet is not what a designer routinely has). The window is ' +
+      'derived from the MEASURED impedance (k·f_s and the drive floor); the engine still reads this where a casus ' +
+      'states it in its manifest. A project that holds a value carries it unread, and the open notice names it.',
   },
   {
     id: 'maxCrossoverOverride',
     label: 'the datasheet ceiling replaces the breakup derivation',
-    form: 'Setup tab → driver card → Recommended range',
+    form: 'no control since 07-11-2026 (carried in the project file only)',
     travels:
-      'v2Meas[role].maxCrossoverOverride → AdapterBranch.maxCrossover.overridesBreakup → ' +
-      'the breakup limit is REPORTED and does not bind (XoLimit.superseded)',
+      'was v2Meas[role].maxCrossoverOverride → XoLimit.superseded; the app no longer hands it over',
     cls: 'nice',
-    effect: 'zoekt',
-    emptyMeans:
-      'off, which is the only state nothing can put you in by accident: the stated ceiling is read ' +
-      'beside the derived ones and the strictest binds, exactly like every other limit.',
+    effect: 'niets',
+    emptyMeans: 'not applicable: the app no longer reads it.',
     source: 'choice',
-    placement: 'conditional',
-    placementWhy:
-      'without a stated maximum crossover for this driver there is nothing to overrule, and a ' +
-      'permanently visible switch that does nothing invites someone to reach for it.',
-    condition: 'only while this driver states a maximum crossover',
+    effectNote:
+      '07-11-2026 — no longer a field (Sander: a datasheet is not what a designer routinely has). The window is ' +
+      'derived from the MEASURED impedance (k·f_s and the drive floor); the engine still reads this where a casus ' +
+      'states it in its manifest. A project that holds a value carries it unread, and the open notice names it.',
   },
   {
     id: 'breakupDivisor',
@@ -2209,12 +2183,6 @@ export interface V2DependentControl {
 }
 export const V2_DEPENDENT_CONTROLS: readonly V2DependentControl[] = Object.freeze([
   {
-    row: 'minCrossover',
-    control: 'value={v2Meas[role].minCrossoverOrder}',
-    parent: 'a stated recommended minimum crossover frequency',
-    guard: "v2Meas[role].minCrossoverHz.trim() !== '' &&",
-  },
-  {
     row: 'breakupDivisor',
     control: 'value={v2Meas[role].breakupDivisorNote}',
     parent: 'a stated breakup divisor',
@@ -2389,17 +2357,6 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'blTm', form: 'driver-card', control: 'value={v2Meas[role].blTm}' },
   { row: 'mmsG', form: 'driver-card', control: 'value={v2Meas[role].mmsG}' },
   { row: 'driveVoltageV', form: 'driver-card', control: 'value={v2Meas[role].driveVoltageV}' },
-  { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].ratedPowerW}' },
-  { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].testFilterOrder}' },
-  { row: 'powerRating', form: 'driver-card', control: 'value={v2Meas[role].testFilterHz}' },
-  { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverHz}' },
-  { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverOrder}' },
-  { row: 'maxCrossover', form: 'driver-card', control: 'value={v2Meas[role].maxCrossoverHz}' },
-  {
-    row: 'maxCrossoverOverride',
-    form: 'driver-card',
-    control: "checked={v2Meas[role].maxCrossoverOverride === 'yes'}",
-  },
   { row: 'breakupDivisor', form: 'driver-card', control: 'value={v2Meas[role].breakupDivisor}' },
   { row: 'breakupDivisor', form: 'driver-card', control: 'value={v2Meas[role].breakupDivisorNote}' },
   { row: 'driveOnFsMaxDb-per-way', form: 'driver-card', control: 'value={v2Meas[role].driveOnFsMaxDb}' },
@@ -2517,6 +2474,9 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   'hpLpPref',
   /* E-6 — no control; carried in the project file only. */
   'phasePriority',
+  /* 07-11-2026 — the datasheet power rating and recommended range: no control,
+   * carried in the project file only. */
+  'powerRating', 'minCrossover', 'maxCrossover', 'maxCrossoverOverride',
 ]);
 
 /**

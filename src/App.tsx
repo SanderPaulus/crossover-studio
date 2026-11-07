@@ -278,17 +278,12 @@ import { emptyV2Meas, type V2MeasurementMeta } from './lib/v2Measurement.ts';
 /* U-4 — the two-tone recipe that replaces the uncalibrated divisor ramp, in
  * its one home; the register row beside the field reads the same string. */
 import { BREAKUP_DIVISOR_PROTOCOL } from './lib/breakupDivisorProtocol.ts';
-/* M-M — the driver's own power rating, as the adapter and the metric take it. */
-import type { DriverPowerRating } from './lib/engine2/metrics/thermalLoad.ts';
-import type {
-  DriverBreakupDivisor,
-  DriverMaxCrossover,
-  DriverMinCrossover,
-} from './lib/engine2/predesign/xoWindow.ts';
+import type { DriverBreakupDivisor } from './lib/engine2/predesign/xoWindow.ts';
 /* H-4b — what the k·f_s fallback is worth in dB, derived from the constant. */
 import { fsConventionDbRange } from './lib/engine2/predesign/xoWindow.ts';
 import {
   V1_FIELD_DEFAULTS,
+  describeCarriedDatasheetFields,
   describeV1Carryover,
   v1CarryoverOf,
   type V1CarryoverInput,
@@ -4209,87 +4204,6 @@ export default function App() {
    * and the single `maxDriveOnFsDb` field then judges every protected way.
    */
   /**
-   * M-M — the driver's own power rating, per role, from the three card fields.
-   *
-   * ALL THREE OR NOTHING. A rated power without the filter it was rated
-   * through is not a limit on anything — the metric refuses rather than
-   * assuming a condition, and this refuses to hand over a half-stated one.
-   * That is the same discipline `wiring` uses two blocks down: a half-stated
-   * statement is absent.
-   */
-  const powerRatingByRole = useMemo(() => {
-    const out: Partial<Record<BranchRole, DriverPowerRating>> = {};
-    for (const role of ['low', 'mid', 'high'] as const) {
-      const m = v2Meas[role];
-      const w = Number(m.ratedPowerW);
-      const n = Number(m.testFilterOrder);
-      const f = Number(m.testFilterHz);
-      if (m.ratedPowerW.trim() === '' || m.testFilterOrder.trim() === '' || m.testFilterHz.trim() === '') continue;
-      if (!(w > 0) || !(n > 0) || !(f > 0)) continue;
-      out[role] = {
-        ratedPowerW: w,
-        testFilterOrder: n,
-        testFilterHz: f,
-        source: 'driver datasheet, entered on the driver card (M-M)',
-      };
-    }
-    return out;
-  }, [v2Meas]);
-
-  /**
-   * U-3g — the manufacturer's recommended MINIMUM CROSSOVER, per role.
-   *
-   * The frequency ALONE is a complete statement and travels on its own: a
-   * sheet that prints "Recommended frequency range 2.2 kHz - 30 kHz" and no
-   * slope has still said how low the driver may be crossed. The order is the
-   * second half of the condition when the sheet names one, and it only ever
-   * RAISES the floor (see `xoWindow.ts`) — so unlike the power rating, which
-   * means nothing half-stated, this is not all-or-nothing.
-   */
-  const minCrossoverByRole = useMemo(() => {
-    const out: Partial<Record<BranchRole, DriverMinCrossover>> = {};
-    for (const role of ['low', 'mid', 'high'] as const) {
-      const m = v2Meas[role];
-      if (m.minCrossoverHz.trim() === '') continue;
-      const hz = Number(m.minCrossoverHz);
-      if (!(hz > 0)) continue;
-      const n = m.minCrossoverOrder.trim() === '' ? null : Number(m.minCrossoverOrder);
-      out[role] = {
-        hz,
-        ...(n !== null && n > 0 ? { order: n } : {}),
-        source: 'driver datasheet, entered on the driver card (U-3g)',
-      };
-    }
-    return out;
-  }, [v2Meas]);
-
-  /**
-   * U-4 — the manufacturer's recommended MAXIMUM crossover, per role, and the
-   * designer's explicit overrule of the breakup derivation beside it.
-   *
-   * The frequency travels alone, exactly as the minimum does: a sheet that
-   * prints a range has said how high the driver may be crossed whether or not
-   * it says anything else. The OVERRULE is a separate statement and is only
-   * ever read next to a stated ceiling — with no ceiling there is nothing to
-   * overrule, so it is not a half-stated anything, it is inert (P4).
-   */
-  const maxCrossoverByRole = useMemo(() => {
-    const out: Partial<Record<BranchRole, DriverMaxCrossover>> = {};
-    for (const role of ['low', 'mid', 'high'] as const) {
-      const m = v2Meas[role];
-      if (m.maxCrossoverHz.trim() === '') continue;
-      const hz = Number(m.maxCrossoverHz);
-      if (!(hz > 0)) continue;
-      out[role] = {
-        hz,
-        ...(m.maxCrossoverOverride === 'yes' ? { overridesBreakup: true } : {}),
-        source: 'driver datasheet, entered on the driver card (U-4)',
-      };
-    }
-    return out;
-  }, [v2Meas]);
-
-  /**
    * U-4 — the MEASURED breakup divisor, per role.
    *
    * The number alone is the statement; the note beside it is attribution, and
@@ -4547,12 +4461,8 @@ export default function App() {
           /* V50 — the stated M-C figure for this way, re-keyed to the driver
            * id by the adapter like R_e and the card. */
           ...(driveOnFsMaxDbByRole[role] !== undefined ? { driveOnFsMaxDb: driveOnFsMaxDbByRole[role] } : {}),
-          /* M-M — the rating travels only complete (see `powerRatingByRole`). */
-          ...(powerRatingByRole[role] !== undefined ? { powerRating: powerRatingByRole[role] } : {}),
-          /* U-3g — the recommended minimum crossover; the Hz alone is enough. */
-          ...(minCrossoverByRole[role] !== undefined ? { minCrossover: minCrossoverByRole[role] } : {}),
-          /* U-4 — the other end of that line, and the measured divisor. */
-          ...(maxCrossoverByRole[role] !== undefined ? { maxCrossover: maxCrossoverByRole[role] } : {}),
+          /* U-4 — the measured breakup divisor. (The datasheet power rating
+           * and recommended range no longer travel from the app: 07-11-2026.) */
           ...(breakupDivisorByRole[role] !== undefined
             ? { breakupDivisor: breakupDivisorByRole[role] }
             : {}),
@@ -8528,9 +8438,12 @@ export default function App() {
    */
   const [v1CarryNote, setV1CarryNote] = useState<string | null>(null);
   /** What this file carries that engine v2 does not read, or null. */
-  const describeCarryover = (d: V1CarryoverInput): string | null => {
+  const describeCarryover = (d: V1CarryoverInput & { v2Measurement?: ProjectDesign['v2Measurement'] }): string | null => {
     const c = v1CarryoverOf(d);
-    return c ? describeV1Carryover(c) : null;
+    const sheet = describeCarriedDatasheetFields(d.v2Measurement);
+    const head = c ? describeV1Carryover(c) : null;
+    if (!head) return sheet ? `This project carries settings this app no longer reads. ${sheet}` : null;
+    return sheet ? `${head} ${sheet}` : head;
   };
 
   function snapshot(): ProjectState {
@@ -15155,168 +15068,13 @@ export default function App() {
                               </>
                             
                           </span>
-                          {/* ---- M-M: THE DRIVER'S OWN POWER RATING ------------
-                            * Three numbers off ONE line of the datasheet and its
-                            * footnote, and they only mean something together: a
-                            * rated power without the filter it was rated through
-                            * is not a limit on anything. So they sit on one row,
-                            * and a half-filled row hands over nothing.
-                            *
-                            * In the default view for the U-3c reason — every
-                            * `source: 'datasheet'` row is, because a number you
-                            * copy off a sheet is generic data every project has. */}
-                          <>
-                              <span className="cd-label">{t('Power rating')}</span>
-                              <span
-                                className="cd-fields"
-                                title={t("The driver's own rated power AND the high-pass it was rated through — all three off one line of the datasheet and its footnote (e.g. \"Rated power handling* 100 W\" with \"* IEC 268-5, 2nd order high-pass Butterworth filter\", and a recommended range starting at 2.2 kHz). Run through the same weighted integral M-A uses, that condition becomes a number of WATTS this driver is certified to survive, and any crossover can be held against it at any system power (M-M). Blank = the load is reported and nothing judges it. NB the corner is often not printed: reading it off the recommended crossover range is an assumption, and the report says so.")}
-                              >
-                                <span className="cd-pre" />
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  placeholder="—"
-                                  value={v2Meas[role].ratedPowerW}
-                                  onChange={(e) => setV2MeasField(role, 'ratedPowerW', e.target.value)}
-                                  style={{ width: '4.5rem' }}
-                                />
-                                {' W · ' + t('rated through') + ' '}
-                                <select
-                                  value={v2Meas[role].testFilterOrder}
-                                  onChange={(e) => setV2MeasField(role, 'testFilterOrder', e.target.value)}
-                                >
-                                  <option value="">{t('order —')}</option>
-                                  <option value="1">{t('1st order (6 dB/oct)')}</option>
-                                  <option value="2">{t('2nd order (12 dB/oct)')}</option>
-                                  <option value="3">{t('3rd order (18 dB/oct)')}</option>
-                                  <option value="4">{t('4th order (24 dB/oct)')}</option>
-                                </select>
-                                {' ' + t('at') + ' '}
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={100}
-                                  placeholder="—"
-                                  value={v2Meas[role].testFilterHz}
-                                  onChange={(e) => setV2MeasField(role, 'testFilterHz', e.target.value)}
-                                  style={{ width: '5rem' }}
-                                />
-                                {' Hz'}
-                                <span className="cd-hint">
-                                  {t('all three or none — a rated power without its filter is not a limit on anything')}
-                                </span>
-                              </span>
-                            </>
-                          
-                          {/* ---- U-3g / U-4: THE RECOMMENDED RANGE --------------
-                            * ONE line off the datasheet with TWO ends, and the
-                            * app reads both. The BOTTOM binds the window in
-                            * which this driver is the upper of a pair (U-3g);
-                            * the TOP binds the window in which it is the lower
-                            * (U-4). Same statement, two windows, and putting
-                            * them in one row is what makes that legible.
-                            *
-                            * THE ASYMMETRY IS DELIBERATE. The bottom takes an
-                            * order, because the sheet's condition is a filter
-                            * condition and a shallower flank leaves more energy
-                            * at the resonance than the sheet certified. The top
-                            * takes none: a recommended top is about cone
-                            * breakup and beaming, no sheet prints a slope
-                            * beside it, and a field nobody can fill is
-                            * decoration (V19). Both are taken verbatim; only
-                            * the bottom is ever RAISED, never lowered.
-                            *
-                            * In the default view for the U-3c reason — every
-                            * `source: 'datasheet'` row is. */}
-                          <>
-                              <span className="cd-label">{t('Recommended range')}</span>
-                              <span
-                                className="cd-fields"
-                                title={t("The crossover range the manufacturer recommends for this driver, off its datasheet (e.g. \"Recommended frequency range 2.2kHz - 30kHz\"), with the slope the LOW end is stated at when the sheet names one. The low end becomes the FLOOR of the window where this driver is the upper of a pair; the high end becomes a CEILING of the window where it is the lower. Both verbatim: a steeper flank does not buy a lower handover, because a recommended range bundles distortion and directivity with excursion and only excursion follows the slope at f_s. A flank SHALLOWER than the stated one raises the floor instead. Blank = the window falls back to a derived excursion ceiling, a stated dB figure, or the k*f_s convention at the bottom, and to the breakup derivation at the top.")}
-                              >
-                                <span className="cd-pre">{t('from')}</span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={100}
-                                  placeholder="—"
-                                  value={v2Meas[role].minCrossoverHz}
-                                  onChange={(e) => setV2MeasField(role, 'minCrossoverHz', e.target.value)}
-                                  style={{ width: '5rem' }}
-                                />
-                                {/* U-9 — the order only qualifies a stated frequency: without one it does nothing. */}
-                                {v2Meas[role].minCrossoverHz.trim() !== '' && (
-                                <>
-                                {' Hz · ' + t('stated at') + ' '}
-                                <select
-                                  value={v2Meas[role].minCrossoverOrder}
-                                  onChange={(e) => setV2MeasField(role, 'minCrossoverOrder', e.target.value)}
-                                >
-                                  <option value="">{t('order — (none stated)')}</option>
-                                  <option value="1">{t('1st order (6 dB/oct)')}</option>
-                                  <option value="2">{t('2nd order (12 dB/oct)')}</option>
-                                  <option value="3">{t('3rd order (18 dB/oct)')}</option>
-                                  <option value="4">{t('4th order (24 dB/oct)')}</option>
-                                </select>
-                                </>
-                                )}
-                                {' · ' + t('up to') + ' '}
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={100}
-                                  placeholder="—"
-                                  value={v2Meas[role].maxCrossoverHz}
-                                  onChange={(e) => setV2MeasField(role, 'maxCrossoverHz', e.target.value)}
-                                  style={{ width: '5rem' }}
-                                />
-                                {' Hz'}
-                                <span className="cd-hint">
-                                  {t('either end alone is enough — the order only raises the floor, never lowers it')}
-                                </span>
-                              </span>
-                            </>
-                          
-                          {/* ---- U-4: THE OVERRULE ------------------------------
-                            * The first stated overrule of a DERIVED limit in
-                            * this project, and it exists because the limit it
-                            * replaces is the one that admits to being
-                            * uncalibrated: the breakup divisor interpolates
-                            * between two published endpoints on a ramp nobody
-                            * has measured (V9). A manufacturer who prints a
-                            * recommended top HAS measured the driver.
-                            *
-                            * CONDITIONAL, and the register says why: with no
-                            * stated ceiling there is nothing to overrule, and a
-                            * switch that is always visible and usually inert is
-                            * a switch someone reaches for. Never on by itself
-                            * (P4) — a stated ceiling on its own is simply read
-                            * beside the derived ones and the strictest binds. */}
-                          {v2Meas[role].maxCrossoverHz.trim() !== '' && (
-                            <>
-                              <span className="cd-label" />
-                              <span className="cd-fields">
-                                <span className="cd-pre" />
-                                <label
-                                  className="cd-inline-check"
-                                  title={t("Let the datasheet's maximum crossover stand IN PLACE OF the app's breakup derivation for this driver, even where that derivation is stricter. Off by default and never set for you: with it off the stated ceiling is simply one limit among the others and the strictest binds. With it on, the breakup limit is still detected, still measured and still reported — it just stops binding the window, and every candidate says so. Worth considering because the divisor the derivation uses is an interpolation nobody has calibrated; worth thinking about because the breakup is a real property of the cone and the manufacturer's range is a recommendation for a whole system.")}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={v2Meas[role].maxCrossoverOverride === 'yes'}
-                                    onChange={(e) =>
-                                      setV2MeasField(role, 'maxCrossoverOverride', e.target.checked ? 'yes' : '')
-                                    }
-                                  />{' '}
-                                  {t('this ceiling replaces the breakup derivation')}
-                                </label>
-                                <span className="cd-hint">
-                                  {t('off = the stated ceiling is read beside the derived ones and the strictest binds')}
-                                </span>
-                              </span>
-                            </>
-                          )}
+                          {/* 07-11-2026 — the power rating and the recommended
+                            * crossover range (M-M, U-3g, U-4) had fields here.
+                            * Removed on Sanders call: a datasheet is not what a
+                            * designer routinely has, and the window is derived
+                            * from the MEASURED impedance (k·f_s, the drive floor)
+                            * without it. The engine still reads them where a
+                            * casus states them; the app no longer does. */}
                         {dia && (
                           <span className="derived">
                             {t('effective Ø {mm} mm', { mm: Math.round(dia) })}
@@ -20299,7 +20057,7 @@ export default function App() {
                           {l.convention && (
                             <em className="v2-window-conv">
                               {' '}
-                              {t('— a convention, not a measurement: nothing is stated or derived about this driver’s drive limit, so the window falls back to k·f_s, which is worth about {lo}–{hi} dB of attenuation at the resonance — LOOSER than the 18 dB the trade rule asks for. State “Max drive on f_s” or a “Minimum crossover” on the driver card, or fill Bl, M_ms and X_max plus the amplifier peak, and the floor follows the driver instead.', {
+                              {t('— a convention, not a measurement: nothing is stated or derived about this driver’s drive limit, so the window falls back to k·f_s, which is worth about {lo}–{hi} dB of attenuation at the resonance — LOOSER than the 18 dB the trade rule asks for. State “Max drive on f_s” on the driver card, or fill Bl, M_ms and X_max plus the amplifier peak, and the floor follows the driver instead.', {
                                 lo: fsConventionDb.minDb.toFixed(1),
                                 hi: fsConventionDb.maxDb.toFixed(1),
                               })}

@@ -9205,3 +9205,21 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - `src/lib/guidedVoicingPending.test.ts` (3 bronscans). **Gemeten:** `npm run test:fast` 317 s, 227 bestanden
   (226 + 1), 3028 tests (3024 + 4), groen. Browser: tweewegdemo, vraag 5 vóór de run kiesbaar ("Bass plateau"
   ingedrukt), na de run staat de keuze op het ontwerp en de "nog geen ontwerp"-regel is weg.
+
+### G-5-guards (de datasheet-kruisband en vermogensopgave weg uit demo's en driverkaart; 07-11-2026)
+
+- **Sanders besluit:** een datasheet is niet wat een ontwerper standaard heeft, en het venster wordt uit de
+  GEMETEN impedantie afgeleid. De demo's dragen sinds G-5 alleen X_max, Bl en M_ms nog (G-2); de aanbevolen
+  kruisband en de vermogensopgave zijn eruit. Gevolg op de driewegdemo: mid→tweeter-venster 1294–2287 Hz
+  (vloer k·f_s) in plaats van 2200–2287, en de verkenning draait weer 2 × 3 = 6 kandidaten.
+- **De velden Power rating en Recommended range (+ de overrule) zijn van de driverkaart af**, en de app geeft
+  `powerRating`, `minCrossover` en `maxCrossover` niet meer aan de adapter. De ENGINE leest ze nog waar een
+  casus ze in het manifest stelt (casus 1: de BlieSMa-2200, M-2b), dus geen corpus en geen golden beweegt. De
+  vier registerrijen zijn `niets`, zonder besturingselement (`V2_UNGOVERNED_ROWS`); de gemeten breakup-deler
+  blijft een veld. Een oud project behoudt de waarden ongelezen en de openmelding noemt ze per weg
+  (`describeCarriedDatasheetFields`).
+- Tests in V15-vorm bijgewerkt: `demoBundle`, `v2InputPlacement`, `u9FieldEffects`, `u9Fase3` (de
+  `powerRating`-bestemming weg uit `GUIDED_DESTINATION`), `statedMinCrossover`, `statedMaxCrossover`,
+  `v1Carryover` (+1 claim). **Gemeten:** `npm run test:fast` 269 s, 227 bestanden (226 + 1), 3026 tests
+  (3022 + 4), groen. Browser: geen "Power rating"/"Recommended range" op de driverkaart; de strip leest
+  `mid→high 1294 Hz – 2287 Hz · floor: fs`; de run toont 6 kandidaten.

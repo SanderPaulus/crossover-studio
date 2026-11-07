@@ -179,7 +179,11 @@ describe('U-9 (2): a niets row is never rendered', () => {
     /* U-10 fase 3 — three niets rows removed with their fields; hpLpPref is niets
      * and has no control any more (it is carried in the project file only). */
     /* E-6 — `phasePriority` is niets since B-5 = B; carried in the file only. */
-    expect([...V2_NIETS_ROWS].sort()).toEqual(['excursionSpl', 'hpLpPref', 'phasePriority', 'v1Thresholds']);
+    /* 07-11-2026 — the datasheet power rating and recommended range lost
+     * their fields (Sander); carried in the file only, like phasePriority. */
+    expect([...V2_NIETS_ROWS].sort()).toEqual(
+      ['excursionSpl', 'hpLpPref', 'maxCrossover', 'maxCrossoverOverride', 'minCrossover', 'phasePriority', 'powerRating', 'v1Thresholds'].sort(),
+    );
     expect(Object.keys(NIETS_CONTROLS).sort()).toEqual(['excursionSpl', 'v1Thresholds']);
   });
   it.each(Object.entries(NIETS_CONTROLS))('%s: every control that draws it sits behind rendersRow', (id, controls) => {

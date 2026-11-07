@@ -236,13 +236,16 @@ export const BUNDLE_BEARABLE_ROWS: readonly string[] = Object.freeze([
  * only one, and X_max was struck because it "judges". It does not: it is a
  * fact about the driver, and what judges is the REQUIREMENT built on it (the
  * X_max margin, the amplifier peak), which stays off. Sander, 07-11-2026: the
- * datasheet belongs in the demo. So X_max, Bl, M_ms, the power rating and the
- * recommended range are carryable; every judgement row still is not.
+ * datasheet belongs in the demo. So X_max, Bl and M_ms are carryable; every
+ * judgement row still is not. The power rating and the recommended range were
+ * carried too until the same day, and are not since (Sander): the window is
+ * derived from the MEASURED impedance without them, and a demo shows the route
+ * a designer without a datasheet takes.
  */
 export const BUNDLE_CARRIED_ROWS: readonly string[] = Object.freeze([
   'responses', 'validity', 'impedance', 'ways', 'positions', 'sd', 'baffle-width',
   'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom',
-  'xmaxMm', 'blTm', 'mmsG', 'powerRating', 'minCrossover', 'maxCrossover',
+  'xmaxMm', 'blTm', 'mmsG',
 ]);
 
 /**

@@ -179,3 +179,34 @@ export function describeV1Carryover(c: V1Carryover): string {
     'they stay in the project exactly as they were written.'
   );
 }
+
+/**
+ * 07-11-2026 — the datasheet power rating and recommended crossover range lost
+ * their driver-card fields (Sander: a datasheet is not what a designer
+ * routinely has; the window is derived from the measured impedance). A project
+ * that filled them in still holds them, unread, and keeps them on save
+ * (B-4.3). This names them, per way, in the same notice. Null when none is held.
+ */
+export type CarriedDatasheetField = 'ratedPowerW' | 'minCrossoverHz' | 'maxCrossoverHz';
+const DATASHEET_FIELD_LABEL: Readonly<Record<CarriedDatasheetField, string>> = Object.freeze({
+  ratedPowerW: 'rated power (W)',
+  minCrossoverHz: 'recommended minimum crossover (Hz)',
+  maxCrossoverHz: 'recommended maximum crossover (Hz)',
+});
+export function describeCarriedDatasheetFields(
+  meas: Partial<Record<string, Partial<Record<CarriedDatasheetField, string>>>> | undefined,
+): string | null {
+  if (!meas) return null;
+  const named: string[] = [];
+  for (const [way, m] of Object.entries(meas)) {
+    for (const f of Object.keys(DATASHEET_FIELD_LABEL) as CarriedDatasheetField[]) {
+      const v = m?.[f];
+      if (typeof v === 'string' && v.trim() !== '') named.push(`${way}: ${DATASHEET_FIELD_LABEL[f]} "${v.trim()}"`);
+    }
+  }
+  if (named.length === 0) return null;
+  return (
+    `It also holds datasheet figures this app no longer reads — ${named.join('; ')}. The crossover window is ` +
+    'derived from the measured impedance instead; the figures stay in the project exactly as they were written.'
+  );
+}
