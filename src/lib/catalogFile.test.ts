@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   allSeries,
   bomFor,
+  catalogParts,
   catalogSeries,
   dcrCeilingOhms,
   nearestParts,
@@ -432,5 +433,67 @@ describe('coil DCR budget per position (Sanders: the doctrine must pick the best
     } finally {
       setCustomSeries([]);
     }
+  });
+});
+
+/* A5e.3 (07-11-2026) — TOLERANCE AND RATED VOLTAGE, DATA ONLY. Two optional
+ * datasheet fields per series and per SKU, under both spellings. The claims:
+ * a v4 file imports with neither field anywhere (absent stays absent, nothing
+ * is filled in); both spellings land on the same value; a series' figure
+ * reaches every part its grid generates; the round trip keeps them; and a
+ * present-but-unusable figure is refused with the entry named. */
+describe('A5e.3 — tolerancePct and voltageV (data only)', () => {
+  const fixture = (name: string) =>
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'parsers', 'fixtures', name), 'utf-8');
+
+  it.each(['gemini-catalog-v4.json', 'gemini-catalog-v8.json'])('%s imports with neither field anywhere', (name) => {
+    const imp = deserializeCatalog(fixture(name));
+    expect(imp.parts.length + imp.series.length).toBeGreaterThan(0);
+    for (const x of [...imp.parts, ...imp.series]) {
+      expect('tolerancePct' in x, x.id).toBe(false);
+      expect('voltageV' in x, x.id).toBe(false);
+    }
+    // The note text names the fields; the ENTRIES must not carry them.
+    const again = JSON.parse(serializeCatalog(imp.series, imp.parts)) as { series: object[]; components?: object[] };
+    for (const x of [...again.series, ...(again.components ?? [])]) {
+      expect('tolerancePct' in x).toBe(false);
+      expect('voltageV' in x).toBe(false);
+    }
+  });
+
+  const file = (series: object[], components: object[]) =>
+    JSON.stringify({ format: 'acoustic-design-studio-catalog', version: 5, series, components });
+  const cap = (extra: object) => ({ sku: 'X-1', brand: 'Acme', series: 'Film', kind: 'C', value: 4.7e-6, ...extra });
+  const capSeries = (extra: object) => ({ id: 'acme-film', brand: 'Acme', series: 'Film', kind: 'C', range: [1e-6, 10e-6], ...extra });
+
+  it('both spellings land on the same value, per SKU and per series', () => {
+    const camel = deserializeCatalog(file([capSeries({ tolerancePct: 5, voltageV: 250 })], [cap({ tolerancePct: 2, voltageV: 400 })]));
+    const snake = deserializeCatalog(file([capSeries({ tolerance_pct: 5, voltage_v: 250 })], [cap({ tolerance_pct: 2, voltage_v: 400 })]));
+    expect(camel).toEqual(snake);
+    expect(camel.parts[0]).toMatchObject({ tolerancePct: 2, voltageV: 400 });
+    expect(camel.series[0]).toMatchObject({ tolerancePct: 5, voltageV: 250 });
+  });
+
+  it("a series' figures reach every part its value grid generates", () => {
+    const imp = deserializeCatalog(file([capSeries({ tolerancePct: 5, voltageV: 250 })], []));
+    setCustomSeries(imp.series, imp.parts);
+    const grid = catalogParts().filter((p) => p.kind === 'C' && p.series === 'Film');
+    expect(grid.length).toBeGreaterThan(0);
+    for (const p of grid) expect(p).toMatchObject({ tolerancePct: 5, voltageV: 250 });
+  });
+
+  it('the round trip keeps them', () => {
+    const imp = deserializeCatalog(file([capSeries({ voltageV: 250 })], [cap({ tolerancePct: 2 })]));
+    expect(deserializeCatalog(serializeCatalog(imp.series, imp.parts))).toEqual(imp);
+  });
+
+  it.each([
+    ['a string', { tolerancePct: '5' }],
+    ['zero', { voltageV: 0 }],
+    ['100 % or more', { tolerance_pct: 100 }],
+    ['negative volts', { voltage_v: -50 }],
+  ])('present but unusable (%s) is refused, with the entry named', (_why, extra) => {
+    expect(() => deserializeCatalog(file([], [cap(extra)]))).toThrow(/Component "X-1"/);
+    expect(() => deserializeCatalog(file([capSeries(extra)], []))).toThrow(/Series "acme-film"/);
   });
 });

@@ -239,3 +239,20 @@ describe('series that exist only through their SKUs', () => {
     expect(rows.find((r) => r.series.series === 'Cross-Cap')!.source).not.toBe('skus');
   });
 });
+
+/* A5e.3 — the manager must never save what the import would refuse: the same
+ * two rules for tolerance and rated voltage, on a SKU and on a grid series. */
+describe('catalog manager: A5e.3 tolerance and rated voltage', () => {
+  it('a SKU with a usable tolerance and voltage is sound; an unusable one is named', () => {
+    expect(skuError(part({ tolerancePct: 5, voltageV: 250 }), [])).toBeNull();
+    expect(skuError(part({ tolerancePct: 100 }), [])).toMatch(/Tolerance/);
+    expect(skuError(part({ tolerancePct: Number.NaN }), [])).toMatch(/Tolerance/);
+    expect(skuError(part({ voltageV: 0 }), [])).toMatch(/voltage/);
+  });
+  it('a grid series follows the same rules', () => {
+    const s: CatalogSeries = { id: 'x-cap', brand: 'X', series: 'Cap', kind: 'C', range: [1e-6, 10e-6] };
+    expect(seriesGridError({ ...s, tolerancePct: 5, voltageV: 250 }, [])).toBeNull();
+    expect(seriesGridError({ ...s, tolerancePct: -1 }, [])).toMatch(/Tolerance/);
+    expect(seriesGridError({ ...s, voltageV: Number.NaN }, [])).toMatch(/voltage/);
+  });
+});

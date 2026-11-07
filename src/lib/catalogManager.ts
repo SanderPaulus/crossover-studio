@@ -59,6 +59,12 @@ export function skuError(
   if (draft.powerW !== undefined && !(Number.isFinite(draft.powerW) && draft.powerW > 0)) {
     return 'Power must be a number > 0 (W).';
   }
+  if (draft.tolerancePct !== undefined && !(Number.isFinite(draft.tolerancePct) && draft.tolerancePct > 0 && draft.tolerancePct < 100)) {
+    return 'Tolerance must be a number in (0, 100) — ± percent.';
+  }
+  if (draft.voltageV !== undefined && !(Number.isFinite(draft.voltageV) && draft.voltageV > 0)) {
+    return 'Rated voltage must be a number > 0 (V).';
+  }
   if (draft.priceEur !== undefined && !(Number.isFinite(draft.priceEur) && draft.priceEur >= 0)) {
     return 'Price must be a number ≥ 0 (EUR).';
   }
@@ -210,6 +216,12 @@ export function seriesGridError(
   }
   if (draft.powerW !== undefined && !(Number.isFinite(draft.powerW) && draft.powerW > 0)) {
     return 'Power must be a number > 0 (W).';
+  }
+  if (draft.tolerancePct !== undefined && !(Number.isFinite(draft.tolerancePct) && draft.tolerancePct > 0 && draft.tolerancePct < 100)) {
+    return 'Tolerance must be a number in (0, 100) — ± percent.';
+  }
+  if (draft.voltageV !== undefined && !(Number.isFinite(draft.voltageV) && draft.voltageV > 0)) {
+    return 'Rated voltage must be a number > 0 (V).';
   }
   if (draft.basePrice !== undefined && !(Number.isFinite(draft.basePrice) && draft.basePrice >= 0)) {
     return 'Base price must be a number ≥ 0 (EUR).';

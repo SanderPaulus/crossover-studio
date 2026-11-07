@@ -38,6 +38,8 @@ interface SkuDraft {
   seriesR: string;
   wireMm: string;
   powerW: string;
+  tolerancePct: string;
+  voltageV: string;
   priceEur: string;
   tier: CatalogTier | '';
 }
@@ -54,6 +56,8 @@ interface SeriesDraft {
   gauges: string;
   esr: string;
   powerW: string;
+  tolerancePct: string;
+  voltageV: string;
   eSeries: 'E12' | 'E24' | '';
   tier: CatalogTier | '';
   basePrice: string;
@@ -70,6 +74,8 @@ const emptySkuDraft = (kind: CatalogKind = 'C'): SkuDraft => ({
   seriesR: '',
   wireMm: '',
   powerW: '',
+  tolerancePct: '',
+  voltageV: '',
   priceEur: '',
   tier: '',
 });
@@ -84,6 +90,8 @@ const toSkuDraft = (p: CatalogPart): SkuDraft => ({
   seriesR: String(p.seriesR),
   wireMm: p.wireMm !== undefined ? String(p.wireMm) : '',
   powerW: p.powerW !== undefined ? String(p.powerW) : '',
+  tolerancePct: p.tolerancePct !== undefined ? String(p.tolerancePct) : '',
+  voltageV: p.voltageV !== undefined ? String(p.voltageV) : '',
   priceEur: p.priceEur !== undefined ? String(p.priceEur) : '',
   tier: p.tier ?? '',
 });
@@ -98,6 +106,8 @@ const emptySeriesDraft = (kind: CatalogKind = 'C'): SeriesDraft => ({
   gauges: '',
   esr: '',
   powerW: '',
+  tolerancePct: '',
+  voltageV: '',
   eSeries: '',
   tier: '',
   basePrice: '',
@@ -116,6 +126,8 @@ const toSeriesDraft = (s: CatalogSeries): SeriesDraft => ({
   gauges: s.gauges?.join(', ') ?? '',
   esr: s.esr !== undefined ? String(s.esr) : '',
   powerW: s.powerW !== undefined ? String(s.powerW) : '',
+  tolerancePct: s.tolerancePct !== undefined ? String(s.tolerancePct) : '',
+  voltageV: s.voltageV !== undefined ? String(s.voltageV) : '',
   eSeries: s.eSeries ?? '',
   tier: s.tier ?? '',
   basePrice: s.basePrice !== undefined ? String(s.basePrice) : '',
@@ -136,6 +148,8 @@ function fromSkuDraft(d: SkuDraft): CatalogPart {
   const seriesR = num(d.seriesR);
   const wireMm = num(d.wireMm);
   const powerW = num(d.powerW);
+  const tolerancePct = num(d.tolerancePct);
+  const voltageV = num(d.voltageV);
   const priceEur = num(d.priceEur);
   return {
     id: d.id.trim(),
@@ -147,6 +161,8 @@ function fromSkuDraft(d: SkuDraft): CatalogPart {
     seriesR: seriesR ?? (d.kind === 'C' ? 0.02 : d.kind === 'R' ? 0 : NaN),
     ...(wireMm !== undefined ? { wireMm } : {}),
     ...(powerW !== undefined ? { powerW } : {}),
+    ...(tolerancePct !== undefined ? { tolerancePct } : {}),
+    ...(voltageV !== undefined ? { voltageV } : {}),
     ...(priceEur !== undefined ? { priceEur } : {}),
     ...(d.tier !== '' ? { tier: d.tier } : {}),
   };
@@ -164,6 +180,8 @@ function fromSeriesDraft(d: SeriesDraft): CatalogSeries {
         });
   const esr = num(d.esr);
   const powerW = num(d.powerW);
+  const tolerancePct = num(d.tolerancePct);
+  const voltageV = num(d.voltageV);
   const basePrice = num(d.basePrice);
   const costFactor = num(d.costFactor);
   const dcrFactor = num(d.dcrFactor);
@@ -179,6 +197,8 @@ function fromSeriesDraft(d: SeriesDraft): CatalogSeries {
     ...(gauges !== undefined ? { gauges } : {}),
     ...(esr !== undefined ? { esr } : {}),
     ...(powerW !== undefined ? { powerW } : {}),
+    ...(tolerancePct !== undefined ? { tolerancePct } : {}),
+    ...(voltageV !== undefined ? { voltageV } : {}),
     ...(d.eSeries !== '' ? { eSeries: d.eSeries } : {}),
     ...(d.tier !== '' ? { tier: d.tier } : {}),
     ...(basePrice !== undefined ? { basePrice } : {}),
@@ -656,6 +676,22 @@ export function CatalogManager({ onClose, onSave }: Props) {
               </label>
             )}
             <label>
+              {t('Tolerance (± %)')}
+              <input
+                value={skuForm.tolerancePct}
+                onChange={(e) => setSkuForm({ ...skuForm, tolerancePct: e.target.value })}
+                placeholder={t('blank = not stated')}
+              />
+            </label>
+            <label>
+              {t('Rated voltage (V)')}
+              <input
+                value={skuForm.voltageV}
+                onChange={(e) => setSkuForm({ ...skuForm, voltageV: e.target.value })}
+                placeholder={t('blank = not stated')}
+              />
+            </label>
+            <label>
               {t('Price (€)')}
               <input
                 value={skuForm.priceEur}
@@ -779,6 +815,22 @@ export function CatalogManager({ onClose, onSave }: Props) {
                 <input value={seriesForm.powerW} onChange={(e) => setSeriesForm({ ...seriesForm, powerW: e.target.value })} />
               </label>
             )}
+            <label>
+              {t('Tolerance (± %)')}
+              <input
+                value={seriesForm.tolerancePct}
+                onChange={(e) => setSeriesForm({ ...seriesForm, tolerancePct: e.target.value })}
+                placeholder={t('blank = not stated')}
+              />
+            </label>
+            <label>
+              {t('Rated voltage (V)')}
+              <input
+                value={seriesForm.voltageV}
+                onChange={(e) => setSeriesForm({ ...seriesForm, voltageV: e.target.value })}
+                placeholder={t('blank = not stated')}
+              />
+            </label>
             <label>
               {t('Base price (€)')}
               <input

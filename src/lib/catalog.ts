@@ -40,6 +40,20 @@ export interface CatalogPart {
    * Never estimated here: a saturation figure is datasheet data.
    */
   maxCurrentA?: number;
+  /**
+   * A5e.3 (07-11-2026) — the manufacturer's VALUE TOLERANCE, ± %, as the
+   * datasheet prints it (5 for "±5 %"). DATA ONLY: nothing reads it yet. It is
+   * what U-5c's tolerance measurement assumed for every part at once; carried
+   * per part, that measurement can use the part actually chosen.
+   */
+  tolerancePct?: number;
+  /**
+   * A5e.3 (07-11-2026) — the RATED VOLTAGE, V, as the datasheet prints it
+   * (capacitors chiefly; a resistor's working voltage fits the same field).
+   * DATA ONLY: nothing reads it yet. It is what U-5c's capacitor-voltage
+   * reading has nothing to stand beside.
+   */
+  voltageV?: number;
   /** EUR list price — absent until real prices are entered. */
   priceEur?: number;
   /** This is an EXACT market SKU from an imported database, not an entry
@@ -68,6 +82,10 @@ export interface CatalogSeries {
   /** V50 — saturation / maximum current (cored coils), A, when the series
    *  publishes one figure for the whole series. */
   maxCurrentA?: number;
+  /** A5e.3 — value tolerance, ± %, for the whole series (see CatalogPart). */
+  tolerancePct?: number;
+  /** A5e.3 — rated voltage, V, for the whole series (see CatalogPart). */
+  voltageV?: number;
   /** Value grid the series is stocked in. Default: E12 for coils, E24 for
    *  caps/resistors (practice). */
   eSeries?: 'E12' | 'E24';
@@ -152,6 +170,8 @@ function buildCatalog(): CatalogPart[] {
             ...(gauge !== undefined ? { wireMm: gauge } : {}),
             ...(s.powerW !== undefined ? { powerW: s.powerW } : {}),
             ...(s.maxCurrentA !== undefined ? { maxCurrentA: s.maxCurrentA } : {}),
+            ...(s.tolerancePct !== undefined ? { tolerancePct: s.tolerancePct } : {}),
+            ...(s.voltageV !== undefined ? { voltageV: s.voltageV } : {}),
             ...(s.basePrice !== undefined
               ? { priceEur: Number((s.basePrice + (s.costFactor ?? 0) * value).toPrecision(3)) }
               : {}),

@@ -2184,4 +2184,11 @@ export const nl: Record<string, string> = {
     'Alle details (volledig Engine v2-rapport, {n} opmerkingen)',
   'All details (full Engine v2 report)':
     'Alle details (volledig Engine v2-rapport)',
+  // A5e.3 catalogue ratings (CatalogManager.tsx)
+  'Tolerance (± %)':
+    'Tolerantie (± %)',
+  'Rated voltage (V)':
+    'Nominale spanning (V)',
+  'blank = not stated':
+    'leeg = niet opgegeven',
 };
