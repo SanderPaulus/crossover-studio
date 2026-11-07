@@ -8963,3 +8963,24 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   ~1800 s) zijn vanaf S-1 de vóór-stand.** Geen nieuwe tag: de CI-telling blijft 19.
 - **Niet gedaan:** de barrière leest nog steeds ~400 punten per evaluatie; een goedkopere LEZING (minder
   punten, of alleen rond minima) verandert het oordeel en is dus een zoekwijziging met regeneratie.
+
+### G-1-guards (het guided-resultaat: een samenvatting, het volle rapport achter één uitklap; alleen UI)
+
+- **`src/components/GuidedV2Summary.tsx` (`guided-summary/1.0`)** vervangt in guided het volle
+  Engine v2-paneel door drie blokken:
+  - per GESTELDE poort één regel, met waarde, grens en oordeel. De vier toestanden blijven
+    gescheiden: gehaald, alleen binnen tolerantie, NIET gehaald, niet beoordeeld (`guidedVerdict`);
+  - drie kerngetallen: ±venster, M-K per overname en de laagste |Z|;
+  - één zin over waar níet geoordeeld wordt: onder `system.splBandHz[0]`.
+- Alles erachter staat in één `<details>` met het ONGEWIJZIGDE `EngineV2Panel`, en het label telt
+  de opmerkingen (F0).
+- Niet-gestelde poorten worden bij naam genoemd. Een niet-gehaalde eis wordt nooit ingeklapt.
+- Expert is ongewijzigd: `App.tsx` rendert `uiMode === 'guided' ? <GuidedV2Summary> : <EngineV2Panel>`.
+- **Geen `engine2/`-import:** het component noemt de vorm die het leest als structurele types. Zo
+  blijft de lijst van vier UI-ingangen van de motorgrens-invariant staan. De eerste versie
+  importeerde types en `toggleRegression` ving dat.
+- `src/components/guidedV2Summary.test.tsx` (7 claims). Gemeten 07-11-2026: `npm run test:fast`
+  269 s, 220 bestanden (219 + 1 overgeslagen), 2983 tests (2979 + 4), groen (+1 bestand, +7 tests).
+- **Browsercontrole:** driewegdemo met sjabloonnetwerk, profielen "8 Ω only" en "Calm listening".
+  Beide eisen staan als NIET gehaald, met de zes kerngetallen- en bas-regels. De uitklap staat dicht
+  en de console is leeg.

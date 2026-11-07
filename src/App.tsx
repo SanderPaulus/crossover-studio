@@ -140,6 +140,7 @@ import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
 import { releaseAfterPaint, shouldDeferOnBoot } from './lib/bootDefer.ts';
 import { EngineV2Panel } from './components/EngineV2Panel.tsx';
+import { GuidedV2Summary } from './components/GuidedV2Summary.tsx';
 import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from './lib/engine2/version.ts';
 import { buildReport, type EngineV2ReportInput } from './lib/engine2/report.ts';
 import {
@@ -25003,13 +25004,32 @@ export default function App() {
 
       {engineV2Report && (
         engineV2Report.report ? (
-          <EngineV2Panel
-            report={engineV2Report.report}
-            ambiguous={engineV2Report.ambiguous}
-            floors={v2Floors}
-            notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
-            limitProvenance={v2LimitProvenance}
-          />
+          /* GUIDED RESULT — a guided run gets the compact summary (stated
+             requirements, three key figures, where it is not judged) with the
+             unchanged full panel behind one fold; expert keeps the full panel. */
+          uiMode === 'guided' ? (
+            <GuidedV2Summary
+              report={engineV2Report.report}
+              notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
+              limitProvenance={v2LimitProvenance}
+            >
+              <EngineV2Panel
+                report={engineV2Report.report}
+                ambiguous={engineV2Report.ambiguous}
+                floors={v2Floors}
+                notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
+                limitProvenance={v2LimitProvenance}
+              />
+            </GuidedV2Summary>
+          ) : (
+            <EngineV2Panel
+              report={engineV2Report.report}
+              ambiguous={engineV2Report.ambiguous}
+              floors={v2Floors}
+              notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
+              limitProvenance={v2LimitProvenance}
+            />
+          )
         ) : (
           <div className="panel v2-panel">
             <div className="v2-head">

@@ -2141,4 +2141,47 @@ export const nl: Record<string, string> = {
     'Zonder impedantiemetingen: alleen virtuele filters. Elektrische eisen (vloer, EPDR, dissipatie) zijn niet beoordeeld.',
   'Solo design: one driver, no handover — the per-handover v2 requirements do not apply here.':
     'Solo-ontwerp: één driver, geen overname — de v2-eisen per overname zijn hier niet van toepassing',
+  // Guided result summary (GuidedV2Summary.tsx)
+  'Load on the amplifier (lowest impedance)':
+    'Belasting van de versterker (laagste impedantie)',
+  'Load on the amplifier (EPDR)':
+    'Belasting van de versterker (EPDR)',
+  'Protection of the {drv} at its resonance':
+    'Bescherming van de {drv} op zijn resonantie',
+  'Power lost in resistors':
+    'Vermogen verloren in weerstanden',
+  'Hottest resistor':
+    'Heetste weerstand',
+  'Peak current through a coil':
+    'Piekstroom door een spoel',
+  'not judged':
+    'niet beoordeeld',
+  'met':
+    'gehaald',
+  'met, only within tolerance':
+    'gehaald, alleen binnen de tolerantie',
+  'NOT met':
+    'NIET gehaald',
+  'How this design does':
+    'Hoe dit ontwerp het doet',
+  'No design is loaded, so there is nothing to judge yet. Pick a design from the list above.':
+    'Er is geen ontwerp geladen, dus er valt nog niets te beoordelen. Kies een ontwerp uit de lijst hierboven.',
+  'Your requirements':
+    'Jouw eisen',
+  'You stated no requirements, so nothing below judges this design.':
+    'Je hebt geen eisen gesteld, dus niets hieronder beoordeelt dit ontwerp.',
+  'Not judged, because you stated no limit: {list}.':
+    'Niet beoordeeld, omdat je geen grens stelde: {list}.',
+  'Key figures':
+    'Kerngetallen',
+  'Phase tracking {lo} → {hi}':
+    'Fasesporing {lo} → {hi}',
+  'Lowest impedance the amplifier sees':
+    'Laagste impedantie die de versterker ziet',
+  'Below {hz} Hz the measurements are not valid, so the design is not judged there. To design the bass too, add a near-field measurement and merge it with the far field.':
+    'Onder {hz} Hz zijn de metingen niet geldig, dus daar wordt het ontwerp niet beoordeeld. Wil je het laag ook ontwerpen, voeg dan een nabij-veldmeting toe en merge die met het verre veld.',
+  'All details (full Engine v2 report, {n} notes)':
+    'Alle details (volledig Engine v2-rapport, {n} opmerkingen)',
+  'All details (full Engine v2 report)':
+    'Alle details (volledig Engine v2-rapport)',
 };

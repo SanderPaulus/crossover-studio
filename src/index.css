@@ -5033,3 +5033,40 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .v2-guided-order select {
   margin-left: 0.25rem;
 }
+
+/* GUIDED RESULT — the compact Engine v2 summary (GuidedV2Summary.tsx). */
+.guided-v2-summary .guided-sub {
+  margin: 0.8rem 0 0.3rem;
+  font-size: 0.95rem;
+}
+.guided-v2-summary .guided-reqs,
+.guided-v2-summary .guided-figs {
+  margin: 0;
+  padding-left: 1.1rem;
+  line-height: 1.7;
+}
+.guided-v2-summary .guided-req-fig {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.guided-v2-summary .guided-reqs .v2-on,
+.guided-v2-summary .guided-reqs .v2-fail,
+.guided-v2-summary .guided-reqs .v2-unjudged {
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+}
+.guided-v2-summary .guided-bass-note {
+  margin: 0.8rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.guided-v2-summary .guided-details {
+  margin-top: 0.9rem;
+}
+.guided-v2-summary .guided-details > summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.guided-v2-summary .guided-details > .v2-panel {
+  margin-top: 0.6rem;
+}
