@@ -9071,3 +9071,51 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
     - **Wat dit wel en niet bewijst:** het bewijst dat een opgeslikte platformfout dit beeld NIET
       MEER kan geven. Het bewijst niet dat dat de oorzaak wás. Keert de flake terug, dan is het iets
       anders, en dan faalt de run nu luid als het een platformfout is.
+
+### C-1-guards (de catalogus: standaard v9, ratings uit fabrikantbladen, spanning naast de condensator; 07-11-2026)
+
+- **De app leverde de KLEINE catalogus mee (v6: 182 SKU's, 27 luchtspoelen, 97 condensatoren),
+  en alleen met de demo.** Met eigen metingen in een verse browser was er dus géén catalogus, en
+  de snap bleef stil uit. Nu geldt:
+  - **v9 is de standaard:** v8 (2388 SKU's) plus tolerantie en DC-spanning.
+  - Hij wordt bij de eerste start vanzelf geïnstalleerd, als eigen chunk
+    (`loadDefaultCatalogText`), dus het opstarten wordt er niet trager van.
+  - Een catalogus die de ontwerper in de editor leegmaakte, blijft leeg
+    (`ads-catalog-cleared`).
+- **`scripts/build-catalog-v9.ts`** schrijft `src/lib/parsers/fixtures/catalog-v9.json` uit v8.
+  - Elk getal komt van een gelezen pagina, met URL in de notitie van het bestand.
+  - Waar de bronnen botsen, telt het veiligere getal: MCap Supreme 600 VDC (site) tegen 800 VDC
+    (blad 2006); Duelund CAST ±10 % tegen ±5 %.
+  - Leeg waar niets gedekt is: Superior Z-Cap 33 µF, Alumen onder 1 µF, Audyn (QS4 of QS6 per
+    SKU onbekend).
+  - Uitkomst: 142 van de 164 condensatoren hebben een spanning, 272 onderdelen een tolerantie.
+  - `catalogV9.test.ts`: v9 = v8 met precies twee velden erbij, plus steekproeven per serie.
+- **Besluit (Sanders delegatie):** `voltageV` IS de DC-rating. De piek van het AC-signaal wordt
+  daartegen gelegd, volgens de gangbare bouwregel.
+- **Fase A gebouwd, alleen rapportage:**
+  - `partRatingsOf` leest de spanning van een condensator; een parallelle bank telt als haar
+    zwakste lid.
+  - `ReportSettings.partRatings` brengt die naar `capacitorLoads` (`ratedV`, `ratedSource`,
+    `ratedShare`; `buildability/1.2`, recorderblok bijgewerkt).
+  - Het paneel toont per condensator "piek V / rating V (%)". Er is geen poort.
+- **Guided** zegt per ontwerp of de onderdelen echte catalogusonderdelen zijn (`partsLine`,
+  geteld op de `catalog`-attributie van de onderdelen zelf), en zo niet, waarom.
+- **De editor** liet `maxCurrentA` bij elke bewerking vallen; dat is gerepareerd
+  (`catalogManagerDraft.test.ts`).
+- **De condensatorreeks is NIET aangevuld, en dat is een meting.** Alle series samen dekken
+  0,1–150 µF met hooguit ×1,25 tussen buren: dat is de E12-reeks van de fabrikanten zelf.
+  Toevoegen zou onderdelen verzinnen. Tussenwaarden haalt de snap met een parallelle bank.
+- **De snap kreeg een tweede poging en een eerlijke melding** (`netOptimizer.ts`, motor):
+  - Breekt de eerste keus een harde grens, dan kiest hij elke spoel opnieuw uit de dikste draad
+    bij die waarde, en weigert hij pas daarna.
+  - De melding noemt sinds C-1 de grens die ECHT brak. Tot nu toe zei ze altijd
+    "source-resistance".
+- **OPEN, en de reden dat de demo nog steeds niet snapt:** op de driewegdemo leest de
+  bronweerstandsprobe op het GESNAPTE netwerk **36,3 Ω** tegen de app-standaard van 2,0 Ω, en
+  36,4 Ω met de dikste draad. Dat is geen koper. Vermoedelijk schuift een val of resonantie door
+  de afgeronde waarden onder het meetpunt van de probe (V34-familie). Niet onderzocht.
+- **Gemeten:**
+  - `npm run test:fast` 265 s: 223 bestanden (222 + 1), 3010 tests (3006 + 4), groen.
+  - `npx vitest run` 528 s: 223 bestanden, 3010 tests, groen; alle vier de live ketenruns
+    byte-identiek. Casus 1/1b/1h/2 snappen niet, dus de tweede poging is daar per constructie
+    afwezig.

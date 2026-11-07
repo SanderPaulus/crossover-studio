@@ -306,8 +306,34 @@ describe('U-5c — de piekspanning over elke condensator', () => {
     /* Bewust, en niet bij gebrek aan moeite: de catalogus draagt `powerW` voor
      * weerstanden en `maxCurrentA` voor kernspoelen en NIETS voor
      * condensatoren. Een toelating hier verzinnen zou data verzinnen (A3h). */
+    /* Sinds A5e.3 (07-11-2026) draagt de catalogus een nominale spanning en
+     * staat die ERNAAST (`ratedV`, `ratedSource`, `ratedShare`). Wat er nog
+     * steeds niet is, is een TOEGESTANE waarde of een oordeel: geen `allowed`,
+     * geen `pass`. Tot A5e.3 pinde deze claim vijf sleutels; de kern blijft. */
     const c = capacitorLoads(capAnalysis(), { peakInputVolts: 50 })[0];
-    expect(Object.keys(c).sort()).toEqual(['atHz', 'farad', 'id', 'peakV', 'why']);
+    expect(Object.keys(c).sort()).toEqual(['atHz', 'farad', 'id', 'peakV', 'ratedShare', 'ratedSource', 'ratedV', 'why']);
+    expect(Object.keys(c).some((k) => /allow|pass|ok/i.test(k))).toBe(false);
     expect(worstCapacitor(capacitorLoads(capAnalysis(), { peakInputVolts: 50 }))!.id).toBe('C1');
+  });
+});
+
+describe('A5e.3 — the rated voltage beside the peak across a capacitor', () => {
+  it('with a rating: ratedV, its source and the share the peak uses; without: all three null', () => {
+    const plain = capacitorLoads(capAnalysis(), { peakInputVolts: 50 })[0];
+    expect(plain.ratedV).toBeNull();
+    expect(plain.ratedSource).toBeNull();
+    expect(plain.ratedShare).toBeNull();
+    const rated = capacitorLoads(capAnalysis(), { peakInputVolts: 50, ratings: { C1: { voltageV: 250, source: 'catalogue X' } } })[0];
+    expect(rated.peakV).toBe(plain.peakV);
+    expect(rated.ratedV).toBe(250);
+    expect(rated.ratedSource).toBe('catalogue X');
+    expect(rated.ratedShare).toBeCloseTo(plain.peakV! / 250, 12);
+  });
+
+  it('a rating without a peak reading gives no share (P4): nothing is compared with nothing', () => {
+    const c = capacitorLoads(capAnalysis(), { ratings: { C1: { voltageV: 250, source: 'catalogue X' } } })[0];
+    expect(c.peakV).toBeNull();
+    expect(c.ratedV).toBe(250);
+    expect(c.ratedShare).toBeNull();
   });
 });

@@ -5666,8 +5666,43 @@ export function optimizeNetworkValues(
      * Rolled back whole. Continuous values that cannot be bought are a worse
      * answer than "this candidate does not work", but they are an HONEST one,
      * and the note says which it is. */
-    const snapped = applied(picks);
-    const snapViolation = constraintViolation(snapped);
+    let snapped = applied(picks);
+    let snapViolation = constraintViolation(snapped);
+    /* SECOND ATTEMPT BEFORE THE ROLLBACK (07-11-2026). The first choice is made
+     * on fit, cost and the load target, and only THEN checked against the hard
+     * constraints — so with a large catalogue it can land on cheap thin wire
+     * whose DCR pushes the source resistance past the limit, and the whole
+     * candidate fell back to unbuyable continuous values. Measured on the demo
+     * with the 2388-SKU catalogue: refused at the default 2.0 Ω, while the
+     * same values exist in thicker wire. So: re-pick every COIL from the
+     * thickest wire at its value — `pickCandidates` with a vanishing DCR
+     * ceiling returns exactly that (its value-aware fallback keeps the parts
+     * within 1.5× of the lowest DCR that covers the value) — keep every other
+     * pick, and check again. Only if that breaks the limit too is the snap
+     * refused. Deterministic, and absent on any run whose first snap passes. */
+    if (snapViolation && snapables.some(({ q }) => q.type === 'Inductor')) {
+      const thick = snapables.map(({ q }, j): CatalogPick[] => {
+        if (q.type !== 'Inductor') return picks[j] ? [picks[j]!] : [];
+        const u = PARAM_OF.L;
+        const raw = q.params.find((x) => x.name === u.name)?.value ?? 0;
+        const fit = dcrFitById[q.partId!];
+        const only = fit ? (p: CatalogPart) => catalogFamilyOf(p) === fit.family : undefined;
+        return pickCandidates('L', raw / u.factor, 3, snapPrefs, posOfPart(q.partId!), Number.MIN_VALUE, only);
+      });
+      const retry = descend(thick);
+      const again = applied(retry.picks);
+      const againViolation = constraintViolation(again);
+      if (!againViolation) {
+        picks = retry.picks;
+        snapped = again;
+        snapNote =
+          (snapNote ? `${snapNote} · ` : '') +
+          `snap: the first choice broke a hard limit (${snapViolation}); landed on the thickest wire at each coil value instead`;
+        snapViolation = null;
+      } else {
+        snapViolation = `${snapViolation}; with the thickest wire at each coil value: ${againViolation}`;
+      }
+    }
     if (snapViolation) {
       infeasible =
         `the catalog snap would land on purchasable parts whose ${snapViolation}. Rolled back to ` +
@@ -5675,7 +5710,10 @@ export function optimizeNetworkValues(
         `stands: give the low branch thicker wire to choose from, or fewer series elements`;
       snapNote =
         (snapNote ? `${snapNote} · ` : '') +
-        `⚠ snap REFUSED: purchasable parts would break the source-resistance limit`;
+        /* The note names the limit that actually broke. It used to say "the
+         * source-resistance limit" whatever broke — a gate or the load floor
+         * read the same — and a reader then fixes the wrong thing (F0). */
+        `⚠ snap REFUSED: purchasable parts would break a hard limit — ${snapViolation}`;
     } else {
       cur = { ...cur, parts: snapped };
     }

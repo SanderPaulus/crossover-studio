@@ -2191,4 +2191,17 @@ export const nl: Record<string, string> = {
     'Nominale spanning (V)',
   'blank = not stated':
     'leeg = niet opgegeven',
+  // Guided parts reality (GuidedV2Summary.tsx)
+  'All {n} parts are real catalogue parts — this list can be ordered.':
+    'Alle {n} onderdelen zijn echte catalogusonderdelen — deze lijst kun je bestellen.',
+  'Ideal values: none of the {n} parts is a catalogue part, so this is not yet a list you can order.':
+    'Ideale waarden: geen van de {n} onderdelen is een catalogusonderdeel, dus dit is nog geen lijst die je kunt bestellen.',
+  '{k} of {n} parts are real catalogue parts; the other {m} carry ideal values.':
+    '{k} van de {n} onderdelen zijn echte catalogusonderdelen; de andere {m} hebben ideale waarden.',
+  'No catalogue is loaded — load one under Expert → Filters → Components.':
+    'Er is geen catalogus geladen — laad er een onder Expert → Filters → Componenten.',
+  '“Use real catalog parts” is switched off (Expert → Filters → Components).':
+    '„Echte catalogusonderdelen gebruiken” staat uit (Expert → Filters → Componenten).',
+  'The catalogue snap did not land on this design: real parts would break a hard limit (often the source resistance of thin coil wire) — the run notes say which.':
+    'De catalogussnap is op dit ontwerp niet geland: echte onderdelen zouden een harde grens breken (vaak de bronweerstand van dunne spoeldraad) — de runnotities zeggen welke.',
 };

@@ -98,6 +98,7 @@ import {
   coilLoads,
   resistorLoads,
   type CapacitorLoad,
+  type PartRatings,
   type CoilLoad,
   type ResistorLoad,
 } from './metrics/buildability.ts';
@@ -198,6 +199,13 @@ export interface ReportSettings extends ProjectSettings, GateSettings, BudgetSet
    * which one it was.
    */
   reOhmByDriver?: Record<string, number>;
+  /**
+   * A5e.3 (07-11-2026) — what the catalogue rates the loaded network's snapped
+   * parts for, by part id (`partRatingsOf`). The report only READS it: today a
+   * capacitor's rated voltage beside the peak across it. Absent = no rating
+   * known, and every such column says so (P4).
+   */
+  partRatings?: PartRatings;
   /**
    * Quality limits the motional R_e fit may abstain on (A5c.1 / V8d). Absent =
    * the extractor's own published limits in `constants.ts`. Raising one is a
@@ -1142,6 +1150,7 @@ export function buildReport(input: EngineV2ReportInput): EngineV2Report {
        * margin: there is nothing stated to compare a capacitor with. */
       capacitorLoads: capacitorLoads(analysis, {
         ...(peakV !== undefined ? { peakInputVolts: peakV } : {}),
+        ...(input.settings.partRatings ? { ratings: input.settings.partRatings } : {}),
       }),
     };
   }

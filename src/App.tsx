@@ -140,6 +140,7 @@ import { HelpPanel } from './components/HelpPanel.tsx';
 import { MeasuringGuide } from './components/MeasuringGuide.tsx';
 import { releaseAfterPaint, shouldDeferOnBoot } from './lib/bootDefer.ts';
 import { EngineV2Panel } from './components/EngineV2Panel.tsx';
+import { partRatingsOf } from './lib/engine2/optimizer/partRatings.ts';
 import { GuidedV2Summary } from './components/GuidedV2Summary.tsx';
 import { ENGINE_V2_LABEL, ENGINE_V2_VERSION } from './lib/engine2/version.ts';
 import { buildReport, type EngineV2ReportInput } from './lib/engine2/report.ts';
@@ -499,7 +500,14 @@ import { reachesLevelHz, powerShape } from './lib/bandMetrics.ts';
 import { beamwidth6dBHalfAngle, buildSonogram, type SonogramMode } from './lib/sonogram.ts';
 import Sonogram from './components/Sonogram.tsx';
 import { angleFromFilename } from './lib/angles.ts';
-import demoCatalog from './lib/parsers/fixtures/gemini-catalog-v6.json?raw';
+/* The DEFAULT catalog (07-11-2026): v9 = v8, Sander's Jantzen/Mundorf/
+ * Intertechnik database (2388 SKUs: 1482 air-core coils, 611 P-cores, 164 caps,
+ * 108 resistors), plus each series' datasheet tolerance and rated DC voltage
+ * (`scripts/build-catalog-v9.ts`, sources in the file's note). It replaced v6
+ * (182 SKUs, 27 air-core coils, 97 caps). Loaded as its own chunk, on demand,
+ * so it costs the boot nothing. */
+const loadDefaultCatalogText = (): Promise<string> =>
+  import('./lib/parsers/fixtures/catalog-v9.json?raw').then((m) => m.default);
 
 type Parsed = ReturnType<typeof parseFrd>;
 type ParsedZma = ReturnType<typeof parseZma>;
@@ -2994,7 +3002,25 @@ export default function App() {
   const activeDesign = useMemo(
     () => designs.find((d) => d.id === activeDesignId) ?? null,
     [designs, activeDesignId],
-  );
+  );  /**
+   * GUIDED — are the loaded design's parts REAL? Counted off the parts
+   * themselves (a snapped part carries its catalogue attribution), never off a
+   * setting, so the line describes this network and not an intention.
+   */
+  const guidedPartsReality = useMemo(() => {
+    const rlc = (activeDesign?.parts ?? []).filter(
+      (p) => (p.type === 'Resistor' || p.type === 'Inductor' || p.type === 'Capacitor') && !p.open && !p.shorted,
+    );
+    if (rlc.length === 0) return null;
+    const why = !hasImportedCatalog()
+      ? t('No catalogue is loaded — load one under Expert → Filters → Components.')
+      : !catalogSnap
+        ? t('“Use real catalog parts” is switched off (Expert → Filters → Components).')
+        : t('The catalogue snap did not land on this design: real parts would break a hard limit (often the source resistance of thin coil wire) — the run notes say which.');
+    return { total: rlc.length, catalog: rlc.filter((p) => p.catalog).length, why };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDesign, catalogSnap, catalogRev]);
+
   /**
    * A5e.2 — the voicing the ACTIVE design is judged and searched against.
    *
@@ -3674,15 +3700,7 @@ export default function App() {
     /* The demo playground ships the priced Jantzen/Mundorf catalog too, so Snap
      * to catalog, the BOM and the coil-DCR fit work out of the box — but NEVER
      * overwrite a catalog the user imported or edited themselves. */
-    if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) {
-      try {
-        const imp = deserializeCatalog(demoCatalog);
-        applyCatalogSeries(imp.series, imp.parts);
-        void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
-      } catch {
-        // Demo catalog fixture unreadable: run with built-ins.
-      }
-    }
+    if (!localStorage.getItem(CUSTOM_CATALOG_KEY)) void installDefaultCatalog();
   }
 
   /**
@@ -4692,6 +4710,14 @@ export default function App() {
            * way can be resolved to a DCR model in the report. Only when some
            * way states one: without a family there is nothing to resolve. */
           ...(coilDcrFits.length > 0 ? { coilDcrFits } : {}),
+          /* A5e.3 (07-11-2026) — what the catalogue rates this network's
+           * snapped parts for, so the report can set a capacitor's rated voltage
+           * beside the peak across it. Read off the parts' own attribution. */
+          ...((): { partRatings?: ReturnType<typeof partRatingsOf> } => {
+            if (!net) return {};
+            const r = partRatingsOf(net.parts);
+            return Object.keys(r).length > 0 ? { partRatings: r } : {};
+          })(),
           /* H-2 — THE STATED ACTIVE SIDE reaches the report, and from there the
            * modelled branch joins every acoustic composition and no electrical
            * one (H-1, `report.ts`). The driver IDS come from the same resolver
@@ -4779,6 +4805,7 @@ export default function App() {
     v2Meas,
     activeTargetCurve,
     v2ActiveSide,
+    catalogRev,
   ]);
 
   /**
@@ -12994,9 +13021,17 @@ export default function App() {
    *  you rejected, and an exported catalog stays a description of what
    *  exists rather than of what one person happens to like. */
   const CATALOG_OFF_KEY = 'ads-catalog-off';
+  /** Set when the designer EMPTIED the catalog in the manager: then the default
+   *  is not re-installed behind their back on the next boot. */
+  const CATALOG_CLEARED_KEY = 'ads-catalog-cleared';
   useEffect(() => {
     // Order matters: the off-list is resolved against the loaded series.
     const stored = localStorage.getItem(CUSTOM_CATALOG_KEY);
+    /* No catalog and never emptied on purpose: install the default, so a
+     * design is snapped to real parts out of the box (07-11-2026). Until then
+     * a project of your own in a fresh browser ran without any catalog, and
+     * the snap stayed off without a word. */
+    if (!stored && !localStorage.getItem(CATALOG_CLEARED_KEY)) void installDefaultCatalog();
     if (stored) {
       void (async () => {
         try {
@@ -13035,15 +13070,28 @@ export default function App() {
     loadDemoCatalogNow();
   }
   function loadDemoCatalogNow() {
+    void installDefaultCatalog().then((n) => {
+      if (n !== null) {
+        setPersistNote(t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n }));
+      }
+    });
+  }
+
+  /**
+   * Install the default catalog: parse, apply, persist, and clear the "the user
+   * emptied it" marker. Returns the SKU count, or null when it could not be read
+   * (then the built-in grids stay, and the error is shown).
+   */
+  async function installDefaultCatalog(): Promise<number | null> {
     try {
-      const imp = deserializeCatalog(demoCatalog);
+      const imp = deserializeCatalog(await loadDefaultCatalogText());
       applyCatalogSeries(imp.series, imp.parts);
       void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(imp.series, imp.parts), t('The catalog'));
-      setPersistNote(
-        t('Demo catalog loaded — {n} priced SKUs (snap, BOM and inspector use them)', { n: imp.parts.length }),
-      );
+      localStorage.removeItem(CATALOG_CLEARED_KEY);
+      return imp.parts.length;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      return null;
     }
   }
 
@@ -13069,6 +13117,7 @@ export default function App() {
       // An empty custom catalog would be rejected on the next load — built-ins
       // take over, so drop the stored blob instead of persisting an invalid one.
       localStorage.removeItem(CUSTOM_CATALOG_KEY);
+      localStorage.setItem(CATALOG_CLEARED_KEY, '1');
     } else {
       void storeCompressed(CUSTOM_CATALOG_KEY, serializeCatalog(series, parts), t('The catalog'));
     }
@@ -25010,6 +25059,7 @@ export default function App() {
           uiMode === 'guided' ? (
             <GuidedV2Summary
               report={engineV2Report.report}
+              parts={guidedPartsReality}
               notSimulated={simStale ? notSimulatedTag(simStale.showing, simStale.refusal.describe) : null}
               limitProvenance={v2LimitProvenance}
             >

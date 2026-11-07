@@ -635,6 +635,25 @@ export function EngineV2Panel({ report, ambiguous, floors = [], notSimulated = n
                 .map((l) => `${l.id} ${l.peakA === null ? '?' : l.peakA.toFixed(2)} A` + (l.atHz !== null ? ` @ ${l.atHz.toFixed(0)} Hz` : '') + (l.allowedA !== null ? ` / ${l.allowedA.toFixed(2)}` : ''))
                 .join(' · ')}
             </div>
+            {/* U-5c + A5e.3 (07-11-2026) — every capacitor: the peak voltage
+                across it at the amplifier's peak input, beside the rated (DC)
+                voltage of the snapped part where the catalogue prints one. A
+                REPORT: nothing judges it; a part over its rating is marked. */}
+            {metrics.buildability.capacitorLoads.length > 0 && (
+              <div className="v2-muted v2-cap-volts">
+                Capacitors, peak voltage across at the amplifier&apos;s peak input against the part&apos;s rated DC voltage:{' '}
+                {metrics.buildability.capacitorLoads
+                  .map((l) =>
+                    l.peakV === null
+                      ? `${l.id} ? (${l.why ?? 'no reading'})`
+                      : `${l.id} ${l.peakV.toFixed(0)} V` +
+                        (l.ratedV !== null
+                          ? ` / ${l.ratedV.toFixed(0)} V (${(l.ratedShare! * 100).toFixed(0)} %${l.ratedShare! > 1 ? ' — OVER the rating' : ''})`
+                          : ' (no rating)'),
+                  )
+                  .join(' · ')}
+              </div>
+            )}
             <div className="v2-muted">
               Resistor watts are IEC-weighted means at{' '}
               {(() => {

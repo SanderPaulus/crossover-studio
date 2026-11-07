@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { GuidedV2Summary, guidedVerdict } from './GuidedV2Summary.tsx';
+import { GuidedV2Summary, guidedVerdict, partsLine } from './GuidedV2Summary.tsx';
 import { EngineV2Panel } from './EngineV2Panel.tsx';
 import { buildReport } from '../lib/engine2/report.ts';
 import type { GateVerdict } from '../lib/engine2/optimizer/gates.ts';
@@ -86,5 +86,27 @@ describe('the guided result summary', () => {
     const app = readFileSync(fileURLToPath(new URL('../App.tsx', import.meta.url)), 'utf8');
     expect(app).toMatch(/uiMode === 'guided' \? \(\s*<GuidedV2Summary/);
     expect(app.match(/<EngineV2Panel\b/g)!.length).toBe(2);
+  });
+
+  it('the parts line: orderable, partly, or ideal values with the reason', () => {
+    expect(partsLine({ total: 12, catalog: 12, why: null })).toMatchObject({ ok: true });
+    expect(partsLine({ total: 12, catalog: 12, why: null }).text).toContain('can be ordered');
+    const none = partsLine({ total: 12, catalog: 0, why: 'No catalogue is loaded.' });
+    expect(none.ok).toBe(false);
+    expect(none.text).toContain('Ideal values');
+    expect(none.text).toContain('No catalogue is loaded.');
+    expect(partsLine({ total: 12, catalog: 9, why: null }).text).toMatch(/9 of 12 .* other 3/);
+    const html = renderToStaticMarkup(
+      <GuidedV2Summary report={loaded} parts={{ total: 12, catalog: 0, why: 'X.' }}>
+        <EngineV2Panel report={loaded} />
+      </GuidedV2Summary>,
+    );
+    expect(html.split('<details')[0]).toContain('Ideal values');
+  });
+
+  it('App: the parts line is counted off the parts themselves', () => {
+    const app = readFileSync(fileURLToPath(new URL('../App.tsx', import.meta.url)), 'utf8');
+    expect(app).toMatch(/parts=\{guidedPartsReality\}/);
+    expect(app).toMatch(/catalog: rlc\.filter\(\(p\) => p\.catalog\)\.length/);
   });
 });

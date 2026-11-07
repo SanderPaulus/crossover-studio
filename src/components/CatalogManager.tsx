@@ -40,6 +40,8 @@ interface SkuDraft {
   powerW: string;
   tolerancePct: string;
   voltageV: string;
+  /** V50 saturation current, carried through an edit (no field yet). */
+  maxCurrentA?: number;
   priceEur: string;
   tier: CatalogTier | '';
 }
@@ -80,7 +82,7 @@ const emptySkuDraft = (kind: CatalogKind = 'C'): SkuDraft => ({
   tier: '',
 });
 
-const toSkuDraft = (p: CatalogPart): SkuDraft => ({
+export const toSkuDraft = (p: CatalogPart): SkuDraft => ({
   originalId: p.id,
   id: p.id,
   brand: p.brand,
@@ -92,6 +94,7 @@ const toSkuDraft = (p: CatalogPart): SkuDraft => ({
   powerW: p.powerW !== undefined ? String(p.powerW) : '',
   tolerancePct: p.tolerancePct !== undefined ? String(p.tolerancePct) : '',
   voltageV: p.voltageV !== undefined ? String(p.voltageV) : '',
+  ...(p.maxCurrentA !== undefined ? { maxCurrentA: p.maxCurrentA } : {}),
   priceEur: p.priceEur !== undefined ? String(p.priceEur) : '',
   tier: p.tier ?? '',
 });
@@ -143,7 +146,7 @@ const num = (s: string): number | undefined => {
 
 /** Turn the SKU form back into a CatalogPart (NaN survives so skuError names
  *  the offending field instead of a silent drop). */
-function fromSkuDraft(d: SkuDraft): CatalogPart {
+export function fromSkuDraft(d: SkuDraft): CatalogPart {
   const value = num(d.value);
   const seriesR = num(d.seriesR);
   const wireMm = num(d.wireMm);
@@ -163,6 +166,7 @@ function fromSkuDraft(d: SkuDraft): CatalogPart {
     ...(powerW !== undefined ? { powerW } : {}),
     ...(tolerancePct !== undefined ? { tolerancePct } : {}),
     ...(voltageV !== undefined ? { voltageV } : {}),
+    ...(d.maxCurrentA !== undefined ? { maxCurrentA: d.maxCurrentA } : {}),
     ...(priceEur !== undefined ? { priceEur } : {}),
     ...(d.tier !== '' ? { tier: d.tier } : {}),
   };

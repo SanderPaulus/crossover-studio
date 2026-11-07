@@ -114,11 +114,40 @@ export interface GuidedV2SummaryProps {
   notSimulated?: { label: string; title: string } | null;
   /** Who stated each gate's limit, per gate id (U-9 fase 3). */
   limitProvenance?: Readonly<Record<string, string>>;
+  /**
+   * Whether the loaded design is made of REAL parts: how many of its passive
+   * parts carry a catalogue attribution, out of how many, and — when none do —
+   * why (no catalogue loaded, or the snap switched off). Null = no network.
+   */
+  parts?: { total: number; catalog: number; why: string | null } | null;
   /** The full panel, shown inside the details fold. */
   children: ReactNode;
 }
 
-export function GuidedV2Summary({ report, notSimulated = null, limitProvenance = {}, children }: GuidedV2SummaryProps) {
+/** The parts line: buildable, partly, or ideal values — with the reason. */
+export function partsLine(p: { total: number; catalog: number; why: string | null }): { text: string; ok: boolean } {
+  if (p.catalog === p.total) {
+    return { text: t('All {n} parts are real catalogue parts — this list can be ordered.', { n: p.total }), ok: true };
+  }
+  if (p.catalog === 0) {
+    return {
+      text:
+        t('Ideal values: none of the {n} parts is a catalogue part, so this is not yet a list you can order.', { n: p.total }) +
+        (p.why ? ` ${p.why}` : ''),
+      ok: false,
+    };
+  }
+  return {
+    text: t('{k} of {n} parts are real catalogue parts; the other {m} carry ideal values.', {
+      k: p.catalog,
+      n: p.total,
+      m: p.total - p.catalog,
+    }),
+    ok: false,
+  };
+}
+
+export function GuidedV2Summary({ report, notSimulated = null, limitProvenance = {}, parts = null, children }: GuidedV2SummaryProps) {
   const { gates, system } = report;
   const stated = gates.verdicts.filter((v) => v.active);
   const unstated = [...new Set(gates.verdicts.filter((v) => !v.active).map((v) => gateLabel(v)))];
@@ -191,6 +220,10 @@ export function GuidedV2Summary({ report, notSimulated = null, limitProvenance =
               {t('Lowest impedance the amplifier sees')}: <b>{gateFigure(zMin, 'M-B/|Z|')}</b>
             </li>
           </ul>
+
+          {parts && (
+            <p className={`guided-parts ${partsLine(parts).ok ? 'v2-on' : 'v2-unjudged'}`}>{partsLine(parts).text}</p>
+          )}
 
           {bottom !== null && (
             <p className="guided-bass-note">

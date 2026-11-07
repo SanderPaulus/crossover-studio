@@ -44,6 +44,14 @@ export function partRatingsOf(
       if (amps.every((a): a is number => a !== undefined && a > 0)) {
         out[p.partId] = { maxCurrentA: Math.min(...amps), source };
       }
+    } else if (p.type === 'Capacitor') {
+      /* A5e.3 (07-11-2026) — a capacitor bank is PARALLEL (`SKU+SKU`), so every
+       * member sees the full voltage: the bank is as strong as its weakest. A
+       * member without a rating leaves the bank unrated — never half-known. */
+      const volts = skus.map((m) => m.voltageV);
+      if (volts.every((v): v is number => v !== undefined && v > 0)) {
+        out[p.partId] = { voltageV: Math.min(...volts), source };
+      }
     }
   }
   return out;

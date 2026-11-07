@@ -48,7 +48,9 @@ import type { NetworkAnalysis } from './types.ts';
  * The SHAPE grew and not a single number moved — the resistor watts and the
  * coil currents are bit for bit what they were — and the bump is the A5e.5
  * cache rule applied to a shape change, the V44 `z-resonance` precedent. */
-export const BUILDABILITY_VERSION = 'buildability/1.1';
+/* 1.2 (07-11-2026): a capacitor's load carries its catalogue rated voltage and
+ * the share of it the peak uses — the shape grew, no number moved. */
+export const BUILDABILITY_VERSION = 'buildability/1.2';
 
 /** What the CHOSEN part on one element is rated for, keyed by element id. */
 export interface PartRating {
@@ -56,6 +58,9 @@ export interface PartRating {
   powerW?: number;
   /** Saturation / maximum current, A (cored coils). */
   maxCurrentA?: number;
+  /** Rated voltage, V (capacitors) — the DC rating the datasheet prints
+   *  (A5e.3, 07-11-2026: `voltageV` IS the DC rating, by decision). */
+  voltageV?: number;
   /** Where the rating came from — the SKU, or the class the project stated. */
   source: string;
 }
@@ -253,6 +258,14 @@ export interface CapacitorLoad {
   atHz: number | null;
   /** P4's visible half: why there is no reading, when there is none. */
   why: string | null;
+  /** The snapped part's rated voltage (DC), V; null when the part carries none. */
+  ratedV: number | null;
+  /** Where that rating came from (the SKU), or null. */
+  ratedSource: string | null;
+  /** peakV / ratedV: the share of the rating the peak uses; null without both.
+   *  The PEAK of the AC signal against the DC rating — the common build rule
+   *  (a film cap's VAC rating, where printed, is lower; see the A5e.3 note). */
+  ratedShare: number | null;
 }
 
 /**
@@ -287,7 +300,7 @@ export interface CapacitorLoad {
  */
 export function capacitorLoads(
   analysis: NetworkAnalysis,
-  i: { peakInputVolts?: number },
+  i: { peakInputVolts?: number; ratings?: PartRatings },
 ): CapacitorLoad[] {
   const { grid, generatorVolts: eg } = analysis;
   const vPeak = i.peakInputVolts !== undefined && i.peakInputVolts > 0 ? i.peakInputVolts : null;
@@ -326,7 +339,18 @@ export function capacitorLoads(
         atHz = grid[bestIdx];
       }
     }
-    out.push({ id: p.id, farad: p.value, peakV, atHz, why });
+    const rating = i.ratings?.[p.id]?.voltageV;
+    const ratedV = rating !== undefined && rating > 0 ? rating : null;
+    out.push({
+      id: p.id,
+      farad: p.value,
+      peakV,
+      atHz,
+      why,
+      ratedV,
+      ratedSource: ratedV !== null ? (i.ratings?.[p.id]?.source ?? null) : null,
+      ratedShare: ratedV !== null && peakV !== null ? peakV / ratedV : null,
+    });
   }
   return out;
 }

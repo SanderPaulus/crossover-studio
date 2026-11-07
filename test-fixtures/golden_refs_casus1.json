@@ -35134,7 +35134,7 @@
   },
   "v50_bouwbaarheid": {
    "_": "V50 — BOUWBAARHEID op élke bevroren netlist: het vermogen in de HEETSTE discrete weerstand (M-A, IEC-gewogen bij het continue vermogen; de weerstand met de minste marge tegen zijn toegestane waarde) tegen klasse × marge (poort M-A/part), en de PIEKSTROOM door de drukste spoel bij de piekingang (poort M-L, ongewogen), en sinds U-5c de PIEKSPANNING over de zwaarste condensator bij diezelfde piekingang — die laatste zonder poort en zonder toegestane waarde, want de catalogus draagt geen spanningsklasse voor condensatoren. Afgeleid; frozenNetlistGates.test.ts herrekent het. Zie gestelde_eisen.weerstandsklasse_* en .spoelklasse_* voor de eisen en de bevindingen erbij.",
-   "schatter": "buildability/1.1",
+   "schatter": "buildability/1.2",
    "weerstandsklasse_W": 10,
    "weerstandsmarge": 0.5,
    "toegestaan_W": 5,

@@ -233,6 +233,9 @@ describe('V50 — partRatingsOf reads the snap\'s attribution and nothing else',
     { id: 'L-CORE-4A', brand: 'x', series: 'c', kind: 'L', value: 2e-3, seriesR: 0.1, maxCurrentA: 4 },
     { id: 'L-CORE-2A', brand: 'x', series: 'c', kind: 'L', value: 1e-3, seriesR: 0.08, maxCurrentA: 2 },
     { id: 'L-AIR', brand: 'x', series: 'a', kind: 'L', value: 1e-3, seriesR: 0.3 },
+    { id: 'C-400', brand: 'x', series: 'f', kind: 'C', value: 4.7e-6, seriesR: 0.02, voltageV: 400 },
+    { id: 'C-250', brand: 'x', series: 'f', kind: 'C', value: 2.2e-6, seriesR: 0.02, voltageV: 250 },
+    { id: 'C-NONE', brand: 'x', series: 'e', kind: 'C', value: 10e-6, seriesR: 0.1 },
   ];
   const part = (type: string, partId: string, catalog?: string): VxpPart => ({
     type,
@@ -260,6 +263,17 @@ describe('V50 — partRatingsOf reads the snap\'s attribution and nothing else',
     expect(r.L1).toEqual({ maxCurrentA: 2, source: 'catalogue L-CORE-4A+L-CORE-2A' });
     expect(r.L2).toBeUndefined();
     expect(r.L3).toBeUndefined();
+  });
+
+  it('A5e.3 — a capacitor carries its rated voltage; a parallel bank its WEAKEST; an unrated member leaves it unrated', () => {
+    const r = partRatingsOf(
+      [part('Capacitor', 'C1', 'C-400'), part('Capacitor', 'C2', 'C-400+C-250'), part('Capacitor', 'C3', 'C-400+C-NONE'), part('Capacitor', 'C4')],
+      pool,
+    );
+    expect(r.C1).toEqual({ voltageV: 400, source: 'catalogue C-400' });
+    expect(r.C2).toEqual({ voltageV: 250, source: 'catalogue C-400+C-250' });
+    expect(r.C3).toBeUndefined();
+    expect(r.C4).toBeUndefined();
   });
 });
 
