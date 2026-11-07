@@ -8984,3 +8984,26 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Browsercontrole:** driewegdemo met sjabloonnetwerk, profielen "8 Ω only" en "Calm listening".
   Beide eisen staan als NIET gehaald, met de zes kerngetallen- en bas-regels. De uitklap staat dicht
   en de console is leeg.
+
+### G-2-guards (de demo's dragen weer hun datasheetfeiten; alleen bundeldata)
+
+- **Teruggedraaid uit U-3b, op Sanders besluit (07-11-2026).** U-3b haalde X_max weg met als reden
+  dat het "oordeelt". Dat is de EIS die erop gebouwd wordt (de X_max-marge, de versterkerpiek), en
+  die blijft weg. X_max, Bl en M_ms zijn datasheetfeiten, en dat is U-3c's eigen regel.
+- `BUNDLE_CARRIED_ROWS` kent sinds G-2 ook `xmaxMm`, `blTm`, `mmsG`, `powerRating`, `minCrossover`
+  en `maxCrossover`. Elke oordeelsrij staat er nog steeds niet op.
+- **Driewegdemo:** X_max, Bl en M_ms per weg.
+- **Tweewegdemo:** dezelfde voor mid en tweeter.
+- **Tweeter (beide demo's):** 100 W @ IEC 2e orde / 2200 Hz en het bereik 2200 Hz @ 2e orde – 30 kHz.
+- **Bewust leeg:** het mid-blad drukt een vermogen zonder filterconditie en geen bereik; het
+  wooferblad is nooit gelezen (U-4).
+- **De getallen worden GELEZEN uit `driverkaart` van casus 1** en niet overgetypt
+  (`demoBundle.test.ts`: één `it.each` over beide demo's). De exacte gedragen set per bundel staat
+  er bij naam (`DATASHEET_ROWS`).
+- **Gevolg:** een demorun wapent nu het excursieplafond (V49) en de `stated-min`-vloer (U-3g) op
+  mid→tweeter. De demo genereert daardoor andere kandidaten dan vóór G-2. De bewaarde app-runs
+  (`casus1_u3b_kale_demo_run.json`, `casus1_e2_verkenning_run.json`) zijn records van vóór G-2:
+  `replay-app-run.ts --set demo` laag 2 hoort daarop niet meer SAME te zeggen.
+- **Gemeten 07-11-2026:** `npm run test:fast` 268 s, 220 bestanden (219 + 1 overgeslagen), 2985 tests
+  (2981 + 4), groen (+2 tests). In de browser staan alle velden gevuld op de Drivers-stap van de
+  driewegdemo.

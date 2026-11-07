@@ -229,12 +229,20 @@ export const BUNDLE_BEARABLE_ROWS: readonly string[] = Object.freeze([
  *    it, and reading it back is how the branch gets its floor at all.
  *  · positions / baffle-width — the geometry a window is derived from.
  *  · sd — the one datasheet number kept: it gives the effective piston
- *    diameter, and with it the beaming ceiling. X_max is off the list because
- *    it JUDGES (the excursion floor, M-C's allowed voltage on f_s).
+ *    diameter, and with it the beaming ceiling. Until G-2 X_max was off the
+ *    list because it "judges" — see below.
+ *
+ * G-2 (07-11-2026) — DATASHEET FACTS ARE ON THE LIST. Until then `sd` was the
+ * only one, and X_max was struck because it "judges". It does not: it is a
+ * fact about the driver, and what judges is the REQUIREMENT built on it (the
+ * X_max margin, the amplifier peak), which stays off. Sander, 07-11-2026: the
+ * datasheet belongs in the demo. So X_max, Bl, M_ms, the power rating and the
+ * recommended range are carryable; every judgement row still is not.
  */
 export const BUNDLE_CARRIED_ROWS: readonly string[] = Object.freeze([
   'responses', 'validity', 'impedance', 'ways', 'positions', 'sd', 'baffle-width',
   'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom',
+  'xmaxMm', 'blTm', 'mmsG', 'powerRating', 'minCrossover', 'maxCrossover',
 ]);
 
 /**

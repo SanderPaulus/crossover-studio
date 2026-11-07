@@ -164,9 +164,19 @@ export const KOAN_2WAY_DEMO: DemoBundle = {
    *  datasheet number a bundle keeps, because S_d is what gives the effective
    *  piston diameter and with it the beaming ceiling of the window. */
   sdCm2: { low: '69', high: '5.7' },
-  /** X_max is EMPTY since U-3b: it judges (the excursion floor, and M-C's
-   *  allowed voltage on f_s) and a demo judges nothing. */
-  xmaxMm: {},
+  /* G-2 (07-11-2026) — THE DATASHEET FACTS ARE BACK, and only those.
+   * U-3b stripped X_max, Bl and M_ms together with the requirement sheet,
+   * on the ground that X_max "judges". That conflated two things: a
+   * REQUIREMENT is a decision about one amplifier in one room (still absent
+   * here), a DATASHEET figure is a fact about the driver that every project
+   * has (U-3c's own rule). Sander, 07-11-2026: these belong in the demo.
+   * The numbers are the driver card of the casus book
+   * (`manifest_en_geometrie.driverkaart`), read and compared by the guard.
+   * The tweeter's rating and range are BlieSMa's sheet (M-M, U-4); its
+   * test-filter corner is the bottom of that range, a stated assumption.
+   * The mid's sheet prints a rating without a filter condition and no range,
+   * so those stay empty; the woofer's sheet was never read. */
+  xmaxMm: { low: '3', high: '1' },
   /** Empty on purpose: S_d gives the piston diameter, so the beaming ceiling
    *  is measured and does not need a nominal size. */
   sizeInch: {},
@@ -198,7 +208,19 @@ export const KOAN_2WAY_DEMO: DemoBundle = {
    * `test-fixtures/casus1b/golden_refs_casus1b.json`, where the guards read
    * them. */
   engineV2: {},
-  v2Measurement: {},
+  v2Measurement: {
+    low: { blTm: '4.9', mmsG: '7.2' },
+    high: {
+      blTm: '2.6',
+      mmsG: '0.15',
+      ratedPowerW: '100',
+      testFilterOrder: '2',
+      testFilterHz: '2200',
+      minCrossoverHz: '2200',
+      minCrossoverOrder: '2',
+      maxCrossoverHz: '30000',
+    },
+  },
   /** The amplifier's minimum load is the OWNER'S preference about a rack, not
    *  a fact about this loudspeaker. A demo states none. */
   ampMinLoadOhm: null,

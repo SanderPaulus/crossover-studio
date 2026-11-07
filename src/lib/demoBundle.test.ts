@@ -177,6 +177,9 @@ describe('U-3 guard 1 — every demo measurement file states a validity the app 
  * GUARD 2 — carried lands, uncarried shows empty, and the content is pinned
  * ==================================================================== */
 
+/** G-2 — the datasheet rows a demo carries since 07-11-2026. */
+const DATASHEET_ROWS = ['xmaxMm', 'blTm', 'mmsG', 'powerRating', 'minCrossover', 'maxCrossover'];
+
 describe('U-3b guard 2 — a bundle carries measurements and geometry, and every other field of the state is empty', () => {
   it('every bearable row id and every carried row id is a real register row', () => {
     const ids = new Set(V2_INPUT_REGISTER.map((r) => r.id));
@@ -289,7 +292,10 @@ describe('U-3b guard 2 — a bundle carries measurements and geometry, and every
     expect(s.targetCurve, b.id).toBeNull();
     for (const r of DEMO_ROLES) {
       expect(s.v2Measurement[r].driveOnFsMaxDb, `${b.id} ${r}`).toBe('');
-      expect(s.xmaxMm[r], `${b.id} ${r}`).toBe('');
+      /* Until G-2 this also demanded X_max empty, on the ground that X_max
+       * "judges". It is a datasheet fact; what judges is the REQUIREMENT on
+       * it (the X_max margin, the amplifier peak), and those are the
+       * judgement keys asserted empty above (Sander, 07-11-2026). */
     }
     // A gate override is a statement about a FILE that no field may make (A3h).
     expect(s.cabinet.gateMs, b.id).toBe('');
@@ -315,11 +321,45 @@ describe('U-3b guard 2 — a bundle carries measurements and geometry, and every
      * response, so it is the mirror image. Both lists are the seven REQUIRED
      * rows plus exactly those facts about their own loudspeaker. */
     expect(BUNDLE_BEARABLE_ROWS.filter((id) => bundleCarries(KOAN_2WAY_DEMO)[id]).sort()).toEqual(
-      ['baffle-width', 'impedance', 'mergeValidFrom', 'nearFieldCone', 'positions', 'responses', 'sd', 'spliceBand', 'validity', 'ways'].sort(),
+      ['baffle-width', 'impedance', 'mergeValidFrom', 'nearFieldCone', 'positions', 'responses', 'sd', 'spliceBand', 'validity', 'ways', ...DATASHEET_ROWS].sort(),
     );
     expect(BUNDLE_BEARABLE_ROWS.filter((id) => bundleCarries(KOAN_3WAY_BUNDLE)[id]).sort()).toEqual(
-      ['baffle-width', 'impedance', 'nearFieldCone', 'nearFieldPort', 'positions', 'responses', 'sd', 'validity', 'ways'].sort(),
+      ['baffle-width', 'impedance', 'nearFieldCone', 'nearFieldPort', 'positions', 'responses', 'sd', 'validity', 'ways', ...DATASHEET_ROWS].sort(),
     );
+  });
+
+  /* G-2 — THE DATASHEET FIGURES ARE THE CASEBOOK'S DRIVER CARD, read rather
+   * than retyped (the V33 lesson): both demos use casus 1's drivers, so both
+   * are compared with `manifest_en_geometrie.driverkaart` of casus 1. */
+  it.each([
+    ['koan-3way', KOAN_3WAY_BUNDLE, { low: 'woofer', mid: 'mid', high: 'tweeter' }],
+    ['koan-2way', KOAN_2WAY_DEMO, { low: 'mid', high: 'tweeter' }],
+  ] as const)('%s: X_max, Bl, M_ms, rating and range are the driver card', (_id, b, map) => {
+    const g = JSON.parse(readFileSync(join(ROOT, 'test-fixtures', 'golden_refs_casus1.json'), 'utf-8')) as {
+      manifest_en_geometrie: { driverkaart: Record<string, Record<string, unknown>> };
+    };
+    const kaart = g.manifest_en_geometrie.driverkaart;
+    const s = demoBundleState(b);
+    for (const [role, drv] of Object.entries(map) as [BranchRole, string][]) {
+      const k = kaart[drv] as Record<string, number> & {
+        aanbevolen_kruisband?: { ondergrens_hz: number | null; ondergrens_orde?: number; bovengrens_hz: number | null };
+        vermogensopgave?: { rated_power_W: number; testfilter_orde: number; testfilter_hz: number } | null;
+      };
+      expect(Number(s.xmaxMm[role]), `${b.id} ${role} X_max`).toBe(k.X_max_mm);
+      expect(Number(s.v2Measurement[role].blTm), `${b.id} ${role} Bl`).toBe(k.Bl_Tm);
+      expect(Number(s.v2Measurement[role].mmsG), `${b.id} ${role} M_ms`).toBe(k.M_ms_g);
+      const range = k.aanbevolen_kruisband;
+      const asText = (v: number | null | undefined) => (v === null || v === undefined ? '' : String(v));
+      expect(s.v2Measurement[role].minCrossoverHz, `${b.id} ${role} min`).toBe(asText(range?.ondergrens_hz));
+      expect(s.v2Measurement[role].minCrossoverOrder, `${b.id} ${role} min order`).toBe(
+        range?.ondergrens_hz ? asText(range.ondergrens_orde) : '',
+      );
+      expect(s.v2Measurement[role].maxCrossoverHz, `${b.id} ${role} max`).toBe(asText(range?.bovengrens_hz));
+      const rating = k.vermogensopgave ?? null;
+      expect(s.v2Measurement[role].ratedPowerW, `${b.id} ${role} rating`).toBe(asText(rating?.rated_power_W));
+      expect(s.v2Measurement[role].testFilterOrder).toBe(asText(rating?.testfilter_orde));
+      expect(s.v2Measurement[role].testFilterHz).toBe(asText(rating?.testfilter_hz));
+    }
   });
 
   /* THE GEOMETRY IS THE CASEBOOK'S, read rather than retyped, so a number that

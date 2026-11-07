@@ -165,10 +165,35 @@ export const KOAN_3WAY_BUNDLE: DemoBundle = {
   },
   cabinet: KOAN_3WAY_DEMO.cabinet,
   sdCm2: KOAN_3WAY_DEMO.sdCm2,
-  xmaxMm: {},
+  /* G-2 (07-11-2026) — THE DATASHEET FACTS ARE BACK, and only those.
+   * U-3b stripped X_max, Bl and M_ms together with the requirement sheet,
+   * on the ground that X_max "judges". That conflated two things: a
+   * REQUIREMENT is a decision about one amplifier in one room (still absent
+   * here), a DATASHEET figure is a fact about the driver that every project
+   * has (U-3c's own rule). Sander, 07-11-2026: these belong in the demo.
+   * The numbers are the driver card of the casus book
+   * (`manifest_en_geometrie.driverkaart`), read and compared by the guard.
+   * The tweeter's rating and range are BlieSMa's sheet (M-M, U-4); its
+   * test-filter corner is the bottom of that range, a stated assumption.
+   * The mid's sheet prints a rating without a filter condition and no range,
+   * so those stay empty; the woofer's sheet was never read. */
+  xmaxMm: { low: '8.55', mid: '3', high: '1' },
   sizeInch: {},
   engineV2: {},
-  v2Measurement: {},
+  v2Measurement: {
+    low: { blTm: '10.45', mmsG: '44.2' },
+    mid: { blTm: '4.9', mmsG: '7.2' },
+    high: {
+      blTm: '2.6',
+      mmsG: '0.15',
+      ratedPowerW: '100',
+      testFilterOrder: '2',
+      testFilterHz: '2200',
+      minCrossoverHz: '2200',
+      minCrossoverOrder: '2',
+      maxCrossoverHz: '30000',
+    },
+  },
   ampMinLoadOhm: null,
   targetCurve: null,
 };
