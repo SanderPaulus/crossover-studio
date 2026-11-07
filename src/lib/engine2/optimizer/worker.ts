@@ -1438,7 +1438,8 @@ function tuneOptionsFor(
   const barrierOnSweep =
     stated.zFloorBarrierSource === 'sweep' ||
     stated.zFloorBarrierSource === 'safety-extended' ||
-    stated.zFloorBarrierSource === 'safety-extended-refined';
+    stated.zFloorBarrierSource === 'safety-extended-refined' ||
+    stated.zFloorBarrierSource === 'safety-extended-refined-tracked';
   if (barrierOnSweep && !reference.impedance) {
     collect.notes.push(
       'The candidate asked the amp-load barrier to aim at the measured impedance sweep' +
@@ -1446,6 +1447,8 @@ function tuneOptionsFor(
           ? "' extent (safety-extended)"
           : stated.zFloorBarrierSource === 'safety-extended-refined'
             ? "' extent, refined around its dips (safety-extended-refined, E-1)"
+            : stated.zFloorBarrierSource === 'safety-extended-refined-tracked'
+              ? "' extent, refined and tracked around its dips (safety-extended-refined-tracked)"
             : '') +
         ', and no sweep reached this run. The barrier therefore does not steer this search at all — it ' +
         'is NOT falling back to the chain grid, which would restore the reading V32 withdrew. ' +
@@ -1459,7 +1462,8 @@ function tuneOptionsFor(
   if (
     (stated.zFloorBarrierSource === 'safety' ||
       stated.zFloorBarrierSource === 'safety-extended' ||
-      stated.zFloorBarrierSource === 'safety-extended-refined') &&
+      stated.zFloorBarrierSource === 'safety-extended-refined' ||
+      stated.zFloorBarrierSource === 'safety-extended-refined-tracked') &&
     stated.safety === undefined
   ) {
     collect.notes.push(

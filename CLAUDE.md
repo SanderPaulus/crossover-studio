@@ -9157,3 +9157,31 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Gemeten:** `npm run test:fast` 258 s, 225 bestanden (224 + 1), 3018 tests (3014 + 4), groen.
   Browser: knoppen, `aria-pressed`, EN en NL, geen console-fout. De resultaatregel is NIET in een
   volle run bekeken, alleen door de bronscan.
+
+### S-2-guards (de vloerbarrière gevolgd in plaats van volledig gescand; gebouwd, NIET omgezet; 07-11-2026)
+
+- **Gemeten vóór er iets gebouwd werd** (`scripts/measure-floor-barrier-tracking.ts`, drie casus-1-kandidaten,
+  1,08 mln opgenomen krommen; `test-fixtures/floor_barrier_tracking_*.json` en `floor_barrier_detector_*.json`):
+  - de vloerbarrière is **68–69 % van de rekentijd per poging** (394 punten, 2,2–2,8 ms van 3,2–4,1 ms);
+  - het minimum blijft bij 91–93 % van de pogingen in dezelfde cel, maar springt bij ~1 % 100–215 cellen;
+  - alleen dalen volgen mist 0,14–1 % van de actieve pogingen met fouten tot ~2,3 Ω; met het minimum van het
+    evaluatieraster als detector 0 / 52 / 26 pogingen met hooguit 0,082 Ω, bij een 7,8–10,1× goedkopere lezing.
+    Geen enkele misser had zijn dal onder 20,5 Hz (de onderkant van de detector).
+- **De bron `'safety-extended-refined-tracked'`** (`zFloorBarrierSource`, de zesde waarde;
+  `trackedRefinedSystemMinImpedanceOhm`, `BARRIER_TRACKING` = 4 dalen, ±4 cellen, volle scan elke 50).
+  Volle scan bij de eerste lezing, elke 50 lezingen, bij een topologiewissel, aan een vensterrand en zodra
+  `Metrics.zMinHz` (het minimum van het evaluatieraster, sinds S-2 meegegeven, NIET in `report()`) buiten elk
+  venster ligt. Een volle scan IS de verdichte lezing (gedeelde helper `refineAroundDips`, verbatim
+  geëxtraheerd). Een stuurterm: geen poort leest hem. Nooit afgeleid — alleen expliciet gesteld.
+- **De armen als volle ketenrun** (`scripts/measure-barrier-tracking-arms.ts`, `test-fixtures/floor_barrier_arms.json`,
+  meetset `'m3'`, zes naast elkaar): 156,7 Hz 652 → 264 s en 285,1 Hz 536 → 210 s, **beide hetzelfde netwerk
+  onderdeel voor onderdeel**; 518,8 Hz 430 → 163 s, in beide armen geweigerd maar op een andere grond
+  (huidig M-B/|Z| 2,46 Ω, gevolgd M-D 2,41 dB). **2,5–2,6× sneller.**
+- `src/lib/engine2/optimizer/barrierTracking.test.ts` (5 claims): volle scan = verdichte lezing bit voor bit,
+  gevolgde lezing = volle bij kleine stappen, en elke scan-trigger vuurt. `barrierSource.test.ts`: één bronscan
+  in V15-vorm bijgewerkt.
+- **Gemeten:** `npm run test:fast` 267 s, 226 bestanden (225 + 1), 3023 tests (3019 + 4), groen.
+  `npx vitest run` 439 s, 226 bestanden, 3023 tests, groen; alle vier de live ketenruns byte-identiek,
+  `f4cRegression`, `workerRouteRegression`, `toggleRegression` staan.
+- **OPEN, en dat is Sanders besluit:** de route laten afleiden (`candidateDeclaration.ts`, één woord) vraagt een
+  regeneratie van casus 1/1b/1h/2, en verlegt het pad van sommige kandidaten (zie 518,8 Hz).

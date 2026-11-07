@@ -1281,6 +1281,11 @@ const meetopstelling = {
         'de poort hem leest. Dezelfde lezer (`refinedSystemMinImpedanceOhm` → `minImpedanceAt`); de ' +
         'aanleiding is KAND_V2_1 van A5e.3c (2,5536 Ω op de sweep tegen 2,6349 op het barrièreraster, ' +
         '0,081 Ω tegen een speling van 0,052).',
+      'safety-extended-refined-tracked':
+        'Als de verdichte bron, maar het verlengde veiligheidsraster wordt alleen rond de gevolgde dalen ' +
+        'gelezen, met een volle scan bij elke topologiewissel, elke 50 pogingen, aan een vensterrand, en zodra ' +
+        'het minimum van het evaluatieraster buiten de vensters valt (07-11-2026, ' +
+        '`trackedRefinedSystemMinImpedanceOhm`; gemeten met `measure-floor-barrier-tracking.ts`).',
     }[lastPayload.candidate?.declaration.stated.zFloorBarrierSource ?? 'grid'],
   vloer_is_zoekdoel:
     lastPayload.candidate?.declaration.stated.zFloorBarrier === true,

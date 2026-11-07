@@ -637,6 +637,25 @@ export interface NetOptimizeOptions {
    *                it, at the price of a few dozen extra points per evaluation
    *                instead of the sweep's 1600. Needs the same two inputs as
    *                `'safety-extended'`; missing either, the term is inert.
+   *   `'safety-extended-refined-tracked'` — 07-11-2026: the refined source
+   *                above, with the coarse grid read only around the dips it
+   *                already knows (`trackedRefinedSystemMinImpedanceOhm`,
+   *                `BARRIER_TRACKING`): a full coarse scan every
+   *                `rescanEvery` evaluations, on a topology change, when the
+   *                tracked minimum reaches a window edge, and whenever the
+   *                EVALUATION grid's own |Z| minimum (solved on every
+   *                evaluation anyway) lies outside every tracked window — the
+   *                detector. In between, ±`halfWindowCells` around the
+   *                `dips` deepest local minima of the last full scan.
+   *                MEASURED before it was built (`scripts/measure-floor-
+   *                barrier-tracking.ts`, three casus-1 candidates, 1.08 M
+   *                recorded curves): the barrier is 68–69 % of an evaluation,
+   *                the tracked reading is 7.8–10.1× cheaper, and against the
+   *                full reading it misses 0–52 evaluations per candidate where
+   *                the barrier is active, by at most 0.082 Ω. A STEERING term
+   *                only: no gate reads it, so a miss can steer a search, never
+   *                pass a design under the floor. Same two inputs as the
+   *                refined source; never derived — a candidate states it.
    * All three go through the same reader (`systemMinImpedanceOhm` →
    * `minImpedanceAt`), so the GRID is a parameter and not a second
    * implementation. That is what makes `'safety'` defensible rather than
@@ -665,7 +684,13 @@ export interface NetOptimizeOptions {
    * decides which band "good" is measured over, which is a different search
    * and not a different amount of polish.
    */
-  zFloorBarrierSource?: 'grid' | 'safety' | 'sweep' | 'safety-extended' | 'safety-extended-refined';
+  zFloorBarrierSource?:
+    | 'grid'
+    | 'safety'
+    | 'sweep'
+    | 'safety-extended'
+    | 'safety-extended-refined'
+    | 'safety-extended-refined-tracked';
   /**
    * E-5b — WHICH BAND THE STAGED PASS'S RIPPLE STOP-GOAL IS READ ON.
    *
@@ -1714,6 +1739,20 @@ export function refinedSystemMinImpedanceOhm(
     rethrowIfPlatformError(caught);
     return null;
   }
+  return refineAroundDips(net, coarse, mag, fine, refinement);
+}
+
+/** The refinement half of `refinedSystemMinImpedanceOhm`, on coarse
+ *  magnitudes already in hand — shared with the tracked source, which hands
+ *  it a coarse array that is +Infinity outside the cells it read. Extracted
+ *  verbatim: the same arithmetic in the same order. */
+function refineAroundDips(
+  net: { nodeCount: number; elements: NetElement[] },
+  coarse: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> },
+  mag: readonly number[],
+  fine: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> },
+  refinement: DipRefinement,
+): { ohm: number; coarseOhm: number; refinedPoints: number; cells: number } | null {
   const coarseMin = minImpedanceAt(mag.map((m) => ({ re: m, im: 0 })));
   if (!coarseMin) return null;
   const cells = dipCellsOf(mag, refinement);
@@ -1744,6 +1783,134 @@ export function refinedSystemMinImpedanceOhm(
   }
   const ohm = fineMin && fineMin.ohm < coarseMin.ohm ? fineMin.ohm : coarseMin.ohm;
   return { ohm, coarseOhm: coarseMin.ohm, refinedPoints: sub.length, cells: lo.size };
+}
+
+/**
+ * 07-11-2026 — HOW THE TRACKED SOURCE READS. Values chosen on the recorded
+ * curves of three casus-1 candidates (`scripts/measure-floor-barrier-
+ * tracking.ts`): 4 dips, ±4 cells, a full scan every 50 evaluations, with the
+ * evaluation grid's minimum as the detector — the setting that missed the
+ * fewest active evaluations (0 / 52 / 26) at 7.8–10.1× less barrier work.
+ * Run-length policy of a steering term, not a project number (P6).
+ */
+export const BARRIER_TRACKING = Object.freeze({ dips: 4, halfWindowCells: 4, rescanEvery: 50 });
+
+export interface BarrierTrackState {
+  /** Coarse indices of the dips being followed. */
+  tracked: number[];
+  /** Tracked reads since the last full scan. */
+  since: number;
+  /** The topology the dips were found on; a change forces a full scan. */
+  signature: string;
+  fullScans: number;
+  trackedReads: number;
+}
+
+export function newBarrierTrackState(): BarrierTrackState {
+  return { tracked: [], since: 0, signature: '', fullScans: 0, trackedReads: 0 };
+}
+
+function topologySignature(net: { nodeCount: number; elements: NetElement[] }): string {
+  return `${net.nodeCount}|${net.elements.map((e) => `${e.kind}:${e.id}:${e.nodes[0]}-${e.nodes[1]}`).join(',')}`;
+}
+
+function nearestIndex(grid: readonly number[], hz: number): number {
+  let lo = 0;
+  let hi = grid.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (grid[mid] <= hz) lo = mid;
+    else hi = mid;
+  }
+  return Math.abs(grid[hi] - hz) < Math.abs(grid[lo] - hz) ? hi : lo;
+}
+
+function deepestLocalMinima(mag: readonly number[], k: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < mag.length; i++) {
+    const l = i === 0 ? Infinity : mag[i - 1];
+    const r = i === mag.length - 1 ? Infinity : mag[i + 1];
+    if (mag[i] <= l && mag[i] <= r) out.push(i);
+  }
+  return out.sort((p, q) => mag[p] - mag[q]).slice(0, k);
+}
+
+/**
+ * The refined reading, with the coarse grid read only around the dips the
+ * last full scan found (`BARRIER_TRACKING`). A FULL scan — exactly
+ * `refinedSystemMinImpedanceOhm` — on the first call, every `rescanEvery`
+ * calls, on a topology change, when `detectorHz` (the evaluation grid's own
+ * |Z| minimum) lies outside every tracked window, and when the tracked
+ * minimum sits on a window edge (it may be leaving it). Otherwise the network
+ * is solved only on the union of the windows and the refinement runs around
+ * the best of those. `state` belongs to one tune; the reading is deterministic
+ * given the sequence of networks it sees (A5e.4).
+ */
+export function trackedRefinedSystemMinImpedanceOhm(
+  net: { nodeCount: number; elements: NetElement[] },
+  coarse: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> },
+  fine: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> },
+  state: BarrierTrackState,
+  detectorHz: number | null,
+  tracking: { dips: number; halfWindowCells: number; rescanEvery: number } = BARRIER_TRACKING,
+  refinement: DipRefinement = BARRIER_DIP_REFINEMENT,
+): { ohm: number; full: boolean } | null {
+  const n = coarse.grid.length;
+  const W = tracking.halfWindowCells;
+  const full = (): { ohm: number; full: boolean } | null => {
+    let mag: number[];
+    try {
+      mag = solveNetwork(net, coarse.grid, coarse.driverZ).inputZ.map((z) => Math.hypot(z.re, z.im));
+    } catch (caught) {
+      rethrowIfPlatformError(caught);
+      return null;
+    }
+    state.tracked = deepestLocalMinima(mag, tracking.dips);
+    state.since = 0;
+    state.fullScans++;
+    const r = refineAroundDips(net, coarse, mag, fine, refinement);
+    return r ? { ohm: r.ohm, full: true } : null;
+  };
+  const sig = topologySignature(net);
+  const inWindows = (i: number) => state.tracked.some((c) => Math.abs(i - c) <= W);
+  if (
+    state.tracked.length === 0 ||
+    state.since >= tracking.rescanEvery ||
+    sig !== state.signature ||
+    (detectorHz !== null && Number.isFinite(detectorHz) && !inWindows(nearestIndex(coarse.grid, detectorHz)))
+  ) {
+    state.signature = sig;
+    return full();
+  }
+  const idx = new Set<number>();
+  for (const c of state.tracked) for (let i = Math.max(0, c - W); i <= Math.min(n - 1, c + W); i++) idx.add(i);
+  const sub = [...idx].sort((a, b) => a - b);
+  const driverZ: Record<string, Complex[]> = {};
+  for (const model of Object.keys(coarse.driverZ)) driverZ[model] = sub.map((i) => coarse.driverZ[model][i]);
+  let subMag: number[];
+  try {
+    subMag = solveNetwork(net, sub.map((i) => coarse.grid[i]), driverZ).inputZ.map((z) => Math.hypot(z.re, z.im));
+  } catch (caught) {
+    rethrowIfPlatformError(caught);
+    return null;
+  }
+  const mag = new Array<number>(n).fill(Infinity);
+  sub.forEach((i, k) => (mag[i] = subMag[k]));
+  let best = sub[0];
+  for (const i of sub) if (mag[i] < mag[best]) best = i;
+  const atEdge = state.tracked.some(
+    (c) => (best === c - W && best > 0) || (best === c + W && best < n - 1),
+  );
+  if (atEdge) return full();
+  state.tracked = state.tracked.map((c) => {
+    let b = c;
+    for (let i = Math.max(0, c - W); i <= Math.min(n - 1, c + W); i++) if (mag[i] < mag[b]) b = i;
+    return b;
+  });
+  state.since++;
+  state.trackedReads++;
+  const r = refineAroundDips(net, coarse, mag, fine, refinement);
+  return r ? { ohm: r.ohm, full: false } : null;
 }
 
 /** Soft buildability bounds, as in synthesis. */
@@ -2219,7 +2386,9 @@ export function optimizeNetworkValues(
               what: opts.zFloorBarrierImpedance.span,
             }
           : null
-        : barrierSource === 'safety-extended' || barrierSource === 'safety-extended-refined'
+        : barrierSource === 'safety-extended' ||
+            barrierSource === 'safety-extended-refined' ||
+            barrierSource === 'safety-extended-refined-tracked'
           ? (() => {
               /* A5e.3b (c2) — the safety grid, widened to the sweeps' extent
                * with the gate reference's own points. Both inputs or nothing:
@@ -2239,10 +2408,16 @@ export function optimizeNetworkValues(
                   `${ext.grid.length} points — the full-band safety grid extended to the measured ` +
                   `sweeps' extent with ${ext.addedBelow + ext.addedAbove} of the gate reference's own ` +
                   'points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b)' +
-                  (barrierSource === 'safety-extended-refined'
+                  (barrierSource === 'safety-extended-refined' || barrierSource === 'safety-extended-refined-tracked'
                     ? `, refined with the gate reference's own points inside the cells beside its coarse ` +
                       `minimum (E-1, dip refinement '${BARRIER_DIP_REFINEMENT.kind}'), so a dip narrower than ` +
                       'one safety-grid cell is read where the gate reads it'
+                    : '') +
+                  (barrierSource === 'safety-extended-refined-tracked'
+                    ? `; between full scans the coarse grid is read only around the ${BARRIER_TRACKING.dips} ` +
+                      `deepest dips of the last one (±${BARRIER_TRACKING.halfWindowCells} cells), with a full ` +
+                      `scan every ${BARRIER_TRACKING.rescanEvery} evaluations, on a topology change, at a window ` +
+                      "edge, and whenever the evaluation grid's own minimum lies outside every window (tracked)"
                     : ''),
               };
             })()
@@ -2251,7 +2426,9 @@ export function optimizeNetworkValues(
    * the gate's own points. Present only on that source; the term above it
    * reads the coarse grid alone on every other. */
   const barrierRefineOn: { grid: readonly number[]; driverZ: Record<string, readonly Complex[]> } | null =
-    barrierSource === 'safety-extended-refined' && barrierGrid !== null && opts.zFloorBarrierImpedance
+    (barrierSource === 'safety-extended-refined' || barrierSource === 'safety-extended-refined-tracked') &&
+    barrierGrid !== null &&
+    opts.zFloorBarrierImpedance
       ? { grid: opts.zFloorBarrierImpedance.grid, driverZ: opts.zFloorBarrierImpedance.driverZ }
       : null;
   /**
@@ -2283,13 +2460,17 @@ export function optimizeNetworkValues(
    * nobody looks. Zero here means the floor does not steer, which is the
    * pre-V30 state and is said out loud in `zFloorSourceNote`.
    */
+  const barrierTrack: BarrierTrackState | null =
+    barrierSource === 'safety-extended-refined-tracked' ? newBarrierTrackState() : null;
   const barrierShortOhm = (
-    m: { zShortOhm: number },
+    m: { zShortOhm: number; zMinHz: number },
     net: { nodeCount: number; elements: NetElement[] },
   ): number => {
     if (barrierSource === 'grid') return m.zShortOhm;
     if (barrierGrid === null || ampFloorOhm === null) return 0;
-    const ohm = barrierRefineOn
+    const ohm = barrierTrack && barrierRefineOn
+      ? (trackedRefinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, barrierTrack, m.zMinHz)?.ohm ?? null)
+      : barrierRefineOn
       ? (refinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, BARRIER_DIP_REFINEMENT)?.ohm ?? null)
       : systemMinImpedanceOhm(net, barrierGrid.grid, barrierGrid.driverZ);
     return ohm === null ? 0 : Math.max(0, ampFloorOhm - ohm);
@@ -2978,6 +3159,9 @@ export function optimizeNetworkValues(
     tweeterSlopeDbOct: number | null;
     /** Minimum system |Zin| over the band (amplifier load). */
     zMinOhm: number;
+    /** Where that minimum lies (Hz) — the tracked barrier source's detector.
+     *  Not in `report()`; read only by the barrier term. */
+    zMinHz: number;
     /** How far that minimum sits BELOW the amp-load floor (0 when healthy). */
     zShortOhm: number;
     /** How far below the DERIVED (IEC, driver-based) floor the load falls;
@@ -3608,9 +3792,14 @@ export function optimizeNetworkValues(
     // separate question, and the answer is `ampFloorOhm` — no rating given,
     // no shortfall, and every gate below it goes inert by arithmetic.
     let zMinOhm = Infinity;
-    for (const c of sol.inputZ) {
+    let zMinHz = NaN;
+    for (let k = 0; k < sol.inputZ.length; k++) {
+      const c = sol.inputZ[k];
       const zm = Math.hypot(c.re, c.im);
-      if (zm < zMinOhm) zMinOhm = zm;
+      if (zm < zMinOhm) {
+        zMinOhm = zm;
+        zMinHz = freqs[k];
+      }
     }
     const zShortOhm = ampFloorOhm === null ? 0 : Math.max(0, ampFloorOhm - zMinOhm);
     /* A3i-2 — THE DERIVED FLOOR, ALONGSIDE THE AMPLIFIER RATING, NOT INSTEAD.
@@ -3671,6 +3860,7 @@ export function optimizeNetworkValues(
       midSlopeDbOct,
       tweeterSlopeDbOct,
       zMinOhm,
+      zMinHz,
       zShortOhm,
       loadShortOhm,
       medianDb: medianOf(r.freq, r.combinedSpl),

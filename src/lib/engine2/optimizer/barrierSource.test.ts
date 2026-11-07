@@ -323,6 +323,11 @@ describe('V33 — the barrier source is a choice, and its default is what it alw
     const term = src.slice(src.indexOf('const barrierShortOhm = ('), src.indexOf('/** Prose about the line above'));
     expect(term).toContain('refinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, BARRIER_DIP_REFINEMENT)');
     expect(term).toContain('systemMinImpedanceOhm(net, barrierGrid.grid, barrierGrid.driverZ)');
-    expect(src).toContain("barrierSource === 'safety-extended-refined' && barrierGrid !== null && opts.zFloorBarrierImpedance");
+    /* 07-11-2026 — the refine reference is armed on the refined source AND on
+     * its tracked variant (`'safety-extended-refined-tracked'`), still only
+     * with both inputs. Was the single-source form of this line. */
+    expect(src).toContain(
+      "(barrierSource === 'safety-extended-refined' || barrierSource === 'safety-extended-refined-tracked') &&\n    barrierGrid !== null &&\n    opts.zFloorBarrierImpedance",
+    );
   });
 });

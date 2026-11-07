@@ -1,0 +1,473 @@
+{
+ "gemeten_op": "2026-11-07",
+ "kandidaat": "woofer→mid 285.1 LR4 · mid→tweeter 2251.4 LR4",
+ "floor_ohm": 2.6,
+ "barrier_grid_pt": 394,
+ "evaluaties": 258997,
+ "ms_per_eval": 4.12616420540783,
+ "barrier_share": 0.693553491937527,
+ "eval_grid_share": 0.25344747077513546,
+ "eval_grid_pt": 143,
+ "eval_grid_from_hz": 20.5078,
+ "barrier_grid_from_hz": 10.07080078125,
+ "solves_per_length": {
+  "1": {
+   "n": 259332,
+   "ms": 2740.4324389523717
+  },
+  "12": {
+   "n": 13553,
+   "ms": 1231.8221429913656
+  },
+  "13": {
+   "n": 1061,
+   "ms": 106.04858300094384
+  },
+  "15": {
+   "n": 12,
+   "ms": 2.89524899999833
+  },
+  "19": {
+   "n": 12,
+   "ms": 2.282747999764979
+  },
+  "44": {
+   "n": 20,
+   "ms": 6.21283300000232
+  },
+  "45": {
+   "n": 20,
+   "ms": 9.080584999872372
+  },
+  "52": {
+   "n": 24,
+   "ms": 9.149333999997907
+  },
+  "54": {
+   "n": 24,
+   "ms": 13.05791600048542
+  },
+  "143": {
+   "n": 259331,
+   "ms": 270850.22610500373
+  },
+  "240": {
+   "n": 8,
+   "ms": 13.196041000192054
+  },
+  "394": {
+   "n": 259039,
+   "ms": 741175.7534319931
+  },
+  "1600": {
+   "n": 9,
+   "ms": 139.58437499967204
+  }
+ },
+ "sprong_cellen": {
+  "mediaan": 0,
+  "p90": 0,
+  "p99": 155,
+  "max": 214
+ },
+ "actief": 258928,
+ "krommen": 259039,
+ "simulatie": [
+  {
+   "K": 2,
+   "W": 2,
+   "N": 25,
+   "det": "geen",
+   "pts": 23.736186442968048,
+   "rescans": 10541,
+   "maxErr": 2.3394008934497834,
+   "missesActive": 1877,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 50,
+   "det": "geen",
+   "pts": 16.49689429004899,
+   "rescans": 5684,
+   "maxErr": 2.1920536518096925,
+   "missesActive": 2034,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 100,
+   "det": "geen",
+   "pts": 12.807700770926386,
+   "rescans": 3209,
+   "maxErr": 2.3394008934497834,
+   "missesActive": 2249,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 25,
+   "det": "geen",
+   "pts": 29.05581398939928,
+   "rescans": 10245,
+   "maxErr": 2.3394008934497834,
+   "missesActive": 1988,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 50,
+   "det": "geen",
+   "pts": 21.900922254950025,
+   "rescans": 5369,
+   "maxErr": 2.3394008934497834,
+   "missesActive": 2086,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 100,
+   "det": "geen",
+   "pts": 18.27892711136161,
+   "rescans": 2902,
+   "maxErr": 2.3394008934497834,
+   "missesActive": 2360,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 25,
+   "det": "geen",
+   "pts": 33.20240967576311,
+   "rescans": 10613,
+   "maxErr": 2.2228913009166718,
+   "missesActive": 723,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 50,
+   "det": "geen",
+   "pts": 26.103440022544866,
+   "rescans": 5784,
+   "maxErr": 2.2228913009166718,
+   "missesActive": 770,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 100,
+   "det": "geen",
+   "pts": 22.51058334845332,
+   "rescans": 3336,
+   "maxErr": 2.2228913009166718,
+   "missesActive": 772,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 25,
+   "det": "geen",
+   "pts": 45.278892367558555,
+   "rescans": 10304,
+   "maxErr": 2.1802763640880585,
+   "missesActive": 666,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 50,
+   "det": "geen",
+   "pts": 38.29091758383873,
+   "rescans": 5439,
+   "maxErr": 2.1802763640880585,
+   "missesActive": 762,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 100,
+   "det": "geen",
+   "pts": 34.67021182138597,
+   "rescans": 2951,
+   "maxErr": 2.2228913009166718,
+   "missesActive": 787,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 25,
+   "det": "argmin",
+   "pts": 282.79562150873033,
+   "rescans": 184404,
+   "maxErr": 0.02591550350189209,
+   "missesActive": 256,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 50,
+   "det": "argmin",
+   "pts": 280.9318712626284,
+   "rescans": 183153,
+   "maxErr": 0.02591550350189209,
+   "missesActive": 282,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 100,
+   "det": "argmin",
+   "pts": 279.8951316211072,
+   "rescans": 182457,
+   "maxErr": 0.02591550350189209,
+   "missesActive": 334,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 25,
+   "det": "argmin",
+   "pts": 33.48090441979779,
+   "rescans": 13274,
+   "maxErr": 0.026673555374145508,
+   "missesActive": 335,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 50,
+   "det": "argmin",
+   "pts": 26.40782276027934,
+   "rescans": 8453,
+   "maxErr": 0.026673555374145508,
+   "missesActive": 314,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 100,
+   "det": "argmin",
+   "pts": 22.71886472693301,
+   "rescans": 5939,
+   "maxErr": 0.026673555374145508,
+   "missesActive": 394,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 25,
+   "det": "argmin",
+   "pts": 281.8663676125989,
+   "rescans": 181778,
+   "maxErr": 0.02591550350189209,
+   "missesActive": 16,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 50,
+   "det": "argmin",
+   "pts": 280.1212018267519,
+   "rescans": 180577,
+   "maxErr": 0.02591550350189209,
+   "missesActive": 16,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 100,
+   "det": "argmin",
+   "pts": 279.24371619717493,
+   "rescans": 179974,
+   "maxErr": 0.02591550350189209,
+   "missesActive": 16,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 25,
+   "det": "argmin",
+   "pts": 46.02757113793676,
+   "rescans": 10858,
+   "maxErr": 0.03525257110595703,
+   "missesActive": 39,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 50,
+   "det": "argmin",
+   "pts": 39.1442099452206,
+   "rescans": 6035,
+   "maxErr": 0.03525257110595703,
+   "missesActive": 52,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 100,
+   "det": "argmin",
+   "pts": 35.625195433892195,
+   "rescans": 3578,
+   "maxErr": 0.03525257110595703,
+   "missesActive": 53,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 25,
+   "det": "dalen",
+   "pts": 393.9927115222032,
+   "rescans": 259034,
+   "maxErr": 0,
+   "missesActive": 0,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 50,
+   "det": "dalen",
+   "pts": 393.9927115222032,
+   "rescans": 259034,
+   "maxErr": 0,
+   "missesActive": 0,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 2,
+   "N": 100,
+   "det": "dalen",
+   "pts": 393.9927115222032,
+   "rescans": 259034,
+   "maxErr": 0,
+   "missesActive": 0,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 25,
+   "det": "dalen",
+   "pts": 313.56074567922207,
+   "rescans": 204204,
+   "maxErr": 0.011024236679077148,
+   "missesActive": 17,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 50,
+   "det": "dalen",
+   "pts": 312.2478159659356,
+   "rescans": 203309,
+   "maxErr": 0.011024236679077148,
+   "missesActive": 17,
+   "missesBelow": 0
+  },
+  {
+   "K": 2,
+   "W": 4,
+   "N": 100,
+   "det": "dalen",
+   "pts": 311.6316925250638,
+   "rescans": 202889,
+   "maxErr": 0.011024236679077148,
+   "missesActive": 17,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 25,
+   "det": "dalen",
+   "pts": 393.96690073695464,
+   "rescans": 259016,
+   "maxErr": 0,
+   "missesActive": 0,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 50,
+   "det": "dalen",
+   "pts": 393.96690073695464,
+   "rescans": 259016,
+   "maxErr": 0,
+   "missesActive": 0,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 2,
+   "N": 100,
+   "det": "dalen",
+   "pts": 393.96690073695464,
+   "rescans": 259016,
+   "maxErr": 0,
+   "missesActive": 0,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 25,
+   "det": "dalen",
+   "pts": 115.90747725246005,
+   "rescans": 60361,
+   "maxErr": 0.021929502487182617,
+   "missesActive": 3,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 50,
+   "det": "dalen",
+   "pts": 111.02332853354127,
+   "rescans": 56913,
+   "maxErr": 0.021929502487182617,
+   "missesActive": 3,
+   "missesBelow": 0
+  },
+  {
+   "K": 4,
+   "W": 4,
+   "N": 100,
+   "det": "dalen",
+   "pts": 108.60518300333155,
+   "rescans": 55220,
+   "maxErr": 0.021929502487182617,
+   "missesActive": 3,
+   "missesBelow": 0
+  }
+ ]
+}

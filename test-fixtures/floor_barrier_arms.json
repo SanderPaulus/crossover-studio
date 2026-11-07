@@ -1,0 +1,280 @@
+{
+ "gemeten_op": "2026-11-07",
+ "script": "scripts/measure-barrier-tracking-arms.ts",
+ "meetset": "m3 (standaard)",
+ "vraag": "levert de gevolgde barrièrebron (safety-extended-refined-tracked) hetzelfde als de huidige (safety-extended-refined), en hoeveel sneller; volle ketenrun per (kandidaat, arm), zes naast elkaar",
+ "rijen": [
+  {
+   "candidate": 0,
+   "arm": "refined",
+   "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4",
+   "seconds": 651.7,
+   "evaluations": 214414,
+   "delivered": true,
+   "refusal": null,
+   "rmsDb": 0.86,
+   "windowPmDb": 2.077,
+   "phaseTracking": [
+    {
+     "subject": "woofer|mid",
+     "meanAbsDeg": 180
+    },
+    {
+     "subject": "mid|tweeter",
+     "meanAbsDeg": 3.4
+    }
+   ],
+   "minZOhm": 2.625,
+   "gates": [
+    {
+     "gate": "M-B/|Z|",
+     "subject": "system",
+     "pass": true,
+     "value": 2.625
+    },
+    {
+     "gate": "M-C",
+     "subject": "mid",
+     "pass": true,
+     "value": -13.906
+    },
+    {
+     "gate": "M-C",
+     "subject": "tweeter",
+     "pass": true,
+     "value": -24.868
+    },
+    {
+     "gate": "M-A/part",
+     "subject": "system",
+     "pass": true,
+     "value": 1.535
+    }
+   ],
+   "parts": 73,
+   "partsDigest": "24784552",
+   "tuner": {
+    "rippleDb": 2.301,
+    "phaseDeg": 3.4
+   },
+   "note": "The amp-load barrier aimed at the |Z| minimum over 10-20317 Hz, 394 points — the full-band safety grid extended to the measured sweeps' extent with 154 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+  },
+  {
+   "candidate": 0,
+   "arm": "tracked",
+   "label": "woofer→mid 156.7 LR4 · mid→tweeter 2251.4 LR4",
+   "seconds": 264.1,
+   "evaluations": 213482,
+   "delivered": true,
+   "refusal": null,
+   "rmsDb": 0.86,
+   "windowPmDb": 2.077,
+   "phaseTracking": [
+    {
+     "subject": "woofer|mid",
+     "meanAbsDeg": 180
+    },
+    {
+     "subject": "mid|tweeter",
+     "meanAbsDeg": 3.4
+    }
+   ],
+   "minZOhm": 2.625,
+   "gates": [
+    {
+     "gate": "M-B/|Z|",
+     "subject": "system",
+     "pass": true,
+     "value": 2.625
+    },
+    {
+     "gate": "M-C",
+     "subject": "mid",
+     "pass": true,
+     "value": -13.906
+    },
+    {
+     "gate": "M-C",
+     "subject": "tweeter",
+     "pass": true,
+     "value": -24.868
+    },
+    {
+     "gate": "M-A/part",
+     "subject": "system",
+     "pass": true,
+     "value": 1.535
+    }
+   ],
+   "parts": 73,
+   "partsDigest": "24784552",
+   "tuner": {
+    "rippleDb": 2.301,
+    "phaseDeg": 3.4
+   },
+   "note": "The amp-load barrier aimed at the |Z| minimum over 10-20317 Hz, 394 points — the full-band safety grid extended to the measured sweeps' extent with 154 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it; between full scans the coarse grid is read only around the 4 deepest dips of the last one (±4 cells), with a full scan every 50 evaluations, on a topology change, at a window edge, and whenever the evaluation grid's own minimum lies outside every window (tracked), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+  },
+  {
+   "candidate": 5,
+   "arm": "refined",
+   "label": "woofer→mid 285.1 LR4 · mid→tweeter 2251.4 LR4",
+   "seconds": 535.8,
+   "evaluations": 131969,
+   "delivered": true,
+   "refusal": null,
+   "rmsDb": 1.161,
+   "windowPmDb": 2.139,
+   "phaseTracking": [
+    {
+     "subject": "woofer|mid",
+     "meanAbsDeg": 3.98
+    },
+    {
+     "subject": "mid|tweeter",
+     "meanAbsDeg": 7.48
+    }
+   ],
+   "minZOhm": 2.552,
+   "gates": [
+    {
+     "gate": "M-B/|Z|",
+     "subject": "system",
+     "pass": true,
+     "value": 2.552
+    },
+    {
+     "gate": "M-C",
+     "subject": "mid",
+     "pass": true,
+     "value": -30.301
+    },
+    {
+     "gate": "M-C",
+     "subject": "tweeter",
+     "pass": true,
+     "value": -33.148
+    },
+    {
+     "gate": "M-A/part",
+     "subject": "system",
+     "pass": true,
+     "value": 2.465
+    }
+   ],
+   "parts": 85,
+   "partsDigest": "ea61a415",
+   "tuner": {
+    "rippleDb": 2.316,
+    "phaseDeg": 6.7
+   },
+   "note": "The amp-load barrier aimed at the |Z| minimum over 10-20317 Hz, 394 points — the full-band safety grid extended to the measured sweeps' extent with 154 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+  },
+  {
+   "candidate": 5,
+   "arm": "tracked",
+   "label": "woofer→mid 285.1 LR4 · mid→tweeter 2251.4 LR4",
+   "seconds": 210.2,
+   "evaluations": 132252,
+   "delivered": true,
+   "refusal": null,
+   "rmsDb": 1.161,
+   "windowPmDb": 2.139,
+   "phaseTracking": [
+    {
+     "subject": "woofer|mid",
+     "meanAbsDeg": 3.98
+    },
+    {
+     "subject": "mid|tweeter",
+     "meanAbsDeg": 7.48
+    }
+   ],
+   "minZOhm": 2.552,
+   "gates": [
+    {
+     "gate": "M-B/|Z|",
+     "subject": "system",
+     "pass": true,
+     "value": 2.552
+    },
+    {
+     "gate": "M-C",
+     "subject": "mid",
+     "pass": true,
+     "value": -30.301
+    },
+    {
+     "gate": "M-C",
+     "subject": "tweeter",
+     "pass": true,
+     "value": -33.148
+    },
+    {
+     "gate": "M-A/part",
+     "subject": "system",
+     "pass": true,
+     "value": 2.465
+    }
+   ],
+   "parts": 85,
+   "partsDigest": "ea61a415",
+   "tuner": {
+    "rippleDb": 2.316,
+    "phaseDeg": 6.7
+   },
+   "note": "The amp-load barrier aimed at the |Z| minimum over 10-20317 Hz, 394 points — the full-band safety grid extended to the measured sweeps' extent with 154 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it; between full scans the coarse grid is read only around the 4 deepest dips of the last one (±4 cells), with a full scan every 50 evaluations, on a topology change, at a window edge, and whenever the evaluation grid's own minimum lies outside every window (tracked), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+  },
+  {
+   "candidate": 10,
+   "arm": "refined",
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4",
+   "seconds": 430.1,
+   "evaluations": 144030,
+   "delivered": false,
+   "refusal": {
+    "kinds": [
+     "gate"
+    ],
+    "reason": "M-B/|Z|: 2.46 Ω falls below the stated floor of 2.60 Ω"
+   },
+   "rmsDb": null,
+   "windowPmDb": null,
+   "phaseTracking": [],
+   "minZOhm": null,
+   "gates": [],
+   "parts": null,
+   "partsDigest": null,
+   "tuner": {
+    "rippleDb": 5.136,
+    "phaseDeg": 23.96
+   },
+   "note": "The amp-load barrier aimed at the |Z| minimum over 10-20317 Hz, 394 points — the full-band safety grid extended to the measured sweeps' extent with 154 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it, through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+  },
+  {
+   "candidate": 10,
+   "arm": "tracked",
+   "label": "woofer→mid 518.8 LR4 · mid→tweeter 2251.4 LR4",
+   "seconds": 163.1,
+   "evaluations": 130685,
+   "delivered": false,
+   "refusal": {
+    "kinds": [
+     "budget"
+    ],
+    "reason": "the delivered network amplifies woofer's reflex peak by 2.41 dB of resonant lift, against a stated budget of 1.4 dB (A4 M-D, the resonant half — casebook V43)"
+   },
+   "rmsDb": null,
+   "windowPmDb": null,
+   "phaseTracking": [],
+   "minZOhm": null,
+   "gates": [],
+   "parts": null,
+   "partsDigest": null,
+   "tuner": {
+    "rippleDb": 7.094,
+    "phaseDeg": 16.73
+   },
+   "note": "The amp-load barrier aimed at the |Z| minimum over 10-20317 Hz, 394 points — the full-band safety grid extended to the measured sweeps' extent with 154 of the gate reference's own points, so the goal covers every band the M-B/|Z| gate judges (A5e.3b), refined with the gate reference's own points inside the cells beside its coarse minimum (E-1, dip refinement 'minimum'), so a dip narrower than one safety-grid cell is read where the gate reads it; between full scans the coarse grid is read only around the 4 deepest dips of the last one (±4 cells), with a full scan every 50 evaluations, on a topology change, at a window edge, and whenever the evaluation grid's own minimum lies outside every window (tracked), through the same reader the M-B/|Z| gate takes its own minimum through. Goal and limit are therefore one question rather than two; where they can still differ is the grid, and that difference is measured against the floor slack rather than assumed away (V33)."
+  }
+ ]
+}
