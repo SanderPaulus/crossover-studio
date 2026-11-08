@@ -9318,3 +9318,22 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 
 - De melding `v2PreStart` wordt alleen buiten guided getoond, maar beide vensterpoorten in `runVfOptimize` zetten haar ook in guided. Een run zonder `acknowledgedWindowNotice` (commandopalet, "Run the full field") startte daar dus stil niet. Beide poorten dragen sinds G-11 `uiMode !== 'guided'`; in expert blijft de melding.
 - `guidedVoicingPending.test.ts` +1 bronscan: precies twee poorten, elk met die conditie. **Gemeten:** `npm run test:fast` 260 s, 230 bestanden (229 + 1 overgeslagen), 3045 tests (3041 + 4), groen. Niet in de browser nagelopen.
+
+### S-3 (onderzoek, 08-11-2026): simulaties over meerdere kernen — gemeten, niets gebouwd
+
+- `docs/S-3_parallel_onderzoek.md` is de uitkomst. Kern: de scan is al een pool van `kernen − 2` lanes
+  (16 hier) met één kandidaat per worker; de wandklok van een run is de traagste kandidaat. Binnen één
+  kandidaat is alles sequentieel: 107 simplexaanroepen (99,5 % van 621 s op de fixture-route; op de
+  app-route ~3,5 min), waarvan vijf volle tunes in een ketting. Speculatief parallel (basin-challenge naast
+  de waardetune, de hertunes van een escalatie- of snoeironde naast elkaar) haalt op die kandidaat −32 %
+  met ≤ 4 lanes en dezelfde uitkomst, maar vraagt sub-workers vanuit de worker, blokkeren via
+  SharedArrayBuffer/Atomics (COOP/COEP; GitHub Pages alleen met een service-worker-truc) of een
+  asynchrone tuner, en drie plekken waar byte-identiteit bewaakt moet worden (evaluatietelling,
+  barrière-trackstate, memo). Advies: eerst de prijs per evaluatie (app 1,32 ms, waarvan 1,05 de solve)
+  en de lege lanes (`both` kost bij ≤ 16 kandidaten geen wandklok); §4 pas als één losse tune de
+  ergernis is.
+- `scripts/measure-eval-cost.ts` kent sinds S-3 een arm voor de gevolgde barrière (de app-route sinds
+  S-2): 1,32 ms tegen 3,9 koud op de fixture-route. De anatomierun van vandaag staat NIET in
+  `casus1_e5c_anatomie.json` (het E-5c-record is teruggezet); `demo_h4b_armen.json` is na de
+  H-4b-meting van vandaag ook teruggezet, want het script schrijft er sinds G-5/G-6 een ander veld in
+  en `runOverlay.test.ts` leest het record.

@@ -113,6 +113,7 @@ const arms: [string, (x: NetOptimizeOptions & Record<string, unknown>) => void][
   ['volledig (v2-opties)', () => {}],
   ['zonder poorthook (gateViolation)', (x) => { delete x.gateViolation; }],
   ['barrière-bron grid', (x) => { x.zFloorBarrierSource = 'grid'; }],
+  ['barrière-bron tracked (de app-route sinds S-2)', (x) => { x.zFloorBarrierSource = 'safety-extended-refined-tracked'; }],
   ['zonder barrière', (x) => { x.zFloorBarrier = false; delete x.zFloorBarrierSource; }],
   ['zonder safety-set', (x) => { delete x.safety; }],
   ['fasetoelating overlap', (x) => { x.phaseAdmission = 'overlap'; }],
