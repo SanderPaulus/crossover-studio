@@ -9313,3 +9313,8 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   één rode bronscan (`statedRange`, de vorm van de stated-spread) in V15-vorm bijgewerkt en apart
   groen, dus 230 bestanden, 3044 tests. Browser: driewegdemo, Verfijn op woofer→mid draaide
   415,8 / 466,7 / 523,9 bij mid→tweeter 1885,5; "2 of 3 candidates qualified".
+
+### G-11-guards (guided stopt nooit bij de vóórstart-melding; alleen UI, 08-11-2026)
+
+- De melding `v2PreStart` wordt alleen buiten guided getoond, maar beide vensterpoorten in `runVfOptimize` zetten haar ook in guided. Een run zonder `acknowledgedWindowNotice` (commandopalet, "Run the full field") startte daar dus stil niet. Beide poorten dragen sinds G-11 `uiMode !== 'guided'`; in expert blijft de melding.
+- `guidedVoicingPending.test.ts` +1 bronscan: precies twee poorten, elk met die conditie. **Gemeten:** `npm run test:fast` 260 s, 230 bestanden (229 + 1 overgeslagen), 3045 tests (3041 + 4), groen. Niet in de browser nagelopen.

@@ -31,3 +31,12 @@ describe('guided voicing before the first design', () => {
     expect(APP).toMatch(/function applyProject\(state: ProjectState\) \{\s*setPendingVoicing\(null\);/);
   });
 });
+
+describe('G-11 — guided never stops at the pre-start notice', () => {
+  it('both route gates skip the notice in guided, so no entry point can hang on a hidden question', () => {
+    const app = readFileSync(join(__dirname, '..', 'App.tsx'), 'utf-8');
+    const gates = app.match(/if \(v2Windows && !runOpts\.acknowledgedWindowNotice[^\n]*/g) ?? [];
+    expect(gates).toHaveLength(2);
+    for (const g of gates) expect(g).toContain("uiMode !== 'guided'");
+  });
+});

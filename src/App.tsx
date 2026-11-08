@@ -9578,7 +9578,7 @@ export default function App() {
        * The setup above runs again on "start anyway"; that is a few hundred
        * milliseconds, and the alternative is a preview that can drift from
        * the run it previews. */
-      if (v2Windows && !runOpts.acknowledgedWindowNotice) {
+      if (v2Windows && !runOpts.acknowledgedWindowNotice && uiMode !== 'guided') {
         const estimate = candidatesOutsideWindows(
           variants.map((v) => ({ label: v.label, hz: [v.xoLow, v.xoHigh] })),
           /* F3c: the estimate counts against the recommended band as well,
@@ -10817,7 +10817,7 @@ export default function App() {
         /* DELIVERABLE 3 — the pre-start estimate, on the list that is ABOUT TO
          * RUN. It STOPS NOTHING: "start anyway" is an ordinary button. A
          * two-way has one handover, so the estimate has one pair. */
-        if (v2Windows && !runOpts.acknowledgedWindowNotice) {
+        if (v2Windows && !runOpts.acknowledgedWindowNotice && uiMode !== 'guided') {
           const estimate = candidatesOutsideWindows(
             v2Variants.map((v) => ({
               label: v.label,
