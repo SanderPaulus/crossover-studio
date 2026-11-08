@@ -455,7 +455,7 @@ describe('App.tsx walks this route', () => {
        beside the shortlist — the claim below). WHY: Sander — the list is
        expert information on a wizard's end screen. */
     expect(REQ_PANE).not.toContain('describeSkipped(v2GuidedValues)');
-    expect(APP).toContain('const line = describeSkipped(v2GuidedValues);');
+    expect(APP).toContain('const line = describeSkipped(v2GuidedValues);'); // beside the shortlist
   });
 
   it('guided keeps NO store of its own: every answer is written to the app’s state', () => {
@@ -469,8 +469,14 @@ describe('App.tsx walks this route', () => {
     }
     expect(FIELD_RENDERER).not.toContain('useState');
     expect(REQ_PANE).not.toContain('useState');
-    expect(APP).toContain("const [v2ReqIx, setV2ReqIxRaw] = useState<number>(() => {");
-    expect(APP).toContain("localStorage.setItem('ads-v2-req-ix', String(clamped));");
+    /* 08-11-2026 (V15 form). WAS: the cursor restored from `ads-v2-req-ix`.
+       IS: the walk starts at question 1 whenever the step opens; only whether
+       it was ever finished is remembered (`ads-v2-req-done`), for the tick.
+       WHY: Sander — reopening on question 6 read as "already done". */
+    expect(APP).toContain('const [v2ReqIx, setV2ReqIxRaw] = useState<number>(0);');
+    expect(APP).toContain("if (designTab === 'requirements') setV2ReqIxRaw(0);");
+    expect(APP).toContain("localStorage.setItem('ads-v2-req-done', '1');");
+    expect(APP).toContain('requirements: v2ReqDone,');
   });
 
   it('each step shows what Engine v2 needs from it', () => {
@@ -480,8 +486,12 @@ describe('App.tsx walks this route', () => {
   });
 
   it('the run step says the exploration is the standard, with the measured cost', () => {
-    expect(APP).toContain("describeRunChoice('exploration', EXPLORATION_CHAIN_BUDGET)");
-    expect(APP).toContain("describeRunChoice('full', EXPLORATION_CHAIN_BUDGET)");
+    /* 08-11-2026 (V15 form). WAS: the run step printed the exploration and the
+       full field with their measured cost (`describeRunChoice`). IS: one
+       sentence in guided; the run-size choice and its cost are expert
+       reading. WHY: Sander — too much text for a guided step. */
+    expect(APP).not.toContain("describeRunChoice('exploration', EXPLORATION_CHAIN_BUDGET)");
+    expect(APP).toContain("{v2PreStart && uiMode !== 'guided' && (");
     /* U-10 fase 3 (V15) — WAS: the v1 sentence ("nine complete designs") sits
        behind `!engineV2Enabled`. IS: it is gone with the v1 guided walk. */
     expect(APP).not.toContain('nine complete designs');

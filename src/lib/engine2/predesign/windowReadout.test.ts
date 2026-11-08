@@ -112,7 +112,9 @@ describe('U-3e — the app shows it where the run is started', () => {
     const group = APP.slice(at, at + 4000);
     expect(group).toContain('v2-window-strip');
     expect(group).toContain("t('Optimize — design for me')");
-    expect(group).toContain('void runVfOptimize()');
+    /* 08-11-2026: guided starts without the pre-start notice and hides the strip. */
+    expect(group).toContain("void runVfOptimize(uiMode === 'guided' ? { acknowledgedWindowNotice: true } : {})");
+    expect(group).toContain("{v2WindowLines.length > 0 && uiMode !== 'guided' && (");
     // …and the sentence that would have answered it says what to do about it.
     /* 07-11-2026 — V15: WAS "a convention, not a measurement"; IS the trade
      * rule the floor follows since then, read off the measured resonance. */

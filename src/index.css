@@ -5095,3 +5095,8 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
   color: var(--muted);
   margin-top: 0.2rem;
 }
+/* Profile cards line up to one height: a global button rule aligns them to the
+   END of their grid row, so a card with a two-line hint stood out (08-11-2026). */
+.v2-profile-choices > .v2-profile {
+  align-self: stretch;
+}

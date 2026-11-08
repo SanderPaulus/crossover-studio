@@ -2130,6 +2130,7 @@ export const nl: Record<string, string> = {
   "Next →": "Volgende →",
   "Next: Design it →": "Volgende: Ontwerp het →",
   "Next question →": "Volgende vraag →",
+  "One button: the app designs crossovers within what your measurements allow and checks each one against your answers. You can watch them come in and cancel at any time.": "Eén knop: de app ontwerpt kruisfilters binnen wat je metingen toelaten en toetst elk ervan aan je antwoorden. Je ziet ze binnenkomen en kunt op elk moment afbreken.",
   "{row} from your measurements: the {driver} is the roughest (±{est} dB), × {f}.": "{row} uit je metingen: de {driver} is het ruwst (±{est} dB), × {f}.",
   "{row}: your drivers allow about ±{est} dB (the {driver} is the roughest), so this figure stands.": "{row}: je drivers laten ongeveer ±{est} dB toe (de {driver} is het ruwst), dus dit getal blijft staan.",
   "{row}: fixed figure — no estimate from your measurements yet.": "{row}: vast getal — nog geen schatting uit je metingen.",

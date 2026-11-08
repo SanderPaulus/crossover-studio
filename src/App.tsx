@@ -297,7 +297,6 @@ import {
   LEVEL_WORK_OPTIONS,
   REQUIREMENT_INPUT,
   V2_GUIDED_STAGES,
-  describeRunChoice,
   describeSkipped,
   guidedEngineNote,
   guidedStages,
@@ -2098,14 +2097,30 @@ export default function App() {
    * on, in the browser, like `ads-ui-tab` beside it; reaching the summary
    * (index === the number of screens) is what ticks the step.
    */
-  const [v2ReqIx, setV2ReqIxRaw] = useState<number>(() => {
-    const v = Number(localStorage.getItem('ads-v2-req-ix'));
-    return Number.isFinite(v) && v >= 0 && v <= GUIDED_QUESTIONS.length ? v : 0;
+  /* 08-11-2026 (Sander): the walk STARTS AT QUESTION 1, every time the step is
+   * opened — a wizard that reopens on the screen you left reads as "already
+   * done". The cursor is therefore not restored; what is remembered is only
+   * whether the walk was ever finished (`ads-v2-req-done`), and that is what
+   * ticks the step. */
+  const [v2ReqIx, setV2ReqIxRaw] = useState<number>(0);
+  const [v2ReqDone, setV2ReqDone] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ads-v2-req-done') === '1' || Number(localStorage.getItem('ads-v2-req-ix')) >= GUIDED_QUESTIONS.length;
+    } catch {
+      return false;
+    }
   });
   const setV2ReqIx = (n: number) => {
     const clamped = Math.max(0, Math.min(GUIDED_QUESTIONS.length, n));
     setV2ReqIxRaw(clamped);
-    localStorage.setItem('ads-v2-req-ix', String(clamped));
+    if (clamped >= GUIDED_QUESTIONS.length && !v2ReqDone) {
+      setV2ReqDone(true);
+      try {
+        localStorage.setItem('ads-v2-req-done', '1');
+      } catch {
+        /* storage off: the tick lasts for this session */
+      }
+    }
   };
   /**
    * I-3 — THE REQUIREMENTS TAB EXISTS ONLY WHERE THE ROUTE HAS IT.
@@ -2122,6 +2137,10 @@ export default function App() {
     if (designTab === 'requirements' && uiMode !== 'guided')
       setDesignTab('filters');
   }, [designTab, uiMode]);
+  /* Opening the step begins the walk at question 1 (08-11-2026). */
+  useEffect(() => {
+    if (designTab === 'requirements') setV2ReqIxRaw(0);
+  }, [designTab]);
   /** E-2 — the one way a v2 field is edited: the value, and the date it was stated. */
   const setV2Field = (key: V2SettingKey, value: string) => {
     setEngineV2Settings((v) => ({ ...v, [key]: value }));
@@ -6761,7 +6780,7 @@ export default function App() {
        * and the fourteen sentences say what it costs. A tick that demanded
        * fifteen stated requirements would mark a deliberately minimal run as
        * unfinished forever, which is the opposite of what this route is for. */
-      requirements: v2ReqIx >= GUIDED_QUESTIONS.length,
+      requirements: v2ReqDone,
       // Design: a network with real filter parts exists — a bare template
       // (generator + drivers) has not designed anything yet.
       design: designs.some(
@@ -6777,7 +6796,7 @@ export default function App() {
         return rows.length > 0 && rows.every((r) => r.match || r.stackMatch);
       })(),
     };
-  }, [woofer, midDrv, tweeter, threeWay, impedances, cabinet, designs, activeDesignId, v2ReqIx]);
+  }, [woofer, midDrv, tweeter, threeWay, impedances, cabinet, designs, activeDesignId, v2ReqDone]);
 
 
   /** Single-driver mode, floor control: the driver's own median level over the
@@ -19709,8 +19728,13 @@ export default function App() {
                          design is simulated — the same start as the palette's
                          "Optimize", on the Design step where the run shows. */
                       setDesignTab('filters');
+                      /* The pre-start window notice asks "start anyway, or change
+                         the range?" — and guided has no range to change, so from
+                         the wizard it would only stop the run where nobody looks
+                         (Sander, 08-11-2026: "start de run start niet"). It is
+                         informational; the run says the same in its notes. */
                       if (result && !vfBusy)
-                        void runVfOptimize().catch((e) => {
+                        void runVfOptimize({ acknowledgedWindowNotice: true }).catch((e) => {
                           setVfBusy(false);
                           setVfError(e instanceof Error ? e.message : String(e));
                         });
@@ -20023,27 +20047,14 @@ export default function App() {
               * saying so, and saying what it costs in numbers that were
               * measured rather than in "several minutes". */}
             {uiMode === 'guided' && (
+              /* 08-11-2026 (Sander): guided says what the button does in one
+                 sentence. The run-size explanation, the measured run times and
+                 the list of unjudged requirements are expert reading; the
+                 shortlist still names what went unjudged. */
               <div className="sub v2-run-choice">
                 <p>
-                  {t('One button. The app derives the crossover windows your measurements allow, builds a field of candidate designs inside them, tunes each one and judges it against what you stated on the previous step — then shows the shortlist that survived. You can watch each candidate come in, and cancel at any time.')}
+                  {t('One button: the app designs crossovers within what your measurements allow and checks each one against your answers. You can watch them come in and cancel at any time.')}
                 </p>
-                <p>
-                  <strong>{t('Exploration')}</strong>
-                  {' — '}
-                  {describeRunChoice('exploration', EXPLORATION_CHAIN_BUDGET)}
-                </p>
-                <p>
-                  <strong>{t('The full field')}</strong>
-                  {' — '}
-                  {describeRunChoice('full', EXPLORATION_CHAIN_BUDGET)}
-                </p>
-                {(() => {
-                  /* The questions that went unanswered, said BEFORE the run
-                     rather than only after it: half an hour is a long time to
-                     wait to be told that nothing judged the result. */
-                  const line = describeSkipped(v2GuidedValues);
-                  return line ? <p className="v2-req-skipped">{line}</p> : null;
-                })()}
               </div>
             )}
             {uiMode === 'guided' && nonStandard.length > 0 && (
@@ -20067,7 +20078,7 @@ export default function App() {
               * a design the measurements say will be fighting its drivers,
               * which a designer sometimes chooses on purpose. Nothing is
               * skipped and nothing is clamped either way. */}
-            {v2PreStart && (
+            {v2PreStart && uiMode !== 'guided' && (
               <div className="v2-prestart">
                 <b>⚠ {t('Before the scan starts')}</b>
                 <p>{v2PreStart.message}</p>
@@ -20087,7 +20098,9 @@ export default function App() {
                 <div className="tool-group-body">
                   <button
                     type="button"
-                    onClick={() => void runVfOptimize()}
+                    /* Guided has no range to change, so the pre-start window
+                       notice would only stop the run (08-11-2026). */
+                    onClick={() => void runVfOptimize(uiMode === 'guided' ? { acknowledgedWindowNotice: true } : {})}
                     disabled={vfBusy}
                     title={
                       threeWay
@@ -20107,7 +20120,7 @@ export default function App() {
                       off `report.predesign.windows` (see `v2WindowLines`). It
                       belongs HERE because this is where the run is started;
                       the full list of limits stays in the Engine v2 panel. */}
-                  {v2WindowLines.length > 0 && (
+                  {v2WindowLines.length > 0 && uiMode !== 'guided' && (
                     <div className="v2-window-strip">
                       {v2WindowLines.map((l) => (
                         <span key={l.pair} className="v2-window-line">

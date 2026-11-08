@@ -354,7 +354,7 @@ describe('U-9 fase 3: five questions, and where every requirement goes', () => {
     /* …and the last answer is the last thing before the run: the summary's
        button starts it, the palette's way (08-11-2026). */
     expect(APP).toContain("? t('Design it — start the run →')");
-    expect(APP).toMatch(/if \(!atEnd\) return setV2ReqIx\(ix \+ 1\);[\s\S]{0,400}setDesignTab\('filters'\);\s*if \(result && !vfBusy\)\s*void runVfOptimize\(\)/);
+    expect(APP).toMatch(/if \(!atEnd\) return setV2ReqIx\(ix \+ 1\);[\s\S]{0,400}setDesignTab\('filters'\);[\s\S]{0,600}if \(result && !vfBusy\)\s*void runVfOptimize\(\{ acknowledgedWindowNotice: true \}\)/);
   });
 
   it('the guided shortlist sorts on a key the user picks and names it — no recommended crown', () => {

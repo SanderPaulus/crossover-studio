@@ -9282,3 +9282,20 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - `src/lib/achievableWindow.test.ts` (9 claims). **Gemeten:** `npm run test:fast` 260 s, 229
   bestanden (228 + 1), 3039 tests (3035 + 4), groen. Browser (driewegdemo): "your drivers allow about
   ±0.78 dB (the tweeter is the roughest), so this figure stands."
+
+### G-9-guards (guided begint bij vraag 1, en de run start echt; alleen UI, 08-11-2026)
+
+- **De eisenstap opent altijd op vraag 1**: de cursor wordt niet meer uit `ads-v2-req-ix` hersteld en
+  springt naar 0 zodra de stap opent. Wat onthouden wordt is alleen of de wandeling ooit is afgemaakt
+  (`ads-v2-req-done`); dat zet het vinkje.
+- **De run start echt**: vanuit de wizard en met de guided Optimize-knop loopt `runVfOptimize` met
+  `acknowledgedWindowNotice: true`. De vóórstart-melding vroeg "start anyway of verander het
+  bereik", guided heeft geen bereik om te veranderen, en de melding stond onder de vouw. Gemeld door
+  Sander: "start de run, start niet de run". In expert blijft de melding.
+- **De ontwerpstap in guided is één zin** plus de knop. Weg: de uitleg over verkenning en vol veld met
+  hun gemeten looptijden, de lijst met overgeslagen eisen (staat nog naast de shortlist) en de
+  vensterregels naast de knop (expert).
+- **Profielkaarten even hoog**: een globale knopregel zette `align-self: end`; `.v2-profile-choices >
+  .v2-profile` stretcht nu.
+- **Gemeten:** `npm run test:fast` 318 s, 3039 tests (3035 + 4), groen. Browser: stap opent op
+  "Question 1 of 6", de startknop opent de run-overlay zonder melding.
