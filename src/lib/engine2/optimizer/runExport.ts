@@ -116,6 +116,8 @@ export interface RunExportField {
     statedPerAxisHz?: number[][];
     /** U-5 — when they stated them; the attribution each stated candidate carries. */
     statedOn?: string;
+    /** Only the stated candidates were run (refine around one design). */
+    statedOnly?: boolean;
     /**
      * H-5 — WHICH POLARITY ARMS THE RUN BUILT.
      *
@@ -308,10 +310,14 @@ export function replayField(exp: RunExport): CandidateField {
   return withTextbookArms(
     {
       ...derived,
-      candidates: [...derived.candidates, ...stated.candidates],
+      candidates: f.settings.statedOnly ? [...stated.candidates] : [...derived.candidates, ...stated.candidates],
       refusals: [...derived.refusals, ...stated.refusals],
       notes: [...derived.notes, ...stated.notes],
-      parameters: { ...derived.parameters, statedSize: stated.candidates.length },
+      parameters: {
+        ...derived.parameters,
+        statedSize: stated.candidates.length,
+        ...(f.settings.statedOnly ? { statedOnly: true } : {}),
+      },
     },
     f.settings.polarityArms,
   );

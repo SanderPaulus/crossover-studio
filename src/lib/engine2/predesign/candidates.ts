@@ -361,6 +361,8 @@ export interface CandidateField {
      * fingerprint still reproduces (the E-2 rule, one field further).
      */
     statedSize?: number;
+    /** Only the stated candidates were run (refine around one design). */
+    statedOnly?: boolean;
     /**
      * H-4 — how many MIRRORED polarity arms stand beside the textbook ones.
      * PRESENT ONLY WHEN ANY WERE SEEDED, by the same rule and for the same

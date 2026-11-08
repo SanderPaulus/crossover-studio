@@ -421,7 +421,8 @@ describe('U-5b — the app expands the form it shows', () => {
   it('BOTH routes merge the pin into the stated list before they build the field', () => {
     expect((APP.match(/mergeStatedCrossings\(\{/g) ?? []).length).toBe(2);
     expect((APP.match(/ranges: v2StatedRanges\(wis\.length\),/g) ?? []).length).toBe(2);
-    expect((APP.match(/\.\.\.\(stated\.complete \? \{ statedPerAxisHz: stated\.perAxisHz \} : \{\}\)/g) ?? []).length).toBe(2);
+    /* 08-11-2026 (V15 form): a refine run states its own positions first; else the merged list. */
+    expect((APP.match(/: stated\.complete\s+\? \{ statedPerAxisHz: stated\.perAxisHz \}\s+: \{\}\)/g) ?? []).length).toBe(2);
   });
 
   it('the pin reaches the field through that ONE helper and nowhere else', () => {

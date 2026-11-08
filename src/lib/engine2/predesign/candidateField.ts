@@ -98,6 +98,12 @@ export interface CandidateFieldRequest {
   /** U-5 — when the designer stated them; the attribution every stated candidate carries. */
   statedOn?: string;
   /**
+   * 08-11-2026 — REFINE AROUND ONE DESIGN: run ONLY the stated positions, not
+   * the derived field beside them. Absent = the field as always (P2); it only
+   * takes effect with stated candidates, and the parameters say it was set.
+   */
+  statedOnly?: boolean;
+  /**
    * H-4 — THE POLARITY ARMS, when the caller states a policy.
    *
    * Absent and the field is exactly the one this generator has built since
@@ -241,14 +247,18 @@ export function buildCandidateField(req: CandidateFieldRequest): CandidateFieldR
     stated && stated.candidates.length > 0
       ? {
           ...field,
-          candidates: [...field.candidates, ...stated.candidates],
+          candidates: req.statedOnly ? [...stated.candidates] : [...field.candidates, ...stated.candidates],
           refusals: [...field.refusals, ...stated.refusals],
           notes: [
             ...field.notes,
             ...stated.notes,
-            ...statedOverlapNotes(stated.candidates, field.candidates),
+            ...(req.statedOnly ? [] : statedOverlapNotes(stated.candidates, field.candidates)),
           ],
-          parameters: { ...field.parameters, statedSize: stated.candidates.length },
+          parameters: {
+            ...field.parameters,
+            statedSize: stated.candidates.length,
+            ...(req.statedOnly ? { statedOnly: true } : {}),
+          },
         }
       : field;
 

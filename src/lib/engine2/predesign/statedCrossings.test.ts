@@ -277,6 +277,17 @@ describe('U-5 — nothing stated is the field it always was', () => {
     expect(stableJson(candidateFieldKey(a.field))).not.toBe(stableJson(candidateFieldKey(b.field)));
   });
 
+  it('statedOnly runs ONLY the stated positions, and says so in the parameters (refine)', () => {
+    const b = buildCandidateField({ ...base, statedPerAxisHz: [[2200, 2400, 2600]], statedOn, statedOnly: true });
+    expect(b.field.candidates.length).toBe(3);
+    expect(b.field.candidates.every((c) => c.stated)).toBe(true);
+    expect(b.field.parameters.statedOnly).toBe(true);
+    /* Absent is the field as always (P2). */
+    const a = buildCandidateField({ ...base, statedPerAxisHz: [[2200, 2400, 2600]], statedOn });
+    expect(a.field.parameters.statedOnly).toBeUndefined();
+    expect(a.field.candidates.length).toBeGreaterThan(3);
+  });
+
   it('a SUPERSEDED limit does not bind, so a stated position cannot be past it', () => {
     /* U-4's overrule: a stated ceiling put in place of the breakup derivation.
      * The breakup stays in `limits` and must not produce a breach. */

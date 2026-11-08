@@ -322,6 +322,7 @@ import {
   type ProfileTarget,
 } from './lib/guidedProfiles.ts';
 import { achievableWindow } from './lib/achievableWindow.ts';
+import { refinePlan } from './lib/refineRun.ts';
 import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import {
@@ -353,7 +354,7 @@ import {
 import { seriesRMaxOhmOf, type LowestWayLevelWork } from './lib/levelWork.ts';
 import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
-import { DEFAULT_RUN_SEED, DEFAULT_SHORTLIST_SIZE, EXPLORATION_CHAIN_BUDGET, SEARCH_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
+import { DEFAULT_RUN_SEED, DEFAULT_SHORTLIST_SIZE, EXPLORATION_CHAIN_BUDGET, SEARCH_SMOOTHING_OCTAVES, WINDOW_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
 import { digest, stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
 import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
 import { gateCellState } from './lib/engine2/optimizer/gateCell.ts';
@@ -2141,6 +2142,29 @@ export default function App() {
   useEffect(() => {
     if (designTab === 'requirements') setV2ReqIxRaw(0);
   }, [designTab]);
+  /** 08-11-2026 — guided's run size: quick or extended, the one `fieldMode` expert sets. */
+  const guidedRunSize = () => {
+    const mode = fieldModeOf(engineV2Settings.fieldMode);
+    return (
+      <div className="v2-profile-choices">
+        {([
+          ['exploration', 'Quick', 'A handful of designs around the middle of each window. About half an hour for a three-way.'],
+          ['full', 'Extended', 'Every window edge to edge. Several hours; you can stop it and keep what has finished.'],
+        ] as const).map(([id, label, hint]) => (
+          <button
+            key={id}
+            type="button"
+            className={`v2-profile${mode === id ? ' active-toggle' : ''}`}
+            aria-pressed={mode === id}
+            onClick={() => setV2Field('fieldMode', id)}
+          >
+            <span>{t(label)}</span>
+            <small>{t(hint)}</small>
+          </button>
+        ))}
+      </div>
+    );
+  };
   /** E-2 — the one way a v2 field is edited: the value, and the date it was stated. */
   const setV2Field = (key: V2SettingKey, value: string) => {
     setEngineV2Settings((v) => ({ ...v, [key]: value }));
@@ -9154,7 +9178,7 @@ export default function App() {
     safety: args.safety,
   });
 
-  async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean; fieldMode?: FieldMode } = {}) {
+  async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean; fieldMode?: FieldMode; refine?: { perAxisHz: number[][] } } = {}) {
     /* D-0 — every `engineV2Report` below is the RUN's report and not the
      * panel's: shadowed on purpose, so that no reference has to be found and
      * rewritten one by one. The same object whenever the gate is open, which
@@ -9458,7 +9482,11 @@ export default function App() {
           windowInputs: wis,
           perPair,
           fieldSettings,
-          ...(stated.complete ? { statedPerAxisHz: stated.perAxisHz } : {}),
+          ...(runOpts.refine
+            ? { statedPerAxisHz: runOpts.refine.perAxisHz }
+            : stated.complete
+              ? { statedPerAxisHz: stated.perAxisHz }
+              : {}),
         };
       })();
       const v2Generated = v2FieldRequest
@@ -9471,6 +9499,7 @@ export default function App() {
               ? {
                   statedPerAxisHz: v2FieldRequest.statedPerAxisHz,
                   statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
+                  ...(runOpts.refine ? { statedOnly: true } : {}),
                 }
               : {}),
           })
@@ -9912,6 +9941,7 @@ export default function App() {
                   ...(v2FieldRequest.statedPerAxisHz
                     ? {
                         statedPerAxisHz: v2FieldRequest.statedPerAxisHz.map((a) => [...a]),
+                        ...(runOpts.refine ? { statedOnly: true } : {}),
                         statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
                       }
                     : {}),
@@ -10737,7 +10767,11 @@ export default function App() {
             windowInputs: wis,
             perPair,
             fieldSettings,
-            ...(stated.complete ? { statedPerAxisHz: stated.perAxisHz } : {}),
+            ...(runOpts.refine
+            ? { statedPerAxisHz: runOpts.refine.perAxisHz }
+            : stated.complete
+              ? { statedPerAxisHz: stated.perAxisHz }
+              : {}),
           };
         })();
         const v2Generated = v2FieldRequest
@@ -10750,6 +10784,7 @@ export default function App() {
                 ? {
                     statedPerAxisHz: v2FieldRequest.statedPerAxisHz,
                     statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
+                    ...(runOpts.refine ? { statedOnly: true } : {}),
                   }
                 : {}),
             })
@@ -11119,6 +11154,7 @@ export default function App() {
                       ...(v2FieldRequest.statedPerAxisHz
                         ? {
                             statedPerAxisHz: v2FieldRequest.statedPerAxisHz.map((a) => [...a]),
+                        ...(runOpts.refine ? { statedOnly: true } : {}),
                             statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
                           }
                         : {}),
@@ -12257,6 +12293,50 @@ export default function App() {
    * which the rendering deliberately does not; it is handled anyway, because a
    * guard at the decision is worth more than a guard at every call site.
    */
+  /**
+   * 08-11-2026 — REFINE AROUND ONE DESIGN (`refineRun.ts`): three runs on one
+   * handover (this position and one field spacing either side), every other
+   * handover where the row has it. Only those run; the shortlist that comes
+   * back holds them, the row's own position included for comparison.
+   */
+  function refineAround(label: string, axis: number) {
+    const c = v2Run?.export?.field.candidates.find((x) => x.label === label);
+    const plan = c ? refinePlan(c.crossings, axis, WINDOW_SMOOTHING_OCTAVES) : null;
+    if (!plan || plan.perAxisHz[axis].length === 0) return;
+    void runVfOptimize({
+      acknowledgedWindowNotice: true,
+      fieldMode: 'exploration',
+      refine: { perAxisHz: plan.perAxisHz },
+    }).catch((e) => {
+      setVfBusy(false);
+      setVfError(e instanceof Error ? e.message : String(e));
+    });
+  }
+  function v2RefineButtons(label: string) {
+    const c = v2Run?.export?.field.candidates.find((x) => x.label === label);
+    if (!c) return null;
+    return (
+      <span className="v2-refine">
+        {t('Refine:')}
+        {c.crossings.map((x, i) => (
+          <button
+            key={x.pair}
+            type="button"
+            className="link-btn"
+            disabled={vfBusy}
+            title={t('Three runs: this crossing and its neighbours on {pair}, every other crossing where it is now. The list that comes back holds those three.', { pair: x.pair })}
+            onClick={(e) => {
+              e.stopPropagation();
+              refineAround(label, i);
+            }}
+          >
+            {x.pair}
+          </button>
+        ))}
+      </span>
+    );
+  }
+
   function loadShortlistRow(label: string) {
     const sel = selectFromShortlist(v2Shortlist, label);
     if (sel.kind === 'design') {
@@ -19805,6 +19885,7 @@ export default function App() {
                           {expertStated.map(rowLabel).join(' · ')}
                         </p>
                       )}
+                      {guidedRunSize()}
                       {nav(true)}
                     </div>
                   ) : (
@@ -20055,6 +20136,7 @@ export default function App() {
                 <p>
                   {t('One button: the app designs crossovers within what your measurements allow and checks each one against your answers. You can watch them come in and cancel at any time.')}
                 </p>
+                {guidedRunSize()}
               </div>
             )}
             {uiMode === 'guided' && nonStandard.length > 0 && (
@@ -22550,6 +22632,7 @@ export default function App() {
                                   <span className={`v2-badge v2-badge-${g.status}`}>
                                     {g.status === 'stated' ? t('stated') : t('delivered')}
                                   </span>
+                                  {v2RefineButtons(r.label)}
                                   {g.sameCount > 1 && (
                                     <span className="derived">
                                       {' '}

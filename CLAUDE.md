@@ -9299,3 +9299,17 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   .v2-profile` stretcht nu.
 - **Gemeten:** `npm run test:fast` 318 s, 3039 tests (3035 + 4), groen. Browser: stap opent op
   "Question 1 of 6", de startknop opent de run-overlay zonder melding.
+
+### G-10-guards (snel of uitgebreid, en verfijnen rond één ontwerp; 08-11-2026)
+
+- **Guided kiest de run-grootte** bij de startknop (samenvatting en ontwerpstap): Snel/Uitgebreid
+  schrijft `fieldMode`, dezelfde instelling als expert.
+- **"Refine" per overname op elke shortlist-rij** (`refineRun.ts`): drie runs, de positie van de rij en
+  één veldafstand (1/6 octaaf) aan weerszijden op die overname, de andere overnames blijven staan.
+  Posities buiten het venster vallen af. `buildCandidateField` kreeg `statedOnly` (alleen de gestelde
+  kandidaten; absent = het veld als altijd, P2; staat in `parameters` en in de export voor de replay).
+  De lijst die terugkomt vervangt de vorige shortlist; afbreken laat geen shortlist achter.
+- `refineRun.test.ts` (4), +1 in `statedCrossings.test.ts`. **Gemeten:** `npm run test:fast` 269 s;
+  één rode bronscan (`statedRange`, de vorm van de stated-spread) in V15-vorm bijgewerkt en apart
+  groen, dus 230 bestanden, 3044 tests. Browser: driewegdemo, Verfijn op woofer→mid draaide
+  415,8 / 466,7 / 523,9 bij mid→tweeter 1885,5; "2 of 3 candidates qualified".
