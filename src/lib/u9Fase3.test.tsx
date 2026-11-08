@@ -135,7 +135,8 @@ describe('U-9 fase 3, stap 0b — de TDZ-guard op polarityBranchOf', () => {
 const valueOf = (id: string, rowId: string) => {
   const p = GUIDED_PROFILES.find((x) => x.id === id)!;
   const v = p.values.find((x) => x.rowId === rowId)!;
-  return v.amount.kind === 'value' ? v.amount.value : v.amount.fraction;
+  /* 08-11-2026: the SPL window is measured-scaled; its approved number is its FLOOR. */
+  return v.amount.kind === 'value' ? v.amount.value : v.amount.kind === 'measured' ? v.amount.floor : v.amount.fraction;
 };
 
 describe('U-9 fase 3 (B-1): the approved profile table', () => {

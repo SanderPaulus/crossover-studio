@@ -37,7 +37,13 @@ export type ProfileTarget = V2StatedKey;
 /** Een waarde: een getal, of een fractie van een andere (al geschreven) waarde. */
 export type ProfileAmount =
   | { kind: 'value'; value: number }
-  | { kind: 'fraction'; of: 'amplifierPowerW'; fraction: number };
+  | { kind: 'fraction'; of: 'amplifierPowerW'; fraction: number }
+  /**
+   * 08-11-2026 (Sander): a value SCALED BY THE MEASUREMENTS — `factor` times
+   * what the drivers themselves allow (`achievableWindow.ts`), never below
+   * `floor`. Without an estimate it is the floor, and the write says so.
+   */
+  | { kind: 'measured'; floor: number; factor: number };
 
 export interface ProfileValue {
   target: ProfileTarget;
@@ -168,7 +174,7 @@ const build = (
   values: [
     { target: 'resistorClassW', rowId: 'resistorClassW', amount: v(rclass), basis: rclass === 10 ? RCLASS_BASIS_10 : RCLASS_BASIS_20, tooStrict: RCLASS_STRICT, tooLoose: RCLASS_LOOSE },
     { target: 'resistorPowerMargin', rowId: 'resistorPowerMargin', amount: v(0.5), basis: MARGIN_BASIS, tooStrict: RCLASS_STRICT, tooLoose: RCLASS_LOOSE },
-    { target: 'splWindowPlusMinusDb', rowId: 'splWindowPlusMinusDb', amount: v(splPm), basis: splBasis, tooStrict: SPL_STRICT, tooLoose: SPL_LOOSE },
+    { target: 'splWindowPlusMinusDb', rowId: 'splWindowPlusMinusDb', amount: splMeasured(splPm), basis: splBasis, tooStrict: SPL_STRICT, tooLoose: SPL_LOOSE },
     ...(phaseDeg === null
       ? []
       : [{ target: 'maxPhaseTrackingDeg' as const, rowId: 'maxPhaseTrackingDeg', amount: v(phaseDeg), basis: PHASE_BASIS, tooStrict: PHASE_STRICT, tooLoose: PHASE_LOOSE }]),
@@ -176,6 +182,20 @@ const build = (
 });
 
 const SPL_CONVENTION = 'A manufacturer convention, not a norm. It is a REQUIREMENT (A5e.1): the relaxation ladder may widen it, and says so.';
+/**
+ * THE SPL WINDOW FOLLOWS THE DRIVERS (08-11-2026). Each profile states
+ * `factor × the roughest driver's estimate` (`achievableWindow.ts`), never
+ * below the old fixed figure. The factors are that figure divided by the Koan
+ * estimate (±1.03 dB, `test-fixtures/achievable_window.json`): on drivers as
+ * smooth as Koan's nothing changes, on rougher ones the window widens with
+ * them. CALIBRATED ON ONE SET — the Robbert three-way is the next one to check.
+ */
+const SPL_ESTIMATE_KOAN_DB = 1.03;
+const splMeasured = (floor: number): ProfileAmount => ({
+  kind: 'measured',
+  floor,
+  factor: Number((floor / SPL_ESTIMATE_KOAN_DB).toFixed(1)),
+});
 
 export const GUIDED_PROFILES: readonly GuidedProfile[] = Object.freeze([
   amp('amp-8ohm', '8 Ω only', 'Many valve and vintage amplifiers: the label says 8 Ω and nothing lower.', 6.4, 30),
@@ -196,9 +216,9 @@ export const GUIDED_PROFILES: readonly GuidedProfile[] = Object.freeze([
     -24, 'A 2nd-order flank at 4·f_s (12 dB/oct × log₂4): the “3–4 × f_s” rule (Dickason) at its strict end.', 0.7, 0.25,
     'A crest factor of about 9 dB (compressed, against clipping) gives 25 %.',
   ),
-  build('build-simple', 'As simple as possible', 'Few parts; flatness within a loose hifi tolerance.', 10, 3, `±3 dB — ${SPL_CONVENTION}`, null),
-  build('build-balanced', 'Balanced', 'A good tolerance on flatness and on phase through the handover.', 10, 2, `±2 dB — ${SPL_CONVENTION}`, 30),
-  build('build-whatever', 'Whatever it takes', 'A monitor-grade tolerance; parts and cost follow from it.', 20, 1.5, `±1.5 dB — ${SPL_CONVENTION}`, 30),
+  build('build-simple', 'As simple as possible', 'Few parts; flatness within a loose hifi tolerance.', 10, 3, `At least ±3 dB, more on rough drivers (2.9 × what they allow) — ${SPL_CONVENTION}`, null),
+  build('build-balanced', 'Balanced', 'A good tolerance on flatness and on phase through the handover.', 10, 2, `At least ±2 dB, more on rough drivers (1.9 × what they allow) — ${SPL_CONVENTION}`, 30),
+  build('build-whatever', 'Whatever it takes', 'A monitor-grade tolerance; parts and cost follow from it.', 20, 1.5, `At least ±1.5 dB, more on rough drivers (1.5 × what they allow) — ${SPL_CONVENTION}`, 30),
 ]);
 
 /* ------------------------------------------------------------------ *
@@ -237,6 +257,14 @@ export interface ProfileWrite {
   rowId: string;
   /** Als string, zoals de formulieren hun waarden houden. */
   value: string;
+  /** For a measured amount: where the number came from (the screen prints it). */
+  derived?: { from: 'measurements'; roughest: string; estimateDb: number; factor: number } | { from: 'floor' };
+}
+
+/** What the drivers allow, as `achievableWindow` reports it; null = not measurable. */
+export interface MeasuredEstimate {
+  plusMinusDb: number;
+  roughest: string;
 }
 
 export interface ProfileSkip {
@@ -262,12 +290,28 @@ const fmt = (x: number): string => String(Number(x.toPrecision(6)));
 export function profileWrites(
   p: GuidedProfile,
   amplifierPowerW: string,
+  estimate: MeasuredEstimate | null = null,
 ): { writes: readonly ProfileWrite[]; skipped: readonly ProfileSkip[] } {
   const writes: ProfileWrite[] = [];
   const skipped: ProfileSkip[] = [];
   for (const val of p.values) {
     if (val.amount.kind === 'value') {
       writes.push({ target: val.target, rowId: val.rowId, value: fmt(val.amount.value) });
+      continue;
+    }
+    if (val.amount.kind === 'measured') {
+      const { floor, factor } = val.amount;
+      const scaled = estimate ? Math.round(factor * estimate.plusMinusDb * 10) / 10 : null;
+      if (estimate && scaled !== null && scaled > floor) {
+        writes.push({
+          target: val.target,
+          rowId: val.rowId,
+          value: fmt(scaled),
+          derived: { from: 'measurements', roughest: estimate.roughest, estimateDb: estimate.plusMinusDb, factor },
+        });
+      } else {
+        writes.push({ target: val.target, rowId: val.rowId, value: fmt(floor), derived: { from: 'floor' } });
+      }
       continue;
     }
     const base = Number(amplifierPowerW.trim());

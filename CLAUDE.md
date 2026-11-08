@@ -9260,3 +9260,25 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Gemeten:** `npm run test:fast` 257 s, 228 bestanden (227 + 1), 3030 tests (3026 + 4), groen.
   Browser: vraag 6 met vier knoppen, samenvatting met "Which components? — Standard", de startknop
   opent "Design it" en de run start (overlay met drie kandidaten, daarna afgebroken).
+
+### G-8-guards (het guided ±dB-venster schaalt met de metingen; alleen guided-profielen, 08-11-2026)
+
+- **`src/lib/achievableWindow.ts` (`achievable-window/1.0`)**: per driver, in de band waar hij
+  speelt (een halve octaaf voorbij elke kruising, geknipt op zijn geldige band), de 1/6-octaaf-respons
+  min een trend van 1 octaaf; half de top-tot-top is de schatting en de ruwste driver bepaalt haar.
+  Beide gladdingen zijn een Gaussisch gewogen LOKAAL LINEAIRE fit: een gewone Gaussische gladding wordt
+  aan een bandrand eenzijdig en las een zuivere helling van 3 dB/oct als ±0,41 dB (gemeten, de test
+  pint ±0). Geen engine-import; `FINE_SMOOTHING_OCT` is gepind gelijk aan `WINDOW_SMOOTHING_OCTAVES`.
+- **Gemeten** (`scripts/measure-achievable-window.ts`, `test-fixtures/achievable_window.json`):
+  Koan ±1,03 (tweeter), Robbert 3-weg ±2,60, Robbert 2-weg ±1,71 (kruising aangenomen 2500 Hz). De
+  Koan-route leverde ±1,5–2,1.
+- **Profielen** (`guidedProfiles.ts`, nieuw `ProfileAmount` `kind: 'measured'`): het SPL-venster is
+  `factor × schatting`, nooit onder het oude vaste getal (3 / 2 / 1,5). Factor = vast getal ÷ de
+  Koan-schatting (2,9 / 1,9 / 1,5), dus op Koan verandert niets en op Robbert 3-weg wordt het
+  ±7,5 / ±4,9 / ±3,9. Zonder schatting het vaste getal, en de kaart zegt dat. GEËIJKT OP ÉÉN SET.
+- **App**: `achievableEstimate` leest het v2-rapport (driversLowToHigh, onAxisFull op onAxis.bandHz,
+  kruisingen = midden van elk venster, vloer = `system.splBandHz[0]`) en gaat mee in beide
+  `profileWrites`-aanroepen; elke profielkaart zegt in één regel waar het getal vandaan komt.
+- `src/lib/achievableWindow.test.ts` (9 claims). **Gemeten:** `npm run test:fast` 260 s, 229
+  bestanden (228 + 1), 3039 tests (3035 + 4), groen. Browser (driewegdemo): "your drivers allow about
+  ±0.78 dB (the tweeter is the roughest), so this figure stands."

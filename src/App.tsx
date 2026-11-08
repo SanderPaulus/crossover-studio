@@ -322,6 +322,7 @@ import {
   type GuidedProfileQuestion,
   type ProfileTarget,
 } from './lib/guidedProfiles.ts';
+import { achievableWindow } from './lib/achievableWindow.ts';
 import type { GeneratedCandidate } from './lib/engine2/predesign/candidates.ts';
 import { compareFloors, type FloorComparison } from './lib/engine2/predesign/floorComparison.ts';
 import {
@@ -7157,6 +7158,39 @@ export default function App() {
       ? { low: ws[0] ?? null, high: ws[1] ?? null }
       : { low: null, high: ws[ws.length - 1] ?? null };
   }, [engineV2Report, threeWay]);
+
+  /**
+   * 08-11-2026 — WHAT ±dB THE DRIVERS ALLOW (`achievableWindow.ts`). Read off
+   * the v2 report the guided pane already has: each driver's on-axis response
+   * on its valid band, low to high, with the crossings at the centre of each
+   * feasible window (the exploration's own centre). The guided "What do you
+   * want to build?" profiles scale their SPL window by it. Null when a window
+   * is empty or a driver has no on-axis response — the profiles then state
+   * their fixed figure and say so (P4).
+   */
+  const achievableEstimate = useMemo(() => {
+    const rep = engineV2Report?.report;
+    if (!rep) return null;
+    const ws = rep.predesign.windows;
+    const order = rep.driversLowToHigh;
+    if (ws.length !== order.length - 1) return null;
+    const crossings: number[] = [];
+    for (const w of ws) {
+      if (w.empty || w.floorHz === null || w.ceilingHz === null) return null;
+      crossings.push(Math.sqrt(w.floorHz * w.ceilingHz));
+    }
+    const drivers = [];
+    for (const name of order) {
+      const d = rep.ingest.drivers.find((x) => x.driver === name);
+      if (!d?.onAxis || !d.onAxisFull) return null;
+      drivers.push({ name, freq: d.onAxisFull.grid, db: d.onAxisFull.db, validHz: d.onAxis.bandHz });
+    }
+    const floor = rep.system.splBandHz?.[0] ?? drivers[0].validHz[0];
+    const w = achievableWindow(drivers, crossings, floor);
+    /* The report names drivers by app role; the card speaks to a builder. */
+    const roleName: Record<string, string> = { low: t('woofer'), mid: t('mid'), high: t('tweeter') };
+    return w ? { plusMinusDb: w.plusMinusDb, roughest: roleName[w.roughest] ?? w.roughest } : null;
+  }, [engineV2Report, t]);
 
   /**
    * U-3e — WHERE THE SEARCH MAY PUT A HANDOVER, BESIDE THE BUTTON THAT SEARCHES.
@@ -19613,7 +19647,7 @@ export default function App() {
                   : engineV2Settings.amplifierPowerW;
               const applyProfile = (p: GuidedProfile) => {
                 const by = profileStatedBy(p);
-                for (const w of profileWrites(p, powerAfter(p)).writes) writeTarget(w.target, w.value, by);
+                for (const w of profileWrites(p, powerAfter(p), achievableEstimate).writes) writeTarget(w.target, w.value, by);
               };
               /* "I don't know" withdraws what a PROFILE stated on this question
                  and leaves the viewer's own values standing — the button says
@@ -19797,7 +19831,7 @@ export default function App() {
                               <>
                                 <div className="v2-profile-choices">
                                   {profilesOf(qid).map((p) => {
-                                    const { writes, skipped } = profileWrites(p, powerAfter(p));
+                                    const { writes, skipped } = profileWrites(p, powerAfter(p), achievableEstimate);
                                     const replaces = writes.filter((w) => isOwn(w.target) && readTarget(w.target) !== w.value);
                                     return (
                                       <button
@@ -19813,6 +19847,30 @@ export default function App() {
                                           {t('This states:')}{' '}
                                           {writes.map((w) => `${rowLabel(w.rowId)}: ${w.value}${unitOf(w.target)}`).join(' · ')}
                                         </span>
+                                        {(() => {
+                                          /* 08-11-2026 — where a measured-scaled value came from. */
+                                          const m = writes.find((w) => w.derived);
+                                          if (!m?.derived) return null;
+                                          const d = m.derived;
+                                          return (
+                                            <span className="v2-profile-derived">
+                                              {d.from === 'measurements'
+                                                ? t('{row} from your measurements: the {driver} is the roughest (±{est} dB), × {f}.', {
+                                                    row: rowLabel(m.rowId),
+                                                    driver: d.roughest,
+                                                    est: d.estimateDb.toFixed(2),
+                                                    f: d.factor,
+                                                  })
+                                                : achievableEstimate
+                                                  ? t('{row}: your drivers allow about ±{est} dB (the {driver} is the roughest), so this figure stands.', {
+                                                      row: rowLabel(m.rowId),
+                                                      est: achievableEstimate.plusMinusDb.toFixed(2),
+                                                      driver: achievableEstimate.roughest,
+                                                    })
+                                                  : t('{row}: fixed figure — no estimate from your measurements yet.', { row: rowLabel(m.rowId) })}
+                                            </span>
+                                          );
+                                        })()}
                                         {skipped.map((sk) => (
                                           <span key={sk.rowId} className="v2-profile-skip">
                                             {rowLabel(sk.rowId)} — {t(PROFILE_SKIP_REASON, { pct: sk.pct })}

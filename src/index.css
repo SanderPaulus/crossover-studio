@@ -5088,3 +5088,10 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
   font-size: 0.78rem;
   margin-left: 0.3rem;
 }
+/* Where a measured-scaled profile value came from (08-11-2026). */
+.v2-profile-derived {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
