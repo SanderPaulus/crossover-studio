@@ -542,3 +542,24 @@ Elke rij met klasse `judgement` of effect `oordeelt` landt op precies één best
   - Een load-profiel rekent het thermisch vermogen uit tegen het continu vermogen dat er op het moment van kiezen stond. Een latere wijziging van het versterkerantwoord past het niet automatisch aan; het scherm toont de waarde.
   - Registerlabels in de keuzekaarten ("Amplifier power W") staan in het Engels; het register heeft geen NL-labels.
   - Open punten: U-10 (de v1-motor) en N1 (de Priority-schuif in de ontwerpstap).
+
+## Aanvulling G-12 (08-11-2026) — vraag 5: mag de woofer met weerstand verzwakt worden?
+
+**Aanleiding.** Een guided run op de driewegdemo leverde een wooferpad van 6,54 Ω (Q_es × 3,05); onder de geoordeelde band volgde de respons de impedantie (134 dB op 60 Hz). Het anker is de mid, het wooferpaar zit er 1,2 dB boven, en van de drie regels die bepalen HOE dat gedicht wordt stelde guided er geen: alle drie stonden als `E(NO_RULE)` in de toewijzingstabel.
+
+**Besluit (Sander, 08-11-2026):** een zesde eisvraag met drie antwoorden, als profielvraag; het Q_es-maximum en het LF-bult-budget blijven expert; de vraag komt na "Wat wil je bouwen?" en vóór "Hoe moet hij klinken?".
+
+**Waarom dit NO_RULE niet breekt.** Alleen `lowestWayLevelWork` stopt de pad, en dat is een WOORD en geen getal: de vakregel "nooit een pad op de woofer" (V51) is de regel zelf. Het Q_es-maximum (2,4×) laat op dit paar nog R_e·1,4 ≈ 4 Ω toe en het LF-budget (1,4 dB) begrenst de spoel, niet de weerstand; voor beide bestaat geen vakregel met een getal (vuistregels §4), dus zij blijven een projectbesluit in expert.
+
+| Antwoord | `lowestWayLevelWork` | `lowestWaySeriesRMaxOhm` |
+|---|---|---|
+| Geen weerstand op de woofer | `none` | — |
+| Alleen spoelkoper-schaal | `series-r-max` | 1,0 Ω |
+| Weet ik niet | niet gesteld (de zoektocht mag padden; de knop zegt wat dat op 08-11 kostte) | — |
+
+Onderbouwing:
+- **`none`** is de vakregel: een weerstand in de laagste weg maakt van watts warmte, verlaagt het impedantieminimum en maakt Q_es losser (de bas volgt de impedantie); mid en tweeter pad je, dat is goedkoop. Wat overblijft is de baffle step en de laagdoorlaatspoel. Te streng: een configuratie die niveauwerk nodig heeft komt geweigerd terug met X erbij (V51). Te ruim: de 6,5 Ω van 08-11.
+- **1,0 Ω** is een rond maximum op de DCR-schaal: één luchtspoel van enkele mH in 1,0–1,4 mm draad draagt 0,3–1 Ω, en een spoel met 1 Ω DCR is fysisch een serieweerstand van 1 Ω (V51b). Casus 1 stelde hetzelfde getal en trok het bij M-1 in voor een vlak plateau. Een conventie, geen norm; de kaart zegt dat. Te streng: de vloer wordt zonder meer serieweerstand niet gehaald en de kandidaat wordt geweigerd met Y (V51b). Te ruim: boven de koperschaal is een serieweerstand weer een pad.
+- Een keuze schrijft dezelfde staat als expert (`engineV2Settings.lowestWayLevelWork` / `.lowestWaySeriesRMaxOhm`), met `V2StatedBy` = "profile <naam>"; een eigen bewerking in expert wist die naam. Een latere profielkeuze op dezelfde vraag trekt in wat een EERDER profiel van die vraag stelde en dit profiel niet schrijft (een 1,0 Ω-maximum onder "geen weerstand" was anders een profielwaarde die niemand koos).
+
+De toewijzingstabel: `lowestWayLevelWork`, `lowestWaySeriesRMaxOhm` → vraag 5; `lfBumpBudgetDb`, `qesMultiplierMax` → Expert (ongewijzigd).

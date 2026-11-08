@@ -19746,7 +19746,15 @@ export default function App() {
                   : engineV2Settings.amplifierPowerW;
               const applyProfile = (p: GuidedProfile) => {
                 const by = profileStatedBy(p);
-                for (const w of profileWrites(p, powerAfter(p), achievableEstimate).writes) writeTarget(w.target, w.value, by);
+                const { writes } = profileWrites(p, powerAfter(p), achievableEstimate);
+                for (const w of writes) writeTarget(w.target, w.value, by);
+                /* G-12 (08-11-2026) — what an EARLIER profile of this question
+                   stated and this one does not write is withdrawn: a
+                   "Coil-copper" maximum left standing under "No resistance"
+                   would be a profile value nobody chose. Own values stay. */
+                for (const tg of targetsOf(p.question))
+                  if (!writes.some((w) => w.target === tg) && (engineV2StatedBy[tg] ?? '').startsWith('profile '))
+                    writeTarget(tg, '', null);
               };
               /* "I don't know" withdraws what a PROFILE stated on this question
                  and leaves the viewer's own values standing — the button says
@@ -19767,6 +19775,12 @@ export default function App() {
                       : REQUIREMENT_INPUT[tg]?.unit;
                 return u ? ` ${u}` : '';
               };
+              /* G-12 — a MODE is shown by its option label (the one list the
+                 expert select reads), a number with its unit. */
+              const shownValue = (tg: ProfileTarget, raw: string): string =>
+                tg === 'lowestWayLevelWork'
+                  ? t(LEVEL_WORK_OPTIONS.find((o) => o.value === raw)?.label ?? raw)
+                  : `${raw}${unitOf(tg)}`;
               const answerOf = (qid: (typeof qs)[number]['id']): string | null => {
                 if (qid === 'build') return engineV2Settings.activeSideOn === 'on' ? t('Hybrid mode') : t('Fully passive');
                 if (qid === 'voicing') {
@@ -19836,7 +19850,7 @@ export default function App() {
                 <div className="panel v2-req">
                   <h2>{t('What the design must meet')}</h2>
                   <p className="sub">
-                    {t('Five questions about what the design must meet, in words rather than numbers, and one about its components. Each answer shows what it states before it states it, and every value stays visible and editable in expert mode. “I don’t know” states nothing — and says what that costs. After the last answer the design is simulated.')}
+                    {t('Six questions about what the design must meet, in words rather than numbers, and one about its components. Each answer shows what it states before it states it, and every value stays visible and editable in expert mode. “I don’t know” states nothing — and says what that costs. After the last answer the design is simulated.')}
                   </p>
                   <ol className="v2-req-dots" aria-label={t('Requirements')}>
                     {qs.map((q, i) => {
@@ -19950,7 +19964,7 @@ export default function App() {
                                         <small>{t(p.who)}</small>
                                         <span className="v2-profile-states">
                                           {t('This states:')}{' '}
-                                          {writes.map((w) => `${rowLabel(w.rowId)}: ${w.value}${unitOf(w.target)}`).join(' · ')}
+                                          {writes.map((w) => `${rowLabel(w.rowId)}: ${shownValue(w.target, w.value)}`).join(' · ')}
                                         </span>
                                         {(() => {
                                           /* 08-11-2026 — where a measured-scaled value came from. */
@@ -19984,7 +19998,7 @@ export default function App() {
                                         {replaces.length > 0 && (
                                           <span className="v2-warn">
                                             {t('Replaces your own value for:')}{' '}
-                                            {replaces.map((w) => `${rowLabel(w.rowId)} (${readTarget(w.target)})`).join(' · ')}
+                                            {replaces.map((w) => `${rowLabel(w.rowId)} (${shownValue(w.target, readTarget(w.target))})`).join(' · ')}
                                           </span>
                                         )}
                                       </button>

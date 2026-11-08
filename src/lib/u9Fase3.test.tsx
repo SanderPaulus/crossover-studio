@@ -136,6 +136,7 @@ const valueOf = (id: string, rowId: string) => {
   const p = GUIDED_PROFILES.find((x) => x.id === id)!;
   const v = p.values.find((x) => x.rowId === rowId)!;
   /* 08-11-2026: the SPL window is measured-scaled; its approved number is its FLOOR. */
+  if (v.amount.kind === 'choice') return v.amount.value; // G-12: a mode is a word
   return v.amount.kind === 'value' ? v.amount.value : v.amount.kind === 'measured' ? v.amount.floor : v.amount.fraction;
 };
 
@@ -169,6 +170,37 @@ describe('U-9 fase 3 (B-1): the approved profile table', () => {
     expect(VOICING_CHOICES.map((c) => c.plateauDepthDb)).toEqual([null, 1.5, 3, 4.5]);
   });
 
+  it('G-12: the woofer question states the level-work rule as a WORD, the copper maximum as 1.0 Ω, and never the two numbers that stay expert', () => {
+    /* 08-11-2026 (Sander). The one rule that stops a woofer pad is a mode,
+       not a number, so it fits "no rule of thumb with a number" without
+       breaking it. The Q_es maximum and the LF budget are project decisions
+       (vuistregels §4) and neither stops the pad: they stay expert. */
+    expect(profilesOf('woofer').map((p) => p.id)).toEqual(['woofer-none', 'woofer-dcr']);
+    expect(valueOf('woofer-none', 'lowestWayLevelWork')).toBe('none');
+    expect(valueOf('woofer-dcr', 'lowestWayLevelWork')).toBe('series-r-max');
+    expect(valueOf('woofer-dcr', 'lowestWaySeriesRMaxOhm')).toBe(1.0);
+    expect(GUIDED_PROFILES.find((p) => p.id === 'woofer-none')!.values).toHaveLength(1);
+    for (const p of GUIDED_PROFILES) {
+      expect(p.values.some((v) => v.target === 'qesMultiplierMax'), p.id).toBe(false);
+      expect(p.values.some((v) => v.target === 'lfBumpBudgetDb'), p.id).toBe(false);
+    }
+    /* What each pick writes, as the form holds it. */
+    const none = profileWrites(GUIDED_PROFILES.find((p) => p.id === 'woofer-none')!, '');
+    expect(none.writes.map((w) => [w.target, w.value])).toEqual([['lowestWayLevelWork', 'none']]);
+    expect(none.skipped).toEqual([]);
+    const dcr = profileWrites(GUIDED_PROFILES.find((p) => p.id === 'woofer-dcr')!, '');
+    expect(dcr.writes.map((w) => [w.target, w.value])).toEqual([
+      ['lowestWayLevelWork', 'series-r-max'],
+      ['lowestWaySeriesRMaxOhm', '1'],
+    ]);
+    /* The selected profile follows the provenance, and "none" does not need the maximum. */
+    const byNone = { lowestWayLevelWork: 'profile No resistance on the woofer' };
+    expect(selectedProfile('woofer', byNone)?.id).toBe('woofer-none');
+    const byDcr = { lowestWayLevelWork: 'profile Coil-copper scale only', lowestWaySeriesRMaxOhm: 'profile Coil-copper scale only' };
+    expect(selectedProfile('woofer', byDcr)?.id).toBe('woofer-dcr');
+    expect(selectedProfile('woofer', { lowestWayLevelWork: 'profile Coil-copper scale only' })).toBeNull();
+  });
+
   it('every value names its basis and both failure directions, and fills a real register row', () => {
     for (const p of GUIDED_PROFILES) {
       expect(p.name.trim(), p.id).not.toBe('');
@@ -191,12 +223,23 @@ describe('U-9 fase 3 (B-1): the approved profile table', () => {
   });
 
   it('P6: no profile value is typed outside guidedProfiles.ts — the guided pane holds no number of its own', () => {
-    const pane = stripComments(
-      APP.slice(
-        APP.indexOf("{designTab === 'requirements' && engineV2Enabled && (() => {"),
-        APP.indexOf("{designTab === 'filters' && !result && (", APP.indexOf("{designTab === 'requirements' && engineV2Enabled")),
-      ),
-    );
+    /* G-12 (08-11-2026, V15 form). WAS: the pane was cut at
+       `{designTab === 'requirements' && engineV2Enabled && (() => {`. IS: at
+       `{designTab === 'requirements' && (() => {`, with the slice asserted
+       non-empty. WHY: the `engineV2Enabled &&` guard went with the flag in
+       U-10 fase 3, so `indexOf` returned −1, `slice(-1, …)` was the empty
+       string, and this claim passed on nothing for two weeks. A scan that
+       finds nothing must first show it looked somewhere. */
+    const start = APP.indexOf("{designTab === 'requirements' && (() => {");
+    expect(start, 'the requirements pane is rendered').toBeGreaterThan(0);
+    const end = APP.indexOf("{designTab === 'filters' && !result && (", start);
+    expect(end).toBeGreaterThan(start);
+    /* `toFixed(2)` is a display PRECISION on a measured estimate (G-8), not a
+       value the pane states; a value would stand on its own, not inside a
+       formatting call. Everything else numeric in the pane must be an index
+       or a date slice. */
+    const pane = stripComments(APP.slice(start, end)).replace(/\.toFixed\(\d\)/g, '.toFixed()');
+    expect(pane.length).toBeGreaterThan(5000);
     /* Quoted numbers count too: a profile value smuggled in as the string a
        form holds ('3.2') is still a typed profile value. */
     const nums = [...pane.matchAll(/(?<![\w$.{-])-?\d+(?:\.\d+)?(?![\w$])/g)].map((m) => Number(m[0]));
@@ -299,15 +342,23 @@ describe('U-9 fase 3: profile attribution', () => {
  * De vijf vragen en de bestemming van elke eis
  * ================================================================== */
 describe('U-9 fase 3: five questions, and where every requirement goes', () => {
-  it('at most FIVE question screens, and the passive path holds no free number field', () => {
+  it('at most SIX question screens, and the passive path holds no free number field', () => {
     /* 08-11-2026 (V15 form). WAS: five screens. IS: five REQUIREMENT
        questions plus one for the component quality, which writes the snap
        profile and judges nothing. WHY: Sander — the components belong in the
-       walk, so the last answer is the last thing before the run. */
+       walk, so the last answer is the last thing before the run.
+       G-12 (08-11-2026, V15 form). WAS: five requirement questions. IS: SIX —
+       the woofer question, after "What do you want to build?" and before the
+       voicing. WHY: Sander — a guided run padded the woofer with 6.5 Ω because
+       no question stated the level-work rule, and that rule is a word, not a
+       number. The passive path still holds no free number field. */
     const requirementQs = GUIDED_QUESTIONS.filter((q) => q.kind !== 'parts');
-    expect(requirementQs.length).toBeLessThanOrEqual(5);
-    expect(requirementQs).toHaveLength(5);
-    expect(GUIDED_QUESTIONS.map((q) => q.id)).toEqual(['build', 'amplifier', 'load', 'ambition', 'voicing', 'parts']);
+    expect(requirementQs.length).toBeLessThanOrEqual(6);
+    expect(requirementQs).toHaveLength(6);
+    expect(GUIDED_QUESTIONS.map((q) => q.id)).toEqual(['build', 'amplifier', 'load', 'ambition', 'woofer', 'voicing', 'parts']);
+    const woofer = GUIDED_QUESTIONS.find((q) => q.id === 'woofer')!;
+    expect(woofer.kind).toBe('profile');
+    expect(woofer.unknownMeans).toMatch(/pad it down with series resistance/);
     for (const q of GUIDED_QUESTIONS) for (const f of q.freeFields) expect(f.onlyWhen, `${q.id}: ${f.rowId}`).toBe('hybrid');
     /* …and the pane draws its one free field only under the hybrid tick. */
     expect(APP).toContain("{engineV2Settings.activeSideOn === 'on' && (\n                                <div className=\"v2-req-fields\">\n                                  {v2RequirementField('activeHandoverHz')}");
@@ -327,7 +378,7 @@ describe('U-9 fase 3: five questions, and where every requirement goes', () => {
   });
 
   it('a row sent to a profile question is one a profile of that question writes, and back', () => {
-    for (const q of ['amplifier', 'load', 'ambition'] as const) {
+    for (const q of ['amplifier', 'load', 'ambition', 'woofer'] as const) {
       const sent = Object.entries(GUIDED_DESTINATION)
         .filter(([, d]) => d.kind === 'question' && d.question === q)
         .map(([id]) => id)
@@ -336,7 +387,28 @@ describe('U-9 fase 3: five questions, and where every requirement goes', () => {
       expect(written, q).toEqual(sent);
     }
     expect(EXPERT_ONLY_ROW_IDS).toContain('maxDriveOnFsDb');
+    /* G-12: the two woofer-path NUMBERS stay expert (NO_RULE, Sander
+       08-11-2026); the level-work RULE and its maximum went to the woofer
+       question. */
     expect(EXPERT_ONLY_ROW_IDS).toContain('lfBumpBudgetDb');
+    expect(EXPERT_ONLY_ROW_IDS).toContain('qesMultiplierMax');
+    expect(EXPERT_ONLY_ROW_IDS).not.toContain('lowestWayLevelWork');
+    expect(EXPERT_ONLY_ROW_IDS).not.toContain('lowestWaySeriesRMaxOhm');
+    expect(GUIDED_DESTINATION.lowestWayLevelWork).toEqual({ kind: 'question', question: 'woofer' });
+    expect(GUIDED_DESTINATION.lowestWaySeriesRMaxOhm).toEqual({ kind: 'question', question: 'woofer' });
+  });
+
+  it('G-12: the pane shows a MODE by its option label, and a profile pick withdraws what an earlier profile of the same question stated', () => {
+    /* The "This states:" line reads the one list the expert select reads
+       (`LEVEL_WORK_OPTIONS`), so "none" prints as its label and not as a word
+       the form holds. And a "Coil-copper" maximum left standing under "No
+       resistance" would be a profile value nobody chose: the pick withdraws
+       it, and own values (not profile-stated) stay. */
+    expect(APP).toContain("tg === 'lowestWayLevelWork'\n                  ? t(LEVEL_WORK_OPTIONS.find((o) => o.value === raw)?.label ?? raw)");
+    expect(APP).toContain('${rowLabel(w.rowId)}: ${shownValue(w.target, w.value)}');
+    expect(APP).toMatch(
+      /for \(const tg of targetsOf\(p\.question\)\)\s*if \(!writes\.some\(\(w\) => w\.target === tg\) && \(engineV2StatedBy\[tg\] \?\? ''\)\.startsWith\('profile '\)\)\s*writeTarget\(tg, '', null\);/,
+    );
   });
 
   it('the pane asks the five, shows what each pick states before it is picked, and names what guided does not ask', () => {

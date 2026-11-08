@@ -9337,3 +9337,64 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   `casus1_e5c_anatomie.json` (het E-5c-record is teruggezet); `demo_h4b_armen.json` is na de
   H-4b-meting van vandaag ook teruggezet, want het script schrijft er sinds G-5/G-6 een ander veld in
   en `runOverlay.test.ts` leest het record.
+
+### G-12-guards (guided vraagt of de woofer met weerstand verzwakt mag worden; alleen UI, 08-11-2026)
+
+- **Aanleiding.** Een guided run op de driewegdemo leverde een wooferpad van 6,54 Ω (Q_es × 3,05); onder
+  de geoordeelde band volgde de respons de impedantie (134 dB op 60 Hz). Het anker is de mid, het
+  wooferpaar zit er 1,2 dB boven, en van de drie regels die bepalen HOE dat gedicht wordt
+  (`lowestWayLevelWork`/`lowestWaySeriesRMaxOhm`, `lfBumpBudgetDb`, `qesMultiplierMax`) stelde guided
+  er geen: alle drie stonden als `E(NO_RULE)` in `GUIDED_DESTINATION`.
+- **Sanders besluit (08-11-2026):** een zesde eisvraag met drie antwoorden; Q_es-maximum en LF-budget
+  blijven expert; de vraag staat na "Wat wil je bouwen?" en vóór "Hoe moet hij klinken?".
+- **Waarom dit NO_RULE niet breekt.** Alleen `lowestWayLevelWork` stopt de pad, en dat is een WOORD en
+  geen getal: de vakregel "nooit een pad op de woofer" (V51) is de regel zelf. 2,4× laat op dit paar
+  nog R_e·1,4 ≈ 4 Ω toe en 1,4 dB begrenst de spoel, niet de weerstand; voor beide bestaat geen
+  vakregel met een getal (vuistregels §4). **Let op: casus 1 stelt sinds M-1 `'none'`** — het
+  1,0 Ω-maximum van V51b is daar ingetrokken; de startprompt noemde nog 1,0 Ω.
+- **`src/lib/guidedProfiles.ts`**: `GuidedProfileQuestion` kent `'woofer'`; `ProfileAmount` kent
+  `{ kind: 'choice', value }` (een MODE wordt gesteld door haar te noemen). Twee profielen:
+  `woofer-none` ("No resistance on the woofer" → `lowestWayLevelWork: 'none'`) en `woofer-dcr`
+  ("Coil-copper scale only" → `'series-r-max'` + `lowestWaySeriesRMaxOhm: 1.0`). Elke waarde draagt
+  `basis`/`tooStrict`/`tooLoose`; de 1,0 Ω heet een conventie op de DCR-schaal (V51b), geen norm.
+  "Weet ik niet" stelt niets en de knop zegt wat dat op 08-11 kostte.
+- **`src/lib/v2Guided.ts`**: `GUIDED_QUESTIONS` telt zeven schermen, zes eisvragen (`woofer` als
+  profielvraag); `GUIDED_DESTINATION`: `lowestWayLevelWork`, `lowestWaySeriesRMaxOhm` → `Q('woofer')`;
+  `lfBumpBudgetDb`, `qesMultiplierMax` blijven `E(NO_RULE)`.
+- **`src/App.tsx`**: dezelfde staat als expert (`engineV2Settings`, `V2StatedBy` = "profile <naam>",
+  één eigen bewerking wist de naam). "This states:" toont een MODE via `LEVEL_WORK_OPTIONS` (de ene
+  lijst die het expert-select leest). **Een profielkeuze trekt in wat een EERDER profiel van dezelfde
+  vraag stelde en dit profiel niet schrijft** (`applyProfile`): een 1,0 Ω-maximum onder "geen
+  weerstand" was anders een profielwaarde die niemand koos. Dat geldt voor élke vraag (een 30°
+  fasesporing van "Balanced" blijft niet staan onder "As simple as possible"); eigen waarden blijven.
+- **`src/lib/u9Fase3.test.tsx`** (26 claims, +2): de woofervraag (modes, 1,0 Ω, geen profiel schrijft
+  Q_es of LF-budget, de selectie volgt de herkomst), de bestemmingsguard sluit over vier
+  profielvragen, de weergave en de intrekking als bronscan. In V15-vorm: "vijf" → "zes" eisvragen.
+  **Bijvangst: de P6-claim ("het guided-paneel draagt geen eigen getal") was sinds U-10 fase 3
+  VACUÜM** — zij sneed op `{designTab === 'requirements' && engineV2Enabled && (() => {`, die anker
+  ging met de vlag, `indexOf` gaf −1 en `slice(-1, …)` een lege string. Herankerd met een
+  niet-leeg-assert; `toFixed(2)` (G-8, een weergaveprecisie) wordt vóór de scan gestript.
+- **Vertalingen** in `src/i18n/nl.ts`; `docs/U-9_veldinventaris.md` draagt de aanvulling met de
+  tabel en de onderbouwing.
+- **Gemeten:** `npx tsc -b` groen. `npm run test:fast` 269 s, 230 bestanden (229 geslaagd, 1 overgeslagen), 3047 tests (3043 geslaagd,
+  4 overgeslagen), in één keer groen, alleen gedraaid met de dev-server gestopt; +2 tests tegen
+  G-11's 3045, exact de twee nieuwe claims, geen nieuw bestand. Laatste bronbewerking 20:23:22, run
+  gestart 20:23:45 (de H-2-regel). Geen volle run: geen engine-, poort-, budget-, venster- of
+  corpuswijziging.. Browsercontrole (dev-server, verse localStorage, driewegdemo, guided): vraag 5 van 7 "May the
+  woofer be padded down with resistance?" met de twee kaarten — "This states: Level work on lowest
+  way: none (no series R, no shunt pad)" en "… series R up to a maximum, no pad · Max series R on
+  lowest way (Ω): 1 Ω" — en "I don't know" actief; na de keuze "No resistance on the woofer" leest
+  de stip het antwoord en staat "Why these numbers" eronder. **Run (Quick, alleen deze eis gesteld):
+  6 kandidaten (2 × 3, textbook), klaar binnen 3 min 10, 5 van 6 gekwalificeerd.** Het geladen
+  ontwerp draagt "no level work on woofer — no series resistor, no shunt pad. Series resistance in
+  its path: 0.00 Ω discrete + 0.37 Ω coil DCR = 0.37 Ω"; de zesde (466,7 · 1885,5) is geweigerd op
+  `[topology]` met de regel bij naam: "this configuration asks 0.82 dB of level work on the lowest
+  way … and the project forbids level work there; without more the delivered network misses the
+  ripple goal: 2.89 dB peak deviation against 2.5 dB". In expert staat het select op `none` met
+  "stated via profile No resistance on the woofer on 2026-11-08" — dezelfde staat, geen tweede
+  mechanisme. Console leeg. **Bevinding naast de controle, geen G-12-gevolg:** zonder
+  versterkerprofiel leest de laagste impedantie van het geladen ontwerp 0,82 Ω; er is geen vloer
+  gesteld, dus niets oordeelt haar (P4, de bestaande regel).
+- **Niet gedaan:** geen engine-, poort-, budget-, venster- of corpuswijziging; geen regeneratie;
+  Q_es en LF-budget blijven expert (Sander); het 1,0 Ω-getal is niet uit de metingen afgeleid (een
+  G-8-achtige afleiding uit de spoelregel is een eigen sessie).

@@ -21,6 +21,19 @@
  *  4. GENERIEK, NIET KOAN. Casus 1's getallen horen bij Sanders versterker en
  *     kast; zij staan alleen als TEGENPROEF in de B-1-tabel.
  *
+ * 08-11-2026 (G-12, Sander): EEN ZESDE EISVRAAG, DE WOOFER. Een guided run op
+ * de driewegdemo leverde een wooferpad van 6,54 Ω (Q_es × 3,05): het anker is
+ * de mid, het wooferpaar zit er 1,2 dB boven, en van de drie regels die
+ * bepalen HOE dat verschil gedicht wordt stelde guided er geen. De ENE die de
+ * pad werkelijk stopt is `lowestWayLevelWork` — een WOORD en geen getal, dus
+ * zij past bij "geen vuistregel met een getal" (NO_RULE) zonder haar te
+ * breken: de vakregel "nooit een pad op de woofer" IS de regel (V51). Het
+ * Q_es-maximum en het LF-bult-budget blijven expert, op Sanders besluit: voor
+ * beide bestaat geen vakregel met een getal (vuistregels §4) en geen van beide
+ * stopt de pad (2,4× laat op dit paar nog ~4 Ω toe). Het ene getal dat de
+ * woofervraag draagt — 1,0 Ω — is een rond maximum op de SPOELKOPER-schaal
+ * (V51b), en de kaart zegt dat het een conventie is.
+ *
  * Geen engine-import, om dezelfde reden als `v2Guided.ts`.
  */
 import type { V2StatedKey } from './v2Settings.ts';
@@ -43,7 +56,13 @@ export type ProfileAmount =
    * what the drivers themselves allow (`achievableWindow.ts`), never below
    * `floor`. Without an estimate it is the floor, and the write says so.
    */
-  | { kind: 'measured'; floor: number; factor: number };
+  | { kind: 'measured'; floor: number; factor: number }
+  /**
+   * 08-11-2026 (G-12): a SELECT value — a word the form holds, not a number.
+   * The level-work rule is the one profile target that is a mode
+   * (`LEVEL_WORK_OPTIONS` in `v2Guided.ts`), and a mode is stated by naming it.
+   */
+  | { kind: 'choice'; value: string };
 
 export interface ProfileValue {
   target: ProfileTarget;
@@ -58,7 +77,7 @@ export interface ProfileValue {
   tooLoose: string;
 }
 
-export type GuidedProfileQuestion = 'amplifier' | 'load' | 'ambition';
+export type GuidedProfileQuestion = 'amplifier' | 'load' | 'ambition' | 'woofer';
 
 export interface GuidedProfile {
   id: string;
@@ -71,6 +90,7 @@ export interface GuidedProfile {
 }
 
 const v = (value: number): ProfileAmount => ({ kind: 'value', value });
+const choice = (value: string): ProfileAmount => ({ kind: 'choice', value });
 
 /* ------------------------------------------------------------------ *
  * Vraag 2 — welke versterker?
@@ -197,6 +217,34 @@ const splMeasured = (floor: number): ProfileAmount => ({
   factor: Number((floor / SPL_ESTIMATE_KOAN_DB).toFixed(1)),
 });
 
+/* ------------------------------------------------------------------ *
+ * Vraag 5 — mag de woofer met weerstand verzwakt worden? (G-12, 08-11-2026)
+ * ------------------------------------------------------------------ */
+
+const LEVEL_NONE_BASIS =
+  'The trade rule “never pad the woofer” (V51): a resistor in the lowest way turns watts into heat, lowers the impedance minimum the amplifier sees and loosens the driver’s own damping (Q_es), so the bass follows the impedance. The mid and the tweeter are padded instead, which is cheap. What is left to set the woofer’s level is the baffle step and the low-pass coil.';
+const LEVEL_NONE_STRICT =
+  'A configuration whose lowest way sits well above the quietest one cannot reach its ripple goal without a pad; the candidate then comes back refused, with the dB figure it would have needed (X).';
+const LEVEL_NONE_LOOSE =
+  'Without this rule the search pads the woofer freely: on 08-11-2026 a guided run on the demo delivered 6.5 Ω in series with the woofer (Q_es × 3.05), and the bass followed the impedance below the judged band.';
+const LEVEL_DCR_BASIS =
+  'Series resistance on the coil-copper scale only, no pad (V51b): an air-cored coil with 1 Ω of DCR is physically a 1 Ω series resistor, and builders choose one for exactly this — it lifts the impedance minimum and raises Q_es a little. The total counts: a discrete resistor plus the DCR of every series coil in the way. L-pads, shunt pads and bypassed pads stay forbidden.';
+const LEVEL_DCR_MAX_BASIS =
+  'A round maximum on the DCR scale: one air-cored series coil of a few mH in 1.0–1.4 mm wire carries 0.3–1 Ω. Casus 1 stated the same 1.0 Ω (V51b, since withdrawn there for a flat plateau). A convention, not a norm — above it a series resistor is a pad again.';
+const LEVEL_DCR_STRICT =
+  'The amplifier floor may not be reachable without more series resistance; the candidate is then refused on the floor, and the refusal says how many ohms it would have needed (Y).';
+const LEVEL_DCR_LOOSE =
+  'Above the copper scale a series resistor is a pad again: heat, a lower impedance minimum, a looser Q_es and a bass that follows the impedance (the 6.5 Ω of 08-11-2026).';
+
+/** The two stated answers; “I don’t know” states nothing and the button says what that costs. */
+const woofer = (id: string, name: string, who: string, values: readonly ProfileValue[]): GuidedProfile => ({
+  id,
+  question: 'woofer',
+  name,
+  who,
+  values,
+});
+
 export const GUIDED_PROFILES: readonly GuidedProfile[] = Object.freeze([
   amp('amp-8ohm', '8 Ω only', 'Many valve and vintage amplifiers: the label says 8 Ω and nothing lower.', 6.4, 30),
   amp('amp-4-8ohm', '4–8 Ω', 'Most receivers and integrated amplifiers: the label says 4–8 Ω.', 3.2, 100),
@@ -219,6 +267,13 @@ export const GUIDED_PROFILES: readonly GuidedProfile[] = Object.freeze([
   build('build-simple', 'As simple as possible', 'Few parts; flatness within a loose hifi tolerance.', 10, 3, `At least ±3 dB, more on rough drivers (2.9 × what they allow) — ${SPL_CONVENTION}`, null),
   build('build-balanced', 'Balanced', 'A good tolerance on flatness and on phase through the handover.', 10, 2, `At least ±2 dB, more on rough drivers (1.9 × what they allow) — ${SPL_CONVENTION}`, 30),
   build('build-whatever', 'Whatever it takes', 'A monitor-grade tolerance; parts and cost follow from it.', 20, 1.5, `At least ±1.5 dB, more on rough drivers (1.5 × what they allow) — ${SPL_CONVENTION}`, 30),
+  woofer('woofer-none', 'No resistance on the woofer', 'The trade rule: no series resistor and no pad in the lowest way; its level comes from the baffle step and the coil.', [
+    { target: 'lowestWayLevelWork', rowId: 'lowestWayLevelWork', amount: choice('none'), basis: LEVEL_NONE_BASIS, tooStrict: LEVEL_NONE_STRICT, tooLoose: LEVEL_NONE_LOOSE },
+  ]),
+  woofer('woofer-dcr', 'Coil-copper scale only', 'Up to 1.0 Ω in series in total — a resistor or the coils’ own DCR — and no pad.', [
+    { target: 'lowestWayLevelWork', rowId: 'lowestWayLevelWork', amount: choice('series-r-max'), basis: LEVEL_DCR_BASIS, tooStrict: LEVEL_DCR_STRICT, tooLoose: LEVEL_DCR_LOOSE },
+    { target: 'lowestWaySeriesRMaxOhm', rowId: 'lowestWaySeriesRMaxOhm', amount: v(1.0), basis: LEVEL_DCR_MAX_BASIS, tooStrict: LEVEL_DCR_STRICT, tooLoose: LEVEL_DCR_LOOSE },
+  ]),
 ]);
 
 /* ------------------------------------------------------------------ *
@@ -297,6 +352,11 @@ export function profileWrites(
   for (const val of p.values) {
     if (val.amount.kind === 'value') {
       writes.push({ target: val.target, rowId: val.rowId, value: fmt(val.amount.value) });
+      continue;
+    }
+    if (val.amount.kind === 'choice') {
+      /* A mode is written as the word the form's select holds (G-12). */
+      writes.push({ target: val.target, rowId: val.rowId, value: val.amount.value });
       continue;
     }
     if (val.amount.kind === 'measured') {

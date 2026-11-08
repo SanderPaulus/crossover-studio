@@ -2091,7 +2091,7 @@ export const nl: Record<string, string> = {
   "½ of the theoretical 6 dB baffle step.": "½ van de theoretische baffle step van 6 dB.",
   "Full bass plateau": "Vol basplateau",
   "¾ of the theoretical 6 dB baffle step. How much the room gives back depends on placement.": "¾ van de theoretische baffle step van 6 dB. Hoeveel de kamer teruggeeft hangt af van de plaatsing.",
-  "Five questions about what the design must meet, in words rather than numbers, and one about its components. Each answer shows what it states before it states it, and every value stays visible and editable in expert mode. “I don’t know” states nothing — and says what that costs. After the last answer the design is simulated.": "Vijf vragen over waar het ontwerp aan moet voldoen, in woorden in plaats van getallen, en één over de onderdelen. Elk antwoord laat zien wat het stelt voordat het dat doet, en elke waarde blijft zichtbaar en aanpasbaar in expertmodus. “Weet ik niet” stelt niets — en zegt wat dat kost. Na het laatste antwoord wordt het ontwerp gesimuleerd.",
+  "Six questions about what the design must meet, in words rather than numbers, and one about its components. Each answer shows what it states before it states it, and every value stays visible and editable in expert mode. “I don’t know” states nothing — and says what that costs. After the last answer the design is simulated.": "Zes vragen over waar het ontwerp aan moet voldoen, in woorden in plaats van getallen, en één over de onderdelen. Elk antwoord laat zien wat het stelt voordat het dat doet, en elke waarde blijft zichtbaar en aanpasbaar in expertmodus. “Weet ik niet” stelt niets — en zegt wat dat kost. Na het laatste antwoord wordt het ontwerp gesimuleerd.",
   "Hybrid mode": "Hybride modus",
   "Fully passive": "Volledig passief",
   "a voicing stated in expert": "een voicing gesteld in expert",
@@ -2253,4 +2253,31 @@ export const nl: Record<string, string> = {
     'expertprofiel {p}',
   'No design exists yet: your choice is used by the first run and saved on the design it loads.':
     'Er is nog geen ontwerp: je keuze wordt door de eerste run gebruikt en bewaard op het ontwerp dat die laadt.',
+
+  // ── G-12 (08-11-2026): guided — de woofervraag ────────────────────────
+  'May the woofer be padded down with resistance?': 'Mag de woofer met weerstand verzwakt worden?',
+  'Nothing is forbidden: where the woofer sits above the quietest way the search may pad it down with series resistance — heat, a lower impedance minimum, a looser Q_es and a bass that follows the impedance — and nothing judges it. The level work is shown on every row.':
+    'Niets is verboden: waar de woofer boven de stilste weg zit mag de zoektocht hem met serieweerstand verzwakken — warmte, een lager impedantieminimum, een lossere Q_es en een bas die de impedantie volgt — en niets oordeelt erover. Het niveauwerk staat op elke rij.',
+  'No resistance on the woofer': 'Geen weerstand op de woofer',
+  'The trade rule: no series resistor and no pad in the lowest way; its level comes from the baffle step and the coil.':
+    'De vakregel: geen serieweerstand en geen pad in de laagste weg; haar niveau komt van de baffle step en de spoel.',
+  'Coil-copper scale only': 'Alleen spoelkoper-schaal',
+  'Up to 1.0 Ω in series in total — a resistor or the coils’ own DCR — and no pad.':
+    'Tot 1,0 Ω serieweerstand in totaal — een weerstand of de DCR van de spoelen zelf — en geen pad.',
+  'The trade rule “never pad the woofer” (V51): a resistor in the lowest way turns watts into heat, lowers the impedance minimum the amplifier sees and loosens the driver’s own damping (Q_es), so the bass follows the impedance. The mid and the tweeter are padded instead, which is cheap. What is left to set the woofer’s level is the baffle step and the low-pass coil.':
+    'De vakregel “nooit een pad op de woofer” (V51): een weerstand in de laagste weg maakt van watts warmte, verlaagt het impedantieminimum dat de versterker ziet en maakt de eigen demping van de driver (Q_es) losser, zodat de bas de impedantie volgt. De mid en de tweeter worden in plaats daarvan gepad, en dat is goedkoop. Wat overblijft om het niveau van de woofer te zetten is de baffle step en de laagdoorlaatspoel.',
+  'A configuration whose lowest way sits well above the quietest one cannot reach its ripple goal without a pad; the candidate then comes back refused, with the dB figure it would have needed (X).':
+    'Een configuratie waarvan de laagste weg ruim boven de stilste zit haalt haar rimpeldoel niet zonder pad; de kandidaat komt dan geweigerd terug, met het dB-getal dat hij nodig had gehad (X).',
+  'Without this rule the search pads the woofer freely: on 08-11-2026 a guided run on the demo delivered 6.5 Ω in series with the woofer (Q_es × 3.05), and the bass followed the impedance below the judged band.':
+    'Zonder deze regel padt de zoektocht de woofer vrij: op 08-11-2026 leverde een guided run op de demo 6,5 Ω in serie met de woofer (Q_es × 3,05), en volgde de bas onder de geoordeelde band de impedantie.',
+  'Series resistance on the coil-copper scale only, no pad (V51b): an air-cored coil with 1 Ω of DCR is physically a 1 Ω series resistor, and builders choose one for exactly this — it lifts the impedance minimum and raises Q_es a little. The total counts: a discrete resistor plus the DCR of every series coil in the way. L-pads, shunt pads and bypassed pads stay forbidden.':
+    'Serieweerstand alleen op spoelkoper-schaal, geen pad (V51b): een luchtspoel met 1 Ω DCR is fysisch een serieweerstand van 1 Ω, en bouwers kiezen die juist hierom — hij tilt het impedantieminimum op en zet Q_es iets omhoog. Het totaal telt: een discrete weerstand plus de DCR van elke seriespoel in de weg. L-pads, shunt-pads en gebypasste pads blijven verboden.',
+  'A round maximum on the DCR scale: one air-cored series coil of a few mH in 1.0–1.4 mm wire carries 0.3–1 Ω. Casus 1 stated the same 1.0 Ω (V51b, since withdrawn there for a flat plateau). A convention, not a norm — above it a series resistor is a pad again.':
+    'Een rond maximum op de DCR-schaal: één luchtspoel van enkele mH in 1,0–1,4 mm draad draagt 0,3–1 Ω. Casus 1 stelde dezelfde 1,0 Ω (V51b, daar sindsdien ingetrokken voor een vlak plateau). Een conventie, geen norm — erboven is een serieweerstand weer een pad.',
+  'The amplifier floor may not be reachable without more series resistance; the candidate is then refused on the floor, and the refusal says how many ohms it would have needed (Y).':
+    'De versterkervloer is misschien niet haalbaar zonder meer serieweerstand; de kandidaat wordt dan op de vloer geweigerd, en de weigering zegt hoeveel ohm hij nodig had gehad (Y).',
+  'Above the copper scale a series resistor is a pad again: heat, a lower impedance minimum, a looser Q_es and a bass that follows the impedance (the 6.5 Ω of 08-11-2026).':
+    'Boven de koperschaal is een serieweerstand weer een pad: warmte, een lager impedantieminimum, een lossere Q_es en een bas die de impedantie volgt (de 6,5 Ω van 08-11-2026).',
+  'none (no series R, no shunt pad)': 'geen (geen serie-R, geen shunt-pad)',
+  'series R up to a maximum, no pad': 'serie-R tot een maximum, geen pad',
 };

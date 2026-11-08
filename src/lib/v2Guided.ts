@@ -817,12 +817,19 @@ export const LEVEL_WORK_OPTIONS: readonly { value: string; label: string }[] = O
  * requirement — it writes the snap profile and judges nothing — so the five
  * requirement questions stay five.)
  *
- * The questions are data and their number is pinned by a test (≤ 5). The
+ * (08-11-2026, G-12 — Sander: a SIXTH requirement question, the woofer. A
+ * guided run padded the lowest way with 6.5 Ω because none of the three
+ * woofer-path rules was stated; the one that stops it, `lowestWayLevelWork`,
+ * is a WORD and not a number — the trade rule "never pad the woofer" — so it
+ * fits the walk. The Q_es maximum and the LF budget stay expert: no rule of
+ * thumb with a number exists for either (NO_RULE), and neither stops the pad.)
+ *
+ * The questions are data and their number is pinned by a test (≤ 6). The
  * passive path holds no number field at all: the one free number is the
  * handover of a hybrid, which has no default (P4) — and a builder who does not
  * know it is sent to expert and carries on passive.
  */
-export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'voicing' | 'parts';
+export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'woofer' | 'voicing' | 'parts';
 
 export interface GuidedQuestion {
   id: GuidedQuestionId;
@@ -864,6 +871,18 @@ export const GUIDED_QUESTIONS: readonly GuidedQuestion[] = Object.freeze([
     kind: 'profile',
     freeFields: [],
     unknownMeans: 'No resistor class, no flatness tolerance and no phase-tracking limit: every design is shown with its flatness and phase, and nothing is refused on them.',
+  },
+  /* G-12 (08-11-2026, Sander): the woofer. Placed after "What do you want to
+   * build?" because it is about what may be BUILT into the lowest way, and
+   * before the voicing. Two stated answers (`guidedProfiles.ts`, question
+   * 'woofer'); blank is not a stated "allowed" (P4) but the search's own
+   * behaviour, and the button says what that cost on 08-11-2026. */
+  {
+    id: 'woofer',
+    title: 'May the woofer be padded down with resistance?',
+    kind: 'profile',
+    freeFields: [],
+    unknownMeans: 'Nothing is forbidden: where the woofer sits above the quietest way the search may pad it down with series resistance — heat, a lower impedance minimum, a looser Q_es and a bass that follows the impedance — and nothing judges it. The level work is shown on every row.',
   },
   {
     id: 'voicing',
@@ -930,8 +949,11 @@ export const GUIDED_DESTINATION: Readonly<Record<string, GuidedDestination>> = O
   splWindowPlusMinusDb: Q('ambition'),
   maxPhaseTrackingDeg: Q('ambition'),
   coilClassA: E('No coil in the catalogue carries a current rating, and air-cored coils do not saturate (V50).'),
-  lowestWayLevelWork: E(NO_RULE),
-  lowestWaySeriesRMaxOhm: E(NO_RULE),
+  /* G-12 (08-11-2026): the level-work rule is a WORD, not a number — the
+   * trade rule "never pad the woofer" — so it has a guided question. The two
+   * numbers beside it stay expert (NO_RULE) on Sander's decision. */
+  lowestWayLevelWork: Q('woofer'),
+  lowestWaySeriesRMaxOhm: Q('woofer'),
   lfBumpBudgetDb: E(NO_RULE),
   qesMultiplierMax: E(NO_RULE),
   dampingMarginDb: E(NO_RULE),
