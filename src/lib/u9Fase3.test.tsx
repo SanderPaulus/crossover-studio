@@ -286,6 +286,12 @@ describe('U-9 fase 3: profile attribution', () => {
     expect(APP).toContain("{role === 'high' && v2StatedExtra('driveOnFsMaxDb:high', v2Meas.high.driveOnFsMaxDb)}");
     expect(APP).toContain("{v2StatedExtra('ampMinLoadOhm', ampMinLoadOhm === null ? '' : String(ampMinLoadOhm))}");
   });
+
+  it('the per-way "Max drive on f_s" on the driver card is expert only — guided states it through question 3', () => {
+    const i = APP.indexOf("<span className=\"cd-label\">{t('Max drive on f_s')}</span>");
+    expect(i).toBeGreaterThan(0);
+    expect(APP.lastIndexOf("{uiMode !== 'guided' && (<>", i)).toBeGreaterThan(i - 200);
+  });
 });
 
 /* ================================================================== *
@@ -293,8 +299,14 @@ describe('U-9 fase 3: profile attribution', () => {
  * ================================================================== */
 describe('U-9 fase 3: five questions, and where every requirement goes', () => {
   it('at most FIVE question screens, and the passive path holds no free number field', () => {
-    expect(GUIDED_QUESTIONS.length).toBeLessThanOrEqual(5);
-    expect(GUIDED_QUESTIONS).toHaveLength(5);
+    /* 08-11-2026 (V15 form). WAS: five screens. IS: five REQUIREMENT
+       questions plus one for the component quality, which writes the snap
+       profile and judges nothing. WHY: Sander — the components belong in the
+       walk, so the last answer is the last thing before the run. */
+    const requirementQs = GUIDED_QUESTIONS.filter((q) => q.kind !== 'parts');
+    expect(requirementQs.length).toBeLessThanOrEqual(5);
+    expect(requirementQs).toHaveLength(5);
+    expect(GUIDED_QUESTIONS.map((q) => q.id)).toEqual(['build', 'amplifier', 'load', 'ambition', 'voicing', 'parts']);
     for (const q of GUIDED_QUESTIONS) for (const f of q.freeFields) expect(f.onlyWhen, `${q.id}: ${f.rowId}`).toBe('hybrid');
     /* …and the pane draws its one free field only under the hybrid tick. */
     expect(APP).toContain("{engineV2Settings.activeSideOn === 'on' && (\n                                <div className=\"v2-req-fields\">\n                                  {v2RequirementField('activeHandoverHz')}");
@@ -330,9 +342,18 @@ describe('U-9 fase 3: five questions, and where every requirement goes', () => {
     expect(APP).toContain('const qs = GUIDED_QUESTIONS;');
     expect(APP).toContain("{t('This states:')}");
     expect(APP).toContain("{t('Replaces your own value for:')}");
-    expect(APP).toContain("<summary>{t('These requirements are not judged')}</summary>");
     expect(APP).toContain("{t('{n} requirement(s) stated in expert, and judged on the run:', { n: expertStated.length })}");
-    expect(APP).toContain("{t('{n} settings steer the search on an app start value — not stated by you', { n: onAppDefault.length })}");
+    /* Sander, 08-11-2026: the two expert lists (unjudged requirements, app
+       start values) left the guided end screen; every question there is a
+       button back to itself, and what went unanswered is said before the run. */
+    expect(APP).not.toContain("<summary>{t('These requirements are not judged')}</summary>");
+    expect(APP).not.toContain('settings steer the search on an app start value');
+    expect(APP).toContain('<button type="button" className="link-btn" onClick={() => setV2ReqIx(i)}>');
+    expect(APP).toContain("{a ? t('change') : t('answer →')}");
+    /* …and the last answer is the last thing before the run: the summary's
+       button starts it, the palette's way (08-11-2026). */
+    expect(APP).toContain("? t('Design it — start the run →')");
+    expect(APP).toMatch(/if \(!atEnd\) return setV2ReqIx\(ix \+ 1\);[\s\S]{0,400}setDesignTab\('filters'\);\s*if \(result && !vfBusy\)\s*void runVfOptimize\(\)/);
   });
 
   it('the guided shortlist sorts on a key the user picks and names it — no recommended crown', () => {

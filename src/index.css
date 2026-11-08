@@ -5078,3 +5078,13 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .guided-parts-quality .v2-profile-choices {
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
 }
+/* The end screen's list is a set of buttons back to each question (08-11-2026). */
+.v2-req-list-links .link-btn {
+  text-align: left;
+  color: inherit;
+}
+.v2-req-change {
+  color: var(--accent, #4d8df0);
+  font-size: 0.78rem;
+  margin-left: 0.3rem;
+}

@@ -474,7 +474,7 @@ import { computePhaseStats } from './lib/phaseStats.ts';
 import { computeResponseStats } from './lib/responseStats.ts';
 import { toleranceBand } from './lib/tolerance.ts';
 import { type VfOptimizeResult, type StructChoice } from './lib/vfOptimizer.ts';
-import { APP_DEFAULTS, APP_DEFAULT_ROWS, appDefaultMark, restoreFieldStatedAt, stampField, type FieldStatedAt } from './lib/appDefaults.ts';
+import { APP_DEFAULTS, appDefaultMark, restoreFieldStatedAt, stampField, type FieldStatedAt } from './lib/appDefaults.ts';
 import { toTimeDomain, excessGroupDelay } from './lib/timeDomain.ts';
 import {
   serializeProject,
@@ -15093,8 +15093,12 @@ export default function App() {
                           * a cone's limit on its resonance is excursion, which
                           * V49 derives — so state the convention for the way it
                           * belongs to and leave the others to the derived
-                          * ceiling. */}
-                        <>
+                          * ceiling.
+                          * Expert only (Sander, 08-11-2026): in guided the load
+                          * question (question 3) states this figure through its
+                          * profile; a second, bare entry for the same requirement
+                          * on the card is an expert's tool. */}
+                        {uiMode !== 'guided' && (<>
                             <span className="cd-label">{t('Max drive on f_s')}</span>
                             <span
                               className="cd-fields"
@@ -15115,7 +15119,7 @@ export default function App() {
                               {' dB'}
                               {role === 'high' && v2StatedExtra('driveOnFsMaxDb:high', v2Meas.high.driveOnFsMaxDb)}
                             </span>
-                          </>
+                          </>)}
                         
                         {/* U-3b — A FALLBACK, SHOWN ONLY WHEN THE CASE EXISTS.
                           * It answers "this file's header states no window", and
@@ -19637,6 +19641,7 @@ export default function App() {
                   const c = VOICING_CHOICES.find((vc) => vc.plateauDepthDb === activeTargetCurve.plateauDepthDb);
                   return c ? t(c.label) : t('a voicing stated in expert');
                 }
+                if (qid === 'parts') return guidedPartsQualityLabel(snapProfile) ? t(guidedPartsQualityLabel(snapProfile)!) : null;
                 const p = selectedProfile(qid, engineV2StatedBy);
                 if (p) return t(p.name);
                 return ownOn(qid).length > 0 ? t('your own values (expert)') : null;
@@ -19664,25 +19669,36 @@ export default function App() {
                   <button
                     type="button"
                     className="step-next"
-                    onClick={() => (atEnd ? setDesignTab('filters') : setV2ReqIx(ix + 1))}
+                    onClick={() => {
+                      if (!atEnd) return setV2ReqIx(ix + 1);
+                      /* 08-11-2026 (Sander): after the last answer the
+                         design is simulated — the same start as the palette's
+                         "Optimize", on the Design step where the run shows. */
+                      setDesignTab('filters');
+                      if (result && !vfBusy)
+                        void runVfOptimize().catch((e) => {
+                          setVfBusy(false);
+                          setVfError(e instanceof Error ? e.message : String(e));
+                        });
+                    }}
                   >
-                    {atEnd ? t('Next: Design it →') : t('Next →')}
+                    {atEnd
+                      ? result && !vfBusy
+                        ? t('Design it — start the run →')
+                        : t('Next: Design it →')
+                      : ix === qs.length - 1
+                        ? t('Review your answers →')
+                        : t('Next question →')}
                   </button>
                 </div>
               );
               /* What guided does not ask, counted for the end screen (N2/P4). */
               const expertStated = EXPERT_ONLY_ROW_IDS.filter((id) => (v2GuidedValues[id] ?? '').trim() !== '');
-              const routeRows = Object.keys(APP_DEFAULT_ROWS).filter((id) =>
-                ['rSourceDisq', 'diWeight', 'acSlopeWoofer', 'acSlopeMidHp'].includes(id) ? threeWay && !v2Hybrid : true,
-              );
-              const onAppDefault = routeRows.filter(
-                (id) => appDefaultMark(id, appDefaultValues(), fieldStatedAt).kind === 'app-default',
-              );
               return (
                 <div className="panel v2-req">
                   <h2>{t('What the design must meet')}</h2>
                   <p className="sub">
-                    {t('Five questions, in words rather than numbers. Each answer shows what it states before it states it, and every value stays visible and editable in expert mode. “I don’t know” states nothing — and says what that costs.')}
+                    {t('Five questions about what the design must meet, in words rather than numbers, and one about its components. Each answer shows what it states before it states it, and every value stays visible and editable in expert mode. “I don’t know” states nothing — and says what that costs. After the last answer the design is simulated.')}
                   </p>
                   <ol className="v2-req-dots" aria-label={t('Requirements')}>
                     {qs.map((q, i) => {
@@ -19704,50 +19720,32 @@ export default function App() {
                   {ix >= qs.length ? (
                     <div className="v2-req-summary">
                       <h3>{t('That is all of them.')}</h3>
-                      <ul className="v2-req-list">
-                        {qs.map((q) => {
+                      {/* Sander, 08-11-2026: the numbered dots alone did not
+                          read as "click here to answer". Every question in the
+                          list is its own button back to that question, and an
+                          unanswered one says so on the button. */}
+                      <ul className="v2-req-list v2-req-list-links">
+                        {qs.map((q, i) => {
                           const a = answerOf(q.id);
                           return (
                             <li key={q.id} className={`v2-req-${a ? 'stated' : 'blank'}`}>
-                              <strong>{t(q.title)}</strong> — {a ?? t('I don’t know: not stated, not judged')}
+                              <button type="button" className="link-btn" onClick={() => setV2ReqIx(i)}>
+                                <strong>{t(q.title)}</strong> — {a ?? t('I don’t know: not stated, not judged')}{' '}
+                                <span className="v2-req-change">{a ? t('change') : t('answer →')}</span>
+                              </button>
                             </li>
                           );
                         })}
                       </ul>
-                      {(() => {
-                        const line = describeSkipped(v2GuidedValues);
-                        return line ? (
-                          <details className="v2-req-unjudged">
-                            <summary>{t('These requirements are not judged')}</summary>
-                            <p className="sub v2-req-skipped">{line}</p>
-                            <button type="button" className="link-btn" onClick={() => { setUiMode('expert'); setDesignTab('filters'); }}>
-                              {t('State them in expert mode →')}
-                            </button>
-                          </details>
-                        ) : null;
-                      })()}
+                      {/* Sander, 08-11-2026: the lists of unjudged
+                          requirements and of app start values are expert
+                          information and left this step. What went unanswered
+                          is still said on the next step, before the run. */}
                       {expertStated.length > 0 && (
                         <p className="sub v2-req-expert-stated">
                           {t('{n} requirement(s) stated in expert, and judged on the run:', { n: expertStated.length })}{' '}
                           {expertStated.map(rowLabel).join(' · ')}
                         </p>
-                      )}
-                      {onAppDefault.length > 0 && (
-                        <details className="v2-req-app-default">
-                          <summary>
-                            {t('{n} settings steer the search on an app start value — not stated by you', { n: onAppDefault.length })}
-                          </summary>
-                          <p className="sub">
-                            {t('Guided does not ask these, and does not hide them either: each one steers the search, and none of them was chosen by you. They are marked “app default” in expert mode.')}
-                          </p>
-                          <ul className="v2-req-list">
-                            {onAppDefault.map((id) => (
-                              <li key={id}>
-                                {rowLabel(id)} — {t(appDefaultMark(id, appDefaultValues(), fieldStatedAt).text)}
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
                       )}
                       {nav(true)}
                     </div>
@@ -19895,6 +19893,46 @@ export default function App() {
                               )}
                             </>
                           )}
+                          {q.kind === 'parts' && (
+                            /* GUIDED — the component quality, four of the five snap
+                               profiles in plain words (`guidedPartsQuality.ts`). The
+                               button writes `snapProfile`, the one value expert
+                               writes; coils are not steered by it, and the sentence
+                               says so. The last question of the walk (08-11-2026). */
+                            <div className="guided-parts-quality">
+                              <div className="v2-profile-choices">
+                                {GUIDED_PARTS_QUALITY.map((pq) => (
+                                  <button
+                                    key={pq.id}
+                                    type="button"
+                                    className={`v2-profile${snapProfile === pq.id ? ' active-toggle' : ''}`}
+                                    aria-pressed={snapProfile === pq.id}
+                                    onClick={() => setSnapProfile(pq.id)}
+                                  >
+                                    <span>{t(pq.label)}</span>
+                                    <small>{t(pq.hint)}</small>
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="v2-muted">
+                                {t(COILS_NOT_BY_QUALITY)} {t('Takes effect on the next run.')}
+                              </p>
+                              {guidedPartsQualityNote(snapProfile) && (
+                                <p className="v2-muted">
+                                  {t('This project uses the expert profile "{p}". Pick one above to replace it.', { p: snapProfile })}
+                                </p>
+                              )}
+                              {!(catalogSnap && hasImportedCatalog()) && (
+                                <p className="v2-unjudged">
+                                  {t('No catalogue parts are used, so this choice does nothing yet: {why}', {
+                                    why: !hasImportedCatalog()
+                                      ? t('No catalogue is loaded — load one under Expert → Filters → Components.')
+                                      : t('“Use real catalog parts” is switched off (Expert → Filters → Components).'),
+                                  })}
+                                </p>
+                              )}
+                            </div>
+                          )}
                           {nav(false)}
                         </div>
                       );
@@ -19941,44 +19979,6 @@ export default function App() {
                   {' — '}
                   {describeRunChoice('full', EXPLORATION_CHAIN_BUDGET)}
                 </p>
-                {/* GUIDED — the component quality, four of the five snap
-                    profiles in plain words (`guidedPartsQuality.ts`). The
-                    button writes `snapProfile`, the one value expert writes;
-                    coils are not steered by it, and the sentence says so. */}
-                <div className="guided-parts-quality">
-                  <strong>{t('Component quality')}</strong>
-                  <div className="v2-profile-choices">
-                    {GUIDED_PARTS_QUALITY.map((q) => (
-                      <button
-                        key={q.id}
-                        type="button"
-                        className={`v2-profile${snapProfile === q.id ? ' active-toggle' : ''}`}
-                        aria-pressed={snapProfile === q.id}
-                        onClick={() => setSnapProfile(q.id)}
-                      >
-                        <span>{t(q.label)}</span>
-                        <small>{t(q.hint)}</small>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="v2-muted">
-                    {t(COILS_NOT_BY_QUALITY)} {t('Takes effect on the next run.')}
-                  </p>
-                  {guidedPartsQualityNote(snapProfile) && (
-                    <p className="v2-muted">
-                      {t('This project uses the expert profile "{p}". Pick one above to replace it.', { p: snapProfile })}
-                    </p>
-                  )}
-                  {!(catalogSnap && hasImportedCatalog()) && (
-                    <p className="v2-unjudged">
-                      {t('No catalogue parts are used, so this choice does nothing yet: {why}', {
-                        why: !hasImportedCatalog()
-                          ? t('No catalogue is loaded — load one under Expert → Filters → Components.')
-                          : t('“Use real catalog parts” is switched off (Expert → Filters → Components).'),
-                      })}
-                    </p>
-                  )}
-                </div>
                 {(() => {
                   /* The questions that went unanswered, said BEFORE the run
                      rather than only after it: half an hour is a long time to

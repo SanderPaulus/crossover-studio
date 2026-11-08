@@ -9240,3 +9240,23 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   `fsFloorConvention.test.ts` (3 claims). `docs/vuistregels_en_wat_de_engine_doet.md` bijgewerkt.
 - **Gemeten:** `npm run test:fast` 260 s, 3026 tests (3022 + 4), groen; `npx vitest run` 422 s, 3026 tests,
   groen, de vier live ketenruns byte-identiek. Browser (driewegdemo): `mid→high 1555 Hz – 2287 Hz · floor: fs`.
+
+### G-7-guards (guided: de eisenstap als wandeling die eindigt in de run; alleen UI, 08-11-2026)
+
+- **"Max drive on f_s" op de driverkaart is expert-only** (`uiMode !== 'guided'`): in guided zet de
+  belastingvraag dit getal via haar profiel. Bronscan in `u9Fase3.test.tsx`.
+- **De samenvatting van de eisenstap** draagt de uitklappers "These requirements are not judged" en
+  "… settings steer the search on an app start value" niet meer (Sander: expertinformatie). Wat
+  onbeantwoord bleef staat nog op de ontwerpstap vóór de run (`describeSkipped`). Elke vraag in de
+  lijst is een knop terug naar die vraag ("change" / "answer →"); op een vraagscherm heet de knop
+  "Next question →".
+- **Een zesde vraag, `parts` ("Which components?")**: de onderdelenkwaliteit van G-3, verhuisd van de
+  ontwerpstap naar de wandeling. Zij schrijft `snapProfile` en oordeelt niets, dus de vijf
+  EISvragen blijven vijf (`u9Fase3.test.tsx` telt de vragen zonder `kind: 'parts'`).
+- **Na de laatste vraag wordt gesimuleerd**: de knop op de samenvatting heet "Design it — start the
+  run →" en doet wat het palet-item "Optimize" doet (`setDesignTab('filters')` + `runVfOptimize()`),
+  alleen als er iets te simuleren is en er geen run loopt. De bestaande vóórstart-melding verschijnt
+  daarna zoals altijd.
+- **Gemeten:** `npm run test:fast` 257 s, 228 bestanden (227 + 1), 3030 tests (3026 + 4), groen.
+  Browser: vraag 6 met vier knoppen, samenvatting met "Which components? — Standard", de startknop
+  opent "Design it" en de run start (overlay met drie kandidaten, daarna afgebroken).

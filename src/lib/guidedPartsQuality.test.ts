@@ -39,10 +39,14 @@ describe('guided component quality', () => {
   it('the guided buttons write snapProfile — the same state expert writes — and nothing else', () => {
     const i = APP.indexOf('className="guided-parts-quality"');
     expect(i).toBeGreaterThan(0);
-    const block = APP.slice(i, APP.indexOf('</div>\n                {(() => {', i));
+    /* 08-11-2026: the block is the wizard's last question ('parts'), not a
+       block on the Design step. */
+    expect(APP.lastIndexOf("{q.kind === 'parts' && (", i)).toBeGreaterThan(i - 200);
+    const block = APP.slice(i, APP.indexOf('{nav(false)}', i));
     expect(block).toContain('GUIDED_PARTS_QUALITY.map');
-    expect(block).toContain('onClick={() => setSnapProfile(q.id)}');
-    expect(block).toContain('aria-pressed={snapProfile === q.id}');
+    expect(block).toContain('onClick={() => setSnapProfile(pq.id)}');
+    expect(block).toContain('aria-pressed={snapProfile === pq.id}');
+    expect(APP.match(/className="guided-parts-quality"/g)).toHaveLength(1);
     // No second state: the run still reads snapProfile through snapPrefsValue.
     expect(APP).toContain('profile: snapProfile as SnapPrefs[\'profile\']');
   });

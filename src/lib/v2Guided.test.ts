@@ -450,7 +450,12 @@ describe('App.tsx walks this route', () => {
     expect(REQ_PANE).toContain("{t('I don’t know')}");
     expect(REQ_PANE).toContain('{t(q.unknownMeans)}');
     expect(REQ_PANE).toContain('forgetQuestion(qid)');
-    expect(REQ_PANE).toContain('describeSkipped(v2GuidedValues)');
+    /* 08-11-2026 (V15 form). WAS: the skip sentences on the end screen of this
+       step. IS: on the next step, before the run (`describeSkipped` there, and
+       beside the shortlist — the claim below). WHY: Sander — the list is
+       expert information on a wizard's end screen. */
+    expect(REQ_PANE).not.toContain('describeSkipped(v2GuidedValues)');
+    expect(APP).toContain('const line = describeSkipped(v2GuidedValues);');
   });
 
   it('guided keeps NO store of its own: every answer is written to the app’s state', () => {

@@ -813,18 +813,23 @@ export const LEVEL_WORK_OPTIONS: readonly { value: string; label: string }[] = O
  * screens stay: they are the inventory `describeSkipped` reads, so what guided
  * does not ask is still said rather than silenced.
  *
+ * (08-11-2026: a sixth screen asks the component quality. It is not a
+ * requirement — it writes the snap profile and judges nothing — so the five
+ * requirement questions stay five.)
+ *
  * The questions are data and their number is pinned by a test (≤ 5). The
  * passive path holds no number field at all: the one free number is the
  * handover of a hybrid, which has no default (P4) — and a builder who does not
  * know it is sent to expert and carries on passive.
  */
-export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'voicing';
+export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'voicing' | 'parts';
 
 export interface GuidedQuestion {
   id: GuidedQuestionId;
   title: string;
-  /** How the screen answers: a profile pick, the architecture choice, or the voicing choice. */
-  kind: 'architecture' | 'profile' | 'voicing';
+  /** How the screen answers: a profile pick, the architecture choice, the voicing choice, or
+   *  the component quality (`guidedPartsQuality.ts` — the snap profile, not a requirement). */
+  kind: 'architecture' | 'profile' | 'voicing' | 'parts';
   /** Register rows a FREE field asks for, and on which path. Never on the passive path. */
   freeFields: readonly { rowId: string; onlyWhen: 'hybrid' }[];
   /** What “I don’t know” costs, in one sentence. */
@@ -866,6 +871,17 @@ export const GUIDED_QUESTIONS: readonly GuidedQuestion[] = Object.freeze([
     kind: 'voicing',
     freeFields: [],
     unknownMeans: 'Flat — the neutral reference. Blank is not an absence here: flat is stated by being kept.',
+  },
+  /* 08-11-2026 (Sander): the component quality is the last question of the
+   * walk, so answering it is the last thing before the run. It is not a
+   * requirement — it writes the snap profile and judges nothing — so no
+   * register row is sent here (GUIDED_DESTINATION). */
+  {
+    id: 'parts',
+    title: 'Which components?',
+    kind: 'parts',
+    freeFields: [],
+    unknownMeans: 'No preference: the nearest catalogue value at the best price, from any series.',
   },
 ]);
 
