@@ -354,6 +354,17 @@ import {
 import { seriesRMaxOhmOf, type LowestWayLevelWork } from './lib/levelWork.ts';
 import { chainDeclarationKey } from './lib/engine2/optimizer/chainChoices.ts';
 import { AUTO_STRUCTS } from './lib/threeWayDesign.ts';
+import {
+  GUIDED_ORDER_CHOICES,
+  ORDER_IS_APP_DEFAULT_NOTE,
+  alignmentNameAt,
+  orderChoiceOf,
+  ordersBuilt,
+  slopeRowsForHandover,
+  statedOrderOfSlopes,
+  type GuidedOrderChoice,
+  type SlopeRowId,
+} from './lib/guidedOrder.ts';
 import { DEFAULT_RUN_SEED, DEFAULT_SHORTLIST_SIZE, EXPLORATION_CHAIN_BUDGET, SEARCH_SMOOTHING_OCTAVES, WINDOW_SMOOTHING_OCTAVES } from './lib/engine2/constants.ts';
 import { digest, stableJson, type V2RunStamp } from './lib/engine2/optimizer/determinism.ts';
 import type { GateVerdict } from './lib/engine2/optimizer/gates.ts';
@@ -6739,6 +6750,144 @@ export default function App() {
       return { refusal: simRaw.refused, showing: reusable ? 'previous' : 'raw' };
     }, [simRaw, woofer, midDrv, tweeter, impedances, activeDesignId]);
   const sim = simStale?.showing === 'previous' ? lastGoodSimRef.current!.sim : simRaw;
+  /* G-13 — THE FILTER ORDER PER HANDOVER, as guided shows it (`guidedOrder.ts`).
+   *
+   * Per passive handover: the two slope rows that carry it (the band form's
+   * own selects — no second state), the choice they read as, what the OTHER
+   * rules demand there (the derivation with the slope targets and the stated
+   * order stripped: rules only), and per choice the number of runs the field
+   * would hold — built by the SAME generator the run calls
+   * (`buildCandidateField`) on the same windows, drive limits and curves, with
+   * only that handover's slopes replaced, so the count is the run's and not an
+   * estimate. Null outside guided and without a report. */
+  const guidedOrderRows = useMemo(() => {
+    if (uiMode !== 'guided' || !engineV2Report?.report || !sim) return null;
+    const allWis = engineV2Report.report.predesign.windowInputs;
+    const activeRole = v2ActiveSide.armed ? (v2ActiveSide.roles?.active ?? null) : null;
+    const activeWayId = activeRole ? engineV2Report.driverIds?.[activeRole] : undefined;
+    const wis = activeWayId ? allWis.filter((x) => x.lower !== activeWayId) : allWis;
+    if (wis.length === 0) return null;
+    const mode = fieldModeOf(engineV2Settings.fieldMode);
+    const polarityArms: PolarityArmsChoice = polarityArmsChoiceOf(engineV2Settings.polarityArms);
+    const steps = threeWay && !v2Hybrid ? scanSteps3 : scanSteps2;
+    /* The SAME phase reader the run hands the generator (H-4), so that under
+     * `'both'` the count includes the margin-seeded mirrors the run would
+     * build; `branchAdj` is declared above this memo (no TDZ). */
+    const polarityBranchOf = (driver: string): PolarityBranch | null => {
+      const role = (['low', 'mid', 'high'] as const).find((r) => engineV2Report.driverIds?.[r] === driver);
+      if (role === 'low') return { response: sim.base.w, adjust: {} };
+      if (role === 'mid') return sim.base.m ? { response: sim.base.m, adjust: branchAdj.mid } : null;
+      if (role === 'high') return { response: sim.base.t, adjust: branchAdj.tweeter };
+      return null;
+    };
+    const fieldSettings = fieldModeSettings(
+      mode,
+      { stepsPerAxis: steps, pairs: wis.length },
+      polarityMarginReader(polarityBranchOf),
+      polarityArms,
+    );
+    const curveOfDriver = (driver: string) => {
+      const role = (['low', 'mid', 'high'] as const).find((r) => engineV2Report.driverIds?.[r] === driver);
+      const g = role === 'low' ? sim.base.w : role === 'mid' ? sim.base.m : role === 'high' ? sim.base.t : null;
+      return g ? { freq: g.freq, db: g.spl } : null;
+    };
+    const driveArgs = {
+      statedDriveLimitDbByDriverId: v2DriveLimitDbByDriverId,
+      ...(engineV2Gates.maxDriveOnFsDb !== undefined ? { fallbackDriveLimitDb: engineV2Gates.maxDriveOnFsDb } : {}),
+    };
+    const available = [...new Set(AUTO_STRUCTS.map((a) => a.order))].sort((a, b) => a - b);
+    /* Rules only: no slope target, no stated order, no curve (rule (i) IS the slope rule). */
+    const rulesOnly = buildCandidateField({
+      windowInputs: wis,
+      perPair: pairDerivationInputs({ windowInputs: wis, ...driveArgs, curveOfDriverId: () => null }).map((p) => ({
+        ...p,
+        statedOrder: null,
+      })),
+      alignments: AUTO_STRUCTS,
+      ...fieldSettings,
+    });
+    const slopeOf: Record<SlopeRowId, string> = { acSlopeWoofer, acSlopeMidHp, acSlopeMid, acSlopeTweeter };
+    const current = wis.map((_, i) => {
+      const [a, b] = slopeRowsForHandover(i, wis.length);
+      return [slopeOf[a], slopeOf[b]] as [string, string];
+    });
+    /* The field as the run would build it with these slopes per handover. */
+    const countWith = (pairs: readonly (readonly [string, string])[]): number => {
+      const many = wis.length > 1;
+      const num = (v: string) => (v === 'auto' ? undefined : Number(v));
+      const slopes = {
+        ...(many ? { low: { lower: num(pairs[0][0]), upper: num(pairs[0][1]) } } : {}),
+        mid: num(pairs[many ? 1 : 0]?.[0] ?? 'auto'),
+        tweeter: num(pairs[many ? 1 : 0]?.[1] ?? 'auto'),
+      };
+      const perPair = pairDerivationInputs({ windowInputs: wis, slopes, ...driveArgs, curveOfDriverId: curveOfDriver }).map(
+        (p, j) => ({ ...p, statedOrder: statedOrderOfSlopes(pairs[j][0], pairs[j][1]) }),
+      );
+      return buildCandidateField({ windowInputs: wis, perPair, alignments: AUTO_STRUCTS, ...fieldSettings }).field.candidates.length;
+    };
+    const rows = wis.map((wi, i) => {
+      const po = rulesOnly.orders[i];
+      const binding = po.flanks
+        .filter((f) => f.demandedOrder !== null)
+        .sort((a, b) => (b.demandedOrder ?? 0) - (a.demandedOrder ?? 0))[0];
+      const otherDemand = binding?.demandedOrder ?? null;
+      const [rowA, rowB] = slopeRowsForHandover(i, wis.length);
+      const counts = Object.fromEntries(
+        GUIDED_ORDER_CHOICES.map((c) => [
+          c.id,
+          countWith(current.map((cur, j) => (j === i ? ([c.slope, c.slope] as [string, string]) : cur))),
+        ]),
+      ) as Record<GuidedOrderChoice, number>;
+      return {
+        i,
+        label: `${wi.lower}→${wi.upper}`,
+        rows: [rowA, rowB] as [SlopeRowId, SlopeRowId],
+        slopes: current[i],
+        choice: orderChoiceOf(current[i][0], current[i][1]),
+        otherDemand,
+        otherSource: binding?.binding?.source ?? null,
+        counts,
+      };
+    });
+    return { rows, available, mode, countCurrent: countWith(current) };
+    /* Whether a row is still the app's default is read at RENDER time, in the
+     * question block: `appDefaultValues()` reads state declared further down
+     * this component, and a memo here would hit it before initialisation —
+     * the U-9 fase 2 crash, one function over. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    uiMode,
+    engineV2Report,
+    sim,
+    branchAdj,
+    v2ActiveSide,
+    engineV2Settings.fieldMode,
+    engineV2Settings.polarityArms,
+    threeWay,
+    v2Hybrid,
+    scanSteps2,
+    scanSteps3,
+    v2DriveLimitDbByDriverId,
+    engineV2Gates.maxDriveOnFsDb,
+    acSlopeWoofer,
+    acSlopeMidHp,
+    acSlopeMid,
+    acSlopeTweeter,
+  ]);
+  /** G-13 — one press writes BOTH slope selects of a handover and stamps them as the viewer's. */
+  const setGuidedOrder = (handover: number, handovers: number, choice: GuidedOrderChoice) => {
+    const slope = GUIDED_ORDER_CHOICES.find((c) => c.id === choice)!.slope;
+    const setters: Record<SlopeRowId, (v: string) => void> = {
+      acSlopeWoofer: setAcSlopeWoofer,
+      acSlopeMidHp: setAcSlopeMidHp,
+      acSlopeMid: setAcSlopeMid,
+      acSlopeTweeter: setAcSlopeTweeter,
+    };
+    const [a, b] = slopeRowsForHandover(handover, handovers);
+    setters[a](slope);
+    setters[b](slope);
+    setFieldStatedAt((prev) => stampField(stampField(prev, a), b));
+  };
   /* E-2 — one text for every surface that carries the tag (`notSimulatedTag`):
    * the chart headings, the scan summary and shortlist, the v1-reading heading
    * and the v2 panel. UI-2 tagged the charts and left the rest. */
@@ -19789,6 +19938,16 @@ export default function App() {
                   return c ? t(c.label) : t('a voicing stated in expert');
                 }
                 if (qid === 'parts') return guidedPartsQualityLabel(snapProfile) ? t(guidedPartsQualityLabel(snapProfile)!) : null;
+                /* G-13 — the order per handover, read off the band form's slope selects. */
+                if (qid === 'order') {
+                  if (!guidedOrderRows) return null;
+                  return guidedOrderRows.rows
+                    .map((r) => {
+                      const c = GUIDED_ORDER_CHOICES.find((x) => x.id === r.choice);
+                      return `${r.label}: ${c ? t(c.label) : `${r.slopes[0]} / ${r.slopes[1]} dB/oct`}`;
+                    })
+                    .join(' · ');
+                }
                 const p = selectedProfile(qid, engineV2StatedBy);
                 if (p) return t(p.name);
                 return ownOn(qid).length > 0 ? t('your own values (expert)') : null;
@@ -20069,6 +20228,97 @@ export default function App() {
                                 </p>
                               )}
                             </>
+                          )}
+                          {q.kind === 'order' && (
+                            /* G-13 — THE FILTER ORDER PER HANDOVER. Three buttons per
+                               passive handover that write BOTH slope selects of the band
+                               form (`guidedOrder.ts`, `setGuidedOrder`): no second state.
+                               Beside each button what the engine will BUILD — a steeper
+                               rule overrules the choice and is named — and how many runs
+                               the field then holds, from the run's own generator. */
+                            <div className="guided-order">
+                              {!guidedOrderRows ? (
+                                <p className="v2-muted">
+                                  {t('No handover window could be derived yet: load the measurements first, then this question has something to choose from.')}
+                                </p>
+                              ) : (
+                                <>
+                                  {guidedOrderRows.rows.map((row) => (
+                                    <div key={row.label} className="guided-order-row">
+                                      <h4>{row.label}</h4>
+                                      <div className="v2-profile-choices">
+                                        {GUIDED_ORDER_CHOICES.map((c) => {
+                                          const built = ordersBuilt(c.id, row.otherDemand, guidedOrderRows.available, guidedOrderRows.mode);
+                                          const names = built.orders.map((o) => alignmentNameAt(o, AUTO_STRUCTS)).join(', ');
+                                          const on = row.choice === c.id;
+                                          return (
+                                            <button
+                                              key={c.id}
+                                              type="button"
+                                              className={`v2-profile${on ? ' active-toggle' : ''}`}
+                                              aria-pressed={on}
+                                              onClick={() => setGuidedOrder(row.i, guidedOrderRows.rows.length, c.id)}
+                                            >
+                                              <strong>{t(c.label)}</strong>
+                                              <small>{t(c.hint)}</small>
+                                              <span className="v2-profile-states">
+                                                {built.overruled
+                                                  ? t('Overruled here: a rule demands order {o} — built as {names}. {why}', {
+                                                      o: row.otherDemand ?? 0,
+                                                      names,
+                                                      why: row.otherSource ?? '',
+                                                    })
+                                                  : t('Builds {names}', { names })}
+                                                {' · '}
+                                                {t('{n} run(s)', { n: row.counts[c.id] })}
+                                                {' · '}
+                                                {c.slope === 'auto'
+                                                  ? t('frees both flanks')
+                                                  : t('{s} dB/oct on both flanks', { s: c.slope })}
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                      {row.choice === 'other' && (
+                                        <p className="v2-muted">
+                                          {t('Expert states {a} / {b} dB/oct on this handover; press a button to replace it.', {
+                                            a: row.slopes[0],
+                                            b: row.slopes[1],
+                                          })}
+                                        </p>
+                                      )}
+                                      {/* The pressed button reads the ORDER (the steeper flank); where the two
+                                          flanks differ — the app default is 24 / 12 on mid→high — say so, and
+                                          what a press would write, rather than let "pressed" read as "both". */}
+                                      {(() => {
+                                        const c = GUIDED_ORDER_CHOICES.find((x) => x.id === row.choice);
+                                        if (!c || (row.slopes[0] === c.slope && row.slopes[1] === c.slope)) return null;
+                                        return (
+                                          <p className="v2-muted">
+                                            {t('The flanks read {a} / {b} dB/oct and the order follows the steeper one; pressing the button sets both flanks to {s}.', {
+                                              a: row.slopes[0],
+                                              b: row.slopes[1],
+                                              s: c.slope,
+                                            })}
+                                          </p>
+                                        );
+                                      })()}
+                                      {appDefaultMark(row.rows[0], appDefaultValues(), fieldStatedAt).kind === 'app-default' &&
+                                        appDefaultMark(row.rows[1], appDefaultValues(), fieldStatedAt).kind === 'app-default' && (
+                                          <p className="v2-app-default">{t(ORDER_IS_APP_DEFAULT_NOTE)}</p>
+                                        )}
+                                    </div>
+                                  ))}
+                                  <p className="v2-muted">
+                                    {t('With these choices the {mode} run holds {n} design(s).', {
+                                      mode: guidedOrderRows.mode === 'full' ? t('Extended') : t('Quick'),
+                                      n: guidedOrderRows.countCurrent,
+                                    })}
+                                  </p>
+                                </>
+                              )}
+                            </div>
                           )}
                           {q.kind === 'parts' && (
                             /* GUIDED — the component quality, four of the five snap

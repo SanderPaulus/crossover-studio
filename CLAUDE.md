@@ -9398,3 +9398,82 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Niet gedaan:** geen engine-, poort-, budget-, venster- of corpuswijziging; geen regeneratie;
   Q_es en LF-budget blijven expert (Sander); het 1,0 Ω-getal is niet uit de metingen afgeleid (een
   G-8-achtige afleiding uit de spoelregel is een eigen sessie).
+
+### G-13-guards (guided kiest de filterorde per overname; de orde werd nooit gezocht; alleen UI, 10-11-2026)
+
+- **DE BEVINDING, EN ZIJ IS DE VRAAG WAARMEE SANDER BEGON: de orde wordt NIET gesimuleerd en is
+  in de praktijk ALTIJD 4e.** A5d.3 (`predesign/flankOrder.ts`, `pairOrders`) leidt per overname
+  af welke orde de gestelde regels EISEN — de tweeterregel op f_s van de bovenste driver, de
+  breakup-marge van de onderste, en regel (i): het AKOESTISCHE HELLINGSDOEL van elke flank minus
+  wat de driver al doet — en het paar neemt de hoogste eis; de toegelaten verzameling is
+  {fit(hoogste eis)} ∪ {fit(gestelde orde)}, of élke bibliotheekorde als niets eist. Een doel van
+  24 dB/oct op een vlakke flank eist exact orde 4, 12 dB/oct orde 2, `auto` niets (gepind in
+  `guidedOrder.test.ts` op `pairOrders` zelf). **Het bandformulier van expert stelt sinds U-9
+  standaard 24 dB/oct op de onderste flank van elke overname** (`APP_DEFAULTS`: woofer-LP 24,
+  mid-HP 24, mid-LP 24 — en tweeter-HP 12), `orderFrom` neemt de steilste flank, dus élke run —
+  Snel ÉN Uitgebreid — heeft 4e orde gebouwd zonder dat iemand het koos. Op de driewegdemo gemeten:
+  zonder hellingen laat de afleiding [2, 3, 4] toe (verkenning 6, vol veld 9 kandidaten), met de
+  standaardhellingen [4], met 12/12 [2]; het casus-1-veld laat [4] toe (orde gesteld).
+  **Correctie op wat eerder in dit boek stond:** "Uitgebreid draait elke toegelaten orde" geldt
+  alleen met de hellingen op `auto`; op de standaard zijn beide modi 4e orde.
+- **`src/lib/guidedOrder.ts` (`guided-order/1.0`) — DE GUIDED LEZING VAN DEZELFDE VIER SELECTS, en
+  niets eigens.** Geen nieuwe instelling, geen engine-wijziging: een knop schrijft BEIDE flanken van
+  een overname (`12`, `24` of `auto`) via de bestaande setters, stempelt beide rijen
+  (`fieldStatedAt`), en de run leest ze zoals altijd (`acousticSlopesValue` → `orderByPair` én de
+  hellingsterm van de tuner — `acousticSlopes` is een CHOICE-sleutel, dus de knop verzet ook dat
+  doel, en zegt dat: "12 dB/oct op beide flanken" / "laat beide flanken vrij"). Drie antwoorden per
+  passieve overname: 2e orde (LR2), 4e orde (LR4), engine kiest. BW3/BS4 worden niet aangeboden
+  (H-5: de textbookregel geldt voor LR van orde 2m). `orderChoiceOf` leest 18 of 6 dB/oct als
+  `'other'` en toont het ("Expert stelt hier … / …"), nooit stil als knop; waar de twee flanken
+  verschillen (de standaard 24/12 op mid→tweeter) zegt de rij dat de orde de steilste volgt en wat
+  een druk schrijft. `slopeRowsForHandover` is dezelfde mapping als `pairDerivationInputs`
+  (`i === 0 && many ? low : mid`), dus een tweeweg en een hybride drieweg lezen het mid/tweeter-paar.
+- **WAT EEN KEUZE NIET KAN, staat op de knop.** `ordersBuilt` neemt de eis van de ÁNDERE regels
+  (`otherDemand`, uit een veld met de hellingen gestript: `statedOrder: null`) en laat een lagere
+  keuze OVERRULEN met de regel bij naam ("een regel vraagt orde 3 — gebouwd als BW3"); `'auto'` is
+  de steilste toegelaten orde in Snel en élke toegelaten orde in Uitgebreid.
+- **DE TELLING KOMT VAN DE GENERATOR ZELF** (`guidedOrderRows` in `App.tsx`: `buildCandidateField`
+  met de echte vensterinvoer, `fieldModeSettings`, de polariteitsarmen en `AUTO_STRUCTS`, per
+  hypothetische keuze) en niet uit een schatting. **De memo geeft de generator ook de FASELEZER van
+  de run** (`polarityMarginReader(polarityBranchOf)`, met `branchAdj`, dat vóór de memo gedeclareerd
+  is), anders zou de telling onder `polarityArms: 'both'` de marge-gezaaide spiegels missen.
+  Gemeten op de driewegdemo: Snel LR2/LR4/auto op low→mid 6/6/6, op mid→high 3/6/6 (het
+  orde-2-venster is smaller: de vakregelvloer 2,83×f_s tegen 1,68×); Uitgebreid 9/9/8 en 3/9/8 —
+  "engine kiest" bouwt LR2, BW3, LR4 binnen hetzelfde budget, dus minder posities per orde; met
+  `both` in expert Uitgebreid 36/36/32 en 6/36/32 — de 36 is H-4b's gemeten volle veld. **TDZ-les
+  (U-9 fase 2, opnieuw):** de memo riep `appDefaultValues()` aan, dat `dirWeight` leest dat verderop
+  gedeclareerd wordt — blanco scherm. De app-default-noot wordt sindsdien bij het renderen bepaald, in
+  het vraagblok. **Drie bronscans vingen de memo en deden hun werk, elk in een eigen snelle run:**
+  H-5 pint élke `fieldModeSettings`-aanroep op de gestelde armkeuze (2 → 3, de derde bij naam);
+  U-9 stap 0b's tegenproef brak met `replace` alleen de EERSTE `polarityBranchOf` — sinds G-13 de
+  memo, buiten de gescande body — en leest nu `replaceAll`; en H-4 telt de margelezers
+  (`polarityMarginReader(polarityBranchOf)`, 2 → 3). Alle drie in V15-vorm; geen claim versoepeld.
+- **Guided:** vraag `order` ("Hoe steil moeten de filters zijn?", `kind: 'order'`) ná de
+  woofervraag en vóór de voicing; geen eis (`GUIDED_DESTINATION` kent hem niet, `u9Fase3` telt
+  zes eisvragen zonder `parts` en `order`); "weet ik niet" noemt de app-standaard. De samenvatting
+  leest "low→mid: 2e orde (LR2) · mid→high: 4e orde (LR4)". De vier registerrijen noemen de vraag.
+- **`src/lib/guidedOrder.test.ts` (12 claims):** de mapping, de lezing (incl. `'other'`), DE
+  BEVINDING op `APP_DEFAULTS`, wat elke knop schrijft, `ordersBuilt` (overrule, fit omhoog, auto in
+  beide modi), `alignmentNameAt`, de afleiding zelf op `pairOrders`, en vier bronscans op `App.tsx`
+  (geen v2-sleutel draagt de orde; `setGuidedOrder` schrijft de vier setters en stempelt; één
+  renderpunt met `aria-pressed`; de memo telt met `buildCandidateField`, `curveOfDriverId: () => null`,
+  `statedOrder: null,` en `alignments: AUTO_STRUCTS`).
+- **BROWSERCONTROLE (dev-server, verse localStorage, driewegdemo, guided, 10-11-2026):** vraag 6 van 8
+  met twee rijen en drie knoppen, 4e orde ingedrukt op beide, de app-default-noot onder beide rijen;
+  één druk op "2e orde" op low→mid → in expert (Filters → ⚙ Settings) staan woofer-LP en mid-HP op 12
+  met "stated by you on 2026-11-10", mid-LP 24 en tweeter 12 nog "app default — not stated by you";
+  een druk op "4e orde" op mid→high zet de tweeter van 12 op 24 en de "flanken staan op 24 / 12"-regel
+  verdwijnt; Uitgebreid gekozen op de samenvatting → de tellingen hierboven; NL volledig vertaald.
+  Geen console-fout ná de TDZ-reparatie (de gelogde `dirWeight`-fout is van ervóór).
+- **Gemeten (10-11-2026):** `npx tsc -b` groen. `npm run test:fast` **269 s, 231 bestanden (230 geslaagd,
+  1 overgeslagen), 3059 tests (3055 geslaagd, 4 overgeslagen), groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 21:20:50, run gestart 21:21:08 (de H-2-regel).** +1 bestand
+  en +12 tests tegen G-12's 3047 (3043 + 4), exact `guidedOrder.test.ts`; `u9Fase3`, `h5TextbookPolarity`
+  en `h4PolarityArms` veranderden van inhoud en niet van telling. **Dit is de DERDE snelle run; de
+  eerste twee (265 s en 268 s) hadden elk precies ÉÉN rode bronscan** — de H-5-telling en daarna de
+  H-4-telling hierboven — en zijn niet gerapporteerd, om de H-2-reden: na elke reparatie is de laag
+  opnieuw en alleen gedraaid. Geen volle run: geen engine-, poort-, venster-, metriek- of
+  corpuswijziging; de knop schrijft vier bestaande `useState`s.
+- **Niet gedaan:** de app-standaard zelf (24/24/24/12) is niet veranderd; de tweeweg zonder
+  impedanties (`vfRounds`) leest de hellingen via `acousticSlopes.mid/tweeter` zoals altijd en krijgt
+  in guided dezelfde knop.

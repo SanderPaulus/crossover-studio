@@ -192,8 +192,16 @@ describe('H-4 — the routes carry the polarity (source scans)', () => {
     expect(app).toContain('statedPolarity: statedPolarityForThreeWay(cand.polarity)');
     expect(app).toContain('statedInverted: statedInvertedForTwoWay(cand.polarity)');
     /* Both routes must READ the margin, or the mode can never seed an arm and
-     * the whole expansion is unreachable from the app. */
-    expect(app.split('polarityMarginReader(polarityBranchOf)').length - 1).toBe(2);
+     * the whole expansion is unreachable from the app.
+     *
+     * G-13 (10-11-2026, V15 form). WAS: exactly TWO readers (the three-way and
+     * the two-way scan). IS: THREE — the third is the guided order question's
+     * counting memo (`guidedOrderRows`), which builds the field the run would
+     * build and therefore hands the generator the same margin reader; without
+     * it the count under `'both'` would miss the margin-seeded mirrors. WHY the
+     * count stays pinned: a route that stops reading the margin is a route on
+     * which the mode can never seed an arm, and this is the scan that says so. */
+    expect(app.split('polarityMarginReader(polarityBranchOf)').length - 1).toBe(3);
   });
 
   it('the three fixtures state it too, so a regenerated corpus can carry arms', () => {

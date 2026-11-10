@@ -1675,7 +1675,7 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'acSlopeMid', // #118
     label: 'Acoustic slope mid (LP at the high crossing)',
-    form: 'Filters → ⚙ Settings',
+    form: 'Filters → ⚙ Settings; guided: question “How steep should the filters be?” (G-13)',
     travels:
       'acSlopeMid → acousticSlopes → the tuner; U-9 (N3, measured): ALSO orderByPair → the order the ' +
       'A5d.3 f_s floor assumes, so the candidate field moves; on the two-way route the design step too',
@@ -1688,7 +1688,7 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'acSlopeTweeter', // #119
     label: 'Acoustic slope tweeter',
-    form: 'Filters → ⚙ Settings',
+    form: 'Filters → ⚙ Settings; guided: question “How steep should the filters be?” (G-13)',
     travels: 'acSlopeTweeter → acousticSlopes → the tuner (N3)',
     cls: 'nice',
     effect: 'zoekt',
@@ -1699,7 +1699,9 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'acSlopeWoofer', // #120
     label: 'Acoustic slope woofer (low crossing)',
-    form: 'Filters → ⚙ Settings (three-way only)',
+    /* G-13 (10-11-2026): also guided's "How steep should the filters be?" —
+     * one button writes this row and acSlopeMidHp together (`guidedOrder.ts`). */
+    form: 'Filters → ⚙ Settings (three-way only); guided: question “How steep should the filters be?”',
     travels:
       'acSlopeWoofer → acousticSlopes.low → the tuner and orderByPair → the windows (N3); three-way only, ' +
       'hidden on the two-way and hybrid routes where nothing reads it',
@@ -1712,7 +1714,7 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'acSlopeMidHp', // #121
     label: 'Acoustic slope mid HP (low crossing)',
-    form: 'Filters → ⚙ Settings (three-way only)',
+    form: 'Filters → ⚙ Settings (three-way only); guided: question “How steep should the filters be?”',
     travels: 'acSlopeMidHp → acousticSlopes.low → the tuner and orderByPair → the windows (N3); three-way only',
     cls: 'nice',
     effect: 'zoekt',

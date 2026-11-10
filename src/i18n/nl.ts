@@ -2256,6 +2256,34 @@ export const nl: Record<string, string> = {
 
   // ── G-12 (08-11-2026): guided — de woofervraag ────────────────────────
   'May the woofer be padded down with resistance?': 'Mag de woofer met weerstand verzwakt worden?',
+  // ── G-13: de filterorde per overname (guided) ──────────────────────
+  'How steep should the filters be?': 'Hoe steil moeten de filters zijn?',
+  '2nd order (LR2)': '2e orde (LR2)',
+  '4th order (LR4)': '4e orde (LR4)',
+  'Let the engine choose': 'Laat de engine kiezen',
+  'Fewest parts and the least coil copper; the driver above the handover takes more below it.':
+    'De minste onderdelen en het minste spoelkoper; de driver boven de overname krijgt er meer onder te verwerken.',
+  'The standard: the most protection for the driver above the handover, more parts.':
+    'De standaard: de meeste bescherming voor de driver boven de overname, meer onderdelen.',
+  'Quick: the steepest order the rules admit. Extended: every admitted order as its own candidate, within the same budget — fewer positions per order.':
+    'Snel: de steilste orde die de regels toelaten. Uitgebreid: elke toegelaten orde als eigen kandidaat, binnen hetzelfde budget — minder posities per orde.',
+  'Overruled here: a rule demands order {o} — built as {names}. {why}':
+    'Hier overruled: een regel vraagt orde {o} — gebouwd als {names}. {why}',
+  'Builds {names}': 'Bouwt {names}',
+  '{n} run(s)': '{n} run(s)',
+  'Expert states {a} / {b} dB/oct on this handover; press a button to replace it.':
+    'Expert stelt hier {a} / {b} dB/oct; druk op een knop om dat te vervangen.',
+  'Nobody chose this: it is where the app starts (a 24 dB/oct target on the lower flank of the handover, which demands 4th order), and it steers the field until you change it here or in expert.':
+    'Niemand heeft dit gekozen: het is waar de app begint (een doel van 24 dB/oct op de onderste flank van de overname, en dat eist 4e orde), en het stuurt het veld tot je het hier of in expert verandert.',
+  '{s} dB/oct on both flanks': '{s} dB/oct op beide flanken',
+  'frees both flanks': 'laat beide flanken vrij',
+  'The flanks read {a} / {b} dB/oct and the order follows the steeper one; pressing the button sets both flanks to {s}.':
+    'De flanken staan op {a} / {b} dB/oct en de orde volgt de steilste; een druk op de knop zet beide flanken op {s}.',
+  'With these choices the {mode} run holds {n} design(s).': 'Met deze keuzes telt de run “{mode}” {n} ontwerp(en).',
+  'No handover window could be derived yet: load the measurements first, then this question has something to choose from.':
+    'Er is nog geen overnamevenster afgeleid: laad eerst de metingen, dan valt hier iets te kiezen.',
+  'The app’s own default: 4th order on every handover (a 24 dB/oct target on the lower flank of each) — nobody chose it, and it stands until you change it here or in expert.':
+    'De standaard van de app: 4e orde op elke overname (een doel van 24 dB/oct op de onderste flank ervan) — niemand heeft het gekozen, en het blijft staan tot je het hier of in expert verandert.',
   'Nothing is forbidden: where the woofer sits above the quietest way the search may pad it down with series resistance — heat, a lower impedance minimum, a looser Q_es and a bass that follows the impedance — and nothing judges it. The level work is shown on every row.':
     'Niets is verboden: waar de woofer boven de stilste weg zit mag de zoektocht hem met serieweerstand verzwakken — warmte, een lager impedantieminimum, een lossere Q_es en een bas die de impedantie volgt — en niets oordeelt erover. Het niveauwerk staat op elke rij.',
   'No resistance on the woofer': 'Geen weerstand op de woofer',

@@ -123,7 +123,13 @@ describe('U-9 fase 3, stap 0b — de TDZ-guard op polarityBranchOf', () => {
   });
 
   it('tegenproef: de vorm van de fase-2-crash wordt gevangen, met de naam erbij', () => {
-    const broken = APP.replace('adjust: branchAdj.tweeter };', 'adjust: tAdjust };');
+    /* G-13 (10-11-2026, V15-vorm). WAS: `replace` — de EERSTE `adjust:
+       branchAdj.tweeter };` in App.tsx, en die stond in runVfOptimize. IS:
+       `replaceAll`, want G-13 bouwt in de guided-ordevraag een tweede
+       polarityBranchOf (de telmemo, vóór runVfOptimize) en `replace` brak alleen
+       die — buiten de gescande body — zodat de tegenproef niets meer ving.
+       WAAROM: de breuk hoort in de body te landen die `lateReads` scant. */
+    const broken = APP.replaceAll('adjust: branchAdj.tweeter };', 'adjust: tAdjust };');
     expect(broken).not.toBe(APP);
     expect(lateReads(broken).late).toContain('tAdjust');
   });
@@ -352,10 +358,16 @@ describe('U-9 fase 3: five questions, and where every requirement goes', () => {
        voicing. WHY: Sander — a guided run padded the woofer with 6.5 Ω because
        no question stated the level-work rule, and that rule is a word, not a
        number. The passive path still holds no free number field. */
-    const requirementQs = GUIDED_QUESTIONS.filter((q) => q.kind !== 'parts');
+    /* G-13 (10-11-2026, V15 form). WAS: seven screens, six of them
+       requirements. IS: EIGHT — the filter order per handover, after the
+       woofer question and before the voicing. It is no requirement (it writes
+       the band form's slope selects and judges nothing), so the requirement
+       count stays six. WHY: Sander — every guided run built 4th order on a
+       hidden app default, and Extended could never build another order. */
+    const requirementQs = GUIDED_QUESTIONS.filter((q) => q.kind !== 'parts' && q.kind !== 'order');
     expect(requirementQs.length).toBeLessThanOrEqual(6);
     expect(requirementQs).toHaveLength(6);
-    expect(GUIDED_QUESTIONS.map((q) => q.id)).toEqual(['build', 'amplifier', 'load', 'ambition', 'woofer', 'voicing', 'parts']);
+    expect(GUIDED_QUESTIONS.map((q) => q.id)).toEqual(['build', 'amplifier', 'load', 'ambition', 'woofer', 'order', 'voicing', 'parts']);
     const woofer = GUIDED_QUESTIONS.find((q) => q.id === 'woofer')!;
     expect(woofer.kind).toBe('profile');
     expect(woofer.unknownMeans).toMatch(/pad it down with series resistance/);

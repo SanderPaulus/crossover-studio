@@ -829,14 +829,15 @@ export const LEVEL_WORK_OPTIONS: readonly { value: string; label: string }[] = O
  * handover of a hybrid, which has no default (P4) — and a builder who does not
  * know it is sent to expert and carries on passive.
  */
-export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'woofer' | 'voicing' | 'parts';
+export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'woofer' | 'order' | 'voicing' | 'parts';
 
 export interface GuidedQuestion {
   id: GuidedQuestionId;
   title: string;
-  /** How the screen answers: a profile pick, the architecture choice, the voicing choice, or
-   *  the component quality (`guidedPartsQuality.ts` — the snap profile, not a requirement). */
-  kind: 'architecture' | 'profile' | 'voicing' | 'parts';
+  /** How the screen answers: a profile pick, the architecture choice, the voicing choice,
+   *  the filter order per handover (`guidedOrder.ts` — the band form's slope selects, not a
+   *  requirement), or the component quality (`guidedPartsQuality.ts` — the snap profile). */
+  kind: 'architecture' | 'profile' | 'order' | 'voicing' | 'parts';
   /** Register rows a FREE field asks for, and on which path. Never on the passive path. */
   freeFields: readonly { rowId: string; onlyWhen: 'hybrid' }[];
   /** What “I don’t know” costs, in one sentence. */
@@ -883,6 +884,19 @@ export const GUIDED_QUESTIONS: readonly GuidedQuestion[] = Object.freeze([
     kind: 'profile',
     freeFields: [],
     unknownMeans: 'Nothing is forbidden: where the woofer sits above the quietest way the search may pad it down with series resistance — heat, a lower impedance minimum, a looser Q_es and a bass that follows the impedance — and nothing judges it. The level work is shown on every row.',
+  },
+  /* G-13 (10-11-2026, Sander): the filter order per handover. Not a
+   * requirement — it writes the band form's two slope selects of a handover
+   * (`guidedOrder.ts`) and judges nothing — so no register row is sent here
+   * (GUIDED_DESTINATION). Placed after the requirements, because what the
+   * rules DEMAND on each handover (the tweeter rule, the breakup margin) is
+   * only known once they are stated, and the screen shows it. */
+  {
+    id: 'order',
+    title: 'How steep should the filters be?',
+    kind: 'order',
+    freeFields: [],
+    unknownMeans: 'The app’s own default: 4th order on every handover (a 24 dB/oct target on the lower flank of each) — nobody chose it, and it stands until you change it here or in expert.',
   },
   {
     id: 'voicing',

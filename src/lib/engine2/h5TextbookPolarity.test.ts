@@ -196,10 +196,18 @@ describe('2 — absent is the identity, and the fixture pin', () => {
 
   it('the APP states the choice on both routes, and the export carries it', () => {
     /* A source scan, for the UI-1 reason: a unit test cannot say whether the
-     * app CALLS this. Both `fieldModeSettings` call sites take the choice, and
-     * the block that replays a run carries it. */
+     * app CALLS this. Every `fieldModeSettings` call site takes the choice, and
+     * the block that replays a run carries it.
+     *
+     * G-13 (10-11-2026, V15 form). WAS: exactly TWO call sites (the three-way
+     * and the two-way scan). IS: THREE — the third is the guided order
+     * question's counting memo (`guidedOrderRows`), which builds the field
+     * the run would build under each order choice and must therefore hand
+     * the generator the same stated choice and the same phase reader. WHY the
+     * count stays pinned: a fourth site that forgets the choice would build
+     * the pre-H-5 enumerating field, and this scan is what catches it. */
     const calls = [...APP.matchAll(/fieldModeSettings\(/g)];
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
     for (const m of calls) {
       const call = APP.slice(m.index!, m.index! + 260);
       expect(call).toContain('polarityArms,');
