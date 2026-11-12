@@ -156,4 +156,22 @@ describe('G-13 — the app', () => {
     expect(memo).toContain('polarityMarginReader(polarityBranchOf)');
     expect(memo).toContain('polarityArms,');
   });
+
+  it('12-11-2026: an EMPTY window at the chosen order is said on the row, and an empty field refuses the run on both routes', () => {
+    /* Sander's run of 12-11: "2nd order" on mid→tweeter put the trade-rule
+     * floor (2.83·f_s) above the breakup ceiling, the generator dropped that
+     * handover and ran woofer→mid candidates alone, and the row had said
+     * "Builds LR2 · 3 run(s)" — the count of the remaining axis. */
+    const i = APP.indexOf('const guidedOrderRows = useMemo(');
+    const memo = APP.slice(i, APP.indexOf('const setGuidedOrder = ', i));
+    expect(memo).toContain('crossoverWindow({ ...wi, order })');
+    expect(memo).toContain('emptyAt,');
+    const b = APP.indexOf("{q.kind === 'order' && (");
+    const block = APP.slice(b, APP.indexOf("{q.kind === 'parts' && (", b));
+    expect(block).toContain('No window at this order:');
+    /* Both scan routes stop on an empty field with the generator's own refusal
+     * — before a worker starts — instead of running nothing. */
+    expect(APP.match(/if \(v2Generated\.field\.candidates\.length === 0\) \{/g)).toHaveLength(2);
+    expect(APP.match(/setVfError\(`Cannot optimise yet — \$\{v2Generated\.field\.refusals\.join\(' '\)\}`\);/g)).toHaveLength(2);
+  });
 });

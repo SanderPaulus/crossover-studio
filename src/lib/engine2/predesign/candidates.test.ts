@@ -27,6 +27,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { generateCandidates, derivedPositionCount, centreFirstPositionCount, type Alignment } from './candidates.ts';
+import { buildCandidateField } from './candidateField.ts';
 import type { XoWindowInput } from './xoWindow.ts';
 import type { PairOrderResult } from './flankOrder.ts';
 import { WINDOW_SMOOTHING_OCTAVES } from '../constants.ts';
@@ -346,6 +347,51 @@ describe('N-way — the generator takes a product and counts nothing', () => {
     );
     expect(three.candidates).toHaveLength(27);
     expect(three.candidates[0].crossings).toHaveLength(3);
+  });
+
+  it('a pair with NO window at any order built here refuses the WHOLE field — a candidate carries one crossing per handover (12-11-2026)', () => {
+    /* Until 12-11-2026 the empty pair was skipped and the field was the product
+     * of the others: a three-way with its mid→tweeter window empty at the
+     * stated order ran woofer→mid candidates with ONE crossing, and the
+     * three-way route read that crossing as both handovers (Sander's run). The
+     * counter-proof is the claim above: the same two pairs with a window give 9. */
+    const f = generateCandidates(
+      [
+        { windowInput: low, orders: mkOrders('woofer→mid', [4]) },
+        { windowInput: { ...flatWindow(3200, 1600), lower: 'mid', upper: 'tweeter' }, orders: mkOrders('mid→tweeter', [4]) },
+      ],
+      { alignments: LIBRARY, minSpacingOctaves: 0.5 },
+    );
+    expect(f.candidates).toHaveLength(0);
+    expect(f.axes).toHaveLength(0);
+    expect(f.refusals.join('\n')).toMatch(/mid→tweeter at order 4: .*EMPTY/);
+    expect(f.refusals.join('\n')).toContain('one crossing per handover');
+    expect(f.parameters.derivedSize).toBe(0);
+  });
+
+  it('…and one step earlier: a pair with no reference crossing at its STATED order refuses the field in buildCandidateField (12-11-2026)', () => {
+    /* This is the path Sander's run took: `buildCandidateField` derives the
+     * reference crossing at the stated order, found none for mid→tweeter, and
+     * until today handed the generator the other pair alone. */
+    const r = buildCandidateField({
+      windowInputs: [low, { ...flatWindow(3200, 1600), lower: 'mid', upper: 'tweeter' }],
+      perPair: [{ statedOrder: 4 }, { statedOrder: 4 }],
+      alignments: LIBRARY,
+      minSpacingOctaves: 0.5,
+    });
+    expect(r.field.candidates).toHaveLength(0);
+    expect(r.field.axes).toHaveLength(0);
+    expect(r.referenceCrossingHz).toEqual([expect.any(Number), null]);
+    expect(r.field.refusals[0]).toMatch(/^mid→tweeter at order 4: no feasible window — the floor .* lies above the ceiling/);
+    expect(r.field.refusals[0]).toContain('one crossing per handover');
+    /* The counter-proof: the same two pairs with a window give the product. */
+    const ok = buildCandidateField({
+      windowInputs: [low, high],
+      perPair: [{ statedOrder: 4 }, { statedOrder: 4 }],
+      alignments: LIBRARY,
+      minSpacingOctaves: 0.5,
+    });
+    expect(ok.field.candidates).toHaveLength(9);
   });
 
   it('a combination whose handovers do not ascend is dropped, and the drop is counted', () => {

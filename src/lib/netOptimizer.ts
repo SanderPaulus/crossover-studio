@@ -269,6 +269,17 @@ export interface NetOptimizeOptions {
    */
   band?: [number, number];
   maxIterations?: number;
+  /**
+   * 12-11-2026 — MEASURE ONLY: build the seed's own report (`before`) and
+   * return it as `after` too, without a single search pass. For "what does
+   * the design on screen score" (the scan's reference row), which used to be
+   * asked with `maxIterations: 1` — and that caps only the simplex: the floor
+   * repair, the reseed challenges, the drift catches and the polish all keep
+   * their own budgets, and on a loaded 40-part design that was 20 s of main
+   * thread per click (measured on the three-way demo, second guided pass).
+   * Absent = the tuner exactly as it was (P2).
+   */
+  measureOnly?: boolean;
   /** Per-driver angle responses (same grid) — enables the directivity-aware
    *  terms, exactly like the design optimizer. */
   angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[]; mid?: AngleResponse[] };
@@ -4636,6 +4647,70 @@ export function optimizeNetworkValues(
     angleData ?? null,
     activeFull,
   );
+  /* The DELIVERED absolute impedance minimum, judged on the eval grid AND the
+   * safety grid when one is given — a narrow dip outside a zoomed view range
+   * is exactly the one that reaches the amplifier anyway.
+   *
+   * WHY REPORT IT: the safety gate is RELATIVE (it only refuses a tune that
+   * makes the dip worse than the seed), so a design whose seed already sat
+   * under the floor passes every gate and still ships an amp-hostile load.
+   * Nothing downstream could see that number; the chain ranking now can.
+   *
+   * 12-11-2026 — declared here, beside `before`, instead of after the last
+   * pass: the measure-only return below reports before any pass has run. The
+   * closures are unchanged (byte baselines reproduce). */
+  const zMinOf = (m: Metrics, ps: readonly VxpPart[]): number => {
+    let min = m.zMinOhm;
+    if (opts.safety) {
+      const sg = opts.safety;
+      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null, sg.active ?? null);
+      if (ms.zMinOhm < min) min = ms.zMinOhm;
+    }
+    return min;
+  };
+  const report = (m: Metrics, ps: readonly VxpPart[]) => ({
+    rippleDb: m.ripplePeakDb,
+    avgDevDb: m.avgDevDb,
+    phaseDeg: m.phaseDeg,
+    zMinOhm: zMinOf(m, ps),
+    // Measured on the parts this report is ABOUT — that is the whole point of
+    // report() taking them (A3g). One extra solve per call, twice per run.
+    rSourceOhm: rSourceOf(ps),
+    // Energy-average (in-room) flatness of the delivered sum, when angle
+    // data armed it — so a ranking can weigh the power response, not only
+    // the on-axis curve (window spec rule 9).
+    ...(m.powerStdDb !== null ? { powerStdDb: m.powerStdDb } : {}),
+    ...(m.powerFoldDb !== null ? { powerFoldDb: m.powerFoldDb } : {}),
+    ...(m.dissRatio !== null ? { dissRatio: m.dissRatio } : {}),
+    ...(m.powerSlopeDbDec !== null ? { powerSlopeDbDec: m.powerSlopeDbDec } : {}),
+    ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
+    /* V44 — carried whenever the admission was armed, at any pair count: a
+     * two-way has one handover and still deserves to show what the historic
+     * set read. Empty on every v1 run, hence absent there. */
+    ...(m.pairPhaseControlDeg.length > 0
+      ? { pairPhaseControlDeg: m.pairPhaseControlDeg }
+      : {}),
+    ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
+    ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
+    /* H-3b — the flank the tuner itself read, only when a budget was stated
+     * (the V30 `zFloorSourceNote` shape: every other run is byte-identical). */
+    ...(opts.flankBudget ? { flankRmsDb: m.flankRmsDb } : {}),
+  });
+  /* 12-11-2026 — MEASURE ONLY (see `NetOptimizeOptions.measureOnly`): the
+   * seed's report is the whole answer. `after` IS `before`, the parts come
+   * back as they came in, nothing was tuned and no pass ran. */
+  if (opts.measureOnly) {
+    return {
+      parts: cloneParts(parts),
+      before: report(before, parts),
+      after: { ...report(before, parts), xoHz: before.xoHz },
+      tuned: 0,
+      evaluations,
+      removed: [],
+      added: [],
+      bandNote: bandNoteText,
+    };
+  }
   /** Solo sensitivity gate: the network may not spend more than the budget of
    *  the driver's own median level. Always true for two-driver designs (level
    *  there is a pairing decision, priced by the crossing fundamentals). */
@@ -5992,23 +6067,8 @@ export function optimizeNetworkValues(
 
   // before/after report the PEAK ±dB (the strip's unit, matching the target)
   // plus the whole-range avg |deviation| for the chain ranking / scan table.
-  /* The DELIVERED absolute impedance minimum, judged on the eval grid AND the
-   * safety grid when one is given — a narrow dip outside a zoomed view range
-   * is exactly the one that reaches the amplifier anyway.
-   *
-   * WHY REPORT IT: the safety gate is RELATIVE (it only refuses a tune that
-   * makes the dip worse than the seed), so a design whose seed already sat
-   * under the floor passes every gate and still ships an amp-hostile load.
-   * Nothing downstream could see that number; the chain ranking now can. */
-  const zMinOf = (m: Metrics, ps: readonly VxpPart[]): number => {
-    let min = m.zMinOhm;
-    if (opts.safety) {
-      const sg = opts.safety;
-      const ms = metricsOn(buildWork(ps).work, sg.freqs, sg.w, sg.t, sg.m ?? null, sg.z, null, sg.active ?? null);
-      if (ms.zMinOhm < min) min = ms.zMinOhm;
-    }
-    return min;
-  };
+  /* `zMinOf` and `report` are declared beside `before` (12-11-2026): the
+   * measure-only return needs them before any pass has run. */
   /* The snap runs BEFORE this point, so the repair's claim has to be checked
    * against what actually ships. A note reading "lifted 2.1 → 2.4 Ω" on a
    * network delivering 1.9 Ω is worse than no note at all — it is the reason
@@ -6089,35 +6149,6 @@ export function optimizeNetworkValues(
         `worse design, it is one you told this app your amplifier will refuse to drive`;
     }
   }
-
-  const report = (m: Metrics, ps: readonly VxpPart[]) => ({
-    rippleDb: m.ripplePeakDb,
-    avgDevDb: m.avgDevDb,
-    phaseDeg: m.phaseDeg,
-    zMinOhm: zMinOf(m, ps),
-    // Measured on the parts this report is ABOUT — that is the whole point of
-    // report() taking them (A3g). One extra solve per call, twice per run.
-    rSourceOhm: rSourceOf(ps),
-    // Energy-average (in-room) flatness of the delivered sum, when angle
-    // data armed it — so a ranking can weigh the power response, not only
-    // the on-axis curve (window spec rule 9).
-    ...(m.powerStdDb !== null ? { powerStdDb: m.powerStdDb } : {}),
-    ...(m.powerFoldDb !== null ? { powerFoldDb: m.powerFoldDb } : {}),
-    ...(m.dissRatio !== null ? { dissRatio: m.dissRatio } : {}),
-    ...(m.powerSlopeDbDec !== null ? { powerSlopeDbDec: m.powerSlopeDbDec } : {}),
-    ...(m.pairPhaseDeg.length > 1 ? { pairPhaseDeg: m.pairPhaseDeg } : {}),
-    /* V44 — carried whenever the admission was armed, at any pair count: a
-     * two-way has one handover and still deserves to show what the historic
-     * set read. Empty on every v1 run, hence absent there. */
-    ...(m.pairPhaseControlDeg.length > 0
-      ? { pairPhaseControlDeg: m.pairPhaseControlDeg }
-      : {}),
-    ...(m.xoHzPairs.length > 1 ? { xoHzPairs: m.xoHzPairs } : {}),
-    ...(m.pairOverlapOct.length > 1 ? { pairOverlapOct: m.pairOverlapOct } : {}),
-    /* H-3b — the flank the tuner itself read, only when a budget was stated
-     * (the V30 `zFloorSourceNote` shape: every other run is byte-identical). */
-    ...(opts.flankBudget ? { flankRmsDb: m.flankRmsDb } : {}),
-  });
 
   /* ---- SOLO sensitivity gate (see soloSensBudgetDb): a tuned result that
    * bought its flatness with broadband attenuation loses to the seed. The

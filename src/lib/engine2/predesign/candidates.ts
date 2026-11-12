@@ -727,6 +727,7 @@ export function generateCandidates(
   const notes: string[] = [];
   const refusals: string[] = [];
   const slots: AxisSlot[] = [];
+  const droppedPairs: string[] = [];
 
   for (const pair of pairs) {
     const label = pair.orders.pairLabel;
@@ -816,8 +817,45 @@ export function generateCandidates(
         uncalibrated: recommended.uncalibrated,
       });
     }
-    if (slot.byOrder.length === 0) continue;
+    if (slot.byOrder.length === 0) {
+      droppedPairs.push(label);
+      continue;
+    }
     slots.push(slot);
+  }
+
+  /* 12-11-2026 — A HANDOVER WITHOUT A WINDOW IS NOT AN AXIS TO LEAVE OUT.
+   *
+   * Until now a pair whose window was empty at every order built here was
+   * simply skipped, and the field was the product of the OTHER pairs: on a
+   * three-way with the mid→tweeter window empty at 2nd order (the trade-rule
+   * floor 2.83·f_s above the breakup ceiling) the run carried candidates with
+   * ONE crossing, and the three-way route read that crossing as both xoLow and
+   * xoHigh — a woofer→mid handover used twice, searched for twenty minutes.
+   * Seen by Sander on his own project the day the guided order choice made a
+   * 2nd-order mid→tweeter one click away. A candidate carries one crossing per
+   * handover, so a field with a handover missing is no field: nothing is built,
+   * and the refusals say which handover and why (P4 — absence is a reason,
+   * never a smaller design). */
+  if (droppedPairs.length > 0 && slots.length > 0) {
+    refusals.push(
+      `${droppedPairs.join(', ')}: no feasible window at any order built here, and a field with a ` +
+        'handover missing is not a field — a candidate carries one crossing per handover. Nothing ' +
+        'is built; widen that window (another order, another ceiling) or accept the layout.',
+    );
+    return {
+      candidates: [],
+      axes: [],
+      refusals,
+      notes,
+      parameters: {
+        minSpacingOctaves: spacing,
+        chainBudget: budget,
+        derivedSize: 0,
+        deliveredSize: 0,
+        ...policyParameters,
+      },
+    };
   }
 
   if (slots.length === 0) {

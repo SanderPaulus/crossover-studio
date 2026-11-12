@@ -214,9 +214,12 @@ describe('F4c — every tuner option has a class', () => {
     // budget rides ON that stated block (`ActiveHandover.flankBudgetDbRms`);
     // the REQUIREMENT is judged by the worker on the delivered network. Split
     // becomes 40/5/16.
-    expect(keys.length).toBe(61);
-    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(61);
-    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 16]);
+    // 62 since 12-11-2026 added `measureOnly` (polish — the seed's own report
+    // and no pass, for the scan's reference row; it cannot alter anything a
+    // search delivers because with it there is no search). Split 40/5/17.
+    expect(keys.length).toBe(62);
+    expect(CHOICE_KEYS.length + GREY_KEYS.length + POLISH_KEYS.length).toBe(62);
+    expect([CHOICE_KEYS.length, GREY_KEYS.length, POLISH_KEYS.length]).toEqual([40, 5, 17]);
     for (const k of CHAIN_CHOICE_KEYS) {
       if ((CHAIN_KEYS_ALSO_CLASSIFIED_IN_THE_TUNER as readonly string[]).includes(k)) continue;
       expect(classified as readonly string[], `${k} is a chain key, not a tuner option`).not.toContain(k);
@@ -370,7 +373,7 @@ describe('F4c — every tuner option has a class', () => {
     expect(CHOICE_KEYS).toContain('safety');
     expect(CHOICE_KEYS.length).toBe(40); // E-5c: structureRetune, repeatedTune
     expect(GREY_KEYS.length).toBe(5);
-    expect(POLISH_KEYS.length).toBe(16); // H-1: activeBranch, activeLevelBandHz; H-3b: flankBudget
+    expect(POLISH_KEYS.length).toBe(17); // H-1: activeBranch, activeLevelBandHz; H-3b: flankBudget; 12-11-2026: measureOnly
   });
 
   /* V48 — WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES, and it may

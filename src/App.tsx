@@ -280,7 +280,7 @@ import { emptyV2Meas, type V2MeasurementMeta } from './lib/v2Measurement.ts';
 import { BREAKUP_DIVISOR_PROTOCOL } from './lib/breakupDivisorProtocol.ts';
 import type { DriverBreakupDivisor } from './lib/engine2/predesign/xoWindow.ts';
 /* H-4b — what the k·f_s fallback is worth in dB, derived from the constant. */
-import { fsConventionDbRange } from './lib/engine2/predesign/xoWindow.ts';
+import { crossoverWindow, fsConventionDbRange } from './lib/engine2/predesign/xoWindow.ts';
 import {
   V1_FIELD_DEFAULTS,
   describeCarriedDatasheetFields,
@@ -6838,6 +6838,26 @@ export default function App() {
           countWith(current.map((cur, j) => (j === i ? ([c.slope, c.slope] as [string, string]) : cur))),
         ]),
       ) as Record<GuidedOrderChoice, number>;
+      /* 12-11-2026 — THE WINDOW AT THE ORDER A CHOICE WOULD BUILD, read off the
+       * same derivation the generator reads (`crossoverWindow` per order). A
+       * window that is empty there means the handover drops out of the field,
+       * and since 12-11-2026 the generator refuses the whole field rather than
+       * build the other handovers alone (Sander's run with one crossing). The
+       * row says so with the two edges and their rules, in hertz, instead of a
+       * count that silently read the remaining axis. */
+      const windowAt = (order: number) => {
+        const w = crossoverWindow({ ...wi, order });
+        const empty = w.empty || w.floorHz === null || w.ceilingHz === null || !(w.ceilingHz > w.floorHz);
+        return empty
+          ? { floorHz: w.floorHz, ceilingHz: w.ceilingHz, floorRule: w.floorBy?.rule ?? null, ceilingRule: w.ceilingBy?.rule ?? null }
+          : null;
+      };
+      const emptyAt = Object.fromEntries(
+        GUIDED_ORDER_CHOICES.map((c) => {
+          const per = ordersBuilt(c.id, otherDemand, available, mode).orders.map(windowAt);
+          return [c.id, per.length > 0 && per.every((e) => e !== null) ? per[0] : null];
+        }),
+      ) as Record<GuidedOrderChoice, ReturnType<typeof windowAt>>;
       return {
         i,
         label: `${wi.lower}→${wi.upper}`,
@@ -6847,6 +6867,7 @@ export default function App() {
         otherDemand,
         otherSource: binding?.binding?.source ?? null,
         counts,
+        emptyAt,
       };
     });
     return { rows, available, mode, countCurrent: countWith(current) };
@@ -9704,6 +9725,15 @@ export default function App() {
         setVfError('Cannot optimise yet — no candidate field could be derived (no A5d.3 window).');
         return;
       }
+      /* 12-11-2026 — an EMPTY field is a refusal, not a run of nothing: the
+       * generator says which handover had no window (and since today refuses
+       * the whole field when one handover drops out), and that sentence is
+       * the error, before any worker starts. */
+      if (v2Generated.field.candidates.length === 0) {
+        setVfBusy(false);
+        setVfError(`Cannot optimise yet — ${v2Generated.field.refusals.join(' ')}`);
+        return;
+      }
       const v2Candidates: GeneratedCandidate[] = v2Generated.field.candidates;
       const variants = v2Candidates.map((c) => ({
         label: c.label,
@@ -10957,6 +10987,13 @@ export default function App() {
          * gone; a run without a field refuses before it gets here. */
         if (!v2Generated) {
           setVfError('Cannot optimise yet — no candidate field could be derived (no A5d.3 window).');
+          return;
+        }
+        /* 12-11-2026 — an EMPTY field is a refusal, not a run of nothing (the
+         * same rule as the three-way route above). */
+        if (v2Generated.field.candidates.length === 0) {
+          setVfBusy(false);
+          setVfError(`Cannot optimise yet — ${v2Generated.field.refusals.join(' ')}`);
           return;
         }
         const v2Variants: { label: string; xoRange?: [number, number] }[] = v2Candidates.map((c) => ({
@@ -12533,8 +12570,16 @@ export default function App() {
     try {
       const fb = Number(cabinet.drivers.low.fbHz) > 0 ? Number(cabinet.drivers.low.fbHz) : undefined;
       const r = optimizeNetworkValues(
-        // One free part so the tuner accepts the network; maxIterations 1 plus
-        // reading `before` means nothing it does can reach the numbers.
+        // One free part so the tuner accepts the network (it refuses an all-locked
+        // one before it reports anything); `measureOnly` then returns the seed's
+        // own report and runs no pass at all.
+        //
+        // 12-11-2026 — this used to be `maxIterations: 1`, and that caps only the
+        // simplex: the floor repair, the reseed challenges, the drift catches and
+        // the polish keep their own budgets. Measured on the three-way demo,
+        // second guided pass with the first run's design loaded: 20.4 s of main
+        // thread between the busy card and the first row — the "freeze" before
+        // the run (`performance.mark` on both sides of this call).
         parts.map((p, i) => (p === rlc[rlc.length - 1] && i >= 0 ? { ...p, locked: false } : p)),
         grid,
         sim.base.w,
@@ -12543,7 +12588,7 @@ export default function App() {
         branchAdj.tweeter,
         {
           ...buildNetOptOpts(grid, safety),
-          maxIterations: 1,
+          measureOnly: true,
           catalogSnap: false,
           staged: undefined,
           audit: { enabled: false },
@@ -20275,6 +20320,17 @@ export default function App() {
                                                 {c.slope === 'auto'
                                                   ? t('frees both flanks')
                                                   : t('{s} dB/oct on both flanks', { s: c.slope })}
+                                                {row.emptyAt[c.id] && (
+                                                  <span className="nl-warning">
+                                                    {' · '}
+                                                    {t('No window at this order: the floor ({f} Hz, {fr}) lies above the ceiling ({c} Hz, {cr}) — nothing to build, the run refuses.', {
+                                                      f: Math.round(row.emptyAt[c.id]!.floorHz ?? 0),
+                                                      fr: row.emptyAt[c.id]!.floorRule ?? '?',
+                                                      c: Math.round(row.emptyAt[c.id]!.ceilingHz ?? 0),
+                                                      cr: row.emptyAt[c.id]!.ceilingRule ?? '?',
+                                                    })}
+                                                  </span>
+                                                )}
                                               </span>
                                             </button>
                                           );

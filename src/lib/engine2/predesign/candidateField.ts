@@ -147,6 +147,9 @@ export function buildCandidateField(req: CandidateFieldRequest): CandidateFieldR
   const orders: PairOrderResult[] = [];
   const referenceCrossingHz: (number | null)[] = [];
   const pairs: CandidatePairInput[] = [];
+  /* 12-11-2026 — a pair that yields no reference crossing is NOT left out of
+   * the field; see the refusal after the loop. */
+  const skipped: string[] = [];
 
   for (let i = 0; i < req.windowInputs.length; i++) {
     const wi = req.windowInputs[i];
@@ -159,6 +162,15 @@ export function buildCandidateField(req: CandidateFieldRequest): CandidateFieldR
     const ref = referenceCrossing(wi, p.statedOrder ?? NaN);
     referenceCrossingHz.push(ref);
     if (ref === null) {
+      const w = crossoverWindow({ ...wi, order: p.statedOrder ?? NaN });
+      const edge = (hz: number | null, by: { rule: string } | null) =>
+        hz === null ? 'none' : `${hz.toFixed(0)} Hz (${by?.rule ?? 'unknown rule'})`;
+      skipped.push(
+        `${label}${p.statedOrder ? ` at order ${p.statedOrder}` : ''}: no feasible window — ` +
+          (w.empty || (w.floorHz !== null && w.ceilingHz !== null && !(w.ceilingHz > w.floorHz))
+            ? `the floor ${edge(w.floorHz, w.floorBy)} lies above the ceiling ${edge(w.ceilingHz, w.ceilingBy)}`
+            : `floor ${edge(w.floorHz, w.floorBy)}, ceiling ${edge(w.ceilingHz, w.ceilingBy)}`),
+      );
       orders.push({
         pairLabel: label,
         flanks: [
@@ -212,6 +224,37 @@ export function buildCandidateField(req: CandidateFieldRequest): CandidateFieldR
     );
     orders.push(po);
     pairs.push({ windowInput: wi, orders: po, statedOrder: p.statedOrder ?? null });
+  }
+
+  /* 12-11-2026 — A HANDOVER WITHOUT A WINDOW IS NOT AN AXIS TO LEAVE OUT.
+   *
+   * Until today a pair whose window was empty at the stated order was simply
+   * not handed to the generator, and the field became the product of the
+   * OTHER pairs: on the three-way demo with "2nd order" stated on mid→tweeter
+   * (the trade-rule floor 2.83·f_s = 2614 Hz above the breakup ceiling
+   * 2283 Hz) the run carried three woofer→mid candidates with ONE crossing,
+   * and the three-way route read that crossing as both xoLow and xoHigh.
+   * Sander saw exactly that the day the guided order choice (G-13) made it one
+   * click away. A candidate carries one crossing per handover, so a field with
+   * a handover missing is no field: nothing is built, and the refusal names
+   * the handover and the two edges with their rules (P4 — absence is a
+   * reason, never a smaller design). `generateCandidates` guards the same rule
+   * one step later, for a pair whose admitted orders all turn out empty. */
+  if (skipped.length > 0) {
+    const refusal =
+      skipped.join('; ') +
+      ' — and a field with a handover missing is not a field: a candidate carries one crossing ' +
+      'per handover. Nothing is built; widen that window (another order, another ceiling) or ' +
+      'accept the layout.';
+    const empty = generateCandidates([], {
+      alignments: req.alignments,
+      ...(req.chainBudget !== undefined ? { chainBudget: req.chainBudget } : {}),
+      ...(req.minSpacingOctaves !== undefined ? { minSpacingOctaves: req.minSpacingOctaves } : {}),
+      ...(req.positionPolicy !== undefined ? { positionPolicy: req.positionPolicy } : {}),
+      ...(req.alignmentPolicy !== undefined ? { alignmentPolicy: req.alignmentPolicy } : {}),
+    });
+    const field: CandidateField = { ...empty, refusals: [refusal, ...empty.refusals] };
+    return { field, orders, referenceCrossingHz, notes: [...notes, ...field.notes] };
   }
 
   const field = generateCandidates(pairs, {

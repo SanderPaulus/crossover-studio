@@ -2277,6 +2277,8 @@ export const nl: Record<string, string> = {
     'Niemand heeft dit gekozen: het is waar de app begint (een doel van 24 dB/oct op de onderste flank van de overname, en dat eist 4e orde), en het stuurt het veld tot je het hier of in expert verandert.',
   '{s} dB/oct on both flanks': '{s} dB/oct op beide flanken',
   'frees both flanks': 'laat beide flanken vrij',
+  'No window at this order: the floor ({f} Hz, {fr}) lies above the ceiling ({c} Hz, {cr}) — nothing to build, the run refuses.':
+    'Geen venster bij deze orde: de vloer ({f} Hz, {fr}) ligt boven het plafond ({c} Hz, {cr}) — niets te bouwen, de run weigert.',
   'The flanks read {a} / {b} dB/oct and the order follows the steeper one; pressing the button sets both flanks to {s}.':
     'De flanken staan op {a} / {b} dB/oct en de orde volgt de steilste; een druk op de knop zet beide flanken op {s}.',
   'With these choices the {mode} run holds {n} design(s).': 'Met deze keuzes telt de run “{mode}” {n} ontwerp(en).',

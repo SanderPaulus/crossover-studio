@@ -371,6 +371,10 @@ export type GreyWeights = Pick<NetOptimizeOptions, GreyKey>;
  */
 export const POLISH_KEYS = [
   'maxIterations',
+  /* 12-11-2026 — the seed's report and nothing else, for the scan's reference
+   * row. Polish by the V31 argument: it cannot alter any outcome a search
+   * delivers, because with it there is no search. */
+  'measureOnly',
   'onStage',
   'onGateEvaluated',
   'gateViolation',

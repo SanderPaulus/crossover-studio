@@ -9477,3 +9477,88 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Niet gedaan:** de app-standaard zelf (24/24/24/12) is niet veranderd; de tweeweg zonder
   impedanties (`vfRounds`) leest de hellingen via `acousticSlopes.mid/tweeter` zoals altijd en krijgt
   in guided dezelfde knop.
+
+### G-14-guards (de bevriezing vóór een run, en de as die stil wegviel; 12-11-2026)
+
+- **TWEE MELDINGEN VAN SANDER OP ÉÉN DAG, allebei gereproduceerd op de driewegdemo vóór er iets
+  veranderde.** (1) Bij een tweede doorloop door guided (zonder het project te resetten) lijkt
+  de app na "Design it" 10–30 s vast te lopen voordat de overlay met simulaties verschijnt.
+  (2) Een Uitgebreide run, volledig passief, zocht alleen op woofer→mid: de overlay toonde drie
+  rijen `woofer→mid 396.7 / 466.7 / 549 LR4 · textbook` zonder mid→tweeter-segment.
+- **(1) DE BEVRIEZING IS `measureReferenceDesign`, 20,4 s op de hoofddraad, en zij bestaat
+  alleen als er al een ontwerp geladen is — vandaar "tweede doorloop".** Gemeten met een
+  rAF-gatrecorder plus `performance.mark` aan weerszijden van elke stap van de opbouw: de
+  overlay-DOM staat er 30 ms na de klik, en direct daarna één gat van 21 383 ms;
+  `vf:safety → vf:reference` = 20 447 ms, elke andere stap < 5 ms. Die functie vroeg de tuner
+  om de cijfers van het geladen ontwerp (de referentierij van de scantabel: "no candidate beat
+  what you had") met `maxIterations: 1`, in de veronderstelling dat één iteratie niets is. Dat
+  plafond bindt alleen de simplex; de vloerreparatie, de reseed-uitdagingen, de drift-catches en
+  de polish houden hun eigen budget (S-4 mat de anatomie), dus op een geladen ontwerp van ~40
+  onderdelen was het twintig seconden rekenwerk voor een rapport dat vóór de eerste pas al
+  bestaat. **De reparatie is `measureOnly`** (`NetOptimizeOptions`, POLISH — 62 sleutels,
+  40/5/17): de tuner geeft `report(before)` terug als `before` én `after`, de onderdelen zoals ze
+  kwamen, `tuned` 0, en geen enkele pas draait. Daarvoor zijn `zMinOf` en `report` naast `before`
+  gedeclareerd in plaats van ná de laatste pas (dezelfde closures; de twee byte-referenties
+  reproduceren). `measureReferenceDesign` stelt de sleutel; de "one free part"-truc blijft, want
+  de tuner weigert een volledig vergrendeld netwerk vóór hij rapporteert. **Ná de reparatie:
+  klik → overlay 29 ms en géén rAF-gat boven 100 ms** (zelfde demo, zelfde geladen ontwerp).
+  `measureOnly.test.ts` (2 claims): het rapport is tot op het laatste cijfer de `before` van een
+  echte tune (één lezer, `metricsOn` → `report`), niets getuned, hoogstens één evaluatie; en
+  `false` is de tune die de sleutel wegliet. **Bijvangst, gemeld en niet gerepareerd:** de
+  referentieRIJ waarvoor die meting bestaat (`tr.scan-reference`, "◆ your design before this
+  run") staat in de v1-scantabel achter `v1ReadingShown()` en is sinds U-9 fase 2 nergens meer
+  te zien; wat `scanReference` nog leest is de banner "no candidate beat what you had". Twintig
+  seconden hoofddraad voor een rij die niemand ziet — de meting blijft, want de banner leest haar.
+- **(2) DE AS DIE WEGVIEL IS EEN GAT IN DE GENERATOR DAT G-13 ÉÉN KLIK VER MAAKTE.** "2e orde"
+  op mid→tweeter zet de vakregelvloer (G-6) op 2,83×f_s = 2615 Hz voor de T25T-6, boven het
+  breakup-plafond (2283 Hz): het venster is LEEG bij orde 2. **De plek van het gat is
+  `buildCandidateField`** (`candidateField.ts`): zij leidt per paar de referentiekruising bij de
+  GESTELDE orde af, vindt er voor mid→tweeter geen, zet een P4-notitie in `orders[i].notes` en
+  gaf de generator de ándere paren alleen — en de driewegroute leest `c.crossings[0]` als xoLow én
+  `c.crossings[c.crossings.length - 1]` als xoHigh, dus dezelfde woofer→mid-kruising twee keer.
+  Dat is de run die Sander zag; `generateCandidates` had hetzelfde gat één stap verder
+  (`if (slot.byOrder.length === 0) continue;`, voor een paar waarvan élke toegelaten orde leeg
+  blijkt). **Sinds G-14 weigeren beide het HELE veld** zodra een overname geen venster heeft (een
+  kandidaat draagt één kruising per overname; een veld met een overname minder is geen veld), met
+  de overname, de orde en de twee randen mét regel in `refusals` ("mid→tweeter at order 2: no
+  feasible window — the floor 2614 Hz (fs) lies above the ceiling 2283 Hz (breakup) — …"); beide
+  scanroutes stoppen op een leeg veld met die zin als fout, vóór er een worker start
+  (`setVfBusy(false)` erbij). Eén paar zonder venster was al een leeg veld (de bestaande claim);
+  M-5's kale veld houdt zijn M-T-as, want daar heeft orde 4 wél een venster. **De eerste versie
+  van deze reparatie zat alleen in de generator en ving Sanders geval NIET** — gemeten met een
+  sonde op de demo-data (`candidates 3`, `refusals []`), vóór de tweede helft geschreven is.
+  `candidates.test.ts` +2 claims (beide plekken; twee paren, het bovenste leeg → nul kandidaten,
+  nul assen, de overname, de randen en "one crossing per handover" in de weigeringen; de tegenproef
+  is de 9-claim ernaast).
+- **DE G-13-RIJ ZEI "Builds LR2 · 3 run(s)" — de telling van de óverblijvende as.** Sinds G-14
+  leest de telmemo per keuze het venster bij de gebouwde orde (`crossoverWindow({ ...wi, order })`,
+  dezelfde afleiding als de generator) en zegt de rij, in hertz en met de regel: "Geen venster
+  bij deze orde: de vloer (2615 Hz, fs) ligt boven het plafond (2287 Hz, breakup) — niets te
+  bouwen, de run weigert." `guidedOrder.test.ts` +1 claim (de lezing in de memo, de zin in het
+  blok, en de weigering op beide routes).
+- **Nagemeten in de browser (driewegdemo, verse localStorage, guided):** (1) tweede doorloop
+  met het ontwerp van de eerste run geladen: vóór 20 463 ms gat, ná 29 ms klik → overlay en
+  géén gat boven 100 ms. (2) "2e orde" op mid→tweeter: de rij leest *"Builds LR2 · 0 run(s) ·
+  12 dB/oct on both flanks · No window at this order: the floor (2614 Hz, fs) lies above the
+  ceiling (2287 Hz, breakup) — nothing to build, the run refuses."*, de voet *"the Quick run
+  holds 0 design(s)"*, en "Design it" geeft *"Cannot optimise yet — mid→tweeter at order 2: no
+  feasible window — the floor 2614 Hz (fs) lies above the ceiling 2287 Hz (breakup) — and a field
+  with a handover missing is not a field …"* zonder overlay. Met "4e orde" terug levert dezelfde
+  demo 6 van 6.
+- **Gemeten (12-11-2026):** `npx tsc -b` groen. `npm run test:fast` **270 s, 232 bestanden (231
+  geslaagd, 1 overgeslagen), 3064 tests (3060 geslaagd, 4 overgeslagen), in één keer groen, alleen
+  gedraaid met de dev-server gestopt; laatste bronbewerking 07:21:12, run gestart 07:28:31.** +1
+  bestand en +5 tests tegen G-13's 3059: `measureOnly.test.ts` (2), `candidates.test.ts` (+2,
+  beide plekken van het gat) en `guidedOrder.test.ts` (+1); `choiceKeyGuard` veranderde van
+  inhoud en niet van telling (62, 40/5/17). Geen enkele bestaande claim is versoepeld.
+  **`npx vitest run` 439 s, 232 bestanden, 3064 tests, niets overgeslagen, in één keer groen,
+  alleen gedraaid (`nohup`, gestart 07:33:27 op dezelfde boom). DEZE RUN IS GEDRAAID OMDAT G-14
+  `netOptimizer.ts` ÉN DE GENERATOR AANRAAKT**: `zMinOf` en `report` zijn naar vóór de eerste pas
+  verhuisd en `measureOnly` is een nieuwe polish-sleutel; `buildCandidateField` en
+  `generateCandidates` weigeren een veld met een overname zonder venster. Wat de run bewijst:
+  **alle vier de live ketenruns reproduceren hun bevroren netlist byte voor byte** (casus 1's
+  goedkoopste geleverde 436 s en zijn verwerping 257 s, casus 1b 117 s, casus 1h 143 s), en
+  `f4cRegression`, `workerRouteRegression` en `toggleRegression` staan — de verhuizing van de twee
+  closures en de sleutel die afwezig is zijn op élke opgenomen run de identiteit, en geen enkel
+  corpus heeft een overname zonder venster, dus de generatorwijziging raakt geen enkele opgenomen
+  kandidaat. Geen versiebump, geen vingerafdruk beweegt.
