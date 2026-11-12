@@ -42,8 +42,14 @@ describe('G-13 — the guided reading of the slope selects', () => {
     expect(orderChoiceOf('12', '12')).toBe('2');
     expect(orderChoiceOf('auto', 'auto')).toBe('auto');
     expect(orderChoiceOf('24', 'auto')).toBe('4');
-    expect(orderChoiceOf('18', '18')).toBe('other');
+    /* G-15 — 18 dB/oct is the third order and a first-class choice since the
+     * standard filter offers it; 6 dB/oct (order 1, not in the library) stays
+     * 'other'. 30 dB/oct reads as '4': `statedOrderOfSlopes` clamps to the
+     * library's top order exactly as the band form's `orderFrom` does, so the
+     * reading says what the engine will BUILD and not what was typed. */
+    expect(orderChoiceOf('18', '18')).toBe('3');
     expect(orderChoiceOf('6', '6')).toBe('other');
+    expect(orderChoiceOf('30', '30')).toBe('4');
     expect(statedOrderOfSlopes('auto', 'auto')).toBeNull();
     expect(statedOrderOfSlopes('24', '12')).toBe(4);
   });
@@ -56,6 +62,7 @@ describe('G-13 — the guided reading of the slope selects', () => {
   it('each choice writes one slope value into both flanks', () => {
     expect(GUIDED_ORDER_CHOICES.map((c) => [c.id, c.slope])).toEqual([
       ['2', '12'],
+      ['3', '18'],
       ['4', '24'],
       ['auto', 'auto'],
     ]);

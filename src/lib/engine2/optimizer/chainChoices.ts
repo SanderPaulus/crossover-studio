@@ -228,6 +228,24 @@ export const CHAIN_CHOICE_KEYS = [
    * ABSENT = no active side (P4), and every chain reads exactly what it always
    * read, byte for byte. */
   'activeSide',
+  /* --- G-15: THE STANDARD FILTER — the topology locked to the textbook ladder ---
+   *
+   * The eighth key, and the one Sander asked for in the plainest words
+   * (12-11-2026): "gewoon het standaard filter optimizen met de juiste waardes
+   * en componenten", no LCR traps or anything of the kind. `'standard'` reaches
+   * every step that chooses parts — the design step proposes no EQ band, the
+   * synthesis buys no correction network (`corrections: 'off'`), the tuner runs
+   * no staged prune/escalation and no part audit — so what is delivered is the
+   * textbook ladder of the chosen order per branch plus the level work a
+   * branch needs (an L-pad on an upper way; the lowest way per
+   * `lowestWayLevelWork`), with its VALUES tuned and snapped to the catalogue.
+   * A choice by the same test as the seven above: no value tune turns a bare
+   * ladder into a corrected one or back.
+   *
+   * ABSENT = `'free'` = both chains exactly as they were, byte for byte (P2);
+   * never a stated `'free'` (a designer who leaves it decided nothing, P4). The
+   * value is NOT a casus number (P6): it names a shape, not a figure. */
+  'topology',
 ] as const;
 
 export type ChainChoiceKey = (typeof CHAIN_CHOICE_KEYS)[number];
@@ -373,12 +391,21 @@ export function chainSettingsForTwoWay(
 ): Partial<
   Pick<
     ChainSettings,
-    'eqBandsPerDriver' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid' | 'phasePriority' | 'activeSide'
+    | 'eqBandsPerDriver'
+    | 'leanTargetDb'
+    | 'lowestWayLevelWork'
+    | 'lowestWayCoilMaxHenry'
+    | 'synthesisGrid'
+    | 'phasePriority'
+    | 'activeSide'
+    | 'topology'
   >
 > {
   if (!declaration) return {};
   const s = declaration.stated;
   return {
+    /* G-15 — the eighth, same name on both chains; absent = free, byte-identical. */
+    ...(s.topology !== undefined ? { topology: s.topology } : {}),
     ...(s.eqBands !== undefined ? { eqBandsPerDriver: s.eqBands } : {}),
     ...(s.leanTargetDb !== undefined ? { leanTargetDb: s.leanTargetDb } : {}),
     ...(s.lowestWayLevelWork !== undefined ? { lowestWayLevelWork: s.lowestWayLevelWork } : {}),

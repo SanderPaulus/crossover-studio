@@ -2259,7 +2259,24 @@ export const nl: Record<string, string> = {
   // ── G-13: de filterorde per overname (guided) ──────────────────────
   'How steep should the filters be?': 'Hoe steil moeten de filters zijn?',
   '2nd order (LR2)': '2e orde (LR2)',
+  '3rd order (BW3)': '3e orde (BW3)',
+  'In between: sums flat in either polarity, so both arms are built and judged on this handover.':
+    'Ertussenin: sommeert vlak bij beide polariteiten, dus op deze overname worden beide armen gebouwd en beoordeeld.',
   '4th order (LR4)': '4e orde (LR4)',
+  // ── G-15: het standaardfilter ──────────────────────────────────────
+  'Standard filter': 'Standaardfilter',
+  'Free': 'Vrij',
+  'The textbook ladder of the chosen order per handover, plus the level work it needs — no Zobel, trap, shelf or bypass, no pruning. Fewer parts, faster.':
+    'De textbook-ladder van de gekozen orde per overname, plus het niveauwerk dat hij nodig heeft — geen Zobel, val, shelf of bypass, geen snoei. Minder onderdelen, sneller.',
+  'The engine may add correction networks where the measured driver warrants them, and prunes and escalates (the default).':
+    'De engine mag correctienetwerken toevoegen waar de gemeten driver erom vraagt, en snoeit en escaleert (de standaard).',
+  'Topology': 'Topologie',
+  'standard — the textbook ladder of the chosen order, with its level work, nothing else':
+    'standaard — de textbook-ladder van de gekozen orde, met zijn niveauwerk, verder niets',
+  'free — EQ bands, correction networks and the staged pass as set':
+    'vrij — EQ-banden, correctienetwerken en de trapsmethode zoals ingesteld',
+  'Free: the design step may propose EQ bands, the synthesis buys a correction network (Zobel, trap, shelf, hold) where the measured driver warrants it, and the staged pass prunes and escalates. Standard: the textbook ladder of the chosen order per branch plus the level work it needs (an L-pad on an upper way) and nothing else — no LCR, no pruning; the tuner moves values only and snaps them to the catalogue. A 3rd-order handover runs both polarity arms.':
+    'Vrij: de ontwerpstap mag EQ-banden voorstellen, de synthese koopt een correctienetwerk (Zobel, val, shelf, hold) waar de gemeten driver erom vraagt, en de trapsmethode snoeit en escaleert. Standaard: de textbook-ladder van de gekozen orde per tak plus het niveauwerk dat hij nodig heeft (een L-pad op een bovenste weg) en verder niets — geen LCR, geen snoei; de tuner verzet alleen waarden en snapt ze naar de catalogus. Een 3e-orde-overname draait beide polariteitsarmen.',
   'Let the engine choose': 'Laat de engine kiezen',
   'Fewest parts and the least coil copper; the driver above the handover takes more below it.':
     'De minste onderdelen en het minste spoelkoper; de driver boven de overname krijgt er meer onder te verwerken.',

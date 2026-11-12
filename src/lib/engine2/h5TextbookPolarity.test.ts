@@ -214,7 +214,10 @@ describe('2 — absent is the identity, and the fixture pin', () => {
     }
     expect(APP).toContain('polarityArmsChoiceOf(engineV2Settings.polarityArms)');
     /* The run's own line says which arms it built, beside which mode. */
-    expect(APP).toContain('describePolarityArmsChoice(polarityArms)');
+    /* G-15 — the run line passes the topology too, so the textbook sentence
+     * can say that a third-order handover runs both arms under the standard
+     * filter; the claim (the app prints the stated arms choice) stands. */
+    expect(APP).toContain('describePolarityArmsChoice(polarityArms, topologyChoiceOf(engineV2Settings.topology))');
     /* And the choice is DATED and attributed like every other stated field:
      * untouched it carries the default and no mark; touched it says who stated
      * it and when (U-3's `statedMark`). */

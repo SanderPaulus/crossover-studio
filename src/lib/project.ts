@@ -415,6 +415,13 @@ export interface ProjectDesign {
     activeFlankBudgetDbRms?: string;
     /** H-2b — the processor's own latency on the active side, ms, as stated. */
     activeProcessorLatencyMs?: string;
+    /**
+     * G-15 — the topology choice: `'standard'` for the textbook ladder of the
+     * chosen order per branch (no EQ band, no correction network, no staged
+     * pass, no part audit; values tuned), anything else = free, the search as
+     * it always was. Additive: a project written before G-15 opens free.
+     */
+    topology?: string;
   };
   /**
    * A5a (F3b) — per-branch MEASUREMENT metadata for the v2 layer, keyed by

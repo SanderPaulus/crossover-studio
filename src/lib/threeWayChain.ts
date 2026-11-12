@@ -86,6 +86,20 @@ export interface Chain3Settings {
    *  (`chainChoices.ts`, V41); every v1 caller is unchanged. */
   eqBands?: number;
   /**
+   * G-15 (12-11-2026) — THE STANDARD FILTER. `'standard'`: every branch is
+   * the textbook ladder of its alignment plus the level work the branch needs
+   * (an L-pad on an upper way; the lowest way per `lowestWayLevelWork`), and
+   * nothing else — no EQ band (`eqBands` reads 0), no correction network in
+   * the synthesis (`corrections: 'off'`: no Zobel, no Fs trap, no hold, no
+   * shelf, no notch), no staged prune/escalation in the tuner (`staged`
+   * absent) and no part audit. The TOPOLOGY IS LOCKED and the tuner moves
+   * values only; cap shrink, the floor repair and the catalogue snap keep
+   * working, because they move values. ABSENT = `'free'` = this chain exactly
+   * as it was, byte for byte (P2). On the v2 route the CANDIDATE states it
+   * (`chainChoices.ts`, the eighth key).
+   */
+  topology?: 'free' | 'standard';
+  /**
    *  The lean-mode threshold handed to per-branch SYNTHESIS (dB): the bare
    *  ladder's fit error below which no correction network is bought.
    *
@@ -387,12 +401,14 @@ export function assembledTuneOptions3(
     rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
     loadFloor: s.loadFloor,
     ampMinLoadOhm: s.ampMinLoadOhm,
-    audit: s.audit,
+    /* G-15 — a STANDARD filter locks its topology: no part audit (it removes
+     * parts) and no staged pass (it prunes and adds bypass capacitors). */
+    audit: s.topology === 'standard' ? { ...(s.audit ?? {}), enabled: false } : s.audit,
     ampTarget: s.ampTarget,
     acousticSlopes: s.acousticSlopes,
     xoRangePairs: [lowCage, highCage],
     xoFloorPairs: s.xoFloorPairs,
-    staged: s.targets,
+    staged: s.topology === 'standard' ? undefined : s.targets,
     /* E-5b — THE BAND THE STOP-GOAL MAY BE READ ON, derived here because this
      * is where the candidate's handover positions live. POLISH: it carries no
      * decision — whether the tuner reads it is `rippleTargetBand`, a choice the
@@ -453,7 +469,8 @@ export function runThreeWayChain(
      * design step enumerates exactly what it always enumerated. */
     ...(s.statedPolarity ? { statedPolarity: s.statedPolarity } : {}),
     breakupGuard: s.breakupGuard,
-    eqBandsPerBranch: s.eqBands,
+    /* G-15 — a STANDARD filter proposes no EQ band at all. */
+    eqBandsPerBranch: s.topology === 'standard' ? 0 : s.eqBands,
     diAnchorHz: s.diAnchorHz,
     diWeight: s.diWeight,
     /* V51 — spread rather than assigned: unstated is the identity for every
@@ -493,7 +510,9 @@ export function runThreeWayChain(
       mode: s.synthMode,
       phasePriority: s.phasePriority,
       catalogSnap: s.catalogSnap,
-      corrections: (s.targets ? 'lean' : 'auto') as 'lean' | 'auto',
+      /* G-15 — a STANDARD filter buys no correction network: the bare ladder
+       * and the level work the branch needs, nothing else. */
+      corrections: (s.topology === 'standard' ? 'off' : s.targets ? 'lean' : 'auto') as 'lean' | 'auto' | 'off',
       /* V41 — a stated threshold wins over the derivation from `targets`.
        * Unstated is the identity: `s.leanTargetDb` is undefined on every v1
        * caller, so this reads exactly what it read before. */

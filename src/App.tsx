@@ -183,10 +183,13 @@ import {
 import {
   describeFieldMode,
   describePolarityArmsChoice,
+  describeTopologyChoice,
   fieldModeOf,
   fieldModeSettings,
   polarityArmsChoiceOf,
   POLARITY_ARMS_CHOICES,
+  topologyChoiceOf,
+  TOPOLOGY_CHOICES,
   type FieldMode,
   type PolarityArmsChoice,
 } from './lib/engine2/predesign/fieldMode.ts';
@@ -6785,6 +6788,7 @@ export default function App() {
       { stepsPerAxis: steps, pairs: wis.length },
       polarityMarginReader(polarityBranchOf),
       polarityArms,
+      topologyChoiceOf(engineV2Settings.topology),
     );
     const curveOfDriver = (driver: string) => {
       const role = (['low', 'mid', 'high'] as const).find((r) => engineV2Report.driverIds?.[r] === driver);
@@ -6884,6 +6888,7 @@ export default function App() {
     v2ActiveSide,
     engineV2Settings.fieldMode,
     engineV2Settings.polarityArms,
+    engineV2Settings.topology,
     threeWay,
     v2Hybrid,
     scanSteps2,
@@ -9304,6 +9309,12 @@ export default function App() {
     snapPrefs: snapPrefsValue(),
     band,
     safety,
+    /* G-15 — the STANDARD FILTER: the chain key, and no staged targets (the
+     * staged pass prunes and adds, and its stop goal would refuse a bare
+     * ladder for missing what only a correction could reach). */
+    ...(topologyChoiceOf(engineV2Settings.topology) === 'standard'
+      ? { topology: 'standard' as const, targets: undefined }
+      : {}),
   };
   };
   /**
@@ -9346,6 +9357,10 @@ export default function App() {
     catalogSnap: catalogSnap && hasImportedCatalog(),
     snapPrefs: snapPrefsValue(),
     safety: args.safety,
+    /* G-15 — the standard filter, as on the three-way chain. */
+    ...(topologyChoiceOf(engineV2Settings.topology) === 'standard'
+      ? { topology: 'standard' as const, targets: undefined }
+      : {}),
   });
 
   async function runVfOptimize(runOpts: { acknowledgedWindowNotice?: boolean; fieldMode?: FieldMode; refine?: { perAxisHz: number[][] } } = {}) {
@@ -9610,6 +9625,7 @@ export default function App() {
           { stepsPerAxis: scanSteps3, pairs: wis.length },
           polarityMarginReader(polarityBranchOf),
           polarityArms,
+          topologyChoiceOf(engineV2Settings.topology),
         );
         /* E-3b — the per-pair derivation inputs, built by the one function
          * both routes call (`scanRequest.ts`). It maps over the windows the
@@ -9905,6 +9921,8 @@ export default function App() {
        * `synthesize`'s own default rather than the staged pass's stop goal. */
       const chainDecl = declareCandidateChainChoices({
         stated: { eqBands: settings.eqBands },
+        /* G-15 — the standard filter, stated from the same settings object. */
+        ...(settings.topology === 'standard' ? { standardTopology: true } : {}),
         /* V51 — the third chain key, derived from the stated requirement:
          * 'none' when the designer forbids level work on the lowest way,
          * ABSENT otherwise (never a stated 'allowed' — P4). V51b — a stated
@@ -10243,7 +10261,7 @@ export default function App() {
               field: v2Generated
                 ? {
                     mode: fieldMode,
-                    description: `${describeFieldMode(v2Generated.field)} ${describePolarityArmsChoice(polarityArms)}`,
+                    description: `${describeFieldMode(v2Generated.field)} ${describePolarityArmsChoice(polarityArms, topologyChoiceOf(engineV2Settings.topology))} ${describeTopologyChoice(topologyChoiceOf(engineV2Settings.topology))}`,
                   }
                 : null,
               export: v2RunExport,
@@ -10909,6 +10927,7 @@ export default function App() {
             { stepsPerAxis: scanSteps2, pairs: wis.length },
             polarityMarginReader(polarityBranchOf),
             polarityArms,
+            topologyChoiceOf(engineV2Settings.topology),
           );
           const perPair: PairDerivationInput[] = pairDerivationInputs({
             windowInputs: wis,
@@ -11088,6 +11107,7 @@ export default function App() {
         ) =>
           declareCandidateChainChoices({
             stated: { eqBands: settings.eqBandsPerDriver },
+            ...(settings.topology === 'standard' ? { standardTopology: true } : {}),
             ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
             ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
               ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
@@ -11423,7 +11443,7 @@ export default function App() {
               field: v2Generated
                 ? {
                     mode: fieldMode,
-                    description: `${describeFieldMode(v2Generated.field)} ${describePolarityArmsChoice(polarityArms)}`,
+                    description: `${describeFieldMode(v2Generated.field)} ${describePolarityArmsChoice(polarityArms, topologyChoiceOf(engineV2Settings.topology))} ${describeTopologyChoice(topologyChoiceOf(engineV2Settings.topology))}`,
                   }
                 : null,
               export: v2RunExport,
@@ -12937,6 +12957,7 @@ export default function App() {
     };
     const chainDeclaration = declareCandidateChainChoices({
       stated: { eqBands: settings.eqBandsPerDriver },
+      ...(settings.topology === 'standard' ? { standardTopology: true } : {}),
       ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
       ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
         ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
@@ -13175,6 +13196,7 @@ export default function App() {
     };
     const chainDeclaration = declareCandidateChainChoices({
       stated: { eqBands: settings.eqBands },
+      ...(settings.topology === 'standard' ? { standardTopology: true } : {}),
       ...(engineV2Gates.lowestWayLevelWork === 'none' ? { lowestWayLevelWorkForbidden: true } : {}),
       ...(seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork) !== null
         ? { lowestWaySeriesRMaxOhm: seriesRMaxOhmOf(engineV2Gates.lowestWayLevelWork)! }
@@ -20288,6 +20310,29 @@ export default function App() {
                                 </p>
                               ) : (
                                 <>
+                                  {/* G-15 — THE STANDARD FILTER, chosen beside the order: the
+                                     same `topology` setting expert states in its panel. */}
+                                  <div className="v2-profile-choices">
+                                    {TOPOLOGY_CHOICES.map((c) => {
+                                      const on = topologyChoiceOf(engineV2Settings.topology) === c;
+                                      return (
+                                        <button
+                                          key={c}
+                                          type="button"
+                                          className={`v2-profile${on ? ' active-toggle' : ''}`}
+                                          aria-pressed={on}
+                                          onClick={() => setV2Field('topology', c === 'standard' ? 'standard' : '')}
+                                        >
+                                          <strong>{c === 'standard' ? t('Standard filter') : t('Free')}</strong>
+                                          <small>
+                                            {c === 'standard'
+                                              ? t('The textbook ladder of the chosen order per handover, plus the level work it needs — no Zobel, trap, shelf or bypass, no pruning. Fewer parts, faster.')
+                                              : t('The engine may add correction networks where the measured driver warrants them, and prunes and escalates (the default).')}
+                                          </small>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                   {guidedOrderRows.rows.map((row) => (
                                     <div key={row.label} className="guided-order-row">
                                       <h4>{row.label}</h4>
@@ -22317,6 +22362,29 @@ export default function App() {
                       {v2Stated('polarityArms')}
                       {v2Empty('polarityArms')}
                     {fieldBadge('polarityArms')}
+</label>
+                    {/* G-15 — THE STANDARD FILTER. The eighth chain key: the
+                      * textbook ladder of the chosen order per branch with its
+                      * level work, no correction network, no staged pass, no
+                      * audit; the topology locked, the values tuned and snapped.
+                      * Guided asks the same thing on its order screen. */}
+                    <label title={t('Free: the design step may propose EQ bands, the synthesis buys a correction network (Zobel, trap, shelf, hold) where the measured driver warrants it, and the staged pass prunes and escalates. Standard: the textbook ladder of the chosen order per branch plus the level work it needs (an L-pad on an upper way) and nothing else — no LCR, no pruning; the tuner moves values only and snaps them to the catalogue. A 3rd-order handover runs both polarity arms.')}>
+                      {t('Topology')}
+                      <select
+                        value={topologyChoiceOf(engineV2Settings.topology)}
+                        onChange={(e) => setV2Field('topology', e.target.value === 'standard' ? 'standard' : '')}
+                      >
+                        {TOPOLOGY_CHOICES.map((c) => (
+                          <option key={c} value={c}>
+                            {c === 'standard'
+                              ? t('standard — the textbook ladder of the chosen order, with its level work, nothing else')
+                              : t('free — EQ bands, correction networks and the staged pass as set')}
+                          </option>
+                        ))}
+                      </select>
+                      {v2Stated('topology')}
+                      {v2Empty('topology')}
+                    {fieldBadge('topology')}
 </label>
                     {/* U-5 — THE CROSSINGS YOU STATE, beside the derived field.
                       * The generated positions stay exactly as they are; every

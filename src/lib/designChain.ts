@@ -43,6 +43,14 @@ import {
 export interface ChainSettings {
   phasePriority: number; // 0..1
   eqBandsPerDriver: number;
+  /**
+   * G-15 (12-11-2026) — THE STANDARD FILTER, same meaning as on the three-way
+   * chain (`Chain3Settings.topology`): the textbook ladder per branch plus the
+   * level work it needs, no EQ band, no correction network, no staged pass,
+   * no part audit — the topology locked, values tuned. ABSENT = `'free'` =
+   * this chain byte for byte as it was (P2).
+   */
+  topology?: 'free' | 'standard';
   angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[] };
   directivityWeight?: number;
   /** Power-response metric (bandMetrics.powerShape) and fold weight — see netOptimizer opts. */
@@ -412,7 +420,8 @@ export function assembledTuneOptions(
     costWeight: s.costWeight,
     ampTarget: s.ampTarget,
     breakupGuard: s.breakupGuard,
-    staged: s.targets,
+    /* G-15 — a STANDARD filter has no staged pass (it prunes and adds). */
+    staged: s.topology === 'standard' ? undefined : s.targets,
     /* E-5b — the band the stop-goal may be read on. This chain has ONE
      * handover and no `xoLow`: what it holds is the candidate's CAGE, whose
      * geometric centre is the position it was generated at (every cage since
@@ -473,7 +482,8 @@ export function designStepOptions(
   const { activeSide, activeBranch } = branches;
   return {
     phasePriority: s.phasePriority,
-    eqBandsPerDriver: s.eqBandsPerDriver,
+    /* G-15 — a STANDARD filter proposes no EQ band at all. */
+    eqBandsPerDriver: s.topology === 'standard' ? 0 : s.eqBandsPerDriver,
     angleData: s.angleData,
     directivityWeight: s.directivityWeight,
     powerMetric: s.powerMetric,
@@ -486,7 +496,8 @@ export function designStepOptions(
     rSourceDisqualifyOhm: s.rSourceDisqualifyOhm,
     loadFloor: s.loadFloor,
     ampMinLoadOhm: s.ampMinLoadOhm,
-    audit: s.audit,
+    /* G-15 — a STANDARD filter keeps its parts: no audit (it removes them). */
+    audit: s.topology === 'standard' ? { ...(s.audit ?? {}), enabled: false } : s.audit,
     ampTarget: s.ampTarget,
     cutOnly: s.cutOnly,
     breakupGuard: s.breakupGuard,
@@ -639,7 +650,8 @@ export function runDesignChain(
     mode: s.synthMode,
     phasePriority: s.phasePriority,
     catalogSnap: s.catalogSnap,
-    corrections: (s.targets ? 'lean' : 'auto') as 'lean' | 'auto',
+    /* G-15 — a STANDARD filter buys no correction network. */
+    corrections: (s.topology === 'standard' ? 'off' : s.targets ? 'lean' : 'auto') as 'lean' | 'auto' | 'off',
     /* E-3 (V41 on this chain) — a stated threshold wins over the derivation
      * from `targets`; unstated is the identity, exactly as `threeWayChain.ts`
      * reads it since V41. */

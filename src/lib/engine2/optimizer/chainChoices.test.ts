@@ -241,6 +241,8 @@ describe('V41 — the chain-level choice keys', () => {
     // then the tuner, stated unconditionally from the engine's own midpoint).
     // H-1 — the SEVENTH: `activeSide`, the stated handover to an active side,
     // with a genuine ABSENT (every fully passive design states none).
+    // G-15 — the EIGHTH: `topology`, the standard filter (the textbook ladder
+    // per branch, locked; values tuned), with a genuine ABSENT (free).
     expect([...CHAIN_CHOICE_KEYS].sort()).toEqual([
       'activeSide',
       'eqBands',
@@ -249,6 +251,7 @@ describe('V41 — the chain-level choice keys', () => {
       'lowestWayLevelWork',
       'phasePriority',
       'synthesisGrid',
+      'topology',
     ]);
   });
 

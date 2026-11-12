@@ -475,6 +475,15 @@ export interface PolarityArmPolicy {
    * pre-H-4b field, so a policy written before this existed keeps its shape.
    */
   guarantee?: PolarityGuarantee;
+  /**
+   * G-15 — mirror every handover whose alignment HAS NO TEXTBOOK polarity
+   * (anything but a Linkwitz-Riley: a third-order Butterworth sums flat in
+   * either polarity and differs only in phase and lobing, U-5c (d)), whatever
+   * the seed says. The standard filter offers a 3rd order, and on that
+   * handover "the textbook arm" is not a thing to choose — both are built and
+   * judged. Absent = the policy as it was (P2).
+   */
+  mirrorWhereNoTextbook?: boolean;
   /** What to print about the decision. */
   why: string;
 }
@@ -570,6 +579,9 @@ export function expandPolarityArms(
           readings.push(m);
         }
       }
+      /* G-15 — a handover with NO textbook polarity (not an LR) is mirrored
+       * under this flag whatever the seed says: there is no arm to prefer. */
+      if (policy.mirrorWhereNoTextbook && x.alignment.kind !== 'LR') return true;
       /* H-5 — the textbook seed mirrors NOTHING, and it says so before every
        * other rule gets a turn: under it the reading is taken (the run notes
        * print what a mirror would have been worth) and it decides nothing. */

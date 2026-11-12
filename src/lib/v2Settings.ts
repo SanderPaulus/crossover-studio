@@ -103,6 +103,15 @@ export const V2_SETTING_KEYS = [
    */
   'polarityArms',
   /**
+   * G-15 — the topology: '' (free, the default) or 'standard' — the textbook
+   * ladder of the chosen order per branch, topology locked, values tuned.
+   *
+   * NOT A JUDGEMENT KEY: it decides which DESIGNS exist to be judged, and every
+   * candidate either way meets exactly the requirements and gates in force.
+   * A select, so no numeric ghost.
+   */
+  'topology',
+  /**
    * U-5 — the crossings the DESIGNER states, one line per handover, low to
    * high. Free text and not a number: it is a LIST per axis, and the parse
    * (`statedCrossings.ts`) says what it could not use rather than dropping it.
@@ -210,6 +219,7 @@ export const V2_GHOSTS: Readonly<Record<V2SettingKey, string>> = Object.freeze({
   runBudgetEvals: 'tuner',
   fieldMode: '',
   polarityArms: '',
+  topology: '',
 });
 
 /** The keys whose ghost the app fills from an engine default, and why that is honest. */

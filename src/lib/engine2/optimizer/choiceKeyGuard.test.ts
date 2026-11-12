@@ -249,7 +249,7 @@ describe('F4c — every tuner option has a class', () => {
      * both are decisions that belong in an entry rather than in a list. */
     expect(classified as readonly string[]).not.toContain('polarityArms');
     expect(CHAIN_CHOICE_KEYS as readonly string[]).not.toContain('polarityArms');
-    expect(CHAIN_CHOICE_KEYS.length).toBe(7);
+    expect(CHAIN_CHOICE_KEYS.length).toBe(8); // G-15: topology (the standard filter)
     // V31: instrumentation, never a choice — the key may not silently migrate
     // into the class whose values are only allowed to come from a candidate.
     expect(POLISH_KEYS).toContain('rejectedTuneReport');
@@ -1078,6 +1078,8 @@ describe('F4d — a generated candidate declares every choice key', () => {
       'synthesisGrid',
       'phasePriority',
       'activeSide',
+      /* G-15 — and the eighth. */
+      'topology',
     ]);
   });
 
@@ -1135,6 +1137,9 @@ describe('F4d — a generated candidate declares every choice key', () => {
       'lowestWayLevelWork',
       'phasePriority',
       'synthesisGrid',
+      /* G-15 — the standard filter: a chain key (it decides what the design
+       * and synthesis steps BUILD) and never a tuner key. */
+      'topology',
     ]);
   });
 });

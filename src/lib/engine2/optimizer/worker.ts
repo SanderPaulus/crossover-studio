@@ -1148,6 +1148,27 @@ function tuneOptionsFor(
         ampMinLoadOhm: network.choices.ampMinLoadOhm,
         rSourceDisqualifyOhm: network.choices.rSourceDisqualifyOhm,
       });
+  /* ---- G-15: THE STANDARD FILTER WINS OVER TWO TUNER CHOICES ------------
+   *
+   * The app states `staged` (the prune/escalation pass) and `audit` (the part
+   * audit) as tuner choices on every run, and this hook is spread LAST into
+   * the chain's assembled options (F2b) — so without this block a stated
+   * standard filter would have its staged pass and its audit switched back on
+   * by the very declaration that stated it. The chain-level choice is the
+   * more specific statement: a standard filter has no pass that adds or
+   * removes a part. Done HERE, in the one place both chains' hooks are built,
+   * and recorded in `collect.choices` so the fingerprint carries what was
+   * applied. Absent topology = the two keys exactly as stated (P2). */
+  if (network.chainDeclaration?.stated.topology === 'standard') {
+    delete stated.staged;
+    stated.audit = { ...(stated.audit ?? {}), enabled: false };
+    collect.notes.push(
+      'Standard filter (G-15): the textbook ladder of the chosen order per branch plus its level ' +
+        'work, with the topology LOCKED — no EQ band, no correction network, no staged prune or ' +
+        'escalation and no part audit; the tuner moves values only. The stated `staged` and ' +
+        '`audit` choices are overridden by this chain-level choice.',
+    );
+  }
   /* ---- V48: WHICH NETWORK THE SERIES-INDUCTANCE CEILING DESCRIBES ------
    *
    * The same duty V33, V34 and V37 each discharge one rule along: a bound is

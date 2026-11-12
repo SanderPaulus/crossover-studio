@@ -1084,6 +1084,27 @@ const NICE: readonly V2InputRowDef[] = [
     source: 'choice',
   },
   {
+    /* G-15 — the standard filter: the textbook ladder per branch with its
+     * level work, no correction network, no staged pass, no audit; the
+     * topology locked and the values tuned. Guided asks it on the order
+     * screen; expert states it here. */
+    id: 'topology',
+    key: 'topology',
+    label: 'Topology',
+    form: 'Filters → Engine v2; guided: question “How steep should the filters be?”',
+    travels:
+      'declareCandidateChainChoices → the eighth chain key `topology` → both chains: no EQ band, ' +
+      'synthesis corrections off, no staged pass, no part audit — the ladder of the chosen order ' +
+      'plus its level work, values tuned and snapped',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans:
+      'FREE: the design step may propose EQ bands, the synthesis buys a correction network where ' +
+      'the measured driver warrants it (Zobel, trap, shelf, hold) and the staged pass prunes and ' +
+      'escalates. State "standard" for the textbook ladder alone, with its level work.',
+    source: 'choice',
+  },
+  {
     id: 'statedCrossings',
     key: 'statedCrossings',
     label: 'Crossings you state (Hz, per handover)',
@@ -1983,6 +2004,7 @@ const GROUP_OF: Readonly<Record<string, V2FieldGroup>> = Object.freeze({
   // crossover
   'lowestWayLevelWork': 'crossover',
   'lowestWaySeriesRMaxOhm': 'crossover',
+  'topology': 'crossover',
   'minCrossover': 'crossover',
   'maxCrossover': 'crossover',
   'maxCrossoverOverride': 'crossover',
@@ -2396,6 +2418,7 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'runBudgetEvals', form: 'v2-panel', control: 'value={engineV2Settings.runBudgetEvals}' },
   { row: 'fieldMode', form: 'v2-panel', control: 'value={fieldModeOf(engineV2Settings.fieldMode)}' },
   { row: 'polarityArms', form: 'v2-panel', control: 'value={polarityArmsChoiceOf(engineV2Settings.polarityArms)}' },
+  { row: 'topology', form: 'v2-panel', control: 'value={topologyChoiceOf(engineV2Settings.topology)}' },
   { row: 'statedCrossings', form: 'v2-panel', control: 'value={engineV2Settings.statedCrossings}' },
   // ---- H-2: the stated active side ----
   { row: 'activeSideOn', form: 'v2-panel', control: "checked={engineV2Settings.activeSideOn === 'on'}" },

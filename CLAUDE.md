@@ -9562,3 +9562,105 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   closures en de sleutel die afwezig is zijn op élke opgenomen run de identiteit, en geen enkel
   corpus heeft een overname zonder venster, dus de generatorwijziging raakt geen enkele opgenomen
   kandidaat. Geen versiebump, geen vingerafdruk beweegt.
+
+### G-15-guards (het standaardfilter: de textbook-ladder van de gekozen orde, waarden getuned, verder niets; 12-11-2026)
+
+- **SANDERS VRAAG, WOORDELIJK:** "een 'standaard' filter keuze voor een 2e, 3e en 4e orde filter
+  waarbij we geen LCR's of iets dergelijks gaan maken maar gewoon het standaard filter optimizen met
+  de juiste waardes en componenten." Gebouwd als ÉÉN keuze naast de orde: `topology: 'standard'`.
+- **WAT HET IS, EN WAT HET NIET IS.** Per overname de textbook-ladder van de gekozen orde (2e = LR2,
+  3e = BW3, 4e = LR4) plus het NIVEAUWERK dat die tak nodig heeft (een L-pad op een bovenste weg; de
+  laagste weg volgens `lowestWayLevelWork`), met de topologie VERGRENDELD en de waarden getuned en
+  gesnapt. Geen EQ-band (dus geen notch), geen Zobel, geen val, geen shelf, geen bypass; geen
+  staged snoei of escalatie (de enige pas die onderdelen TOEVOEGT); geen onderdelenaudit (de pas
+  die ze VERWIJDERT). Wat blijft: de waardetune, de kooi, de cap-shrink-ladder, de vloerreparatie
+  en de catalogus-snap. NIET gebouwd: 1e orde (de bibliotheek kent hem niet) en BS4.
+- **DE ACHTSTE KETENSLEUTEL** (`CHAIN_CHOICE_KEYS`, 7 → 8; de tunerlijst blijft 62, 40/5/17 —
+  `choiceKeyGuard` pint dat `topology` in geen tunerclassificatie staat). Afgeleid in
+  `declareCandidateChainChoices` uit `standardTopology: true`; **ABSENT = free, nooit een gesteld
+  `'free'`** (wie de keuze laat liggen besluit niets, P4); een expliciete waarde wint. Beide
+  vertalers dragen hem (`withDeclaredChainChoices`, `chainSettingsForTwoWay`), en absent is op beide
+  ketens de identiteit (P2): `Chain3Settings.topology` en `ChainSettings.topology` zijn optioneel en
+  élke override erachter is `s.topology === 'standard' ? … : <wat er stond>`.
+- **WAAR DE OVERRIDES ZITTEN, en één ervan zit op een plek die niet voor de hand lag.**
+  (1) `threeWayChain.ts`: `audit.enabled: false`, `staged: undefined`, `eqBandsPerBranch: 0`,
+  `corrections: 'off'`. (2) `designChain.ts`: hetzelfde in `assembledTuneOptions` (staged),
+  `designStepOptions` (eqBandsPerDriver, audit) en de synthese-opties (corrections).
+  (3) **`worker.ts`, in `tuneOptionsFor`** — en dát is de plek: de app stelt `staged` en `audit` op
+  élke run als TUNERkeuzes (`scanRequest.ts`), en de hook wordt als LAATSTE in de geassembleerde
+  opties gespreid (F2b). Zonder dit blok zette de verklaring die het standaardfilter stelde zijn
+  eigen staged pass en audit weer aan — de eerste live-run van de guard liet een `net.audit` zien
+  op een standaardrun, en zo is het gevonden. Sinds G-15: `delete stated.staged`,
+  `stated.audit = { …, enabled: false }`, met een runnotitie ("Standard filter (G-15): …") en in
+  `collect.choices`, zodat de vingerafdruk draagt wat er toegepast is. De keten-keuze is de
+  specifiekere uitspraak en wint over de twee tunerkeuzes.
+- **EEN 3e-ORDE-OVERNAME HEEFT GEEN TEXTBOOKPOLARITEIT, DUS HET STANDAARDFILTER DRAAIT DAAR BEIDE
+  ARMEN.** `PolarityArmPolicy.mirrorWhereNoTextbook` (gezet door `fieldModeSettings(…, 'standard')`,
+  absent onder free): een BW3-overname wordt gespiegeld, een LR-overname niet; de verkenning
+  verdubbelt dus alleen waar er iets te kiezen valt. `describePolarityArmsChoice(choice, topology)`
+  zegt dat sindsdien ook ("… no mirrored arm is built on an LR handover; a third-order handover …
+  runs both arms there") — de eerste browserrun drukte "no mirrored arm is built" náást "Plus 6
+  mirrored polarity arms" af, en dat is de F0-vorm die hier gerepareerd is.
+- **GUIDED EN EXPERT, ÉÉN STAAT.** Op het orde-scherm (vraag 6 van 8) staat de schakelaar
+  Standaardfilter / Vrij BOVEN de rijen, en per overname een derde knop "3rd order (BW3)"
+  (`GuidedOrderChoice` `'2' | '3' | '4' | 'auto'`; `orderChoiceOf` leest 18 dB/oct als `'3'`).
+  De schakelaar schrijft `engineV2Settings.topology` (`V2_SETTING_KEYS`, `V2_GHOSTS`, projectveld
+  `engineV2.topology`, additief); expert heeft hetzelfde als select "Topology" in de groep
+  "Kruisvenster & topologie" (registerrij `topology`, `nice`, `zoekt`, `GROUP_OF` → `crossover`,
+  `V2_FORM_FIELDS`-token). Vrij is de lege string, dus zonder "stated by you" — de afwezigheid van
+  een uitspraak (P4), zoals bij de polariteitsarmen.
+  **Bevinding onderweg:** `orderChoiceOf('30','30')` leest `'4'` en niet `'other'` — de bandformulier-
+  lezer klemt op de hoogste bibliotheekorde (`statedOrderOfSlopes`, zoals `orderFrom`), dus de
+  lezing zegt wat gebouwd wordt; mijn eerste claim nam 'other' aan en de data weerlegde haar.
+- **`src/lib/engine2/optimizer/standardTopology.test.ts` (7 claims, ~4 s):** de verklaring (absent
+  met P4-reden, gesteld, expliciet wint, dekking sluit); de vertaling naar beide ketens en de
+  identiteit zonder; de keuzehelpers en de armenzin in beide vormen; de BW3+LR4-bank waar onder
+  standard alleen de BW3-overname gespiegeld wordt en onder free niets (met de pin dat de policy
+  zonder topologie de sleutel niet draagt); en **de echte route** (de kleine tweewegfixture van
+  H-2b door `v2ChainOne`, budget 80, BEIDE armen stellen `staged` én `audit: { enabled: true }`
+  zoals de app): het standaardfilter levert ladder en pad en niets anders — geen rol die
+  notch/zobel/trap/hold/shelf/bypass heet, `net.removed` en `net.added` leeg, `net.audit` undefined,
+  elk geleverd onderdeel is er een dat de synthese voorstelde — en de tegenproef: de VRIJE run op
+  hetzelfde zaad (met een −10 dB-EQ-band op de tweeter) koopt een correctie en draagt meer
+  onderdelen. `StatedByDesignerChain` kent `topology`; `project.ts` draagt het veld.
+- **BROWSERCONTROLE (dev-server, verse localStorage, driewegdemo, guided, 12-11-2026).** Vraag 6:
+  schakelaar + vier knoppen per overname; onder Standaardfilter leest de BW3-rij "12 run(s)" waar
+  LR2/LR4 "6" lezen, onder Vrij leest BW3 "6". **De run (Snel, 3e orde op low→mid, Standaardfilter):
+  12 kandidaten door `v2Chain3One` met `settings.topology: 'standard'`, `targets: undefined` en
+  `chainDeclaration.stated.topology: 'standard'` op de draad (onderschept op `Worker.postMessage`),
+  KLAAR IN 40,5 s (overlay gezien → weg); 11 van 12 gekwalificeerd, 10 op de lijst, 1 geweigerd.**
+  De geladen rij (de spiegelarm `high ⌀ + mid ⌀ · mirror`): BOM **16 onderdelen, € 70,42, 16/16
+  geprijsd** — L1/C2/L3 (woofer BW3-LP), B·C1/B·L2/B·C3 (mid BW3-HP), B·L4/B·C5/B·L6/B·C7 (mid
+  LR4-LP), C·C1/C·L2/C·C3/C·L4 (tweeter LR4-HP) en C·R5 0,22 Ω + C·R6 51 Ω (de tweeter-L-pad):
+  exact de ladder plus één pad. Runnotities: "Topology: STANDARD FILTER …" en de workernotitie
+  "Standard filter (G-15): …". **DE VRIJE RUN ERNAAST, zelfde veld (BW3 low→mid, alleen de
+  textbook-arm = 6 kandidaten): 377 s (6 min 17), 6 van 6; de geladen rij 28 onderdelen, € 98,54,
+  "3 EQ", avg 0,63 dB tegen avg 1,04 dB / rimpel 3,11 dB op de standaardrij.** Dat is de prijs en de
+  winst in één regel: negen keer sneller, zestien in plaats van achtentwintig onderdelen, en minder
+  vlak. In expert staat de select op `free` met beide opties — dezelfde staat als de schakelaar.
+  Console: geen app-fout; wel 83 `WebSocket connection to 'ws://localhost:5173/' failed` van de
+  Vite-HMR-client in de browser-pane (geen reload, geen gevolg voor de run).
+- **Gemeten 12-11-2026:** `npx tsc -b` groen. `npm run test:fast` **260,7 s, 233 bestanden (232
+  geslaagd, 1 overgeslagen), 3071 tests (3067 geslaagd, 4 overgeslagen), in één keer groen, alleen
+  gedraaid met de dev-server gestopt; laatste bronbewerking 08:24, run gestart 08:24:52.** +1
+  bestand en +7 tests tegen G-14's 3064, exact de zeven claims van `standardTopology.test.ts`;
+  `guidedOrder`, `chainChoices`, `choiceKeyGuard`, `h5TextbookPolarity` en `fieldMode` veranderden
+  van inhoud en niet van telling (V15-vorm; geen claim versoepeld). **Twee gerichte runs ervóór
+  hadden rode claims en zij deden hun werk:** de twee `choiceKeyGuard`-lijsten (zeven → acht
+  ketensleutels, bij naam), de U-9-registerguard ("row topology has no group"), en de eerste live
+  claim die het `net.audit` op een standaardrun zag — de hook-override hierboven.
+  **`npx vitest run` 433,5 s, 233 bestanden, 3071 tests, niets overgeslagen, IN ÉÉN KEER GROEN,
+  alleen gedraaid (`run_in_background`, gestart 08:29:32 op dezelfde boom; CLAUDE.md is tijdens de
+  run bewerkt en geen test leest dat bestand). DEZE RUN IS GEDRAAID OMDAT G-15 DE GEDEELDE MOTOR
+  AANRAAKT** — `designChain.ts` en `threeWayChain.ts` dragen de sleutel en vier overrides erachter,
+  en `worker.ts` overschrijft twee tunerkeuzes in de hook. Wat de run bewijst: **alle VIER de live
+  ketenruns reproduceren hun bevroren netlist byte voor byte** (casus 1's goedkoopste geleverde
+  429,7 s en zijn verwerping 256,3 s, casus 1b 113,0 s, casus 1h 133,7 s), en `f4cRegression`,
+  `workerRouteRegression` en `toggleRegression` staan — de sleutel die afwezig is, is op élke
+  opgenomen run de identiteit, nagemeten en niet beredeneerd.
+- **GEEN CORPUS BEWEEGT:** casus 1, 1b, 1h en 2 stellen geen topologie, dus de sleutel is op élke
+  opgenomen run ABSENT en de drie ketens lezen byte voor byte wat zij lazen. Geen versiebump, geen
+  vingerafdruk veroudert; geen regeneratie.
+- **NIET GEDAAN, met naam:** 1e orde en BS4 (geen textbook-ladder in de bibliotheek); het
+  standaardfilter op de twee benoemde v1-routes (`vfRounds`, `soloChain` — die lezen de sleutel niet);
+  en de vlakheid die het kost is niet gecompenseerd — dat is precies wat "geen LCR's" betekent.

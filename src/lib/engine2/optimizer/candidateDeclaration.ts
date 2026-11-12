@@ -899,7 +899,7 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
  * thing for both.
  */
 export type StatedByDesignerChain = Partial<
-  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid' | 'phasePriority'>
+  Pick<Chain3Settings, 'eqBands' | 'leanTargetDb' | 'lowestWayLevelWork' | 'lowestWayCoilMaxHenry' | 'synthesisGrid' | 'phasePriority' | 'topology'>
 >;
 
 export interface ChainDeclarationInput {
@@ -951,6 +951,15 @@ export interface ChainDeclarationInput {
    * and the seventh key is declared ABSENT with that reason (P4).
    */
   activeSide?: { handover: ActiveHandover; settings: ModelBranchSettings };
+  /**
+   * G-15 — TRUE when the designer chose the STANDARD FILTER (the textbook
+   * ladder per branch, topology locked, values tuned). A boolean on purpose,
+   * like `lowestWayLevelWorkForbidden`: the derivation turns the choice into a
+   * stated `'standard'` and turns NOTHING into an ABSENT key — never into a
+   * stated `'free'`, which would claim somebody decided to allow corrections
+   * (P4).
+   */
+  standardTopology?: boolean;
 }
 
 /**
@@ -1130,6 +1139,27 @@ export function declareCandidateChainChoices(
         'this project states no handover to an active side, so the lowest way carries no ' +
         'high-pass and the sum holds no modelled branch — the design, synthesis and tune steps ' +
         'read exactly what they always read (P4)',
+    });
+  }
+
+  /* ---- G-15: THE STANDARD FILTER ----------------------------------------
+   *
+   * A stated CHOICE and nothing else: `'standard'` when the designer chose
+   * it, ABSENT otherwise — never a stated `'free'`, because leaving the choice
+   * decides nothing, and a declaration that said "free" would claim somebody
+   * decided the design may buy correction networks. An explicit value in
+   * `stated` wins, so the before/after is a run anyone can ask for. */
+  if (s.topology !== undefined) {
+    stated.topology = s.topology;
+  } else if (input.standardTopology === true) {
+    stated.topology = 'standard';
+  } else {
+    absent.push({
+      key: 'topology',
+      why:
+        'this project does not choose the standard filter, so the design, synthesis and tune ' +
+        'steps keep their own behaviour — EQ bands as stated, correction networks where the ' +
+        'measured driver warrants them, the staged pass and the part audit as set (P4)',
     });
   }
   return { stated, absent };

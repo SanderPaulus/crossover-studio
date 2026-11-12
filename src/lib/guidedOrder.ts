@@ -29,7 +29,7 @@
  */
 export const GUIDED_ORDER_VERSION = 'guided-order/1.0';
 
-export type GuidedOrderChoice = '2' | '4' | 'auto';
+export type GuidedOrderChoice = '2' | '3' | '4' | 'auto';
 export type SlopeRowId = 'acSlopeWoofer' | 'acSlopeMidHp' | 'acSlopeMid' | 'acSlopeTweeter';
 
 /** dB per octave per filter order — the unit the slope selects are in. */
@@ -38,7 +38,7 @@ const DB_PER_OCTAVE_PER_ORDER = 6;
 export const GUIDED_ORDER_CHOICES: readonly {
   id: GuidedOrderChoice;
   /** The value written into BOTH slope selects of the handover. */
-  slope: '12' | '24' | 'auto';
+  slope: '12' | '18' | '24' | 'auto';
   label: string;
   hint: string;
 }[] = Object.freeze([
@@ -47,6 +47,14 @@ export const GUIDED_ORDER_CHOICES: readonly {
     slope: '12',
     label: '2nd order (LR2)',
     hint: 'Fewest parts and the least coil copper; the driver above the handover takes more below it.',
+  },
+  /* G-15 — the third order, a Butterworth: it sums flat in either polarity,
+   * so both arms are built on this handover (no textbook arm to prefer). */
+  {
+    id: '3',
+    slope: '18',
+    label: '3rd order (BW3)',
+    hint: 'In between: sums flat in either polarity, so both arms are built and judged on this handover.',
   },
   {
     id: '4',
@@ -82,15 +90,18 @@ export function statedOrderOfSlopes(lower: string, upper: string): number | null
 }
 
 /**
- * The guided reading of two slope selects: `'auto'` when both are free, `'2'`
- * or `'4'` when the steeper flank says so, and `'other'` for anything expert
- * set that these three words do not cover (18 dB/oct, 6 dB/oct). `'other'` is
- * shown, never silently mapped onto a button.
+ * The guided reading of two slope selects: `'auto'` when both are free, `'2'`,
+ * `'3'` (G-15) or `'4'` when the steeper flank says so, and `'other'` for
+ * anything expert set that these four words do not cover (6 dB/oct — order 1,
+ * which the library does not build). `'other'` is shown, never silently mapped
+ * onto a button. A slope above 24 dB/oct reads as `'4'`: the band form's own
+ * reader clamps to the library's top order, and this reading says what the
+ * engine will build.
  */
 export function orderChoiceOf(lower: string, upper: string): GuidedOrderChoice | 'other' {
   if (lower === 'auto' && upper === 'auto') return 'auto';
   const n = statedOrderOfSlopes(lower, upper);
-  return n === 2 ? '2' : n === 4 ? '4' : 'other';
+  return n === 2 ? '2' : n === 3 ? '3' : n === 4 ? '4' : 'other';
 }
 
 /** The library's order at or above `n` — `flankOrder.ts`'s `fit`, for the readout. */

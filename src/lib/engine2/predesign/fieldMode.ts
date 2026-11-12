@@ -61,6 +61,40 @@ export type PolarityArmsChoice = 'textbook' | 'both';
 
 export const POLARITY_ARMS_CHOICES: readonly PolarityArmsChoice[] = ['textbook', 'both'];
 
+/* ------------------------------------------------------------------ *
+ * G-15 — THE TOPOLOGY CHOICE: free, or the standard filter
+ * ------------------------------------------------------------------ */
+
+/**
+ * `'free'` (the default): the design step may propose EQ bands, the synthesis
+ * buys a correction network where the measured driver warrants it, the
+ * staged pass prunes and escalates. `'standard'`: the textbook ladder of the
+ * chosen order per branch plus the level work it needs, nothing else — the
+ * topology locked, the values tuned and snapped. The eighth chain key
+ * (`chainChoices.ts`); the app states it, the fixtures do not (absent = free).
+ */
+export type TopologyChoice = 'free' | 'standard';
+
+export const TOPOLOGY_CHOICES: readonly TopologyChoice[] = ['free', 'standard'];
+
+/** Empty or unknown = FREE: a project that never chose keeps the engine as it was. */
+export function topologyChoiceOf(raw: string | null | undefined): TopologyChoice {
+  return raw === 'standard' ? 'standard' : 'free';
+}
+
+/** The one line the run notes and the settings panel both print. */
+export function describeTopologyChoice(choice: TopologyChoice): string {
+  return choice === 'standard'
+    ? 'Topology: STANDARD FILTER. Every branch is the textbook ladder of its order plus the level ' +
+        'work it needs (an L-pad on an upper way); no EQ band, no Zobel, trap, shelf or bypass, no ' +
+        'pruning or escalation, no part audit — the topology is locked and the tuner moves values ' +
+        'only, then snaps them to the catalogue. A third-order (Butterworth) handover runs both ' +
+        'polarity arms, since it has no textbook one (G-15).'
+    : 'Topology: FREE (the default). The design step may propose EQ bands, the synthesis buys a ' +
+        'correction network where the measured driver warrants it, and the staged pass prunes and ' +
+        'escalates.';
+}
+
 /**
  * The choice a stored string names. Empty or unknown = TEXTBOOK: a project that
  * never chose gets the deterministic rule, and the shortlist says which arms
@@ -71,15 +105,22 @@ export function polarityArmsChoiceOf(raw: string | null | undefined): PolarityAr
 }
 
 /** The one line the run notes and the settings panel both print. */
-export function describePolarityArmsChoice(choice: PolarityArmsChoice): string {
+export function describePolarityArmsChoice(choice: PolarityArmsChoice, topology: TopologyChoice = 'free'): string {
   return choice === 'both'
     ? 'Polarity arms: BOTH. Beside the textbook arm the mirrored one is designed, tuned and judged ' +
         'in its own right — an exploration runs the single-driver reversal unconditionally and any ' +
         'further handover the pre-design phase reading leaves open; the full field runs every ' +
         'configuration. The run count multiplies rather than adds (H-4/H-4b).'
     : 'Polarity arms: TEXTBOOK (the default). Every candidate is designed at the polarity its ' +
-        'alignments ask for — LR2 one reversal, LR4 none — and no mirrored arm is built. State ' +
-        '"both" to build them beside it (H-5).';
+        'alignments ask for — LR2 one reversal, LR4 none — and no mirrored arm is built' +
+        /* G-15 — under the standard filter a third-order handover has no textbook
+         * polarity and runs both arms; a sentence that still said "none is
+         * built" beside a field line that counts them would be false (F0). */
+        (topology === 'standard'
+          ? ' on an LR handover; a third-order handover has no textbook polarity and the standard ' +
+            'filter runs both arms there (G-15)'
+          : '') +
+        '. State "both" to build them beside it (H-5).';
 }
 
 /**
@@ -133,6 +174,12 @@ export function fieldModeSettings(
    * beside it.
    */
   arms?: PolarityArmsChoice,
+  /**
+   * G-15 — the stated topology. Under the STANDARD filter a handover with no
+   * textbook polarity (a 3rd-order Butterworth) runs both arms, whatever the
+   * arms choice says; absent or free leaves the policy as it was (P2).
+   */
+  topology?: TopologyChoice,
 ): FieldModeSettings {
   const base =
     mode === 'exploration'
@@ -182,6 +229,8 @@ export function fieldModeSettings(
        * quadrupling it, which is the price E-2 can carry; the full field is
        * unchanged, because `'both'` already ran everything. */
       guarantee: arms === 'both' && mode !== 'full' ? 'single-reversal' : 'none',
+      /* G-15 — the standard filter's 3rd order has no textbook arm: both run. */
+      ...(topology === 'standard' ? { mirrorWhereNoTextbook: true } : {}),
       why:
         arms === 'textbook'
           ? 'Textbook: every candidate is designed at the polarity its alignments ask for, and no ' +
