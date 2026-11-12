@@ -10441,6 +10441,7 @@ export default function App() {
             zNote,
             loaded?.xoPinNote ? `⚠ PIN: ${loaded.xoPinNote}` : '',
             loaded?.net.snapNote ?? '',
+            loaded?.net.dcrTrackNote ?? '',
             loaded?.net.safetyNote ? `⚠ ${loaded.net.safetyNote}` : '',
             loaded?.net.ampFloorNote ? `⚠ ${loaded.net.ampFloorNote}` : '',
           ].filter(Boolean);
@@ -10634,6 +10635,7 @@ export default function App() {
                 : '') +
               (r.bomTotalEur !== null ? ` · BOM €${Math.round(r.bomTotalEur)}` : '') +
               (r.net.snapNote ? ` · ${r.net.snapNote}` : '') +
+              (r.net.dcrTrackNote ? ` · ${r.net.dcrTrackNote}` : '') +
               (r.net.safetyNote ? ` · ⚠ ${r.net.safetyNote}` : '') +
               (r.net.ampFloorNote ? ` · ⚠ ${r.net.ampFloorNote}` : ''),
           );
@@ -11596,7 +11598,7 @@ export default function App() {
                   : `loaded     NOTHING — ${selection.describe}`,
                 ...(loaded ? [`        ${line(loaded)}`] : []),
                 ...shortlist.diagnosis.map((d) => `        ${d}`),
-                ...[zNote, loaded?.net.snapNote ?? '',
+                ...[zNote, loaded?.net.snapNote ?? '', loaded?.net.dcrTrackNote ?? '',
                   loaded?.net.safetyNote ? `⚠ ${loaded.net.safetyNote}` : '',
                   loaded?.net.ampFloorNote ? `⚠ ${loaded.net.ampFloorNote}` : ''].filter(Boolean),
               ].join('\n'),
@@ -12874,6 +12876,7 @@ export default function App() {
                 })() +
                 (r.added.length > 0 ? ` · bypass-C added: ${r.added.join(', ')}` : '') +
                 (r.snapNote ? ` · ${r.snapNote}` : '') +
+                (r.dcrTrackNote ? ` · ${r.dcrTrackNote}` : '') +
                 (r.valueWindowNote ? ` · ${r.valueWindowNote}` : '') +
                 (r.ampFloorNote ? ` · ⚠ ${r.ampFloorNote}` : ''),
         );
@@ -13148,6 +13151,7 @@ export default function App() {
             (qes ? ` · ${qes.failed ? '⚠ ' : ''}${qes.text}` : '') +
             (net.removed.length > 0 ? ` · pruned: ${net.removed.join(', ')}` : '') +
             (net.snapNote ? ` · ${net.snapNote}` : '') +
+            (net.dcrTrackNote ? ` · ${net.dcrTrackNote}` : '') +
             (net.ampFloorNote ? ` · ⚠ ${net.ampFloorNote}` : ''),
         );
         setV2RunNotes((prev) => {
@@ -13355,6 +13359,7 @@ export default function App() {
             (qes ? ` · ${qes.failed ? '⚠ ' : ''}${qes.text}` : '') +
             (net.removed.length > 0 ? ` · pruned: ${net.removed.join(', ')}` : '') +
             (net.snapNote ? ` · ${net.snapNote}` : '') +
+            (net.dcrTrackNote ? ` · ${net.dcrTrackNote}` : '') +
             (net.ampFloorNote ? ` · ⚠ ${net.ampFloorNote}` : ''),
         );
       })

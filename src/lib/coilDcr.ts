@@ -37,7 +37,7 @@
  * from `engine2/` (`toggleRegression.test.ts`).
  */
 
-import type { CatalogPart } from './catalog.ts';
+import { coilDcr, type CatalogPart } from './catalog.ts';
 import { busTopologyOfNetlist } from './netOptimizer.ts';
 import type { NetElement } from './network.ts';
 import type { VxpPart } from './parsers/vxp.ts';
@@ -177,6 +177,67 @@ export function dcrOf(henry: number, fit: CoilDcrFit): { ohm: number; inRange: b
   if (!(henry > 0) || !Number.isFinite(henry)) return null;
   const ohm = fit.ohmAt1mH * (henry / H_PER_MH) ** fit.k;
   return { ohm, inRange: henry >= fit.rangeH[0] && henry <= fit.rangeH[1] };
+}
+
+/**
+ * The exponent of the synthesis's own coil-copper model (`coilDcr` in
+ * catalog.ts: DCR = 0.29 · (L/mH)^0.65 · (1.4/wire)²). Named here because a
+ * seed-anchored fit (below) borrows it, and `coilDcr.test.ts` pins that the
+ * two are the same number — two copies of one exponent is how a model and
+ * the fit that claims to follow it drift apart.
+ */
+export const COIL_DCR_MODEL_EXPONENT = 0.65;
+
+/**
+ * G-18 — A FIT ANCHORED AT ONE SEED COIL, for a coil with no stated family.
+ *
+ * The catalogue-snap synthesis writes a coil's PICK DCR into its `DCR` param,
+ * and the solver reads that param as a fixed series resistance however far
+ * the value tune later moves the inductance (netOptimizer.ts, the G-18 note).
+ * This fit gives such a coil the one thing a stated family gives it: ohms
+ * that move with the henries. It passes EXACTLY through the seed point —
+ * `dcrOf(henry, fit).ohm === ohm` — and follows the synthesis model's own
+ * exponent away from it, so a coil that shrinks loses copper the way the
+ * model (and every real series) says it does. The wire gauge is the model's
+ * own inverse at the seed, for the record; the fit does not read it.
+ *
+ * Not a family: `family` carries the part id so nothing in a catalogue can
+ * match it, `n` is 0 and the range is open, and the caller keeps it OUT of
+ * the map the snap's family filter reads. Its `maxPct` is the DECLARED reach
+ * (`SEED_ANCHORED_DCR_REACH`), not a measured residual — `n` is 0 and says so.
+ */
+/**
+ * G-18 — THE REACH A SEED-ANCHORED FIT DECLARES AROUND ITS OWN COPPER.
+ *
+ * A family's snap ceiling is its fit widened by the family's largest residual
+ * (`snapDcrCeilingOhm`): a coil within the family's own scatter is the same
+ * wire. A seed anchor has no SKUs and no scatter, so it declares the
+ * catalogue's own reach instead — the ±25 % inside which `pickCandidates`
+ * counts a part as covering a value — and carries it in `maxPct` as a
+ * log-residual, so the one ceiling function needs no second branch. Not a
+ * project number: the ratio every pool rule in catalog.ts already uses.
+ */
+export const SEED_ANCHORED_DCR_REACH = 1.25;
+
+export function seedAnchoredCoilDcrFit(partId: string, henry: number, ohm: number): CoilDcrFit {
+  if (!(henry > 0) || !(ohm > 0)) throw new Error(`seedAnchoredCoilDcrFit(${partId}): the seed needs a positive inductance and DCR`);
+  const mH = henry / H_PER_MH;
+  const ohmAt1mH = ohm / mH ** COIL_DCR_MODEL_EXPONENT;
+  /* coilDcr(L, w) = 0.29·mH^0.65·(1.4/w)²  ⇒  w = 1.4·sqrt(coilDcr(L, 1.4)/ohm). */
+  const wireMm = 1.4 * Math.sqrt(coilDcr(henry, 1.4) / ohm);
+  return {
+    family: `seed|${partId}`,
+    label: `seed-anchored (${partId}: ${ohm.toPrecision(3)} Ω at ${mH.toPrecision(3)} mH, ~${wireMm.toFixed(2)} mm)`,
+    brand: 'seed',
+    series: partId,
+    wireMm,
+    k: COIL_DCR_MODEL_EXPONENT,
+    ohmAt1mH,
+    rangeH: [0, Infinity],
+    n: 0,
+    rmsPct: 0,
+    maxPct: 100 * Math.log(SEED_ANCHORED_DCR_REACH),
+  };
 }
 
 /**

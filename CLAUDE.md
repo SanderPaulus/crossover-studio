@@ -9746,3 +9746,131 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   tegen G-16's 3072, exact de nieuwe claim; geen nieuw bestand. **Geen volle run:** G-17 raakt
   uitsluitend `App.tsx`, `index.css`, `nl.ts` en één test — geen engine-, poort-, venster-, metriek-
   of corpuscode.
+
+### G-18-guards (de catalogus-snap landt: de koper van een spoel volgt haar waarde, en de snap mag haar niet afnemen; 12-11-2026)
+
+- **AANLEIDING, in Sanders woorden bij zijn screenshots:** "het netwerk heeft geen waardes overgenomen
+  van de standaard series." Gereproduceerd op de driewegdemo met zijn antwoorden (4–8 Ω → vloer
+  3,2 Ω, Standaard-onderdelen = `balanced`): de snap werd GEWEIGERD — *"⚠ snap REFUSED: purchasable
+  parts would break a hard limit — M-B/|Z|: 1,94 Ω falls below the stated floor of 3,20 Ω"* — en de
+  continue waarden geleverd, met de parts-regel "Ideal values: none of the 20 parts is a catalogue
+  part". Geen kandidaatweigering: de rij staat gewoon in de shortlist, onbouwbaar.
+- **TWEE OORZAKEN, NA ELKAAR GEVONDEN, elk gemeten onderdeel voor onderdeel** (scratch
+  `g18_snap_measure.ts`: élk onderdeel apart gesnapt met de rest continu, en alles gesnapt behalve
+  één; min |Z| op ketenraster, veiligheidsraster en sweep).
+  1. **EEN STALE DCR-PARAM.** In snap-modus schrijft de synthese de PICK-DCR van elke spoel in de
+     `DCR`-param (`synthesis.ts`, `seriesRsFinal`) en `vxpNetwork.ts` leest die als vaste
+     serieweerstand, hoe ver de tune de inductie ook verzet; de tuner las een DCR alleen opnieuw via
+     een GESTELDE familie (A5e.3, `refreshDcr`). C·L4 (shunt-spoel in de tweetertak) kromp naar
+     0,048 mH en hield de 5,99 Ω van haar synthese-pick; de tune leunde op die ohm, elke poort las
+     ze, en geen 0,048 mH-spoel in de catalogus heeft meer dan 0,27 Ω — de snap nam |Z| min van
+     3,32 naar 1,82 Ω. **Reparatie: `seedAnchoredCoilDcrFit` (coilDcr.ts).** Onder dezelfde poort
+     als de snap zelf (`catalogSnap` én een catalogus) krijgt een vrije spoel met DCR-param en
+     zonder gestelde familie een fit DOOR haar zaadpunt met de exponent van het synthesemodel
+     (`COIL_DCR_MODEL_EXPONENT` 0,65, gepind gelijk aan `coilDcr`), en `refreshDcr` beweegt haar
+     zoals A5e.3 een familie beweegt. In een APARTE map (`seedAnchoredFitById`), zodat het
+     familiefilter van de snap geen familie ziet die niet bestaat. `dcrTrackNote` zegt per spoel
+     wat de tune met haar ohm deed, in het resultaat en in de runnotities (zes plaatsen in
+     `App.tsx`, naast `snapNote`). Nagemeten: op het eerste gemeten netwerk was dit de HELE
+     verschuiving (C·L4 alleen: 3,32 → 1,82).
+  2. **DAARNA NOG STEEDS GEWEIGERD, op 2,70 Ω — en dat was de snap zelf.** Op het nieuwe
+     geleverde netwerk (`test-fixtures/demo_g18_geleverd.json`, met herkomst) HOUDT L1 (3,257 mH,
+     1,423 Ω getrackte koper in het wooferpad) de vloer op 82 Hz: L1 continu en al het andere
+     gesnapt 3,40 Ω; L1 alleen gesnapt (P-Core 1,0 mm, 0,24 Ω) 2,91 Ω; geen ander onderdeel beweegt
+     de vloer. Drie dingen tegelijk hielden de snap van dat koper af. (i) Het v1-TAKBUDGET
+     (`branchDcrBudgetOhms`: 1,0 dB op de eigen min |Z| van de woofer, gesplitst op L^0,65) gaf L1
+     0,27 Ω, dus de pool hield uitsluitend kernspoelen. (ii) De PER-ONDERDEEL-TOELAGE van
+     `pickCandidates` (`DCR_BUDGET_DB`, 0,5 dB op de gepoolde mediaan: 0,34 Ω op deze set) knipt
+     élk hoger plafond terug: de code neemt de STRENGSTE van beide waar zijn doc "wins over" zegt.
+     E-4's familieplafond overleefde dat alleen via de "budget onbereikbaar"-terugval binnen
+     `withinDcr`, door de VOLGORDE van twee filters — gemeten, niet aangenomen. (iii) De
+     snap-SCORE las de vloer op het evaluatieraster (`m.zMinOhm`; op de gegate demo-set vanaf
+     397 Hz): blind voor 82 Hz. Dat is V33's bevinding, op de snap: `snapFxZ`'s `fxOf(m)` draagt
+     de barrièreterm NIET (die zit in de barrière-objectief, niet in `fxOf`), dus de descend
+     rangschikte negenentwintig spoelen op een tekort dat zij niet kon zien.
+- **DRIE WIJZIGINGEN IN `netOptimizer.ts`, alle drie uitsluitend onder de snap.** P2 per
+  constructie: geen byte-referentie snapt (`f4b2_v2_baseline`, de worker-baseline), de casus-corpora
+  draaien `catalogSnap: false`, en de live ketenruns zijn de meting.
+  - (a) **`modelDcrCeilFor`:** een getrackte spoel wordt beoordeeld op haar getrackte koper —
+    `snapDcrCeilingOhm` op de seed-fit, waarvan `maxPct` de REACH van de catalogus is
+    (`SEED_ANCHORED_DCR_REACH` 1,25: de ±25 % die elke poolregel in catalog.ts al gebruikt, als
+    log-residu gedragen zodat de ene plafondfunctie geen tweede tak nodig heeft; `n` 0 zegt dat het
+    geen gemeten residu is). Ná E-4's familieplafond, vóór het takbudget; een spoel heeft hoogstens
+    één van beide.
+  - (b) **`snapPrefsFor`:** voor een model-beoordeelde spoel (familie óf getrackt) is de
+    per-onderdeel-toelage UIT — `refOhms: 0`, de gedocumenteerde weg om `pickCandidates` er geen te
+    vragen. Op alle drie de aanroepen (kandidaten, singles-only, de dikke-draad-herkansing). Élke
+    andere spoel houdt beide plafonds exact zoals ze waren. Bijvangst: E-4's familiespoel hangt
+    daarmee niet meer aan de filtervolgorde.
+  - (c) **`snapFxZ` leest de vloer waar de barrière hem leest:** `barrierShortOhm(m, work, true)` —
+    de volle verdichte lezing, ZONDER de tracker (de S-2-vensters zijn gevalideerd op de kleine
+    stappen van de tune, niet op discrete sprongen; een verouderd venster is een vloer die de snap
+    gelooft en de poort niet). `zShort = max(0, doel − zMin, barrière-tekort − vóór)`: dezelfde
+    regel op beide lezingen, "mik op de vloer en nooit slechter dan waar de snap begint". Nul zonder
+    vloer of zonder barrièreraster; `exact` default `false` laat élke bestaande aanroeper staan.
+- **GEMETEN OP DE DEMO-FIXTURE, met alleen L1 vrij** — de bank (`seedAnchoredDcr.test.ts`, de
+  demo-metingen op een ketenraster vanaf 397 Hz, de barrière op de volle sweepbreedte, de poort als
+  `meetsAmpFloor` op de vereniging van de drie sweeps) is NIET het objectief van de app (raster,
+  band, kooi verschillen) en een vrije tune loopt dit netwerk ergens anders heen (L1 naar 7,5 mH,
+  vloer 3,92 Ω: niets getoetst); vastgehouden blijft het koper van de woofer wat de vloer houdt,
+  zoals in de app. Tune L1 3,257 → 3,837 mH (getrackt 1,583 Ω); snap → 3,8 mH P-Core 1,08 Ω,
+  vloer 3,24 Ω, GELAND, 6 s. **Opzettelijke breuk (b) — de toelage weer aan: GEWEIGERD met exact
+  Sanders melding** (M-B/|Z| 2,91 Ω tegen 3,20; dikste draad 2,90). **Opzettelijke breuk (c) — de
+  score weer blind: LANDT nog steeds**, op deze bank en op vier vrij-sets (L1; L1+L3; L1+L3+C2;
+  L1+L3+C2+B·L2+B·L5) — fx verkiest hier al het koper zodra de pool het bevat. (c) staat er op het
+  V33-argument en is op deze bank NIET dragend; dat staat hier in plaats van een claim die het niet
+  kan zien.
+- **DE DIKKE-DRAAD-HERKANSING (C-1) GAAT VOOR DE VLOER DE VERKEERDE KANT OP** — dikker = minder
+  koper = lagere |Z|; zij is gebouwd voor de bronweerstandsgrens, waar MEER koper breekt. Niet
+  aangeraakt: met (a)+(b) landt de eerste keus en de herkansing vuurt niet. Benoemd, niet
+  gerepareerd.
+- **`seedAnchoredDcr.test.ts` 7 → 9 claims.** De MECHANISMECLAIM met de hand: het continue netwerk
+  haalt de vloer (premisse); L1's takbudget-aandeel ligt onder koper/reach; de pool eronder heeft
+  niets binnen reach en de dichtstbijzijnde breekt de vloer; het getrackte plafond is koper × 1,25
+  bij constructie; met de toelage AAN is dat plafond geknipt (niets binnen reach); met de toelage
+  UIT staat er een spoel binnen reach en de dichtstbijzijnde in koper houdt de vloer. De
+  TUNER-CLAIM: geland (geen REFUSED), L1 een catalogusonderdeel, de vloer op de sweep gehaald, en L1
+  draagt meer koper dan élke spoel in de takbudget-pool bij de geleverde inductie. **Gerichte run:
+  18 bestanden, 199 tests, groen** — snapPreexisting, coilSnapCeiling, coilDcrRoute, coilDcr,
+  netOptimizer, minimize, synthesis, barrierSource, barrierTracking, choiceKeyGuard, catalog,
+  platformError, drawnTune3, h3NetworkTab, seedAnchoredDcr, en de twee byte-referenties
+  (`f4cRegression`, `workerRouteRegression`) plus `toggleRegression`.
+- **BROWSERCONTROLE (Browser-pane op de dev-server, 12-11-2026, Sanders bewaarde guided-antwoorden,
+  Uitgebreid, vrije opbouw, armen beide; gestart vóór de suites, niets ernaast, de pane verborgen).**
+  Negen kandidaten (3 × 3, textbook) door `v2Chain3One` met op de draad `catalogSnap: true`,
+  profiel `balanced`, vloer 3,2 en barrière `safety-extended-refined-tracked` (onderschept op
+  `Worker.postMessage`), klaar in 308 s; 5 van 9 gekwalificeerd, dezelfde geladen rij als vóór de
+  reparatie (466,7 · 1885,5 LR4 · textbook) en hetzelfde CONTINUE ontwerp tot in de getrackte
+  koper — `dcrTrackNote` in de runnotities leest *L1 1,26 Ω @ 2,7 mH → 1,423 Ω @ 3,257 mH*, de
+  fixture. **Vóór: "Ideal values: none of the 20 parts is a catalogue part" en "Load on the
+  amplifier 3,20 Ω ≥ 3,20 Ω met, only within tolerance". Ná: "All 21 parts are real catalogue
+  parts — this list can be ordered", de vloer "met" zonder tolerantie, snapnotitie "snap: singles
+  only (stacks would fit 1% worse)", BOM € 181, rms 0,67 / ±1,32 dB / M-K 8,2° / 8,2°.** Tien
+  spoelen, tien catalogusonderdelen, nul ongesnapt (L1 3,2 mH P-Core 0,65 Ω; B·L5 1,94 mH lucht
+  1,3 Ω; C·L7 6,8 mH P-Core 1,35 Ω; …). Console: alleen de HMR-websocketfouten van de pane en twee
+  oude Vite-reloadfouten van vóór de herlaadbeurt; geen app-fout tijdens de run. **Dat de app L1
+  op 0,65 Ω landt waar de bank 1,08 Ω koos is geen tegenspraak:** de app snapt twintig onderdelen
+  tegelijk en de descend vond een combinatie waarin ander koper (B·L5, C·L7, B·L11) de vloer mee
+  draagt; welke van (b) en (c) die combinatie droeg is in de app niet apart gemeten. Het oordeel is
+  de poort op de sweep, en die zegt "met".
+- **Gemeten 12-11-2026:** `npx tsc -b` groen. **`npm run test:fast` 257,8 s, 234 bestanden
+  (233 geslaagd, 1 overgeslagen), 3082 tests (3078 geslaagd, 4 overgeslagen), in één keer groen,
+  alleen gedraaid met de dev-server gestopt, ná de browsercontrole; laatste bronbewerking 15:30:33,
+  run gestart 15:37:52 (de H-2-regel).** +1 bestand en +9 tests tegen G-17's 3073 (3069 + 4):
+  exact `seedAnchoredDcr.test.ts`. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan.
+  **`npx vitest run` 420,4 s, 234 bestanden, 3082 tests, niets overgeslagen, IN ÉÉN KEER GROEN,
+  alleen gedraaid (gestart 15:42:27, direct ná de snelle laag, op dezelfde boom). DEZE RUN IS
+  GEDRAAID OMDAT G-18 `netOptimizer.ts` EN `coilDcr.ts` AANRAAKT** — de tuner leest sinds G-18 een
+  getrackte DCR per spoel en de snap drie regels anders. Wat de run bewijst is dat élke wijziging
+  achter de snap-poort blijft: **alle VIER de live ketenruns reproduceren hun bevroren netlist byte
+  voor byte** (casus 1's goedkoopste geleverde 417 s en zijn verwerping 244 s, casus 1b 106 s,
+  casus 1h 134 s — alle vier met `catalogSnap: false`), en `f4cRegression` (44,8 s),
+  `workerRouteRegression` (35,7 s) en `toggleRegression` staan — geen van die drie snapt, dus de
+  seed-anchor, het plafond en de scorelezing zijn daar per constructie afwezig, en dat is
+  nagemeten in plaats van beredeneerd. Geen versiebump, geen vingerafdruk beweegt, geen
+  herkomstbestand veroudert.
+- **NIET GEDAAN, met naam.** (1) De "order 70"-weergavefout op vraag 6 (de G-13-memo leidt de eis
+  van de andere regels af bij `statedOrder: null`, dus `referenceCrossing(wi, NaN)`, dus een
+  venster zonder f_s-vloer) zodra een belastingprofiel M-C wapent — Sander koos de snap eerst. (2)
+  De dikke-draad-herkansing (hierboven). (3) De CI-uitslagen van G-15, G-16 en G-17 zijn nog niet
+  geboekt. (4) Geen regeneratie: geen corpus snapt.

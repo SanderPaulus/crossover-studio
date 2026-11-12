@@ -24,7 +24,17 @@ import {
   type SnapPrefs,
 } from './catalog.ts';
 import type { AngleResponse } from './directivity.ts';
-import { catalogFamilyOf, dcrOf, roundDcr, snapDcrCeilingOhm, stampCoilDcr, type CoilDcrFit, type CoilDcrModel } from './coilDcr.ts';
+import {
+  COIL_DCR_MODEL_EXPONENT,
+  catalogFamilyOf,
+  dcrOf,
+  roundDcr,
+  seedAnchoredCoilDcrFit,
+  snapDcrCeilingOhm,
+  stampCoilDcr,
+  type CoilDcrFit,
+  type CoilDcrModel,
+} from './coilDcr.ts';
 import { floorCurve, type FloorShape } from './impedanceFloor.ts';
 import { ampFloorSlackOhm, minImpedanceAt } from './impedanceFloor.ts';
 import { seriesProtectionRefusal, waysLosingSeriesCap } from './seriesProtection.ts';
@@ -1301,6 +1311,13 @@ export interface NetOptimizeResult {
    */
   ampFloorRepair?: 'none' | 'lifted' | 'refused' | 'failed';
   snapNote?: string;
+  /**
+   * G-18 — which seed coils had their DCR TRACKED with the inductance during
+   * the tune (a seed-anchored fit, no stated family, snap on), with the seed
+   * point and the continuous point the snap then started from. Absent on
+   * every run where nothing was anchored.
+   */
+  dcrTrackNote?: string;
   /** Amp-load floor (system |Z| ≥ 2.5 Ω): set when the tuned result dipped
    *  below the floor — either "lifted a → b Ω" (repair accepted) or a
    *  could-not-repair warning. See the amplifier-load note. */
@@ -2180,6 +2197,42 @@ export function optimizeNetworkValues(
   const dcrStamp = opts.coilDcrModel ? stampCoilDcr(partsIn, opts.coilDcrModel) : null;
   const parts: readonly VxpPart[] = dcrStamp ? dcrStamp.parts : partsIn;
   const dcrFitById: Record<string, CoilDcrFit> = dcrStamp?.fitById ?? {};
+  /* ---- G-18: A SEED COIL'S DCR FOLLOWS ITS INDUCTANCE UNDER THE SNAP ------
+   *
+   * In catalogue-snap mode the synthesis writes each coil's catalogue PICK
+   * DCR into the `DCR` param (synthesis.ts, `srsOf(pick)`), and the solver
+   * reads that param as a fixed series resistance. The value tune then moves
+   * the inductance freely while the ohms stay put — so a coil that shrinks
+   * from a few mH of thin wire to 0.05 mH keeps the thin wire's 6 Ω, the
+   * search leans on those ohms as damping, every gate judges the network with
+   * them, and the end snap finds no 0.05 mH coil within thirty times that
+   * resistance and refuses. Measured on the three-way demo (12-11-2026): one
+   * shunt coil, 0.048 mH with a stale 5.99 Ω, took min |Z| from 3.32 to
+   * 1.82 Ω the moment it became a real part.
+   *
+   * So under the SAME gate as the snap itself, a free coil that carries a
+   * DCR param and has no stated family gets a fit ANCHORED at its seed —
+   * the synthesis model's own exponent (`coilDcr`, L^0.65), the seed's own
+   * ohms at the seed's own inductance — and `refreshDcr` moves it with the
+   * value exactly as A5e.3 moves a stated family. Kept in a SEPARATE map: the
+   * snap's family filter and family ceiling read `dcrFitById` and must not see
+   * a family that does not exist. Absent snap, absent param, or a stated
+   * family: nothing here applies and the tune is what it was (P2). */
+  const seedAnchoredFitById: Record<string, CoilDcrFit> = {};
+  /** The seed point each anchored coil started from, for the note that says what the tune did to its ohms. */
+  const seedAnchorOf: Record<string, { mH: number; ohm: number }> = {};
+  if (opts.catalogSnap && hasImportedCatalog()) {
+    for (const q of parts) {
+      if (q.type !== 'Inductor' || !q.partId || dcrFitById[q.partId] || q.locked || q.open || q.shorted) continue;
+      const mH = q.params.find((p) => p.name === 'L')?.value;
+      const dcr = q.params.find((p) => p.name === 'DCR')?.value;
+      if (!(mH !== undefined && mH > 0) || !(dcr !== undefined && dcr > 0)) continue;
+      seedAnchoredFitById[q.partId] = seedAnchoredCoilDcrFit(q.partId, mH * 1e-3, dcr); // mH → H, the reader's own conversion (vxpNetwork.ts)
+      seedAnchorOf[q.partId] = { mH, ohm: dcr };
+    }
+  }
+  /** The fit a free coil's DCR follows: the stated family first, else the seed anchor (G-18), else none. */
+  const trackedDcrFitOf = (id: string): CoilDcrFit | undefined => dcrFitById[id] ?? seedAnchoredFitById[id];
   const {
     phasePriority = DEFAULT_PHASE_PRIORITY,
     maxIterations,
@@ -2476,10 +2529,16 @@ export function optimizeNetworkValues(
   const barrierShortOhm = (
     m: { zShortOhm: number; zMinHz: number },
     net: { nodeCount: number; elements: NetElement[] },
+    /* G-18 — `exact` reads the FULL refined scan and leaves the tracker's state
+     * alone. The tracked windows (S-2) were validated on the value tune's small
+     * steps; the catalogue snap jumps between discrete parts, and a stale
+     * window there is a floor the snap believes and the gate does not. Absent
+     * (every existing caller) the reading is what it was. */
+    exact = false,
   ): number => {
     if (barrierSource === 'grid') return m.zShortOhm;
     if (barrierGrid === null || ampFloorOhm === null) return 0;
-    const ohm = barrierTrack && barrierRefineOn
+    const ohm = barrierTrack && barrierRefineOn && !exact
       ? (trackedRefinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, barrierTrack, m.zMinHz)?.ohm ?? null)
       : barrierRefineOn
       ? (refinedSystemMinImpedanceOhm(net, barrierGrid, barrierRefineOn, BARRIER_DIP_REFINEMENT)?.ohm ?? null)
@@ -4232,7 +4291,7 @@ export function optimizeNetworkValues(
      * so the network the solver stamps is the network a builder would wind at
      * that value. Absent model = `dcrFit` is all null and `refreshDcr` is a
      * no-op: byte-identical to every run before (P2). */
-    const dcrFit: (CoilDcrFit | null)[] = free.map((e) => (e.kind === 'L' ? (dcrFitById[e.id] ?? null) : null));
+    const dcrFit: (CoilDcrFit | null)[] = free.map((e) => (e.kind === 'L' ? (trackedDcrFitOf(e.id) ?? null) : null));
     const anyDcr = dcrFit.some((f) => f !== null);
     const elementById = new Map(work.elements.map((e) => [e.id, e] as const));
     const freeIndexById = new Map(free.map((e, i) => [e.id, i] as const));
@@ -4615,8 +4674,10 @@ export function optimizeNetworkValues(
        * the inductance WRITTEN (the rounded mH every later reader sees), so a
        * reader that recomputes `dcrOf` from the param lands on the same digit.
        * The objective scored the unrounded value; the two differ by the
-       * rounding of L, which is below the param's own resolution. */
-      const fit = kind === 'L' ? dcrFitById[q.partId] : undefined;
+       * rounding of L, which is below the param's own resolution. G-18: a
+       * seed-anchored fit is written back the same way, so the delivered
+       * continuous network carries the ohms the tune actually solved with. */
+      const fit = kind === 'L' ? trackedDcrFitOf(q.partId) : undefined;
       if (fit) {
         const r = dcrOf(shown * 1e-3, fit); // mH → H, the reader's own conversion (vxpNetwork.ts)
         if (r) {
@@ -5587,6 +5648,23 @@ export function optimizeNetworkValues(
     }
   }
 
+  /* G-18 — what the tracking did to each anchored coil, read off the
+   * continuous network the snap is about to start from: the seed point and
+   * the point the tune delivered, both as the params carry them. A reader of
+   * the delivered netlist sees the pick's ohms; this is the only place that
+   * says the synthesis's ohms were MOVED before the pick was made. */
+  const dcrTrackNote: string | undefined = (() => {
+    const ids = Object.keys(seedAnchorOf);
+    if (ids.length === 0) return undefined;
+    const lines = ids.map((id) => {
+      const q = cur.parts.find((p) => p.partId === id);
+      const mH = q?.params.find((p) => p.name === 'L')?.value;
+      const ohm = q?.params.find((p) => p.name === 'DCR')?.value;
+      const s = seedAnchorOf[id];
+      return `${id} ${s.ohm} Ω @ ${s.mH} mH → ${ohm ?? '?'} Ω @ ${mH ?? '?'} mH`;
+    });
+    return `seed-anchored DCR (G-18, exponent ${COIL_DCR_MODEL_EXPONENT}): ${lines.join('; ')}`;
+  })();
   let snapNote: string | undefined;
   stage('catalog snap');
   /* ---- Catalog snap (final step): land every free part on purchasable
@@ -5672,8 +5750,11 @@ export function optimizeNetworkValues(
         branchCoilWeight.set(m, (branchCoilWeight.get(m) ?? 0) + coilWeight(q));
       }
     }
-    const dcrCeilFor = (q: VxpPart): number | undefined => {
+    /** The ceiling a COPPER MODEL gives this coil, or undefined when no model judged it. */
+    const modelDcrCeilFor = (q: VxpPart): number | undefined => {
       if (q.type !== 'Inductor') return undefined;
+      const henry = q.params.find((p) => p.name === 'L')?.value;
+      if (henry === undefined) return undefined;
       /* E-4 — A COIL WITH A STATED FAMILY IS JUDGED BY THAT FAMILY. The search
        * designed this coil with its family's copper (`refreshDcr`, A5e.3) and
        * every gate read that number; the branch budget below is a v1 opinion
@@ -5682,12 +5763,33 @@ export function optimizeNetworkValues(
        * everything else falls through to the ceiling it always had (P2/P4). */
       if (opts.coilSnapDcrCeiling === 'family') {
         const fit = dcrFitById[q.partId!];
-        const henry = q.params.find((p) => p.name === 'L')?.value;
-        if (fit && henry !== undefined) {
+        if (fit) {
           const ceil = snapDcrCeilingOhm(henry * 1e-3, fit); // mH → H, the reader's own conversion (vxpNetwork.ts)
           if (ceil !== null) return ceil;
         }
       }
+      /* G-18 — A COIL WHOSE COPPER THE SEARCH TRACKED IS JUDGED BY THAT COPPER.
+       * The seed anchor is the same thing as a family one step earlier: the
+       * tune leaned on these ohms at every evaluation, every gate and inversion
+       * read them, and on the three-way demo the woofer's series coil carried
+       * 1.42 Ω that held the amplifier floor at 82 Hz. The branch budget
+       * allowed it 0.27 Ω, so the pool held core coils only, the snap took the
+       * copper away and the floor fell through — measured, part by part, with
+       * every other part continuous. The ceiling is the tracked ohms widened by
+       * the catalogue's own reach (`SEED_ANCHORED_DCR_REACH`, in the fit's
+       * `maxPct`); it exists only where the anchor exists, i.e. under the snap
+       * with a catalogue, so every other run keeps the ceiling it had (P2). */
+      const tracked = seedAnchoredFitById[q.partId!];
+      if (tracked) {
+        const ceil = snapDcrCeilingOhm(henry * 1e-3, tracked);
+        if (ceil !== null) return ceil;
+      }
+      return undefined;
+    };
+    const dcrCeilFor = (q: VxpPart): number | undefined => {
+      if (q.type !== 'Inductor') return undefined;
+      const model = modelDcrCeilFor(q);
+      if (model !== undefined) return model;
       const models = bus.driversOf(q.partId!);
       if (models.length === 0) return undefined;
       const w = coilWeight(q);
@@ -5701,6 +5803,18 @@ export function optimizeNetworkValues(
       }
       return isFinite(ceil) ? ceil : undefined;
     };
+    /* G-18 — THE PER-PART ALLOWANCE IS OFF FOR A MODEL-JUDGED COIL.
+     * `pickCandidates` takes the STRICTER of the caller's ceiling and its own
+     * per-part allowance (`DCR_BUDGET_DB` on the pooled median |Z|, 0.34 Ω on
+     * the demo's series coils) — so a family or tracked ceiling of 1.4 Ω was
+     * clipped back to a third of an ohm and the model never reached the pool.
+     * E-4's family coils survived that only through the "budget unreachable"
+     * fallback inside `withinDcr`, by the order of two filters. For a coil a
+     * copper model judged, the model IS the allowance: `refOhms: 0` is the
+     * documented way to ask `pickCandidates` for none. Every other coil keeps
+     * both ceilings exactly as before. */
+    const snapPrefsFor = (q: VxpPart): SnapPrefs =>
+      modelDcrCeilFor(q) !== undefined ? { ...snapPrefs, refOhms: 0 } : snapPrefs;
     const cands = snapables.map(({ q }) => {
       const kind = KIND_OF[q.type];
       const u = PARAM_OF[kind];
@@ -5711,7 +5825,7 @@ export function optimizeNetworkValues(
        * pool when the family cannot cover the value (the 25 % reach rule). */
       const fit = kind === 'L' ? dcrFitById[q.partId!] : undefined;
       const only = fit ? (p: CatalogPart) => catalogFamilyOf(p) === fit.family : undefined;
-      return pickCandidates(kind, raw / u.factor, 3, snapPrefs, posOfPart(q.partId!), dcrCeilFor(q), only);
+      return pickCandidates(kind, raw / u.factor, 3, snapPrefsFor(q), posOfPart(q.partId!), dcrCeilFor(q), only);
     });
     const applied = (ch: (CatalogPick | null)[]): VxpPart[] => {
       const out = cloneParts(cur.parts);
@@ -5766,25 +5880,40 @@ export function optimizeNetworkValues(
      * the thing being decided — and the same one that broke a guard of mine
      * earlier the same day. The extra solves are the price of the answer being
      * about the network that ships. */
-    const snapFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number } => {
+    const snapFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number; floorShort: number } => {
       tick();
-      const m = metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
-      return { fx: fxOf(m), zMin: m.zMinOhm };
+      const { work } = buildWork(ps);
+      const m = metricsOn(work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
+      /* G-18 — THE FLOOR, READ WHERE THE BARRIER READS IT. `m.zMinOhm` is the
+       * evaluation grid's minimum, and on a measurement set whose far-field
+       * span starts above the impedance minimum that grid is blind to the dip
+       * the gate refuses — V33's finding, on the snap: the demo's chain grid
+       * begins at 397 Hz, the woofer pair's saddle sits at 82 Hz, and the snap
+       * ranked twenty-nine coils on a shortfall it could not see. The barrier's
+       * own reading (`barrierShortOhm`, exact: no tracker) is the graded
+       * quantity on the gate's band; without a floor or without a place to
+       * read it the term is zero and the score is what it was. */
+      const floorShort = ampFloorOhm === null ? 0 : barrierShortOhm(m, work, true);
+      return { fx: fxOf(m), zMin: m.zMinOhm, floorShort };
     };
-    const zPre = snapFxZ(cur.parts).zMin;
+    const pre = snapFxZ(cur.parts);
+    const zPre = pre.zMin;
     const zSnapTarget = ampFloorOhm === null ? zPre : Math.min(ampFloorOhm, zPre);
     const snapScore = (ch: (CatalogPick | null)[]): number => {
       const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
       const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
       let fx: number;
       let zMin: number;
+      let floorShort: number;
       try {
-        ({ fx, zMin } = snapFxZ(applied(ch)));
+        ({ fx, zMin, floorShort } = snapFxZ(applied(ch)));
       } catch (caught) {
         rethrowIfPlatformError(caught);
         return 1e12;
       }
-      const zShort = Math.max(0, zSnapTarget - zMin);
+      /* The same rule on both readings: aim at the floor, and never worse
+       * than the network the snap starts from. */
+      const zShort = Math.max(0, zSnapTarget - zMin, floorShort - pre.floorShort);
       return fx * (1 + 0.05 * extra) * (1 + cw * cost) * (1 + 20 * zShort);
     };
     const descend = (candSets: CatalogPick[][]): { picks: (CatalogPick | null)[]; score: number } => {
@@ -5812,7 +5941,6 @@ export function optimizeNetworkValues(
     // variant and report the percentage difference — the designer sees what
     // stacking bought instead of discovering it in the BOM.
     if (picks.some((p) => p && p.parts.length > 1)) {
-      const noStackPrefs: SnapPrefs = { ...snapPrefs, allowStacks: false };
       const singleCands = snapables.map(({ q }) => {
         const kind = KIND_OF[q.type];
         const u = PARAM_OF[kind];
@@ -5821,7 +5949,7 @@ export function optimizeNetworkValues(
           kind,
           raw / u.factor,
           3,
-          noStackPrefs,
+          { ...snapPrefsFor(q), allowStacks: false },
           posOfPart(q.partId!),
           dcrCeilFor(q),
         );
@@ -5966,7 +6094,7 @@ export function optimizeNetworkValues(
         const raw = q.params.find((x) => x.name === u.name)?.value ?? 0;
         const fit = dcrFitById[q.partId!];
         const only = fit ? (p: CatalogPart) => catalogFamilyOf(p) === fit.family : undefined;
-        return pickCandidates('L', raw / u.factor, 3, snapPrefs, posOfPart(q.partId!), Number.MIN_VALUE, only);
+        return pickCandidates('L', raw / u.factor, 3, snapPrefsFor(q), posOfPart(q.partId!), Number.MIN_VALUE, only);
       });
       const retry = descend(thick);
       const again = applied(retry.picks);
@@ -6453,6 +6581,7 @@ export function optimizeNetworkValues(
     bandNote: bandNoteText,
     ...structureNote(),
     ...(snapNote ? { snapNote } : {}),
+    ...(dcrTrackNote ? { dcrTrackNote } : {}),
     ...(infeasible ? { infeasible } : {}),
     ...(ampFloorNote ? { ampFloorNote } : {}),
     ampFloorRepair,
