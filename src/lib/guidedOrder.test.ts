@@ -181,4 +181,36 @@ describe('G-13 — the app', () => {
     expect(APP.match(/if \(v2Generated\.field\.candidates\.length === 0\) \{/g)).toHaveLength(2);
     expect(APP.match(/setVfError\(`Cannot optimise yet — \$\{v2Generated\.field\.refusals\.join\(' '\)\}`\);/g)).toHaveLength(2);
   });
+
+  it('12-11-2026 (Sander: "dit weet je toch al voordat ik een keuze maak"): an order with no window is not OFFERED, and the summary, the start button and Design it say so before a run', () => {
+    /* The refusal above is the right outcome and the wrong moment: the window
+     * at every order is known before the choice, so the choice is not offered
+     * (disabled, the reason on the button), and a project that already stands
+     * on such an order — an older project, or an expert slope — is told in the
+     * summary, on the start button (which goes to the question instead of
+     * starting) and on the Design step (where the Optimize button stays off). */
+    const i = APP.indexOf('const guidedOrderRows = useMemo(');
+    const memo = APP.slice(i, APP.indexOf('const setGuidedOrder = ', i));
+    expect(memo).toContain('const emptyCurrent = statedNow === null ? emptyAt.auto : windowAt(statedNow);');
+    expect(memo).toContain('emptyRows: rows.filter((r) => r.emptyCurrent !== null)');
+    const b = APP.indexOf("{q.kind === 'order' && (");
+    const block = APP.slice(b, APP.indexOf("{q.kind === 'parts' && (", b));
+    expect(block).toContain('const impossible = row.emptyAt[c.id] !== null;');
+    expect(block).toContain('disabled={impossible}');
+    expect(block).toContain('not offered here; pick another order.');
+    // The summary line of the order question carries the empty window.
+    const a = APP.indexOf("if (qid === 'order') {");
+    const answer = APP.slice(a, APP.indexOf("const p = selectedProfile(qid, engineV2StatedBy);", a));
+    expect(answer).toContain('r.emptyCurrent');
+    expect(answer).toContain('no window at this order (floor {f} Hz, {fr}, above ceiling {c} Hz, {cr})');
+    // The start button goes to the order question instead of starting.
+    expect(APP).toContain("const oi = qs.findIndex((q) => q.id === 'order');");
+    expect(APP).toContain("t('No window at the chosen order on {h} — fix the filter order first →'");
+    // Design it: the paragraph with the reason, and the Optimize button off in guided.
+    expect(APP).toContain('The run cannot start: {h} has no window at the chosen filter order');
+    expect(APP).toContain("disabled={vfBusy || (uiMode === 'guided' && !!guidedOrderRows && guidedOrderRows.emptyRows.length > 0)}");
+    /* …and its link lands ON the order question: the step's open-at-question-1
+     * reset spends the requested index instead of overriding it. */
+    expect(APP).toContain("v2ReqJumpRef.current = Math.max(0, GUIDED_QUESTIONS.findIndex((q) => q.id === 'order'));");
+  });
 });

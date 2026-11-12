@@ -9664,3 +9664,49 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **NIET GEDAAN, met naam:** 1e orde en BS4 (geen textbook-ladder in de bibliotheek); het
   standaardfilter op de twee benoemde v1-routes (`vfRounds`, `soloChain` — die lezen de sleutel niet);
   en de vlakheid die het kost is niet gecompenseerd — dat is precies wat "geen LCR's" betekent.
+
+### G-16-guards (een orde zonder venster wordt niet aangeboden; alleen guided-UI, 12-11-2026)
+
+- **DE AANLEIDING, in Sanders woorden:** hij kreeg de G-14-weigering ("mid→tweeter at order 2: no
+  feasible window — the floor 2614 Hz (fs) lies above the ceiling 2287 Hz (breakup) …") ná het
+  starten, en: "prima dat het er is, maar dit weet je toch al voordat ik een keuze maak?" Terecht: de
+  G-13-memo leest het venster per orde al vóór de keuze (`emptyAt`), en de rij DRUKTE het af — maar de
+  knop bleef kiesbaar, de samenvatting zweeg, en "Design it" startte een run die de generator weigert.
+- **DE REGEL: wat vooraf bekend is, wordt vooraf gezegd, en een onmogelijke keuze wordt niet
+  aangeboden.** Drie plaatsen, één bron (`guidedOrderRows`): (1) op het orde-scherm is de knop van een
+  orde zonder venster `disabled` (`v2-profile-impossible`, gedimd) met de reden erop ("No window at
+  this order: the floor (2614 Hz, fs) lies above the ceiling (2287 Hz, breakup) — not offered here;
+  pick another order."); (2) de SAMENVATTING draagt de lege kruisband op de regel van de orde-vraag
+  (`emptyCurrent` per rij — de orde waarop de overname NU staat, ook een expert-helling buiten de vier
+  woorden), en de startknop gaat naar die vraag in plaats van te starten ("No window at the chosen
+  order on mid→high — fix the filter order first →"); (3) de DESIGN-IT-stap zegt het in een alinea
+  mét een link naar de vraag, en de Optimize-knop staat uit zolang het zo is. Expert houdt de
+  weigering bij de klik: daar kiest men hellingen en geen orden.
+- **DE LINK LANDT OP DE VRAAG, en dat vroeg één correctie op G-9.** G-9 laat de eisenstap altijd op
+  vraag 1 openen (`setV2ReqIxRaw(0)` zodra de tab opent), dus de eerste versie van de link kwam op
+  "What are you building?" terecht — in de browser gezien. `v2ReqJumpRef` draagt een gevraagde index
+  over de tabwissel heen en de reset verbruikt hem (`setV2ReqIxRaw(jump ?? 0)`); zonder jump is het
+  vraag 1 zoals G-9 wil. De G-9-pin in `v2Guided.test.ts` is in V15-vorm herankerd.
+- **Bijvangst:** de klassenaam `v2-empty-window` bestond al voor de vensteruitlezing van het
+  Engine-v2-paneel; de nieuwe alinea heet `v2-empty-order`. Gevonden doordat een JS-probe de
+  verkeerde tekst terugkreeg.
+- **`guidedOrder.test.ts` +1 claim** (bronscans op de memo `emptyCurrent`/`emptyRows`, de
+  `disabled={impossible}`-knop, de samenvattingsregel, de startknop die naar de vraag gaat, de
+  Design-it-alinea, de uitgeschakelde Optimize-knop en de jump-ref); `u9Fase3.test.tsx` en
+  `v2Guided.test.ts` in V15-vorm bijgewerkt (de regex-spanne rond de startknop, de reset-vorm).
+- **BROWSERCONTROLE (dev-server, verse localStorage, driewegdemo, guided, 12-11-2026).** Vraag 6:
+  op mid→high is "2nd order (LR2)" `disabled` met de reden erop, de andere drie kiesbaar. Daarna de
+  mid-LP-helling in expert op 12 gezet (zoals een ouder project kan staan) en terug naar guided: de
+  Design-it-stap toont "The run cannot start: mid→high has no window at the chosen filter order (floor
+  2614 Hz, fs, above ceiling 2287 Hz, breakup) …" met de link, Optimize `disabled`; de link landt op
+  "Question 6 of 8" met de LR2-knop pressed én disabled; de samenvattingsregel leest "mid→high: 2nd
+  order (LR2) — no window at this order (floor 2614 Hz, fs, above ceiling 2287 Hz, breakup)" en de
+  startknop "No window at the chosen order on mid→high — fix the filter order first →", die op
+  vraag 6 landt. Eén druk op "4th order" en de regel is weer schoon, "the Quick run holds 6
+  design(s)". Console leeg.
+- **Gemeten 12-11-2026:** `npx tsc -b` groen. `npm run test:fast` **263,5 s, 233 bestanden (232
+  geslaagd, 1 overgeslagen), 3072 tests (3068 geslaagd, 4 overgeslagen), in één keer groen, alleen
+  gedraaid met de dev-server gestopt; laatste bronbewerking 12:28, run gestart 12:29:46.** +1 test
+  tegen G-15's 3071, exact de nieuwe claim; geen nieuw bestand. **Geen volle run:** G-16 raakt
+  uitsluitend `App.tsx`, `index.css`, `nl.ts` en drie tests — geen engine-, poort-, venster-,
+  metriek- of corpuscode, en de generator die weigert is die van G-14, onaangeraakt.

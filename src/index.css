@@ -5000,6 +5000,12 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
   padding: 0.6rem 0.7rem;
   white-space: normal;
 }
+/* 12-11-2026 — an order with no window on this pair is not offered: dimmed,
+   not clickable, the reason stays readable on the button. */
+.v2-profile-impossible {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .v2-profile small {
   color: var(--muted);
   font-size: 0.78rem;

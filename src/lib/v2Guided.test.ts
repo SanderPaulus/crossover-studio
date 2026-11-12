@@ -474,7 +474,11 @@ describe('App.tsx walks this route', () => {
        it was ever finished is remembered (`ads-v2-req-done`), for the tick.
        WHY: Sander — reopening on question 6 read as "already done". */
     expect(APP).toContain('const [v2ReqIx, setV2ReqIxRaw] = useState<number>(0);');
-    expect(APP).toContain("if (designTab === 'requirements') setV2ReqIxRaw(0);");
+    /* 12-11-2026 — the reset spends a requested jump first (the Design step's
+     * link to the filter-order question); with none it is question 1 as
+     * before. */
+    expect(APP).toContain('setV2ReqIxRaw(jump ?? 0);');
+    expect(APP).toContain('const jump = v2ReqJumpRef.current;');
     expect(APP).toContain("localStorage.setItem('ads-v2-req-done', '1');");
     expect(APP).toContain('requirements: v2ReqDone,');
   });

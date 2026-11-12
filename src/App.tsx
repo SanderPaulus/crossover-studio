@@ -2152,9 +2152,16 @@ export default function App() {
     if (designTab === 'requirements' && uiMode !== 'guided')
       setDesignTab('filters');
   }, [designTab, uiMode]);
-  /* Opening the step begins the walk at question 1 (08-11-2026). */
+  /* Opening the step begins the walk at question 1 (08-11-2026) — unless a
+     link asked for one question by index (12-11-2026: the Design step's "go
+     to the filter-order question"), which the ref carries across the tab
+     switch and which is spent on arrival. */
+  const v2ReqJumpRef = useRef<number | null>(null);
   useEffect(() => {
-    if (designTab === 'requirements') setV2ReqIxRaw(0);
+    if (designTab !== 'requirements') return;
+    const jump = v2ReqJumpRef.current;
+    v2ReqJumpRef.current = null;
+    setV2ReqIxRaw(jump ?? 0);
   }, [designTab]);
   /** 08-11-2026 — guided's run size: quick or extended, the one `fieldMode` expert sets. */
   const guidedRunSize = () => {
@@ -6862,6 +6869,13 @@ export default function App() {
           return [c.id, per.length > 0 && per.every((e) => e !== null) ? per[0] : null];
         }),
       ) as Record<GuidedOrderChoice, ReturnType<typeof windowAt>>;
+      /* 12-11-2026 (Sander: "dit weet je toch al voordat ik een keuze maak") —
+       * the window at the order the handover STANDS on now, so the summary and
+       * the start button can say it before a run is asked for. An order that
+       * reads as a button is that button's entry; an expert slope outside the
+       * four words (`'other'`) is read at the order it states. */
+      const statedNow = statedOrderOfSlopes(current[i][0], current[i][1]);
+      const emptyCurrent = statedNow === null ? emptyAt.auto : windowAt(statedNow);
       return {
         i,
         label: `${wi.lower}→${wi.upper}`,
@@ -6872,9 +6886,10 @@ export default function App() {
         otherSource: binding?.binding?.source ?? null,
         counts,
         emptyAt,
+        emptyCurrent,
       };
     });
-    return { rows, available, mode, countCurrent: countWith(current) };
+    return { rows, available, mode, countCurrent: countWith(current), emptyRows: rows.filter((r) => r.emptyCurrent !== null) };
     /* Whether a row is still the app's default is read at RENDER time, in the
      * question block: `appDefaultValues()` reads state declared further down
      * this component, and a memo here would hit it before initialisation —
@@ -20011,7 +20026,17 @@ export default function App() {
                   return guidedOrderRows.rows
                     .map((r) => {
                       const c = GUIDED_ORDER_CHOICES.find((x) => x.id === r.choice);
-                      return `${r.label}: ${c ? t(c.label) : `${r.slopes[0]} / ${r.slopes[1]} dB/oct`}`;
+                      /* 12-11-2026 — a handover standing on an order with no window
+                         says so in the summary, before anyone presses start. */
+                      const empty = r.emptyCurrent
+                        ? ` — ${t('no window at this order (floor {f} Hz, {fr}, above ceiling {c} Hz, {cr})', {
+                            f: Math.round(r.emptyCurrent.floorHz ?? 0),
+                            fr: r.emptyCurrent.floorRule ?? '?',
+                            c: Math.round(r.emptyCurrent.ceilingHz ?? 0),
+                            cr: r.emptyCurrent.ceilingRule ?? '?',
+                          })}`
+                        : '';
+                      return `${r.label}: ${c ? t(c.label) : `${r.slopes[0]} / ${r.slopes[1]} dB/oct`}${empty}`;
                     })
                     .join(' · ');
                 }
@@ -20044,6 +20069,13 @@ export default function App() {
                     className="step-next"
                     onClick={() => {
                       if (!atEnd) return setV2ReqIx(ix + 1);
+                      /* 12-11-2026 — a handover with no window at its order is
+                         known here already: the button goes to that question
+                         instead of starting a run the generator would refuse. */
+                      if (guidedOrderRows && guidedOrderRows.emptyRows.length > 0) {
+                        const oi = qs.findIndex((q) => q.id === 'order');
+                        if (oi >= 0) return setV2ReqIx(oi);
+                      }
                       /* 08-11-2026 (Sander): after the last answer the
                          design is simulated — the same start as the palette's
                          "Optimize", on the Design step where the run shows. */
@@ -20061,9 +20093,13 @@ export default function App() {
                     }}
                   >
                     {atEnd
-                      ? result && !vfBusy
-                        ? t('Design it — start the run →')
-                        : t('Next: Design it →')
+                      ? guidedOrderRows && guidedOrderRows.emptyRows.length > 0
+                        ? t('No window at the chosen order on {h} — fix the filter order first →', {
+                            h: guidedOrderRows.emptyRows.map((r) => r.label).join(', '),
+                          })
+                        : result && !vfBusy
+                          ? t('Design it — start the run →')
+                          : t('Next: Design it →')
                       : ix === qs.length - 1
                         ? t('Review your answers →')
                         : t('Next question →')}
@@ -20341,12 +20377,19 @@ export default function App() {
                                           const built = ordersBuilt(c.id, row.otherDemand, guidedOrderRows.available, guidedOrderRows.mode);
                                           const names = built.orders.map((o) => alignmentNameAt(o, AUTO_STRUCTS)).join(', ');
                                           const on = row.choice === c.id;
+                                          /* 12-11-2026 — an order with no window on this pair is
+                                             known BEFORE the choice, so it is not offered: the button
+                                             is disabled and says why. The row note below carries the
+                                             two edges with their rules. */
+                                          const impossible = row.emptyAt[c.id] !== null;
                                           return (
                                             <button
                                               key={c.id}
                                               type="button"
-                                              className={`v2-profile${on ? ' active-toggle' : ''}`}
+                                              className={`v2-profile${on ? ' active-toggle' : ''}${impossible ? ' v2-profile-impossible' : ''}`}
                                               aria-pressed={on}
+                                              disabled={impossible}
+                                              aria-disabled={impossible}
                                               onClick={() => setGuidedOrder(row.i, guidedOrderRows.rows.length, c.id)}
                                             >
                                               <strong>{t(c.label)}</strong>
@@ -20368,7 +20411,7 @@ export default function App() {
                                                 {row.emptyAt[c.id] && (
                                                   <span className="nl-warning">
                                                     {' · '}
-                                                    {t('No window at this order: the floor ({f} Hz, {fr}) lies above the ceiling ({c} Hz, {cr}) — nothing to build, the run refuses.', {
+                                                    {t('No window at this order: the floor ({f} Hz, {fr}) lies above the ceiling ({c} Hz, {cr}) — not offered here; pick another order.', {
                                                       f: Math.round(row.emptyAt[c.id]!.floorHz ?? 0),
                                                       fr: row.emptyAt[c.id]!.floorRule ?? '?',
                                                       c: Math.round(row.emptyAt[c.id]!.ceilingHz ?? 0),
@@ -20501,6 +20544,34 @@ export default function App() {
                 <p>
                   {t('One button: the app designs crossovers within what your measurements allow and checks each one against your answers. You can watch them come in and cancel at any time.')}
                 </p>
+                {/* 12-11-2026 — a handover with no window at its order is known
+                    before the button is pressed; say it here and point at the
+                    question, instead of starting a run the generator refuses. */}
+                {guidedOrderRows && guidedOrderRows.emptyRows.length > 0 && (
+                  <p className="nl-warning v2-empty-order">
+                    {guidedOrderRows.emptyRows
+                      .map((r) =>
+                        t('The run cannot start: {h} has no window at the chosen filter order (floor {f} Hz, {fr}, above ceiling {c} Hz, {cr}). Choose another order under “What it must meet”.', {
+                          h: r.label,
+                          f: Math.round(r.emptyCurrent!.floorHz ?? 0),
+                          fr: r.emptyCurrent!.floorRule ?? '?',
+                          c: Math.round(r.emptyCurrent!.ceilingHz ?? 0),
+                          cr: r.emptyCurrent!.ceilingRule ?? '?',
+                        }),
+                      )
+                      .join(' ')}{' '}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => {
+                        v2ReqJumpRef.current = Math.max(0, GUIDED_QUESTIONS.findIndex((q) => q.id === 'order'));
+                        setDesignTab('requirements');
+                      }}
+                    >
+                      {t('Go to the filter-order question →')}
+                    </button>
+                  </p>
+                )}
                 {guidedRunSize()}
               </div>
             )}
@@ -20548,7 +20619,10 @@ export default function App() {
                     /* Guided has no range to change, so the pre-start window
                        notice would only stop the run (08-11-2026). */
                     onClick={() => void runVfOptimize(uiMode === 'guided' ? { acknowledgedWindowNotice: true } : {})}
-                    disabled={vfBusy}
+                    /* 12-11-2026 — in guided the button stays off while a handover
+                       stands on an order with no window (the paragraph above says
+                       which); expert keeps the refusal at the click. */
+                    disabled={vfBusy || (uiMode === 'guided' && !!guidedOrderRows && guidedOrderRows.emptyRows.length > 0)}
                     title={
                       threeWay
                         ? t('3-way: staged 2D scan — LR4 targets + measured level trims per (low, high) handover candidate, per-branch synthesis, assembled two-pair tune; the amp-load verdict gates the ranking. Winner lands in the Working tab.')

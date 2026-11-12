@@ -2294,8 +2294,15 @@ export const nl: Record<string, string> = {
     'Niemand heeft dit gekozen: het is waar de app begint (een doel van 24 dB/oct op de onderste flank van de overname, en dat eist 4e orde), en het stuurt het veld tot je het hier of in expert verandert.',
   '{s} dB/oct on both flanks': '{s} dB/oct op beide flanken',
   'frees both flanks': 'laat beide flanken vrij',
-  'No window at this order: the floor ({f} Hz, {fr}) lies above the ceiling ({c} Hz, {cr}) — nothing to build, the run refuses.':
-    'Geen venster bij deze orde: de vloer ({f} Hz, {fr}) ligt boven het plafond ({c} Hz, {cr}) — niets te bouwen, de run weigert.',
+  'No window at this order: the floor ({f} Hz, {fr}) lies above the ceiling ({c} Hz, {cr}) — not offered here; pick another order.':
+    'Geen venster bij deze orde: de vloer ({f} Hz, {fr}) ligt boven het plafond ({c} Hz, {cr}) — hier niet aangeboden; kies een andere orde.',
+  'no window at this order (floor {f} Hz, {fr}, above ceiling {c} Hz, {cr})':
+    'geen venster bij deze orde (vloer {f} Hz, {fr}, boven plafond {c} Hz, {cr})',
+  'No window at the chosen order on {h} — fix the filter order first →':
+    'Geen venster bij de gekozen orde op {h} — zet eerst de filterorde recht →',
+  'The run cannot start: {h} has no window at the chosen filter order (floor {f} Hz, {fr}, above ceiling {c} Hz, {cr}). Choose another order under “What it must meet”.':
+    'De run kan niet starten: {h} heeft geen venster bij de gekozen filterorde (vloer {f} Hz, {fr}, boven plafond {c} Hz, {cr}). Kies een andere orde onder “Wat het moet halen”.',
+  'Go to the filter-order question →': 'Naar de vraag over de filterorde →',
   'The flanks read {a} / {b} dB/oct and the order follows the steeper one; pressing the button sets both flanks to {s}.':
     'De flanken staan op {a} / {b} dB/oct en de orde volgt de steilste; een druk op de knop zet beide flanken op {s}.',
   'With these choices the {mode} run holds {n} design(s).': 'Met deze keuzes telt de run “{mode}” {n} ontwerp(en).',
