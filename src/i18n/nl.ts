@@ -2264,12 +2264,13 @@ export const nl: Record<string, string> = {
     'Ertussenin: sommeert vlak bij beide polariteiten, dus op deze overname worden beide armen gebouwd en beoordeeld.',
   '4th order (LR4)': '4e orde (LR4)',
   // ── G-15: het standaardfilter ──────────────────────────────────────
-  'Standard filter': 'Standaardfilter',
-  'Free': 'Vrij',
-  'The textbook ladder of the chosen order per handover, plus the level work it needs — no Zobel, trap, shelf or bypass, no pruning. Fewer parts, faster.':
-    'De textbook-ladder van de gekozen orde per overname, plus het niveauwerk dat hij nodig heeft — geen Zobel, val, shelf of bypass, geen snoei. Minder onderdelen, sneller.',
-  'The engine may add correction networks where the measured driver warrants them, and prunes and escalates (the default).':
-    'De engine mag correctienetwerken toevoegen waar de gemeten driver erom vraagt, en snoeit en escaleert (de standaard).',
+  'Filter topology — bare or full?': 'Filteropbouw — kaal of volledig?',
+  'Standard filter (bare)': 'Standaardfilter (kaal)',
+  'Full filter (free)': 'Volledig filter (vrij)',
+  'Only the textbook ladder of the chosen order per handover, plus the level work it needs — no Zobel, trap, shelf or bypass, no pruning. Fewer parts, faster, less flat.':
+    'Alleen de textbook-ladder van de gekozen orde per overname, plus het niveauwerk dat hij nodig heeft — geen Zobel, val, shelf of bypass, geen snoei. Minder onderdelen, sneller, minder vlak.',
+  'The engine may add correction networks where the measured driver warrants them, and prunes and escalates (the default). Flatter, more parts, slower.':
+    'De engine mag correctienetwerken toevoegen waar de gemeten driver erom vraagt, en snoeit en escaleert (de standaard). Vlakker, meer onderdelen, langzamer.',
   'Topology': 'Topologie',
   'standard — the textbook ladder of the chosen order, with its level work, nothing else':
     'standaard — de textbook-ladder van de gekozen orde, met zijn niveauwerk, verder niets',

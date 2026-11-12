@@ -5006,6 +5006,15 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
   opacity: 0.45;
   cursor: not-allowed;
 }
+/* G-17 — the filter topology as a named choice: a heading of its own above
+   the two cards, on the order question, the summary and the Design step. */
+.guided-topology {
+  margin: 0.6rem 0 0.4rem;
+}
+.guided-topology h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
 .v2-profile small {
   color: var(--muted);
   font-size: 0.78rem;

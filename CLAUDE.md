@@ -9710,3 +9710,39 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   tegen G-15's 3071, exact de nieuwe claim; geen nieuw bestand. **Geen volle run:** G-16 raakt
   uitsluitend `App.tsx`, `index.css`, `nl.ts` en drie tests — geen engine-, poort-, venster-,
   metriek- of corpuscode, en de generator die weigert is die van G-14, onaangeraakt.
+
+### G-17-guards (de filteropbouw als benoemde keuze: kaal of volledig; alleen guided-UI, 12-11-2026)
+
+- **DE AANLEIDING, in Sanders woorden:** "ik zie de keuze niet terug voor een kale orde filter" en
+  "moet de keuze misschien duidelijker gemaakt worden tussen een standaard (kaal) filter en
+  uitgebreid?" De G-15-schakelaar stond als twee kaarten "Vrij" / "Standaardfilter" bovenaan vraag 6,
+  ZONDER kop — en twee kaarten zonder kop lezen als uitleg bij de vraag en niet als keuze. Op Design it
+  (naast Snel/Uitgebreid) stond niets, en de samenvatting noemde hem niet.
+- **DE REGEL: één keuze, één kop, één helper, drie plekken.** `guidedTopologyChoice()` in `App.tsx`
+  tekent de kop "Filter topology — bare or full?" met de twee kaarten "Standard filter (bare)" /
+  "Full filter (free)", en wordt op DRIE plekken aangeroepen: vraag 6 (in plaats van de inline
+  kaarten), de samenvatting (onder Snel/Uitgebreid) en de Design-it-stap (onder de rungrootte). De
+  samenvattingsregel van de orde-vraag eindigt sindsdien op de opbouw ("… · Standard filter (bare)").
+  Dezelfde `topology`-instelling als expert, geen tweede staat.
+- **"Volledig" en niet "uitgebreid", met opzet.** "Uitgebreid" (Extended) is sinds G-10 de naam van
+  de RUNGROOTTE, die twee kaarten verderop staat; een tegenhanger van "kaal" die hetzelfde woord
+  draagt zou twee keuzes in één woord laten samenvallen. De kaarthints zeggen de prijs in beide
+  richtingen ("Minder onderdelen, sneller, minder vlak" / "Vlakker, meer onderdelen, langzamer").
+- **`guidedOrder.test.ts` +1 claim** (de helper precies één keer gedefinieerd, drie render-punten, de
+  kop en beide labels, geen inline `TOPOLOGY_CHOICES.map(` meer op de orde-vraag, de opbouw in de
+  samenvattingsregel, en geen kaartlabel dat "Extended" leent). NL-sleutels in `nl.ts`, de oude vier
+  G-15-sleutels vervangen.
+- **BROWSERCONTROLE (dev-server, verse localStorage, driewegdemo, guided, 12-11-2026):** vraag 6
+  toont de kop met de twee kaarten (Volledig gedrukt); na "Standard filter (bare)" leest de
+  samenvattingsregel "… mid→high: 4th order (LR4) · Standard filter (bare)", staan dezelfde kaarten
+  onder Snel/Uitgebreid op het eindscherm (Standaard gedrukt) en op Design it onder de rungrootte,
+  en heet de startknop gewoon "Design it — start the run →". **De NL-tekst is niet in de browser
+  gezien** — de taalknop pakte in de pane niet — en is gecontroleerd op SLEUTEL: elk van de vijf
+  nieuwe strings staat exact één keer in `nl.ts`. Console: alleen de Vite-HMR-websocketfouten van
+  de pane, geen app-fout.
+- **Gemeten 12-11-2026:** `npx tsc -b` groen. `npm run test:fast` **256,7 s, 233 bestanden (232
+  geslaagd, 1 overgeslagen), 3073 tests (3069 geslaagd, 4 overgeslagen), in één keer groen, alleen
+  gedraaid met de dev-server gestopt; laatste bronbewerking 12:46, run gestart 12:48:39.** +1 test
+  tegen G-16's 3072, exact de nieuwe claim; geen nieuw bestand. **Geen volle run:** G-17 raakt
+  uitsluitend `App.tsx`, `index.css`, `nl.ts` en één test — geen engine-, poort-, venster-, metriek-
+  of corpuscode.

@@ -213,4 +213,27 @@ describe('G-13 — the app', () => {
      * reset spends the requested index instead of overriding it. */
     expect(APP).toContain("v2ReqJumpRef.current = Math.max(0, GUIDED_QUESTIONS.findIndex((q) => q.id === 'order'));");
   });
+
+  it('G-17 (12-11-2026): the filter topology is a NAMED choice — one helper, a heading, drawn on the order question, the summary and Design it, and named in the summary line', () => {
+    /* Sander: "ik zie de keuze niet terug voor een kale orde filter" — two
+     * cards without a heading read as explanation. One render helper (the
+     * cards cannot drift apart), a heading that says what is chosen, and the
+     * word is "full", never "extended": extended is the run size. */
+    expect(APP.match(/const guidedTopologyChoice = \(\) => \{/g)).toHaveLength(1);
+    expect(APP.match(/\{guidedTopologyChoice\(\)\}/g)).toHaveLength(3);
+    expect(APP).toContain("t('Filter topology — bare or full?')");
+    expect(APP).toContain("t('Standard filter (bare)')");
+    expect(APP).toContain("t('Full filter (free)')");
+    // The cards are not built a second time inline on the order question.
+    const b = APP.indexOf("{q.kind === 'order' && (");
+    const block = APP.slice(b, APP.indexOf("{q.kind === 'parts' && (", b));
+    expect(block).not.toContain('TOPOLOGY_CHOICES.map(');
+    expect(block).toContain('{guidedTopologyChoice()}');
+    // The summary line of the order question carries the topology.
+    const a = APP.indexOf("if (qid === 'order') {");
+    const answer = APP.slice(a, APP.indexOf('const p = selectedProfile(qid, engineV2StatedBy);', a));
+    expect(answer).toContain("t('Standard filter (bare)') : t('Full filter (free)')");
+    // Neither card label borrows the run size's word.
+    expect(APP).not.toContain("t('Extended filter");
+  });
 });

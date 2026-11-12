@@ -2186,6 +2186,43 @@ export default function App() {
       </div>
     );
   };
+  /**
+   * G-15/G-17 — THE FILTER TOPOLOGY AS A NAMED CHOICE: bare or full. The one
+   * `topology` setting expert states in its panel, drawn as two cards under a
+   * heading of their own — on the order question, on the summary and on the
+   * Design step beside the run size (Sander, 12-11-2026: two cards without a
+   * heading read as explanation, not as a choice). "Full", not "extended":
+   * extended is the run size, and the two must not share a word.
+   */
+  const guidedTopologyChoice = () => {
+    const cur = topologyChoiceOf(engineV2Settings.topology);
+    return (
+      <div className="guided-topology">
+        <h4>{t('Filter topology — bare or full?')}</h4>
+        <div className="v2-profile-choices">
+          {TOPOLOGY_CHOICES.map((c) => {
+            const on = cur === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                className={`v2-profile${on ? ' active-toggle' : ''}`}
+                aria-pressed={on}
+                onClick={() => setV2Field('topology', c === 'standard' ? 'standard' : '')}
+              >
+                <strong>{c === 'standard' ? t('Standard filter (bare)') : t('Full filter (free)')}</strong>
+                <small>
+                  {c === 'standard'
+                    ? t('Only the textbook ladder of the chosen order per handover, plus the level work it needs — no Zobel, trap, shelf or bypass, no pruning. Fewer parts, faster, less flat.')
+                    : t('The engine may add correction networks where the measured driver warrants them, and prunes and escalates (the default). Flatter, more parts, slower.')}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
   /** E-2 — the one way a v2 field is edited: the value, and the date it was stated. */
   const setV2Field = (key: V2SettingKey, value: string) => {
     setEngineV2Settings((v) => ({ ...v, [key]: value }));
@@ -20038,7 +20075,9 @@ export default function App() {
                         : '';
                       return `${r.label}: ${c ? t(c.label) : `${r.slopes[0]} / ${r.slopes[1]} dB/oct`}${empty}`;
                     })
-                    .join(' · ');
+                    .join(' · ') +
+                    /* G-17 — the topology is part of the same answer. */
+                    ` · ${topologyChoiceOf(engineV2Settings.topology) === 'standard' ? t('Standard filter (bare)') : t('Full filter (free)')}`;
                 }
                 const p = selectedProfile(qid, engineV2StatedBy);
                 if (p) return t(p.name);
@@ -20162,6 +20201,7 @@ export default function App() {
                         </p>
                       )}
                       {guidedRunSize()}
+                      {guidedTopologyChoice()}
                       {nav(true)}
                     </div>
                   ) : (
@@ -20347,28 +20387,9 @@ export default function App() {
                               ) : (
                                 <>
                                   {/* G-15 — THE STANDARD FILTER, chosen beside the order: the
-                                     same `topology` setting expert states in its panel. */}
-                                  <div className="v2-profile-choices">
-                                    {TOPOLOGY_CHOICES.map((c) => {
-                                      const on = topologyChoiceOf(engineV2Settings.topology) === c;
-                                      return (
-                                        <button
-                                          key={c}
-                                          type="button"
-                                          className={`v2-profile${on ? ' active-toggle' : ''}`}
-                                          aria-pressed={on}
-                                          onClick={() => setV2Field('topology', c === 'standard' ? 'standard' : '')}
-                                        >
-                                          <strong>{c === 'standard' ? t('Standard filter') : t('Free')}</strong>
-                                          <small>
-                                            {c === 'standard'
-                                              ? t('The textbook ladder of the chosen order per handover, plus the level work it needs — no Zobel, trap, shelf or bypass, no pruning. Fewer parts, faster.')
-                                              : t('The engine may add correction networks where the measured driver warrants them, and prunes and escalates (the default).')}
-                                          </small>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
+                                     same `topology` setting expert states in its panel. G-17:
+                                     under its own heading, the same cards as on Design it. */}
+                                  {guidedTopologyChoice()}
                                   {guidedOrderRows.rows.map((row) => (
                                     <div key={row.label} className="guided-order-row">
                                       <h4>{row.label}</h4>
@@ -20573,6 +20594,7 @@ export default function App() {
                   </p>
                 )}
                 {guidedRunSize()}
+                {guidedTopologyChoice()}
               </div>
             )}
             {uiMode === 'guided' && nonStandard.length > 0 && (
