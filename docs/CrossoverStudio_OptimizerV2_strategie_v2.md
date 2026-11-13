@@ -11488,6 +11488,111 @@ gemeenschappelijke band vanaf 396,7 Hz). Op een vlakke som komen zij binnen de d
 die uitdooft niet (KAND_V2_1 zonder omkering: ±9,24 tegen ±9,99). Dat is een bandkeuze, geen defect.
 
 
+### V54 — nf-merge/1.0 fit een vrije faseverschuiving op ongelijk bewerkte curves (I-4, 13-11-2026; open)
+
+**Wat er staat.** `mergeNearField` (`src/lib/nfMerge.ts`, `nf-merge/1.0`) fit niveau, looptijd én een vrije
+faseverschuiving tussen het nabijveld (ongegated) en het vervelveld (gegated). Volgens a/2r (Keele AN4)
+verschillen die twee alleen in niveau en looptijd; een vrije offset absorbeert wat het model niet verklaart.
+
+**Bewijs** (`tools/nf_merge_reference.py`, secties A/B): woofer boven +13,4°, woofer onder −70,9°, mid +54,8°.
+Met de offset vast op 0 stijgt het residu naar 3,3° / 7,4° / 7,7°, en de fase rond de overname verschuift
+tot 24,8° (mid @ 362 Hz). Dezelfde data gelijk gegate en uit één sessie haalt 2,2° / 2,3° / 3,5° zonder offset
+(sectie D, `src/lib/nfMergeV2.test.ts`).
+
+**Status.** v1 blijft staan tot hij uitgefaseerd is (I-4 fase 3); de vervanger is `nf-merge/2.0`.
+
+### V55 — "de sessiemix verklaart de I-2-woofers" (I-4 bevinding 2) — INGETROKKEN door V60
+
+**Wat er stond** (startprompt I-4 v2, bevinding 2): de I-2-woofermerges zetten het septembernabijveld op
+het augustusvervelveld, en die sessiemix verklaart het residu; "ook gelijk gegate onverklaard: 10,6° en 5,0°"
+(sectie C).
+
+**Waarom het niet klopt.** Sectie C, en de kern-test die de I-2-combinatie markeert, gaten de FRD van het
+vervelveld met een venster dat ARTA niet gebruikt heeft (V60). Met hetzelfde venster op beide helften —
+augustusvervelveld uit de PIR, venster van sectie D — versmelt het septembernabijveld net zo schoon als
+het augustusnabijveld:
+
+| woofer | nabijveld | residu | vrije offset → residu |
+| --- | --- | --- | --- |
+| onder | augustus (PIR) | 2,18° / 0,212 dB | −12,1° → 0,30° |
+| onder | september (FRD) + poort | 2,93° / 0,232 dB | −16,2° → 0,36° |
+| boven | augustus (PIR) | 2,31° / 0,570 dB | +12,0° → 0,84° |
+| boven | september (FRD) + poort | 1,97° / 0,606 dB | +9,8° → 0,88° |
+
+**Wat blijft staan.** Een merge over sessies heen wordt gemeld (de kern doet dat, op beide woofers, gepind
+in `nfMergeV2.test.ts`). Dat de september-nabijvelden met ÉÉN woofer aangedreven zijn (M-2) is een feit over
+de aandrijftoestand en wordt hierdoor niet weerlegd; in de fitband (300–576 Hz) doet het aantoonbaar niets.
+
+### V56 — FRD-exports dragen de sessietijdbasis niet (I-4 bevinding 6, 13-11-2026)
+
+**Gemeten** (kruiscorrelatie van de FRD-impuls tegen de ruwe PIR, casus 1 augustus): het fasenulpunt van
+élke vervelveld-FRD (`*_hor_0.txt`) ligt op PIR-tijd 8,750 ms, terwijl de kop `Reference time = 2,5 ms`
+zegt — de impuls is vóór de export 6,25 ms verschoven. Het fasenulpunt van de nabijveld-FRD's ligt op
+6,312 ms, gelijk aan hun eigen `Reference time = 6,313 ms` (onverschoven). De directe klank ligt in de
+PIR op 9,229–9,750 ms. Alleen de PIR (dual-channel, meettype 2) draagt de gedeelde t = 0; de looptijdcheck
+van `nf-merge/2.0` (`timing`) kan alleen daarop. PIR is daarom de primaire invoer, FRD de terugval.
+
+### V57 — `floorBounceGate` rekent het reflectiepad alleen voor het referentiepunt (I-4 bevinding 7; open)
+
+`floorBounceGate` (`src/lib/cabinet.ts`) spiegelt één bron op `refHeightMm`. Aanroepers: `App.tsx`
+(de voorspelde gate van de meetopstelling) en `MeasuringGuide.tsx`; getest in `cabinet.test.ts`. Een
+driver die hoger of lager zit dan het referentiepunt heeft een ander reflectiepad, en een opstelling met
+meer dan één vlak (vloer, tafel, plafond) heeft er meer. Hoort per driver en per vlak te rekenen (I-4
+fase 2). Niet gerepareerd bij het boeken.
+
+### V58 — de poortdiameter in het merge-blok is teruggerekend, niet gemeten (I-4 bevinding 8; open)
+
+`D 74 mm` in de kop van de I-2-woofermerges is teruggerekend uit Keele's gewicht g = 0,41. Helmholtz op de
+testkast (53,2 L, 600 mm, gemeten f_b 29,7–31,3 Hz) vraagt ~110 cm² in de taille: een rechte buis van
+43 cm² geeft 20,0 Hz, van 110 cm² 32,0 Hz (zonder eindcorrectie). Het gewicht 0,205 → 0,328 (Ø74 → Ø118 mm)
+verandert de merge met +3,2 dB op 30 Hz, +2,0 op 40, +1,2 op 50 en +0,1 op 100 Hz, en de fit in
+300–576 Hz niet (2,2° met en zonder poort). Gemeld; Sander meet de mond. De data wordt niet aangepast.
+
+### V59 — de tafelblad-verklaring van de woofers (startprompt I-4 versie 1) — INGETROKKEN
+
+Versie 1 van de startprompt verklaarde het woofer-residu met een spiegelvlak (tafelblad, microfoon 0,70 m
+erboven). Dat was een fit op de verkeerde combinatie (de I-2-sessiemix, zie V55 en V60). De looptijden in
+de PIR's zeggen: microfoon op referentiehoogte, ~1 m. Casus 1 heeft geen vlak binnen de gate nodig; het
+vlakmodel blijft in `nf-merge/2.0` voor opstellingen die het wél hebben, maar casus 1 is er geen
+acceptatiecase voor. Opgeschreven zodat niemand de verklaring terugvindt en opnieuw gelooft.
+
+### V60 — ARTA's `Left window` en `Right window` zijn lengtes vanaf de `Reference time` (I-4, 13-11-2026; open)
+
+**Wat er staat.** engine2 leest de gate-lengte van een ARTA-export als `T = Right window − Reference time`
+(`src/lib/engine2/ingest/manifest.ts`, r. 301 en 347). Op casus 1 (`Left window = 0 ms`,
+`Reference time = 2,5 ms`, `Right window = 5,021 ms, Tukey 0.25`) geeft dat T = 2,521 ms en 1/T = 396,7 Hz:
+de gate-vloer `FF_vloer_header` van élk gegate casus-1-bestand. Sectie C van het referentiescript
+(`ff_window`) en de kern-test van de I-2-combinatie lezen de kop op dezelfde manier.
+
+**Bewijs, twee onafhankelijke metingen.**
+(1) De FRD van het vervelveld gedeeld door FFT(venster × ruwe PIR), uitgelijnd op het fasenulpunt, hoort de
+microfoonkalibratie te zijn: glad en voor elke driver gelijk. Met de rechterrand op nulpunt + 2,521 ms is
+het quotiënt ruw (spreiding tussen buren 0,022 dB / 0,21° op woofer onder); met nulpunt + 5,021 ms is het
+op alle drie de drivers vlak en identiek (0,0019 dB / 0,000°), 133,9 dB over 100–2000 Hz. De rechterrand
+ligt binnen ±0,01 ms op 5,021, de taper is Tukey 0,25; de linkerrand is niet te bepalen (voor de aankomst
+is het stil).
+(2) Het fasenulpunt van de nabijveld-FRD's ligt op hun `Reference time` (V56). Het nulpunt is dus de
+referentie, en de rechterrand ligt 5,021 ms erna: `Right window` is een lengte, geen positie.
+
+**Gevolg.** T = 5,021 ms en 1/T = 199,2 Hz, niet 396,7 Hz. De v1-lezer (`xoWindow.ts`, `gateHeaderOf`) las
+5,021 als gate-lengte en kwam op 199 Hz; engine2 is op dit punt een factor ~2 te streng (de veilige kant,
+maar een verkeerd getal). Op de FRD-route van `nf-merge/2.0`, gelijk gegate met het juiste venster:
+
+| | venster ref + 2,521 (zoals gelezen) | venster ref + 5,021 (zoals gebruikt) |
+| --- | --- | --- |
+| augustus/augustus, woofer onder | 11,83° | 6,78° |
+| I-2 (sept./aug. + poort), woofer onder | 12,26° | 9,94° |
+| I-2, woofer boven | 3,29° | 3,82° |
+
+De resterende 6–7° tegen de 2,2° van sectie D is de vensterLENGTE en niet de reconstructie: de PIR-route
+met precies het FRD-venster geeft 7,75° / 6,73° / 5,69° tegen 6,78° / 6,36° / 5,76° via de FRD. Het
+FRD-venster loopt tot ~4 ms na de directe klank, sectie D tot 2,1 ms.
+
+**Niet gerepareerd.** De lezer zit in engine2-ingest (`validity-header`, schatter-versionering), de vloer
+staat in golden refs en gedateerde bruggen, en de tweeter van de huidige meetset is nog gegate. Dat is
+buiten de omvang van I-4; eigen sessie, met versiebump en herleiding van de bruggen. Voor I-4 fase 2:
+het `nf-merge/2.0`-blok en de FRD-route lezen `Right window` als lengte vanaf de referentie.
+
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
 
