@@ -212,16 +212,16 @@ describe('D-0 — the app is wired to it', () => {
     expect(src).toContain('Solving…');
   });
 
-  it('asks the shape question once per file, not once per render', () => {
-    /* The two near-field slot reads go through the cache; the loader — which
-       runs once per dropped file and is not a render — still calls it direct. */
-    expect(src).toMatch(/const coneShape = shapeOf\(slot\.cone\?\.raw\);/);
-    expect(src).toMatch(/const farShape = shapeOf\(farSrc\?\.raw\);/);
-    expect(src).not.toMatch(/classifyMeasurementShape\((?:slot|farSrc)/);
-    /* Exactly TWO callers left: the file loader (once per dropped file, not a
-       render) and the cache itself. A third would be a second uncached read. */
-    expect((src.match(/classifyMeasurementShape\(/g) ?? []).length).toBe(2);
-    expect(src).toMatch(/if \(cache\.size >= SHAPE_CACHE_MAX\) cache\.clear\(\);/);
+  /* I-4 fase 3 (V15 form) — WHAT STOOD: the two near-field slot reads went
+     through a cache (`shapeOf`), and the loader called `classifyMeasurementShape`
+     direct — exactly two callers. WHAT STANDS: the I-2 slot and its loader left
+     App.tsx for the NF/FF-merge section, which reads the window from the FRD
+     header (`gateOf`) and never asks the shape question at all. WHY the claim
+     still holds: the D-0 cost was a PARSE IN A RENDER; with no caller in App.tsx
+     there is no render to parse in. A caller that comes back fails here. */
+  it('asks the shape question in no render of App.tsx', () => {
+    expect((src.match(/classifyMeasurementShape\(/g) ?? []).length).toBe(0);
+    expect(src).not.toMatch(/shapeOf\(/);
   });
 
   it('spells the autosave key once', () => {

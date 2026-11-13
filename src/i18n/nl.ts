@@ -2337,4 +2337,267 @@ export const nl: Record<string, string> = {
     'Boven de koperschaal is een serieweerstand weer een pad: warmte, een lager impedantieminimum, een lossere Q_es en een bas die de impedantie volgt (de 6,5 Ω van 08-11-2026).',
   'none (no series R, no shunt pad)': 'geen (geen serie-R, geen shunt-pad)',
   'series R up to a maximum, no pad': 'serie-R tot een maximum, geen pad',
+  // ── I-4 fase 3: de NF/FF-merge-sectie ──────────────────────────────
+  'the session measured the target cabinet: no load limit':
+    'de sessie mat de doelkast zelf: geen lastgrens',
+  'measured object':
+    'gemeten object',
+  'stated in the merge section':
+    'gesteld in de merge-sectie',
+  'distance':
+    'afstand',
+  'farther than {x} m':
+    'verder dan {x} m',
+  'farther than X':
+    'verder dan X',
+  'NF/FF merge':
+    'NF/FF-merge',
+  'The one place where a near field and a far field are merged. Drop a session’s impulses (.pir) together with their FRD exports — the window comes from the export’s header — and the impedance. The design branches load the result and show where it came from.':
+    'De ene plek waar een nabijveld en een vervelved worden samengevoegd. Sleep de impulsen (.pir) van een sessie hierheen, samen met hun FRD-exports — het venster komt uit de kop van de export — en de impedantie. De ontwerptakken laden het resultaat en tonen waar het vandaan komt.',
+  'Drop a measuring session here':
+    'Sleep hier een meetsessie heen',
+  '.pir + their .frd/.txt exports + .zma/.lim — or click to choose files':
+    '.pir + hun .frd/.txt-exports + .zma/.lim — of klik om bestanden te kiezen',
+  'Measuring session':
+    'Meetsessie',
+  '{n} impulse(s)':
+    '{n} impuls(en)',
+  'Time base':
+    'Tijdbasis',
+  'dual-channel, shared':
+    'tweekanaals, gedeeld',
+  'not shared — the delay is fitted only':
+    'niet gedeeld — de vertraging wordt alleen gefit',
+  'Window':
+    'Venster',
+  'From the header of the far field’s FRD export. Left and right are LENGTHS from the reference (V60).':
+    'Uit de kop van de FRD-export van het vervelved. Links en rechts zijn LENGTES vanaf de referentie (V60).',
+  'left {l} ms · reference {r} ms · right {rt} ms · Tukey {a}':
+    'links {l} ms · referentie {r} ms · rechts {rt} ms · Tukey {a}',
+  'Measured object':
+    'Gemeten object',
+  'the target cabinet (optimizer)':
+    'de doelkast (optimizer)',
+  'another object':
+    'een ander object',
+  'name':
+    'naam',
+  'baffle':
+    'front',
+  'identical to the target':
+    'gelijk aan de doelkast',
+  'own geometry':
+    'eigen geometrie',
+  'baffle width':
+    'frontbreedte',
+  'baffle height':
+    'fronthoogte',
+  'net volume':
+    'netto volume',
+  'vented':
+    'reflex',
+  'target':
+    'doel',
+  'target volume':
+    'doelvolume',
+  'same port':
+    'zelfde poort',
+  'driver count':
+    'aantal drivers',
+  'Valid for the target':
+    'Geldig voor de doelkast',
+  'level tolerance':
+    'niveautolerantie',
+  'phase tolerance':
+    'fasetolerantie',
+  'below the limit':
+    'onder de grens',
+  'below: mark as measured object':
+    'eronder: markeren als gemeten object',
+  'below: convert with the model ratio':
+    'eronder: omrekenen met de modelverhouding',
+  'state the measured object':
+    'stel het gemeten object',
+  'Set-up (required)':
+    'Opstelling (verplicht)',
+  'cabinet bottom above the floor':
+    'kastbodem boven de vloer',
+  'on':
+    'op',
+  'surface':
+    'ondergrond',
+  'the floor':
+    'de vloer',
+  'a table':
+    'een tafel',
+  'a stand':
+    'een standaard',
+  'overhang':
+    'overstek',
+  'mic to baffle':
+    'mic tot front',
+  'mic above the floor':
+    'mic boven de vloer',
+  'Planes':
+    'Vlakken',
+  'only planes within c·T/2 = {x} m of the cabinet or the mic reflect inside the window':
+    'alleen vlakken binnen c·T/2 = {x} m van de kast of de mic reflecteren binnen het venster',
+  'Set-up incomplete: {m}. A merge cannot be accepted until the set-up is stated ("unknown" counts as stated).':
+    'Opstelling onvolledig: {m}. Een merge kan pas geaccepteerd worden als de opstelling gesteld is ("onbekend" telt als gesteld).',
+  'far field only, no merge needed':
+    'alleen vervelved, geen merge nodig',
+  'Sources':
+    'Bronnen',
+  'near field':
+    'nabijveld',
+  'height above the cabinet bottom':
+    'hoogte boven de kastbodem',
+  'optimizer':
+    'optimizer',
+  '{h} mm above the floor ({from})':
+    '{h} mm boven de vloer ({from})',
+  'port':
+    'poort',
+  'none':
+    'geen',
+  'port weight':
+    'poortgewicht',
+  'port weight status':
+    'status poortgewicht',
+  'provisional':
+    'voorlopig',
+  'mouth above the cabinet bottom':
+    'monding boven de kastbodem',
+  'Model near → far':
+    'Model nabij → ver',
+  'AN4 form':
+    'AN4-vorm',
+  'shelf':
+    'shelf',
+  'shelf depth':
+    'shelfdiepte',
+  'shelf corner':
+    'shelfhoek',
+  'Fit':
+    'Fit',
+  'fit band':
+    'fitband',
+  'fit band low':
+    'fitband onder',
+  'fit band high':
+    'fitband boven',
+  'handover low':
+    'overgang onder',
+  'handover high':
+    'overgang boven',
+  'free: gain and delay; fixed: 0° or 180°':
+    'vrij: niveau en vertraging; vast: 0° of 180°',
+  'Result':
+    'Resultaat',
+  'residual':
+    'restfout',
+  'explained':
+    'verklaard',
+  'not explained':
+    'niet verklaard',
+  'Checks':
+    'Controles',
+  'valid from':
+    'geldig vanaf',
+  'why (stated)':
+    'waarom (gesteld)',
+  'valid from reason':
+    'reden geldig vanaf',
+  'reason':
+    'reden',
+  'required to accept with flags':
+    'verplicht om met vlaggen te accepteren',
+  'needs: the set-up stated, a branch, a stated "valid from", and a reason when there are flags':
+    'nodig: de opstelling gesteld, een tak, een gesteld "geldig vanaf", en een reden als er vlaggen zijn',
+  'Accept anyway, with reason…':
+    'Toch accepteren, met reden…',
+  'Accept merge':
+    'Merge accepteren',
+  'Export session…':
+    'Sessie exporteren…',
+  'target limit':
+    'doelgrens',
+  'near field + model':
+    'nabijveld + model',
+  'far field, gated as in the header':
+    'vervelved, gevensterd zoals in de kop',
+  'result':
+    'resultaat',
+  'near field + model (fitted τ)':
+    'nabijveld + model (gefitte τ)',
+  'far field, gated':
+    'vervelved, gevensterd',
+  'SPL, normalised to the result':
+    'SPL, genormaliseerd op het resultaat',
+  'Phase, delay removed, relative to the direct arrival':
+    'Fase, vertraging eruit, ten opzichte van de directe aankomst',
+  'Residual in the fit band':
+    'Restfout in de fitband',
+  'reflection model':
+    'reflectiemodel',
+  'rms {d}° / {b} dB':
+    'rms {d}° / {b} dB',
+  'ETC of the far field (0 = direct sound)':
+    'ETC van het vervelved (0 = direct geluid)',
+  'window':
+    'venster',
+  'inside the window':
+    'binnen het venster',
+  'outside the window':
+    'buiten het venster',
+  'modelled':
+    'gemodelleerd',
+  'Outside the window they do not count; an unmodelled echo inside the window above −20 dB is flagged.':
+    'Buiten het venster tellen ze niet; een ongemodelleerde echo binnen het venster boven −20 dB krijgt een vlag.',
+  'Export session':
+    'Sessie exporteren',
+  'Export session “{s}”':
+    'Sessie “{s}” exporteren',
+  'Baffle step and diffraction are in these files (full space): do not also switch on the diffraction tool in VituixCAD. Below the splice point it is the near field plus a model.':
+    'Baffle step en diffractie zitten in deze bestanden (volle ruimte): zet in VituixCAD niet óók het diffractiegereedschap aan. Onder het overgangspunt is het nabijveld plus een model.',
+  'Phase convention':
+    'Faseconventie',
+  'as measured: t = 0 on the session time base':
+    'zoals gemeten: t = 0 op de tijdbasis van de sessie',
+  'at a reference point (fase 4)':
+    'op een referentiepunt (fase 4)',
+  'minimum phase, with a warning (fase 4)':
+    'minimumfase, met waarschuwing (fase 4)',
+  'Grid':
+    'Raster',
+  'as merged (log, 48/oct)':
+    'zoals gemerged (log, 48/oct)',
+  'log 1/48 octave (fase 4)':
+    'log 1/48 octaaf (fase 4)',
+  'Nothing accepted from this session yet.':
+    'Nog niets geaccepteerd uit deze sessie.',
+  'Download package (.zip)':
+    'Pakket downloaden (.zip)',
+  'ceiling (height above floor)':
+    'plafond (hoogte boven vloer)',
+  'side wall (distance)':
+    'zijwand (afstand)',
+  'wall behind the cabinet':
+    'wand achter de kast',
+  'wall behind the mic':
+    'wand achter de mic',
+  'flags':
+    'vlaggen',
+  'not checked for reflections':
+    'niet op reflecties gecontroleerd',
+  'missing':
+    'ontbreekt',
+  'merge v2 · declared':
+    'merge v2 · verklaard',
+  '{src}: near {nf} + far {ff}{port} · session {s} · residual {res}° · valid from {vf} Hz{flags}':
+    '{src}: nabij {nf} + ver {ff}{port} · sessie {s} · restfout {res}° · geldig vanaf {vf} Hz{flags}',
+  'accepted with flags':
+    'met vlaggen geaccepteerd',
+  'Open in NF/FF merge →':
+    'Openen in NF/FF-merge →',
 };

@@ -230,7 +230,9 @@ describe('E-5 part 4 — a metric with no subject is OFF with a reason, not a cr
     expect(body).toContain('setLoaded(null)');
     expect(body).toContain('dropAngles(() => false)');
     expect(body).toContain('far: null, mergedName: null');
-    expect(body).toContain('setNfPreview(');
+    // I-4 fase 3 (V15): the I-2 preview is gone; what pointed at the branch now
+    // is the list of accepted merge-v2 sources, and it is cleared the same way.
+    expect(body).toContain('setMergeV2((m) => ({ ...m, [zKey]: [] }))');
     // And it does NOT throw the near field away with it.
     expect(body).not.toContain('cone: null');
   });

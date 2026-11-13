@@ -570,6 +570,8 @@ export interface ProjectState {
       }
     >
   >;
+  /** I-4 fase 3 — merges accepted in the NF/FF-merge section, per branch (v2 merge files). */
+  mergeV2?: Partial<Record<'low' | 'mid' | 'high', { source: string; name: string; text: string; session: string }[]>>;
   design: ProjectDesign;
 }
 
@@ -700,6 +702,20 @@ export function deserializeProject(text: string): ProjectState {
         ? d['verifyActive']
         : undefined,
     nearField: (d['nearField'] as ProjectState['nearField']) ?? undefined,
+    mergeV2: (() => {
+      const m = d['mergeV2'];
+      if (!m || typeof m !== 'object') return undefined;
+      const out: NonNullable<ProjectState['mergeV2']> = {};
+      for (const r of ['low', 'mid', 'high'] as const) {
+        const list = (m as Record<string, unknown>)[r];
+        if (!Array.isArray(list)) continue;
+        out[r] = list.filter(
+          (x): x is { source: string; name: string; text: string; session: string } =>
+            !!x && typeof x === 'object' && ['source', 'name', 'text', 'session'].every((k) => typeof (x as Record<string, unknown>)[k] === 'string'),
+        );
+      }
+      return out;
+    })(),
     design,
   };
 }

@@ -36,6 +36,8 @@ export interface Series {
    *  behind a "+N" chip so the legend cannot outgrow the graph it explains.
    *  Purely presentational — a folded series is still drawn. */
   secondary?: boolean;
+  /** I-4: draw this series against the right-hand axis (`y2`). Ignored without a `y2` prop. */
+  axis?: 'y2';
 }
 
 /** Draggable design handle drawn on top of the chart (e.g. a filter knee). */
@@ -94,6 +96,9 @@ interface ChartProps {
   storageKey?: string;
   /** Draggable overlay handles (design controls living in the chart itself). */
   handles?: ChartHandle[];
+  /** I-4: an optional right-hand axis for series marked `axis: 'y2'` (e.g. a residual in ° left and dB right).
+   *  Fixed domain — the zoom acts on the left axis. Absent: the chart draws exactly as before. */
+  y2?: { domain: [number, number]; tickStep: number; unit: string };
   /** Continuous drag feedback: absolute x (Hz), plus the y delta in chart units. */
   onHandleMove?: (id: string, x: number, dyUnits: number) => void;
   /** Wheel over a handle: multiplicative factor (>1 = wheel up). */
@@ -208,6 +213,7 @@ export default function Chart({
   handles,
   onHandleMove,
   onHandleWheel,
+  y2,
 }: ChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [localHover, setLocalHover] = useState<number | null>(null);
@@ -340,6 +346,8 @@ export default function Chart({
   const xPos = (f: number) =>
     PAD.l + (((isLog ? Math.log10(f) : f) - lx0) / (lx1 - lx0)) * plotW;
   const yPos = (v: number) => PAD.t + (1 - (v - vy[0]) / (vy[1] - vy[0])) * plotH;
+  const yPos2 = (v: number) => (y2 ? PAD.t + (1 - (v - y2.domain[0]) / (y2.domain[1] - y2.domain[0])) * plotH : yPos(v));
+  const yOf = (s: Series, v: number) => (s.axis === 'y2' && y2 ? yPos2(v) : yPos(v));
 
   const xTicks = useMemo(() => {
     if (!isLog) return linearTicks(vx[0], vx[1]);
@@ -555,7 +563,7 @@ export default function Chart({
         }
         const color = s.pointColors?.[i] ?? s.color;
         const cx = xPos(f);
-        const cy = Math.max(PAD.t - 2, Math.min(H - PAD.b + 2, yPos(v)));
+        const cy = Math.max(PAD.t - 2, Math.min(H - PAD.b + 2, yOf(s, v)));
         const pt = `${cx.toFixed(1)},${cy.toFixed(1)}`;
         if (color !== runColor) {
           flush();
@@ -572,7 +580,7 @@ export default function Chart({
     }
     return runs;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [series, vx[0], vx[1], vy[0], vy[1], height]);
+  }, [series, vx[0], vx[1], vy[0], vy[1], height, y2?.domain[0], y2?.domain[1]]);
 
   // Hover: nearest sample per series at the hovered frequency.
   const hover = useMemo(() => {
@@ -793,6 +801,21 @@ export default function Chart({
         <text x={10} y={PAD.t + 10} className="tick unit">
           {yUnit}
         </text>
+        {y2 &&
+          (() => {
+            const out: number[] = [];
+            for (let v = Math.ceil(y2.domain[0] / y2.tickStep) * y2.tickStep; v <= y2.domain[1] + 1e-9; v += y2.tickStep) out.push(v);
+            return out.map((v) => (
+              <text key={`y2${v}`} x={W - PAD.r - 2} y={yPos2(v) + 3.5} className="tick" textAnchor="end">
+                {fmtLinear(v)}
+              </text>
+            ));
+          })()}
+        {y2 && (
+          <text x={W - PAD.r - 2} y={PAD.t + 10} className="tick unit" textAnchor="end">
+            {y2.unit}
+          </text>
+        )}
         {referenceLabel && yReference !== undefined && yReference >= vy[0] && yReference <= vy[1] && (
           <text x={W - PAD.r - 4} y={yPos(yReference) - 5} className="tick" textAnchor="end">
             {referenceLabel}
@@ -843,11 +866,11 @@ export default function Chart({
               className="crosshair"
             />
             {hover.rows.map(({ s, v }) =>
-              v >= vy[0] && v <= vy[1] ? (
+              (s.axis === 'y2' && y2 ? v >= y2.domain[0] && v <= y2.domain[1] : v >= vy[0] && v <= vy[1]) ? (
                 <circle
                   key={s.id}
                   cx={xPos(hover.f)}
-                  cy={yPos(v)}
+                  cy={yOf(s, v)}
                   r={4.5}
                   fill={s.color}
                   className="hover-dot"

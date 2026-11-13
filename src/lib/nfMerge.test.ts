@@ -755,70 +755,65 @@ describe('I-2 — what the merge does and does not assume', () => {
 describe('I-2 — the app wiring', () => {
   const APP = readFileSync(join(HERE, '..', 'App.tsx'), 'utf8');
 
+  /* I-4 fase 3 (V15 form). WHAT STOOD: the I-2 slot in each driver card —
+   * `runNearFieldMerge` built a preview, `acceptNearFieldMerge` applied it,
+   * `renderMergedFrd` wrote the file in one place. WHAT STANDS: the merge has ONE
+   * place, the NF/FF-merge section (`NfMergeSection`, merge v2), on the same
+   * measurement tab; a driver card shows only where its low end came from. WHY:
+   * Sander's B-2 sketch — no copy of the merge per branch. The CLAIMS are the
+   * I-2 claims, on the new code: with the upload, nothing applied on the way
+   * past, one writer, refusals that name their input, no double merge. */
+  const SECTION = readFileSync(join(HERE, '..', 'components', 'NfMergeSection.tsx'), 'utf8');
+
   it('puts the merge with the measurement upload, not in the Filters panel', () => {
-    /* U-3b — the slot became a `<details>` (`className="nf-slot v2-more"`), so
-     * the landmark lost its closing quote. The scan is anchored on the class
-     * NAME rather than on the whole attribute, and the two claims below say
-     * what U-3b changed about it: it is a disclosure, and it is OPEN whenever
-     * this branch already holds a near field — a collapsed block over a loaded
-     * file reads as data loss (the Filter-bands lesson). */
-    const at = APP.indexOf('className="nf-slot');
-    expect(at, 'the near-field slot').toBeGreaterThan(-1);
-    const slot = APP.slice(at, APP.indexOf('drop-anywhere-hint'));
-    expect(APP.slice(at - 60, at)).toContain('<details');
-    expect(slot).toContain('open={slot.cone !== null || slot.port !== null}');
-    expect(slot).toContain('runNearFieldMerge(role)');
-    expect(slot).toContain('acceptNearFieldMerge(role)');
-    expect(slot).toContain('undoNearFieldMerge(role)');
+    const at = APP.indexOf('<NfMergeSection');
+    expect(at, 'the merge section').toBeGreaterThan(-1);
+    expect(APP.slice(at, APP.indexOf('drop-anywhere-hint'))).toContain('onAccept={acceptMergeV2}');
+    expect(APP.slice(0, at).lastIndexOf("designTab === 'import'")).toBeGreaterThan(-1);
+    // the I-2 slot is gone — no second merge per branch
+    expect(APP).not.toContain('className="nf-slot');
+    expect(APP).not.toContain('runNearFieldMerge');
+    expect(APP).not.toContain('acceptNearFieldMerge');
     const panel = readFileSync(join(HERE, '..', 'components', 'EngineV2Panel.tsx'), 'utf8');
-    expect(panel).not.toContain('runNearFieldMerge');
+    expect(panel).not.toContain('NfMergeSection');
   });
 
-  /** The whole difference from the live splice above it: nothing is applied on
-   *  the way past. The response changes in exactly one function. */
+  /** Nothing is applied on the way past: the section computes and reports, and
+   *  a branch response changes only when the designer accepts (or undoes). */
   it('changes the branch response only from accept and undo', () => {
-    for (const setter of ['setWoofer(', 'setMidDrv(', 'setTweeter(']) {
-      const hits = APP.split(setter).length - 1;
-      expect(hits, setter).toBeGreaterThan(0);
-    }
-    const accept = APP.slice(APP.indexOf('const acceptNearFieldMerge'), APP.indexOf('const undoNearFieldMerge'));
+    expect(SECTION).not.toMatch(/setWoofer|setMidDrv|setTweeter/);
+    expect(SECTION).toContain('props.onAccept(c.role');
+    const accept = APP.slice(APP.indexOf('const acceptMergeV2'), APP.indexOf('const mergeHeights'));
     expect(accept).toContain('setWoofer(next)');
-    // The far field is KEPT — and a re-merge must not overwrite that ingredient
-    // with the previous merge, so only a first accept records it.
+    expect(accept).toContain('branchFile(');
+    // the response it replaces is KEPT, and a re-accept does not overwrite it
     expect(accept).toContain('far: n[role].far ?? { name: loaded.name, raw: loaded.raw }');
-    // `runNearFieldMerge` builds and stores a preview and touches nothing else.
-    const run = APP.slice(APP.indexOf('const runNearFieldMerge'), APP.indexOf('const acceptNearFieldMerge'));
-    expect(run).toContain('setNfPreview(');
-    expect(run).not.toContain('setWoofer(');
-    expect(run).not.toContain('setMidDrv(');
-    expect(run).not.toContain('setTweeter(');
   });
 
   /**
    * THE DOUBLE-MERGE GUARD. The live splice and a written merge answer the same
-   * question; running both stacks two baffle-step models and two level fits on
-   * one branch. Accepting a merge leaves the near field in the slot on purpose,
-   * so without this line the collision is the NORMAL case rather than an edge.
+   * question; running both stacks two step models and two level fits on one
+   * branch. A merge v2 file carries a block `readMergeBlock` reads (the v2 block
+   * keeps the v1 field names), so the live splice skips it.
    */
   it('does not merge a response that already declares a merge', () => {
-    const memo = APP.slice(APP.indexOf('const merged = useMemo'), APP.indexOf('const nfPreview'));
+    const a = APP.indexOf('const merged = useMemo');
+    const memo = APP.slice(a, APP.indexOf('}, [woofer, midDrv, tweeter, nearField, sdCm2', a));
     expect(memo).toContain('if (readMergeBlock(loaded.raw)) continue;');
   });
 
-  /** The file is written in one place, and only into the preview. */
-  it('writes a merged file only through the preview', () => {
-    expect(APP.split('renderMergedFrd(').length - 1).toBe(1);
-    const run = APP.slice(APP.indexOf('const runNearFieldMerge'), APP.indexOf('const acceptNearFieldMerge'));
-    expect(run).toContain('renderMergedFrd({');
+  /** The file is written in one place: the section's accept. */
+  it('writes a merged file only through the section', () => {
+    expect(APP).not.toMatch(/renderMergedFrd(V2)?\(/);
+    expect(SECTION.split('renderMergedFrdV2(').length - 1).toBe(1);
   });
 
   /** Every refusal names the input it is missing (P4) — none of them fills one in. */
   it('refuses by naming the missing input rather than substituting one', () => {
-    const run = APP.slice(APP.indexOf('const runNearFieldMerge'), APP.indexOf('const acceptNearFieldMerge'));
-    expect(run).toContain('fail(w.note)');
-    expect(run).toContain('fail(suggested.reason)');
-    expect(run).not.toMatch(/\?\?\s*440/);
-    expect(run).not.toMatch(/\|\|\s*500/);
+    expect(SECTION).toContain("'port weight: state it");
+    expect(SECTION).toContain("'model: state f0 for the AN4 form'");
+    expect(SECTION).not.toMatch(/\?\?\s*0\.205/);
+    expect(SECTION).not.toMatch(/\|\|\s*500/);
   });
 
   /** The class the panel gives these fields is the class the register files
@@ -829,7 +824,7 @@ describe('I-2 — the app wiring', () => {
       const row = V2_INPUT_REGISTER.find((r) => r.id === id);
       expect(row, id).toBeDefined();
       expect(row!.cls, id).toBe('nice');
-      expect(row!.form, id).toContain('Near field');
+      expect(row!.form, id).toContain('NF/FF merge');
     }
   });
 });

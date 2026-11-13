@@ -52,6 +52,8 @@ export interface MergeV2FileInput {
   calibrationNote?: string | null;
   /** What the port weight rests on, when it is not final (casus 1: provisional, V58). */
   portWeightNote?: string | null;
+  /** B-2 §8 (3): a merge with flags accepted anyway — the reason, required, goes into Merge status. */
+  acceptReason?: string | null;
 }
 
 export interface ParsedMergeV2 {
@@ -148,7 +150,8 @@ export function renderMergeBlockV2(x: MergeV2FileInput): string[] {
     `* Merge target validity = ${x.targetValidityNote ? oneLine(x.targetValidityNote) : 'not stated'}`,
     `* Merge calibration = ${x.calibrationNote ? oneLine(x.calibrationNote) : "none (the impulses' own scale)"}`,
     `* Merge floor reason = ${oneLine(x.validFromReason)}`,
-    `* Merge status = MODEL-validated merge made by Crossover Studio on ${oneLine(x.madeOn)}`,
+    `* Merge status = MODEL-validated merge made by Crossover Studio on ${oneLine(x.madeOn)}` +
+      (x.acceptReason ? `; ACCEPTED WITH FLAGS, reason: ${oneLine(x.acceptReason)}` : ''),
   ];
 }
 

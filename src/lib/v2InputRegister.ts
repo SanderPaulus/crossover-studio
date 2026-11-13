@@ -883,7 +883,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'nearFieldCone',
     label: 'Load cone near field…',
-    form: 'Drivers tab → driver card → Near field',
+    form: 'Measurements → NF/FF merge (merge v2)',
     travels:
       'the slot → mergeNearField → the merged FRD → this branch’s response → readMergeBlock / ' +
       'parseArtaHeader → declaredMergeValidity → the window floor of every pair it touches',
@@ -897,7 +897,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'nearFieldPort',
     label: 'Load port near field… (+ port Ø, shared by)',
-    form: 'Drivers tab → driver card → Near field',
+    form: 'Measurements → NF/FF merge (merge v2)',
     travels: 'portWeight (Keele, complex) → the near-field half before the level fit',
     cls: 'nice',
     effect: 'zoekt',
@@ -910,7 +910,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'spliceBand',
     label: 'splice band (Hz)',
-    form: 'Drivers tab → driver card → Near field',
+    form: 'Measurements → NF/FF merge (merge v2)',
     travels: 'bandOf / centreOf → mergeNearField’s level and delay fit and its crossfade',
     cls: 'nice',
     effect: 'zoekt',
@@ -922,7 +922,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'mergeValidFrom',
     label: 'valid from (Hz)',
-    form: 'Drivers tab → driver card → Near field',
+    form: 'Measurements → NF/FF merge (merge v2)',
     travels: '`Valid from` in the written block → declaredMergeValidity → this branch’s validity floor',
     cls: 'nice',
     effect: 'zoekt',
@@ -1385,6 +1385,20 @@ const NICE: readonly V2InputRowDef[] = [
 const STEERS_ON_APP_DEFAULT = STEERS_ON_APP_DEFAULT_PLACEMENT;
 
 const U9_ROWS: readonly V2InputRowDef[] = [
+  {
+    id: 'mergeSession', // I-4 fase 3
+    label: 'NF/FF merge section (session, set-up, planes, per-source merge)',
+    form: 'Measurements → NF/FF merge (merge v2)',
+    travels:
+      'the dropped session → mergeSession (pairing, gate from the FRD header, set-up, planes) → ' +
+      'mergeImpulsesV2 → an accepted merge file with its v2 block → branchFile → this branch’s response',
+    cls: 'nice',
+    effect: 'zoekt',
+    emptyMeans:
+      'no merge v2: each branch is its far field, honest above its own gate, and the crossover ' +
+      'window starts there.',
+    source: 'measurement',
+  },
   /* ---- 1. Project / Import and the measurement slots ---- */
   {
     id: 'offAxisSets', // #2
@@ -1402,7 +1416,7 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'mergeStepModel', // #7
     label: 'Step model on/off (near-field merge)',
-    form: 'Drivers tab — near-field merge',
+    form: 'Measurements → NF/FF merge (merge v2)',
     travels: 'stepOn → the minimum-phase shelf of nfMerge → the merged file → its validity floor',
     cls: 'nice',
     effect: 'zoekt',
@@ -1952,6 +1966,7 @@ const GROUP_OF: Readonly<Record<string, V2FieldGroup>> = Object.freeze({
   'sd': 'measurement',
   'baffle-width': 'measurement',
   'nearFieldCone': 'measurement',
+  'mergeSession': 'measurement',
   'nearFieldPort': 'measurement',
   'spliceBand': 'measurement',
   'mergeValidFrom': 'measurement',
@@ -2482,7 +2497,7 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
 export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   // measurements and files, not settings: the Import tab's own slots
   'responses', 'validity', 'impedance', 'ways',
-  'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom',
+  'nearFieldCone', 'nearFieldPort', 'spliceBand', 'mergeValidFrom', 'mergeSession',
   /* U-9 fase 2 — the v1 Filters sections are gone: every field that stood
    * there is now a control of the governed panel, in its group (B-2.1), and the
    * amplifier floor sits beside the gates it arms, under "Amplifier & load".
@@ -2525,14 +2540,6 @@ export const V2_APP_CONTROLS: readonly V2AppControl[] = Object.freeze([
   // ---- App.tsx: the Drivers / Import tab ----
   { row: 'responses', file: 'App.tsx', control: 'onChange={loadDriverFiles(' },
   { row: 'referenceFile', file: 'App.tsx', control: 'void loadVerificationFile(f)' },
-  { row: 'nearFieldCone', file: 'App.tsx', control: "loadNearField(e, role, 'cone')" },
-  { row: 'nearFieldPort', file: 'App.tsx', control: "loadNearField(e, role, 'port')" },
-  { row: 'nearFieldPort', file: 'App.tsx', control: 'value={slot.portDiaMm}' },
-  { row: 'nearFieldPort', file: 'App.tsx', control: 'value={slot.portSharedBy}' },
-  { row: 'spliceBand', file: 'App.tsx', control: 'Number(slot.blendOctaves) || 1)[0]' },
-  { row: 'spliceBand', file: 'App.tsx', control: 'Number(slot.blendOctaves) || 1)[1]' },
-  { row: 'mergeStepModel', file: 'App.tsx', control: 'checked={slot.stepOn}' },
-  { row: 'mergeValidFrom', file: 'App.tsx', control: 'value={slot.validFromHz}' },
   { row: 'fileNote', file: 'App.tsx', control: 'value={fileNotes[r.key]' },
   { row: 'networkSource', file: 'App.tsx', control: 'onChange={loadVituixFiles}' },
   { row: 'networkSource', file: 'App.tsx', control: 'onChange={loadProjectFromFile}' },
@@ -2591,4 +2598,5 @@ export const V2_FILE_ROWS: Readonly<Record<string, string>> = Object.freeze({
   'components/FilterControls.tsx': 'bandForms',
   'components/HelpPanel.tsx': 'navigation',
   'components/MeasuringGuide.tsx': 'navigation',
+  'components/NfMergeSection.tsx': 'mergeSession',
 });
