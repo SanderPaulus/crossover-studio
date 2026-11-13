@@ -20,9 +20,9 @@
 > ### Wat er gemeten is (13-11-2026, reproduceerbaar met het referentiescript)
 >
 > 1. **v1 klopt niet met de fysica.** v1 fit niveau, looptijd en een **vrije** faseverschuiving op ongelijk bewerkte curves. Op casus 1 leest hij +13° (woofer boven), −71° (woofer onder) en +55° (mid). Volgens a/2r (AN4) verschillen nabij- en vervelveld alleen in niveau en looptijd.
-> 2. **Oorzaak woofers: twee sessies door elkaar.** De I-2-woofermerges zetten het nabijveld van september (testkast, 11-09) op het vervelveld van augustus.
+> 2. **Ingetrokken (V55, door V60): "oorzaak woofers: twee sessies door elkaar".** De I-2-woofermerges zetten het nabijveld van september (testkast, 11-09) op het vervelveld van augustus, maar dat is niet wat het residu maakte.
 >    - Augustus had alles zelf, in één sessie: ruwe `.pir`, dual-channel, dus één tijdbasis. Daarmee, gelijk gegate en offset vast op 0, **zonder enig reflectiemodel**: woofer onder **2,2° / 0,21 dB**, woofer boven **2,3° / 0,57 dB** (300–576 Hz, AN4 f0 150 Hz).
->    - De septembercombinatie blijft ook gelijk gegate onverklaard: 10,6° en 5,0° (sectie C).
+>    - Met hetzelfde venster versmelt het septembernabijveld op het augustusvervelveld net zo schoon: **2,9°** en **2,0°**. De 10,6° en 5,0° van sectie C kwamen uit een misgelezen venster: ARTA's `Left/Right window` zijn lengtes vanaf de `Reference time`, dus het vervelveld-FRD is gegate tot ref + 5,021 ms en niet tot ref + 2,521 ms (V60). Een andere sessie kost alleen de gedeelde tijdbasis; de merge meldt dat als notitie.
 > 3. **Oorzaak mid: ongelijk gegate.** Gelijk gegate, offset vast, zelfde sessie: **3,5° / 0,56 dB** (300–800 Hz, f0 200 Hz).
 > 4. **Ingetrokken: het tafelblad.** Versie 1 van deze prompt verklaarde de woofers met een spiegelvlak (tafelblad, mic 0,70 m erboven). Dat was een fit op de verkeerde combinatie.
 >    - De looptijden in de PIR's zeggen: mic op referentiehoogte, ~1 m.
@@ -148,7 +148,11 @@
 >    | Woofer boven | — | 2,916 ms | 2,3° / 0,57 dB |
 >    | Woofer boven | 0,205 | 2,914 ms | 2,3° / 0,60 dB |
 >    | Mid | — | 2,833 ms | 3,5° / 0,56 dB |
-> 3. **De I-2-combinatie wordt gemeld.** Drie meldingen: residu, vrije offset en sessiemix.
+> 3. **Het venster wordt goed gelezen en de zelfdiagnose wijst de echte oorzaak aan** (vervangt "de I-2-combinatie wordt gemeld", die op V55 rustte; Sander, 13-11-2026).
+>    - FRD-route: venster = lengte vanaf de referentie (V60). Augustus via FRD en via PIR onder hetzelfde venster liggen binnen 1°.
+>    - Een misgelezen venster (rechterrand ref + 2,521) laat de zelfdiagnose aanslaan, en de residu-melding noemt de header als eerste oorzaak.
+>    - Sessiemix is een notitie ("geen gedeelde tijdbasis, looptijd alleen gefit"), de poortsessie wordt meegewogen; het septembernabijveld op het augustusvervelveld (PIR, D-venster) geeft 2,9° / 2,0° zonder melding.
+>    - Of de 6–7° op het lange venster de reflectie binnen de gate is: gesteld vlak, gerapporteerd bij B-3; pas daarna een acceptatiegetal.
 > 4. **Niets verschuift.** Bestaande fixtures en golden refs zijn byte-identiek (P2).
 > 5. **Groen.** `npx tsc -b` en `npm run test:fast` slagen; browsercontrole gedaan.
 > 6. **Export.** De round-trip is numeriek identiek, en VituixCAD leest het pakket (Sander controleert dat).
