@@ -11590,8 +11590,16 @@ FRD-venster loopt tot ~4 ms na de directe klank, sectie D tot 2,1 ms.
 
 **Niet gerepareerd.** De lezer zit in engine2-ingest (`validity-header`, schatter-versionering), de vloer
 staat in golden refs en gedateerde bruggen, en de tweeter van de huidige meetset is nog gegate. Dat is
-buiten de omvang van I-4; eigen sessie, met versiebump en herleiding van de bruggen. Voor I-4 fase 2:
-het `nf-merge/2.0`-blok en de FRD-route lezen `Right window` als lengte vanaf de referentie.
+buiten de omvang van I-4; eigen sessie, met versiebump en herleiding van de bruggen
+(`docs/V60_startprompt_gatevloer.md`).
+
+**In `nf-merge/2.0` wel gedaan (I-4 fase 2, Sander akkoord 13-11-2026).** (1) `gateFromArtaHeader` vertaalt
+de kop naar een venster met Left/Right als lengtes. (2) Het overgenomen hoge deel van het vervelveld gaat op
+BEIDE routes door het venster; zonder dat lagen FRD- en PIR-route onder hetzelfde venster tot 2,2° uit elkaar,
+met: binnen 0,36° op alle drie de drivers. (3) Een al gegate vervelveld wordt gecontroleerd op energie ná de
+rechterrand (`GATE_TAIL_FLAG_DB` −30 dB over 20 ms): misgelezen −15 / −21 / −28 dB, goed gelezen
+−38 / −41 / −38 dB (woofer onder / boven / mid). (4) De residu-melding noemt de kop als eerste oorzaak.
+(5) Een andere sessie is een notitie, de poortsessie meegewogen (V55).
 
 ## Casus S1 — synthetische grondwaarheid voor de R_e-schatter (F3b, 26-08-2026)
 
