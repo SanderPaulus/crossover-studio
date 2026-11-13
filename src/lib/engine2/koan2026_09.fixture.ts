@@ -652,3 +652,28 @@ export function buildKoanPairZma(boxFit: KoanBoxFit, toVolumeL: number): { text:
     ].join('\n') + '\n',
   };
 }
+
+/**
+ * I-4 (13-11-2026): the M-2 model as a target ÷ test-box RATIO of the total radiation, for the
+ * load-validity limit of `measuredObject.ts`. The same transform as `transformNearFieldText`
+ * (cone velocity read from the measured impedance, the port following the box), the `total`
+ * channel, from the test box to the real cabinet with the SAME port. Read, nothing typed.
+ */
+export function casus1M2ModelRatio(): { ratio: (freqHz: number) => { re: number; im: number }; model: string } {
+  const boxFit = fitKoanBox();
+  const to = samePortInVolume(boxFit.box, REAL_VOLUME_L);
+  const z = koanMeasuredImpedance();
+  const driver = koanDriverFacts();
+  const mags = z.z.map(abs);
+  const phs = z.z.map((c) => (arg(c) * 180) / Math.PI);
+  return {
+    ratio: (f) => {
+      const zf = resampleImpedance(z.freq, mags, phs, [f]).z[0];
+      const t = volumeTransfer(f, mul(cplx(driver.count), zf), blockedImpedance(f, RE_PER_DRIVER_OHM, boxFit.blocked), boxFit.box, to, driver).total;
+      return { re: t.re, im: t.im };
+    },
+    model:
+      `M-2 transform: cone velocity from the measured impedance, ${boxFit.box.volumeL} L f_b ${boxFit.box.tuningHz.toFixed(2)} Hz Q_l ${boxFit.box.leakageQ.toFixed(2)} ` +
+      `→ ${to.volumeL} L f_b ${to.tuningHz.toFixed(2)} Hz Q_l ${to.leakageQ.toFixed(2)} (same port)`,
+  };
+}

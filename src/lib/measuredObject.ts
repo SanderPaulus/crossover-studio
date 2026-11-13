@@ -9,10 +9,12 @@
  *    volume and its acoustic load (sealed, vented with a port, or passive radiator).
  *  - Identical baffle: driver positions and baffle size come from the optimizer. Own baffle: the
  *    session carries its own geometry.
- *  - A load that differs from the target's gives a validity limit: k × the highest system
- *    resonance (f_c or f_b) of the two boxes. Above it the merge stands for the target; below it
- *    the low end comes from the target's box model, or stays marked as "measured object".
- *    k is a convention, visible and overridable (like the 10° residual flag).
+ *  - A load that differs from the target's gives a validity limit from the RATIO of the two box
+ *    models (target ÷ measured object, complex): the lowest frequency above which that ratio stays
+ *    within ±`LOAD_RATIO_TOL_DB` AND ±`LOAD_RATIO_TOL_DEG` (Sander, 13-11-2026 — phase counts: a
+ *    small test box can be −3 dB and −40° at twice its f_b). Both are conventions, visible and
+ *    overridable. Above the limit the merge stands for the target; below it the low end is either
+ *    marked as "measured object" or converted with the same model ratio.
  */
 import { samePortInVolume } from './ventedBoxTransform.ts';
 
@@ -20,12 +22,10 @@ import { samePortInVolume } from './ventedBoxTransform.ts';
 const C_AIR_M_S = 343;
 const RHO_AIR = 1.2041;
 
-/**
- * The default k of the validity limit, a CONVENTION. Its basis is a measurement: M-2 transformed
- * the casus-1 woofers from the 53.2 L test box to the 67.7 L target (same port) and the response
- * moved by less than 0.2 dB above 60 Hz — about twice the test box's f_b — and by 2–3 dB below 30 Hz.
- */
-export const LOAD_VALIDITY_K = 2;
+/** Tolerances of the load-validity limit, CONVENTIONS (visible, overridable): the target/measured
+ *  model ratio must stay within these, in level and in phase, from the limit up. */
+export const LOAD_RATIO_TOL_DB = 0.2;
+export const LOAD_RATIO_TOL_DEG = 5;
 
 /**
  * Port end correction, in port DIAMETERS added to the physical length: one flanged end (0.85 r)
@@ -35,10 +35,11 @@ export const LOAD_VALIDITY_K = 2;
 export const PORT_END_CORRECTION_DIAMETERS = 0.732;
 
 export type PortSpec =
-  /** f_b read from this box's own impedance (the saddle between the two peaks). Wins over geometry. */
-  | { kind: 'measured'; fbHz: number; source: string }
+  /** f_b read from this box's own impedance (the saddle between the two peaks). Wins over geometry.
+   *  `qL`: the box's leakage Q, needed by the response model (stated or fitted, never defaulted). */
+  | { kind: 'measured'; fbHz: number; source: string; qL?: number }
   /** Helmholtz from the port's geometry. */
-  | { kind: 'geometry'; areaCm2: number; lengthMm: number }
+  | { kind: 'geometry'; areaCm2: number; lengthMm: number; qL?: number }
   /** The other box's port, unchanged, in this box's volume: f_b ∝ 1/√V (M-2). */
   | { kind: 'same-as-other' };
 
@@ -58,6 +59,8 @@ export interface DriverTs {
   fsHz: number;
   vasL: number;
   count: number;
+  /** Total Q at f_s — needed by the response model, not by the resonance alone. */
+  qts?: number;
 }
 
 export type BaffleSpec = 'identical' | { widthMm: number; heightMm: number; depthMm?: number; note?: string };
@@ -137,64 +140,217 @@ export function sameLoad(a: BoxSpec, b: BoxSpec): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export interface LoadValidity {
-  /** The measurement stands for the target from here up, Hz; null when the loads are the same. */
+export interface Cx {
+  re: number;
+  im: number;
+}
+/** target ÷ measured object at one frequency — the model ratio the limit is read from. */
+export type ModelRatio = (freqHz: number) => Cx;
+
+const cdiv = (a: Cx, b: Cx): Cx => {
+  const d = b.re * b.re + b.im * b.im;
+  return { re: (a.re * b.re + a.im * b.im) / d, im: (a.im * b.re - a.re * b.im) / d };
+};
+
+/**
+ * A box's normalised acoustic output (cone + port), the textbook models: sealed second order
+ * (f_c, Q_tc from f_s, Q_ts and α = N·V_as/V_b); vented fourth order (Small 1973: f_s, Q_ts, α,
+ * h = f_b/f_s, Q_l). A passive radiator has no model here yet: it is said, not guessed.
+ */
+function boxResponse(box: BoxSpec, ts: DriverTs, fb: number | null, qL: number | null): ((f: number) => Cx) | string {
+  if (!(ts.qts && ts.qts > 0)) return 'Q_ts';
+  const alpha = (ts.count * ts.vasL) / box.netVolumeL;
+  if (box.load.kind === 'sealed') {
+    const wc = 2 * Math.PI * ts.fsHz * Math.sqrt(1 + alpha);
+    const qtc = ts.qts * Math.sqrt(1 + alpha);
+    return (f) => {
+      const w = 2 * Math.PI * f;
+      // s² / (s² + s·ωc/Q + ωc²), s = jω
+      return cdiv({ re: -w * w, im: 0 }, { re: wc * wc - w * w, im: (w * wc) / qtc });
+    };
+  }
+  if (box.load.kind === 'vented') {
+    if (!fb || !qL) return !fb ? 'f_b' : 'Q_l (the box leakage)';
+    const h = fb / ts.fsHz;
+    const qt = ts.qts;
+    const a1 = (qL + h * qt) / (Math.sqrt(h) * qt * qL);
+    const a2 = (h + (alpha + 1 + h * h) * qt * qL) / (h * qt * qL);
+    const a3 = (h * qL + qt) / (Math.sqrt(h) * qt * qL);
+    const w0 = 2 * Math.PI * Math.sqrt(ts.fsHz * fb);
+    return (f) => {
+      const x = (2 * Math.PI * f) / w0; // s_n = jx
+      const s2 = -x * x;
+      const s4 = x ** 4;
+      return cdiv({ re: s4, im: 0 }, { re: s4 + a2 * s2 + 1, im: -a1 * x ** 3 + a3 * x });
+    };
+  }
+  return 'a passive-radiator response model (not built)';
+}
+
+function ventedParams(box: BoxSpec, res: Resonance | null, other?: BoxSpec, otherQl?: number | null): { fb: number | null; qL: number | null } {
+  if (box.load.kind !== 'vented') return { fb: null, qL: null };
+  const p = box.load.port;
+  if (p.kind === 'same-as-other') {
+    // the other box's port in this volume: f_b and Q_l both scale with 1/√V (samePortInVolume)
+    if (!other || !otherQl || !res) return { fb: res?.hz ?? null, qL: null };
+    const k = Math.sqrt(other.netVolumeL / box.netVolumeL);
+    return { fb: res.hz, qL: otherQl * k };
+  }
+  return { fb: res?.hz ?? null, qL: p.qL ?? null };
+}
+
+/** The T/S model ratio target ÷ measured object, or the missing input named. */
+export function tsModelRatio(target: BoxSpec, measured: BoxSpec, ts: DriverTs): { ratio: ModelRatio | null; missing: string | null } {
+  const dep = (b: BoxSpec) => b.load.kind === 'vented' && b.load.port.kind === 'same-as-other';
+  const mRes = systemResonance(measured, ts, dep(measured) ? { box: target, resonance: systemResonance(target, ts).resonance } : undefined).resonance;
+  const tRes = systemResonance(target, ts, dep(target) ? { box: measured, resonance: mRes } : undefined).resonance;
+  const mQl = measured.load.kind === 'vented' && measured.load.port.kind !== 'same-as-other' ? measured.load.port.qL ?? null : null;
+  const tQl = target.load.kind === 'vented' && target.load.port.kind !== 'same-as-other' ? target.load.port.qL ?? null : null;
+  const mv = ventedParams(measured, mRes, target, tQl);
+  const tv = ventedParams(target, tRes, measured, mQl);
+  const hm = boxResponse(measured, ts, mv.fb, mv.qL);
+  const ht = boxResponse(target, ts, tv.fb, tv.qL);
+  if (typeof hm === 'string') return { ratio: null, missing: `measured object: ${hm}` };
+  if (typeof ht === 'string') return { ratio: null, missing: `target: ${ht}` };
+  return { ratio: (f) => cdiv(ht(f), hm(f)), missing: null };
+}
+
+export interface RatioLimit {
+  /** From here up the ratio stays within both tolerances; null = nowhere on the grid. */
   fromHz: number | null;
-  k: number;
-  target: Resonance | null;
-  measured: Resonance | null;
-  /** The sentence the reader sees. */
+  tolDb: number;
+  tolDeg: number;
+  /** The worst point just below the limit (what made it stop there). */
+  worstBelow: { freqHz: number; db: number; deg: number } | null;
+}
+
+/** The lowest grid frequency above which |20·log|R|| ≤ tolDb AND |arg R| ≤ tolDeg everywhere. */
+export function ratioLimit(ratio: ModelRatio, grid: readonly number[], tolDb = LOAD_RATIO_TOL_DB, tolDeg = LOAD_RATIO_TOL_DEG): RatioLimit {
+  let lastBad = -1;
+  let worst: RatioLimit['worstBelow'] = null;
+  for (let i = 0; i < grid.length; i++) {
+    const r = ratio(grid[i]);
+    const db = 10 * Math.log10(r.re * r.re + r.im * r.im);
+    const deg = (Math.atan2(r.im, r.re) * 180) / Math.PI;
+    if (Math.abs(db) > tolDb || Math.abs(deg) > tolDeg) {
+      lastBad = i;
+      worst = { freqHz: grid[i], db, deg };
+    }
+  }
+  if (lastBad === grid.length - 1) return { fromHz: null, tolDb, tolDeg, worstBelow: worst };
+  return { fromHz: grid[lastBad + 1], tolDb, tolDeg, worstBelow: worst };
+}
+
+/** A log grid for the limit search: one point per `perOctave`, `from`–`to` Hz. */
+export function logGrid(fromHz: number, toHz: number, perOctave: number): number[] {
+  const n = Math.round(Math.log2(toHz / fromHz) * perOctave);
+  return Array.from({ length: n + 1 }, (_, i) => fromHz * (toHz / fromHz) ** (i / n));
+}
+
+export interface LoadValidity {
+  /** The measurement stands for the target from here up, Hz; null = same load (no limit) or not computable. */
+  fromHz: number | null;
+  sameLoad: boolean;
+  limit: RatioLimit | null;
+  ratio: ModelRatio | null;
+  /** Which model the ratio came from, in words. */
+  model: string | null;
   note: string;
 }
 
 /**
- * The validity limit of a session's measurement for the TARGET cabinet. A session on the target
- * itself, or on an object with the same load, has none. Otherwise k × the highest of the two
- * system resonances; with an input missing, no limit and the missing input named — never a guess.
+ * The validity limit of a session's measurement for the TARGET cabinet, from the model ratio.
+ * `ratio` lets a caller hand in its own model (casus 1: M-2's transform, read from the measured
+ * impedance); otherwise the T/S models. An input missing: no limit, the input named, the low end
+ * marked as measured object — never a guess.
  */
-export function loadValidity(opts: { target: BoxSpec; setup: SessionSetup; ts?: DriverTs | null; k?: number }): LoadValidity {
-  const k = opts.k ?? LOAD_VALIDITY_K;
+export function loadValidity(opts: {
+  target: BoxSpec;
+  setup: SessionSetup;
+  ts?: DriverTs | null;
+  ratio?: { fn: ModelRatio; model: string } | null;
+  grid?: readonly number[];
+  tolDb?: number;
+  tolDeg?: number;
+}): LoadValidity {
   const obj = opts.setup.object;
+  const sess = opts.setup.session;
   if (obj.kind === 'target') {
-    return { fromHz: null, k, target: null, measured: null, note: `session "${opts.setup.session}" measured the target cabinet: no load limit` };
+    return { fromHz: null, sameLoad: true, limit: null, ratio: null, model: null, note: `session "${sess}" measured the target cabinet: no load limit` };
   }
   if (sameLoad(obj.box, opts.target)) {
-    return { fromHz: null, k, target: null, measured: null, note: `session "${opts.setup.session}" measured "${obj.label}", same load as the target: no load limit` };
+    return { fromHz: null, sameLoad: true, limit: null, ratio: null, model: null, note: `session "${sess}" measured "${obj.label}", same load as the target: no load limit` };
   }
-  // resolve the side that does not depend on the other first
-  const dependsOnOther = (b: BoxSpec) => b.load.kind === 'vented' && b.load.port.kind === 'same-as-other';
-  let m: { resonance: Resonance | null; missing: string | null };
-  let t: { resonance: Resonance | null; missing: string | null };
-  if (dependsOnOther(opts.target) && !dependsOnOther(obj.box)) {
-    m = systemResonance(obj.box, opts.ts ?? null);
-    t = systemResonance(opts.target, opts.ts ?? null, { box: obj.box, resonance: m.resonance });
-  } else {
-    t = systemResonance(opts.target, opts.ts ?? null);
-    m = systemResonance(obj.box, opts.ts ?? null, { box: opts.target, resonance: t.resonance });
-  }
-  if (!t.resonance || !m.resonance) {
-    const miss = [t.missing && `target: ${t.missing}`, m.missing && `measured object: ${m.missing}`].filter(Boolean).join('; ');
+  let ratio: ModelRatio | null = null;
+  let model: string | null = null;
+  let missing: string | null = null;
+  if (opts.ratio) {
+    ratio = opts.ratio.fn;
+    model = opts.ratio.model;
+  } else if (opts.ts) {
+    const r = tsModelRatio(opts.target, obj.box, opts.ts);
+    ratio = r.ratio;
+    missing = r.missing;
+    model = 'T/S box models (sealed 2nd order / vented 4th order, Small)';
+  } else missing = 'the driver T/S (f_s, Q_ts, V_as) or a model ratio';
+  if (!ratio) {
     return {
       fromHz: null,
-      k,
-      target: t.resonance,
-      measured: m.resonance,
-      note: `session "${opts.setup.session}" measured "${obj.label}" with a different load, but the limit cannot be computed — missing ${miss}. The low end stays marked as measured object.`,
+      sameLoad: false,
+      limit: null,
+      ratio: null,
+      model,
+      note: `session "${sess}" measured "${obj.label}" with a different load, but the limit cannot be computed — missing ${missing}. The low end stays marked as measured object.`,
     };
   }
-  const top = Math.max(t.resonance.hz, m.resonance.hz);
-  const fromHz = k * top;
+  const tolDb = opts.tolDb ?? LOAD_RATIO_TOL_DB;
+  const tolDeg = opts.tolDeg ?? LOAD_RATIO_TOL_DEG;
+  const limit = ratioLimit(ratio, opts.grid ?? logGrid(5, 2000, 48), tolDb, tolDeg);
+  const w = limit.worstBelow;
   return {
-    fromHz,
-    k,
-    target: t.resonance,
-    measured: m.resonance,
+    fromHz: limit.fromHz,
+    sameLoad: false,
+    limit,
+    ratio,
+    model,
     note:
-      `session "${opts.setup.session}" measured "${obj.label}" (${obj.box.netVolumeL} L, ${obj.box.load.kind}), not the target ` +
-      `(${opts.target.netVolumeL} L, ${opts.target.load.kind}): valid for the target from ${fromHz.toFixed(1)} Hz ` +
-      `(k ${k} × ${top.toFixed(2)} Hz, the higher of f = ${m.resonance.hz.toFixed(2)} Hz measured object and ${t.resonance.hz.toFixed(2)} Hz target; ` +
-      `k is a convention). Below it: the target's box model, or marked as measured object.`,
+      `session "${sess}" measured "${obj.label}" (${obj.box.netVolumeL} L, ${obj.box.load.kind}), not the target ` +
+      `(${opts.target.netVolumeL} L, ${opts.target.load.kind}): ` +
+      (limit.fromHz === null
+        ? `the model ratio never stays within ±${tolDb} dB / ±${tolDeg}° on the grid — no valid band for the target`
+        : `valid for the target from ${limit.fromHz.toFixed(1)} Hz, where the model ratio (${model}) stays within ±${tolDb} dB and ±${tolDeg}° ` +
+          `(conventions)${w ? `; just below, at ${w.freqHz.toFixed(1)} Hz, it reads ${w.db.toFixed(2)} dB / ${w.deg.toFixed(1)}°` : ''}`) +
+      `. Below it: marked as measured object, or converted with the same ratio.`,
   };
+}
+
+/**
+ * The other option below the limit: convert the low end with the same model ratio (as the M-2
+ * Koan-frame set did). Only BELOW `belowHz` — above it the measurement stays untouched, and at the
+ * limit the step is within the tolerances by construction.
+ */
+export function convertLowEnd(
+  freq: readonly number[],
+  spl: readonly number[],
+  phaseDeg: readonly number[],
+  ratio: ModelRatio,
+  belowHz: number,
+): { spl: number[]; phaseDeg: number[] } {
+  const outS: number[] = [];
+  const outP: number[] = [];
+  for (let i = 0; i < freq.length; i++) {
+    if (freq[i] >= belowHz) {
+      outS.push(spl[i]);
+      outP.push(phaseDeg[i]);
+      continue;
+    }
+    const r = ratio(freq[i]);
+    outS.push(spl[i] + 10 * Math.log10(r.re * r.re + r.im * r.im));
+    let p = phaseDeg[i] + (Math.atan2(r.im, r.re) * 180) / Math.PI;
+    p = ((((p + 180) % 360) + 360) % 360) - 180;
+    outP.push(p);
+  }
+  return { spl: outS, phaseDeg: outP };
 }
 
 /** Which baffle a session's geometry comes from. */
