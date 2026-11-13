@@ -1,0 +1,206 @@
+{
+ "_": "I-4 fase 2 (13-11-2026). Basis: the short gate of section D. Long gate = the gate the FRD exports used (V60), with the floor stated where its geometry is known. Old = the merges of the casus-1 sets.",
+ "common_reference_ms_on_pir": 8.75,
+ "calibration": {
+  "source": "near-field FRD exports ÷ gated PIR, three files agree within (dB)",
+  "spread_db": 0.0015301632194280046
+ },
+ "load_validity": {
+  "k": 2,
+  "test_box_fb_hz": 31.31103515625,
+  "woofer_target_valid_from_hz": 62.6220703125,
+  "note": "session \"augustus\" measured \"testkast\" (53.2 L, vented), not the target (67.7 L, vented): valid for the target from 62.6 Hz (k 2 × 31.31 Hz, the higher of f = 31.31 Hz measured object and 27.76 Hz target; k is a convention). Below it: the target's box model, or marked as measured object."
+ },
+ "ways": {
+  "woofer_down": {
+   "short_gate": {
+    "gate": {
+     "referenceMs": 8.75,
+     "leftMs": 1.9000000000000004,
+     "rightMs": 3.1209999999999987,
+     "rightTaper": 0.20193848125600777
+    },
+    "with_port": true,
+    "delay_ms": 3.280583333333334,
+    "residual_deg": 2.1724416898872034,
+    "residual_db": 0.23313877648147105,
+    "flags": []
+   },
+   "short_gate_no_port": {
+    "delay_ms": 3.282333333333334,
+    "residual_deg": 2.18335439377547,
+    "residual_db": 0.21203325193951514,
+    "flags": []
+   },
+   "long_gate": {
+    "gate": {
+     "referenceMs": 8.75,
+     "leftMs": 0,
+     "rightMs": 5.021,
+     "rightTaper": 0.25
+    },
+    "no_port": true,
+    "delay_ms": 3.280333333333333,
+    "residual_deg": 8.33945779698326,
+    "residual_db": 0.6556528721730263,
+    "flags": [
+     "Even with a matched gate a free phase offset of -45° would still help: the halves differ by more than a level and a delay.",
+     "An echo 3.65 ms after the direct sound (-12 dB) lies inside the gate and is not modelled. If it is a floor or table, state its geometry; if not, shorten the gate."
+    ]
+   },
+   "long_gate_floor": {
+    "floor": {
+     "kind": "plane",
+     "label": "vloer",
+     "sourceAboveM": 0.794,
+     "micAboveM": 1.38,
+     "horizontalM": 1
+    },
+    "delay_ms": 3.2844166666666688,
+    "residual_deg": 3.7303014223419213,
+    "residual_db": 0.25041296223921333,
+    "flags": []
+   },
+   "long_vs_short_300_600": {
+    "points": 48,
+    "meanDb": -0.8739823378159729,
+    "maxAbsDb": 2.9105755421716237,
+    "meanDeg": -2.042784970232541,
+    "rmsDeg": 6.435287159643147,
+    "maxAbsDeg": 16.071597494718958
+   },
+   "new_vs_old_300_600": {
+    "old": "casus1/Koan_W_down_merged_ingespeeld_mild.frd",
+    "points": 48,
+    "meanDb": -1.1464574449505962,
+    "maxAbsDb": 1.9751893329355994,
+    "meanDeg": -10.942179235749387,
+    "rmsDeg": 12.094008873446512,
+    "maxAbsDeg": 16.188122837808237
+   }
+  },
+  "woofer_up": {
+   "short_gate": {
+    "gate": {
+     "referenceMs": 8.75,
+     "leftMs": 2.191666666666668,
+     "rightMs": 2.829333333333331,
+     "rightTaper": 0.22275565504241301
+    },
+    "with_port": true,
+    "delay_ms": 2.914583333333334,
+    "residual_deg": 2.3322338967590603,
+    "residual_db": 0.5970268930503457,
+    "flags": []
+   },
+   "short_gate_no_port": {
+    "delay_ms": 2.916166666666665,
+    "residual_deg": 2.314827654596601,
+    "residual_db": 0.5698686556348208,
+    "flags": []
+   },
+   "long_gate": {
+    "gate": {
+     "referenceMs": 8.75,
+     "leftMs": 0,
+     "rightMs": 5.021,
+     "rightTaper": 0.25
+    },
+    "no_port": true,
+    "delay_ms": 2.8990833333333343,
+    "residual_deg": 6.08903205964247,
+    "residual_db": 0.9452604492332393,
+    "flags": [
+     "Even with a matched gate a free phase offset of 33° would still help: the halves differ by more than a level and a delay.",
+     "An echo 2.63 ms after the direct sound (-15 dB) lies inside the gate and is not modelled. If it is a floor or table, state its geometry; if not, shorten the gate.",
+     "An echo 4.02 ms after the direct sound (-19 dB) lies inside the gate and is not modelled. If it is a floor or table, state its geometry; if not, shorten the gate."
+    ]
+   },
+   "long_gate_floor": {
+    "floor": {
+     "kind": "plane",
+     "label": "vloer",
+     "sourceAboveM": 1.07,
+     "micAboveM": 1.38,
+     "horizontalM": 1
+    },
+    "delay_ms": 2.8990833333333343,
+    "residual_deg": 6.510008903224777,
+    "residual_db": 1.0382520234402877,
+    "flags": [
+     "Even with a matched gate a free phase offset of 34° would still help: the halves differ by more than a level and a delay.",
+     "An echo 2.50 ms after the direct sound (-16 dB) lies inside the gate and is not modelled. If it is a floor or table, state its geometry; if not, shorten the gate."
+    ]
+   },
+   "long_vs_short_300_600": {
+    "points": 48,
+    "meanDb": 0.8691152523943217,
+    "maxAbsDb": 4.41379371098103,
+    "meanDeg": 0.43205638368979277,
+    "rmsDeg": 10.99399373130807,
+    "maxAbsDeg": 26.81703477539611
+   },
+   "new_vs_old_300_600": {
+    "old": "casus1/Koan_W_up_merged_ingespeeld_mild.frd",
+    "points": 48,
+    "meanDb": -0.6292077786187544,
+    "maxAbsDb": 1.3385648335847122,
+    "meanDeg": 2.8614874828169286,
+    "rmsDeg": 3.2036321071396685,
+    "maxAbsDeg": 5.750667626346512
+   }
+  },
+  "mid": {
+   "short_gate": {
+    "gate": {
+     "referenceMs": 8.75,
+     "leftMs": 2.4208333333333343,
+     "rightMs": 2.6001666666666665,
+     "rightTaper": 0.24238830844176656
+    },
+    "with_port": false,
+    "delay_ms": 2.833333333333332,
+    "residual_deg": 3.5079330645218225,
+    "residual_db": 0.5616069194358962,
+    "flags": []
+   },
+   "short_gate_no_port": {
+    "delay_ms": 2.833333333333332,
+    "residual_deg": 3.5079330645218225,
+    "residual_db": 0.5616069194358962,
+    "flags": []
+   },
+   "long_gate": {
+    "gate": {
+     "referenceMs": 8.75,
+     "leftMs": 0,
+     "rightMs": 5.021,
+     "rightTaper": 0.25
+    },
+    "no_port": true,
+    "delay_ms": 2.8318333333333325,
+    "residual_deg": 5.42135268791887,
+    "residual_db": 0.7721600361248042,
+    "flags": []
+   },
+   "long_gate_floor": "no floor geometry stated for this way",
+   "long_vs_short_300_600": {
+    "points": 48,
+    "meanDb": 0.1223933766865556,
+    "maxAbsDb": 0.5502849791675726,
+    "meanDeg": 0.8507722243344276,
+    "rmsDeg": 1.237907063146522,
+    "maxAbsDeg": 2.6350888024837786
+   },
+   "new_vs_old_300_600": {
+    "old": "casus1/mid_hor_0_merged.frd",
+    "points": 48,
+    "meanDb": -0.9409303328793263,
+    "maxAbsDb": 1.3171056165804202,
+    "meanDeg": -12.797546110305168,
+    "rmsDeg": 14.161754643208525,
+    "maxAbsDeg": 22.25571466808219
+   }
+  }
+ }
+}
