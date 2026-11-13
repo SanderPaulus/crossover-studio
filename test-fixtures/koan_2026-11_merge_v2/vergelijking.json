@@ -6,10 +6,18 @@
   "spread_db": 0.0015301632194280046
  },
  "load_validity": {
-  "k": 2,
+  "tol_db": 0.2,
+  "tol_deg": 5,
+  "model": "M-2 transform: cone velocity from the measured impedance, 53.2 L f_b 29.67 Hz Q_l 2.80 → 67.7 L f_b 26.30 Hz Q_l 2.48 (same port)",
   "test_box_fb_hz": 31.31103515625,
-  "woofer_target_valid_from_hz": 62.6220703125,
-  "note": "session \"augustus\" measured \"testkast\" (53.2 L, vented), not the target (67.7 L, vented): valid for the target from 62.6 Hz (k 2 × 31.31 Hz, the higher of f = 31.31 Hz measured object and 27.76 Hz target; k is a convention). Below it: the target's box model, or marked as measured object."
+  "woofer_target_valid_from_hz": 146.21771248535634,
+  "worst_below": {
+   "freqHz": 144.11977531187276,
+   "db": -0.20686145203613174,
+   "deg": -0.5126178140460199
+  },
+  "low_end_in_this_set": "marked as measured object (not converted)",
+  "note": "session \"augustus\" measured \"testkast\" (53.2 L, vented), not the target (67.7 L, vented): valid for the target from 146.2 Hz, where the model ratio (M-2 transform: cone velocity from the measured impedance, 53.2 L f_b 29.67 Hz Q_l 2.80 → 67.7 L f_b 26.30 Hz Q_l 2.48 (same port)) stays within ±0.2 dB and ±5° (conventions); just below, at 144.1 Hz, it reads -0.21 dB / -0.5°. Below it: marked as measured object, or converted with the same ratio."
  },
  "ways": {
   "woofer_down": {

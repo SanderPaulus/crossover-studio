@@ -144,8 +144,8 @@ describe('every reader of the v1 block reads a v2 block', () => {
     expect(h.merge?.spliceGainDb).toBeCloseTo(x.result.fit.gainDb, 3);
     expect(h.merge?.spliceDelayMs).toBeCloseTo(x.result.fit.delayMs, 5);
     expect(h.merge?.splicePhaseResidualDeg).toBeCloseTo(x.result.fit.residualRmsDeg, 2);
-    // V60: the block does not hand engine2 a window to subtract
-    expect(h.merge?.ffWindow).toBeUndefined();
+    // the FF window as POSITIONS: engine2's `right − reference` is the gate's length after the reference
+    expect(h.merge?.ffWindow?.effectiveWindowMs).toBeCloseTo(x.input.gate.rightMs, 3);
   });
 
   it('P-1: no line of the block reads as a window statement — the gate detector answers "absent"', () => {

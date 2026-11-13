@@ -9,6 +9,7 @@
 * Merge FF source = mid_hor_0.pir
 * Merge port source = none
 * Merge session = near "augustus", far "augustus", port none
+* Merge FF window = reference 8.7500 ms, right 11.3502 ms, Tukey 0.2424 (positions on the time base, not ARTA lengths)
 * Merge gate = reference 8.7500 ms, left 2.4208 ms, right 2.6002 ms, Tukey 0.2424 (left and right are lengths from the reference)
 * Merge model = an4 f0 200.00 Hz
 * Merge port weight = none

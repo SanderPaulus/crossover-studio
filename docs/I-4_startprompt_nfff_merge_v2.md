@@ -157,3 +157,20 @@
 > 5. **Groen.** `npx tsc -b` en `npm run test:fast` slagen; browsercontrole gedaan.
 > 6. **Export.** De round-trip is numeriek identiek, en VituixCAD leest het pakket (Sander controleert dat).
 > 7. **Afsluitend:** de gewijzigde bestanden, wat er níet gedaan is, en de open V-nummers.
+
+---
+
+### Openstaand (lijst, bijgehouden tijdens fase 2 — 13-11-2026)
+
+- **Vergelijkingsrun van de M-2b-ontwerpen op de v2-set** (Sander, B-3). Het verschil nieuw − oud in
+  300–600 Hz (−1,15 dB / −10,9° woofer onder, −0,94 dB / −12,8° mid; `koan_2026-11_merge_v2/vergelijking.json`)
+  valt in het overnamegebied. Golden refs worden er niet voor gewijzigd; de run is een meting.
+- **Poortmaten** (mond onder de kastbodem, spleet tot het tafelblad, uitsteek van het blad, mic-plaats bij
+  `poort_near.pir`) → de echo per bron voor de poort stellen, het definitieve poortgewicht (V58), en casus 1
+  met poort vastpinnen. Tot dan staat 0,205 in de kop als VOORLOPIG.
+- **Woofer boven**: de vlakken achter de echo's op 2,63 en 4,02 ms (maten van Sander).
+- **De mid-hoogte** boven de vloer, voor de vloervergelijking op het lange venster.
+- **Nominale T/S van de WO24TX-8** (f_s, Q_ts, V_as): het casusboek draagt ze niet. Met de M-2-modellen is de
+  doelkastgrens voor casus 1 **146,2 Hz** (±0,2 dB / ±5°; het niveau bindt, niet de fase); met de nominale
+  T/S kan de T/S-route er naast gelegd worden.
+- **App-aanroepers van `reflectionGates`** (`App.tsx`, `MeasuringGuide.tsx`) op de driverposities: fase 3.

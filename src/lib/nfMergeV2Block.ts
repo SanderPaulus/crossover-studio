@@ -8,9 +8,11 @@
  * read a v2 file without a change, and a test pins that they do. Everything v2 adds gets a new
  * `Merge …` name, which those readers ignore.
  *
- * ONE field is left out on purpose: `Merge FF window`. engine2 turns it into an effective window
- * as `right − reference`, which is V60's misreading; v2 writes the gate it actually used as
- * `Merge gate`, with the lengths spelled out, and leaves that field for the V60 session.
+ * `Merge FF window` is written as POSITIONS on the time base (reference R, right edge R + length),
+ * not as ARTA's lengths: engine2 reads it as `right − reference` (its fine-detail floor 2/T), and
+ * with positions that arithmetic is right — V60's misreading is a misreading of ARTA's lengths and
+ * does not reach this field. Without it engine2 would have no fine-detail floor for the file at all
+ * (I-4 fase 2, Sander's point 4). The gate itself, with lengths, is `Merge gate`.
  *
  * No prose line in the block may contain the words a gate detector looks for (P-1): v1's own
  * "(gated far field)" line made `readGateHeader` answer `unparseable`. The guard is a test.
@@ -48,6 +50,8 @@ export interface MergeV2FileInput {
   targetValidityNote?: string | null;
   /** How the level was calibrated, in words; absent = the impulses' own scale. */
   calibrationNote?: string | null;
+  /** What the port weight rests on, when it is not final (casus 1: provisional, V58). */
+  portWeightNote?: string | null;
 }
 
 export interface ParsedMergeV2 {
@@ -125,10 +129,11 @@ export function renderMergeBlockV2(x: MergeV2FileInput): string[] {
     `* Merge FF source = ${oneLine(x.farName)}`,
     `* Merge port source = ${x.portName ? oneLine(x.portName) : 'none'}`,
     `* Merge session = near ${sess(inp.near.session)}, far ${sess(inp.far.session)}, port ${inp.port ? sess(inp.port.impulse.session) : 'none'}`,
+    `* Merge FF window = reference ${fx(g.referenceMs, DECIMALS.ms)} ms, right ${fx(g.referenceMs + g.rightMs, DECIMALS.ms)} ms, Tukey ${fx(g.rightTaper, DECIMALS.taper)} (positions on the time base, not ARTA lengths)`,
     `* Merge gate = reference ${fx(g.referenceMs, DECIMALS.ms)} ms, left ${fx(g.leftMs, DECIMALS.ms)} ms, right ${fx(g.rightMs, DECIMALS.ms)} ms, ` +
       `Tukey ${fx(g.rightTaper, DECIMALS.taper)} (left and right are lengths from the reference)`,
     `* Merge model = ${modelText(inp.model)}`,
-    `* Merge port weight = ${inp.port ? fx(inp.port.weight, DECIMALS.weight) : 'none'}`,
+    `* Merge port weight = ${inp.port ? fx(inp.port.weight, DECIMALS.weight) + (x.portWeightNote ? ` (${oneLine(x.portWeightNote)})` : '') : 'none'}`,
     `* Merge cone echoes = ${echoesText(inp.echoes)}`,
     `* Merge port echoes = ${inp.port ? echoesText(inp.port.echoes ?? []) : 'none'}`,
     `* Merge fit band = ${fx(inp.fitBandHz[0], DECIMALS.hz)}-${fx(inp.fitBandHz[1], DECIMALS.hz)} Hz`,

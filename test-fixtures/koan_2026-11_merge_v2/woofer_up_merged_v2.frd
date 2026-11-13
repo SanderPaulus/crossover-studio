@@ -9,9 +9,10 @@
 * Merge FF source = woofer_up_hor_0.pir
 * Merge port source = poort_near.pir
 * Merge session = near "augustus", far "augustus", port "augustus"
+* Merge FF window = reference 8.7500 ms, right 11.5793 ms, Tukey 0.2228 (positions on the time base, not ARTA lengths)
 * Merge gate = reference 8.7500 ms, left 2.1917 ms, right 2.8293 ms, Tukey 0.2228 (left and right are lengths from the reference)
 * Merge model = an4 f0 150.00 Hz
-* Merge port weight = 0.2053
+* Merge port weight = 0.2053 (PROVISIONAL: Keele weight from the mouth diameter 74 mm back-computed from g 0.41, shared by 2 woofers; Helmholtz says ~110 cm² at the waist (V58) — the final value comes with the mouth measurements)
 * Merge cone echoes = none
 * Merge port echoes = none
 * Merge fit band = 300.00-576.00 Hz
@@ -20,8 +21,8 @@
 * Merge flags = none
 * Merge phase convention = as measured: phase relative to the gate reference (8.7500 ms on the August session time base : the phase zero of the session's own FRD exports (V56))
 * Merge measured object = testkast 53.2 L, baffle identical to the target (67.7 L); woofers vented, the mid in its own sealed pod
-* Merge target valid from = 62.62 Hz
-* Merge target validity = session "augustus" measured "testkast" (53.2 L, vented), not the target (67.7 L, vented): valid for the target from 62.6 Hz (k 2 × 31.31 Hz, the higher of f : 31.31 Hz measured object and 27.76 Hz target; k is a convention). Below it: the target's box model, or marked as measured object.
+* Merge target valid from = 146.22 Hz
+* Merge target validity = session "augustus" measured "testkast" (53.2 L, vented), not the target (67.7 L, vented): valid for the target from 146.2 Hz, where the model ratio (M-2 transform: cone velocity from the measured impedance, 53.2 L f_b 29.67 Hz Q_l 2.80 → 67.7 L f_b 26.30 Hz Q_l 2.48 (same port)) stays within ±0.2 dB and ±5° (conventions); just below, at 144.1 Hz, it reads -0.21 dB / -0.5°. Below it: marked as measured object, or converted with the same ratio. This file: MARKED below the limit, not converted.
 * Merge calibration = magnitude from the session's near-field FRD exports (microphone file named in them, zero phase), the three agree within 0.0015 dB
 * Merge floor reason = STATED, the floor of Koan_W_up_merged_ingespeeld_mild.frd (same near field and port, same session); its own reason text is not carried over because it cites the misread far-field gate (V60)
 * Merge status = MODEL-validated merge made by Crossover Studio on 2026-11-13

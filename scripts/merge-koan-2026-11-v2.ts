@@ -40,8 +40,8 @@ import {
   type PlaneEcho,
 } from '../src/lib/nfMergeV2.ts';
 import { renderMergedFrdV2 } from '../src/lib/nfMergeV2Block.ts';
-import { impedanceSaddleHz, loadValidity, LOAD_VALIDITY_K } from '../src/lib/measuredObject.ts';
-import { koanPortWeight, REAL_VOLUME_L, TEST_VOLUME_L } from '../src/lib/engine2/koan2026_09.fixture.ts';
+import { impedanceSaddleHz, loadValidity, logGrid, LOAD_RATIO_TOL_DB, LOAD_RATIO_TOL_DEG } from '../src/lib/measuredObject.ts';
+import { casus1M2ModelRatio, koanPortWeight, REAL_VOLUME_L, TEST_VOLUME_L } from '../src/lib/engine2/koan2026_09.fixture.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TF = join(ROOT, 'test-fixtures');
@@ -208,7 +208,10 @@ const limB = readFileSync(join(TF, 'casus1', 'woofers_parallel__1_.lim'));
 const lim = parseLim(limB.buffer.slice(limB.byteOffset, limB.byteOffset + limB.byteLength) as ArrayBuffer);
 const fbTest = impedanceSaddleHz(lim.freq, lim.magnitude);
 if (fbTest === null) throw new Error('woofers_parallel__1_.lim: no saddle between two impedance peaks');
+const m2 = casus1M2ModelRatio();
 const wooferValidity = loadValidity({
+  ratio: { fn: m2.ratio, model: m2.model },
+  grid: logGrid(12, 2000, 48),
   target: { netVolumeL: REAL_VOLUME_L, load: { kind: 'vented', port: { kind: 'same-as-other' } } },
   setup: {
     session: SESSION,
@@ -226,7 +229,16 @@ const comparison: Record<string, unknown> = {
   _: 'I-4 fase 2 (13-11-2026). Basis: the short gate of section D. Long gate = the gate the FRD exports used (V60), with the floor stated where its geometry is known. Old = the merges of the casus-1 sets.',
   common_reference_ms_on_pir: REF_MS,
   calibration: { source: 'near-field FRD exports ÷ gated PIR, three files agree within (dB)', spread_db: calSpread },
-  load_validity: { k: LOAD_VALIDITY_K, test_box_fb_hz: fbTest, woofer_target_valid_from_hz: wooferValidity.fromHz, note: wooferValidity.note },
+  load_validity: {
+    tol_db: LOAD_RATIO_TOL_DB,
+    tol_deg: LOAD_RATIO_TOL_DEG,
+    model: wooferValidity.model,
+    test_box_fb_hz: fbTest,
+    woofer_target_valid_from_hz: wooferValidity.fromHz,
+    worst_below: wooferValidity.limit?.worstBelow ?? null,
+    low_end_in_this_set: 'marked as measured object (not converted)',
+    note: wooferValidity.note,
+  },
   ways: {} as Record<string, unknown>,
 };
 
@@ -256,7 +268,10 @@ for (const w of WAYS) {
     madeOn: MADE_ON,
     measuredObjectNote: `testkast ${TEST_VOLUME_L} L, baffle identical to the target (${REAL_VOLUME_L} L); woofers vented, the mid in its own sealed pod`,
     targetValidFromHz: isWoofer ? wooferValidity.fromHz : null,
-    targetValidityNote: isWoofer ? wooferValidity.note : 'the mid sits in its own sealed pod, the same in the test box and the target: no load limit',
+    targetValidityNote: isWoofer ? `${wooferValidity.note} This file: MARKED below the limit, not converted.` : 'the mid sits in its own sealed pod, the same in the test box and the target: no load limit',
+    portWeightNote: w.port
+      ? 'PROVISIONAL: Keele weight from the mouth diameter 74 mm back-computed from g 0.41, shared by 2 woofers; Helmholtz says ~110 cm² at the waist (V58) — the final value comes with the mouth measurements'
+      : null,
     calibrationNote: `magnitude from the session's near-field FRD exports (microphone file named in them, zero phase), the three agree within ${calSpread.toFixed(4)} dB`,
   });
   writeFileSync(join(OUT, `${w.name}_merged_v2.frd`), file);
