@@ -98,6 +98,12 @@ export const ECHO_HINT_DB = -20;
  * finder could not see.
  */
 export const ECHO_FINDER_BAND_OCT: readonly [number, number] = [-0.5, 0.5];
+/**
+ * A `boundary` is accepted while its image's extra delay (2·h/c) stays under this fraction of a
+ * period at the top of the fit band — the same quarter period `TIMING_FLAG_PERIOD_FRACTION` uses
+ * for "the fit cannot tell these apart". Casus 1's 300–576 Hz band: up to 7.4 cm.
+ */
+export const BOUNDARY_MAX_PERIOD_FRACTION = 0.25;
 /** Echo removal never divides by less than this (a notch is not inverted into a spike). */
 export const ECHO_DIVIDE_FLOOR_DB = -12;
 /**
@@ -174,17 +180,38 @@ export interface PlaneEcho {
   /** Horizontal distance source → microphone, m. */
   horizontalM: number;
 }
-export type EchoTerm = PlaneEcho;
+/**
+ * A plane the source sits ON, not one it is reflected in (I-4, 13-11-2026): a downfiring port
+ * blowing onto a table top, a driver flush with a floor. Its image is closer than the fit band
+ * can tell from the source itself, so it is part of the source as the near field measured it,
+ * not an echo. It changes no prediction; it is stated so the reader can see it was considered,
+ * and so it is never counted as an unmodelled echo inside the gate. A plane farther away than
+ * `BOUNDARY_MAX_PERIOD_FRACTION` of a period at the top of the fit band is refused here: that is
+ * an echo, and belongs in the list as a `plane`.
+ */
+export interface BoundaryTerm {
+  kind: 'boundary';
+  label: string;
+  /** Acoustic centre (or effective source) above the plane, m. 0 = on it. */
+  sourceAboveM: number;
+}
+export type EchoTerm = PlaneEcho | BoundaryTerm;
 
 export interface MergeV2Input {
   far: Impulse;
   /** The cone's near field. */
   near: Impulse;
-  /** Optional port / passive radiator near field and its weight in Keele's sum (`portWeight`). */
-  port?: { impulse: Impulse; weight: number } | null;
+  /**
+   * Optional port / passive radiator near field and its weight in Keele's sum (`portWeight`).
+   * `echoes` are the port's OWN reflections (I-4): its mouth sits at its own height, so its image
+   * in a plane arrives at its own delay. They are never inherited from the cone's — once the cone
+   * states a plane, the port must state its own list (`[]` for none). `sdCm2` gives them the
+   * mouth's piston directivity; null or absent: omnidirectional.
+   */
+  port?: { impulse: Impulse; weight: number; echoes?: readonly EchoTerm[]; sdCm2?: number | null } | null;
   gate: Gate;
   model: NearToFarModel;
-  /** Stated echo terms. `[]` means "none", and the echo check still runs. */
+  /** Stated echo terms of the CONE (the port states its own). `[]` means "none", and the echo check still runs. */
   echoes: readonly EchoTerm[];
   /** Cone area, cm² — gives echo terms the piston's directivity. Null: omnidirectional. */
   sdCm2?: number | null;
@@ -411,6 +438,7 @@ function echoSpec(echoes: readonly EchoTerm[], f: Float64Array, sdCm2: number | 
   const im = new Float64Array(f.length);
   const radius = sdCm2 && sdCm2 > 0 ? Math.sqrt(sdCm2 / 1e4 / Math.PI) : 0;
   for (const e of echoes) {
+    if (e.kind === 'boundary') continue; // part of the source as measured — not an echo
     const rd = Math.hypot(e.horizontalM, e.micAboveM - e.sourceAboveM);
     const ri = Math.hypot(e.horizontalM, e.micAboveM + e.sourceAboveM);
     const td = Math.atan2(e.micAboveM - e.sourceAboveM, e.horizontalM);
@@ -570,10 +598,38 @@ function validate(input: MergeV2Input): void {
   if (!(o.fromHz > 0 && o.toHz > o.fromHz && o.toHz < fs / 2 && o.pointsPerOctave > 0)) throw new MergeV2Error('output', 'Output grid needs 0 < from < to < Nyquist and points per octave > 0.');
   if (input.model.kind === 'shelf' && !(input.model.hz > 0 && input.model.depthDb >= 0)) throw new MergeV2Error('model', 'Shelf needs a corner > 0 Hz and a depth ≥ 0 dB.');
   if (input.model.kind === 'an4' && !(input.model.f0Hz > 0)) throw new MergeV2Error('model', 'AN4 model needs f0 > 0 Hz.');
-  for (const e of input.echoes) {
-    if (!(e.sourceAboveM > 0 && e.micAboveM > 0 && e.horizontalM > 0)) {
-      throw new MergeV2Error(`echoes.${e.label}`, `Echo "${e.label}" needs source height, mic height and distance, all > 0 m.`);
+  const checkEchoes = (list: readonly EchoTerm[], field: string): void => {
+    for (const e of list) {
+      if (e.kind === 'boundary') {
+        if (!(e.sourceAboveM >= 0 && Number.isFinite(e.sourceAboveM))) {
+          throw new MergeV2Error(`${field}.${e.label}`, `Boundary "${e.label}" needs the source's height above it, ≥ 0 m.`);
+        }
+        const maxM = (BOUNDARY_MAX_PERIOD_FRACTION / fh) * SPEED_OF_SOUND_M_S / 2;
+        if (e.sourceAboveM > maxM) {
+          throw new MergeV2Error(
+            `${field}.${e.label}`,
+            `"${e.label}" is ${(e.sourceAboveM * 100).toFixed(1)} cm from the source — farther than ${(maxM * 100).toFixed(1)} cm, ` +
+              `so its image is an echo the fit band can see, not a boundary. State it as a plane.`,
+          );
+        }
+        continue;
+      }
+      if (!(e.sourceAboveM > 0 && e.micAboveM > 0 && e.horizontalM > 0)) {
+        throw new MergeV2Error(`${field}.${e.label}`, `Echo "${e.label}" needs source height, mic height and distance, all > 0 m.`);
+      }
     }
+  };
+  checkEchoes(input.echoes, 'echoes');
+  if (input.port) {
+    if (input.port.echoes) checkEchoes(input.port.echoes, 'port.echoes');
+    else if (input.echoes.some((e) => e.kind === 'plane')) {
+      throw new MergeV2Error(
+        'port.echoes',
+        "The cone states a reflecting plane but the port states none: the port's mouth sits at its own height, so its image arrives at its own delay. " +
+          'State the port\'s own reflections ([] for none) — they are not inherited.',
+      );
+    }
+    if (input.port.sdCm2 != null && !(input.port.sdCm2 > 0)) throw new MergeV2Error('port.sdCm2', 'Port mouth area must be > 0 cm², or left out.');
   }
 }
 
@@ -597,16 +653,31 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
   for (let i = 0; i < n; i++) farGatedSig[i] = input.far.alreadyGated ? farX[i] : farX[i] * W[i];
   const Fg = rfft(farGatedSig);
 
-  let nearS = rfft(padTo(input.near.samples, n));
+  const coneS = rfft(padTo(input.near.samples, n));
+  let nearS = coneS;
+  let portW: Spec | null = null; // weight × port near field
   if (input.port) {
     const p = rfft(padTo(input.port.impulse.samples, n));
     const w = input.port.weight;
-    nearS = { re: nearS.re.map((v, k) => v + w * p.re[k]), im: nearS.im.map((v, k) => v + w * p.im[k]) };
+    portW = { re: p.re.map((v) => w * v), im: p.im.map((v) => w * v) };
+    nearS = { re: coneS.re.map((v, k) => v + portW!.re[k]), im: coneS.im.map((v, k) => v + portW!.im[k]) };
   }
   const M = modelSpec(input.model, f, n);
-  const E = echoSpec(input.echoes, f, input.sdCm2 ?? null);
+  const E = echoSpec(input.echoes, f, input.sdCm2 ?? null); // the cone's reflections
   const Panech = mulSpec(nearS, M); // anechoic prediction (what the output uses)
-  const P = mulSpec(Panech, E); // what the far field should hold (what the fit compares)
+  // What the far field should hold (what the fit compares): each source with its OWN reflections.
+  const P = (() => {
+    if (!portW) return mulSpec(Panech, E);
+    const Ep = echoSpec(input.port!.echoes ?? [], f, input.port!.sdCm2 ?? null);
+    const cone = mulSpec(mulSpec(coneS, M), E);
+    const port = mulSpec(mulSpec(portW, M), Ep);
+    return { re: cone.re.map((v, k) => v + port.re[k]), im: cone.im.map((v, k) => v + port.im[k]) };
+  })();
+  for (const b of [...input.echoes, ...(input.port?.echoes ?? [])]) {
+    if (b.kind === 'boundary') {
+      notes.push(`boundary "${b.label}" ${(b.sourceAboveM * 100).toFixed(1)} cm from its source: part of the source as measured, not an echo`);
+    }
+  }
 
   const [fitLo, fitHi] = input.fitBandHz;
   const kLo = Math.ceil(fitLo / (fs / n));
@@ -870,7 +941,7 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
   if (!input.far.alreadyGated && !input.near.alreadyGated) {
     const eLo = fitLo * 2 ** ECHO_FINDER_BAND_OCT[0];
     const eHi = Math.min(fs / 4, fitHi * 2 ** ECHO_FINDER_BAND_OCT[1]);
-    echoesFound = findEchoes(farRaw, nearS, M, E, fit, f, n, eLo, eHi, input);
+    echoesFound = findEchoes(farRaw, P, fit, f, n, eLo, eHi, input);
     notes.push(
       `echo finder band ${Math.round(eLo)}–${Math.round(eHi)} Hz: echoes closer than ${(1000 / (eHi - eLo)).toFixed(1)} ms ` +
         `to the direct sound cannot be told apart from it there — the fit residual is the check for those`,
@@ -983,9 +1054,8 @@ const ECHO_LOOK_MS = 12;
 
 function findEchoes(
   farRaw: Spec,
-  nearS: Spec,
-  model: Spec,
-  stated: Spec,
+  /** The prediction with every stated reflection, per source: near · model · echoes. */
+  predicted: Spec,
   fit: { gain: number; sign: 1 | -1; tau: number },
   f: Float64Array,
   n: number,
@@ -1006,11 +1076,9 @@ function findEchoes(
     let w = 1;
     if (fk < lo) w = 0.5 - 0.5 * Math.cos((Math.PI * Math.log(fk / lo0)) / Math.log(lo / lo0));
     else if (fk > hi) w = 0.5 + 0.5 * Math.cos((Math.PI * Math.log(fk / hi)) / Math.log(hi1 / hi));
-    // denominator: near · model · stated echoes
-    const a1r = nearS.re[k] * model.re[k] - nearS.im[k] * model.im[k];
-    const a1i = nearS.re[k] * model.im[k] + nearS.im[k] * model.re[k];
-    const dr = a1r * stated.re[k] - a1i * stated.im[k];
-    const di = a1r * stated.im[k] + a1i * stated.re[k];
+    // denominator: the prediction with every stated reflection
+    const dr = predicted.re[k];
+    const di = predicted.im[k];
     const dd = dr * dr + di * di;
     if (!(dd > 0)) continue;
     const rr = (farRaw.re[k] * dr + farRaw.im[k] * di) / dd;
@@ -1041,7 +1109,9 @@ function findEchoes(
   const sep = Math.round((ECHO_MIN_SEPARATION_MS / 1000) * fs);
   const look = Math.round((ECHO_LOOK_MS / 1000) * fs);
   const gateEndAfterDirect = input.gate.referenceMs + input.gate.rightMs - arrivalMs(input.far);
-  const modelled = input.echoes.map((e) => planeEchoDelayS(e) * 1000);
+  const modelled = [...input.echoes, ...(input.port?.echoes ?? [])]
+    .filter((e): e is PlaneEcho => e.kind === 'plane')
+    .map((e) => planeEchoDelayS(e) * 1000);
   const out: FoundEcho[] = [];
   for (let d = guard; d < look; d++) {
     const v = env(i0 + d);

@@ -20,6 +20,7 @@ import {
   type Gate,
   type Impulse,
   type MergeV2Input,
+  type BoundaryTerm,
   type PlaneEcho,
 } from './nfMergeV2.ts';
 
@@ -521,4 +522,92 @@ describe('V60 (d) — on the long gate the stated floor explains woofer_down', (
     expect(Math.abs(r.fit.residualRmsDb - 0.25)).toBeLessThanOrEqual(0.02);
     expect(r.flags).toEqual([]);
   }, 60_000);
+});
+
+/* ------------------------------------------------------------------ *
+ * I-4: reflections per SOURCE — the port has its own height, its own image
+ * ------------------------------------------------------------------ */
+
+describe('reflections per source — a port at a known, different height (synthetic, known answer)', () => {
+  // Cone echo: ECHO (source 0.30 m above the plane, mic 0.88 m, 1.0 m) — 1.14 ms after the direct sound.
+  // Port mouth 0.15 m above the same plane: its image arrives at 0.58 ms. Both inside the gate.
+  const PORT_ECHO: PlaneEcho = { ...ECHO, label: 'tafel (poort)', sourceAboveM: 0.15 };
+  const PORT_W = 0.5;
+  const port = (f: number): Cx => cdiv([1, 0], [1 - (f / 500) ** 2, f / 500 / 0.5]); // a resonant low-pass
+  const build = () => {
+    const near = impulseOf((f) => cmul(driver(f), delay(f, NEAR_T0)));
+    const portNear = impulseOf((f) => cmul(port(f), delay(f, NEAR_T0)));
+    const far = impulseOf((f) => {
+      const common = cmul(delay(f, NEAR_T0 + TRUE_TAU), an4(f, F0));
+      const c = cmul(driver(f), planeTerm(f, ECHO));
+      const pp = cmul(port(f), planeTerm(f, PORT_ECHO));
+      const h = cmul(common, [c[0] + PORT_W * pp[0], c[1] + PORT_W * pp[1]]);
+      return [h[0] * TRUE_GAIN, h[1] * TRUE_GAIN];
+    });
+    const mk = (name: string, samples: Float64Array): Impulse => ({ name, sampleRate: FS, samples, timeBase: 'session', alreadyGated: false, session: 'synth' });
+    return { near: mk('near', near), far: mk('far', far), portNear: mk('port', portNear) };
+  };
+
+  it('premise: the two images arrive at different delays, both inside the gate', () => {
+    const c = planeEchoDelayS(ECHO) * 1000;
+    const p = planeEchoDelayS(PORT_ECHO) * 1000;
+    expect(c).toBeLessThan(2.5);
+    expect(p).toBeLessThan(2.5);
+    expect(c - p).toBeGreaterThan(0.4);
+  });
+
+  it('each source with its own reflection: delay and gain recovered, residual < 0.5°, no flags', () => {
+    const { near, far, portNear } = build();
+    const r = mergeImpulsesV2(input({ near, far, echoes: [ECHO], port: { impulse: portNear, weight: PORT_W, echoes: [PORT_ECHO] } }));
+    expect(r.fit.residualRmsDeg).toBeLessThan(0.5);
+    expect(Math.abs(r.fit.delayMs - TRUE_TAU * 1000)).toBeLessThan(0.002);
+    expect(Math.abs(r.fit.gainDb - 20 * Math.log10(TRUE_GAIN))).toBeLessThan(0.05);
+    expect(r.flags).toEqual([]);
+  });
+
+  it("the port given the cone's reflection (the pre-I-4 behaviour) is visibly worse", () => {
+    const { near, far, portNear } = build();
+    const right = mergeImpulsesV2(input({ near, far, echoes: [ECHO], port: { impulse: portNear, weight: PORT_W, echoes: [PORT_ECHO] } }));
+    const inherited = mergeImpulsesV2(input({ near, far, echoes: [ECHO], port: { impulse: portNear, weight: PORT_W, echoes: [ECHO] } }));
+    expect(inherited.fit.residualRmsDeg).toBeGreaterThan(right.fit.residualRmsDeg + 1);
+  });
+
+  it('the cone states a plane, the port states nothing: refused by field, never inherited', () => {
+    const { near, far, portNear } = build();
+    expect(() => mergeImpulsesV2(input({ near, far, echoes: [ECHO], port: { impulse: portNear, weight: PORT_W } }))).toThrowError(MergeV2Error);
+    try {
+      mergeImpulsesV2(input({ near, far, echoes: [ECHO], port: { impulse: portNear, weight: PORT_W } }));
+    } catch (e) {
+      expect((e as MergeV2Error).field).toBe('port.echoes');
+    }
+    // no plane on the cone: an absent port list is "none", as before I-4
+    expect(() => mergeImpulsesV2(input({ near, far, echoes: [], port: { impulse: portNear, weight: PORT_W } }))).not.toThrow();
+  });
+
+  it('a source ON a plane (boundary) is accepted, changes nothing, and is never an unmodelled echo', () => {
+    const { near, far, portNear } = build();
+    const table: BoundaryTerm = { kind: 'boundary', label: 'tafelblad', sourceAboveM: 0.015 };
+    const base = { near, far, echoes: [ECHO] as PlaneEcho[] };
+    const without = mergeImpulsesV2(input({ ...base, port: { impulse: portNear, weight: PORT_W, echoes: [PORT_ECHO] } }));
+    const withB = mergeImpulsesV2(input({ ...base, port: { impulse: portNear, weight: PORT_W, echoes: [PORT_ECHO, table] } }));
+    expect(withB.fit.residualRmsDeg).toBe(without.fit.residualRmsDeg);
+    expect(withB.fit.delayMs).toBe(without.fit.delayMs);
+    expect(withB.flags).toEqual([]);
+    expect(withB.notes.some((n) => /boundary "tafelblad" 1\.5 cm .*not an echo/.test(n))).toBe(true);
+    // on it (0 m) is allowed too
+    expect(() => mergeImpulsesV2(input({ ...base, port: { impulse: portNear, weight: PORT_W, echoes: [PORT_ECHO, { ...table, sourceAboveM: 0 }] } }))).not.toThrow();
+  });
+
+  it('a "boundary" far enough away to be heard is refused: state it as a plane', () => {
+    const { near, far, portNear } = build();
+    const far20: BoundaryTerm = { kind: 'boundary', label: 'tafelblad', sourceAboveM: 0.2 };
+    try {
+      mergeImpulsesV2(input({ near, far, echoes: [ECHO], port: { impulse: portNear, weight: PORT_W, echoes: [far20] } }));
+      throw new Error('not refused');
+    } catch (e) {
+      expect(e).toBeInstanceOf(MergeV2Error);
+      expect((e as MergeV2Error).field).toBe('port.echoes.tafelblad');
+      expect((e as Error).message).toMatch(/State it as a plane/);
+    }
+  });
 });
