@@ -162,7 +162,7 @@ const COMPONENT_FILES = [
   'components/HelpPanel.tsx',
   'components/MeasuringGuide.tsx',
   'components/CatalogManager.tsx',
-  'components/NfMergeSection.tsx',
+  'components/NfMergeTool.tsx',
 ];
 
 /* ================================================================== *
@@ -180,7 +180,7 @@ describe('U-9 fase 2 (1): every control of the app has a register row', () => {
     const tokens = tokensFor('App.tsx');
     const tags = controlTags(APP).filter((c) => !exempt(c.at));
     /* A floor that says the scan is not empty, not a count. I-4 fase 3 moved the eight
-       controls of the I-2 near-field slot into `NfMergeSection.tsx` (filed whole below):
+       controls of the I-2 near-field slot into the merge tool (`NfMergeTool.tsx`) (filed whole below):
        155 → 147, so the floor went from 150 to 140. */
     expect(tags.length).toBeGreaterThan(140);
     for (const { at, tag } of tags) {

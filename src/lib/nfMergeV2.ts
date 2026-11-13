@@ -50,7 +50,7 @@
 import { fftInPlace, ifftInPlace } from './fft.ts';
 import { planeExtraPathMm } from './cabinet.ts';
 
-export const NF_MERGE_V2_VERSION = 'nf-merge/2.1';
+export const NF_MERGE_V2_VERSION = 'nf-merge/2.2';
 
 /** c, m/s — the one physical constant the project whitelists (CLAUDE.md, P6). */
 export const SPEED_OF_SOUND_M_S = 343;
@@ -220,8 +220,10 @@ export interface MergeV2Input {
   fitBandHz: readonly [number, number];
   /** Where the output hands over from prediction to far field, Hz. */
   spliceBandHz: readonly [number, number];
-  /** Output grid. */
-  output: { fromHz: number; toHz: number; pointsPerOctave: number };
+  /** Output grid: log-spaced from/to at points per octave, or — when `grid` is given — exactly those
+   *  frequencies (ascending, inside 0 … Nyquist). The explicit grid is how a merge is laid beside a file
+   *  on that file's own frequencies (I-4 B-4: compare on the same grid before reading dips). */
+  output: { fromHz: number; toHz: number; pointsPerOctave: number; grid?: readonly number[] };
 }
 
 export interface FoundEcho {
@@ -230,6 +232,9 @@ export interface FoundEcho {
   /** Relative to the direct sound, dB. */
   levelDb: number;
   insideGate: boolean;
+  /** nf-merge/2.2 — the far-field window's weight at this delay: 1 on the flat part, between 0 and 1 in
+   *  the taper flank, 0 past the window. Reported, never a threshold (see `gateFlankAfterDirectMs`). */
+  windowWeight: number;
   /** True when a stated echo term sits within 0.15 ms of it. */
   modelled: boolean;
 }
@@ -597,6 +602,7 @@ function validate(input: MergeV2Input): void {
   if (!(sl > 0 && sh > sl)) throw new MergeV2Error('spliceBandHz', 'Splice band must satisfy 0 < low < high.');
   const o = input.output;
   if (!(o.fromHz > 0 && o.toHz > o.fromHz && o.toHz < fs / 2 && o.pointsPerOctave > 0)) throw new MergeV2Error('output', 'Output grid needs 0 < from < to < Nyquist and points per octave > 0.');
+  if (o.grid && !(o.grid.length >= 2 && o.grid.every((v, i) => v > 0 && v < fs / 2 && (i === 0 || v > o.grid![i - 1])))) throw new MergeV2Error('output', 'An explicit output grid must hold at least two ascending frequencies inside 0 … Nyquist.');
   if (input.model.kind === 'shelf' && !(input.model.hz > 0 && input.model.depthDb >= 0)) throw new MergeV2Error('model', 'Shelf needs a corner > 0 Hz and a depth ≥ 0 dB.');
   if (input.model.kind === 'an4' && !(input.model.f0Hz > 0)) throw new MergeV2Error('model', 'AN4 model needs f0 > 0 Hz.');
   const checkEchoes = (list: readonly EchoTerm[], field: string): void => {
@@ -967,10 +973,15 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
       `echo finder band ${Math.round(eLo)}–${Math.round(eHi)} Hz: echoes closer than ${(1000 / (eHi - eLo)).toFixed(1)} ms ` +
         `to the direct sound cannot be told apart from it there — the fit residual is the check for those`,
     );
+    const resolutionMs = 1000 / (eHi - eLo);
     for (const e of echoesFound) {
       if (e.insideGate && !e.modelled && e.levelDb > ECHO_HINT_DB) {
         flags.push(
           `An echo ${e.afterDirectMs.toFixed(2)} ms after the direct sound (${e.levelDb.toFixed(0)} dB) lies inside the gate and is not modelled. ` +
+            (e.windowWeight < 1
+              ? `It lies in the window's taper flank (window weight ${e.windowWeight.toFixed(2)}): check whether it is an event just past the window, ` +
+                `smeared in at this band's resolution (≈${resolutionMs.toFixed(1)} ms). `
+              : '') +
             `If it is a floor or table, state its geometry; if not, shorten the gate.`,
         );
       }
@@ -983,8 +994,11 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
   const grid: number[] = [];
   {
     const o = input.output;
-    const nPts = Math.max(2, Math.round(Math.log2(o.toHz / o.fromHz) * o.pointsPerOctave) + 1);
-    for (let i = 0; i < nPts; i++) grid.push(o.fromHz * (o.toHz / o.fromHz) ** (i / (nPts - 1)));
+    if (o.grid) grid.push(...o.grid);
+    else {
+      const nPts = Math.max(2, Math.round(Math.log2(o.toHz / o.fromHz) * o.pointsPerOctave) + 1);
+      for (let i = 0; i < nPts; i++) grid.push(o.fromHz * (o.toHz / o.fromHz) ** (i / (nPts - 1)));
+    }
   }
   const [sl, sh] = input.spliceBandHz;
   const at = (s: Spec, fk: number): [number, number] => {
@@ -1073,6 +1087,26 @@ const ECHO_GUARD_MS = 0.25;
 const ECHO_MIN_SEPARATION_MS = 0.2;
 const ECHO_LOOK_MS = 12;
 
+/**
+ * nf-merge/2.2 (I-4 B-4) — the Tukey flank of the far field's window, ms after the direct sound, or
+ * null without a taper. Every found echo carries the window's weight at its delay (1 on the flat
+ * part, 0 past the window); the weight is REPORTED and is never a threshold.
+ *
+ * Measured on casus 1's mid (long header window, flank 3.29–4.54 ms): the 4.35 ms "echo" of the
+ * first B-4 browser check was neither the window edge nor a reflection. It appeared only with the
+ * floor modelled at a mid height nobody stated (0.94 m): dividing out an echo that is not there
+ * leaves its mirror. Without that plane the finder holds nothing between 3.5 and 4.7 ms.
+ * Skipping the flank was tried and refused by measurement: casus 1's woofer-down floor echo (3.63
+ * ms) lies in ITS flank (2.77–4.02 ms) and costs 8.3° → 3.7° of residual. So the finder keeps
+ * searching there, and a flag in the flank says so with its weight.
+ */
+export function gateFlankAfterDirectMs(input: Pick<MergeV2Input, 'gate' | 'far'>): [number, number] | null {
+  const g = input.gate;
+  if (!(g.rightTaper > 0)) return null;
+  const a = arrivalMs(input.far);
+  return [g.referenceMs + g.rightMs * (1 - g.rightTaper) - a, g.referenceMs + g.rightMs - a];
+}
+
 function findEchoes(
   farRaw: Spec,
   /** The prediction with every stated reflection, per source: near · model · echoes. */
@@ -1130,6 +1164,7 @@ function findEchoes(
   const sep = Math.round((ECHO_MIN_SEPARATION_MS / 1000) * fs);
   const look = Math.round((ECHO_LOOK_MS / 1000) * fs);
   const gateEndAfterDirect = input.gate.referenceMs + input.gate.rightMs - arrivalMs(input.far);
+  const flank = gateFlankAfterDirectMs(input);
   const modelled = [...input.echoes, ...(input.port?.echoes ?? [])]
     .filter((e): e is PlaneEcho => e.kind === 'plane')
     .map((e) => planeEchoDelayS(e) * 1000);
@@ -1142,7 +1177,9 @@ function findEchoes(
     const db = 20 * Math.log10(v / peak);
     if (db < ECHO_HINT_DB - 10) continue;
     const ms = (d / fs) * 1000;
-    out.push({ afterDirectMs: ms, levelDb: db, insideGate: ms < gateEndAfterDirect, modelled: modelled.some((m) => Math.abs(m - ms) < 0.15) });
+    const windowWeight =
+      ms >= gateEndAfterDirect ? 0 : flank && ms > flank[0] ? 0.5 * (1 + Math.cos((Math.PI * (ms - flank[0])) / (flank[1] - flank[0]))) : 1;
+    out.push({ afterDirectMs: ms, levelDb: db, insideGate: ms < gateEndAfterDirect, windowWeight, modelled: modelled.some((m) => Math.abs(m - ms) < 0.15) });
   }
   return out.slice(0, 12);
 }

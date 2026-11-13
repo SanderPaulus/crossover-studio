@@ -493,7 +493,8 @@ import {
 } from './lib/v2ResultLayout.ts';
 import { bridgeDelaysUs, excessDelayMsOf } from './lib/vituixBridge.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
-import NfMergeSection, { type AcceptedSource } from './components/NfMergeSection.tsx';
+import NfMergeTool, { type AcceptedSource } from './components/NfMergeTool.tsx';
+import type { CabinetGeometryForMerge } from './lib/mergeSession.ts';
 import { branchFile } from './lib/mergeSession.ts';
 import { parseMergeBlockV2 } from './lib/nfMergeV2Block.ts';
 import DriverFilterControls from './components/FilterControls.tsx';
@@ -5482,22 +5483,33 @@ export default function App() {
     },
     [woofer, midDrv, tweeter],
   );
-  /** The optimizer's driver positions, as the merge section reads them:
-   *  acoustic centre above the cabinet bottom, and a pair's spacing. */
-  const mergeHeights = useMemo(() => {
+  /** I-4 B-4 — the optimizer's cabinet geometry as the merge tool reads it (nulls where the project
+   *  states nothing; the tool then asks). Driver heights are derived there, never typed per source. */
+  const mergeGeometry = useMemo((): CabinetGeometryForMerge => {
     const n = (v: string) => (v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
-    const H = n(cabinet.baffleHeightMm);
-    const ref = n(cabinet.refFromTopMm);
     const one = (r: BranchRole) => {
       const d = cabinet.drivers[r];
-      const y = n(d.yMm);
-      return {
-        centerAboveBottomMm: H !== null && ref !== null && y !== null ? H - ref + y : null,
-        spacingMm: (n(d.count) ?? 1) >= 2 ? n(d.spacingMm) : null,
-      };
+      return { yMm: n(d.yMm), count: n(d.count), spacingMm: n(d.spacingMm), facingFront: d.facing === 'front', opposed: d.opposed };
     };
-    return { low: one('low'), mid: one('mid'), high: one('high') };
+    return {
+      baffleWidthMm: n(cabinet.baffleWidthMm),
+      baffleHeightMm: n(cabinet.baffleHeightMm),
+      refFromTopMm: n(cabinet.refFromTopMm),
+      drivers: { low: one('low'), mid: one('mid'), high: one('high') },
+    };
   }, [cabinet]);
+  /** I-4 B-4 — the merge tool has its own address: `#/merge`, `#/merge/<session id>`. */
+  const readMergeRoute = (): { open: boolean; id: string | null } => {
+    const m = /^#\/merge(?:\/(.+))?$/.exec(typeof location === 'undefined' ? '' : location.hash);
+    return m ? { open: true, id: m[1] ? decodeURIComponent(m[1]) : null } : { open: false, id: null };
+  };
+  const [mergeRoute, setMergeRoute] = useState(readMergeRoute);
+  useEffect(() => {
+    const on = () => setMergeRoute(readMergeRoute());
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const mergeSd = useMemo(() => {
     const n = (v: string) => (Number(v) > 0 ? Number(v) : null);
     return { low: n(sdCm2.low), mid: n(sdCm2.mid), high: n(sdCm2.high) };
@@ -16205,7 +16217,7 @@ export default function App() {
           (demo, wizard, help, measuring guide) — this card is the missing
           conductor. It only ever shows when there is no autosave and it has
           never been dismissed, so returning users never see it. */}
-      {welcomeOpen && (
+      {welcomeOpen && !mergeRoute.open && (
         <Modal
           open
           onClose={() => dismissWelcome()}
@@ -17543,6 +17555,13 @@ export default function App() {
               theme) moved behind ⚙: they are set once, and as eight permanent
               buttons they gave the mode switch the same weight as a theme
               toggle. */}
+          <a
+            href="#/merge"
+            className={`merge-tool-link${mergeRoute.open ? ' active' : ''}`}
+            title={t('The NF/FF-merge tool: merge near and far field from a measuring session, on its own page, with or without a project.')}
+          >
+            {t('NF/FF merge')}
+          </a>
           <div className="mode-switch" role="tablist" aria-label={t('Mode')}>
             {(
               [
@@ -17834,6 +17853,27 @@ export default function App() {
         </nav>
       )}
 
+      {/* I-4 B-4 — the NF/FF-merge tool, a page of its own at #/merge. It works without a project;
+          the design only receives its merged files through "Use in project…". */}
+      {mergeRoute.open && (
+        <main className="merge-page">
+          <NfMergeTool
+            geometry={mergeGeometry}
+            sdCm2={mergeSd}
+            inProject={mergeV2}
+            onUse={(way, sources) => {
+              acceptMergeV2(way, sources);
+              location.hash = '#/';
+            }}
+            openId={mergeRoute.id}
+            onOpenId={(id) => {
+              const h = id ? `#/merge/${encodeURIComponent(id)}` : '#/merge';
+              if (location.hash !== h) history.replaceState(null, '', h);
+              setMergeRoute({ open: true, id });
+            }}
+          />
+        </main>
+      )}
       <div
         ref={workspaceRef}
         className={`workspace${designTab === 'network' && uiMode !== 'compare' ? ' wide-left' : ''}${
@@ -18044,44 +18084,41 @@ export default function App() {
                           itself happens in one place, the NF/FF-merge section
                           below; a branch only shows what it loaded from there,
                           read from the merge files' own blocks. */}
+                      {/* I-4 B-4 — WHERE THIS BRANCH'S LOW END CAME FROM, and nothing else. The
+                          merge itself lives in the NF/FF-merge tool (#/merge); a branch only
+                          shows what it received from there, read from the files' own blocks. */}
                       {mergeV2[role].length > 0 && (
                         <div className="nfm-provenance">
-                          <strong>{t('merge v2 · declared')}</strong>{' '}
+                          <strong>{t('merge v2 · from the merge tool')}</strong>
                           {mergeV2[role].map((a) => {
                             const b = parseMergeBlockV2(a.text);
+                            const status = a.status ?? (b && b.flags.length > 0 ? 'flags' : null);
                             return (
                               <span className="derived" key={a.source}>
-                                {t('{src}: near {nf} + far {ff}{port} · session {s} · residual {res}° · valid from {vf} Hz{flags}', {
+                                {t('{src} · {status} · residual {res}° · valid from {vf} Hz · session {s}', {
                                   src: a.source,
-                                  nf: b?.nfSource ?? '—',
-                                  ff: b?.ffSource ?? '—',
-                                  port: b?.portSource ? ` + ${t('port')} ${b.portSource}` : '',
-                                  s: a.session,
+                                  status: status ? t(status === 'explained' ? 'explained' : status === 'flags' ? 'accepted with flags' : 'not checked for reflections') : '—',
                                   res: b?.residualDeg != null ? b.residualDeg.toFixed(2) : '—',
                                   vf: b?.validFromHz != null ? b.validFromHz.toFixed(1) : '—',
-                                  flags: b && b.flags.length > 0 ? ` · ⚠ ${t('accepted with flags')}` : '',
+                                  s: a.session,
                                 })}
                               </span>
                             );
-                          })}{' '}
-                          <a href="#nf-merge-section">{t('Open in NF/FF merge →')}</a>{' '}
-                          {nearField[role].far && (
-                            <button type="button" onClick={() => { undoNearFieldMerge(role); setMergeV2((m) => ({ ...m, [role]: [] })); }}>
-                              {t('undo merge')}
-                            </button>
-                          )}
+                          })}
+                          <span>
+                            <a href={mergeV2[role][0].sessionId ? `#/merge/${encodeURIComponent(mergeV2[role][0].sessionId!)}` : '#/merge'}>{t('Open in merge →')}</a>{' '}
+                            {nearField[role].far && (
+                              <button type="button" onClick={() => { undoNearFieldMerge(role); setMergeV2((m) => ({ ...m, [role]: [] })); }}>
+                                {t('undo merge')}
+                              </button>
+                            )}
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
                 );
               })}
-              <NfMergeSection
-                optimizerHeights={mergeHeights}
-                sdCm2={mergeSd}
-                accepted={mergeV2}
-                onAccept={acceptMergeV2}
-              />
               <p className="drop-anywhere-hint">
                 {t('⬇ Dropping works on this whole step — a .vxp set, saved project, catalog or filter file lands in the right place by itself; measurements ask which driver they belong to.')}
               </p>

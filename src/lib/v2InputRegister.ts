@@ -883,7 +883,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'nearFieldCone',
     label: 'Load cone near field…',
-    form: 'Measurements → NF/FF merge (merge v2)',
+    form: 'the NF/FF-merge tool (#/merge)',
     travels:
       'the slot → mergeNearField → the merged FRD → this branch’s response → readMergeBlock / ' +
       'parseArtaHeader → declaredMergeValidity → the window floor of every pair it touches',
@@ -897,7 +897,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'nearFieldPort',
     label: 'Load port near field… (+ port Ø, shared by)',
-    form: 'Measurements → NF/FF merge (merge v2)',
+    form: 'the NF/FF-merge tool (#/merge)',
     travels: 'portWeight (Keele, complex) → the near-field half before the level fit',
     cls: 'nice',
     effect: 'zoekt',
@@ -910,7 +910,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'spliceBand',
     label: 'splice band (Hz)',
-    form: 'Measurements → NF/FF merge (merge v2)',
+    form: 'the NF/FF-merge tool (#/merge)',
     travels: 'bandOf / centreOf → mergeNearField’s level and delay fit and its crossfade',
     cls: 'nice',
     effect: 'zoekt',
@@ -922,7 +922,7 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'mergeValidFrom',
     label: 'valid from (Hz)',
-    form: 'Measurements → NF/FF merge (merge v2)',
+    form: 'the NF/FF-merge tool (#/merge)',
     travels: '`Valid from` in the written block → declaredMergeValidity → this branch’s validity floor',
     cls: 'nice',
     effect: 'zoekt',
@@ -1387,8 +1387,8 @@ const STEERS_ON_APP_DEFAULT = STEERS_ON_APP_DEFAULT_PLACEMENT;
 const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'mergeSession', // I-4 fase 3
-    label: 'NF/FF merge section (session, set-up, planes, per-source merge)',
-    form: 'Measurements → NF/FF merge (merge v2)',
+    label: 'NF/FF-merge tool (session, set-up, planes, window, per-source merge)',
+    form: 'the NF/FF-merge tool (#/merge)',
     travels:
       'the dropped session → mergeSession (pairing, gate from the FRD header, set-up, planes) → ' +
       'mergeImpulsesV2 → an accepted merge file with its v2 block → branchFile → this branch’s response',
@@ -1416,7 +1416,7 @@ const U9_ROWS: readonly V2InputRowDef[] = [
   {
     id: 'mergeStepModel', // #7
     label: 'Step model on/off (near-field merge)',
-    form: 'Measurements → NF/FF merge (merge v2)',
+    form: 'the NF/FF-merge tool (#/merge)',
     travels: 'stepOn → the minimum-phase shelf of nfMerge → the merged file → its validity floor',
     cls: 'nice',
     effect: 'zoekt',
@@ -2598,5 +2598,5 @@ export const V2_FILE_ROWS: Readonly<Record<string, string>> = Object.freeze({
   'components/FilterControls.tsx': 'bandForms',
   'components/HelpPanel.tsx': 'navigation',
   'components/MeasuringGuide.tsx': 'navigation',
-  'components/NfMergeSection.tsx': 'mergeSession',
+  'components/NfMergeTool.tsx': 'mergeSession',
 });

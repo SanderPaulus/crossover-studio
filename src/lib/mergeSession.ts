@@ -2,7 +2,7 @@
  * The NF/FF merge SECTION's logic (I-4 fase 3), pure and testable: a measuring session from the
  * files the user drops, the gate read from the header, the set-up and its planes, the reflections
  * per source, the proposed bands, the status of a merge, the sum per design branch, and the export
- * package. The section component (NfMergeSection.tsx) only renders what this module decides.
+ * package. The merge tool (NfMergeTool.tsx, #/merge) only renders what this module decides.
  *
  * Generic (P6): no cabinet number here. Casus 1 is a test case, not a default.
  */
@@ -295,6 +295,9 @@ export interface RigSetup {
   surface: Surface | null;
   /** How far the table or stand top reaches beyond the baffle, mm (not for the floor). */
   surfaceOverhangMm: number | null;
+  /** B-4 — the overhang stated as UNKNOWN (like a plane): the set-up counts as stated, nothing is
+   *  modelled for the top or the floor, and the reflections are not checked. */
+  surfaceOverhangUnknown?: boolean;
   /** Microphone to baffle, mm. */
   micDistanceMm: number | null;
   /** Microphone above the floor, mm. */
@@ -332,7 +335,7 @@ export function setupStatus(rig: RigSetup, planes: PlanesStated): SetupStatus {
   const missing: string[] = [];
   if (!(rig.bottomAboveFloorMm != null && rig.bottomAboveFloorMm >= 0)) missing.push('cabinet bottom above the floor');
   if (!rig.surface) missing.push('what the cabinet stands on');
-  if (rig.surface && rig.surface !== 'floor' && !(rig.surfaceOverhangMm != null && rig.surfaceOverhangMm >= 0)) missing.push('overhang of the table / stand top');
+  if (rig.surface && rig.surface !== 'floor' && !rig.surfaceOverhangUnknown && !(rig.surfaceOverhangMm != null && rig.surfaceOverhangMm >= 0)) missing.push('overhang of the table / stand top (a distance, or "unknown")');
   if (!(rig.micDistanceMm != null && rig.micDistanceMm > 0)) missing.push('microphone distance to the baffle');
   if (!(rig.micHeightMm != null && rig.micHeightMm > 0)) missing.push('microphone height above the floor');
   const unknownPlanes: string[] = [];
@@ -342,6 +345,7 @@ export function setupStatus(rig: RigSetup, planes: PlanesStated): SetupStatus {
     else if (a.kind === 'unknown') unknownPlanes.push(k);
     else if (a.kind === 'measured' && !(a.mm > 0)) missing.push(`plane: ${k} distance`);
   }
+  if (rig.surface && rig.surface !== 'floor' && rig.surfaceOverhangUnknown) unknownPlanes.push('overhang');
   return { complete: missing.length === 0, missing, unknownPlanes, reflectionsChecked: unknownPlanes.length === 0 };
 }
 
@@ -377,14 +381,23 @@ export function echoesForSource(opts: {
     echoes.push({ kind: 'plane', label, sourceAboveM: s / 1000, micAboveM: (mic - top) / 1000, horizontalM: d / 1000 });
     return true;
   };
-  if (rig.surface === 'floor' || !rig.surface) {
+  if (rig.surface === 'floor') {
     below('floor', 0);
+  } else if (!rig.surface) {
+    // B-4: nothing assumed — an unstated surface is not "the floor"
+    notes.push('what the cabinet stands on is not stated: neither the floor nor a top is modelled — state it');
   } else {
     const top = rig.bottomAboveFloorMm!;
     const s = h - top;
     const m = mic - top;
     const reflectAt = s + m > 0 ? (d * s) / (s + m) : Infinity;
-    if (s <= onPlaneMm || reflectAt <= (rig.surfaceOverhangMm ?? 0)) {
+    if (s > onPlaneMm && rig.surfaceOverhangMm === null) {
+      // B-4: an unstated overhang is not 0 — which plane reflects cannot be decided
+      notes.push(
+        `${rig.surface} top: its overhang is not known (stated as unknown, or not stated), so whether the reflection point (${reflectAt.toFixed(0)} mm out) lies on the top or ` +
+          `past it on the floor is not decided — neither is modelled; state the overhang`,
+      );
+    } else if (s <= onPlaneMm || reflectAt <= rig.surfaceOverhangMm!) {
       below(`${rig.surface} top`, top);
       if (s > onPlaneMm) notes.push(`${rig.surface} top: the reflection point lies ${reflectAt.toFixed(0)} mm out, on the top (overhang ${rig.surfaceOverhangMm} mm)`);
     } else {
@@ -595,3 +608,81 @@ export function exportPackage(x: ExportInput): { name: string; data: string }[] 
 }
 
 export { interpLog as interpLogMerge };
+
+/* ------------------------------------------------------------------ *
+ * I-4 B-4 — where a source sits, from GEOMETRY and never typed per source.
+ *
+ * A driver's acoustic centre above the cabinet bottom comes from one of two
+ * places, and the tool asks for whichever is missing:
+ *  - the optimizer's cabinet geometry (the measured object is the target
+ *    cabinet, or another object with an identical baffle): baffle height,
+ *    reference point from the top, the way's vertical offset, and for a pair
+ *    WHICH member this source is — stated, never read off a file name;
+ *  - the measured object's own geometry: a height stated for this source as
+ *    part of that object's description.
+ * A pair stacks on the baffle's long axis (the app's own rule, `arrayLobe`):
+ * on a baffle wider than tall, or side-firing / opposed drivers, both members
+ * sit at the pair's centre height.
+ * ------------------------------------------------------------------ */
+
+export type MergeWay = 'low' | 'mid' | 'high';
+export interface CabinetGeometryForMerge {
+  baffleWidthMm: number | null;
+  baffleHeightMm: number | null;
+  refFromTopMm: number | null;
+  drivers: Record<MergeWay, { yMm: number | null; count: number | null; spacingMm: number | null; facingFront: boolean; opposed: boolean }>;
+}
+export type SourcePlacement =
+  | { kind: 'cabinet'; way: MergeWay | null; member: 'single' | 'upper' | 'lower' | null }
+  | { kind: 'own'; aboveBottomMm: number | null };
+
+export function sourceAboveBottomMm(
+  p: SourcePlacement,
+  geom: CabinetGeometryForMerge | null,
+): { mm: number; from: string } | { missing: string[] } {
+  if (p.kind === 'own') {
+    return p.aboveBottomMm !== null && Number.isFinite(p.aboveBottomMm)
+      ? { mm: p.aboveBottomMm, from: "the measured object's own geometry" }
+      : { missing: ["this driver's height above the measured object's bottom (its own geometry)"] };
+  }
+  const missing: string[] = [];
+  if (!p.way) missing.push('which driver of the cabinet this source is');
+  if (!geom) missing.push('the cabinet geometry (Your cabinet: front panel, reference point, driver positions)');
+  if (missing.length || !geom || !p.way) return { missing };
+  const d = geom.drivers[p.way];
+  if (geom.baffleHeightMm === null) missing.push('front panel height');
+  if (geom.refFromTopMm === null) missing.push('reference point below the top');
+  if (d.yMm === null) missing.push(`the ${p.way} driver's vertical offset`);
+  const pair = (d.count ?? 1) >= 2;
+  const stacked = pair && d.facingFront && !d.opposed && geom.baffleWidthMm !== null && geom.baffleHeightMm !== null && geom.baffleHeightMm >= geom.baffleWidthMm;
+  if (pair && d.facingFront && !d.opposed && geom.baffleWidthMm === null) missing.push('front panel width (the axis a pair stacks on)');
+  if (stacked) {
+    if (d.spacingMm === null) missing.push(`the ${p.way} pair's spacing`);
+    if (p.member !== 'upper' && p.member !== 'lower') missing.push(`which member of the ${p.way} pair this source is (upper or lower)`);
+  }
+  if (missing.length) return { missing };
+  const centre = geom.baffleHeightMm! - geom.refFromTopMm! + d.yMm!;
+  if (!stacked) return { mm: centre, from: pair ? 'the cabinet geometry (pair centre: the pair does not stack vertically)' : 'the cabinet geometry' };
+  const off = ((p.member === 'upper' ? 1 : -1) * d.spacingMm!) / 2;
+  return { mm: centre + off, from: `the cabinet geometry (${p.member} member of the pair)` };
+}
+
+/**
+ * I-4 B-4 — the window a merge uses. On the PIR route the header's window is the
+ * default and a SHORTER right length may be chosen (the raw impulse can be gated
+ * again); longer is refused (the far field past the header window was never
+ * judged clean), and on the FRD route nothing can be chosen (the file is already
+ * gated). The result always says which window it is and its 1/T, T being the
+ * right length from the reference (V60).
+ */
+export function chosenGate(
+  header: Gate,
+  route: 'pir' | 'frd',
+  rightMs: number | null,
+): { gate: Gate; source: 'header' | 'chosen'; headerRightMs: number; oneOverTHz: number } | { error: string; field: string } {
+  if (rightMs === null) return { gate: header, source: 'header', headerRightMs: header.rightMs, oneOverTHz: 1000 / header.rightMs };
+  if (route === 'frd') return { error: 'the far field is an FRD export: it is already gated with its header window, a shorter one cannot be applied — load its .pir', field: 'window' };
+  if (!(rightMs > 0)) return { error: 'a chosen window needs a right length > 0 ms', field: 'window' };
+  if (rightMs > header.rightMs) return { error: `a chosen window may only be shorter than the header's ${header.rightMs} ms`, field: 'window' };
+  return { gate: { ...header, rightMs }, source: 'chosen', headerRightMs: header.rightMs, oneOverTHz: 1000 / rightMs };
+}

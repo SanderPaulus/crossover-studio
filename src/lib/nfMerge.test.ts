@@ -758,32 +758,37 @@ describe('I-2 — the app wiring', () => {
   /* I-4 fase 3 (V15 form). WHAT STOOD: the I-2 slot in each driver card —
    * `runNearFieldMerge` built a preview, `acceptNearFieldMerge` applied it,
    * `renderMergedFrd` wrote the file in one place. WHAT STANDS: the merge has ONE
-   * place, the NF/FF-merge section (`NfMergeSection`, merge v2), on the same
-   * measurement tab; a driver card shows only where its low end came from. WHY:
-   * Sander's B-2 sketch — no copy of the merge per branch. The CLAIMS are the
-   * I-2 claims, on the new code: with the upload, nothing applied on the way
+   * place, the NF/FF-merge TOOL (`NfMergeTool`, merge v2) — since B-4 a page of its
+   * own at `#/merge` that works without a project (Sander, 13-11-2026: a separate tool,
+   * not a block on the project step); a driver card shows only where its low end came
+   * from. The CLAIMS are the I-2 claims, on the new code: nothing applied on the way
    * past, one writer, refusals that name their input, no double merge. */
-  const SECTION = readFileSync(join(HERE, '..', 'components', 'NfMergeSection.tsx'), 'utf8');
+  const SECTION = readFileSync(join(HERE, '..', 'components', 'NfMergeTool.tsx'), 'utf8');
 
-  it('puts the merge with the measurement upload, not in the Filters panel', () => {
-    const at = APP.indexOf('<NfMergeSection');
-    expect(at, 'the merge section').toBeGreaterThan(-1);
-    expect(APP.slice(at, APP.indexOf('drop-anywhere-hint'))).toContain('onAccept={acceptMergeV2}');
-    expect(APP.slice(0, at).lastIndexOf("designTab === 'import'")).toBeGreaterThan(-1);
+  it('the merge is a tool on its own address, not merge input on the project step', () => {
+    const at = APP.indexOf('<NfMergeTool');
+    expect(at, 'the merge tool').toBeGreaterThan(-1);
+    expect(APP.slice(at - 300, at)).toContain('{mergeRoute.open && (');
+    expect(APP).toMatch(/\^#\\\/merge/);
+    // nothing of the merge is drawn inside the project step
+    const importStep = APP.slice(APP.indexOf("{designTab === 'import' && ("), APP.indexOf('drop-anywhere-hint'));
+    expect(importStep).not.toContain('NfMergeTool');
+    expect(importStep).toContain('Open in merge →');
     // the I-2 slot is gone — no second merge per branch
     expect(APP).not.toContain('className="nf-slot');
     expect(APP).not.toContain('runNearFieldMerge');
     expect(APP).not.toContain('acceptNearFieldMerge');
     const panel = readFileSync(join(HERE, '..', 'components', 'EngineV2Panel.tsx'), 'utf8');
-    expect(panel).not.toContain('NfMergeSection');
+    expect(panel).not.toContain('NfMergeTool');
   });
 
-  /** Nothing is applied on the way past: the section computes and reports, and
-   *  a branch response changes only when the designer accepts (or undoes). */
-  it('changes the branch response only from accept and undo', () => {
+  /** Nothing is applied on the way past: the tool computes and reports, and a branch
+   *  response changes only through "Use in project" (or undo). */
+  it('changes the branch response only from "Use in project" and undo', () => {
     expect(SECTION).not.toMatch(/setWoofer|setMidDrv|setTweeter/);
-    expect(SECTION).toContain('props.onAccept(c.role');
-    const accept = APP.slice(APP.indexOf('const acceptMergeV2'), APP.indexOf('const mergeHeights'));
+    expect(SECTION).toContain('p.onUse(way as MergeWay, toUse)');
+    expect(APP.slice(APP.indexOf('<NfMergeTool'))).toMatch(/onUse=\{\(way, sources\) => \{\s*acceptMergeV2\(way, sources\)/);
+    const accept = APP.slice(APP.indexOf('const acceptMergeV2'), APP.indexOf('const mergeGeometry'));
     expect(accept).toContain('setWoofer(next)');
     expect(accept).toContain('branchFile(');
     // the response it replaces is KEPT, and a re-accept does not overwrite it
@@ -803,7 +808,7 @@ describe('I-2 — the app wiring', () => {
   });
 
   /** The file is written in one place: the section's accept. */
-  it('writes a merged file only through the section', () => {
+  it('writes a merged file only through the tool', () => {
     expect(APP).not.toMatch(/renderMergedFrd(V2)?\(/);
     expect(SECTION.split('renderMergedFrdV2(').length - 1).toBe(1);
   });
@@ -824,7 +829,7 @@ describe('I-2 — the app wiring', () => {
       const row = V2_INPUT_REGISTER.find((r) => r.id === id);
       expect(row, id).toBeDefined();
       expect(row!.cls, id).toBe('nice');
-      expect(row!.form, id).toContain('NF/FF merge');
+      expect(row!.form, id).toContain('NF/FF-merge tool');
     }
   });
 });

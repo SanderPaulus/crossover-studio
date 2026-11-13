@@ -2600,4 +2600,109 @@ export const nl: Record<string, string> = {
     'met vlaggen geaccepteerd',
   'Open in NF/FF merge →':
     'Openen in NF/FF-merge →',
+  // ── I-4 B-4: de NF/FF-merge-tool ──────────────────────────────────
+  'No stored session “{id}”.':
+    'Geen opgeslagen sessie “{id}”.',
+  'stated in the merge tool':
+    'gesteld in de merge-tool',
+  '← back to the design':
+    '← terug naar het ontwerp',
+  'A tool of its own: it works without a project and keeps its sessions itself. Drop a session’s impulses (.pir) with their FRD exports — the window comes from the export’s header — and the impedances. Merge, accept, export; “Use in project…” hands the project the merged files, exactly as importing the export package would.':
+    'Een eigen tool: hij werkt zonder project en bewaart zijn sessies zelf. Sleep de impulsen (.pir) van een sessie hierheen met hun FRD-exports — het venster komt uit de kop van de export — en de impedanties. Mergen, accepteren, exporteren; “Gebruik in project…” geeft het project de gemergede bestanden, precies zoals een import van het exportpakket dat zou doen.',
+  'Sessions':
+    'Sessies',
+  'New session':
+    'Nieuwe sessie',
+  '.pir + their .frd/.txt exports + .zma/.lim':
+    '.pir + hun .frd/.txt-exports + .zma/.lim',
+  '{n} file(s)':
+    '{n} bestand(en)',
+  'Delete session {s}':
+    'Sessie {s} verwijderen',
+  'No stored sessions yet.':
+    'Nog geen opgeslagen sessies.',
+  'load':
+    'belasting',
+  'target load':
+    'belasting doelkast',
+  'accepted':
+    'geaccepteerd',
+  'header: left {l} ms · reference {r} ms · right {rt} ms · Tukey {a}':
+    'kop: links {l} ms · referentie {r} ms · rechts {rt} ms · Tukey {a}',
+  'used':
+    'gebruikt',
+  'window used':
+    'gebruikt venster',
+  'the far field is an FRD export: it is already gated, a shorter window needs its .pir':
+    'het vervelved is een FRD-export: al gevensterd, een korter venster vraagt de .pir',
+  'the header window':
+    'het venster uit de kop',
+  'a shorter window':
+    'een korter venster',
+  'right':
+    'rechts',
+  'chosen right window':
+    'gekozen rechtervenster',
+  'header window, T = {t} ms, 1/T = {hz} Hz':
+    'venster uit de kop, T = {t} ms, 1/T = {hz} Hz',
+  'CHOSEN, T = {t} ms (header {h} ms), 1/T = {hz} Hz':
+    'GEKOZEN, T = {t} ms (kop {h} ms), 1/T = {hz} Hz',
+  'Open a stored session on the left, or drop a new one.':
+    'Open links een opgeslagen sessie, of sleep een nieuwe hierheen.',
+  'which driver':
+    'welke driver',
+  'member of the pair':
+    'lid van het paar',
+  'upper':
+    'boven',
+  'lower':
+    'onder',
+  '{h} mm above the floor, from {from}':
+    '{h} mm boven de vloer, uit {from}',
+  'mouth above the object’s bottom':
+    'monding boven de bodem van het object',
+  'needs: the set-up stated, which driver, a stated "valid from", and a reason when there are flags':
+    'nodig: de opstelling gesteld, welke driver, een gesteld "geldig vanaf", en een reden bij vlaggen',
+  'Use in project…':
+    'Gebruik in project…',
+  'branch to use in':
+    'tak om in te gebruiken',
+  '{n} accepted merges of this session go to this branch, summed complex: {list}':
+    '{n} geaccepteerde merges uit deze sessie gaan naar deze tak, complex gesommeerd: {list}',
+  'this merge becomes the branch response':
+    'deze merge wordt de respons van de tak',
+  'replaces what the project uses now: {list}':
+    'vervangt wat het project nu gebruikt: {list}',
+  'Use in project':
+    'Gebruik in project',
+  'far field, gated as used':
+    'vervelved, gevensterd zoals gebruikt',
+  'taper':
+    'flank',
+  'in the taper flank (window weight {w})':
+    'in de vensterflank (vensterweging {w})',
+  'height above the object\'s bottom':
+    'hoogte boven de bodem van het object',
+  'merge v2 · from the merge tool':
+    'merge v2 · uit de merge-tool',
+  '{src} · {status} · residual {res}° · valid from {vf} Hz · session {s}':
+    '{src} · {status} · restfout {res}° · geldig vanaf {vf} Hz · sessie {s}',
+  'Open in merge →':
+    'Openen in merge →',
+  'undo merge':
+    'merge ongedaan maken',
+  'The NF/FF-merge tool: merge near and far field from a measuring session, on its own page, with or without a project.':
+    'De NF/FF-merge-tool: nabij- en vervelved samenvoegen uit een meetsessie, op een eigen pagina, met of zonder project.',
+  'the cabinet geometry':
+    'de kastgeometrie',
+  'the measured object\'s own geometry':
+    'de eigen geometrie van het gemeten object',
+  'the cabinet geometry (pair centre: the pair does not stack vertically)':
+    'de kastgeometrie (midden van het paar: het paar staat niet boven elkaar)',
+  'the cabinet geometry (upper member of the pair)':
+    'de kastgeometrie (bovenste van het paar)',
+  'the cabinet geometry (lower member of the pair)':
+    'de kastgeometrie (onderste van het paar)',
+  'overhang stated as':
+    'overstek opgegeven als',
 };

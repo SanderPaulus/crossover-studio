@@ -5126,9 +5126,25 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
   margin-left: 0.4rem;
 }
 
-/* ── I-4 fase 3 — the NF/FF-merge section ───────────────────────────── */
-.nf-merge-v2 { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
-.nf-merge-v2 .dropzone input[type='file'] { display: none; }
+/* ── I-4 — the NF/FF-merge tool, a page of its own (#/merge) ────────── */
+.merge-page { position: fixed; inset: 0; z-index: 150; overflow: auto; background: var(--bg); padding: 1rem 1.5rem 3rem; }
+.merge-tool-link { align-self: center; margin-right: 0.75rem; padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; color: var(--fg); text-decoration: none; white-space: nowrap; }
+.merge-tool-link.active, .merge-tool-link:hover { border-color: var(--accent); color: var(--accent); }
+.nf-merge-tool { display: flex; flex-direction: column; gap: 0.75rem; max-width: 1800px; margin: 0 auto; }
+.nf-merge-tool .dropzone input[type='file'] { display: none; }
+.nfm-head-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.nfm-head-bar h2 { margin: 0; }
+.nfm-layout { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .nfm-layout { grid-template-columns: minmax(0, 1fr); } }
+.nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0; }
+.nfm-sessions ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9em; }
+.nfm-sessions li.active a { font-weight: 700; }
+.nfm-main { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+.nfm-empty { padding: 2rem 0; }
+.nfm-window { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; line-height: 1.9; }
+.nfm-window-used { font-weight: 600; }
+.nfm-accepted { color: #15803d; font-size: 0.85em; }
+.nfm-use { margin-top: 0.5rem; padding: 0.5rem; border: 1px dashed var(--accent); border-radius: 6px; }
 .nfm-setup { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
 .nfm-tile { line-height: 1.9; }
 .nfm-tile > strong { display: inline-block; min-width: 10.5rem; }
@@ -5154,7 +5170,7 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-check-ok .nfm-icon { color: #15803d; }
 .nfm-check-info .nfm-icon { color: var(--accent); }
 .nfm-check-bad .nfm-icon { color: #b91c1c; }
-.nfm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 0.75rem; min-width: 0; }
+.nfm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr)); gap: 0.75rem; min-width: 0; }
 .nfm-chart { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; min-width: 0; }
 .nfm-echoes { margin: 0.25rem 0 0; padding-left: 1rem; font-size: 0.85em; }
 .nfm-export { border: 1px solid var(--accent); border-radius: 8px; padding: 0.75rem; background: var(--panel); }
