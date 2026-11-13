@@ -347,3 +347,69 @@ describe('casus 1 — the I-2 woofer merge (September near field on an August fa
     expect(r.timing).toBeNull(); // FRDs carry no shared time base
   }, 60_000);
 });
+
+/* ------------------------------------------------------------------ *
+ * I-4 fase 2: section D of tools/nf_merge_reference.py, pinned
+ * ------------------------------------------------------------------ */
+
+// The independent numpy implementation (section D, same session, matched gate, offset fixed,
+// handoff above fitHi·2^(1/6..2/3)), printed to five / three / four decimals on 13-11-2026.
+// The suite's own bounds above stay as they are; these are the acceptance numbers of the
+// startprompt (±0.2°, ±0.02 dB, zero flags). The delay has no tolerance in the prompt: ±2 µs,
+// the precision the synthetic tests already ask of τ.
+const SECTION_D = [
+  { name: 'woofer_down', port: 0, f0: 150, band: [300, 576], tauMs: 3.28225, deg: 2.183, db: 0.2119 },
+  { name: 'woofer_down', port: 0.205, f0: 150, band: [300, 576], tauMs: 3.28075, deg: 2.173, db: 0.2334 },
+  { name: 'woofer_up', port: 0, f0: 150, band: [300, 576], tauMs: 2.91625, deg: 2.315, db: 0.57 },
+  { name: 'woofer_up', port: 0.205, f0: 150, band: [300, 576], tauMs: 2.9145, deg: 2.332, db: 0.5968 },
+  { name: 'mid', port: 0, f0: 200, band: [300, 800], tauMs: 2.83325, deg: 3.508, db: 0.5616 },
+] as const;
+
+describe('casus 1 — section D of the reference script, within ±0.2° / ±0.02 dB and zero flags', () => {
+  const S = 'casus1 augustus';
+  it.each(SECTION_D)('$name, port weight $port', (row) => {
+    const far = pir(`${row.name}_hor_0`, S);
+    const r = mergeImpulsesV2({
+      far,
+      near: pir(`${row.name}_near`, S),
+      ...(row.port ? { port: { impulse: pir('poort_near', S), weight: row.port } } : {}),
+      gate: { referenceMs: arrivalMs(far) - 0.4, leftMs: 2.5, rightMs: 2.521, rightTaper: 0.25 },
+      model: { kind: 'an4', f0Hz: row.f0 },
+      echoes: [],
+      sdCm2: null,
+      fitBandHz: [row.band[0], row.band[1]],
+      spliceBandHz: [row.band[0] + 100, row.band[1] - 26],
+      output: { fromHz: 20, toHz: 2000, pointsPerOctave: 24 },
+    });
+    expect(r.fit.polarityDeg).toBe(0);
+    expect(Math.abs(r.fit.delayMs - row.tauMs)).toBeLessThanOrEqual(0.002);
+    expect(Math.abs(r.fit.residualRmsDeg - row.deg)).toBeLessThanOrEqual(0.2);
+    expect(Math.abs(r.fit.residualRmsDb - row.db)).toBeLessThanOrEqual(0.02);
+    expect(r.flags).toEqual([]);
+  }, 60_000);
+});
+
+describe('casus 1 — the I-2 combination raises the cross-session flag on BOTH woofers', () => {
+  // Startprompt acceptance 3 as corrected on 13-11-2026: both woofers get the session flag.
+  // Only that is pinned here: it holds whatever the gate, because it reads the session labels.
+  it.each(['woofer_down', 'woofer_up'] as const)('%s', (w) => {
+    const frd = (path: string) => parseFrd(readFileSync(join(FIX, path), 'latin1'));
+    const mk = (path: string, gated: boolean, session: string): Impulse => {
+      const f = frd(path);
+      return impulseFromFrd({ name: path, freq: f.freq, splDb: f.spl, phaseDeg: f.phase, sampleRate: 48000, length: 65536, alreadyGated: gated, session });
+    };
+    const r = mergeImpulsesV2({
+      far: mk(`casus1/${w}_hor_0.txt`, true, 'augustus'),
+      near: mk(`koan_2026-09_testkast/${w}_near.txt`, false, 'testkast 11-09'),
+      port: { impulse: mk('koan_2026-09_testkast/port_near.txt', false, 'testkast 11-09'), weight: 0.205 },
+      gate: { referenceMs: 0, leftMs: 2.5, rightMs: 2.521, rightTaper: 0.25 },
+      model: { kind: 'an4', f0Hz: 150 },
+      echoes: [],
+      sdCm2: null,
+      fitBandHz: [300, 576],
+      spliceBandHz: [400, 550],
+      output: { fromHz: 20, toHz: 2000, pointsPerOctave: 24 },
+    });
+    expect(r.flags.some((f) => /Cross-session/.test(f))).toBe(true);
+  }, 60_000);
+});
