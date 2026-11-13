@@ -62,8 +62,20 @@ export const SPEED_OF_SOUND_M_S = 343;
  *  not explain the far field. 10° ≈ a third of the 30° tracking budget. */
 export const FIT_RESIDUAL_FLAG_DEG = 10;
 /** A v1-style free offset this far from 0/180° is the symptom of a mismatch
- *  (casus 1: 13–71° on cross-session or unmatched merges, < 10° on clean ones). */
+ *  (casus 1: 13–71° on UNMATCHED merges — v1, V54 — and on a far-field FRD gated with a
+ *  misread window, V60; ±10–16° on clean same-window merges, V55). */
 export const FREE_OFFSET_FLAG_DEG = 20;
+/**
+ * V60. A far field that arrives ALREADY gated (rebuilt from an FRD) must be silent after the
+ * right edge of the gate it was exported with: past it there is only the smear of the
+ * measuring program's calibration correction. Energy over the span below, relative to the whole
+ * impulse, above this level means the stated gate is not the one that was applied — on casus 1
+ * the misread edge (ref + 2.521 instead of ref + 5.021 ms) leaves −15 / −21 / −28 dB
+ * (woofer down / up / mid), the right edge −38 / −41 / −38 dB. A convention, not a property.
+ */
+export const GATE_TAIL_FLAG_DB = -30;
+/** How far past the right edge the tail check looks, ms (the first reflections of a room). */
+export const GATE_TAIL_SPAN_MS = 20;
 /**
  * Fitted delay vs the session's measured arrivals. Arrivals are impulse PEAKS,
  * and a woofer's peak sits late by its own rise time, so tens of millimetres of
@@ -480,6 +492,23 @@ export function impulseFromPir(
  * refused: interpolating it onto an FFT grid invents a time signal the file
  * never held.
  */
+/**
+ * The gate an ARTA export states, as a `Gate` (V60). ARTA writes `Left window`, `Reference time`
+ * and `Right window`; Left and Right are LENGTHS measured from the reference time, not positions
+ * on the record. Measured on casus 1 (August): the phase zero of every FRD is its reference time,
+ * and FRD ÷ (window × raw PIR) is flat on all three drivers only with the right edge at
+ * reference + Right window (5.021 ms), not at Right window − reference (2.521 ms).
+ * `referenceAtMs` is where that reference sits on the impulse being gated: 0 for an impulse
+ * rebuilt from the FRD itself (its phase zero), the reference's position on the record for a raw
+ * impulse. `rightTaper` is the Tukey fraction the header names.
+ */
+export function gateFromArtaHeader(
+  header: { leftWindowMs: number; rightWindowMs: number; rightTaper: number },
+  referenceAtMs: number,
+): Gate {
+  return { referenceMs: referenceAtMs, leftMs: header.leftWindowMs, rightMs: header.rightWindowMs, rightTaper: header.rightTaper };
+}
+
 export function impulseFromFrd(opts: {
   name: string;
   freq: readonly number[];
@@ -593,10 +622,14 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
   // B: the measured far field above the handoff, through the gate.
   const farHigh: Spec = { re: farRaw.re.map((v, k) => v * c[k]), im: farRaw.im.map((v, k) => v * c[k]) };
   const Bsig = irfft(farHigh, n);
-  for (let i = 0; i < n; i++) Bsig[i] *= input.far.alreadyGated ? 1 : W[i];
+  // Through the gate on BOTH routes (V60): the far field's high part leaks into the fit band
+  // through the window exactly as the prediction's low part does. Measured on casus 1 (August):
+  // with this, the FRD route and the PIR route under the same window agree within 0.36°;
+  // without it, up to 2.2° apart.
+  for (let i = 0; i < n; i++) Bsig[i] *= W[i];
   const B = rfft(Bsig);
   if (input.far.alreadyGated) {
-    notes.push('far field arrives already gated (rebuilt from an FRD): the stated gate is applied to the prediction only, and must be the one the FRD was exported with');
+    notes.push('far field arrives already gated (rebuilt from an FRD): the stated gate must be the one the FRD was exported with — ARTA states Left/Right window as LENGTHS from the reference time (V60)');
   }
 
   // A(τ, s): the prediction below the handoff, shifted, through the same gate.
@@ -692,7 +725,9 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
   if (fit.rmsDeg > FIT_RESIDUAL_FLAG_DEG) {
     flags.push(
       `The model does not explain the far field: ${fit.rmsDeg.toFixed(1)}° rms phase residual over ${fitLo}–${fitHi} Hz ` +
-        `(convention ${FIT_RESIDUAL_FLAG_DEG}°). Look for an echo inside the gate, a different rig or session, or a near-to-far model that does not fit this cabinet.`,
+        `(convention ${FIT_RESIDUAL_FLAG_DEG}°). First check that the gate was read correctly from the header ` +
+        `(ARTA's Left and Right window are lengths from the reference time, V60); then look for an echo inside the gate, ` +
+        `or a near-to-far model that does not fit this cabinet.`,
     );
   }
   if (fit.sign === -1) flags.push('The near and far field are of opposite polarity (180°) — check the wiring of one measurement.');
@@ -791,13 +826,43 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
     notes.push('no shared dual-channel time base: the delay is fitted only, not checked against measured arrivals');
   }
 
-  // Sessions.
+  // Sessions. A NOTE, not a flag (V55): on casus 1 a September near field merges onto the
+  // August far field as cleanly as the August one does, under the same gate. What a different
+  // session costs is the shared time base, so that is what the note says.
   const ns = input.near.session ?? null;
   const fsn = input.far.session ?? null;
-  if (ns && fsn && ns !== fsn) {
-    flags.push(`Cross-session merge: near field "${ns}", far field "${fsn}". A different rig or day changes what the near field sees; casus 1 lost up to 71° this way.`);
-  } else if (!ns || !fsn) {
-    notes.push('session not stated for both halves — the cross-session check did not run');
+  const ps = input.port ? (input.port.impulse.session ?? null) : null;
+  const sessions = [['near field', ns], ['far field', fsn], ...(input.port ? [['port', ps]] : [])] as [string, string | null][];
+  if (sessions.some(([, s]) => !s)) {
+    notes.push(`session not stated for ${sessions.filter(([, s]) => !s).map(([l]) => l).join(', ')} — the cross-session check did not run`);
+  } else if (new Set(sessions.map(([, s]) => s)).size > 1) {
+    notes.push(
+      `different sessions (${sessions.map(([l, s]) => `${l} "${s}"`).join(', ')}): no shared time base, the delay is fitted only`,
+    );
+  }
+
+  // V60: an already-gated far field must be silent after the right edge of its stated gate.
+  if (input.far.alreadyGated) {
+    const x = input.far.samples;
+    const len = x.length;
+    const ref = input.gate.referenceMs;
+    let tot = 0;
+    let tail = 0;
+    for (let i = 0; i < len; i++) {
+      const tMs = ((i < len / 2 ? i : i - len) / fs) * 1000 - ref;
+      const e = x[i] * x[i];
+      tot += e;
+      if (tMs > input.gate.rightMs && tMs <= input.gate.rightMs + GATE_TAIL_SPAN_MS) tail += e;
+    }
+    const tailDb = 10 * Math.log10((tail || 1e-300) / (tot || 1e-300));
+    if (tailDb > GATE_TAIL_FLAG_DB) {
+      flags.push(
+        `The far field still holds energy after the stated gate's right edge (${tailDb.toFixed(0)} dB over the next ${GATE_TAIL_SPAN_MS} ms; ` +
+          `convention ${GATE_TAIL_FLAG_DB} dB): the gate is probably misread. ARTA's Left and Right window are lengths from the reference time (V60).`,
+      );
+    } else {
+      notes.push(`far field after the stated gate: ${tailDb.toFixed(0)} dB over ${GATE_TAIL_SPAN_MS} ms — the gate matches the file`);
+    }
   }
 
   // Echoes the far field actually holds (raw impulses only).

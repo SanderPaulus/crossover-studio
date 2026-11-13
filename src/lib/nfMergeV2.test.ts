@@ -11,6 +11,8 @@ import {
   NF_MERGE_V2_VERSION,
   arrivalMs,
   besselJ1,
+  gateFromArtaHeader,
+  GATE_TAIL_FLAG_DB,
   impulseFromFrd,
   impulseFromPir,
   mergeImpulsesV2,
@@ -184,10 +186,17 @@ describe(`nfMergeV2 (${NF_MERGE_V2_VERSION}) — synthetic source, known answer`
     expect(r.flags).toEqual([]);
   });
 
-  it('flags a cross-session merge from the stated labels', () => {
+  // V55/V60 (Sander akkoord 13-11-2026): a different session is a NOTE, not a flag. It costs the
+  // shared time base, not the merge. Was: "flags a cross-session merge from the stated labels".
+  it('notes a cross-session merge from the stated labels, and never flags it — the port\'s session included', () => {
     const { near, far } = synth({});
     const r = mergeImpulsesV2(input({ near: { ...near, session: 'testkast 11-09' }, far: { ...far, session: 'augustus' } }));
-    expect(r.flags.some((f) => /Cross-session/.test(f))).toBe(true);
+    expect(r.flags).toEqual([]);
+    expect(r.notes.some((n) => /different sessions .*no shared time base, the delay is fitted only/.test(n))).toBe(true);
+    // the port is a third session to compare: near and far agree, the port does not
+    const p = mergeImpulsesV2(input({ near, far, port: { impulse: { ...near, session: 'later' }, weight: 0.2 } }));
+    expect(p.notes.some((n) => /different sessions .*port "later"/.test(n))).toBe(true);
+    expect(p.flags).toEqual([]);
   });
 
   it('output phase is referenced to the gate reference', () => {
@@ -318,35 +327,6 @@ describe('casus 1 — August session, raw .pir, near and far field from the SAME
   }
 });
 
-describe('casus 1 — the I-2 woofer merge (September near field on an August far field) is FLAGGED', () => {
-  it('cross-session and an unexplained residual, where v1 accepted it with a −71° offset', () => {
-    const frd = (path: string) => parseFrd(readFileSync(join(FIX, path), 'latin1'));
-    const farF = frd('casus1/woofer_down_hor_0.txt');
-    const nearF = frd('koan_2026-09_testkast/woofer_down_near.txt');
-    const portF = frd('koan_2026-09_testkast/port_near.txt');
-    const L = 65536;
-    const far = impulseFromFrd({ name: 'woofer_down_hor_0.txt', freq: farF.freq, splDb: farF.spl, phaseDeg: farF.phase, sampleRate: 48000, length: L, alreadyGated: true, session: 'augustus' });
-    const near = impulseFromFrd({ name: 'woofer_down_near.txt', freq: nearF.freq, splDb: nearF.spl, phaseDeg: nearF.phase, sampleRate: 48000, length: L, alreadyGated: false, session: 'testkast 11-09' });
-    const port = impulseFromFrd({ name: 'port_near.txt', freq: portF.freq, splDb: portF.spl, phaseDeg: portF.phase, sampleRate: 48000, length: L, alreadyGated: false, session: 'testkast 11-09' });
-    const r = mergeImpulsesV2({
-      far,
-      near,
-      port: { impulse: port, weight: 0.205 },
-      // the FRD's own window: reference 2.5 ms (now sample 0), left 0 ms, right 5.021 ms, Tukey 0.25
-      gate: { referenceMs: 0, leftMs: 2.5, rightMs: 2.521, rightTaper: 0.25 },
-      model: { kind: 'an4', f0Hz: 150 },
-      echoes: [],
-      sdCm2: null,
-      fitBandHz: [300, 576],
-      spliceBandHz: [400, 550],
-      output: { fromHz: 20, toHz: 2000, pointsPerOctave: 24 },
-    });
-    expect(r.flags.some((f) => /Cross-session/.test(f))).toBe(true);
-    expect(r.fit.residualRmsDeg).toBeGreaterThan(FIT_RESIDUAL_FLAG_DEG);
-    expect(r.flags.some((f) => /does not explain/.test(f))).toBe(true);
-    expect(r.timing).toBeNull(); // FRDs carry no shared time base
-  }, 60_000);
-});
 
 /* ------------------------------------------------------------------ *
  * I-4 fase 2: section D of tools/nf_merge_reference.py, pinned
@@ -389,27 +369,119 @@ describe('casus 1 — section D of the reference script, within ±0.2° / ±0.02
   }, 60_000);
 });
 
-describe('casus 1 — the I-2 combination raises the cross-session flag on BOTH woofers', () => {
-  // Startprompt acceptance 3 as corrected on 13-11-2026: both woofers get the session flag.
-  // Only that is pinned here: it holds whatever the gate, because it reads the session labels.
-  it.each(['woofer_down', 'woofer_up'] as const)('%s', (w) => {
-    const frd = (path: string) => parseFrd(readFileSync(join(FIX, path), 'latin1'));
-    const mk = (path: string, gated: boolean, session: string): Impulse => {
-      const f = frd(path);
-      return impulseFromFrd({ name: path, freq: f.freq, splDb: f.spl, phaseDeg: f.phase, sampleRate: 48000, length: 65536, alreadyGated: gated, session });
-    };
-    const r = mergeImpulsesV2({
-      far: mk(`casus1/${w}_hor_0.txt`, true, 'augustus'),
-      near: mk(`koan_2026-09_testkast/${w}_near.txt`, false, 'testkast 11-09'),
-      port: { impulse: mk('koan_2026-09_testkast/port_near.txt', false, 'testkast 11-09'), weight: 0.205 },
-      gate: { referenceMs: 0, leftMs: 2.5, rightMs: 2.521, rightTaper: 0.25 },
-      model: { kind: 'an4', f0Hz: 150 },
-      echoes: [],
-      sdCm2: null,
-      fitBandHz: [300, 576],
-      spliceBandHz: [400, 550],
-      output: { fromHz: 20, toHz: 2000, pointsPerOctave: 24 },
+/* ------------------------------------------------------------------ *
+ * I-4 fase 2, acceptance 3 (V60): the gate is read correctly, and the
+ * self-diagnosis points at the real cause
+ * ------------------------------------------------------------------ */
+
+// The header as written, read field by field: what a reader takes from the file.
+function artaHeaderOf(path: string): { leftWindowMs: number; referenceTimeMs: number; rightWindowMs: number; rightTaper: number } {
+  const text = readFileSync(join(FIX, path), 'latin1');
+  const num = (name: string): number => {
+    const m = new RegExp(`^\\*\\s*${name}\\s*=\\s*([0-9]+(?:[.,][0-9]+)?)`, 'm').exec(text);
+    if (!m) throw new Error(`${path}: no "${name}"`);
+    return Number(m[1].replace(',', '.'));
+  };
+  const taper = /^\*\s*Right window\s*=.*Tukey\s*([0-9.]+)/m.exec(text);
+  return { leftWindowMs: num('Left window'), referenceTimeMs: num('Reference time'), rightWindowMs: num('Right window'), rightTaper: taper ? Number(taper[1]) : 0 };
+}
+// V56: the far-field FRDs of casus 1 were exported from impulses shifted by 6.25 ms; their
+// reference (phase zero) sits on the raw PIR at 8.750 ms — measured by cross-correlation, the
+// same position for all three drivers. This is where the PIR route puts the same gate.
+const AUGUST_FAR_REFERENCE_ON_PIR_MS = 8.75;
+
+const frdImpulse = (path: string, gated: boolean, session: string): Impulse => {
+  const f = parseFrd(readFileSync(join(FIX, path), 'latin1'));
+  return impulseFromFrd({ name: path, freq: f.freq, splDb: f.spl, phaseDeg: f.phase, sampleRate: 48000, length: 65536, alreadyGated: gated, session });
+};
+const DRIVERS = [
+  { name: 'woofer_down', f0: 150, band: [300, 576] },
+  { name: 'woofer_up', f0: 150, band: [300, 576] },
+  { name: 'mid', f0: 200, band: [300, 800] },
+] as const;
+const mergeOpts = (d: (typeof DRIVERS)[number]) => ({
+  model: { kind: 'an4' as const, f0Hz: d.f0 },
+  echoes: [],
+  sdCm2: null,
+  fitBandHz: [d.band[0], d.band[1]] as [number, number],
+  spliceBandHz: [d.band[0] + 100, d.band[1] - 26] as [number, number],
+  output: { fromHz: 20, toHz: 2000, pointsPerOctave: 24 },
+});
+
+describe('V60 (a) — the FRD route and the PIR route agree under the gate the header states', () => {
+  // Route 1: far field rebuilt from casus1/<driver>_hor_0.txt (already gated), near field from
+  //          casus1/<driver>_near.txt; gate = the header, Left/Right as lengths, reference at 0.
+  // Route 2: far and near field from the raw August PIRs; the SAME gate, reference at 8.750 ms.
+  it.each(DRIVERS)('$name: within 1°', (d) => {
+    const h = artaHeaderOf(`casus1/${d.name}_hor_0.txt`);
+    expect(h).toEqual({ leftWindowMs: 0, referenceTimeMs: 2.5, rightWindowMs: 5.021, rightTaper: 0.25 });
+    const viaFrd = mergeImpulsesV2({
+      ...mergeOpts(d),
+      far: frdImpulse(`casus1/${d.name}_hor_0.txt`, true, 'augustus'),
+      near: frdImpulse(`casus1/${d.name}_near.txt`, false, 'augustus'),
+      gate: gateFromArtaHeader(h, 0),
     });
-    expect(r.flags.some((f) => /Cross-session/.test(f))).toBe(true);
+    const viaPir = mergeImpulsesV2({
+      ...mergeOpts(d),
+      far: pir(`${d.name}_hor_0`, 'augustus'),
+      near: pir(`${d.name}_near`, 'augustus'),
+      gate: gateFromArtaHeader(h, AUGUST_FAR_REFERENCE_ON_PIR_MS),
+    });
+    expect(Math.abs(viaFrd.fit.residualRmsDeg - viaPir.fit.residualRmsDeg)).toBeLessThan(1);
+    // read correctly, the far field is silent after the edge: no tail flag, the note says so
+    expect(viaFrd.flags.some((f) => /after the stated gate/.test(f))).toBe(false);
+    expect(viaFrd.notes.some((n) => /gate matches the file/.test(n))).toBe(true);
+  }, 60_000);
+});
+
+describe('V60 (b) — a misread gate (right edge at Right window − Reference time) makes the self-diagnosis fire', () => {
+  // What engine2 and section C read before V60: right edge 2.521 ms after the reference, left 2.5 ms.
+  const misread = { referenceMs: 0, leftMs: 2.5, rightMs: 2.521, rightTaper: 0.25 };
+  it.each(DRIVERS)('$name: the tail check names the gate', (d) => {
+    const r = mergeImpulsesV2({
+      ...mergeOpts(d),
+      far: frdImpulse(`casus1/${d.name}_hor_0.txt`, true, 'augustus'),
+      near: frdImpulse(`casus1/${d.name}_near.txt`, false, 'augustus'),
+      gate: misread,
+    });
+    const tail = r.flags.find((f) => /after the stated gate/.test(f));
+    expect(tail).toBeDefined();
+    expect(tail).toMatch(/V60/);
+    expect(GATE_TAIL_FLAG_DB).toBe(-30);
+  }, 60_000);
+  it('woofer_down: the residual flag puts the header first among the causes', () => {
+    const d = DRIVERS[0];
+    const r = mergeImpulsesV2({
+      ...mergeOpts(d),
+      far: frdImpulse(`casus1/${d.name}_hor_0.txt`, true, 'augustus'),
+      near: frdImpulse(`casus1/${d.name}_near.txt`, false, 'augustus'),
+      gate: misread,
+    });
+    const res = r.flags.find((f) => /does not explain/.test(f));
+    expect(res).toBeDefined();
+    expect(res!.indexOf('read correctly from the header')).toBeLessThan(res!.indexOf('echo'));
+  }, 60_000);
+});
+
+describe('V55/V60 (c) — the September near field on the August far field merges cleanly; the session is a note', () => {
+  // Far field: raw August PIR, section D's gate. Near field and port: the September FRDs
+  // (koan_2026-09_testkast, one woofer driven — M-2). Measured 13-11-2026: 2.93° and 1.97°.
+  it.each([
+    { name: 'woofer_down', deg: 2.93 },
+    { name: 'woofer_up', deg: 1.97 },
+  ] as const)('$name: $deg°, no flag, and the note names all three sessions', (row) => {
+    const far = pir(`${row.name}_hor_0`, 'augustus');
+    const r = mergeImpulsesV2({
+      ...mergeOpts(DRIVERS[0]),
+      far,
+      near: frdImpulse(`koan_2026-09_testkast/${row.name}_near.txt`, false, 'testkast 11-09'),
+      port: { impulse: frdImpulse('koan_2026-09_testkast/port_near.txt', false, 'testkast 11-09'), weight: 0.205 },
+      gate: { referenceMs: arrivalMs(far) - 0.4, leftMs: 2.5, rightMs: 2.521, rightTaper: 0.25 },
+    });
+    expect(Math.abs(r.fit.residualRmsDeg - row.deg)).toBeLessThanOrEqual(0.2);
+    expect(r.flags).toEqual([]);
+    expect(r.notes.some((n) => /different sessions .*no shared time base, the delay is fitted only/.test(n))).toBe(true);
+    expect(r.notes.some((n) => /port "testkast 11-09"/.test(n))).toBe(true);
+    expect(r.notes.join(' ')).not.toMatch(/71°/);
   }, 60_000);
 });
