@@ -521,12 +521,87 @@ export function floorBounceGate(
   const horizMm = micDistanceMm * Math.cos(v);
   const micHeightMm = refHeightMm + micDistanceMm * Math.sin(v);
   if (!(micHeightMm > 0)) return null;
-  // Image source mirrored through the floor.
-  const bounceMm = Math.hypot(horizMm, refHeightMm + micHeightMm);
-  const extraPathMm = bounceMm - micDistanceMm;
-  if (!(extraPathMm > 0)) return null;
+  // Image source mirrored through the floor — the one-source, one-plane case of
+  // `reflectionGates` (V57), through the same geometry.
+  const extraPathMm = planeExtraPathMm(refHeightMm, micHeightMm, horizMm);
+  if (extraPathMm === null || !(extraPathMm > 0)) return null;
   const gateMs = extraPathMm / C_AIR;
   return { gateMs, fromHz: 1000 / gateMs, extraPathMm };
+}
+
+/**
+ * Extra path, mm, of a source's image in a horizontal plane against the direct path to the
+ * microphone: source `sourceAboveMm` and mic `micAboveMm` above (or both below) the plane,
+ * `horizontalMm` apart. ONE geometry with three readers: `floorBounceGate`, `reflectionGates`
+ * and the merge kernel's `planeEchoDelayS` (nfMergeV2.ts). Null when it is not a reflection
+ * on this path (a negative height: the plane lies between source and mic).
+ */
+export function planeExtraPathMm(sourceAboveMm: number, micAboveMm: number, horizontalMm: number): number | null {
+  if (!(sourceAboveMm >= 0 && micAboveMm >= 0 && horizontalMm > 0)) return null;
+  const direct = Math.hypot(horizontalMm, micAboveMm - sourceAboveMm);
+  const image = Math.hypot(horizontalMm, micAboveMm + sourceAboveMm);
+  return image - direct;
+}
+
+/** A radiator whose own reflections are asked for: a driver, a port mouth. Height above the floor. */
+export interface ReflectionSource {
+  label: string;
+  heightMm: number;
+}
+/** A horizontal reflecting plane, height above the floor (the floor itself is 0), below or above the rig. */
+export interface ReflectionPlane {
+  label: string;
+  heightMm: number;
+  side: 'below' | 'above';
+}
+export interface ReflectionGate extends GateVerdict {
+  source: string;
+  plane: string;
+}
+
+/**
+ * V57 — the reflection-free window PER SOURCE AND PER PLANE. `floorBounceGate` mirrors one source,
+ * at the reference height, in the floor; a driver above or below the reference has its own path,
+ * and a table, a ceiling or a stand top is a plane of its own. Per source the earliest reflection
+ * is what limits it. A plane that lies between a source and the mic is not a reflection on that
+ * path: it is listed in `skipped` with the reason, never silently dropped.
+ */
+export function reflectionGates(opts: {
+  sources: readonly ReflectionSource[];
+  planes: readonly ReflectionPlane[];
+  micHeightMm: number;
+  horizontalMm: number;
+}): {
+  gates: ReflectionGate[];
+  skipped: { source: string; plane: string; reason: string }[];
+  earliestBySource: Record<string, ReflectionGate | null>;
+} {
+  const gates: ReflectionGate[] = [];
+  const skipped: { source: string; plane: string; reason: string }[] = [];
+  const earliestBySource: Record<string, ReflectionGate | null> = {};
+  for (const src of opts.sources) {
+    earliestBySource[src.label] = null;
+    for (const pl of opts.planes) {
+      const below = pl.side === 'below';
+      const sAbove = below ? src.heightMm - pl.heightMm : pl.heightMm - src.heightMm;
+      const mAbove = below ? opts.micHeightMm - pl.heightMm : pl.heightMm - opts.micHeightMm;
+      const extra = planeExtraPathMm(sAbove, mAbove, opts.horizontalMm);
+      if (extra === null || !(extra > 0)) {
+        skipped.push({
+          source: src.label,
+          plane: pl.label,
+          reason: sAbove < 0 || mAbove < 0 ? 'the plane lies between the source and the microphone' : 'no extra path (on the plane, or no distance)',
+        });
+        continue;
+      }
+      const gateMs = extra / C_AIR;
+      const g: ReflectionGate = { source: src.label, plane: pl.label, gateMs, fromHz: 1000 / gateMs, extraPathMm: extra };
+      gates.push(g);
+      const cur = earliestBySource[src.label];
+      if (!cur || g.gateMs < cur.gateMs) earliestBySource[src.label] = g;
+    }
+  }
+  return { gates, skipped, earliestBySource };
 }
 
 /** Lowest frequency a stated gate can support — for when the operator knows

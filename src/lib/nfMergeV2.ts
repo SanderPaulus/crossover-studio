@@ -48,8 +48,9 @@
  */
 
 import { fftInPlace, ifftInPlace } from './fft.ts';
+import { planeExtraPathMm } from './cabinet.ts';
 
-export const NF_MERGE_V2_VERSION = 'nf-merge/2.0';
+export const NF_MERGE_V2_VERSION = 'nf-merge/2.1';
 
 /** c, m/s — the one physical constant the project whitelists (CLAUDE.md, P6). */
 export const SPEED_OF_SOUND_M_S = 343;
@@ -428,9 +429,9 @@ function piston(f: number, radiusM: number, theta: number): number {
 
 /** Arrival delay of a plane echo after the direct sound, s. */
 export function planeEchoDelayS(e: PlaneEcho): number {
-  const rd = Math.hypot(e.horizontalM, e.micAboveM - e.sourceAboveM);
-  const ri = Math.hypot(e.horizontalM, e.micAboveM + e.sourceAboveM);
-  return (ri - rd) / SPEED_OF_SOUND_M_S;
+  // One geometry with floorBounceGate and reflectionGates (V57): cabinet.ts owns it.
+  const mm = planeExtraPathMm(e.sourceAboveM * 1000, e.micAboveM * 1000, e.horizontalM * 1000) ?? 0;
+  return mm / 1000 / SPEED_OF_SOUND_M_S;
 }
 
 function echoSpec(echoes: readonly EchoTerm[], f: Float64Array, sdCm2: number | null): Spec {
@@ -443,7 +444,7 @@ function echoSpec(echoes: readonly EchoTerm[], f: Float64Array, sdCm2: number | 
     const ri = Math.hypot(e.horizontalM, e.micAboveM + e.sourceAboveM);
     const td = Math.atan2(e.micAboveM - e.sourceAboveM, e.horizontalM);
     const ti = Math.atan2(e.micAboveM + e.sourceAboveM, e.horizontalM);
-    const dt = (ri - rd) / SPEED_OF_SOUND_M_S;
+    const dt = planeEchoDelayS(e); // the one geometry (V57)
     for (let k = 0; k < f.length; k++) {
       const dir = radius > 0 ? piston(f[k], radius, ti) / piston(f[k], radius, td) : 1;
       const g = (rd / ri) * dir;
@@ -910,6 +911,26 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
     notes.push(
       `different sessions (${sessions.map(([l, s]) => `${l} "${s}"`).join(', ')}): no shared time base, the delay is fitted only`,
     );
+  }
+
+  // A boundary belongs to the source AS MEASURED only if that source's near field was measured in
+  // the far field's set-up (Sander, 13-11-2026): from another session, the plane may not be in it.
+  const boundaryChecks: [readonly EchoTerm[], string, string | null][] = [
+    [input.echoes, 'cone', ns],
+    ...(input.port ? ([[input.port.echoes ?? [], 'port', ps]] as [readonly EchoTerm[], string, string | null][]) : []),
+  ];
+  for (const [list, src, srcSession] of boundaryChecks) {
+    for (const b of list) {
+      if (b.kind !== 'boundary') continue;
+      if (!srcSession || !fsn) {
+        notes.push(`boundary "${b.label}" on the ${src}: session not stated for both the ${src} and the far field — whether the boundary is in the measurement cannot be checked`);
+      } else if (srcSession !== fsn) {
+        notes.push(
+          `boundary "${b.label}" on the ${src}: its near field is from session "${srcSession}", the far field from "${fsn}" — ` +
+            `the boundary may not be in the measurement`,
+        );
+      }
+    }
   }
 
   // V60: an already-gated far field must be silent after the right edge of its stated gate.

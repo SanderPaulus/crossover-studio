@@ -611,3 +611,19 @@ describe('reflections per source — a port at a known, different height (synthe
     }
   });
 });
+
+describe('a boundary is tied to the session of the near field that carries it (Sander, 13-11-2026)', () => {
+  it('same session: no doubt raised; port near field from another session: a note says the boundary may not be in it', () => {
+    const near = impulseOf((f) => cmul(driver(f), delay(f, NEAR_T0)));
+    const far = impulseOf((f) => cmul(cmul(driver(f), delay(f, NEAR_T0 + TRUE_TAU)), an4(f, F0)).map((v) => v * TRUE_GAIN) as Cx);
+    const mk = (name: string, samples: Float64Array, session: string): Impulse => ({ name, sampleRate: FS, samples, timeBase: 'session', alreadyGated: false, session });
+    const table: BoundaryTerm = { kind: 'boundary', label: 'tafelblad', sourceAboveM: 0.015 };
+    const run = (portSession: string) =>
+      mergeImpulsesV2(input({ near: mk('near', near, 'aug'), far: mk('far', far, 'aug'), echoes: [], port: { impulse: mk('port', near, portSession), weight: 0.1, echoes: [table] } }));
+    const same = run('aug');
+    expect(same.notes.some((n) => /may not be in the measurement/.test(n))).toBe(false);
+    const other = run('sep');
+    expect(other.notes.some((n) => /boundary "tafelblad" on the port: its near field is from session "sep", the far field from "aug" — the boundary may not be in the measurement/.test(n))).toBe(true);
+    expect(other.flags.some((f) => /boundary/.test(f))).toBe(false);
+  });
+});

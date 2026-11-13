@@ -6,6 +6,8 @@ import {
   listeningDelayShiftUs,
   baffleStepHz,
   floorBounceGate,
+  planeExtraPathMm,
+  reflectionGates,
   gateLimitHz,
   boxRolloff,
   boxTuningFromZ,
@@ -24,6 +26,7 @@ import {
   unloadingRisk,
   wavelengthMm,
 } from './cabinet.ts';
+import { planeEchoDelayS } from './nfMergeV2.ts';
 
 describe('true off-axis angle of a measurement', () => {
   it('a vertically offset driver is ALREADY off-axis at nominal 0 degrees', () => {
@@ -502,5 +505,74 @@ describe('box tuning read from the measured impedance', () => {
     expect(boxRolloff('ported', 31.6).note).toContain('at Fb ≈ 32 Hz');
     // No number = the exact historical strings (bit-compat with old readouts).
     expect(boxRolloff('ported').note).toContain('at Fb,');
+  });
+});
+
+describe('V57 — reflections per source and per plane', () => {
+  it('floorBounceGate is the one-source, one-plane case of reflectionGates', () => {
+    for (const [d, h, el] of [[1000, 1000, 0], [1500, 800, 0], [1000, 1000, 10]] as const) {
+      const v = (el * Math.PI) / 180;
+      const old = floorBounceGate(d, h, el)!;
+      const g = reflectionGates({
+        sources: [{ label: 'ref', heightMm: h }],
+        planes: [{ label: 'vloer', heightMm: 0, side: 'below' }],
+        micHeightMm: h + d * Math.sin(v),
+        horizontalMm: d * Math.cos(v),
+      }).earliestBySource.ref!;
+      expect(g.gateMs).toBeCloseTo(old.gateMs, 9);
+    }
+  });
+
+  it('casus 1, August (Sander, 13-11-2026): the floor per driver, by hand', () => {
+    // mic 1.380 m above the floor, 1.0 m away; woofer down 0.794 m, woofer up 1.070 m
+    const r = reflectionGates({
+      sources: [
+        { label: 'woofer onder', heightMm: 794 },
+        { label: 'woofer boven', heightMm: 1070 },
+      ],
+      planes: [{ label: 'vloer', heightMm: 0, side: 'below' }],
+      micHeightMm: 1380,
+      horizontalMm: 1000,
+    });
+    const hand = (hs: number) => (Math.hypot(1000, 1380 + hs) - Math.hypot(1000, 1380 - hs)) / 343;
+    expect(r.earliestBySource['woofer onder']!.gateMs).toBeCloseTo(hand(794), 9);
+    expect(r.earliestBySource['woofer boven']!.gateMs).toBeCloseTo(hand(1070), 9);
+    // the numbers the merge measured: 3.60 ms and 4.66 ms
+    expect(r.earliestBySource['woofer onder']!.gateMs).toBeCloseTo(3.6, 2);
+    expect(r.earliestBySource['woofer boven']!.gateMs).toBeCloseTo(4.66, 2);
+  });
+
+  it('per plane: the earliest wins, a plane between source and mic is skipped with its reason', () => {
+    const r = reflectionGates({
+      sources: [{ label: 'poort', heightMm: 515 }, { label: 'tweeter', heightMm: 1250 }],
+      planes: [
+        { label: 'vloer', heightMm: 0, side: 'below' },
+        { label: 'tafel', heightMm: 500, side: 'below' },
+        { label: 'plafond', heightMm: 2600, side: 'above' },
+      ],
+      micHeightMm: 1380,
+      horizontalMm: 1000,
+    });
+    // the table sits 15 mm under the port: its image is almost the source itself
+    expect(r.earliestBySource.poort!.plane).toBe('tafel');
+    expect(r.earliestBySource.poort!.extraPathMm).toBeLessThan(30);
+    // for the tweeter the table is below both too, and closer than the floor
+    expect(r.gates.find((g) => g.source === 'tweeter' && g.plane === 'tafel')!.gateMs)
+      .toBeLessThan(r.gates.find((g) => g.source === 'tweeter' && g.plane === 'vloer')!.gateMs);
+    // a source below the table: the table is between it and the mic
+    const under = reflectionGates({
+      sources: [{ label: 'onder het blad', heightMm: 300 }],
+      planes: [{ label: 'tafel', heightMm: 500, side: 'below' }],
+      micHeightMm: 1380,
+      horizontalMm: 1000,
+    });
+    expect(under.gates).toEqual([]);
+    expect(under.skipped[0].reason).toMatch(/between the source and the microphone/);
+    expect(under.earliestBySource['onder het blad']).toBeNull();
+  });
+
+  it('the merge kernel reads the same geometry', () => {
+    const e = { kind: 'plane' as const, label: 'vloer', sourceAboveM: 0.794, micAboveM: 1.38, horizontalM: 1.0 };
+    expect(planeEchoDelayS(e) * 1000).toBeCloseTo(planeExtraPathMm(794, 1380, 1000)! / 343, 12);
   });
 });

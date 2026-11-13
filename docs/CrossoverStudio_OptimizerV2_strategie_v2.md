@@ -11540,6 +11540,14 @@ driver die hoger of lager zit dan het referentiepunt heeft een ander reflectiepa
 meer dan één vlak (vloer, tafel, plafond) heeft er meer. Hoort per driver en per vlak te rekenen (I-4
 fase 2). Niet gerepareerd bij het boeken.
 
+**I-4 fase 2 (13-11-2026): gebouwd, niet aangesloten.** `cabinet.ts` heeft sinds dan één geometrie
+(`planeExtraPathMm`) met drie lezers: `floorBounceGate` (het geval één bron op het referentiepunt, de
+vloer — nagerekend gelijk), `reflectionGates` (per bron en per vlak, onder of boven het rig; een vlak
+tussen bron en microfoon wordt met reden overgeslagen) en de merge-kern (`planeEchoDelayS`). Casus 1
+augustus met de hand nagerekend: vloer onder woofer onder 3,60 ms, onder woofer boven 4,66 ms. De twee
+aanroepers in de app (`App.tsx`, `MeasuringGuide.tsx`) lezen nog het referentiepunt; ze aansluiten op de
+driverposities is I-4 fase 3.
+
 ### V58 — de poortdiameter in het merge-blok is teruggerekend, niet gemeten (I-4 bevinding 8; open)
 
 `D 74 mm` in de kop van de I-2-woofermerges is teruggerekend uit Keele's gewicht g = 0,41. Helmholtz op de
