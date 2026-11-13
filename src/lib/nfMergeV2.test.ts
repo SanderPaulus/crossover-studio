@@ -485,3 +485,40 @@ describe('V55/V60 (c) — the September near field on the August far field merge
     expect(r.notes.join(' ')).not.toMatch(/71°/);
   }, 60_000);
 });
+
+describe('V60 (d) — on the long gate the stated floor explains woofer_down', () => {
+  // PIR route, the gate the far-field FRD was exported with (reference on the PIR at 8.750 ms,
+  // left 0, right 5.021, Tukey 0.25), AN4 f0 150 Hz, 300–576 Hz, no port. Geometry stated by
+  // Sander on 13-11-2026: floor; woofer_down acoustic centre 0.794 m above it, mic 1.380 m,
+  // 1.0 m horizontal; Sd 255 cm². Measured: 8.34° / 0.656 dB with 2 flags → 3.73° / 0.250 dB, none.
+  const run = (echoes: readonly PlaneEcho[]) => {
+    const far = pir('woofer_down_hor_0', 'augustus');
+    return mergeImpulsesV2({
+      far,
+      near: pir('woofer_down_near', 'augustus'),
+      gate: { referenceMs: AUGUST_FAR_REFERENCE_ON_PIR_MS, leftMs: 0, rightMs: 5.021, rightTaper: 0.25 },
+      model: { kind: 'an4', f0Hz: 150 },
+      echoes,
+      sdCm2: 255,
+      fitBandHz: [300, 576],
+      spliceBandHz: [400, 550],
+      output: { fromHz: 20, toHz: 2000, pointsPerOctave: 24 },
+    });
+  };
+  const floor: PlaneEcho = { kind: 'plane', label: 'vloer', sourceAboveM: 0.794, micAboveM: 1.38, horizontalM: 1.0 };
+
+  it('without the plane: the finder names an echo inside the gate near the floor delay', () => {
+    const r = run([]);
+    expect(Math.abs(r.fit.residualRmsDeg - 8.34)).toBeLessThanOrEqual(0.2);
+    expect(r.flags.some((f) => /echo .* inside the gate/.test(f))).toBe(true);
+    const delayMs = planeEchoDelayS(floor) * 1000;
+    expect(r.echoesFound!.some((e) => e.insideGate && Math.abs(e.afterDirectMs - delayMs) < 0.1)).toBe(true);
+  }, 60_000);
+
+  it('with the floor stated: 3.73° / 0.250 dB, zero flags', () => {
+    const r = run([floor]);
+    expect(Math.abs(r.fit.residualRmsDeg - 3.73)).toBeLessThanOrEqual(0.2);
+    expect(Math.abs(r.fit.residualRmsDb - 0.25)).toBeLessThanOrEqual(0.02);
+    expect(r.flags).toEqual([]);
+  }, 60_000);
+});
