@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { VxpCrossover, VxpPart } from '../lib/parsers/vxp.ts';
+import { describeStackMembers, stackMembersOf } from '../lib/catalog.ts';
 
 /**
  * Read-only schematic rendering of a VituixCAD crossover, drawn straight from
@@ -45,14 +46,20 @@ function param(p: VxpPart, name: string): number | undefined {
   return p.params.find((par) => par.name === name)?.value;
 }
 
-function partValue(p: VxpPart): string {
+/** G-19 — a stacked part says what it is built from: "109 µF (82 + 27)". */
+function stackSuffix(p: VxpPart): string {
+  const m = stackMembersOf(p);
+  return m ? ` (${describeStackMembers(m)})` : '';
+}
+
+export function partValue(p: VxpPart): string {
   switch (p.type) {
     case 'Capacitor':
-      return `${param(p, 'C')} µF`;
+      return `${param(p, 'C')} µF${stackSuffix(p)}`;
     case 'Inductor':
-      return `${param(p, 'L')} mH`;
+      return `${param(p, 'L')} mH${stackSuffix(p)}`;
     case 'Resistor':
-      return `${param(p, 'R')} Ω`;
+      return `${param(p, 'R')} Ω${stackSuffix(p)}`;
     case 'Generator':
       return `${param(p, 'Eg')} V`;
     case 'Driver':

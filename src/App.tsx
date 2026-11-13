@@ -414,6 +414,7 @@ import {
   hasImportedCatalog,
   catalogParts,
   setCustomSeries,
+  stackMembersOf,
   type CatalogPart,
   type CatalogSeries,
   type SnapPrefs,
@@ -3141,7 +3142,13 @@ export default function App() {
       : !catalogSnap
         ? t('“Use real catalog parts” is switched off (Expert → Filters → Components).')
         : t('The catalogue snap did not land on this design: real parts would break a hard limit (often the source resistance of thin coil wire) — the run notes say which.');
-    return { total: rlc.length, catalog: rlc.filter((p) => p.catalog).length, why };
+    return {
+      total: rlc.length,
+      catalog: rlc.filter((p) => p.catalog).length,
+      why,
+      /* G-19 — positions realised as a bank: the same `catalog` stamp the BOM reads. */
+      stacked: rlc.filter((p) => stackMembersOf(p) !== null).length,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDesign, catalogSnap, catalogRev]);
 

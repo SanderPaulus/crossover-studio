@@ -9874,3 +9874,47 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   venster zonder f_s-vloer) zodra een belastingprofiel M-C wapent — Sander koos de snap eerst. (2)
   De dikke-draad-herkansing (hierboven). (3) De CI-uitslagen van G-15, G-16 en G-17 zijn nog niet
   geboekt. (4) Geen regeneratie: geen corpus snapt.
+
+### G-19-guards (een stapel zegt waaruit hij bestaat; alleen weergave, 12/13-11-2026)
+
+- **AANLEIDING:** na G-18 meldde Sander op de live site, met de driewegdemo en de pagina herladen:
+  *"met extended gaat ie toch weer naar onmogelijke waardes van de componenten ondanks dat ik gezegd
+  heb standaard series"*. **Eerst gemeten en niet nagebouwd**, op drie plaatsen: lokaal met zijn
+  instellingen (Uitgebreid, Standaardfilter, Standaard-onderdelen, tweeterhelling 24: 9 van 9
+  geleverd, 18 van 18 catalogus), lokaal met de oude democatalogus v6 in plaats van v9 (de
+  hypothese dat C-1 een vóór 07-11 geïnstalleerde v6 nooit vervangt — 7 van 9, alles catalogus, dus
+  afgewezen), en op de live site zelf in een verse browser (driewegdemo 9 van 9, tweewegdemo 3 van
+  4, alles catalogus). Dat de live bundel G-18 draagt is nagegaan in de geserveerde worker.
+- **DE OORZAAK, gevonden in zijn eigen run in de browser-pane:** alle 18 posities waren
+  catalogusonderdelen, maar twee waren een STAPEL — C2 = 109 µF (Jantzen Cross-Cap 82 + 27 µF) en
+  B·C1 = 41,2 µF (33 µF + Audyn QS 8,2 µF). Het schema tekent één symbool met de SOM (de elektrische
+  waarheid, en zo bedoeld) en noemde de leden nergens; de BOM wel. Een som die in geen enkele serie
+  staat leest als een ideale waarde die de snap niet verving. De snapnotitie zei het al ("snap: 2
+  stacks — singles-only would fit 6% worse and cost €17 less"), maar die staat achter de runnotities.
+  Zijn Uitgebreide run daarna (Volledig filter) koos geen stapels: 26 losse catalogusonderdelen.
+- **De reparatie, alleen weergave:**
+  - `stackMembersOf(part)` (catalog.ts) — de ENE lezer van een `catalog`-stempel met twee of meer
+    SKU's: de waarden van de leden in de eenheid van het schema, of `null` voor een los onderdeel,
+    een ongestempeld onderdeel of een SKU die de geladen catalogus niet kent (dan tekent het schema
+    precies wat het tekende, P2). `describeStackMembers` maakt er "82 + 27" of "2× 22" van.
+  - `Schematic.tsx` `partValue` (sinds G-19 geëxporteerd) tekent "109 µF (82 + 27)"; geldt voor het
+    alleen-lezen-schema én de editor, die dezelfde `PartGlyph` gebruikt.
+  - De guided-onderdelenregel telt de stapels (`guidedPartsReality.stacked`, dezelfde lezer) en zegt
+    "N van deze posities bestaan uit twee of meer catalogusonderdelen; het schema toont de som en de
+    onderdelen". Zonder stapels verandert er geen woord.
+- **NIET gedaan, en dat is een keuze voor Sander:** of "Standaard" in guided stapels moet verbieden.
+  Stapelen staat sinds lang aan (`snapStacks`, expert); de snap kiest een stapel alleen als die
+  beter past (SINGLE WHERE IT CAN, met een handicap per extra onderdeel), en alle vier de leden in
+  deze run waren Standaard-onderdelen.
+- `src/components/stackLabel.test.tsx` (6 claims): de premisse op de ECHTE v9-catalogus (beide
+  stempels bestaan en sommeren tot de getekende waarde), de lezer en de woorden, het label, P2 op
+  drie gevallen, de guided-regel met en zonder stapels, en een bronscan dat de app dezelfde lezer
+  telt.
+- **Gemeten:** `npx tsc -b` groen. `npm run test:fast` 269,3 s, 235 bestanden (234 geslaagd,
+  1 overgeslagen), 3088 tests (3084 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid
+  (geen dev-server; laatste bronbewerking 18:15:50, run gestart 19:22:21). +1 bestand en +6 tests
+  tegen G-18's 3082: exact `stackLabel.test.tsx`. Geen volle run: geen motor-, poort-, venster- of
+  corpuscode geraakt.
+- **NOG NIET IN DE BROWSER BEKEKEN** — de pane draaide Sanders live-sessie, en een dev-server
+  overneemt dat tabblad en wist zijn shortlist. Of een lang label in het schema overlapt is dus niet
+  gezien.

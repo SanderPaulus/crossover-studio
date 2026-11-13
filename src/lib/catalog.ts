@@ -986,6 +986,38 @@ const PART_KIND: Record<string, { kind: CatalogKind; param: string; toSi: number
   Resistor: { kind: 'R', param: 'R', toSi: 1 },
 };
 
+/**
+ * G-19 — the values a STACKED part is built from, in the schematic's own
+ * display unit (µF / mH / Ω), or null for a single part, an unstamped one, or
+ * a stamp whose SKUs are not in the catalogue now loaded.
+ *
+ * The schematic draws ONE symbol carrying the summed value — that is the
+ * electrical truth — and the `catalog` stamp carries every SKU. Without the
+ * members on the drawing, a bank reads as a value no series stocks: Sanders'
+ * demo run (12-11-2026) showed C2 = 109 µF and B·C1 = 41.2 µF and read them as
+ * "impossible values despite the standard series", while the BOM listed
+ * 82 + 27 µF and 33 + 8.2 µF, all four Standard-tier parts. One reader of the
+ * stamp, for every place that draws a value.
+ */
+export function stackMembersOf(part: { type: string; catalog?: string }): number[] | null {
+  const meta = PART_KIND[part.type];
+  if (!meta || !part.catalog || !part.catalog.includes('+')) return null;
+  const ids = part.catalog.split('+').filter(Boolean);
+  if (ids.length < 2) return null;
+  const all = catalogParts();
+  const found = ids.map((id) => all.find((c) => c.id === id));
+  if (!found.every((c): c is CatalogPart => !!c)) return null;
+  return found.map((c) => c.value / meta.toSi);
+}
+
+/** "82 + 27" or "2× 22": a stack's members in words, at the schematic's precision. */
+export function describeStackMembers(members: readonly number[]): string {
+  const fmt = (v: number) => String(Number(v.toPrecision(3)));
+  return members.every((v) => Math.abs(v - members[0]) <= 1e-9 * Math.abs(members[0]))
+    ? `${members.length}× ${fmt(members[0])}`
+    : members.map(fmt).join(' + ');
+}
+
 /** Bill of materials for a schematic: every R/L/C matched against the catalog. */
 export function bomFor(parts: readonly VxpPart[]): Bom {
   const rows: BomRow[] = [];

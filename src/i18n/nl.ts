@@ -2210,6 +2210,8 @@ export const nl: Record<string, string> = {
   // Guided parts reality (GuidedV2Summary.tsx)
   'All {n} parts are real catalogue parts — this list can be ordered.':
     'Alle {n} onderdelen zijn echte catalogusonderdelen — deze lijst kun je bestellen.',
+  '{s} of these positions are built from two or more catalogue parts (caps in parallel, coils in series); the schematic shows the sum and the parts.':
+    '{s} van deze posities bestaan uit twee of meer catalogusonderdelen (condensatoren parallel, spoelen in serie); het schema toont de som en de onderdelen.',
   'Ideal values: none of the {n} parts is a catalogue part, so this is not yet a list you can order.':
     'Ideale waarden: geen van de {n} onderdelen is een catalogusonderdeel, dus dit is nog geen lijst die je kunt bestellen.',
   '{k} of {n} parts are real catalogue parts; the other {m} carry ideal values.':

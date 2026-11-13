@@ -119,7 +119,7 @@ export interface GuidedV2SummaryProps {
    * parts carry a catalogue attribution, out of how many, and — when none do —
    * why (no catalogue loaded, or the snap switched off). Null = no network.
    */
-  parts?: { total: number; catalog: number; why: string | null } | null;
+  parts?: { total: number; catalog: number; why: string | null; stacked?: number } | null;
   /**
    * The component quality the RUN snapped with, already in words (guided
    * label, or the expert profile by name); null when the run did not snap.
@@ -130,9 +130,15 @@ export interface GuidedV2SummaryProps {
 }
 
 /** The parts line: buildable, partly, or ideal values — with the reason. */
-export function partsLine(p: { total: number; catalog: number; why: string | null }): { text: string; ok: boolean } {
+export function partsLine(p: { total: number; catalog: number; why: string | null; stacked?: number }): { text: string; ok: boolean } {
+  /* G-19 — a position built from two catalogue parts carries a value no
+   * series stocks (82 + 27 = 109 µF). Say so, or the sum on the schematic reads
+   * as an ideal value the snap failed to replace. */
+  const stacks = (p.stacked ?? 0) > 0
+    ? ' ' + t('{s} of these positions are built from two or more catalogue parts (caps in parallel, coils in series); the schematic shows the sum and the parts.', { s: p.stacked ?? 0 })
+    : '';
   if (p.catalog === p.total) {
-    return { text: t('All {n} parts are real catalogue parts — this list can be ordered.', { n: p.total }), ok: true };
+    return { text: t('All {n} parts are real catalogue parts — this list can be ordered.', { n: p.total }) + stacks, ok: true };
   }
   if (p.catalog === 0) {
     return {
