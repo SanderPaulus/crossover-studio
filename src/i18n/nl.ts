@@ -3063,4 +3063,9 @@ export const nl: Record<string, string> = {
   // ── I-4 B-4: overgenomen ──────────────────────────────
   'taken over':
     'overgenomen',
+  // ── I-4 B-4: D volgt A ──────────────────────────────
+  'follows A: A + {x} mm (the mic above the cabinet bottom, from “Your cabinet”); type D to set it yourself':
+    'volgt A: A + {x} mm (de mic boven de kastbodem, uit “Je kast”); typ D om hem zelf te zetten',
+  'A is the cabinet as it stands in your room. Measured on a table? Change A afterwards: D follows it, the mic moved with the cabinet.':
+    'A is de kast zoals hij in je kamer staat. Op een tafel gemeten? Pas A daarna aan: D volgt mee, de mic ging met de kast mee omhoog.',
 };

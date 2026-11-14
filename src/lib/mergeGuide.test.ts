@@ -190,6 +190,15 @@ describe('step 2 — A, C and D taken over from "Your cabinet"', () => {
     expect(r.d).toBeCloseTo(1380 + 500, 9);
     expect(r.a).toBe(500); // the cabinet does not move with the mic
   });
+  it('the mic above the cabinet bottom: what D follows when the cabinet stood on a table (D = A + this)', () => {
+    expect(rigFromDesign(base).micAboveBottomMm).toBe(880); // 1124 − 244: the mic level with the reference
+    expect(rigFromDesign({ ...base, micElevationDeg: 30 }).micAboveBottomMm).toBeCloseTo(880 + 500, 9);
+    // the demo cabinet stands at 20 mm in its room; on a 500 mm table D becomes 500 + 880 = 1380, not 900
+    const demo = rigFromDesign({ ...base, refHeightMm: 900 });
+    expect([demo.a, demo.d]).toEqual([20, 900]);
+    expect(500 + demo.micAboveBottomMm!).toBe(1380);
+    expect(rigFromDesign({ ...base, ownGeometry: true }).micAboveBottomMm).toBeNull();
+  });
   it('never a guess: a measured object with its own geometry gets no A, and what is missing is named', () => {
     expect(rigFromDesign({ ...base, ownGeometry: true }).a).toBeNull();
     const r = rigFromDesign({ ...base, refHeightMm: null });
@@ -223,6 +232,11 @@ describe('the tool — what a source scan can see', () => {
     expect(body).toMatch(/<Chart\b/);
     expect(body).toMatch(/predictionDb[\s\S]*farGatedDb[\s\S]*\.spl/);
     expect(body).not.toMatch(/mergeImpulsesV2\(/);
+  });
+  it('after taking over from "Your cabinet", D follows A until D is typed', () => {
+    expect(src).toMatch(/dFollowsA: fromDesign\.micAboveBottomMm !== null/);
+    expect(src).toMatch(/setRig\(\{ bottom: v,[^}]*\.\.\.dFollowing\(v\)/);
+    expect(src).toMatch(/setRig\(\{ micHeight: v, dFollowsA: false \}\)/);
   });
   it('the window and merge panels remount per driver: a draft typed for one driver cannot land on another', () => {
     expect(src).toMatch(/<WindowStep\s+key=\{active\.stem\}/);

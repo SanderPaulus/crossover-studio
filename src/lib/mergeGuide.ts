@@ -288,6 +288,10 @@ export function rigFromDesign(x: RigFromDesignInput): {
   a: number | null;
   c: number | null;
   d: number | null;
+  /** The mic above the measured object's BOTTOM: (height − ref from top) + d·sin v. The mic was aimed at the
+   *  reference point, so it moves with the cabinet: on a table D = A + this. Null without the baffle, or with
+   *  a measured object of its own geometry. */
+  micAboveBottomMm: number | null;
   missing: string[];
   notes: string[];
 } {
@@ -302,6 +306,8 @@ export function rigFromDesign(x: RigFromDesignInput): {
   const d = okDist && okRef ? x.refHeightMm! + x.micDistanceMm! * Math.sin(v) : null;
   if (x.micElevationDeg) notes.push(`the rig's vertical angle ${x.micElevationDeg}° is in C and D`);
   let a: number | null = null;
+  const refAboveBottom = !x.ownGeometry && x.baffleHeightMm !== null && x.baffleHeightMm > 0 && x.refFromTopMm !== null ? x.baffleHeightMm - x.refFromTopMm : null;
+  const micAboveBottomMm = refAboveBottom !== null && okDist ? refAboveBottom + x.micDistanceMm! * Math.sin(v) : null;
   if (x.ownGeometry) notes.push('A not proposed: the measured object has its own geometry, the design’s baffle does not say where its bottom was');
   else if (!okRef || x.baffleHeightMm === null || !(x.baffleHeightMm > 0) || x.refFromTopMm === null) {
     if (okRef) missing.push('the baffle height and the reference point from the top (A)');
@@ -312,5 +318,5 @@ export function rigFromDesign(x: RigFromDesignInput): {
       a = null;
     }
   }
-  return { a, c, d, missing, notes };
+  return { a, c, d, micAboveBottomMm, missing, notes };
 }

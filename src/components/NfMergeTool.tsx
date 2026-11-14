@@ -228,6 +228,8 @@ interface RigState {
   overhangMax?: string;
   micDist: string;
   micHeight: string;
+  /** Taken over from "Your cabinet": D follows A (D = A + the mic above the cabinet bottom) until D is typed. */
+  dFollowsA?: boolean;
 }
 /** What the tool stores per session beside its files. */
 interface ToolState {
@@ -456,7 +458,11 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     return r.a === null && r.c === null && r.d === null ? null : r;
   })();
   const same = (field: string, v: number | null) => v === null || num(field) === Math.round(v);
-  const fromDesignTaken = !!fromDesign && same(rig.bottom, fromDesign.a) && same(rig.micDist, fromDesign.c) && same(rig.micHeight, fromDesign.d);
+  /* taken over = the values stand as proposed, or D is following A (A was then changed for the table, on purpose) */
+  const fromDesignTaken = !!fromDesign && same(rig.micDist, fromDesign.c) && (!!rig.dFollowsA || (same(rig.bottom, fromDesign.a) && same(rig.micHeight, fromDesign.d)));
+  /** A changed while D follows it: D moves with the cabinet. */
+  const dFollowing = (a: string): Partial<RigState> =>
+    rig.dFollowsA && fromDesign?.micAboveBottomMm != null && num(a) !== null ? { micHeight: (num(a)! + fromDesign.micAboveBottomMm).toFixed(0) } : {};
 
   /** S_d: the design's for that way, else the one stated here (step 1). */
   const sdOf = (c: SourceConfig): number | null => (c.way ? props.sdCm2[c.way] : null) ?? num(c.sdCm2 ?? '');
@@ -1122,6 +1128,12 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                         {fromDesign.c !== null && <>C {fromDesign.c.toFixed(0)} mm · </>}
                         {fromDesign.d !== null && <>D {fromDesign.d.toFixed(0)} mm · </>}
                         {t('B (the table) is not in the design: state it below.')}
+                        {fromDesign.micAboveBottomMm !== null && (
+                          <>
+                            <br />
+                            <span className="derived">{t('A is the cabinet as it stands in your room. Measured on a table? Change A afterwards: D follows it, the mic moved with the cabinet.')}</span>
+                          </>
+                        )}
                       </p>
                       {fromDesign.missing.length > 0 && <p className="derived">{t('Not in the cabinet form: {m}.', { m: fromDesign.missing.join('; ') })}</p>}
                       {fromDesign.notes.map((n) => (
@@ -1138,6 +1150,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                             ...(fromDesign.a !== null ? { bottom: fromDesign.a.toFixed(0), surface: Math.round(fromDesign.a) === 0 ? 'floor' : 'table' } : {}),
                             ...(fromDesign.c !== null ? { micDist: fromDesign.c.toFixed(0) } : {}),
                             ...(fromDesign.d !== null ? { micHeight: fromDesign.d.toFixed(0) } : {}),
+                            dFollowsA: fromDesign.micAboveBottomMm !== null,
                           })
                         }
                       >
@@ -1146,7 +1159,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     </div>
                   )}
                   <p className="nfm-abcd">
-                    <span className="nfm-letter">A</span> {t('Cabinet bottom above the floor')} <Field value={rig.bottom} onCommit={(v) => setRig({ bottom: v, surface: num(v) === 0 ? 'floor' : num(v) !== null ? 'table' : '' })} ariaLabel={t('A: cabinet bottom above the floor')} /> mm
+                    <span className="nfm-letter">A</span> {t('Cabinet bottom above the floor')} <Field value={rig.bottom} onCommit={(v) => setRig({ bottom: v, surface: num(v) === 0 ? 'floor' : num(v) !== null ? 'table' : '', ...dFollowing(v) })} ariaLabel={t('A: cabinet bottom above the floor')} /> mm
                     <br />
                     <span className="derived">{t('Standing on the floor: fill in 0.')}</span>
                   </p>
@@ -1189,7 +1202,10 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     <span className="nfm-letter">C</span> {t('Microphone to the baffle')} <Field value={rig.micDist} onCommit={(v) => setRig({ micDist: v })} ariaLabel={t('C: microphone to the baffle')} /> mm
                   </p>
                   <p className="nfm-abcd">
-                    <span className="nfm-letter">D</span> {t('Microphone above the floor')} <Field value={rig.micHeight} onCommit={(v) => setRig({ micHeight: v })} ariaLabel={t('D: microphone above the floor')} /> mm
+                    <span className="nfm-letter">D</span> {t('Microphone above the floor')} <Field value={rig.micHeight} onCommit={(v) => setRig({ micHeight: v, dFollowsA: false })} ariaLabel={t('D: microphone above the floor')} /> mm
+                    {rig.dFollowsA && fromDesign?.micAboveBottomMm != null && (
+                      <span className="derived"> {t('follows A: A + {x} mm (the mic above the cabinet bottom, from “Your cabinet”); type D to set it yourself', { x: fromDesign.micAboveBottomMm.toFixed(0) })}</span>
+                    )}
                     <br />
                     <span className="derived">{t('C and D are checked against the arrival times in your PIRs.')}</span>
                   </p>
