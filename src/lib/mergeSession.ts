@@ -20,7 +20,7 @@ import {
   type MergeV2Result,
 } from './nfMergeV2.ts';
 import { SPLICE_KA_MARGIN } from './merger.ts';
-import { applyPhaseConvention, gridText, MERGE_EXPORT_VERSION, MERGE_PACKAGE_FORMAT, phaseConventionText, type ExportGrid, type ExportPhase } from './mergeExport.ts';
+import { applyPhaseConvention, isUncalibrated, gridText, MERGE_EXPORT_VERSION, MERGE_PACKAGE_FORMAT, phaseConventionText, type ExportGrid, type ExportPhase } from './mergeExport.ts';
 
 export const MERGE_SESSION_VERSION = 'merge-session/1.0';
 const C_MM_PER_MS = 343;
@@ -216,6 +216,36 @@ export function gateOf(item: SessionItem): { gate: Gate; route: 'pir' | 'frd' } 
     return { gate: { referenceMs: frdZeroOnPirMs(item.frdText, item.pir), leftMs: h.leftWindowMs, rightMs: h.rightWindowMs, rightTaper: h.rightTaper }, route: 'pir' };
   }
   return { gate: { referenceMs: 0, leftMs: h.leftWindowMs, rightMs: h.rightWindowMs, rightTaper: h.rightTaper }, route: 'frd' };
+}
+
+/**
+ * I-4 PIR-only — the window when there is no FRD export to read it from: STATED in the tool, all four
+ * values, no default (a window is the choice that sets 1/T; a default would be a choice nobody made).
+ * Left and right are LENGTHS from the reference (V60); the reference is a time on the PIR's own time
+ * base, and it is the phase zero of the merge.
+ */
+export function statedPirGate(s: { referenceMs: number | null; leftMs: number | null; rightMs: number | null; taper: number | null }): { gate: Gate } | { error: string; field: string } {
+  const missing: string[] = [];
+  if (s.referenceMs === null || !Number.isFinite(s.referenceMs) || s.referenceMs < 0) missing.push('reference (ms on the PIR time base)');
+  if (s.leftMs === null || !Number.isFinite(s.leftMs) || s.leftMs < 0) missing.push('left length (ms, ≥ 0)');
+  if (s.rightMs === null || !Number.isFinite(s.rightMs) || !(s.rightMs > 0)) missing.push('right length (ms, > 0)');
+  if (s.taper === null || !Number.isFinite(s.taper) || s.taper < 0 || s.taper > 1) missing.push('Tukey taper (0…1)');
+  if (missing.length) return { error: `no FRD export, so the window is stated here and nothing is assumed — missing: ${missing.join(', ')}`, field: 'window' };
+  return { gate: { referenceMs: s.referenceMs!, leftMs: s.leftMs!, rightMs: s.rightMs!, rightTaper: s.taper! } };
+}
+
+/** Where the direct sound peaks on a PIR (ms): shown beside the window fields as information, never filled in. */
+export function directPeakMs(pir: Impulse): number {
+  let k = 0;
+  let m = -1;
+  for (let i = 0; i < pir.samples.length; i++) {
+    const a = Math.abs(pir.samples[i]);
+    if (a > m) {
+      m = a;
+      k = i;
+    }
+  }
+  return (k / pir.sampleRate) * 1000;
 }
 
 /** The impulse a merge reads for an item: the raw PIR, else the FRD rebuilt (gated for a far field). */
@@ -601,6 +631,11 @@ export function exportPackage(x: ExportInput): { ok: true; files: { name: string
   const phase: ExportPhase = x.phase ?? { kind: 'measured' };
   const grid: ExportGrid = x.grid ?? 'log48';
   const files: { name: string; data: string }[] = [];
+  /* I-4 PIR-only: no calibration, no export — the level and the microphone's response would be the
+   * soundcard's, and a file that does not say so would be taken for a measurement. Merging and fitting
+   * stay possible; only the package (and "Use in project", its twin) refuse. */
+  const raw = x.merges.filter((m) => isUncalibrated(m.text)).map((m) => m.fileName);
+  if (raw.length) return { ok: false, reason: `not calibrated: ${raw.join(', ')} — choose a microphone calibration file for this session (or load its FRD exports), then accept again` };
   for (const m of x.merges) {
     const base = grid === 'original' ? m.textOriginal : m.text;
     if (!base) return { ok: false, reason: `${m.fileName}: no merge on the far field's own grid (its far field came without an FRD export) — export on the log 1/48-octave grid` };

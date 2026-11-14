@@ -11,11 +11,14 @@
  * them and are exercised in the browser.
  */
 import type { DroppedFile } from './mergeSession.ts';
+import type { MicCal } from './micCal.ts';
 
 /** Bumped when the record shape changes; an older record opens with what it has and says so. */
-export const MERGE_STORE_VERSION = 1;
+/** 2 (I-4 PIR-only): a second store, `calibrations` — a microphone file uploaded once, chosen per session. */
+export const MERGE_STORE_VERSION = 2;
 const DB_NAME = 'crossover-studio-merge';
 const STORE = 'sessions';
+const CAL_STORE = 'calibrations';
 
 export interface StoredMergeSession<State = unknown> {
   id: string;
@@ -60,17 +63,18 @@ function open(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, MERGE_STORE_VERSION);
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE, { keyPath: 'id' });
+      if (!req.result.objectStoreNames.contains(CAL_STORE)) req.result.createObjectStore(CAL_STORE, { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
-function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>, store: string = STORE): Promise<T> {
   return open().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
-        const t = db.transaction(STORE, mode);
-        const req = run(t.objectStore(STORE));
+        const t = db.transaction(store, mode);
+        const req = run(t.objectStore(store));
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
         t.oncomplete = () => db.close();
@@ -94,4 +98,35 @@ export async function listMergeSessions(): Promise<MergeSessionSummary[]> {
     .filter((r): r is StoredMergeSession => r !== null)
     .map((r) => ({ id: r.id, name: r.name, savedAt: r.savedAt, files: r.files.length }))
     .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+}
+
+/* ---- microphone calibration files (I-4 PIR-only) ---- */
+
+/** A stored calibration as read back, or null when it is not one. */
+export function asStoredCal(x: unknown): MicCal | null {
+  if (!x || typeof x !== 'object') return null;
+  const r = x as Record<string, unknown>;
+  const nums = (v: unknown) => Array.isArray(v) && v.every((n) => typeof n === 'number');
+  if (typeof r.id !== 'string' || typeof r.name !== 'string' || !nums(r.freq) || !nums(r.db)) return null;
+  if ((r.freq as number[]).length !== (r.db as number[]).length) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    title: typeof r.title === 'string' ? r.title : null,
+    format: r.format === 'justoct' ? 'justoct' : 'arta-rew',
+    freq: r.freq as number[],
+    db: r.db as number[],
+    phaseDeg: nums(r.phaseDeg) ? (r.phaseDeg as number[]) : null,
+    sensitivityNote: typeof r.sensitivityNote === 'string' ? r.sensitivityNote : null,
+  };
+}
+export async function saveMicCal(c: MicCal): Promise<void> {
+  await tx('readwrite', (s) => s.put(c), CAL_STORE);
+}
+export async function listMicCals(): Promise<MicCal[]> {
+  const all = (await tx('readonly', (s) => s.getAll(), CAL_STORE)) as unknown[];
+  return all.map(asStoredCal).filter((c): c is MicCal => c !== null).sort((a, b) => a.name.localeCompare(b.name));
+}
+export async function deleteMicCal(id: string): Promise<void> {
+  await tx('readwrite', (s) => s.delete(id), CAL_STORE);
 }

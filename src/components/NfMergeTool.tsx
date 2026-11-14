@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart, { type Series } from './Chart.tsx';
 import { t } from '../lib/i18n.ts';
 import { parseFrd } from '../lib/parsers/frd.ts';
+import { chooseCalibration, micCorrectionAt, parseMicCal, type MicCal } from '../lib/micCal.ts';
 import { envelope } from '../lib/fft.ts';
 import { zipStore } from '../lib/zip.ts';
 import {
@@ -26,6 +27,7 @@ import {
   mergeImpulsesV2,
   planeEchoDelayS,
   type EchoTerm,
+  type Gate,
   type MergeV2Input,
   type MergeV2Result,
   type NearToFarModel,
@@ -39,6 +41,8 @@ import {
   chosenGate,
   echoesForSource,
   exportPackage,
+  statedPirGate,
+  directPeakMs,
   gateAfterArrivalMs,
   gateOf,
   impulseOfItem,
@@ -69,8 +73,7 @@ import {
   loadMergeSession,
   newSessionId,
   saveMergeSession,
-  type MergeSessionSummary,
-} from '../lib/mergeStore.ts';
+  type MergeSessionSummary, listMicCals, saveMicCal, deleteMicCal } from '../lib/mergeStore.ts';
 
 export type MergeRole = MergeWay;
 /** A merged file as the project receives it (and as the export package carries it). */
@@ -128,6 +131,11 @@ interface SourceConfig {
   ownHeight: string;
   /** '' = the header's window; otherwise a shorter right length, ms (PIR route only). */
   windowRight: string;
+  /** I-4 PIR-only: the window STATED here when the far field has no FRD export — all four, no default. */
+  pirRef?: string;
+  pirLeft?: string;
+  pirRight?: string;
+  pirTaper?: string;
   port: string;
   portWeight: string;
   portWeightStatus: 'stated' | 'provisional';
@@ -217,6 +225,8 @@ interface ToolState {
   obj: ObjectState;
   cfg: Record<string, SourceConfig>;
   accepted: Record<string, ToolAccepted>;
+  /** I-4 PIR-only: the microphone calibration file chosen for this session ('' = none). */
+  calId?: string;
 }
 const blankState = (): ToolState => ({
   rig: { bottom: '', surface: '', overhang: '', micDist: '', micHeight: '' },
@@ -272,7 +282,7 @@ interface Computed {
   heightMm: number | null;
   heightFrom: string;
   echoes: EchoTerm[];
-  window: { source: 'header' | 'chosen'; headerRightMs: number; oneOverTHz: number } | null;
+  window: { source: 'header' | 'chosen' | 'stated'; headerRightMs: number; oneOverTHz: number } | null;
 }
 
 interface Current {
@@ -284,6 +294,36 @@ interface Current {
 
 export default function NfMergeTool(props: NfMergeToolProps) {
   const [sessions, setSessions] = useState<MergeSessionSummary[]>([]);
+  /* I-4 PIR-only — microphone calibration files: uploaded once, kept by the tool, chosen per session. */
+  const [cals, setCals] = useState<MicCal[]>([]);
+  const [calError, setCalError] = useState<string | null>(null);
+  const refreshCals = () =>
+    listMicCals()
+      .then(setCals)
+      .catch((e) => setCalError(String(e)));
+  useEffect(() => {
+    void refreshCals();
+  }, []);
+  const onCalFile = async (files: FileList | null) => {
+    const f = files?.[0];
+    if (!f) return;
+    setCalError(null);
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    let text: string;
+    try {
+      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      text = new TextDecoder('latin1').decode(bytes); // JustOct writes ANSI (the ° in its header)
+    }
+    const r = parseMicCal(f.name, text);
+    if (!r.ok) {
+      setCalError(r.reason);
+      return;
+    }
+    const id = `${f.name}-${Date.now().toString(36)}`;
+    await saveMicCal({ id, ...r.cal });
+    await refreshCals();
+  };
   const [current, setCurrent] = useState<Current | null>(null);
   const [st, setSt] = useState<ToolState>(blankState);
   const [tab, setTab] = useState<string>('');
@@ -357,6 +397,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     micHeightMm: num(rig.micHeight),
   };
   const sstat = setupStatus(rigSetup, planes);
+  const chosenCal = cals.find((c) => c.id === st.calId) ?? null;
+  const calChoice = chooseCalibration(session?.calibration ?? null, chosenCal);
   const drivers = session?.sources.filter((s) => s.kind === 'driver') ?? [];
   const farOnly = session?.sources.filter((s) => s.kind === 'far-only') ?? [];
   const ownGeometry = obj.kind === 'other' && obj.baffle === 'own';
@@ -368,12 +410,24 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const notes: string[] = [];
     const out: Computed = { input: null, result: null, error: null, notes, proposalNote: '', fit: null, splice: null, heightMm: null, heightFrom: '', echoes: [], window: null };
     if (!session || !src.far || !src.near) return { ...out, error: 'no far and near field for this source' };
-    const g = gateOf(src.far);
-    if ('error' in g) return { ...out, error: `${g.field}: ${g.error}` };
-    const cg = chosenGate(g.gate, g.route, num(c.windowRight));
-    if ('error' in cg) return { ...out, error: `${cg.field}: ${cg.error}` };
-    out.window = { source: cg.source, headerRightMs: cg.headerRightMs, oneOverTHz: cg.oneOverTHz };
-    const gate = cg.gate;
+    const g0 = gateOf(src.far);
+    let gate: Gate;
+    let route: 'pir' | 'frd';
+    if ('error' in g0) {
+      if (!(src.far.pir && !src.far.frdText)) return { ...out, error: `${g0.field}: ${g0.error}` };
+      const sg = statedPirGate({ referenceMs: num(c.pirRef ?? ''), leftMs: num(c.pirLeft ?? ''), rightMs: num(c.pirRight ?? ''), taper: num(c.pirTaper ?? '') });
+      if ('error' in sg) return { ...out, error: `${sg.field}: ${sg.error}` };
+      gate = sg.gate;
+      route = 'pir';
+      out.window = { source: 'stated', headerRightMs: sg.gate.rightMs, oneOverTHz: 1000 / sg.gate.rightMs };
+    } else {
+      const cg = chosenGate(g0.gate, g0.route, num(c.windowRight));
+      if ('error' in cg) return { ...out, error: `${cg.field}: ${cg.error}` };
+      out.window = { source: cg.source, headerRightMs: cg.headerRightMs, oneOverTHz: cg.oneOverTHz };
+      gate = cg.gate;
+      route = g0.route;
+    }
+    const g = { route };
     const far = impulseOfItem(src.far, session.name, g.route === 'frd');
     const near = impulseOfItem(src.near, session.name, false);
     const sd = c.way ? props.sdCm2[c.way] : null;
@@ -486,9 +540,19 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const input = comp.input;
     const finish = (raw: NonNullable<Computed['result']>) => {
     let result = raw;
-    if (session.calibration && input.far.timeBase === 'session' && src.far?.pir) {
+    if (calChoice.kind === 'derived' && session.calibration && input.far.timeBase === 'session' && src.far?.pir) {
       const cal = session.calibration;
       result = { ...result, spl: result.freq.map((f, i) => result.spl[i] + interpLog(cal.freq, cal.db, f)) };
+    } else if (calChoice.kind === 'file' && src.far?.pir) {
+      const mc = calChoice.cal;
+      result = {
+        ...result,
+        spl: result.freq.map((f, i) => result.spl[i] + micCorrectionAt(mc, f).db),
+        phaseDeg: result.freq.map((f, i) => {
+          const p = result.phaseDeg[i] + micCorrectionAt(mc, f).deg;
+          return ((p + 540) % 360) - 180;
+        }),
+      };
     }
     if (validity?.ratio && validity.fromHz !== null && obj.lowEnd === 'convert') {
       const cv = convertLowEnd(result.freq, result.spl, result.phaseDeg, validity.ratio, validity.fromHz);
@@ -505,13 +569,13 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       validFromHz: num(c.validFrom)!,
       validFromReason: c.validFromReason || t('stated in the merge tool'),
       referenceNote:
-        `${input.gate.referenceMs.toFixed(4)} ms on the ${session.timeBaseShared ? 'session' : 'file'} time base (the phase zero of the far field's FRD export)` +
-        (w ? `; window ${w.source === 'header' ? 'from the header' : `CHOSEN shorter than the header's ${w.headerRightMs} ms`}, 1/T = ${w.oneOverTHz.toFixed(1)} Hz` : ''),
+        `${input.gate.referenceMs.toFixed(4)} ms on the ${session.timeBaseShared ? 'session' : 'file'} time base (${w?.source === 'stated' ? 'the reference STATED in the merge tool: no FRD export' : "the phase zero of the far field's FRD export"})` +
+        (w ? `; window ${w.source === 'header' ? 'from the header' : w.source === 'stated' ? `STATED in the merge tool (no FRD export), left ${input.gate.leftMs} ms, right ${input.gate.rightMs} ms, Tukey ${input.gate.rightTaper}` : `CHOSEN shorter than the header's ${w.headerRightMs} ms`}, 1/T = ${w.oneOverTHz.toFixed(1)} Hz` : ''),
       madeOn: new Date().toISOString().slice(0, 10),
       measuredObjectNote: obj.kind === 'other' ? `${obj.label || 'measured object'}, baffle ${obj.baffle}, ${obj.volume} L ${obj.load}` : obj.kind === 'target' ? 'the target cabinet' : null,
       targetValidFromHz: validity?.fromHz ?? null,
       targetValidityNote: validity ? `${validity.note} This file: ${obj.lowEnd === 'convert' ? 'CONVERTED with the model ratio below the limit' : 'MARKED below the limit'}.` : null,
-      calibrationNote: session.calibration?.note ?? null,
+      calibrationNote: !src.far?.pir ? 'as exported by the measuring program (FRD route: the file is already calibrated)' : calChoice.kind === 'none' ? null : calChoice.note,
       portWeightNote: input.port ? (c.portWeightStatus === 'provisional' ? 'PROVISIONAL' : 'stated') : null,
       acceptReason: comp.result!.flags.length > 0 ? c.reason : null,
     });
@@ -626,6 +690,31 @@ export default function NfMergeTool(props: NfMergeToolProps) {
             ))}
             {sessions.length === 0 && <li className="derived">{t('No stored sessions yet.')}</li>}
           </ul>
+          <strong>{t('Microphone calibration')}</strong>
+          <label className="dropzone nfm-cal-drop">
+            <span className="dz-text">
+              <strong>{t('Add a calibration file')}</strong>
+              <span>{t('ARTA / REW / JustOct text: frequency, dB, optional phase')}</span>
+            </span>
+            <input type="file" accept=".mic,.txt,.cal,.frd" aria-label={t('calibration file')} onChange={(e) => void onCalFile(e.target.files)} />
+          </label>
+          {calError && <p className="derived alert" role="alert">{calError}</p>}
+          <ul>
+            {cals.map((c) => (
+              <li key={c.id}>
+                {c.name}
+                <span className="derived">
+                  {' '}
+                  · {c.freq.length} {t('points')}, {c.freq[0]}–{c.freq[c.freq.length - 1]} Hz{c.phaseDeg ? ` · ${t('with phase')}` : ''}
+                  {c.sensitivityNote ? ` · ${c.sensitivityNote}` : ''}
+                </span>{' '}
+                <button type="button" className="icon" aria-label={t('Delete calibration {s}', { s: c.name })} onClick={() => void deleteMicCal(c.id).then(refreshCals)}>
+                  ✕
+                </button>
+              </li>
+            ))}
+            {cals.length === 0 && <li className="derived">{t('No calibration files yet.')}</li>}
+          </ul>
         </aside>
 
         {session && (
@@ -638,6 +727,24 @@ export default function NfMergeTool(props: NfMergeToolProps) {
               <div className="nfm-tile">
                 <strong>{t('Time base')}</strong>{' '}
                 {session.timeBaseShared ? `✓ ${t('dual-channel, shared')}` : <span className="derived">{t('not shared — the delay is fitted only')}</span>}
+              </div>
+              <div className="nfm-tile nfm-cal">
+                <strong>{t('Calibration')}</strong>{' '}
+                <select value={st.calId ?? ''} onChange={(e) => setSt((s) => ({ ...s, calId: e.target.value }))} aria-label={t('calibration for this session')}>
+                  <option value="">{t('no file')}</option>
+                  {cals.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>{' '}
+                <span className={calChoice.kind === 'none' ? 'nl-warning' : 'derived'}>
+                  {calChoice.kind === 'none'
+                    ? t('{r} — merging and fitting work; export and “Use in project” refuse.', { r: calChoice.reason })
+                    : calChoice.kind === 'derived'
+                      ? t('from the session’s FRD exports (applied).') + (calChoice.check ? ' ' + t('Check against {f}: shapes agree within {d} dB ({lo}–{hi} Hz){e}.', { f: chosenCal!.name, d: calChoice.check.maxDb.toFixed(3), lo: calChoice.check.from, hi: calChoice.check.to, e: calChoice.check.edge ? `; ${calChoice.check.edge}` : '' }) : '')
+                      : t('{f} (applied): shape only, level relative — the soundcard’s input sensitivity is not known.', { f: calChoice.cal.name })}
+                </span>
               </div>
               <div className="nfm-tile">
                 <strong>{t('Measured object')}</strong>{' '}
@@ -831,6 +938,25 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                               })}
                         </span>
                       )}
+                    </>
+                  ) : active.far?.pir && !active.far.frdText ? (
+                    <>
+                      <span title={t('No FRD export for this far field: the window is stated here, all four values, no default. Left and right are LENGTHS from the reference (V60); the reference is the phase zero.')}>
+                        {t('stated (no FRD export):')}{' '}
+                        {t('reference')} <Field value={cfg[active.stem].pirRef ?? ''} onCommit={(v) => setC(active.stem, { pirRef: v })} ariaLabel={t('window reference')} /> ms ·{' '}
+                        {t('left')} <Field value={cfg[active.stem].pirLeft ?? ''} onCommit={(v) => setC(active.stem, { pirLeft: v })} ariaLabel={t('window left')} /> ms ·{' '}
+                        {t('right')} <Field value={cfg[active.stem].pirRight ?? ''} onCommit={(v) => setC(active.stem, { pirRight: v })} ariaLabel={t('window right')} /> ms ·{' '}
+                        {t('Tukey')} <Field value={cfg[active.stem].pirTaper ?? ''} onCommit={(v) => setC(active.stem, { pirTaper: v })} ariaLabel={t('window taper')} />
+                      </span>{' '}
+                      <span className="derived">{t('(direct-sound peak at {ms} ms on this PIR — information, not filled in)', { ms: directPeakMs(active.far.pir).toFixed(3) })}</span>
+                      {cur?.window ? (
+                        <span className="nfm-window-used">
+                          {' '}
+                          → {t('STATED, T = {t} ms, 1/T = {hz} Hz', { t: cur.window.headerRightMs, hz: cur.window.oneOverTHz.toFixed(1) })}
+                        </span>
+                      ) : cur?.error ? (
+                        <span className="derived alert"> {cur.error}</span>
+                      ) : null}
                     </>
                   ) : (
                     <span className="derived alert">{activeGate && 'error' in activeGate ? `${activeGate.field}: ${activeGate.error}` : '—'}</span>

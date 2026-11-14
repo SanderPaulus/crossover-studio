@@ -16,6 +16,7 @@
  */
 import { parseFrd } from './parsers/frd.ts';
 import { branchFile, type MergeWay } from './mergeSession.ts';
+import { isUncalibrated } from './mergeExport.ts';
 
 export const USE_IN_PROJECT_VERSION = 'use-in-project/1.0';
 /** How long the tool waits for the project to show the file before it reports that it did not. */
@@ -40,6 +41,9 @@ export function branchFileName(way: MergeWay, sources: readonly { name: string }
 export function prepareBranchUse(way: MergeWay | '' | null, sources: readonly { name: string; text: string }[]): Prepared {
   if (!way) return { ok: false, reason: 'no branch chosen' };
   if (sources.length === 0) return { ok: false, reason: `no accepted merge for the ${way} branch in this session` };
+  /* I-4 PIR-only: the project takes what the export package would hold, and that refuses uncalibrated merges. */
+  const raw = sources.filter((s) => isUncalibrated(s.text)).map((s) => s.name);
+  if (raw.length) return { ok: false, reason: `not calibrated: ${raw.join(', ')} — choose a microphone calibration file for this session (or load its FRD exports), then accept again` };
   let file: { name: string; text: string };
   try {
     file = branchFile(branchFileName(way, sources), sources);

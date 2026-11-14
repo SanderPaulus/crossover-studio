@@ -24,7 +24,13 @@ import { parseFrd } from './parsers/frd.ts';
 import { unzipStore } from './zip.ts';
 import type { MergeWay } from './mergeSession.ts';
 
-export const MERGE_EXPORT_VERSION = 'merge-export/1.0';
+export const MERGE_EXPORT_VERSION = 'merge-export/1.1';
+
+/** A merged file without calibration (its `Merge calibration` line says none, or is missing). */
+export function isUncalibrated(text: string): boolean {
+  const m = /^\s*\*\s*Merge calibration\s*=\s*(.+)$/m.exec(text);
+  return !m || /^none\b/i.test(m[1].trim());
+}
 export const MERGE_PACKAGE_FORMAT = 'crossover-studio-merge-session/1';
 
 export type ExportPhase = { kind: 'measured' } | { kind: 'reference'; ms: number | null } | { kind: 'minphase' };

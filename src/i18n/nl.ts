@@ -2715,6 +2715,58 @@ export const nl: Record<string, string> = {
     'Merge-pakket {name} (sessie {s}) — {list}. Fase: {ph}. Raster: {g}.',
   'Phase of this file: {ph}':
     'Fase van dit bestand: {ph}',
+  'Microphone calibration':
+    'Microfoonkalibratie',
+  'Add a calibration file':
+    'Kalibratiebestand toevoegen',
+  'ARTA / REW / JustOct text: frequency, dB, optional phase':
+    'ARTA / REW / JustOct-tekst: frequentie, dB, fase optioneel',
+  'calibration file':
+    'kalibratiebestand',
+  'points':
+    'punten',
+  'with phase':
+    'met fase',
+  'Delete calibration {s}':
+    'Kalibratie {s} verwijderen',
+  'No calibration files yet.':
+    'Nog geen kalibratiebestanden.',
+  'Calibration':
+    'Kalibratie',
+  'calibration for this session':
+    'kalibratie voor deze sessie',
+  'no file':
+    'geen bestand',
+  '{r} — merging and fitting work; export and “Use in project” refuse.':
+    '{r} — mergen en fitten werken; exporteren en “Gebruik in project” weigeren.',
+  'from the session’s FRD exports (applied).':
+    'uit de FRD-exports van de sessie (toegepast).',
+  'Check against {f}: shapes agree within {d} dB ({lo}–{hi} Hz){e}.':
+    'Controle tegen {f}: de vormen kloppen binnen {d} dB ({lo}–{hi} Hz){e}.',
+  '{f} (applied): shape only, level relative — the soundcard’s input sensitivity is not known.':
+    '{f} (toegepast): alleen de vorm, niveau relatief — de ingangsgevoeligheid van de geluidskaart is niet bekend.',
+  'No FRD export for this far field: the window is stated here, all four values, no default. Left and right are LENGTHS from the reference (V60); the reference is the phase zero.':
+    'Geen FRD-export voor dit vervelveld: het venster stel je hier, alle vier de waarden, geen standaard. Links en rechts zijn LENGTES vanaf de referentie (V60); de referentie is het fasenulpunt.',
+  'stated (no FRD export):':
+    'gesteld (geen FRD-export):',
+  'reference':
+    'referentie',
+  'left':
+    'links',
+  'Tukey':
+    'Tukey',
+  'window reference':
+    'venster referentie',
+  'window left':
+    'venster links',
+  'window right':
+    'venster rechts',
+  'window taper':
+    'venster taper',
+  '(direct-sound peak at {ms} ms on this PIR — information, not filled in)':
+    '(piek van het directe geluid op {ms} ms in deze PIR — ter informatie, niet ingevuld)',
+  'STATED, T = {t} ms, 1/T = {hz} Hz':
+    'GESTELD, T = {t} ms, 1/T = {hz} Hz',
   'Use in project':
     'Gebruik in project',
   'far field, gated as used':
