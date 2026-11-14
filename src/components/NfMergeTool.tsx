@@ -17,7 +17,7 @@ import Chart, { type Series } from './Chart.tsx';
 import { t } from '../lib/i18n.ts';
 import { parseFrd } from '../lib/parsers/frd.ts';
 import { chooseCalibration, micCorrectionAt, parseMicCal, type MicCal } from '../lib/micCal.ts';
-import { an4F0, GUIDE_STEPS, KNEE_RISE_DEG, proposeBandsGuide, proposeWindowSteps, sessionReferenceMs, type GuideStep, type WindowProposal } from '../lib/mergeGuide.ts';
+import { an4F0, rigFromDesign, GUIDE_STEPS, KNEE_RISE_DEG, proposeBandsGuide, proposeWindowSteps, sessionReferenceMs, type GuideStep, type WindowProposal } from '../lib/mergeGuide.ts';
 import { envelope } from '../lib/fft.ts';
 import { zipStore } from '../lib/zip.ts';
 import {
@@ -98,6 +98,8 @@ export interface NfMergeToolProps {
   onUse: (way: MergeWay, sources: AcceptedSource[]) => Prepared;
   /** The name of each branch's current response, so "done" is read back from the project, not assumed. */
   responseNames: Record<MergeWay, string | null>;
+  /** The measurement set-up as "Your cabinet" states it (mic distance and angle, reference height); nulls where it does not. */
+  designRig?: { micDistanceMm: number | null; micElevationDeg: number | null; refHeightMm: number | null };
   /** The session the address asks for (`#/merge/<id>`), if any. */
   openId: string | null;
   onOpenId: (id: string | null) => void;
@@ -447,6 +449,14 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   const drivers = session?.sources.filter((s) => s.kind === 'driver') ?? [];
   const farOnly = session?.sources.filter((s) => s.kind === 'far-only') ?? [];
   const ownGeometry = obj.kind === 'other' && obj.baffle === 'own';
+  /** Step 2: A, C and D as "Your cabinet" states them — a proposal, taken over with one click; never B. */
+  const fromDesign = (() => {
+    if (!props.designRig) return null;
+    const r = rigFromDesign({ ...props.designRig, baffleHeightMm: props.geometry.baffleHeightMm, refFromTopMm: props.geometry.refFromTopMm, ownGeometry });
+    return r.a === null && r.c === null && r.d === null ? null : r;
+  })();
+  const same = (field: string, v: number | null) => v === null || num(field) === Math.round(v);
+  const fromDesignTaken = !!fromDesign && same(rig.bottom, fromDesign.a) && same(rig.micDist, fromDesign.c) && same(rig.micHeight, fromDesign.d);
 
   /** S_d: the design's for that way, else the one stated here (step 1). */
   const sdOf = (c: SourceConfig): number | null => (c.way ? props.sdCm2[c.way] : null) ?? num(c.sdCm2 ?? '');
@@ -1103,6 +1113,38 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                       ))}
                     </select>
                   </p>
+                  {fromDesign && (
+                    <div className="nfm-card nfm-from-design">
+                      <p>
+                        <strong>{t('From “Your cabinet”')}</strong> <span className="nfm-proposed">{t('proposed')}</span>
+                        <br />
+                        {fromDesign.a !== null && <>A {fromDesign.a.toFixed(0)} mm · </>}
+                        {fromDesign.c !== null && <>C {fromDesign.c.toFixed(0)} mm · </>}
+                        {fromDesign.d !== null && <>D {fromDesign.d.toFixed(0)} mm · </>}
+                        {t('B (the table) is not in the design: state it below.')}
+                      </p>
+                      {fromDesign.missing.length > 0 && <p className="derived">{t('Not in the cabinet form: {m}.', { m: fromDesign.missing.join('; ') })}</p>}
+                      {fromDesign.notes.map((n) => (
+                        <p key={n} className="derived">
+                          {n}
+                        </p>
+                      ))}
+                      <button
+                        type="button"
+                        className="nfm-primary"
+                        disabled={fromDesignTaken || (fromDesign.a === null && fromDesign.c === null && fromDesign.d === null)}
+                        onClick={() =>
+                          setRig({
+                            ...(fromDesign.a !== null ? { bottom: fromDesign.a.toFixed(0), surface: Math.round(fromDesign.a) === 0 ? 'floor' : 'table' } : {}),
+                            ...(fromDesign.c !== null ? { micDist: fromDesign.c.toFixed(0) } : {}),
+                            ...(fromDesign.d !== null ? { micHeight: fromDesign.d.toFixed(0) } : {}),
+                          })
+                        }
+                      >
+                        {fromDesignTaken ? `✓ ${t('taken over')}` : t('Take over from “Your cabinet”')}
+                      </button>
+                    </div>
+                  )}
                   <p className="nfm-abcd">
                     <span className="nfm-letter">A</span> {t('Cabinet bottom above the floor')} <Field value={rig.bottom} onCommit={(v) => setRig({ bottom: v, surface: num(v) === 0 ? 'floor' : num(v) !== null ? 'table' : '' })} ariaLabel={t('A: cabinet bottom above the floor')} /> mm
                     <br />

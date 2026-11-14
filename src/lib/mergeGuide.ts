@@ -262,3 +262,55 @@ export function* proposeWindowSteps(opts: ProposeWindowOpts): Generator<number, 
   if ('reason' in own) return { reason: own.reason };
   return { gate, peakMs: peak, endAfterPeakMs: end, source, reflection: refl, knee, scan, tMs: gate.rightMs, oneOverTHz: 1000 / gate.rightMs, fitHz: own.fitHz, spliceHz: own.spliceHz, why, question };
 }
+
+/** The measurement set-up as the app's cabinet form ("Your cabinet") states it. */
+export interface RigFromDesignInput {
+  /** Microphone to the reference point, mm (along the line, as the cabinet form states it). */
+  micDistanceMm: number | null;
+  /** Vertical angle of the rig, degrees; + = mic above the reference point; absent = level. */
+  micElevationDeg: number | null;
+  /** Reference point above the floor during the measurement, mm. */
+  refHeightMm: number | null;
+  /** The design's baffle height and how far below its top the reference point sits, mm. */
+  baffleHeightMm: number | null;
+  refFromTopMm: number | null;
+  /** The measured object has its own geometry: the design's baffle says nothing about where ITS bottom is. */
+  ownGeometry: boolean;
+}
+
+/**
+ * I-4 B-4 guide, step 2 — what the cabinet form already says about A, C and D, as a PROPOSAL the
+ * designer takes over with one click. Never B: the table is not in the design.
+ * C = d·cos(v) (the horizontal distance to the baffle), D = ref + d·sin(v), A = ref − (height − ref from top).
+ * The same geometry `floorBounceGate` reads (cabinet.ts), so the two cannot disagree about where the mic was.
+ */
+export function rigFromDesign(x: RigFromDesignInput): {
+  a: number | null;
+  c: number | null;
+  d: number | null;
+  missing: string[];
+  notes: string[];
+} {
+  const missing: string[] = [];
+  const notes: string[] = [];
+  const v = ((x.micElevationDeg ?? 0) * Math.PI) / 180;
+  const okDist = x.micDistanceMm !== null && x.micDistanceMm > 0;
+  const okRef = x.refHeightMm !== null && x.refHeightMm > 0;
+  if (!okDist) missing.push('the microphone distance (C)');
+  if (!okRef) missing.push('the reference point above the floor (D)');
+  const c = okDist ? x.micDistanceMm! * Math.cos(v) : null;
+  const d = okDist && okRef ? x.refHeightMm! + x.micDistanceMm! * Math.sin(v) : null;
+  if (x.micElevationDeg) notes.push(`the rig's vertical angle ${x.micElevationDeg}° is in C and D`);
+  let a: number | null = null;
+  if (x.ownGeometry) notes.push('A not proposed: the measured object has its own geometry, the design’s baffle does not say where its bottom was');
+  else if (!okRef || x.baffleHeightMm === null || !(x.baffleHeightMm > 0) || x.refFromTopMm === null) {
+    if (okRef) missing.push('the baffle height and the reference point from the top (A)');
+  } else {
+    a = x.refHeightMm! - (x.baffleHeightMm - x.refFromTopMm);
+    if (a < 0) {
+      notes.push(`A would be ${a.toFixed(0)} mm (below the floor): the reference height and the baffle disagree — not proposed`);
+      a = null;
+    }
+  }
+  return { a, c, d, missing, notes };
+}

@@ -25,6 +25,7 @@ import {
   proposeBandsGuide,
   proposeWindow,
   proposeWindowSteps,
+  rigFromDesign,
   sessionReferenceMs,
   type ScanPoint,
   type WindowProposal,
@@ -175,6 +176,27 @@ describe('step 3 — the window proposal on casus 1, against the set-up Sander s
     const base = { far: impulseOfItem(src.far!, 'aug', false), near: impulseOfItem(src.near!, 'aug', false), referenceMs: 8.75, model: { kind: 'an4' as const, f0Hz: 131 }, rig, planes, planesUnknown: false };
     expect(proposeWindow({ ...base, sdCm2: null, sourceHeightMm: 794 })).toHaveProperty('reason');
     expect(proposeWindow({ ...base, sdCm2: 255, sourceHeightMm: null })).toHaveProperty('reason');
+  });
+});
+
+describe('step 2 — A, C and D taken over from "Your cabinet"', () => {
+  const base = { micDistanceMm: 1000, micElevationDeg: 0, refHeightMm: 1380, baffleHeightMm: 1124, refFromTopMm: 244, ownGeometry: false };
+  it("casus 1's own numbers: reference 1380 mm above the floor on a 1124 mm baffle (reference 244 from the top) is A 500 / C 1000 / D 1380", () => {
+    expect(rigFromDesign(base)).toMatchObject({ a: 500, c: 1000, d: 1380, missing: [] });
+  });
+  it('a vertical angle goes into C and D by the same geometry as the floor-bounce prediction', () => {
+    const r = rigFromDesign({ ...base, micElevationDeg: 30 });
+    expect(r.c).toBeCloseTo(1000 * Math.cos(Math.PI / 6), 9);
+    expect(r.d).toBeCloseTo(1380 + 500, 9);
+    expect(r.a).toBe(500); // the cabinet does not move with the mic
+  });
+  it('never a guess: a measured object with its own geometry gets no A, and what is missing is named', () => {
+    expect(rigFromDesign({ ...base, ownGeometry: true }).a).toBeNull();
+    const r = rigFromDesign({ ...base, refHeightMm: null });
+    expect([r.a, r.c, r.d]).toEqual([null, 1000, null]);
+    expect(r.missing.join(' ')).toMatch(/reference point above the floor/);
+    expect(rigFromDesign({ ...base, baffleHeightMm: null }).a).toBeNull();
+    expect(rigFromDesign({ ...base, refHeightMm: 500 }).a).toBeNull(); // below the floor: the form disagrees with itself
   });
 });
 

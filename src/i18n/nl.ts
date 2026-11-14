@@ -3051,4 +3051,16 @@ export const nl: Record<string, string> = {
     'Alle gemergede resultaten, op hun eigen niveau',
   'not computed yet':
     'nog niet berekend',
+  // ── I-4 B-4: opstelling uit de kast ──────────────────────────────
+  'From “Your cabinet”':
+    'Uit “Je kast”',
+  'B (the table) is not in the design: state it below.':
+    'B (de tafel) staat niet in het ontwerp: vul hem hieronder in.',
+  'Not in the cabinet form: {m}.':
+    'Niet in het kastformulier: {m}.',
+  'Take over from “Your cabinet”':
+    'Overnemen uit “Je kast”',
+  // ── I-4 B-4: overgenomen ──────────────────────────────
+  'taken over':
+    'overgenomen',
 };

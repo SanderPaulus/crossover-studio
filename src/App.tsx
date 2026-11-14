@@ -5505,6 +5505,11 @@ export default function App() {
       drivers: { low: one('low'), mid: one('mid'), high: one('high') },
     };
   }, [cabinet]);
+  /** I-4 B-4 guide, step 2 — the measurement set-up as this form states it, for the merge tool's "take over". */
+  const mergeDesignRig = useMemo(() => {
+    const n = (v: string) => (v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+    return { micDistanceMm: n(cabinet.micDistanceMm), micElevationDeg: n(cabinet.micElevationDeg), refHeightMm: n(cabinet.refHeightMm) };
+  }, [cabinet.micDistanceMm, cabinet.micElevationDeg, cabinet.refHeightMm]);
   /** I-4 B-4 — the merge tool has its own address: `#/merge`, `#/merge/<session id>`. */
   const readMergeRoute = (): { open: boolean; id: string | null } => {
     const m = /^#\/merge(?:\/(.+))?$/.exec(typeof location === 'undefined' ? '' : location.hash);
@@ -17903,6 +17908,7 @@ export default function App() {
             inProject={mergeV2}
             onUse={acceptMergeV2}
             responseNames={{ low: woofer?.name ?? null, mid: midDrv?.name ?? null, high: tweeter?.name ?? null }}
+            designRig={mergeDesignRig}
             openId={mergeRoute.id}
             onOpenId={(id) => {
               const h = id ? `#/merge/${encodeURIComponent(id)}` : '#/merge';
