@@ -186,6 +186,13 @@ describe('the tool — what a source scan can see', () => {
     expect(src).toMatch(/PROPOSAL_SLICE_MS/);
     expect(src).toMatch(/role="status"/);
   });
+  it('in one column the sessions block scrolls away: the narrow-screen rule comes after the sticky rule', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8');
+    const sticky = css.indexOf('.nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky');
+    const narrow = css.search(/@media \(max-width: 900px\) \{[^}]*\}[^}]*\.nfm-sessions \{ position: static; \}/);
+    expect(sticky).toBeGreaterThan(-1);
+    expect(narrow).toBeGreaterThan(sticky);
+  });
   it('the window and merge panels remount per driver: a draft typed for one driver cannot land on another', () => {
     expect(src).toMatch(/<WindowStep\s+key=\{active\.stem\}/);
     expect(src).toMatch(/<WorkPanel\s+key=\{active\.stem\}/);

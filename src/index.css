@@ -5135,8 +5135,9 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-head-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .nfm-head-bar h2 { margin: 0; }
 .nfm-layout { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
-@media (max-width: 900px) { .nfm-layout { grid-template-columns: minmax(0, 1fr); } .nfm-sessions { position: static; } }
 .nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0; }
+/* After the base rule on purpose: in one column the sessions block must scroll away, not cover the steps. */
+@media (max-width: 900px) { .nfm-layout { grid-template-columns: minmax(0, 1fr); } .nfm-sessions { position: static; } }
 .nfm-sessions ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9em; }
 .nfm-sessions li.active a { font-weight: 700; }
 .nfm-main { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
