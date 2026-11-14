@@ -193,8 +193,9 @@ describe('the tool — what a source scan can see', () => {
     expect(sticky).toBeGreaterThan(-1);
     expect(narrow).toBeGreaterThan(sticky);
   });
-  it('step 4 opens with an overview: one row per driver from the merges already computed, each with its SPL', () => {
-    expect(src).toMatch(/\{step === 'merge' && \(\s*<DriverOverview/);
+  it('steps 4 and 5 open with an overview: one row per driver from the merges already computed, each with its SPL', () => {
+    expect(src).toMatch(/\{step === 'merge' && <DriverOverview rows=\{overviewRows\}/);
+    expect(src).toMatch(/\{step === 'export' && \([\s\S]{0,300}<DriverOverview\s+rows=\{overviewRows\}/); // step 5 shows the same rows
     expect(src).toMatch(/comp: computed\.get\(d\.stem\)/); // no second computation for the overview
     const body = src.slice(src.indexOf('function DriverOverview('), src.indexOf('function Charts('));
     expect(body).toMatch(/<Chart\b/);

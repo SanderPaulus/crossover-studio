@@ -563,6 +563,16 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const r = computed.get(stem)?.result;
     return r ? statusOf(r, sstat) : null;
   };
+  /** Steps 4 and 5: every driver at a glance, from the merges already computed. */
+  const overviewRows: OverviewRow[] = drivers.map((d) => ({
+    stem: d.stem,
+    label: d.label,
+    comp: computed.get(d.stem) ?? null,
+    status: statusFor(d.stem),
+    accepted: !!st.accepted[d.stem],
+    validFrom: num(cfg[d.stem]?.validFrom ?? ''),
+    windowSrc: cfg[d.stem]?.winMode === 'proposal' ? 'proposal' : cfg[d.stem]?.winMode === 'self' ? 'self' : 'header',
+  }));
 
   /* ---- measured object and the validity for the target ---- */
   const validity = useMemo(() => {
@@ -1311,21 +1321,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
               />
             )}
 
-            {step === 'merge' && (
-              <DriverOverview
-                rows={drivers.map((d) => ({
-                  stem: d.stem,
-                  label: d.label,
-                  comp: computed.get(d.stem) ?? null,
-                  status: statusFor(d.stem),
-                  accepted: !!st.accepted[d.stem],
-                  validFrom: num(cfg[d.stem]?.validFrom ?? ''),
-                  windowSrc: cfg[d.stem]?.winMode === 'proposal' ? 'proposal' : cfg[d.stem]?.winMode === 'self' ? 'self' : 'header',
-                }))}
-                active={tab}
-                onSelect={setTab}
-              />
-            )}
+            {step === 'merge' && <DriverOverview rows={overviewRows} active={tab} onSelect={setTab} />}
 
             {step === 'merge' && active && (
               <>
@@ -1364,6 +1360,15 @@ export default function NfMergeTool(props: NfMergeToolProps) {
 
             {step === 'export' && (
               <div className="nfm-stepbody">
+                {/* the same overview as step 4; a driver's name takes you back to it there, where it is changed */}
+                <DriverOverview
+                  rows={overviewRows}
+                  active={tab}
+                  onSelect={(stem) => {
+                    setTab(stem);
+                    goto('merge');
+                  }}
+                />
                 <ExportPanel
                   session={session}
                   merges={Object.entries(st.accepted).map(([source, a]) => ({ source, fileName: a.name, text: a.text, textOriginal: a.textOriginal ?? null, way: a.way, status: a.status }))}
