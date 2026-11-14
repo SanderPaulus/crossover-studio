@@ -786,11 +786,13 @@ describe('I-2 — the app wiring', () => {
    *  response changes only through "Use in project" (or undo). */
   it('changes the branch response only from "Use in project" and undo', () => {
     expect(SECTION).not.toMatch(/setWoofer|setMidDrv|setTweeter/);
-    expect(SECTION).toContain('p.onUse(way as MergeWay, toUse)');
-    expect(APP.slice(APP.indexOf('<NfMergeTool'))).toMatch(/onUse=\{\(way, sources\) => \{\s*acceptMergeV2\(way, sources\)/);
+    // B-4 nazorg (V15): was `p.onUse(way as MergeWay, toUse)` fire-and-forget plus a jump to `#/`; the
+    // tool now takes the result back (`runUse`) and the app builds the file through `prepareBranchUse`.
+    expect(SECTION).toContain('res = p.onUse(way, toUse)');
+    expect(APP.slice(APP.indexOf('<NfMergeTool'))).toContain('onUse={acceptMergeV2}');
     const accept = APP.slice(APP.indexOf('const acceptMergeV2'), APP.indexOf('const mergeGeometry'));
     expect(accept).toContain('setWoofer(next)');
-    expect(accept).toContain('branchFile(');
+    expect(accept).toContain('prepareBranchUse(');
     // the response it replaces is KEPT, and a re-accept does not overwrite it
     expect(accept).toContain('far: n[role].far ?? { name: loaded.name, raw: loaded.raw }');
   });

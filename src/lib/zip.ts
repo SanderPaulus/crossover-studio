@@ -132,3 +132,44 @@ export function zipStore(entries: ZipEntry[]): Uint8Array {
   u16(0); // comment length
   return out;
 }
+
+/**
+ * I-4 fase 4 — read a STORED archive back (what `zipStore` writes, and what the merge tool's export
+ * package is). Only method 0 (store): a deflated entry is refused with its name, never guessed at —
+ * the project reads the package the tool wrote, not arbitrary archives. The CRC is checked.
+ */
+export function unzipStore(buf: Uint8Array): { name: string; data: Uint8Array }[] {
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const dec = new TextDecoder('utf-8', { ignoreBOM: true });
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error('not a ZIP archive (no end-of-central-directory record)');
+  const count = view.getUint16(eocd + 10, true);
+  let at = view.getUint32(eocd + 16, true);
+  const out: { name: string; data: Uint8Array }[] = [];
+  for (let i = 0; i < count; i++) {
+    if (view.getUint32(at, true) !== 0x02014b50) throw new Error('damaged ZIP: central directory entry expected');
+    const method = view.getUint16(at + 10, true);
+    const crc = view.getUint32(at + 16, true);
+    const size = view.getUint32(at + 20, true);
+    const nameLen = view.getUint16(at + 28, true);
+    const extraLen = view.getUint16(at + 30, true);
+    const commentLen = view.getUint16(at + 32, true);
+    const offset = view.getUint32(at + 42, true);
+    const name = dec.decode(buf.subarray(at + 46, at + 46 + nameLen));
+    at += 46 + nameLen + extraLen + commentLen;
+    if (name.endsWith('/')) continue;
+    if (method !== 0) throw new Error(`${name}: compressed (method ${method}) — this reader takes stored archives only, as the merge tool writes them`);
+    if (view.getUint32(offset, true) !== 0x04034b50) throw new Error(`${name}: damaged ZIP: local header expected`);
+    const start = offset + 30 + view.getUint16(offset + 26, true) + view.getUint16(offset + 28, true);
+    const data = buf.slice(start, start + size);
+    if (crc32(data) !== crc) throw new Error(`${name}: checksum does not match`);
+    out.push({ name, data });
+  }
+  return out;
+}

@@ -1,0 +1,32 @@
+{
+  "_": "I-4 — the measuring set-up of casus 1's August session (the impulses in this folder), as STATED by the designer. Only what was stated is here; every open item is null with what is missing. Nothing is guessed (B-4).",
+  "gesteld_door": "Sander, 13-11-2026 (table, sources, mic distance) and 14-11-2026 (mic height breakdown, overhang bound)",
+  "kast_staat_op": "table",
+  "tafelblad_boven_vloer_mm": 500,
+  "mic_boven_vloer_mm": 1380,
+  "mic_boven_vloer_herkomst": "table 0.50 m + reference height 0.88 m; confirmed by the floor echo and the arrival times",
+  "mic_tot_baffle_mm": 1000,
+  "bronnen_boven_vloer_mm": {
+    "woofer_onder": 794,
+    "woofer_boven": 1070,
+    "herkomst": "stated 13-11-2026: \"woofer onder bron 0,794 m … woofer boven bron 1,070 m\", above the FLOOR"
+  },
+  "tafeloverstek": {
+    "hooguit_mm": 130,
+    "waarom": "less than about 13 cm in front of the baffle: a larger overhang would block woofer_down's floor echo, and that echo is there (3.63 ms)",
+    "exact_mm": null,
+    "exact_open": "the exact figure follows"
+  },
+  "vlakken": {
+    "plafond": null,
+    "zijwand": null,
+    "wand_achter_kast": null,
+    "wand_achter_mic": null,
+    "open": "not stated; for woofer boven they stay open until the designer supplies them"
+  },
+  "poort": {
+    "maten": null,
+    "open": "port dimensions follow from the designer; the 0.205 weight stays provisional"
+  },
+  "open_vraag": "The tool derives a source height ABOVE THE MEASURED OBJECT'S BOTTOM (cabinet geometry or the object's own) and adds the table. The demo cabinet geometry gives 794 / 1069 mm above the bottom; with the 500 mm table that is 1294 / 1569 above the floor, which contradicts the stated 794 / 1070 above the floor, the 3.6 ms floor echo and the ~13 cm overhang bound. Which reference the heights are on is the designer's answer, not ours."
+}

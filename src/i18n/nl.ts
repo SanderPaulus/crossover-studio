@@ -2564,16 +2564,8 @@ export const nl: Record<string, string> = {
     'Faseconventie',
   'as measured: t = 0 on the session time base':
     'zoals gemeten: t = 0 op de tijdbasis van de sessie',
-  'at a reference point (fase 4)':
-    'op een referentiepunt (fase 4)',
-  'minimum phase, with a warning (fase 4)':
-    'minimumfase, met waarschuwing (fase 4)',
   'Grid':
     'Raster',
-  'as merged (log, 48/oct)':
-    'zoals gemerged (log, 48/oct)',
-  'log 1/48 octave (fase 4)':
-    'log 1/48 octaaf (fase 4)',
   'Nothing accepted from this session yet.':
     'Nog niets geaccepteerd uit deze sessie.',
   'Download package (.zip)':
@@ -2673,6 +2665,56 @@ export const nl: Record<string, string> = {
     'deze merge wordt de respons van de tak',
   'replaces what the project uses now: {list}':
     'vervangt wat het project nu gebruikt: {list}',
+  'Using…':
+    'Bezig…',
+  'Busy — handing {file} to the project’s {way} branch…':
+    'Bezig — {file} gaat naar de {way}-tak van het project…',
+  'Done — the project’s {way} branch now uses {file}.':
+    'Klaar — de {way}-tak van het project gebruikt nu {file}.',
+  'Go to the design →':
+    'Naar het ontwerp →',
+  'Not used in the project: {reason}':
+    'Niet in het project gezet: {reason}',
+  '{file} is no longer this branch’s response — it now uses {now}, loaded afterwards. The merge below is not in the design.':
+    '{file} is niet meer de respons van deze tak — die gebruikt nu {now}, daarna geladen. De merge hieronder zit niet in het ontwerp.',
+  '{file} is no longer this branch’s response — the branch has none. The merge below is not in the design.':
+    '{file} is niet meer de respons van deze tak — de tak heeft er geen. De merge hieronder zit niet in het ontwerp.',
+  'forget this merge':
+    'deze merge vergeten',
+  'at most':
+    'hooguit',
+  'overhang at most':
+    'overstek hooguit',
+  'at a reference point':
+    'op een referentiepunt',
+  'minimum phase, with a warning':
+    'minimumfase, met een waarschuwing',
+  't = 0 at':
+    't = 0 op',
+  'reference point, ms on the session time base':
+    'referentiepunt, ms op de sessie-tijdbasis',
+  'gate reference {z}':
+    'gate-referentie {z}',
+  'ms on the session time base':
+    'ms op de sessie-tijdbasis',
+  'log 1/48 octave (the merge grid; what the design uses)':
+    'log 1/48 octaaf (het merge-raster; wat het ontwerp gebruikt)',
+  "the far field's own export grid":
+    "het eigen exportraster van het vervelveld",
+  'Minimum phase: the measured timing between the sources is NOT in these files. Do not sum them to judge a crossover.':
+    'Minimumfase: de gemeten timing tussen de bronnen zit NIET in deze bestanden. Tel ze niet op om een kruisfilter te beoordelen.',
+  'This set: phase {ph}; grid {g}.':
+    'Deze set: fase {ph}; raster {g}.',
+  'Cannot export: {reason}':
+    'Kan niet exporteren: {reason}',
+  '{name}: {reason}':
+    '{name}: {reason}',
+  '{name}: not used — {list}':
+    '{name}: niet gebruikt — {list}',
+  'Merge package {name} (session {s}) — {list}. Phase: {ph}. Grid: {g}.':
+    'Merge-pakket {name} (sessie {s}) — {list}. Fase: {ph}. Raster: {g}.',
+  'Phase of this file: {ph}':
+    'Fase van dit bestand: {ph}',
   'Use in project':
     'Gebruik in project',
   'far field, gated as used':

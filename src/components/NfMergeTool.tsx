@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart, { type Series } from './Chart.tsx';
 import { t } from '../lib/i18n.ts';
+import { parseFrd } from '../lib/parsers/frd.ts';
 import { envelope } from '../lib/fft.ts';
 import { zipStore } from '../lib/zip.ts';
 import {
@@ -31,6 +32,8 @@ import {
   type PlaneEcho,
 } from '../lib/nfMergeV2.ts';
 import { renderMergedFrdV2 } from '../lib/nfMergeV2Block.ts';
+import { addHeaderLines, gridText, phaseConventionText, phaseZeroMsOf, type ExportGrid, type ExportPhase } from '../lib/mergeExport.ts';
+import { branchFileName, confirmBranchUse, USE_CONFIRM_WAIT_MS, type Prepared, type UseStatus } from '../lib/useInProject.ts';
 import {
   checksOf,
   chosenGate,
@@ -86,7 +89,10 @@ export interface NfMergeToolProps {
   sdCm2: Record<MergeWay, number | null>;
   /** What the project currently uses, per branch — shown so the designer sees what a button replaces. */
   inProject: Record<MergeWay, AcceptedSource[]>;
-  onUse: (way: MergeWay, sources: AcceptedSource[]) => void;
+  /** Applies the merge to a branch and says whether it could (I-4 B-4 nazorg: never silent). */
+  onUse: (way: MergeWay, sources: AcceptedSource[]) => Prepared;
+  /** The name of each branch's current response, so "done" is read back from the project, not assumed. */
+  responseNames: Record<MergeWay, string | null>;
   /** The session the address asks for (`#/merge/<id>`), if any. */
   openId: string | null;
   onOpenId: (id: string | null) => void;
@@ -167,6 +173,9 @@ interface ToolAccepted {
   status: MergeStatus;
   way: MergeWay;
   acceptedAt: string;
+  /** I-4 fase 4 — the same merge on the far field's own export grid, or null with why. */
+  textOriginal?: string | null;
+  originalNote?: string | null;
 }
 interface ObjectState {
   kind: '' | 'target' | 'other';
@@ -196,6 +205,8 @@ interface RigState {
   overhang: string;
   /** The overhang stated as unknown (counts as stated; reflections then unchecked). */
   overhangUnknown?: boolean;
+  /** B-4 nazorg — the overhang stated as a bound: "at most X mm" (the exact figure to follow). */
+  overhangMax?: string;
   micDist: string;
   micHeight: string;
 }
@@ -339,8 +350,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   const rigSetup: RigSetup = {
     bottomAboveFloorMm: num(rig.bottom),
     surface: rig.surface || null,
-    surfaceOverhangMm: rig.overhangUnknown ? null : num(rig.overhang),
+    surfaceOverhangMm: rig.overhangUnknown || rig.overhangMax !== undefined ? null : num(rig.overhang),
     surfaceOverhangUnknown: !!rig.overhangUnknown,
+    surfaceOverhangMaxMm: rig.overhangMax !== undefined ? num(rig.overhangMax) : null,
     micDistanceMm: num(rig.micDist),
     micHeightMm: num(rig.micHeight),
   };
@@ -471,8 +483,10 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   /* ---- accept: the merge becomes part of the tool's session ---- */
   const accept = (src: SessionSource, c: SourceConfig, comp: Computed) => {
     if (!session || !comp.result || !comp.input || !c.way) return;
-    let result = comp.result;
-    if (session.calibration && comp.input.far.timeBase === 'session' && src.far?.pir) {
+    const input = comp.input;
+    const finish = (raw: NonNullable<Computed['result']>) => {
+    let result = raw;
+    if (session.calibration && input.far.timeBase === 'session' && src.far?.pir) {
       const cal = session.calibration;
       result = { ...result, spl: result.freq.map((f, i) => result.spl[i] + interpLog(cal.freq, cal.db, f)) };
     }
@@ -483,26 +497,44 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const w = comp.window;
     const text = renderMergedFrdV2({
       branchLabel: src.label,
-      input: comp.input,
+      input: input,
       result,
       nearName: src.near!.name,
       farName: src.far!.name,
-      portName: comp.input.port ? session.sources.find((s) => s.stem === c.port)?.near?.name ?? null : null,
+      portName: input.port ? session.sources.find((s) => s.stem === c.port)?.near?.name ?? null : null,
       validFromHz: num(c.validFrom)!,
       validFromReason: c.validFromReason || t('stated in the merge tool'),
       referenceNote:
-        `${comp.input.gate.referenceMs.toFixed(4)} ms on the ${session.timeBaseShared ? 'session' : 'file'} time base (the phase zero of the far field's FRD export)` +
+        `${input.gate.referenceMs.toFixed(4)} ms on the ${session.timeBaseShared ? 'session' : 'file'} time base (the phase zero of the far field's FRD export)` +
         (w ? `; window ${w.source === 'header' ? 'from the header' : `CHOSEN shorter than the header's ${w.headerRightMs} ms`}, 1/T = ${w.oneOverTHz.toFixed(1)} Hz` : ''),
       madeOn: new Date().toISOString().slice(0, 10),
       measuredObjectNote: obj.kind === 'other' ? `${obj.label || 'measured object'}, baffle ${obj.baffle}, ${obj.volume} L ${obj.load}` : obj.kind === 'target' ? 'the target cabinet' : null,
       targetValidFromHz: validity?.fromHz ?? null,
       targetValidityNote: validity ? `${validity.note} This file: ${obj.lowEnd === 'convert' ? 'CONVERTED with the model ratio below the limit' : 'MARKED below the limit'}.` : null,
       calibrationNote: session.calibration?.note ?? null,
-      portWeightNote: comp.input.port ? (c.portWeightStatus === 'provisional' ? 'PROVISIONAL' : 'stated') : null,
-      acceptReason: comp.result.flags.length > 0 ? c.reason : null,
+      portWeightNote: input.port ? (c.portWeightStatus === 'provisional' ? 'PROVISIONAL' : 'stated') : null,
+      acceptReason: comp.result!.flags.length > 0 ? c.reason : null,
     });
+    return text;
+    };
+    const text = finish(comp.result);
+    /* I-4 fase 4 — the same merge on the far field's OWN export grid, computed by the kernel on those
+     * frequencies (the output stage evaluates one fit on any grid): the export's "original grid", never
+     * an interpolation. Null, with the reason kept, when the far field came without an FRD export. */
+    let textOriginal: string | null = null;
+    let originalNote: string | null = null;
+    if (src.far?.frdText) {
+      try {
+        const fs = input.far.sampleRate;
+        const g = parseFrd(src.far.frdText).freq.filter((f) => f > 0 && f < fs / 2);
+        const r2 = mergeImpulsesV2({ ...input, output: { ...input.output, grid: g } });
+        textOriginal = addHeaderLines(finish(r2), [`Merge grid = the far field's own export grid (${src.far.frdName ?? 'its FRD'}, ${g.length} points), computed by the merge on those frequencies`]);
+      } catch (e) {
+        originalNote = e instanceof Error ? e.message : String(e);
+      }
+    } else originalNote = 'the far field came without an FRD export';
     const name = `${src.stem.replace(/\s+/g, '_')}_merged_v2.frd`;
-    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, status: statusOf(comp.result!, sstat), way: c.way as MergeWay, acceptedAt: new Date().toISOString() } } }));
+    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal, originalNote, status: statusOf(comp.result!, sstat), way: c.way as MergeWay, acceptedAt: new Date().toISOString() } } }));
   };
   const acceptedOf = (way: MergeWay): AcceptedSource[] =>
     Object.entries(st.accepted)
@@ -686,15 +718,30 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     {' '}
                     {t('overhang')}{' '}
                     <select
-                      value={rig.overhangUnknown ? 'unknown' : rig.overhang === '' ? '' : 'measured'}
+                      value={rig.overhangUnknown ? 'unknown' : rig.overhangMax !== undefined ? 'at-most' : rig.overhang === '' ? '' : 'measured'}
                       aria-label={t('overhang stated as')}
-                      onChange={(e) => setRig(e.target.value === 'unknown' ? { overhangUnknown: true, overhang: '' } : { overhangUnknown: false, overhang: e.target.value === 'measured' ? rig.overhang || ' ' : '' })}
+                      onChange={(e) =>
+                        setRig(
+                          e.target.value === 'unknown'
+                            ? { overhangUnknown: true, overhang: '', overhangMax: undefined }
+                            : e.target.value === 'at-most'
+                              ? { overhangUnknown: false, overhang: '', overhangMax: rig.overhangMax ?? '' }
+                              : { overhangUnknown: false, overhangMax: undefined, overhang: e.target.value === 'measured' ? rig.overhang || ' ' : '' },
+                        )
+                      }
                     >
                       <option value="">—</option>
                       <option value="measured">{t('distance')}</option>
+                      <option value="at-most">{t('at most')}</option>
                       <option value="unknown">{t('unknown')}</option>
                     </select>
-                    {!rig.overhangUnknown && rig.overhang !== '' && (
+                    {rig.overhangMax !== undefined && (
+                      <>
+                        {' '}
+                        <Field value={rig.overhangMax} onCommit={(v) => setRig({ overhangMax: v })} ariaLabel={t('overhang at most')} /> mm
+                      </>
+                    )}
+                    {!rig.overhangUnknown && rig.overhangMax === undefined && rig.overhang !== '' && (
                       <>
                         {' '}
                         <Field value={rig.overhang.trim()} onCommit={(v) => setRig({ overhang: v === '' ? ' ' : v })} ariaLabel={t('overhang')} /> mm
@@ -805,6 +852,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     acceptedOf={acceptedOf}
                     inProject={props.inProject}
                     onUse={props.onUse}
+                    responseNames={props.responseNames}
                   />
                   <Charts comp={cur} bare={bare} reflectionModel={reflectionModel} setReflectionModel={setReflectionModel} sd={cfg[active.stem].way ? props.sdCm2[cfg[active.stem].way as MergeWay] : null} targetFromHz={validity?.fromHz ?? null} />
                 </div>
@@ -814,7 +862,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
             {exportOpen && current && (
               <ExportPanel
                 session={session}
-                merges={Object.entries(st.accepted).map(([source, a]) => ({ source, fileName: a.name, text: a.text }))}
+                merges={Object.entries(st.accepted).map(([source, a]) => ({ source, fileName: a.name, text: a.text, textOriginal: a.textOriginal ?? null, way: a.way, status: a.status }))}
                 rig={rigSetup}
                 measuredObjectNote={obj.kind === 'other' ? `${obj.label}, ${obj.volume} L ${obj.load}` : obj.kind === 'target' ? 'the target cabinet' : 'not stated'}
                 targetNote={obj.kind === 'other' ? `${obj.targetVolume} L ${obj.targetLoad}` : 'the measured object'}
@@ -845,7 +893,8 @@ function WorkPanel(p: {
   onExport: () => void;
   acceptedOf: (way: MergeWay) => AcceptedSource[];
   inProject: Record<MergeWay, AcceptedSource[]>;
-  onUse: (way: MergeWay, sources: AcceptedSource[]) => void;
+  onUse: (way: MergeWay, sources: AcceptedSource[]) => Prepared;
+  responseNames: Record<MergeWay, string | null>;
 }) {
   const { src, c, comp, session, setC } = p;
   const r = comp?.result ?? null;
@@ -856,6 +905,36 @@ function WorkPanel(p: {
   const [useWay, setUseWay] = useState<MergeWay | ''>('');
   const way = (useWay || p.accepted?.way || '') as MergeWay | '';
   const toUse = way ? p.acceptedOf(way) : [];
+  /* I-4 B-4 nazorg — the button always says busy, done or failed-with-reason; "done" is read back
+   * from the project (the branch's response IS the file), never assumed from having called it. */
+  const [use, setUse] = useState<UseStatus>({ kind: 'idle' });
+  const useStarted = useRef(0);
+  const [useTick, setUseTick] = useState(0);
+  useEffect(() => {
+    if (use.kind !== 'busy') return;
+    const next = confirmBranchUse(use, { responseName: p.responseNames[use.way], recordedSources: p.inProject[use.way].length }, Date.now() - useStarted.current);
+    if (next.kind !== 'busy') {
+      setUse(next);
+      return;
+    }
+    const h = setTimeout(() => setUseTick((n) => n + 1), Math.max(50, USE_CONFIRM_WAIT_MS - (Date.now() - useStarted.current) + 10));
+    return () => clearTimeout(h);
+  }, [use, useTick, p.responseNames, p.inProject]);
+  const runUse = () => {
+    if (!way) {
+      setUse({ kind: 'error', way: null, reason: 'no branch chosen' });
+      return;
+    }
+    useStarted.current = Date.now();
+    setUse({ kind: 'busy', way, file: branchFileName(way, toUse) });
+    let res: Prepared;
+    try {
+      res = p.onUse(way, toUse);
+    } catch (e) {
+      res = { ok: false, reason: e instanceof Error ? e.message : String(e) };
+    }
+    if (!res.ok) setUse({ kind: 'error', way, reason: res.reason });
+  };
   const pair = !p.ownGeometry && !!c.way && (p.geometry.drivers[c.way as MergeWay].count ?? 1) >= 2;
   return (
     <div className="nfm-work">
@@ -997,21 +1076,40 @@ function WorkPanel(p: {
                   : t('this merge becomes the branch response')}
                 {way && p.inProject[way].length > 0 ? ` · ${t('replaces what the project uses now: {list}', { list: p.inProject[way].map((a) => a.source).join(' + ') })}` : ''}
               </span>{' '}
-              <button
-                type="button"
-                disabled={!way || toUse.length === 0}
-                onClick={() => {
-                  p.onUse(way as MergeWay, toUse);
-                  setUseOpen(false);
-                }}
-              >
-                {t('Use in project')}
+              <button type="button" disabled={use.kind === 'busy'} onClick={runUse}>
+                {use.kind === 'busy' ? t('Using…') : t('Use in project')}
               </button>
+              <UseStatusLine status={use} />
             </div>
           )}
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * I-4 B-4 nazorg — what "Use in project" did, always in words: busy, done (with where it landed and
+ * a way there), or failed with the reason. Idle says nothing. Exported for the test that pins it.
+ */
+export function UseStatusLine({ status }: { status: UseStatus }) {
+  if (status.kind === 'idle') return null;
+  if (status.kind === 'busy')
+    return (
+      <p className="derived nfm-use-status" role="status" aria-live="polite">
+        {t('Busy — handing {file} to the project’s {way} branch…', { file: status.file, way: t(status.way) })}
+      </p>
+    );
+  if (status.kind === 'done')
+    return (
+      <p className="nfm-use-status nfm-use-done" role="status" aria-live="polite">
+        ✓ {t('Done — the project’s {way} branch now uses {file}.', { way: t(status.way), file: status.file })} <a href="#/">{t('Go to the design →')}</a>
+      </p>
+    );
+  return (
+    <p className="nfm-use-status nl-warning" role="alert">
+      ✕ {t('Not used in the project: {reason}', { reason: status.reason })}
+    </p>
   );
 }
 
@@ -1154,13 +1252,22 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
 
 function ExportPanel(p: {
   session: LoadedSession;
-  merges: { source: string; fileName: string; text: string }[];
+  merges: { source: string; fileName: string; text: string; textOriginal: string | null; way: MergeWay; status: MergeStatus }[];
   rig: RigSetup;
   measuredObjectNote: string;
   targetNote: string;
   onClose: () => void;
 }) {
-  const pkg = exportPackage({ session: p.session, merges: p.merges, rig: p.rig, measuredObjectNote: p.measuredObjectNote, targetNote: p.targetNote, madeOn: new Date().toISOString().slice(0, 10) });
+  /* I-4 fase 4 — one phase convention and one grid for the whole set, both written into every file
+   * and the manifest. The default (as measured, merge grid) writes the files unchanged: the round trip
+   * to the design is the text "Use in project" hands it. */
+  const [phaseKind, setPhaseKind] = useState<ExportPhase['kind']>('measured');
+  const [refMs, setRefMs] = useState('');
+  const [grid, setGrid] = useState<ExportGrid>('log48');
+  const phase: ExportPhase = phaseKind === 'reference' ? { kind: 'reference', ms: num(refMs) } : phaseKind === 'minphase' ? { kind: 'minphase' } : { kind: 'measured' };
+  const res = exportPackage({ session: p.session, merges: p.merges, rig: p.rig, measuredObjectNote: p.measuredObjectNote, targetNote: p.targetNote, madeOn: new Date().toISOString().slice(0, 10), phase, grid });
+  const pkg = res.ok ? res.files : [];
+  const zero = p.merges.map((m) => phaseZeroMsOf(m.text)).find((v) => v !== null) ?? null;
   const download = () => {
     const zip = zipStore(pkg.map((f) => ({ name: `${p.session.name}/${f.name}`, data: f.data })));
     const url = URL.createObjectURL(new Blob([zip.slice().buffer], { type: 'application/zip' }));
@@ -1170,30 +1277,35 @@ function ExportPanel(p: {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const head = p.merges[0]?.text.split('\n').filter((l) => l.startsWith('*')).join('\n') ?? '';
+  const head = pkg[0]?.data.split('\n').filter((l) => l.startsWith('*')).join('\n') ?? '';
   return (
     <div className="nfm-export" role="dialog" aria-label={t('Export session')}>
       <h4>{t('Export session “{s}”', { s: p.session.name })}</h4>
       <p className="nfm-warn">{t('Baffle step and diffraction are in these files (full space): do not also switch on the diffraction tool in VituixCAD. Below the splice point it is the near field plus a model.')}</p>
       <p>
         {t('Phase convention')}{' '}
-        <select defaultValue="measured" aria-label={t('Phase convention')}>
+        <select value={phaseKind} onChange={(e) => setPhaseKind(e.target.value as ExportPhase['kind'])} aria-label={t('Phase convention')}>
           <option value="measured">{t('as measured: t = 0 on the session time base')}</option>
-          <option value="ref" disabled>
-            {t('at a reference point (fase 4)')}
-          </option>
-          <option value="minphase" disabled>
-            {t('minimum phase, with a warning (fase 4)')}
-          </option>
-        </select>{' '}
+          <option value="reference">{t('at a reference point')}</option>
+          <option value="minphase">{t('minimum phase, with a warning')}</option>
+        </select>
+        {phaseKind === 'reference' && (
+          <>
+            {' '}
+            {t('t = 0 at')} <Field value={refMs} onCommit={setRefMs} ariaLabel={t('reference point, ms on the session time base')} placeholder={zero !== null ? t('gate reference {z}', { z: zero.toFixed(4) }) : ''} /> {t('ms on the session time base')}
+          </>
+        )}{' '}
         {t('Grid')}{' '}
-        <select defaultValue="orig" aria-label={t('Grid')}>
-          <option value="orig">{t('as merged (log, 48/oct)')}</option>
-          <option value="48" disabled>
-            {t('log 1/48 octave (fase 4)')}
-          </option>
+        <select value={grid} onChange={(e) => setGrid(e.target.value as ExportGrid)} aria-label={t('Grid')}>
+          <option value="log48">{t('log 1/48 octave (the merge grid; what the design uses)')}</option>
+          <option value="original">{t("the far field's own export grid")}</option>
         </select>
       </p>
+      {phaseKind === 'minphase' && <p className="nl-warning">{t('Minimum phase: the measured timing between the sources is NOT in these files. Do not sum them to judge a crossover.')}</p>}
+      <p className="derived">
+        {t('This set: phase {ph}; grid {g}.', { ph: phaseConventionText(phase), g: gridText(grid) })}
+      </p>
+      {!res.ok && <p className="nl-warning" role="alert">{t('Cannot export: {reason}', { reason: res.reason })}</p>}
       <ul>
         {pkg.map((f) => (
           <li key={f.name}>{f.name}</li>
@@ -1201,7 +1313,7 @@ function ExportPanel(p: {
       </ul>
       {p.merges.length === 0 && <p className="derived alert">{t('Nothing accepted from this session yet.')}</p>}
       {head && <pre className="nfm-head">{head}</pre>}
-      <button type="button" disabled={p.merges.length === 0} onClick={download}>
+      <button type="button" disabled={p.merges.length === 0 || !res.ok} onClick={download}>
         {t('Download package (.zip)')}
       </button>{' '}
       <button type="button" onClick={p.onClose}>

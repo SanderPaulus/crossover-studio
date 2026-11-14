@@ -5145,6 +5145,9 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-window-used { font-weight: 600; }
 .nfm-accepted { color: #15803d; font-size: 0.85em; }
 .nfm-use { margin-top: 0.5rem; padding: 0.5rem; border: 1px dashed var(--accent); border-radius: 6px; }
+.nfm-use-status { margin: 0.4rem 0 0; }
+.nfm-use-done { color: var(--ok, #4caf50); }
+.nfm-replaced { border-color: var(--warn, #e0a030); }
 .nfm-setup { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
 .nfm-tile { line-height: 1.9; }
 .nfm-tile > strong { display: inline-block; min-width: 10.5rem; }

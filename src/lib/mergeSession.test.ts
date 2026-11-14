@@ -91,10 +91,30 @@ describe('the set-up and its planes (synthetic rig, numbers chosen for the test)
   it('a table top whose reflection point lies past its overhang: the floor reflects', () => {
     const e = echoesForSource({ sourceHeightMm: 794, rig, planes: planes(), fitTopHz: 576 });
     expect(e.echoes).toEqual([{ kind: 'plane', label: 'floor', sourceAboveM: 0.794, micAboveM: 1.38, horizontalM: 1 }]);
-    expect(e.notes.join(' ')).toMatch(/past the 0 mm overhang — the floor reflects instead/);
+    // V15 (14-11-2026): was /past the 0 mm overhang — the floor reflects instead/; the note now names both points
+    expect(e.notes.join(' ')).toMatch(/the 0 mm overhang lies short of both — the floor reflects/);
     // a long top catches it
     const wide = echoesForSource({ sourceHeightMm: 794, rig: { ...rig, surfaceOverhangMm: 1000 }, planes: planes(), fitTopHz: 576 });
     expect(wide.echoes[0].label).toBe('table top');
+  });
+  it('B-4 nazorg: an overhang between the floor path and the top\'s own point blocks the floor and reflects nothing', () => {
+    // synthetic rig: top 515, source 794 → s 279, mic 865 above the top, 1000 out
+    const xTop = (1000 * 279) / (279 + 865);
+    const xCut = (1000 * 279) / (794 + 1380);
+    expect(xCut).toBeLessThan(xTop);
+    const mid = echoesForSource({ sourceHeightMm: 794, rig: { ...rig, surfaceOverhangMm: Math.round((xTop + xCut) / 2) }, planes: planes(), fitTopHz: 576 });
+    expect(mid.echoes).toEqual([]);
+    expect(mid.notes.join(' ')).toMatch(/blocks the floor path and does not reach its own reflection point/);
+    expect(echoesForSource({ sourceHeightMm: 794, rig: { ...rig, surfaceOverhangMm: Math.floor(xCut) }, planes: planes(), fitTopHz: 576 }).echoes[0].label).toBe('floor');
+    expect(echoesForSource({ sourceHeightMm: 794, rig: { ...rig, surfaceOverhangMm: Math.ceil(xTop) }, planes: planes(), fitTopHz: 576 }).echoes[0].label).toBe('table top');
+  });
+  it('B-4 nazorg: an overhang stated as a bound counts as stated, and decides only where it lies short of the floor path', () => {
+    const bounded: RigSetup = { ...rig, surfaceOverhangMm: null, surfaceOverhangMaxMm: 100 };
+    expect(setupStatus(bounded, { ceiling: { kind: 'farther' }, sideWall: { kind: 'farther' }, wallBehindCabinet: { kind: 'farther' }, wallBehindMic: { kind: 'farther' } }).complete).toBe(true);
+    expect(echoesForSource({ sourceHeightMm: 794, rig: bounded, planes: planes(), fitTopHz: 576 }).echoes[0].label).toBe('floor');
+    const wide = echoesForSource({ sourceHeightMm: 794, rig: { ...bounded, surfaceOverhangMaxMm: 200 }, planes: planes(), fitTopHz: 576 });
+    expect(wide.echoes).toEqual([]);
+    expect(wide.notes.join(' ')).toMatch(/does not decide which plane reflects/);
   });
   it('B-4: an unstated overhang is not 0, and an unstated surface is not the floor — nothing is modelled, and it says so', () => {
     const e = echoesForSource({ sourceHeightMm: 794, rig: { ...rig, surfaceOverhangMm: null }, planes: planes(), fitTopHz: 576 });
@@ -181,15 +201,17 @@ describe('the branch sum and the export package', () => {
     expect(sum.text).toMatch(/^\* Merge = NF\/FF$/m);
     expect(sum.text).toMatch(/^\* Merge sum of = woofer_down_merged_v2\.frd \| woofer_up_merged_v2\.frd$/m);
     expect(branchFile('low', [a])).toEqual(a);
-    const pkg = exportPackage({
+    const res = exportPackage({
       session,
-      merges: [{ source: 'woofer down', fileName: a.name, text: a.text }],
+      merges: [{ source: 'woofer down', fileName: a.name, text: a.text, way: 'low' }],
       // synthetic rig: the package writes what it is given; this is not casus 1's set-up
       rig: { bottomAboveFloorMm: 515, surface: 'table', surfaceOverhangMm: 0, micDistanceMm: 1000, micHeightMm: 1380 },
       measuredObjectNote: 'testkast',
       targetNote: 'doelkast',
       madeOn: '2026-11-13',
     });
+    if (!res.ok) throw new Error(res.reason);
+    const pkg = res.files;
     expect(pkg.map((p) => p.name)).toEqual([a.name, 'woofers_parallel__1_.zma', 'manifest.json', 'leesmij.txt']);
     const back = parseFrd(pkg[0].data);
     expect(back.spl).toEqual(fa.spl);
@@ -348,4 +370,38 @@ describe('B-4 — the merge beside its far-field FRD, on the FRD\'s own grid', (
     expect(maxDb).toBeLessThan(0.02);
     expect(maxDeg).toBeLessThan(0.1);
   }, 60_000);
+});
+
+/* Casus 1's set-up as Sander stated it (test-fixtures/casus1_pir/opstelling.json, 14-11-2026), read
+ * from the file and never typed here (sources above the floor and the mic distance: 13-11; the mic
+ * height breakdown and the overhang bound: 14-11). */
+describe('B-4 nazorg — casus 1: the stated set-up and the overhang bound', () => {
+  const st = JSON.parse(readFileSync(join(FIX, 'casus1_pir', 'opstelling.json'), 'utf8'));
+  const stated: RigSetup = {
+    bottomAboveFloorMm: st.tafelblad_boven_vloer_mm,
+    surface: st.kast_staat_op,
+    surfaceOverhangMm: st.tafeloverstek.exact_mm,
+    surfaceOverhangMaxMm: st.tafeloverstek.hooguit_mm,
+    micDistanceMm: st.mic_tot_baffle_mm,
+    micHeightMm: st.mic_boven_vloer_mm,
+  };
+  it('records what was stated and leaves the rest open: mic 1380 = table 500 + reference 880; overhang a bound, not a value', () => {
+    expect(st.mic_boven_vloer_mm).toBe(st.tafelblad_boven_vloer_mm + 880);
+    expect(st.tafeloverstek.exact_mm).toBeNull();
+    const status = setupStatus(stated, { ceiling: null, sideWall: null, wallBehindCabinet: null, wallBehindMic: null });
+    // the rig is stated; only the planes (ceiling, walls) are still open
+    expect(status.missing.every((m) => m.startsWith('plane:'))).toBe(true);
+    expect(status.missing).toHaveLength(4);
+  });
+  it('the bound decides the floor for woofer down: its floor path crosses the top at ~135 mm, past the ~130 mm bound', () => {
+    const rigWithD = stated;
+    const w = st.bronnen_boven_vloer_mm.woofer_onder;
+    expect(w).toBe(794);
+    const xCut = (st.mic_tot_baffle_mm * (w - st.tafelblad_boven_vloer_mm)) / (w + st.mic_boven_vloer_mm);
+    expect(xCut).toBeCloseTo(135.2, 1);
+    expect(xCut).toBeGreaterThan(st.tafeloverstek.hooguit_mm);
+    const e = echoesForSource({ sourceHeightMm: w, rig: rigWithD, planes: { ceiling: { kind: 'unknown' }, sideWall: { kind: 'unknown' }, wallBehindCabinet: { kind: 'unknown' }, wallBehindMic: { kind: 'unknown' } }, fitTopHz: 576 });
+    expect(e.echoes).toEqual([{ kind: 'plane', label: 'floor', sourceAboveM: 0.794, micAboveM: 1.38, horizontalM: 1 }]);
+    expect(planeEchoDelayS(e.echoes[0] as PlaneEcho) * 1000).toBeCloseTo(3.6, 1);
+  });
 });

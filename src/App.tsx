@@ -495,7 +495,8 @@ import { bridgeDelaysUs, excessDelayMsOf } from './lib/vituixBridge.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import NfMergeTool, { type AcceptedSource } from './components/NfMergeTool.tsx';
 import type { CabinetGeometryForMerge } from './lib/mergeSession.ts';
-import { branchFile } from './lib/mergeSession.ts';
+import { prepareBranchUse, mergeCardState, type Prepared } from './lib/useInProject.ts';
+import { readMergePackageZip } from './lib/mergeExport.ts';
 import { parseMergeBlockV2 } from './lib/nfMergeV2Block.ts';
 import DriverFilterControls from './components/FilterControls.tsx';
 import { LogoMark, LogoWord } from './components/Logo.tsx';
@@ -3604,6 +3605,10 @@ export default function App() {
     if (files.length === 0) return;
     setError(null);
     const isMeas = (f: File) => /\.(frd|zma|lim|txt)$/i.test(f.name);
+    if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
+      await importMergePackage(files[0]);
+      return;
+    }
     if (files.some((f) => f.name.toLowerCase().endsWith('.vxp'))) {
       // The vxp loader WANTS the whole set at once (.vxp + .ZMA + .txt) —
       // a folder-contents drop is exactly its select-together semantics.
@@ -5462,26 +5467,28 @@ export default function App() {
    * near field (`far`), the I-2 rule, so "undo merge" puts it back.
    */
   const acceptMergeV2 = useCallback(
-    (role: BranchRole, sources: AcceptedSource[]) => {
-      setMergeV2((m) => ({ ...m, [role]: sources }));
-      if (sources.length === 0) return;
+    (role: BranchRole, sources: AcceptedSource[]): Prepared => {
+      /* I-4 B-4 nazorg — built and read back BEFORE anything is applied; a failure is a reason the
+       * tool shows on its own button, never a banner on a page the designer is not looking at. */
+      const prep = prepareBranchUse(role, sources);
+      if (!prep.ok) return prep;
       const loaded = role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
-      let file: { name: string; text: string };
-      let frd: Parsed;
-      try {
-        file = branchFile(`${role}_merged_v2.frd`, sources);
-        frd = parseFrd(file.text);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        return;
-      }
-      if (loaded) setNearField((n) => ({ ...n, [role]: { ...n[role], far: n[role].far ?? { name: loaded.name, raw: loaded.raw }, mergedName: file.name } }));
-      const next: Loaded = { name: file.name, raw: file.text, frd };
+      setMergeV2((m) => ({ ...m, [role]: sources }));
+      if (loaded && loaded.name !== prep.file.name)
+        setNearField((n) => ({ ...n, [role]: { ...n[role], far: n[role].far ?? { name: loaded.name, raw: loaded.raw }, mergedName: prep.file.name } }));
+      const next: Loaded = { name: prep.file.name, raw: prep.file.text, frd: prep.frd };
       if (role === 'low') setWoofer(next);
       else if (role === 'mid') setMidDrv(next);
       else setTweeter(next);
+      /* The project now has content: the first-run welcome card must not open over it, and its
+       * primary choice (the demo) would silently replace this response. Dismissed without action. */
+      if (welcomeOpen) {
+        localStorage.setItem('ads-welcomed', '1');
+        setWelcomeOpen(false);
+      }
+      return prep;
     },
-    [woofer, midDrv, tweeter],
+    [woofer, midDrv, tweeter, welcomeOpen],
   );
   /** I-4 B-4 — the optimizer's cabinet geometry as the merge tool reads it (nulls where the project
    *  states nothing; the tool then asks). Driver heights are derived there, never typed per source. */
@@ -8782,6 +8789,39 @@ export default function App() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (file) await loadProjectFile(file);
+  }
+
+  /**
+   * I-4 fase 4 — the merge tool's export package, read back by the design. Every branch it names goes
+   * through `acceptMergeV2`, the same door "Use in project" uses, so export → import is numerically
+   * the text the package holds. A set in another phase convention than "as measured" is taken in as it
+   * is and SAID: the timing between branches is the convention's, not the session's.
+   */
+  async function importMergePackage(file: File) {
+    setError(null);
+    const pkg = readMergePackageZip(new Uint8Array(await file.arrayBuffer()));
+    if (!pkg.ok) {
+      setError(t('{name}: {reason}', { name: file.name, reason: pkg.reason }));
+      return;
+    }
+    const done: string[] = [];
+    const failed: string[] = [];
+    for (const way of ['low', 'mid', 'high'] as const) {
+      const fs = pkg.files.filter((f) => f.way === way);
+      if (fs.length === 0) continue;
+      const res = acceptMergeV2(
+        way,
+        fs.map((f) => ({ source: f.source, name: f.name, text: f.text, session: pkg.session, status: (['explained', 'flags', 'unchecked'] as const).find((x) => x === f.status) })),
+      );
+      if (res.ok) done.push(`${t(way)}: ${res.file.name}`);
+      else failed.push(`${t(way)}: ${res.reason}`);
+    }
+    if (failed.length) setError(t('{name}: not used — {list}', { name: file.name, list: failed.join('; ') }));
+    if (done.length)
+      setPersistNote(
+        t('Merge package {name} (session {s}) — {list}. Phase: {ph}. Grid: {g}.', { name: file.name, s: pkg.session, list: done.join(', '), ph: pkg.phase, g: pkg.grid }) +
+          (pkg.notes.length ? ` ⚠ ${pkg.notes.join(' ')}` : ''),
+      );
   }
 
   async function loadProjectFile(file: File) {
@@ -17861,10 +17901,8 @@ export default function App() {
             geometry={mergeGeometry}
             sdCm2={mergeSd}
             inProject={mergeV2}
-            onUse={(way, sources) => {
-              acceptMergeV2(way, sources);
-              location.hash = '#/';
-            }}
+            onUse={acceptMergeV2}
+            responseNames={{ low: woofer?.name ?? null, mid: midDrv?.name ?? null, high: tweeter?.name ?? null }}
             openId={mergeRoute.id}
             onOpenId={(id) => {
               const h = id ? `#/merge/${encodeURIComponent(id)}` : '#/merge';
@@ -18087,9 +18125,23 @@ export default function App() {
                       {/* I-4 B-4 — WHERE THIS BRANCH'S LOW END CAME FROM, and nothing else. The
                           merge itself lives in the NF/FF-merge tool (#/merge); a branch only
                           shows what it received from there, read from the files' own blocks. */}
-                      {mergeV2[role].length > 0 && (
-                        <div className="nfm-provenance">
+                      {mergeV2[role].length > 0 && (() => {
+                        const card = mergeCardState(role, mergeV2[role], loadedDrv?.name ?? null);
+                        return (
+                        <div className={`nfm-provenance${card.kind === 'replaced' ? ' nfm-replaced' : ''}`}>
                           <strong>{t('merge v2 · from the merge tool')}</strong>
+                          {mergeV2[role].map((a) => /^\*\s*Merge export phase\s*=\s*(.+)$/m.exec(a.text)?.[1]).filter(Boolean).slice(0, 1).map((ph) => (
+                            <span className="nl-warning" key="exportPhase">
+                              {t('Phase of this file: {ph}', { ph: ph! })}
+                            </span>
+                          ))}
+                          {card.kind === 'replaced' && (
+                            <span className="nl-warning" role="status">
+                              {card.now
+                                ? t('{file} is no longer this branch’s response — it now uses {now}, loaded afterwards. The merge below is not in the design.', { file: card.file, now: card.now })
+                                : t('{file} is no longer this branch’s response — the branch has none. The merge below is not in the design.', { file: card.file })}
+                            </span>
+                          )}
                           {mergeV2[role].map((a) => {
                             const b = parseMergeBlockV2(a.text);
                             const status = a.status ?? (b && b.flags.length > 0 ? 'flags' : null);
@@ -18107,14 +18159,20 @@ export default function App() {
                           })}
                           <span>
                             <a href={mergeV2[role][0].sessionId ? `#/merge/${encodeURIComponent(mergeV2[role][0].sessionId!)}` : '#/merge'}>{t('Open in merge →')}</a>{' '}
-                            {nearField[role].far && (
+                            {card.kind === 'applied' && nearField[role].far && (
                               <button type="button" onClick={() => { undoNearFieldMerge(role); setMergeV2((m) => ({ ...m, [role]: [] })); }}>
                                 {t('undo merge')}
                               </button>
                             )}
+                            {card.kind === 'replaced' && (
+                              <button type="button" onClick={() => setMergeV2((m) => ({ ...m, [role]: [] }))}>
+                                {t('forget this merge')}
+                              </button>
+                            )}
                           </span>
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                 );

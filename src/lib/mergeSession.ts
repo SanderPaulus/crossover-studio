@@ -20,6 +20,7 @@ import {
   type MergeV2Result,
 } from './nfMergeV2.ts';
 import { SPLICE_KA_MARGIN } from './merger.ts';
+import { applyPhaseConvention, gridText, MERGE_EXPORT_VERSION, MERGE_PACKAGE_FORMAT, phaseConventionText, type ExportGrid, type ExportPhase } from './mergeExport.ts';
 
 export const MERGE_SESSION_VERSION = 'merge-session/1.0';
 const C_MM_PER_MS = 343;
@@ -298,6 +299,11 @@ export interface RigSetup {
   /** B-4 — the overhang stated as UNKNOWN (like a plane): the set-up counts as stated, nothing is
    *  modelled for the top or the floor, and the reflections are not checked. */
   surfaceOverhangUnknown?: boolean;
+  /** B-4 nazorg — the overhang stated as a BOUND ("less than about 13 cm", the exact figure to follow):
+   *  not a value. It decides the plane only where the reflection point lies past it (then the floor
+   *  reflects whatever the exact figure is); nearer than the bound it is undecided and nothing is
+   *  modelled — the same answer as unknown. Counts as stated. */
+  surfaceOverhangMaxMm?: number | null;
   /** Microphone to baffle, mm. */
   micDistanceMm: number | null;
   /** Microphone above the floor, mm. */
@@ -335,7 +341,8 @@ export function setupStatus(rig: RigSetup, planes: PlanesStated): SetupStatus {
   const missing: string[] = [];
   if (!(rig.bottomAboveFloorMm != null && rig.bottomAboveFloorMm >= 0)) missing.push('cabinet bottom above the floor');
   if (!rig.surface) missing.push('what the cabinet stands on');
-  if (rig.surface && rig.surface !== 'floor' && !rig.surfaceOverhangUnknown && !(rig.surfaceOverhangMm != null && rig.surfaceOverhangMm >= 0)) missing.push('overhang of the table / stand top (a distance, or "unknown")');
+  const bounded = rig.surfaceOverhangMaxMm != null && rig.surfaceOverhangMaxMm >= 0;
+  if (rig.surface && rig.surface !== 'floor' && !rig.surfaceOverhangUnknown && !bounded && !(rig.surfaceOverhangMm != null && rig.surfaceOverhangMm >= 0)) missing.push('overhang of the table / stand top (a distance, "at most X", or "unknown")');
   if (!(rig.micDistanceMm != null && rig.micDistanceMm > 0)) missing.push('microphone distance to the baffle');
   if (!(rig.micHeightMm != null && rig.micHeightMm > 0)) missing.push('microphone height above the floor');
   const unknownPlanes: string[] = [];
@@ -390,19 +397,39 @@ export function echoesForSource(opts: {
     const top = rig.bottomAboveFloorMm!;
     const s = h - top;
     const m = mic - top;
-    const reflectAt = s + m > 0 ? (d * s) / (s + m) : Infinity;
-    if (s > onPlaneMm && rig.surfaceOverhangMm === null) {
-      // B-4: an unstated overhang is not 0 — which plane reflects cannot be decided
-      notes.push(
-        `${rig.surface} top: its overhang is not known (stated as unknown, or not stated), so whether the reflection point (${reflectAt.toFixed(0)} mm out) lies on the top or ` +
-          `past it on the floor is not decided — neither is modelled; state the overhang`,
-      );
-    } else if (s <= onPlaneMm || reflectAt <= rig.surfaceOverhangMm!) {
+    /* Two points decide it (B-4 nazorg, 14-11-2026). xTop: where the TOP's own reflection lands, on
+     * its plane. xCut: where the source's leg of the FLOOR path crosses the top's plane. xCut < xTop
+     * always. An overhang reaching xTop: the top reflects. One short of xCut: the floor path passes
+     * the edge and the floor reflects. Between them the top blocks the floor path and does not reach
+     * its own point — neither is a mirror (an edge, not modelled). Until 14-11 only xTop was asked,
+     * so a blocked floor path was modelled as a floor echo. Sander's casus 1 checks it: source
+     * 0.794 m and mic 1.380 m above the floor, table top 0.500 m, 1.0 m out — xCut = 135 mm, and the
+     * floor echo is there, so his overhang is under ~13 cm. */
+    const xTop = s + m > 0 ? (d * s) / (s + m) : Infinity;
+    const xCut = h + mic > 0 && h > 0 ? (d * s) / (h + mic) : Infinity;
+    const o = rig.surfaceOverhangMm;
+    const maxO = rig.surfaceOverhangMaxMm;
+    const where = `top reflection point ${xTop.toFixed(0)} mm out, floor path crossing the top at ${xCut.toFixed(0)} mm`;
+    if (s <= onPlaneMm) {
       below(`${rig.surface} top`, top);
-      if (s > onPlaneMm) notes.push(`${rig.surface} top: the reflection point lies ${reflectAt.toFixed(0)} mm out, on the top (overhang ${rig.surfaceOverhangMm} mm)`);
-    } else {
-      notes.push(`${rig.surface} top: the reflection point would lie ${reflectAt.toFixed(0)} mm out, past the ${rig.surfaceOverhangMm} mm overhang — the floor reflects instead`);
+    } else if (o === null && maxO != null && maxO >= 0) {
+      if (maxO <= xCut) {
+        notes.push(`${rig.surface} top: ${where}; the stated bound (overhang less than ${maxO} mm) lies short of both — the floor reflects, whatever the exact overhang`);
+        below('floor', 0);
+      } else {
+        notes.push(`${rig.surface} top: ${where}; the stated bound (overhang less than ${maxO} mm) does not decide which plane reflects — neither is modelled; state the exact overhang`);
+      }
+    } else if (o === null) {
+      // B-4: an unstated overhang is not 0 — which plane reflects cannot be decided
+      notes.push(`${rig.surface} top: its overhang is not known (stated as unknown, or not stated); ${where} — which plane reflects is not decided, neither is modelled; state the overhang`);
+    } else if (o >= xTop) {
+      below(`${rig.surface} top`, top);
+      notes.push(`${rig.surface} top: the reflection point lies ${xTop.toFixed(0)} mm out, on the top (overhang ${o} mm)`);
+    } else if (o <= xCut) {
+      notes.push(`${rig.surface} top: ${where}; the ${o} mm overhang lies short of both — the floor reflects`);
       below('floor', 0);
+    } else {
+      notes.push(`${rig.surface} top: ${where}; the ${o} mm overhang blocks the floor path and does not reach its own reflection point — neither plane is a mirror here (an edge, not modelled)`);
     }
   }
   const c = planes.ceiling;
@@ -553,22 +580,38 @@ export function branchFile(name: string, sources: readonly { name: string; text:
 
 export interface ExportInput {
   session: LoadedSession;
-  merges: { source: string; fileName: string; text: string }[];
+  /** Each accepted merge: its text on the merge grid, and — when the far field came with an FRD
+   *  export — the same merge computed on that export's own grid (`textOriginal`). */
+  merges: { source: string; fileName: string; text: string; textOriginal?: string | null; way: MergeWay; status?: string | null }[];
   rig: RigSetup;
   measuredObjectNote: string;
   targetNote: string;
   madeOn: string;
+  /** I-4 fase 4 — one per set. Absent = as measured, on the merge grid (the files written unchanged). */
+  phase?: ExportPhase;
+  grid?: ExportGrid;
 }
 
 /**
- * The package (fase 3 subset of B-2 §7): an FRD per merged source with its block, the session's
- * impedances as ZMA, `manifest.json` and `leesmij.txt`. Phase convention "as measured" only — the
- * other conventions and the 1/48-octave grid are fase 4.
+ * The package: an FRD per merged source with its block, the session's impedances as ZMA,
+ * `manifest.json` and `leesmij.txt`. One phase convention and one grid for the whole set (fase 4);
+ * every failure is a reason, nothing is written half.
  */
-export function exportPackage(x: ExportInput): { name: string; data: string }[] {
+export function exportPackage(x: ExportInput): { ok: true; files: { name: string; data: string }[] } | { ok: false; reason: string } {
+  const phase: ExportPhase = x.phase ?? { kind: 'measured' };
+  const grid: ExportGrid = x.grid ?? 'log48';
+  const files: { name: string; data: string }[] = [];
+  for (const m of x.merges) {
+    const base = grid === 'original' ? m.textOriginal : m.text;
+    if (!base) return { ok: false, reason: `${m.fileName}: no merge on the far field's own grid (its far field came without an FRD export) — export on the log 1/48-octave grid` };
+    const conv = applyPhaseConvention(base, phase);
+    if (!conv.ok) return { ok: false, reason: `${m.fileName}: ${conv.reason}` };
+    files.push({ name: m.fileName, data: conv.text });
+  }
   const manifest = {
-    format: 'crossover-studio-merge-session/1',
+    format: MERGE_PACKAGE_FORMAT,
     version: MERGE_SESSION_VERSION,
+    export_version: MERGE_EXPORT_VERSION,
     session: x.session.name,
     made_on: x.madeOn,
     axes: { X: 'horizontal', Y: 'vertical', Z: 'depth' },
@@ -577,13 +620,17 @@ export function exportPackage(x: ExportInput): { name: string; data: string }[] 
     time_reference: x.session.timeBaseShared
       ? 'as measured: t = 0 on the session time base (the phase zero of each FRD export, see its Merge gate)'
       : 'per file: no shared time base',
-    phase_convention: 'as measured',
+    phase_convention: phaseConventionText(phase),
+    grid: gridText(grid),
     measured_object: x.measuredObjectNote,
     target: x.targetNote,
     calibration: x.session.calibration?.note ?? "none (the impulses' own scale)",
-    files: x.merges.map((m) => ({
+    files: x.merges.map((m, i) => ({
       source: m.source,
+      way: m.way,
       file: m.fileName,
+      status: m.status ?? null,
+      points: parseFrd(files[i].data).freq.length,
       valid_from_hz: Number(/^\s*\*\s*Valid from\s*=\s*([0-9.]+)/m.exec(m.text)?.[1] ?? NaN),
       target_valid_from: /^\s*\*\s*Merge target valid from\s*=\s*(.+)$/m.exec(m.text)?.[1] ?? null,
       residual: /phase residual\s*([0-9.]+)\s*deg/.exec(m.text)?.[1] ?? null,
@@ -597,14 +644,22 @@ export function exportPackage(x: ExportInput): { name: string; data: string }[] 
     'Each .frd is one source: below its splice band the near field plus a near-to-far model, above it the',
     'gated far field. The header (Merge …) says how it was made, its residual and from where it is valid.',
     'Baffle step and diffraction are IN these files (full space): do NOT also switch on the diffraction tool',
-    'in VituixCAD. Phase: as measured, t = 0 on the session time base.',
+    'in VituixCAD.',
+    `Phase: ${phaseConventionText(phase)}.`,
+    `Grid: ${gridText(grid)}.`,
+    ...(phase.kind === 'minphase' ? ['', 'WARNING: minimum phase. The measured timing between the sources is NOT in these files.'] : []),
+    '',
+    'Crossover Studio reads this package back as it is (drop the .zip on Your project).',
   ].join('\n');
-  return [
-    ...x.merges.map((m) => ({ name: m.fileName, data: m.text })),
-    ...x.session.impedances.map((z) => ({ name: z.name, data: z.zmaText })),
-    { name: 'manifest.json', data: JSON.stringify(manifest, null, 1) + '\n' },
-    { name: 'leesmij.txt', data: readme + '\n' },
-  ];
+  return {
+    ok: true,
+    files: [
+      ...files,
+      ...x.session.impedances.map((z) => ({ name: z.name, data: z.zmaText })),
+      { name: 'manifest.json', data: JSON.stringify(manifest, null, 1) + '\n' },
+      { name: 'leesmij.txt', data: readme + '\n' },
+    ],
+  };
 }
 
 export { interpLog as interpLogMerge };
