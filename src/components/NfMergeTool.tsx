@@ -1311,6 +1311,22 @@ export default function NfMergeTool(props: NfMergeToolProps) {
               />
             )}
 
+            {step === 'merge' && (
+              <DriverOverview
+                rows={drivers.map((d) => ({
+                  stem: d.stem,
+                  label: d.label,
+                  comp: computed.get(d.stem) ?? null,
+                  status: statusFor(d.stem),
+                  accepted: !!st.accepted[d.stem],
+                  validFrom: num(cfg[d.stem]?.validFrom ?? ''),
+                  windowSrc: cfg[d.stem]?.winMode === 'proposal' ? 'proposal' : cfg[d.stem]?.winMode === 'self' ? 'self' : 'header',
+                }))}
+                active={tab}
+                onSelect={setTab}
+              />
+            )}
+
             {step === 'merge' && active && (
               <>
                 <p className="nfm-window">
@@ -1821,6 +1837,123 @@ export function UseStatusLine({ status }: { status: UseStatus }) {
 
 /* ------------------------------------------------------------------ */
 
+/** I-4 B-4 guide, step 4 — every driver at a glance: its numbers, its state and its SPL; one click opens it. */
+interface OverviewRow {
+  stem: string;
+  label: string;
+  comp: Computed | null;
+  status: MergeStatus | null;
+  accepted: boolean;
+  validFrom: number | null;
+  windowSrc: 'proposal' | 'self' | 'header';
+}
+const OVERVIEW_COLORS = ['var(--fg, #2c3e50)', '#c0392b', '#2980b9', '#27ae60', '#8e44ad', '#d35400'];
+function DriverOverview(p: { rows: OverviewRow[]; active: string; onSelect: (stem: string) => void }) {
+  const all: Series[] = [];
+  p.rows.forEach((row, i) => {
+    const r = row.comp?.result;
+    if (r) all.push({ id: row.stem, label: row.label, color: OVERVIEW_COLORS[i % OVERVIEW_COLORS.length], x: r.freq, y: r.spl.map((v, k) => (r.freq[k] >= 20 && r.freq[k] <= 20000 ? v : NaN)), width: 2 });
+  });
+  const ys = all.flatMap((x) => x.y.filter(Number.isFinite));
+  const top = ys.length ? Math.ceil(Math.max(...ys) / 5) * 5 + 5 : 0;
+  return (
+    <section className="nfm-overview" aria-label={t('Overview per driver')}>
+      <h3>{t('Overview per driver')}</h3>
+      <div className="nfm-overview-grid">
+        {p.rows.map((row) => {
+          const c = row.comp;
+          const r = c?.result;
+          const inp = c?.input;
+          const grid = r?.freq ?? [];
+          const mask = grid.map((f) => f >= 20 && f <= 3000);
+          const peak = r ? Math.max(...r.spl.filter((_, i) => mask[i])) : 0;
+          const norm = (a: number[]) => a.map((v, i) => (mask[i] ? v - peak : NaN));
+          const series: Series[] = r
+            ? [
+                { id: 'pred', label: t('near field + model'), color: '#2980b9', x: grid, y: norm(r.predictionDb), dash: '5 3' },
+                { id: 'far', label: t('far field, gated as used'), color: '#7f8c8d', x: grid, y: norm(r.farGatedDb) },
+                { id: 'res', label: t('result'), color: 'var(--fg, #2c3e50)', x: grid, y: norm(r.spl), width: 3 },
+              ]
+            : [];
+          const tMs = inp ? inp.gate.rightMs : null;
+          return (
+            <div key={row.stem} className={`nfm-card nfm-overview-card${row.stem === p.active ? ' active' : ''}`}>
+              <h4>
+                <button type="button" className="linkish" onClick={() => p.onSelect(row.stem)}>
+                  {row.label}
+                </button>{' '}
+                <span className={`nfm-status nfm-${row.status ?? 'none'}`}>{row.status ? t(STATUS_LABEL[row.status]) : '—'}</span>
+                {row.accepted && <span className="nfm-accepted"> ✓ {t('accepted')}</span>}
+              </h4>
+              {r && inp && c?.fit && c?.splice ? (
+                <div className="nfm-overview-body">
+                  <Chart
+                    series={series}
+                    xDomain={[20, 3000]}
+                    yDomain={[-40, 5]}
+                    yTickStep={10}
+                    yUnit="dB"
+                    height={230}
+                    xBands={[
+                      { from: c.fit[0], to: c.fit[1], color: '#3498db', opacity: 0.1 },
+                      { from: c.splice[0], to: c.splice[1], color: '#3498db', opacity: 0.22 },
+                    ]}
+                    xMarkers={row.validFrom !== null ? [{ x: row.validFrom, label: t('valid from'), color: '#c0392b' }] : []}
+                  />
+                  <table className="nfm-overview-table">
+                    <tbody>
+                      <tr>
+                        <th>{t('Window')}</th>
+                        <td>
+                          T {tmsFmt(tMs)} ms · 1/T {(1000 / (tMs ?? NaN)).toFixed(0)} Hz ·{' '}
+                          {row.windowSrc === 'proposal' ? t('the proposal') : row.windowSrc === 'self' ? t('set by hand') : t('the FRD header')}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>{t('model near → far')}</th>
+                        <td>{inp.model.kind === 'an4' ? `AN4 f0 ${inp.model.f0Hz.toFixed(0)} Hz` : inp.model.kind === 'shelf' ? `shelf ${inp.model.depthDb} dB @ ${inp.model.hz} Hz` : t('none')}</td>
+                      </tr>
+                      <tr>
+                        <th>{t('fit band')}</th>
+                        <td>
+                          {c.fit[0].toFixed(0)}–{c.fit[1].toFixed(0)} Hz · {t('handover')} {c.splice[0].toFixed(0)}–{c.splice[1].toFixed(0)} Hz
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>{t('residual')}</th>
+                        <td>
+                          {r.fit.residualRmsDeg.toFixed(2)}° / {r.fit.residualRmsDb.toFixed(2)} dB · τ {r.fit.delayMs.toFixed(3)} ms · {t('gain')} {r.fit.gainDb.toFixed(2)} dB · {t('polarity')} {r.fit.polarityDeg}°
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>{t('valid from')}</th>
+                        <td>{row.validFrom !== null ? `${row.validFrom} Hz` : t('not stated')}</td>
+                      </tr>
+                      <tr>
+                        <th>{t('flags')}</th>
+                        <td>{r.flags.length === 0 ? t('none') : r.flags.length}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="derived">{c?.error ?? t('not computed yet')}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {all.length > 1 && (
+        <div className="nfm-chart">
+          <strong>{t('All merged results, on their own level')}</strong>
+          <Chart series={all} xDomain={[20, 20000]} yDomain={[top - 50, top]} yTickStep={10} yUnit="dB" height={220} />
+        </div>
+      )}
+    </section>
+  );
+}
+const tmsFmt = (v: number | null) => (v === null ? '—' : v.toFixed(3));
+
 function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionModel: boolean; setReflectionModel: (v: boolean) => void; sd: number | null; targetFromHz: number | null }) {
   const comp = p.comp;
   const r = comp?.result;
@@ -1842,7 +1975,7 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
   const spl: Series[] = [
     { id: 'pred', label: t('near field + model'), color: '#2980b9', x: grid, y: norm(r.predictionDb), dash: '5 3' },
     { id: 'far', label: t('far field, gated as used'), color: '#7f8c8d', x: grid, y: norm(r.farGatedDb) },
-    { id: 'res', label: t('result'), color: '#2c3e50', x: grid, y: norm(r.spl), width: 3 },
+    { id: 'res', label: t('result'), color: 'var(--fg, #2c3e50)', x: grid, y: norm(r.spl), width: 3 },
   ];
   const toArrival = (ph: number[]) =>
     ph.map((v, i) => {

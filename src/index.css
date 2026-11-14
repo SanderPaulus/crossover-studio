@@ -5214,3 +5214,13 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .linkish { background: none; border: none; color: #2a78d6; padding: 0; cursor: pointer; text-decoration: underline; }
 label.nfm-inline-check { display: inline-flex; flex-direction: row; align-items: center; gap: 0.35rem; }
 label.nfm-inline-check input { width: auto; margin: 0; }
+.nfm-overview { display: flex; flex-direction: column; gap: 0.6rem; }
+.nfm-overview h3 { margin: 0; }
+.nfm-overview-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+.nfm-overview-body { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(16rem, 1fr); gap: 0.75rem; align-items: start; }
+@media (max-width: 1100px) { .nfm-overview-body { grid-template-columns: minmax(0, 1fr); } }
+.nfm-overview-card.active { border-color: var(--accent, #3b82f6); box-shadow: 0 0 0 1px var(--accent, #3b82f6); }
+.nfm-overview-card h4 { margin: 0 0 0.3rem; }
+.nfm-overview-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+.nfm-overview-table th { text-align: left; font-weight: 500; opacity: 0.75; padding: 0.1rem 0.5rem 0.1rem 0; white-space: nowrap; vertical-align: top; }
+.nfm-overview-table td { padding: 0.1rem 0; }

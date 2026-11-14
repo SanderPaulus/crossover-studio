@@ -630,7 +630,7 @@ export default function Chart({
               // Dashed series show their actual dash pattern — with several
               // ghost curves the pattern is what tells them apart in the chart.
               <svg className="legend-key legend-key-dash" viewBox="0 0 22 6" aria-hidden>
-                <line x1="0" y1="3" x2="22" y2="3" stroke={s.color} strokeWidth="2.5" strokeDasharray={s.dash} />
+                <line x1="0" y1="3" x2="22" y2="3" style={{ stroke: s.color }} strokeWidth="2.5" strokeDasharray={s.dash} />
               </svg>
             ) : (
               <span className="legend-key" style={{ background: s.color }} />
@@ -827,7 +827,7 @@ export default function Chart({
             key={key}
             d={d}
             fill="none"
-            stroke={color}
+            style={{ stroke: color }}
             strokeWidth={s.width ?? 2}
             strokeLinejoin="round"
             strokeLinecap="round"

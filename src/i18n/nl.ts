@@ -3044,4 +3044,11 @@ export const nl: Record<string, string> = {
     'Nog niets geaccepteerd: accepteer eerst een merge in stap 4.',
   'no accepted merge for this branch':
     'geen geaccepteerde merge voor deze tak',
+  // ── I-4 B-4: overzicht per driver ──────────────────────────────
+  'Overview per driver':
+    'Overzicht per driver',
+  'All merged results, on their own level':
+    'Alle gemergede resultaten, op hun eigen niveau',
+  'not computed yet':
+    'nog niet berekend',
 };

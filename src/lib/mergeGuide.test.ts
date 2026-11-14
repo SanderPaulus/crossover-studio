@@ -193,6 +193,14 @@ describe('the tool — what a source scan can see', () => {
     expect(sticky).toBeGreaterThan(-1);
     expect(narrow).toBeGreaterThan(sticky);
   });
+  it('step 4 opens with an overview: one row per driver from the merges already computed, each with its SPL', () => {
+    expect(src).toMatch(/\{step === 'merge' && \(\s*<DriverOverview/);
+    expect(src).toMatch(/comp: computed\.get\(d\.stem\)/); // no second computation for the overview
+    const body = src.slice(src.indexOf('function DriverOverview('), src.indexOf('function Charts('));
+    expect(body).toMatch(/<Chart\b/);
+    expect(body).toMatch(/predictionDb[\s\S]*farGatedDb[\s\S]*\.spl/);
+    expect(body).not.toMatch(/mergeImpulsesV2\(/);
+  });
   it('the window and merge panels remount per driver: a draft typed for one driver cannot land on another', () => {
     expect(src).toMatch(/<WindowStep\s+key=\{active\.stem\}/);
     expect(src).toMatch(/<WorkPanel\s+key=\{active\.stem\}/);
