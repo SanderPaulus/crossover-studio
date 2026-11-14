@@ -5135,7 +5135,7 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-head-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .nfm-head-bar h2 { margin: 0; }
 .nfm-layout { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
-@media (max-width: 900px) { .nfm-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .nfm-layout { grid-template-columns: minmax(0, 1fr); } .nfm-sessions { position: static; } }
 .nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0; }
 .nfm-sessions ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9em; }
 .nfm-sessions li.active a { font-weight: 700; }
@@ -5180,3 +5180,36 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-warn { border-left: 3px solid #b45309; padding-left: 0.5rem; }
 .nfm-head { max-height: 14rem; overflow: auto; font-size: 0.75em; background: var(--bg); padding: 0.5rem; border-radius: 6px; }
 .nfm-provenance { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.4rem 0.6rem; border-left: 3px solid #15803d; margin-top: 0.4rem; }
+
+/* I-4 B-4 guide — the merge tool in five steps */
+.nfm-guide-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem; }
+.nfm-steps { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; padding: 0; margin: 0 0 1rem; }
+.nfm-step button { background: none; border: 1px solid var(--border, #d0d5dd); border-radius: 999px; padding: 0.3rem 0.8rem; color: var(--muted, #6b7280); cursor: pointer; }
+.nfm-step button:disabled { cursor: default; opacity: 0.6; }
+.nfm-step-active button { border-color: #2a78d6; color: #2a78d6; font-weight: 700; }
+.nfm-step-done button { color: var(--ok, #2e7d32); border-color: var(--ok, #2e7d32); }
+.nfm-step-num { display: inline-block; min-width: 1.2em; text-align: center; }
+.nfm-stepbody { margin-bottom: 1rem; }
+.nfm-roles { border-collapse: collapse; margin: 0.5rem 0 1rem; }
+.nfm-roles th, .nfm-roles td { text-align: left; padding: 0.25rem 0.6rem 0.25rem 0; border-bottom: 1px solid var(--border, #e5e7eb); }
+.nfm-proposed { font-size: 0.75em; padding: 0.05rem 0.4rem; border-radius: 999px; background: #eef4fd; color: #3b6fc4; white-space: nowrap; }
+.nfm-wayprops { list-style: none; padding: 0; }
+.nfm-wayprops li { margin: 0.3rem 0; }
+.nfm-primary { background: #2a78d6; color: #fff; border: 1px solid #2a78d6; }
+.nfm-primary:disabled { background: #9db8de; border-color: #9db8de; }
+.nfm-setup-step { display: grid; grid-template-columns: minmax(0, 560px) minmax(18rem, 1fr); gap: 1.2rem; align-items: start; }
+@media (max-width: 1100px) { .nfm-setup-step { grid-template-columns: 1fr; } }
+.nfm-drawing { width: 100%; height: auto; border-radius: 8px; }
+.nfm-abcd { margin: 0.5rem 0; }
+.nfm-letter { display: inline-block; width: 1.4em; height: 1.4em; line-height: 1.4em; text-align: center; border-radius: 5px; background: #1a1a1a; color: #fff; font-weight: 700; margin-right: 0.3rem; }
+.nfm-planeq label { display: block; margin: 0.2rem 0; }
+.nfm-planelist { list-style: none; padding-left: 1.2rem; }
+.nfm-window-step { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 1100px) { .nfm-window-step { grid-template-columns: 1fr; } }
+.nfm-cards { display: grid; gap: 1rem; }
+.nfm-card { border: 1px solid var(--border, #d0d5dd); border-radius: 8px; padding: 0.6rem 0.8rem; }
+.nfm-card h4 { margin-top: 0; }
+.nfm-nav { display: flex; justify-content: space-between; margin-top: 1rem; }
+.linkish { background: none; border: none; color: #2a78d6; padding: 0; cursor: pointer; text-decoration: underline; }
+label.nfm-inline-check { display: inline-flex; flex-direction: row; align-items: center; gap: 0.35rem; }
+label.nfm-inline-check input { width: auto; margin: 0; }

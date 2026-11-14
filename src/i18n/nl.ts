@@ -2799,4 +2799,249 @@ export const nl: Record<string, string> = {
     'de kastgeometrie (onderste van het paar)',
   'overhang stated as':
     'overstek opgegeven als',
+  // ── I-4 B-4: de guide in vijf stappen ──────────────────────────────
+  '{d}: path {p} mm from C, D and the height; the PIRs say {m} mm':
+    '{d}: pad {p} mm uit C, D en de hoogte; de PIR\'s zeggen {m} mm',
+  'more than {x} mm apart: check C, D or the driver heights':
+    'meer dan {x} mm uit elkaar: controleer C, D of de driverhoogtes',
+  'NF/FF merge · session {s}':
+    'NF/FF-merge · sessie {s}',
+  'no calibration':
+    'geen kalibratie',
+  'calibration from the FRD exports':
+    'kalibratie uit de FRD-exports',
+  'time base':
+    'tijdbasis',
+  'time base not shared':
+    'tijdbasis niet gedeeld',
+  'Files':
+    'Bestanden',
+  'Set-up':
+    'Opstelling',
+  'Merge per driver':
+    'Merge per driver',
+  'The tool proposes a role and a driver for every file, from its name and its content. Confirm them in one list.':
+    'De tool stelt per bestand een rol en een driver voor, uit naam en inhoud. Bevestig ze in één lijst.',
+  'file':
+    'bestand',
+  'role':
+    'rol',
+  'content':
+    'inhoud',
+  'impedance':
+    'impedantie',
+  'not read by this tool':
+    'niet gelezen door deze tool',
+  'FRD export of {p}':
+    'FRD-export van {p}',
+  'role of {f}':
+    'rol van {f}',
+  'ignore':
+    'negeren',
+  'proposed':
+    'voorgesteld',
+  'driver of {f}':
+    'driver van {f}',
+  'impulse, peak at {ms} ms':
+    'impuls, piek op {ms} ms',
+  'FRD text':
+    'FRD-tekst',
+  'Which driver of the design each one is':
+    'Welke driver van het ontwerp elk bestand is',
+  'cone area of {d}':
+    'conusoppervlak van {d}',
+  '(the design states none; needed for ka = 1)':
+    '(het ontwerp noemt er geen; nodig voor ka = 1)',
+  'the near field peaks later ({n} ms) than the far field ({f} ms): are the roles swapped?':
+    'het nabije veld piekt later ({n} ms) dan het verre veld ({f} ms): zijn de rollen verwisseld?',
+  'Take over the proposals and confirm':
+    'Voorstellen overnemen en bevestigen',
+  'confirmed':
+    'bevestigd',
+  'The tool works out per driver where floor and table top give a reflection, and whether it falls in the window. That is why these four measures.':
+    'De tool rekent per driver uit waar vloer en tafelblad een reflectie geven, en of die in het venster valt. Daarom deze vier maten.',
+  'How was the measurement set up?':
+    'Hoe stond de meting opgesteld?',
+  'Four measures, once per set-up. The tool keeps them.':
+    'Vier maten, één keer per opstelling. De tool bewaart ze.',
+  'Earlier set-up':
+    'Eerdere opstelling',
+  'earlier set-up':
+    'eerdere opstelling',
+  '— choose, or fill in a new one —':
+    '— kies, of vul een nieuwe in —',
+  'Cabinet bottom above the floor':
+    'Kastbodem boven de vloer',
+  'A: cabinet bottom above the floor':
+    'A: kastbodem boven de vloer',
+  'Standing on the floor: fill in 0.':
+    'Staat de kast op de vloer, vul 0 in.',
+  'Table top reaches beyond the baffle':
+    'Tafelblad steekt uit vóór de baffle',
+  'B: overhang stated as':
+    'B: overstek gesteld als',
+  'a measure':
+    'een maat',
+  'at most …':
+    'ten hoogste …',
+  'don’t know':
+    'weet ik niet',
+  'B: overhang at most':
+    'B: overstek ten hoogste',
+  'B: overhang':
+    'B: overstek',
+  'With “don’t know” the floor is not taken into account.':
+    'Bij “weet ik niet” wordt de vloer niet meegenomen.',
+  'Microphone to the baffle':
+    'Microfoon tot de baffle',
+  'C: microphone to the baffle':
+    'C: microfoon tot de baffle',
+  'Microphone above the floor':
+    'Microfoon boven de vloer',
+  'D: microphone above the floor':
+    'D: microfoon boven de vloer',
+  'C and D are checked against the arrival times in your PIRs.':
+    'C en D worden gecontroleerd tegen de looptijden in je PIR\'s.',
+  'Is there anything inside the blue circles?':
+    'Staat er iets binnen de blauwe cirkels?',
+  'planes':
+    'vlakken',
+  'No, only floor and table':
+    'Nee, alleen vloer en tafel',
+  'Yes: wall, ceiling or furniture':
+    'Ja: wand, plafond of meubel',
+  'Don’t know':
+    'Weet ik niet',
+  'kind of plane':
+    'soort vlak',
+  'ceiling (height above the floor)':
+    'plafond (hoogte boven de vloer)',
+  'wall or furniture beside the path (distance)':
+    'wand of meubel naast het pad (afstand)',
+  'wall behind the cabinet (distance)':
+    'wand achter de kast (afstand)',
+  'wall behind the microphone (distance)':
+    'wand achter de microfoon (afstand)',
+  'plane distance':
+    'afstand van het vlak',
+  'remove plane':
+    'vlak verwijderen',
+  '+ another plane':
+    '+ nog een vlak',
+  'The merges of this session will be called “not checked for reflections”.':
+    'De merges van deze sessie heten dan “niet op reflecties gecontroleerd”.',
+  'Driver heights above the measured object’s bottom (its own geometry)':
+    'Driverhoogtes boven de bodem van het gemeten object (zijn eigen geometrie)',
+  'Driver heights from your design':
+    'Driverhoogtes uit je ontwerp',
+  'height of {d} above the object’s bottom':
+    'hoogte van {d} boven de bodem van het object',
+  'above the floor':
+    'boven de vloer',
+  '— {m}':
+    '— {m}',
+  'Still missing: {m}.':
+    'Nog nodig: {m}.',
+  'name, e.g. test cabinet on table — Aug 2026':
+    'naam, bijv. testkast op tafel — aug 2026',
+  'set-up name':
+    'naam van de opstelling',
+  'Keep this set-up':
+    'Deze opstelling bewaren',
+  '{src}, T = {tt} ms, 1/T = {hz} Hz':
+    '{src}, T = {tt} ms, 1/T = {hz} Hz',
+  'from the FRD header':
+    'uit de FRD-kop',
+  'the proposal, taken over':
+    'het voorstel, overgenomen',
+  'set by hand':
+    'met de hand gezet',
+  'change in step 3':
+    'wijzig in stap 3',
+  '← previous':
+    '← vorige',
+  'next →':
+    'volgende →',
+  'only what stands inside counts ({x} m)':
+    'alleen wat hierbinnen staat telt ({x} m)',
+  'only what stands inside counts (c·T/2)':
+    'alleen wat hierbinnen staat telt (c·T/2)',
+  'Side view of the set-up: cabinet on a table, microphone on a stand, the measures A to D and the floor reflection':
+    'Zijaanzicht van de opstelling: kast op een tafel, microfoon op een statief, met de maten A tot D en de vloerreflectie',
+  'cabinet (side view)':
+    'kast (zijaanzicht)',
+  'drivers: positions from your design':
+    'drivers: posities uit je ontwerp',
+  'floor reflection':
+    'vloerreflectie',
+  'window (proposed)':
+    'venster (voorgesteld)',
+  'Tukey flank':
+    'Tukey-flank',
+  'knee':
+    'knik',
+  'FRD header end':
+    'einde FRD-kop',
+  'residual (°) against the window end':
+    'residu (°) tegen het venstereinde',
+  'An FRD-only far field is already gated: there is no impulse to show.':
+    'Een ver veld dat alleen als FRD bestaat is al gevensterd: er is geen impuls om te tonen.',
+  'The window cuts the direct sound out of the measurement, before the first reflection.':
+    'Het venster knipt het directe geluid uit de meting, vóór de eerste reflectie.',
+  'proposed from the measurement':
+    'voorgesteld uit de meting',
+  'Working out the proposal: one merge per window end':
+    'Het voorstel wordt uitgerekend: één merge per venstereinde',
+  'The page stays usable meanwhile.':
+    'De pagina blijft intussen bruikbaar.',
+  'begin {b} ms before the peak · end {e} ms after it · Tukey {k}':
+    'begin {b} ms vóór de piek · einde {e} ms erna · Tukey {k}',
+  'Why here: {w}.':
+    'Waarom hier: {w}.',
+  'Take over the proposal':
+    'Voorstel overnemen',
+  'no FRD export with a window header':
+    'geen FRD-export met een vensterkop',
+  'Window from the FRD header':
+    'Venster uit de FRD-kop',
+  'Set it yourself':
+    'Zelf zetten',
+  'In use: {m}, T = {tt} ms, 1/T = {hz} Hz':
+    'In gebruik: {m}, T = {tt} ms, 1/T = {hz} Hz',
+  'the proposal':
+    'het voorstel',
+  'the FRD header':
+    'de FRD-kop',
+  'No window chosen yet.':
+    'Nog geen venster gekozen.',
+  'Check: residual against the window end':
+    'Controle: residu tegen het venstereinde',
+  'proposed end':
+    'voorgesteld einde',
+  'The knee: the last end before the residual rises more than {d}° above its lowest so far (a convention).':
+    'De knik: het laatste einde voordat het residu meer dan {d}° boven zijn laagste waarde tot dan stijgt (een conventie).',
+  'proposed, nothing to fill in':
+    'voorgesteld, je hoeft niets in te vullen',
+  'model near → far':
+    'model nabij → ver',
+  'this driver sits in its own pod':
+    'deze driver zit in een eigen pod',
+  'pod diameter':
+    'poddiameter',
+  '1/T to ka = 1':
+    '1/T tot ka = 1',
+  'Advanced: set it yourself ▸':
+    'Geavanceerd: zelf instellen ▸',
+  'to step 4: merge →':
+    'naar stap 4: merge →',
+  'change in step {n}':
+    'wijzig in stap {n}',
+  'Model and fit':
+    'Model en fit',
+  'export and “Use in project…” are in step 5':
+    'export en “Gebruik in project…” staan in stap 5',
+  'Nothing accepted yet: accept a merge in step 4 first.':
+    'Nog niets geaccepteerd: accepteer eerst een merge in stap 4.',
+  'no accepted merge for this branch':
+    'geen geaccepteerde merge voor deze tak',
 };

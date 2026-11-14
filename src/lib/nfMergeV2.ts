@@ -734,8 +734,8 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
     rmsDb: number;
     A: Spec;
   }
-  const evaluate = (tau: number, sign: 1 | -1): Eval => {
-    const A = predictionThroughGate(tau, sign);
+  const evaluate = (tau: number, sign: 1 | -1, given?: Spec): Eval => {
+    const A = given ?? predictionThroughGate(tau, sign);
     let num = 0;
     let den = 0;
     for (let k = kLo; k <= kHi; k++) {
@@ -784,11 +784,18 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
   const span = 0.5 / fitLo;
   let step = 4 / fs;
   let bestEval: Eval | null = null;
-  for (const sign of [1, -1] as const) {
-    for (let t = tau0 - span; t <= tau0 + span; t += step) {
-      const e = evaluate(t, sign);
-      if (e.gain > 0 && (!bestEval || e.rmsDeg < bestEval.rmsDeg)) bestEval = e;
-    }
+  /* The prediction is linear in the sign, and IEEE rounding is symmetric, so A(τ, −1) is EXACTLY −A(τ, +1)
+   * (every product, butterfly and window multiply negates bit for bit). One FFT pair per delay instead of
+   * two; the candidates are still judged in the original order (all +1, then all −1), so a tie resolves
+   * as before. Measured: the same fit to the last bit (nfMergeV2.test.ts pins it). */
+  const negated: Eval[] = [];
+  for (let t = tau0 - span; t <= tau0 + span; t += step) {
+    const e = evaluate(t, 1);
+    if (e.gain > 0 && (!bestEval || e.rmsDeg < bestEval.rmsDeg)) bestEval = e;
+    negated.push(evaluate(t, -1, { re: e.A.re.map((v) => -v), im: e.A.im.map((v) => -v) }));
+  }
+  for (const e of negated) {
+    if (e.gain > 0 && (!bestEval || e.rmsDeg < bestEval.rmsDeg)) bestEval = e;
   }
   if (!bestEval) throw new MergeV2Error('fit', 'No delay in the search range gave a positive gain — the two files do not describe the same source.');
   for (const next of [8e-6, 1e-6, 0.25e-6]) {

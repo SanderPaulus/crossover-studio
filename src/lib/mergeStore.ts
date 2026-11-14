@@ -15,10 +15,12 @@ import type { MicCal } from './micCal.ts';
 
 /** Bumped when the record shape changes; an older record opens with what it has and says so. */
 /** 2 (I-4 PIR-only): a second store, `calibrations` — a microphone file uploaded once, chosen per session. */
-export const MERGE_STORE_VERSION = 2;
+export const MERGE_STORE_VERSION = 3;
+/* 3 (I-4 B-4 guide): a third store, `setups` — a measuring set-up (A–D and the planes answer), named and chosen again. */
 const DB_NAME = 'crossover-studio-merge';
 const STORE = 'sessions';
 const CAL_STORE = 'calibrations';
+const SETUP_STORE = 'setups';
 
 export interface StoredMergeSession<State = unknown> {
   id: string;
@@ -64,6 +66,7 @@ function open(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE, { keyPath: 'id' });
       if (!req.result.objectStoreNames.contains(CAL_STORE)) req.result.createObjectStore(CAL_STORE, { keyPath: 'id' });
+      if (!req.result.objectStoreNames.contains(SETUP_STORE)) req.result.createObjectStore(SETUP_STORE, { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -129,4 +132,29 @@ export async function listMicCals(): Promise<MicCal[]> {
 }
 export async function deleteMicCal(id: string): Promise<void> {
   await tx('readwrite', (s) => s.delete(id), CAL_STORE);
+}
+
+/* ---- measuring set-ups (I-4 B-4 guide, step 2) ---- */
+
+export interface StoredSetup<D = unknown> {
+  id: string;
+  name: string;
+  savedAt: string;
+  data: D;
+}
+export function asStoredSetup(x: unknown): StoredSetup | null {
+  if (!x || typeof x !== 'object') return null;
+  const r = x as Record<string, unknown>;
+  if (typeof r.id !== 'string' || typeof r.name !== 'string' || typeof r.savedAt !== 'string' || !r.data || typeof r.data !== 'object') return null;
+  return { id: r.id, name: r.name, savedAt: r.savedAt, data: r.data };
+}
+export async function saveSetup(x: StoredSetup): Promise<void> {
+  await tx('readwrite', (s) => s.put(x), SETUP_STORE);
+}
+export async function listSetups(): Promise<StoredSetup[]> {
+  const all = (await tx('readonly', (s) => s.getAll(), SETUP_STORE)) as unknown[];
+  return all.map(asStoredSetup).filter((c): c is StoredSetup => c !== null).sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+}
+export async function deleteSetup(id: string): Promise<void> {
+  await tx('readwrite', (s) => s.delete(id), SETUP_STORE);
 }

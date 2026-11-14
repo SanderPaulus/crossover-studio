@@ -76,6 +76,18 @@ export interface LoadedSession {
   notes: string[];
 }
 
+/**
+ * I-4 B-4 guide, step 1 — which driver a stem is, PROPOSED from its name: the way (low / mid / high)
+ * and, for a pair, the member. A proposal the designer confirms, never a decision; null = no proposal.
+ */
+export function proposeWay(stem: string): { way: MergeWay; member: 'upper' | 'lower' | null } | null {
+  const s = stem.toLowerCase();
+  const way: MergeWay | null = /\b(woofer|bass|low|wf|lf)\b/.test(s) ? 'low' : /\b(mid|midrange|squawker)\b/.test(s) ? 'mid' : /\b(tweeter|tw|high|hf)\b/.test(s) ? 'high' : null;
+  if (!way) return null;
+  const member = /\b(down|onder|lower|bottom)\b/.test(s) ? 'lower' : /\b(up|boven|upper|top)\b/.test(s) ? 'upper' : null;
+  return { way, member };
+}
+
 /** "woofer down hor 0.pir", "woofer_down_near.txt" → stem "woofer down", role far / near. */
 export function stemOf(name: string): { stem: string; role: SessionItem['role'] } {
   const base = name.replace(/\.[A-Za-z0-9]+$/, '').replace(/[_-]+/g, ' ').trim().toLowerCase();
@@ -99,11 +111,9 @@ function headerOf(text: string): SessionItem['header'] {
   return { leftWindowMs: l, referenceTimeMs: r, rightWindowMs: rt, rightTaper: tk ? Number(tk[1].replace(',', '.')) : 0 };
 }
 
-/** The key two spellings of one measurement share: "woofer down hor 0.pir" = "woofer_down_hor_0.pir". */
-const keyOf = (name: string): string => {
-  const { stem, role } = stemOf(name);
-  return `${stem}|${role}`;
-};
+/** I-4 B-4 guide, step 1 — the designer's confirmed role per file name; absent = the name's proposal. */
+export type RoleOverride = { role: 'near' | 'far' | 'port' | 'ignore'; stem: string };
+export type RoleOverrides = Record<string, RoleOverride>;
 const sourceFileOf = (text: string): string | null => /^\s*\*\s*Source file\s*=\s*(.+?)\s*$/im.exec(text)?.[1] ?? null;
 const decode = (b: Uint8Array): string => new TextDecoder('latin1').decode(b);
 
@@ -113,8 +123,20 @@ const decode = (b: Uint8Array): string => new TextDecoder('latin1').decode(b);
  * on its own (the FRD route). Roles and pairing are a PRE-FILL from the file names — the section
  * shows them and the user can change them; nothing here is a fact about the measurement.
  */
-export function loadSession(name: string, files: readonly DroppedFile[]): LoadedSession {
+export function loadSession(name: string, files: readonly DroppedFile[], overrides: RoleOverrides = {}): LoadedSession {
   const notes: string[] = [];
+  /* a confirmed role wins over the name; a port is a near field under a port stem */
+  const roleOf = (n: string): { stem: string; role: SessionItem['role'] } | null => {
+    const o = overrides[n];
+    if (!o) return stemOf(n);
+    if (o.role === 'ignore') return null;
+    if (o.role === 'port') return { stem: PORT_STEM.test(o.stem) ? o.stem : `${o.stem} port`.trim(), role: 'near' };
+    return { stem: o.stem, role: o.role };
+  };
+  const keyOf = (n: string): string | null => {
+    const r = roleOf(n);
+    return r ? `${r.stem}|${r.role}` : null;
+  };
   const items = new Map<string, SessionItem>();
   const impedances: LoadedSession['impedances'] = [];
   const frds: { name: string; text: string }[] = [];
@@ -123,8 +145,10 @@ export function loadSession(name: string, files: readonly DroppedFile[]): Loaded
     if (lower.endsWith('.pir')) {
       try {
         const p = parsePir(f.bytes);
-        const { stem, role } = stemOf(f.name);
-        items.set(keyOf(f.name), { name: f.name, stem, role, pir: impulseFromPir(f.name, p, name), frdText: null, frdName: null, header: null });
+        const r = roleOf(f.name);
+        if (!r) continue;
+        const { stem, role } = r;
+        items.set(keyOf(f.name)!, { name: f.name, stem, role, pir: impulseFromPir(f.name, p, name), frdText: null, frdName: null, header: null });
       } catch (e) {
         notes.push(`${f.name}: ${e instanceof PirParseError ? e.message : String(e)}`);
       }
@@ -142,16 +166,21 @@ export function loadSession(name: string, files: readonly DroppedFile[]): Loaded
     } else notes.push(`${f.name}: not a measurement this section reads (.pir, .frd/.txt, .zma, .lim)`);
   }
   for (const fr of frds) {
+    if (overrides[fr.name]?.role === 'ignore') continue;
     const src = sourceFileOf(fr.text);
-    const owner = items.get(keyOf(src ?? fr.name)) ?? items.get(keyOf(fr.name));
+    const ks = keyOf(src ?? fr.name);
+    const kf = keyOf(fr.name);
+    const owner = (ks ? items.get(ks) : undefined) ?? (kf ? items.get(kf) : undefined);
     if (owner) {
       owner.frdText = fr.text;
       owner.frdName = fr.name;
       owner.header = headerOf(fr.text);
       continue;
     }
-    const { stem, role } = stemOf(fr.name);
-    items.set(keyOf(fr.name), { name: fr.name, stem, role, pir: null, frdText: fr.text, frdName: fr.name, header: headerOf(fr.text) });
+    const r = roleOf(fr.name);
+    if (!r || !kf) continue;
+    const { stem, role } = r;
+    items.set(kf, { name: fr.name, stem, role, pir: null, frdText: fr.text, frdName: fr.name, header: headerOf(fr.text) });
   }
   const list = [...items.values()].sort((a, b) => a.name.localeCompare(b.name));
   const stems = [...new Set(list.map((i) => i.stem))];
