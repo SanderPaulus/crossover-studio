@@ -494,6 +494,7 @@ import {
 import { bridgeDelaysUs, excessDelayMsOf } from './lib/vituixBridge.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import NfMergeTool, { type AcceptedSource } from './components/NfMergeTool.tsx';
+import ProjectMenu from './components/ProjectMenu.tsx';
 import type { CabinetGeometryForMerge } from './lib/mergeSession.ts';
 import { isLevelRelative, prepareBranchUse, type OtherBranch, mergeCardState, type Prepared } from './lib/useInProject.ts';
 import { parseFarOnlyBlock } from './lib/farOnly.ts';
@@ -1871,6 +1872,18 @@ export default function App() {
   });
   useEffect(() => {
     localStorage.setItem('ads-ui-mode', uiMode);
+  }, [uiMode]);
+  /** UI-3 — the last DESIGN view (guided or expert). Compare is a place of its
+   *  own in the top bar, so leaving it must land back on the view you left. */
+  const [designView, setDesignView] = useState<'guided' | 'expert'>(() => {
+    const v = localStorage.getItem('ads-design-view');
+    if (v === 'guided' || v === 'expert') return v;
+    return uiMode === 'compare' ? 'expert' : uiMode;
+  });
+  useEffect(() => {
+    if (uiMode === 'compare') return;
+    setDesignView(uiMode);
+    localStorage.setItem('ads-design-view', uiMode);
   }, [uiMode]);
 
   /** Pin the SPL chart to the top of the analysis pane while the rest scrolls. */
@@ -17602,50 +17615,66 @@ export default function App() {
               <LogoWord />
             </span>
           </h1>
-          {/* THE primary choice of the app — where am I? — so it sits first,
-              reads as one segmented control and is visibly heavier than the
-              utility buttons on the right. Preferences (layout, language,
-              theme) moved behind ⚙: they are set once, and as eight permanent
-              buttons they gave the mode switch the same weight as a theme
-              toggle. */}
-          <a
-            href="#/merge"
-            className={`merge-tool-link${mergeRoute.open ? ' active' : ''}`}
-            title={t('The NF/FF-merge tool: merge near and far field from a measuring session, on its own page, with or without a project.')}
-          >
-            {t('NF/FF merge')}
-          </a>
-          <div className="mode-switch" role="tablist" aria-label={t('Mode')}>
+          {/* UI-3 — THE PROJECT, then THE PLACE. The project menu holds what
+              acts on the whole project (new, open, save, examples); it used to
+              sit in the Your-project step between buttons that add one file.
+              The places are where you work — design, the NF/FF merge, compare —
+              and they are the primary choice of the app, so they sit first and
+              read as one segmented control. How the DESIGN place is shown
+              (guided or expert) is a view, not a place: it sits on the right
+              and only while you are designing. */}
+          <ProjectMenu
+            hasWork={!!(woofer || tweeter || midDrv || designs.length > 0)}
+            canSave={!!(woofer || tweeter)}
+            onSave={saveProject}
+            onOpenFile={(e) => {
+              if (mergeRoute.open) location.hash = '#/';
+              void loadProjectFromFile(e);
+            }}
+            onNew={resetProject}
+            onExample={(ways) => {
+              if (mergeRoute.open) location.hash = '#/';
+              if (uiMode === 'compare') setUiMode(designView);
+              if (ways === 3) loadDemo();
+              else void loadDemo2Way();
+            }}
+            autosaveNote={persistNote}
+          />
+          <nav className="mode-switch place-switch" aria-label={t('Where you work')}>
             {(
               [
-                ['guided', '🧭', 'Guided', 'A numbered route from measurements to a shopping list. The app decides the crossover, the filter shapes and the parts; you supply the facts about your speaker. Every check and warning stays visible.'],
-                ['expert', '🛠', 'Expert', 'Everything: alignment preference, acoustic slopes, phase metric, crossover pins, component tiers, the network editor. Overrides on top of the same engine.'],
+                ['design', '✏️', 'Design', 'Design the crossover: your measurements, your cabinet, your drivers, the requirements, the run and the build — guided or expert (switch on the right).'],
+                ['merge', '⇄', 'NF/FF merge', 'The NF/FF-merge tool: merge near and far field from a measuring session, on its own page, with or without a project.'],
                 ['compare', '🔬', 'Compare', 'Model versus measurement: open the project you designed with, load the response of the BUILT speaker, and see where the two differ — level and mic distance are aligned for you, the shape is what you judge.'],
               ] as const
-            ).map(([m, icon, label, tip]) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={uiMode === m}
-                className={uiMode === m ? 'active' : ''}
-                onClick={() => setUiMode(m)}
-                /* I-3 — the mode switch says which engine is behind guided.
-                   Null on v1, exactly as `designLevelNote` and `v1NoteFor`:
-                   with the flag off the app is what it always was, and that
-                   covers the words on a tooltip. */
-                title={[t(tip), m === 'guided' ? guidedEngineNote() : null]
-                  .filter((x): x is string => !!x)
-                  .map((x) => t(x))
-                  .join(' ')}
-              >
-                <span className="mode-icon" aria-hidden="true">{icon}</span>
-                {t(label)}
-              </button>
-            ))}
-          </div>
+            ).map(([pl, icon, label, tip]) => {
+              const here = mergeRoute.open ? 'merge' : uiMode === 'compare' ? 'compare' : 'design';
+              return (
+                <button
+                  key={pl}
+                  type="button"
+                  aria-current={here === pl ? 'page' : undefined}
+                  className={here === pl ? 'active' : ''}
+                  onClick={() => {
+                    if (pl === 'merge') {
+                      if (!mergeRoute.open) location.hash = '#/merge';
+                      return;
+                    }
+                    if (mergeRoute.open) location.hash = '#/';
+                    setUiMode(pl === 'compare' ? 'compare' : designView);
+                  }}
+                  title={t(tip)}
+                >
+                  <span className="mode-icon" aria-hidden="true">{icon}</span>
+                  {t(label)}
+                </button>
+              );
+            })}
+          </nav>
         </div>
-        <div className="status-chips">
+        {/* UI-3 — the chips read the DESIGN; on the merge page they would
+            judge something that is not on screen. */}
+        <div className={`status-chips${mergeRoute.open ? ' merge-hidden' : ''}`}>
           {simStale && (
             <span className="status-chip chip-bad" title={simStale.refusal.describe}>
               <span className="chip-dot" />
@@ -17783,6 +17812,36 @@ export default function App() {
           )}
         </div>
         <div className="tb-right">
+          {/* UI-3 — the VIEW of the design place: guided (a numbered route) or
+              expert (everything). Only while designing; the merge tool and
+              compare have no such choice. */}
+          {!mergeRoute.open && uiMode !== 'compare' && (
+            <div className="mode-switch view-switch" role="tablist" aria-label={t('Mode')}>
+              {(
+                [
+                  ['guided', '🧭', 'Guided', 'A numbered route from measurements to a shopping list. The app decides the crossover, the filter shapes and the parts; you supply the facts about your speaker. Every check and warning stays visible.'],
+                  ['expert', '🛠', 'Expert', 'Everything: alignment preference, acoustic slopes, phase metric, crossover pins, component tiers, the network editor. Overrides on top of the same engine.'],
+                ] as const
+              ).map(([m, icon, label, tip]) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={uiMode === m}
+                  className={uiMode === m ? 'active' : ''}
+                  onClick={() => setUiMode(m)}
+                  /* I-3 — the mode switch says which engine is behind guided. */
+                  title={[t(tip), m === 'guided' ? guidedEngineNote() : null]
+                    .filter((x): x is string => !!x)
+                    .map((x) => t(x))
+                    .join(' ')}
+                >
+                  <span className="mode-icon" aria-hidden="true">{icon}</span>
+                  {t(label)}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -17872,7 +17931,7 @@ export default function App() {
         </div>
       </header>
 
-      {uiMode === 'guided' && (
+      {uiMode === 'guided' && !mergeRoute.open && (
         /* GUIDED: a numbered route with a completion mark per step. It lives
            ABOVE the workspace as one fixed, centred bar — wayfinding must not
            move. When it sat inside the design pane it jumped between the
@@ -17906,6 +17965,11 @@ export default function App() {
         </nav>
       )}
 
+      {/* UI-3 — the merge page sits UNDER the top bar, in the flow of the app
+          shell, and the design workspace is hidden (not unmounted, so charts
+          and editors keep their state) while it is open. It used to be a
+          fixed overlay above everything, top bar included, and read as a
+          different website (Sander, 15-11-2026). */}
       {/* I-4 B-4 — the NF/FF-merge tool, a page of its own at #/merge. It works without a project;
           the design only receives its merged files through "Use in project…". */}
       {mergeRoute.open && (
@@ -17928,7 +17992,7 @@ export default function App() {
       )}
       <div
         ref={workspaceRef}
-        className={`workspace${designTab === 'network' && uiMode !== 'compare' ? ' wide-left' : ''}${
+        className={`workspace${mergeRoute.open ? ' merge-hidden' : ''}${designTab === 'network' && uiMode !== 'compare' ? ' wide-left' : ''}${
           uiMode === 'guided' &&
           (designTab === 'import' ||
             designTab === 'data' ||
@@ -17988,8 +18052,8 @@ export default function App() {
                 const need = stage ? requiredRowsOfStage(stage.id) : [];
                 if (need.length === 0) return null;
                 return (
-                  <div className="v2-stage-need">
-                    <strong>{t('Engine v2 needs from this step')}</strong>
+                  <details className="v2-stage-need">
+                    <summary><strong>{t('Engine v2 needs from this step')}</strong> <span className="derived">{t('— what the run can and cannot do without each')}</span></summary>
                     <ul className="v2-need">
                       {need.map((r) => (
                         <li key={r.id} title={r.travels}>
@@ -17998,13 +18062,26 @@ export default function App() {
                         </li>
                       ))}
                     </ul>
-                  </div>
+                  </details>
                 );
               })()}
             {uiMode === 'compare' ? comparePane : (
             <>
             {designTab === 'import' && (
               <>
+      {/* UI-3 — an empty project invites, it doesn't list: start with your
+          own measurements below, or open an example. The examples also live in
+          the 📁 Project menu; here is where someone new looks for them. */}
+      {!woofer && !tweeter && !midDrv && (
+        <div className="panel project-empty">
+          <strong>{t('Start with your own measurements')}</strong>
+          <span className="derived">{t('Drop a 0° response and an impedance per driver below — or open an example project first to see how it works:')}</span>
+          <span className="project-empty-actions">
+            <button type="button" onClick={loadDemo}>{t('3-way example')}</button>
+            <button type="button" onClick={() => void loadDemo2Way()}>{t('2-way example (mid + tweeter)')}</button>
+          </span>
+        </div>
+      )}
       <div className="panel">
         <div className="tool-groups">
           <div className="tool-group">
@@ -18149,11 +18226,24 @@ export default function App() {
                               {t('Phase of this file: {ph}', { ph: ph! })}
                             </span>
                           ))}
-                          {mergeV2[role].some((a) => isLevelRelative(a.text)) && (
-                            <span className="nl-warning" role="status">
-                              {t('Level of this file: RELATIVE — the impulses’ own scale (PIR + microphone file, no FRD export in the session). Every way of the design must then come from this session, or the sum is not a loudspeaker.')}
-                            </span>
-                          )}
+                          {mergeV2[role].some((a) => isLevelRelative(a.text)) && (() => {
+                            /* UI-3 — the relative level is a CONDITION, not a fault:
+                             * it only breaks the sum when another way of the design
+                             * does not come from the same session. Say which one,
+                             * and stay quiet (neutral) when every way does. */
+                            const sess = mergeV2[role].find((a) => isLevelRelative(a.text))?.session;
+                            const outside = (['low', 'mid', 'high'] as const)
+                              .filter((r) => (r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter))
+                              .filter((r) => !mergeV2[r].some((a) => a.session === sess && isLevelRelative(a.text)))
+                              .map((r) => `${t(r === 'low' ? 'woofer' : r === 'mid' ? 'midrange' : 'tweeter')} (${(r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter)!.name})`);
+                            return outside.length === 0 ? (
+                              <span className="derived">{t('Level: relative to this session — every way of the design comes from it ✓')}</span>
+                            ) : (
+                              <span className="nl-warning" role="status" title={t('Level of this file: RELATIVE — the impulses’ own scale (PIR + microphone file, no FRD export in the session). Every way of the design must then come from this session, or the sum is not a loudspeaker.')}>
+                                {t('Level relative to this session, but {ways} does not come from it — the levels of the ways do not match. Merge that way in the same session too.', { ways: outside.join(', ') })}
+                              </span>
+                            );
+                          })()}
                           {card.kind === 'replaced' && (
                             <span className="nl-warning" role="status">
                               {card.now
@@ -18211,6 +18301,13 @@ export default function App() {
               <p className="drop-anywhere-hint">
                 {t('⬇ Dropping works on this whole step — a .vxp set, saved project, catalog or filter file lands in the right place by itself; measurements ask which driver they belong to.')}
               </p>
+            </div>
+          </div>
+          {/* UI-3 — files from OTHER tools are their own group: they are not
+              a driver's measurements, and between the cards they read as one. */}
+          <div className="tool-group">
+            <span className="tool-group-label">{t('Import from other tools')}</span>
+            <div className="tool-group-body">
               {/* Hidden-input labels (the Load-project pattern), NOT bare native
                   inputs: the browser's own "Choose files / No file chosen" text
                   follows the BROWSER language and is untranslatable — the one
@@ -18277,45 +18374,6 @@ export default function App() {
               >
                 🔬 {t('Compare wizard')}
               </button>
-              <button
-                type="button"
-                onClick={loadDemo}
-                title={t('Load the 3-way KOAN 2951 session of Aug 2026: woofer pair (measured together), mid and tweeter at 0–60°, near-field cones + port, LIMP impedances, and the cabinet/rig as entered — the full three-branch flow, no VituixCAD project needed')}
-              >
-                {t('Load KOAN demo data')}
-              </button>
-              <button
-                type="button"
-                onClick={loadDemo2Way}
-                title={t('Load the bundled KOAN 2951 mid + tweeter as a two-way (casus 1b, Aug 2026): the merged midrange, the gated tweeter, both impedances, the measured cabinet and the requirements that casebook states')}
-              >
-                {t('Load 2-way demo (KOAN mid + tweeter)')}
-              </button>
-            </div>
-          </div>
-          <div className="tool-group">
-            <span className="tool-group-label">{t('Project')}</span>
-            <div className="tool-group-body">
-              <button
-                type="button"
-                onClick={saveProject}
-                disabled={!woofer && !tweeter}
-                title={t('Download everything (raw measurement files + design state) as one project file')}
-              >
-                {t('Save project')}
-              </button>
-              <label className="file-button" title={t('Restore a previously saved project file')}>
-                {t('Load project')}
-                <input
-                  type="file"
-                  accept=".json,.adsproj"
-                  onChange={loadProjectFromFile}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <button type="button" onClick={resetProject} title={t('Clear autosave and start fresh')}>
-                {t('Reset')}
-              </button>
             </div>
           </div>
           {/* NOT expert-only (Sanders "ook na een reset moet dit makkelijk te
@@ -18361,7 +18419,7 @@ export default function App() {
               </button>
               <span className="derived" style={{ flexBasis: '100%' }}>
                 {hasImportedCatalog()
-                  ? t('A catalog is loaded — it lives outside the project, so Reset keeps it.') + ' '
+                  ? t('A catalog is loaded — it lives outside the project, so a new project keeps it.') + ' '
                   : t('Built-in library only — import one, or take the demo catalog, to unlock snapping and real prices.') + ' '}
                 {t('{n} series', { n: allSeries().length })}
                 {disabledSeries().length > 0 && (
@@ -18383,8 +18441,14 @@ export default function App() {
         </div>
         {/* De bestandsINVENTARIS gaat over bestanden, dus hij hoort bij
             "Your project" -- niet bij wat je van een driver weet (Sander). */}
-      <div className="panel">
-        <h2>{t('Imported files')}</h2>
+      {/* UI-3 — the inventory repeats the cards above, file by file, with a
+          note and a remove per file. Kept (notes and removal live only here),
+          but folded: open it when you need it. */}
+      <details className="panel files-inventory">
+        <summary>
+          <h2>{t('All files in this project')}</h2>
+          <span className="derived"> {t('notes and removal per file')}</span>
+        </summary>
         {(() => {
           interface Row {
             key: string;
@@ -18551,7 +18615,7 @@ export default function App() {
             </div>
           ));
         })()}
-      </div>
+      </details>
         {storageFull && (
           <div className="verdict mismatch" style={{ margin: '0.6rem 0' }}>
             <strong>⚠ {storageFull}</strong>{' '}

@@ -9918,3 +9918,40 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **NOG NIET IN DE BROWSER BEKEKEN** — de pane draaide Sanders live-sessie, en een dev-server
   overneemt dat tabblad en wist zijn shortlist. Of een lang label in het schema overlapt is dus niet
   gezien.
+
+### UI-3-guards (projectmenu, plekken, merge-pagina onder de bovenbalk, Project-stap in blokken; alleen UI, 15-11-2026)
+
+- **Aanleiding (Sander, 15-11-2026):** de bestanden stonden onoverzichtelijk, "NF/FF merge" opende een kale pagina zonder kop, en "Reset" en "Load demo data" stonden niet op logische plekken.
+- **Projectmenu** (`src/components/ProjectMenu.tsx`, `project-menu/1.0`), linksboven in de bovenbalk, op elke plek: "Reset — new, empty project…", Open, Save, het 3-weg- en het 2-wegvoorbeeld, en de autosave-status.
+  - Reset en een voorbeeld laden VERVANGEN het project. Daarom vragen ze eerst bevestiging als er werk is, met "Eerst project opslaan" in dezelfde vraag. Tot nu toe herlaadde Reset de pagina zonder iets te vragen.
+  - Reset staat als ÉÉN item. "Nieuw project" en "Reset" waren dezelfde actie, en Sander zoekt het woord Reset.
+- **Plekken en weergave:**
+  - De plekken Design / NF/FF merge / Compare vormen de primaire schakelaar (`place-switch`).
+  - Guided/Expert is een WEERGAVE van Design (`view-switch`, rechts). Die staat er alleen tijdens het ontwerpen.
+  - `designView` onthoudt de laatste weergave, zodat je vanuit Compare terugkomt waar je was.
+- **De merge-pagina staat in de flow onder de bovenbalk.** Eerder was het een `position: fixed`-overlay die de bovenbalk afdekte.
+  - De werkplek, de stappenbalk en de statuschips worden verborgen (`merge-hidden`), niet ontkoppeld, zodat grafieken en editors hun staat houden.
+  - De kop zegt wat de tool doet en naar welk project en welke drivers het resultaat gaat. De versie staat in de tooltip.
+  - De lege pagina toont de vijf stappen uit `GUIDE_STEPS`, een grote dropzone en de uitleg.
+- **De Project-stap is ingedeeld in blokken:**
+  - lege-projectuitnodiging met de twee voorbeelden;
+  - Measurements;
+  - Import from other tools (VituixCAD, fasereferentie, verificatie, Compare-wizard);
+  - Component catalog;
+  - "All files in this project" ingeklapt (de notities en het verwijderen per bestand staan er nog);
+  - "Engine v2 needs from this step" ingeklapt, met dezelfde vastgepinde tekst.
+
+  Reset, opslaan, laden en de demoknoppen zijn weg uit deze stap. De wizard houdt zijn eigen demoknoppen.
+- **De relatieve-niveaumelding van een merge** is neutraal als élke weg van het ontwerp uit dezelfde sessie komt. Anders is het een waarschuwing die de weg en het bestand noemt die er niet uit komen. De oude zin staat in de tooltip.
+- **De Volgende-knop van elke guided-stap, en de vraagnavigatie van de eisenstap, is een vaste voetbalk** (`position: sticky; bottom: 0`). `.pane-body:has(...)` laat de onderste opvulling vallen.
+  - De eerste versie gebruikte `bottom: -2rem`. Dat werkte alleen als het paneel scrolt. In de gestapelde weergave (smal venster) scrolt de pagina, en dan viel de knop 32 px onder de rand (Sanders screenshot).
+  - Nagemeten bij 880 px (gestapeld): knop-onderkant 1076 = venster 1076. Bij 1440 px (naast elkaar): 900 = 900. Dat geldt bovenaan, halverwege en onderaan gescrold.
+- `src/lib/ui3Layout.test.tsx` (7 claims) bevat bronscans en een render van het menu:
+  - het menu is de enige resetplek;
+  - de demoknoppen staan niet tussen de imports;
+  - de drie plekken en de weergave;
+  - de merge-pagina is niet `fixed` en verbergt de werkplek;
+  - kop en versie;
+  - de lege pagina leest `GUIDE_STEPS`.
+- **Niet gedaan:** de bovenbalk op een telefoonbreedte is niet apart nagelopen. De Nederlandse teksten zijn toegevoegd maar niet in de browser bekeken. De lege toestand van een project is niet in de browser bekeken, omdat dat de lokale autosave had gewist.
+- **Gemeten (15-11-2026):** `npx tsc -b` groen. `npm run test:fast` **270,9 s, 248 bestanden (247 geslaagd, 1 overgeslagen), 3274 tests (3270 geslaagd, 4 overgeslagen), groen, alleen gedraaid met de dev-server gestopt, op de boom die gecommit wordt** (run gestart 11:22:19, ná de laatste bronbewerking). Alleen CLAUDE.md is daarna nog bewerkt, en geen enkele test leest dat bestand. Geen volle run: er is geen motor-, poort-, venster-, metriek- of corpuscode geraakt.

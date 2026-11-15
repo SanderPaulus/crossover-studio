@@ -317,6 +317,16 @@ const ARRIVAL_CHECK_MM = 50;
 /** How long one slice of the window proposal may hold the main thread before the page gets a turn (ms). */
 const PROPOSAL_SLICE_MS = 30;
 const STEP_LABEL: Record<GuideStep, string> = { files: 'Files', setup: 'Set-up', window: 'Window', merge: 'Merge per driver', export: 'Export' };
+/** UI-3 — one line per step for the empty page, so the route is visible
+ *  before a session is open (the page used to say only "open a session"). */
+const STEP_HINT: Record<GuideStep, string> = {
+  files: 'impulses (.pir) with their FRD exports, and the impedances',
+  setup: 'four measures of the set-up, to place the reflections',
+  window: 'where the far field is cut, per driver',
+  merge: 'near and far field joined and checked, per driver',
+  export: 'export the files, or hand them to the project',
+};
+const WAY_LABEL: Record<MergeWay, string> = { low: 'woofer', mid: 'midrange', high: 'tweeter' };
 
 const STATUS_LABEL: Record<MergeStatus, string> = {
   explained: 'explained',
@@ -962,17 +972,24 @@ export default function NfMergeTool(props: NfMergeToolProps) {
 
   return (
     <section className="nf-merge-tool" id="nf-merge-tool">
+      {/* UI-3 — a page under the app's own top bar: a heading that says what
+          the tool gives you, and where its result goes. The version stays in
+          the heading's tooltip; it is for whoever traces a file, not for the
+          reader. "Back to the design" is the Design tab in the top bar now. */}
       <header className="nfm-head-bar">
-        <h2>
-          {t('NF/FF merge')} <span className="derived">{NF_MERGE_V2_VERSION}</span>
-        </h2>
-        <a href="#/" className="nfm-back">
-          {t('← back to the design')}
-        </a>
+        <div>
+          <h2 title={NF_MERGE_V2_VERSION}>{t('NF/FF merge')}</h2>
+          <p className="nfm-lede">{t('Merge near field and far field into one response per driver, valid from the bass upward.')}</p>
+        </div>
+        <p className="nfm-delivers derived">
+          {(() => {
+            const ways = (Object.keys(WAY_LABEL) as MergeWay[]).filter((w) => props.responseNames[w]);
+            return ways.length > 0
+              ? t('The result goes to the open project: {w}.', { w: ways.map((w) => t(WAY_LABEL[w])).join(', ') })
+              : t('No project with measurements is open: export the merged files, or hand them to a new project.');
+          })()}
+        </p>
       </header>
-      <p className="derived">
-        {t('A tool of its own: it works without a project and keeps its sessions itself. Drop a session’s impulses (.pir) with their FRD exports — the window comes from the export’s header — and the impedances. Merge, accept, export; “Use in project…” hands the project the merged files, exactly as importing the export package would.')}
-      </p>
       {storeError && <p className="derived alert">{storeError}</p>}
 
       <div className="nfm-layout">
@@ -1590,7 +1607,34 @@ export default function NfMergeTool(props: NfMergeToolProps) {
             </div>
           </div>
         )}
-        {!session && <p className="derived nfm-empty">{t('Open a stored session on the left, or drop a new one.')}</p>}
+        {!session && (
+          /* UI-3 — the empty page shows the route, not just "open a session". */
+          <div className="nfm-intro">
+            <h3>{t('How it works')}</h3>
+            <ol className="nfm-intro-steps">
+              {GUIDE_STEPS.map((k, i) => (
+                <li key={k}>
+                  <span className="nfm-step-num">{i + 1}</span>
+                  <span>
+                    <strong>{t(STEP_LABEL[k])}</strong>
+                    <span className="derived"> — {t(STEP_HINT[k])}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <label className="dropzone nfm-intro-drop">
+              <span className="dz-icon" aria-hidden="true">⬇</span>
+              <span className="dz-text">
+                <strong>{sessions.length > 0 ? t('Open a session on the left, or drop a new one here') : t('Drop a measuring session here to start')}</strong>
+                <span>{t('.pir + their .frd/.txt exports + .zma/.lim')}</span>
+              </span>
+              <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
+            </label>
+            <p className="derived">
+              {t('A tool of its own: it works without a project and keeps its sessions itself. Drop a session’s impulses (.pir) with their FRD exports — the window comes from the export’s header — and the impedances. Merge, accept, export; “Use in project…” hands the project the merged files, exactly as importing the export package would.')}
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

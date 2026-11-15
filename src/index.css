@@ -3942,11 +3942,30 @@ details.cabinet-driver > .derived strong,
   }
 }
 
-/* "Where can I go?" answered where you end up: the bottom of the step. */
+/* "Where can I go?" answered where you end up: the bottom of the step.
+   UI-3 (Sander, 15-11-2026) — and it STAYS there: a sticky footer at the
+   bottom of the scrolling pane, so on a long step the way on is in view
+   without scrolling to the end. Not duplicated at the top: the step bar is
+   already there, and a second "next" would be two buttons for one action. */
 .step-next-row {
   display: flex;
   justify-content: flex-end;
-  padding: 0.6rem 0.9rem 1.4rem;
+  padding: 0.6rem 0.9rem 0.8rem;
+  position: sticky;
+  bottom: 0;
+  padding-bottom: 1rem;
+  z-index: 5;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+/* bottom: 0 sticks at the scroller's CONTENT edge, so the pane's own bottom
+   padding would show scrolled content beneath the bar. Drop that padding when
+   a sticky footer ends the step — whichever element scrolls (the pane in the
+   split layout, the page in the stacked one). A negative offset only worked
+   for the pane and pushed the button off-screen when the page scrolled. */
+.pane-body:has(> .step-next-row),
+.pane-body:has(.v2-req-nav) {
+  padding-bottom: 0;
 }
 .step-next {
   background: var(--accent);
@@ -4810,6 +4829,12 @@ ul.scan-bare button {
   align-items: center;
   flex-wrap: wrap;
   margin-top: 0.6rem;
+  /* UI-3 — the same sticky footer for the requirement walk. */
+  position: sticky;
+  bottom: 0;
+  padding: 0.6rem 0 0.8rem;
+  z-index: 5;
+  background: var(--panel);
 }
 .v2-req-nav .step-next {
   margin-left: auto;
@@ -5127,13 +5152,46 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 }
 
 /* ── I-4 — the NF/FF-merge tool, a page of its own (#/merge) ────────── */
-.merge-page { position: fixed; inset: 0; z-index: 150; overflow: auto; background: var(--bg); padding: 1rem 1.5rem 3rem; }
+.merge-page { flex: 1 1 auto; min-height: 0; overflow: auto; background: var(--bg); padding: 1rem 1.5rem 3rem; }
+.merge-hidden { display: none !important; }
 .merge-tool-link { align-self: center; margin-right: 0.75rem; padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; color: var(--fg); text-decoration: none; white-space: nowrap; }
 .merge-tool-link.active, .merge-tool-link:hover { border-color: var(--accent); color: var(--accent); }
 .nf-merge-tool { display: flex; flex-direction: column; gap: 0.75rem; max-width: 1800px; margin: 0 auto; }
 .nf-merge-tool .dropzone input[type='file'] { display: none; }
 .nfm-head-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
-.nfm-head-bar h2 { margin: 0; }
+.nfm-head-bar h2 { margin: 0; font-size: 1.35rem; }
+.nfm-head-bar { flex-wrap: wrap; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+.nfm-lede { margin: 0.2rem 0 0; color: var(--muted); }
+.nfm-delivers { margin: 0; text-align: right; max-width: 32rem; }
+.nfm-intro { display: flex; flex-direction: column; gap: 0.75rem; max-width: 46rem; }
+.nfm-intro h3 { margin: 0; }
+.nfm-intro-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.nfm-intro-steps li { display: flex; align-items: baseline; gap: 0.6rem; }
+.nfm-intro-drop { padding: 1.2rem 1rem; }
+.nfm-intro-steps .nfm-step-num { flex: none; width: 1.6em; height: 1.6em; border: 1px solid var(--border); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85em; }
+/* UI-3 — project menu, places, empty project, folded inventory */
+.project-menu { position: relative; }
+.project-menu summary { list-style: none; cursor: pointer; border: 1px solid var(--border); border-radius: 8px; padding: 0.38rem 0.75rem; font-size: 0.86rem; font-weight: 500; background: var(--panel); color: var(--fg); white-space: nowrap; }
+.project-menu summary::-webkit-details-marker { display: none; }
+.project-menu[open] summary { border-color: var(--accent); }
+.project-menu .pm-caret { color: var(--muted); font-size: 0.8em; }
+.project-pop { position: absolute; left: 0; top: calc(100% + 6px); z-index: 40; display: flex; flex-direction: column; gap: 0.15rem; min-width: 17rem; padding: 0.45rem; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28); }
+.project-pop > button, .project-pop > .pm-item { display: flex; justify-content: flex-start; width: 100%; box-sizing: border-box; text-align: left; border: none; background: transparent; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.88rem; color: var(--fg); cursor: pointer; }
+.project-pop > button:hover:not(:disabled), .project-pop > .pm-item:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.project-pop .pm-sep { height: 1px; background: var(--border); margin: 0.3rem 0; }
+.project-pop .pm-label { font-size: 0.75rem; color: var(--muted); padding: 0.1rem 0.6rem; }
+.project-pop .pm-note { font-size: 0.75rem; padding: 0.1rem 0.6rem; }
+.pm-confirm { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.4rem; max-width: 22rem; }
+.pm-confirm p { margin: 0; font-size: 0.85rem; }
+.pm-confirm-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.project-empty { display: flex; flex-direction: column; gap: 0.35rem; }
+.project-empty-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.files-inventory > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 0.4rem; }
+.files-inventory > summary::-webkit-details-marker { display: none; }
+.files-inventory > summary h2 { display: inline; margin: 0; }
+.files-inventory > summary::before { content: '▸'; color: var(--muted); }
+.files-inventory[open] > summary::before { content: '▾'; }
+details.v2-stage-need > summary { cursor: pointer; }
 .nfm-layout { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
 .nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0; }
 /* After the base rule on purpose: in one column the sessions block must scroll away, not cover the steps. */

@@ -106,7 +106,7 @@ export const V2_GUIDED_STAGES: readonly V2GuidedStage[] = Object.freeze([
     id: 'measurements',
     tab: 'import',
     label: 'Your project',
-    what: 'Load your measurement files, and save or reopen a project. A driver measured near the cone as well as at a distance can be merged here, which is what opens the crossover window below the gate.',
+    what: 'Load your measurement files. A driver measured near the cone as well as at a distance can be merged here, which is what opens the crossover window below the gate. Saving, opening and resetting a project is in the Project menu at the top left.',
   },
   {
     id: 'cabinet',
