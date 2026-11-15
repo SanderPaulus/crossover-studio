@@ -290,7 +290,13 @@ export function impulseOfItem(item: SessionItem, session: string, gated: boolean
  * pairs must agree; the note says how closely. None: null, and the merge keeps the impulses' own scale.
  */
 function calibrationOf(items: readonly SessionItem[]): LoadedSession['calibration'] {
-  const pairs = items.filter((i) => i.role === 'near' && i.pir && i.frdText && i.header);
+  /* I-4 level: the near fields first (long window, the quotient spans the band); without a near-field
+   * pair the FAR fields carry the same calibration — the export is |cal| × |FFT(window × PIR)| on
+   * either — and the level, the one thing a microphone file cannot give, follows from them too.
+   * Measured 14-11-2026 on casus 1: PIR + .mic alone put every merge ~130 dB under the FRD exports. */
+  const nearPairs = items.filter((i) => i.role === 'near' && i.pir && i.frdText && i.header);
+  const pairs = nearPairs.length ? nearPairs : items.filter((i) => i.role === 'far' && i.pir && i.frdText && i.header);
+  const fromFar = nearPairs.length === 0 && pairs.length > 0;
   const curves: { freq: number[]; db: number[] }[] = [];
   for (const it of pairs) {
     const f = parseFrd(it.frdText!);
@@ -325,7 +331,7 @@ function calibrationOf(items: readonly SessionItem[]): LoadedSession['calibratio
   }
   return {
     ...curves[0],
-    note: `magnitude from the session's own near-field FRD exports (zero phase); ${curves.length} file(s) agree within ${spread.toFixed(4)} dB`,
+    note: `magnitude from the session's own ${fromFar ? 'far-field' : 'near-field'} FRD exports (zero phase); ${curves.length} file(s) agree within ${spread.toFixed(4)} dB${fromFar ? ' — no near-field export: the far fields carry the level' : ''}`,
   };
 }
 

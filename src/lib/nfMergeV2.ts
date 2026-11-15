@@ -1190,3 +1190,48 @@ function findEchoes(
   }
   return out.slice(0, 12);
 }
+
+/* ------------------------------------------------------------------ *
+ * I-4 far-only: a far field through its gate, on the output grid
+ * ------------------------------------------------------------------ */
+
+/**
+ * The far field alone — gated, on the output grid, phase relative to `gate.referenceMs` — exactly
+ * the `farGatedDb` half a merge would report, for a way the session measured far-field only (a
+ * tweeter). Same window, same reference and (through the tool) the same calibration as the merges
+ * of that session, so its level and phase sit beside them and not beside a file from elsewhere.
+ * No echo is divided out: there is no near field to compare against, so nothing is modelled.
+ */
+export function gatedFarSpectrum(input: { far: Impulse; gate: Gate; output: MergeV2Input['output'] }): { freq: number[]; spl: number[]; phaseDeg: number[] } {
+  const fs = input.far.sampleRate;
+  const n = nextPow2(input.far.samples.length);
+  const W = gateWindow(input.gate, fs, n);
+  const x = padTo(input.far.samples, n);
+  const sig = new Float64Array(n);
+  for (let i = 0; i < n; i++) sig[i] = input.far.alreadyGated ? x[i] : x[i] * W[i];
+  const Fg = rfft(sig);
+  const grid: number[] = [];
+  const o = input.output;
+  if (o.grid) grid.push(...o.grid);
+  else {
+    const nPts = Math.max(2, Math.round(Math.log2(o.toHz / o.fromHz) * o.pointsPerOctave) + 1);
+    for (let i = 0; i < nPts; i++) grid.push(o.fromHz * (o.toHz / o.fromHz) ** (i / (nPts - 1)));
+  }
+  const tRef = input.gate.referenceMs / 1000;
+  const spl: number[] = [];
+  const phaseDeg: number[] = [];
+  for (const fk of grid) {
+    const xk = fk / (fs / n);
+    const k0 = Math.floor(xk);
+    const t = xk - k0;
+    const k1 = Math.min(k0 + 1, Fg.re.length - 1);
+    const re0 = Fg.re[k0] * (1 - t) + Fg.re[k1] * t;
+    const im0 = Fg.im[k0] * (1 - t) + Fg.im[k1] * t;
+    const ph = 2 * Math.PI * fk * tRef;
+    const re = re0 * Math.cos(ph) - im0 * Math.sin(ph);
+    const im = re0 * Math.sin(ph) + im0 * Math.cos(ph);
+    spl.push(20 * Math.log10(Math.hypot(re, im) || 1e-30));
+    phaseDeg.push((Math.atan2(im, re) * 180) / Math.PI);
+  }
+  return { freq: grid, spl, phaseDeg };
+}

@@ -495,7 +495,8 @@ import { bridgeDelaysUs, excessDelayMsOf } from './lib/vituixBridge.ts';
 import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import NfMergeTool, { type AcceptedSource } from './components/NfMergeTool.tsx';
 import type { CabinetGeometryForMerge } from './lib/mergeSession.ts';
-import { prepareBranchUse, mergeCardState, type Prepared } from './lib/useInProject.ts';
+import { isLevelRelative, prepareBranchUse, type OtherBranch, mergeCardState, type Prepared } from './lib/useInProject.ts';
+import { parseFarOnlyBlock } from './lib/farOnly.ts';
 import { readMergePackageZip } from './lib/mergeExport.ts';
 import { parseMergeBlockV2 } from './lib/nfMergeV2Block.ts';
 import DriverFilterControls from './components/FilterControls.tsx';
@@ -5470,7 +5471,14 @@ export default function App() {
     (role: BranchRole, sources: AcceptedSource[]): Prepared => {
       /* I-4 B-4 nazorg — built and read back BEFORE anything is applied; a failure is a reason the
        * tool shows on its own button, never a banner on a page the designer is not looking at. */
-      const prep = prepareBranchUse(role, sources);
+      /* I-4 level: the other branches as they stand, so a relative merge cannot land beside an absolute
+       * response (or the reverse) — the refusal names both and says what to do. */
+      const others: OtherBranch[] = (['low', 'mid', 'high'] as BranchRole[])
+        .filter((r) => r !== role)
+        .map((r) => ({ r, l: r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter }))
+        .filter((x): x is { r: BranchRole; l: Loaded } => !!x.l)
+        .map((x) => ({ way: x.r, name: x.l.name, text: x.l.raw }));
+      const prep = prepareBranchUse(role, sources, others);
       if (!prep.ok) return prep;
       const loaded = role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
       setMergeV2((m) => ({ ...m, [role]: sources }));
@@ -18141,6 +18149,11 @@ export default function App() {
                               {t('Phase of this file: {ph}', { ph: ph! })}
                             </span>
                           ))}
+                          {mergeV2[role].some((a) => isLevelRelative(a.text)) && (
+                            <span className="nl-warning" role="status">
+                              {t('Level of this file: RELATIVE — the impulses’ own scale (PIR + microphone file, no FRD export in the session). Every way of the design must then come from this session, or the sum is not a loudspeaker.')}
+                            </span>
+                          )}
                           {card.kind === 'replaced' && (
                             <span className="nl-warning" role="status">
                               {card.now
@@ -18149,6 +18162,18 @@ export default function App() {
                             </span>
                           )}
                           {mergeV2[role].map((a) => {
+                            const fo = parseFarOnlyBlock(a.text);
+                            if (fo)
+                              return (
+                                <span className="derived" key={a.source}>
+                                  {t('{src} · far field only, gated · 1/T {hz} Hz · valid from {vf} Hz · session {s}', {
+                                    src: a.source,
+                                    hz: fo.oneOverTHz != null ? fo.oneOverTHz.toFixed(0) : '—',
+                                    vf: fo.validFromHz != null ? fo.validFromHz.toFixed(1) : '—',
+                                    s: a.session,
+                                  })}
+                                </span>
+                              );
                             const b = parseMergeBlockV2(a.text);
                             const status = a.status ?? (b && b.flags.length > 0 ? 'flags' : null);
                             return (

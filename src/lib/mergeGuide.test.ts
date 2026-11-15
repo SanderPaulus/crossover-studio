@@ -217,6 +217,15 @@ describe('the tool — what a source scan can see', () => {
     expect(src).toMatch(/PROPOSAL_SLICE_MS/);
     expect(src).toMatch(/role="status"/);
   });
+  it('step 3 works out EVERY driver up front, the active tab first, behind an overlay with progress', () => {
+    const eff = src.slice(src.indexOf('const proposalKeys = useRef'), src.indexOf('const takeOver = '));
+    expect(eff).toMatch(/for \(const src of order\)/); // every driver, not the tab on screen
+    expect(eff).toMatch(/a\.stem === tab \? -1/); // the active one first
+    expect(eff).not.toMatch(/drivers\.find\(\(d\) => d\.stem === tab\)/);
+    expect(eff).not.toMatch(/\btab,/); // switching tabs does not restart the run
+    expect(src).toMatch(/\{step === 'window' &&\s+proposalBusy &&\s+createPortal\(\s+<div className="busy-overlay/);
+    expect(src).toMatch(/<progress value=\{proposalBusy\.index\} max=\{proposalBusy\.total\}/);
+  });
   it('in one column the sessions block scrolls away: the narrow-screen rule comes after the sticky rule', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8');
     const sticky = css.indexOf('.nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky');

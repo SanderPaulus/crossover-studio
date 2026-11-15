@@ -89,7 +89,7 @@ describe('I-4 B-4 nazorg — Use in project never fails silently', () => {
   it('the wiring: the app returns the result, stays on the tool, and keeps the welcome card off a used merge; the tool reads it back', () => {
     const app = src('../App.tsx');
     const accept = app.slice(app.indexOf('const acceptMergeV2 = useCallback('), app.indexOf('const mergeGeometry'));
-    expect(accept).toContain('prepareBranchUse(role, sources)');
+    expect(accept).toContain('prepareBranchUse(role, sources, others)'); // I-4 level: the other branches travel along (was `prepareBranchUse(role, sources)`)
     expect(accept).toMatch(/if \(!prep\.ok\) return prep;/);
     expect(accept).toContain("localStorage.setItem('ads-welcomed', '1')");
     expect(accept).not.toContain('setError(');

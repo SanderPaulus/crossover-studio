@@ -2444,8 +2444,34 @@ export const nl: Record<string, string> = {
     'alleen vlakken binnen c·T/2 = {x} m van de kast of de mic reflecteren binnen het venster',
   'Set-up incomplete: {m}. A merge cannot be accepted until the set-up is stated ("unknown" counts as stated).':
     'Opstelling onvolledig: {m}. Een merge kan pas geaccepteerd worden als de opstelling gesteld is ("onbekend" telt als gesteld).',
-  'far field only, no merge needed':
-    'alleen vervelved, geen merge nodig',
+  'far field only':
+    'alleen ver veld',
+  'far field only: no merge, but handed over gated and on this session’s level, so it sits beside the merges':
+    'alleen ver veld: geen merge, maar wel gegated en op het niveau van deze sessie overgedragen, zodat het naast de merges staat',
+  'far field: {f} · no near field in this session: nothing is merged, the far field is handed over as measured, through its gate':
+    'ver veld: {f} · geen nabij veld in deze sessie: er wordt niets gemerged, het verre veld gaat over zoals gemeten, door zijn venster',
+  'the FRD export’s own':
+    'die van de FRD-export zelf',
+  'No near field, so nothing to propose: the window is the one the far field was exported with. Below 1/T this file says nothing.':
+    'Geen nabij veld, dus niets voor te stellen: het venster is dat waarmee het verre veld geëxporteerd is. Onder 1/T zegt dit bestand niets.',
+  'none: the export and “Use in project” refuse — choose a calibration file, or load the FRD exports':
+    'geen: export en “Gebruik in project” weigeren — kies een kalibratiebestand, of laad de FRD-exports',
+  'Accept':
+    'Accepteren',
+  'the gate floor is 1/T = {hz} Hz; state what you believe, it is not filled in for you':
+    'de vensterbodem is 1/T = {hz} Hz; geef op wat jij gelooft, het wordt niet voor je ingevuld',
+  'needs: which driver (step 1), a readable window, and a stated "valid from"':
+    'nodig: welke driver (stap 1), een leesbaar venster en een opgegeven "geldig vanaf"',
+  '{src} · far field only, gated · 1/T {hz} Hz · valid from {vf} Hz · session {s}':
+    '{src} · alleen ver veld, gegated · 1/T {hz} Hz · geldig vanaf {vf} Hz · sessie {s}',
+  'Accept far field':
+    'Ver veld accepteren',
+  'accepted as {name}':
+    'geaccepteerd als {name}',
+  'SPL, gated far field':
+    'SPL, gegated ver veld',
+  'Level of this file: RELATIVE — the impulses’ own scale (PIR + microphone file, no FRD export in the session). Every way of the design must then come from this session, or the sum is not a loudspeaker.':
+    'Niveau van dit bestand: RELATIEF — de eigen schaal van de impulsen (PIR + microfoonbestand, geen FRD-export in de sessie). Elke weg van het ontwerp moet dan uit deze sessie komen, anders is de som geen luidspreker.',
   'Sources':
     'Bronnen',
   'near field':
@@ -2990,10 +3016,12 @@ export const nl: Record<string, string> = {
     'Het venster knipt het directe geluid uit de meting, vóór de eerste reflectie.',
   'proposed from the measurement':
     'voorgesteld uit de meting',
-  'Working out the proposal: one merge per window end':
-    'Het voorstel wordt uitgerekend: één merge per venstereinde',
-  'The page stays usable meanwhile.':
-    'De pagina blijft intussen bruikbaar.',
+  'Working out the window proposal':
+    'Het venstervoorstel wordt uitgerekend',
+  'Driver {i} of {n}: {label}':
+    'Driver {i} van {n}: {label}',
+  '{m} merges for this driver — one per window end; how many it takes depends on where the residual rises.':
+    '{m} merges voor deze driver — één per venstereinde; hoeveel het er worden hangt af van waar het residu stijgt.',
   'begin {b} ms before the peak · end {e} ms after it · Tukey {k}':
     'begin {b} ms vóór de piek · einde {e} ms erna · Tukey {k}',
   'Why here: {w}.':

@@ -13,10 +13,12 @@
  * Every decision lives in `lib/mergeSession.ts` (tested); this component renders it.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Chart, { type Series } from './Chart.tsx';
 import { t } from '../lib/i18n.ts';
 import { parseFrd } from '../lib/parsers/frd.ts';
 import { chooseCalibration, micCorrectionAt, parseMicCal, type MicCal } from '../lib/micCal.ts';
+import { renderFarOnlyFrd } from '../lib/farOnly.ts';
 import { an4F0, rigFromDesign, GUIDE_STEPS, KNEE_RISE_DEG, proposeBandsGuide, proposeWindowSteps, sessionReferenceMs, type GuideStep, type WindowProposal } from '../lib/mergeGuide.ts';
 import { envelope } from '../lib/fft.ts';
 import { zipStore } from '../lib/zip.ts';
@@ -25,6 +27,7 @@ import {
   MergeV2Error,
   NF_MERGE_V2_VERSION,
   arrivalMs,
+  gatedFarSpectrum,
   mergeImpulsesV2,
   planeEchoDelayS,
   type EchoTerm,
@@ -196,6 +199,10 @@ interface ToolAccepted {
   textOriginal?: string | null;
   originalNote?: string | null;
 }
+/** I-4 far-only: what the tool computed for a way without a near field, or why it could not. */
+type FarComputed =
+  | { error: string }
+  | { error: null; gate: Gate; route: 'pir' | 'frd'; spec: { freq: number[]; spl: number[]; phaseDeg: number[] }; calNote: string | null; oneOverTHz: number };
 interface ObjectState {
   kind: '' | 'target' | 'other';
   label: string;
@@ -569,6 +576,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, cfg, rig, planes, obj.kind, obj.baffle, props.geometry, props.sdCm2]);
   const active = drivers.find((d) => d.stem === tab) ?? null;
+  const activeFar = farOnly.find((d) => d.stem === tab) ?? null;
   const cur = active ? computed.get(active.stem) ?? null : null;
   const bare = useMemo(
     () => (active && cur?.echoes.some((e) => e.kind === 'plane') && !reflectionModel ? compute(active, cfg[active.stem], false) : null),
@@ -608,6 +616,63 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const v = loadValidity({ target, setup: { session: session?.name ?? '', object: measured }, ts, tolDb: num(obj.tolDb) ?? undefined, tolDeg: num(obj.tolDeg) ?? undefined });
     return { fromHz: v.fromHz, note: v.note, ratio: v.ratio };
   }, [obj, session]);
+
+  /* ---- I-4 far-only: a way without near field, gated with its own header and on the session's level ---- */
+  const farComputed = useMemo(() => {
+    const m = new Map<string, FarComputed>();
+    if (!session) return m;
+    for (const f of session.sources.filter((x) => x.kind === 'far-only')) {
+      if (!f.far) continue;
+      const g0 = gateOf(f.far);
+      if ('error' in g0) {
+        m.set(f.stem, { error: `${g0.field}: ${g0.error} — load this far field's FRD export: its header carries the window (a PIR alone has none)` });
+        continue;
+      }
+      const far = impulseOfItem(f.far, session.name, g0.route === 'frd');
+      let spec = gatedFarSpectrum({ far, gate: g0.gate, output: { fromHz: 20, toHz: Math.min(20000, far.sampleRate / 2.2), pointsPerOctave: 48 } });
+      let calNote: string | null;
+      /* The same calibration the merges of this session get (accept(), below): the FRD route is already
+       * calibrated; the PIR route takes the derived curve, else the chosen file (level relative), else none. */
+      if (!f.far.pir) calNote = 'as exported by the measuring program (FRD route: the file is already calibrated)';
+      else if (calChoice.kind === 'derived' && session.calibration && far.timeBase === 'session') {
+        const cal = session.calibration;
+        spec = { ...spec, spl: spec.freq.map((fq, i) => spec.spl[i] + interpLog(cal.freq, cal.db, fq)) };
+        calNote = calChoice.note;
+      } else if (calChoice.kind === 'file') {
+        const mc = calChoice.cal;
+        spec = {
+          ...spec,
+          spl: spec.freq.map((fq, i) => spec.spl[i] + micCorrectionAt(mc, fq).db),
+          phaseDeg: spec.freq.map((fq, i) => {
+            const ph = spec.phaseDeg[i] + micCorrectionAt(mc, fq).deg;
+            return ((ph + 540) % 360) - 180;
+          }),
+        };
+        calNote = calChoice.note;
+      } else calNote = null;
+      m.set(f.stem, { error: null, gate: g0.gate, route: g0.route, spec, calNote, oneOverTHz: 1000 / g0.gate.rightMs });
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, chosenCal]);
+  const acceptFar = (src: SessionSource, c: SourceConfig, comp: FarComputed) => {
+    if (!session || comp.error !== null || !c.way || !src.far || num(c.validFrom) === null) return;
+    const text = renderFarOnlyFrd({
+      label: src.label,
+      farName: src.far.name,
+      gate: comp.gate,
+      route: comp.route,
+      spec: comp.spec,
+      validFromHz: num(c.validFrom)!,
+      validFromReason: c.validFromReason || t('stated in the merge tool'),
+      calibrationNote: comp.calNote,
+      madeOn: new Date().toISOString().slice(0, 10),
+      session: session.name,
+      timeBaseShared: session.timeBaseShared,
+    });
+    const name = `${src.stem.replace(/\s+/g, '_')}_far_gated.frd`;
+    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal: null, originalNote: 'a far field alone has no merge grid to rebuild on', status: 'unchecked', way: c.way as MergeWay, acceptedAt: new Date().toISOString() } } }));
+  };
 
   /* ---- accept: the merge becomes part of the tool's session ---- */
   const accept = (src: SessionSource, c: SourceConfig, comp: Computed) => {
@@ -697,7 +762,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   const f0Proposal = (c: SourceConfig) =>
     c.inPod ? an4F0(num(c.podDiameter ?? ''), 'the pod diameter') : an4F0(ownGeometry ? num(obj.baffleW) : props.geometry.baffleWidthMm, 'the baffle width');
   const [proposals, setProposals] = useState<Record<string, { key: string; res: WindowProposal | { reason: string } }>>({});
-  const [proposalBusy, setProposalBusy] = useState<{ stem: string; merges: number } | null>(null);
+  const [proposalBusy, setProposalBusy] = useState<{ stem: string; label: string; index: number; total: number; merges: number } | null>(null);
   const proposalInputs = (src: SessionSource) => {
     const c = cfg[src.stem];
     if (!session || !src.far?.pir || !src.near || !sessionRef) return { reason: !src.far?.pir ? 'an FRD-only far field is already gated: only its header window exists' : 'no session reference' } as const;
@@ -710,56 +775,80 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const key = JSON.stringify([src.stem, sessionRef.ms, f0.f0Hz, sd, 'mm' in h ? h.mm : null, rigSetup, planes, st.planeQ]);
     return { key, f0, sd, heightMm: 'mm' in h ? h.mm : null, unknown } as const;
   };
+  /* Every driver's proposal is worked out as soon as step 3 opens — the active tab first, then the
+   * rest — not only the tab on screen: switching tabs then shows a finished proposal. The scan is one
+   * full merge per window end (~0.3 s each; casus 1's mid needs 67), so it runs in slices behind an
+   * overlay that says which driver it is on and how far it is. */
+  const proposalKeys = useRef<Record<string, string>>({});
   useEffect(() => {
     if (st.step !== 'window' || !session) return;
-    const src = drivers.find((d) => d.stem === tab);
-    if (!src) return;
-    const inp = proposalInputs(src);
-    if ('reason' in inp) {
-      setProposals((p) => ({ ...p, [src.stem]: { key: 'reason', res: { reason: inp.reason ?? '' } } }));
+    const order = [...drivers].sort((a, b) => (a.stem === tab ? -1 : b.stem === tab ? 1 : 0));
+    type Job = { src: SessionSource; key: string; steps: Generator<number, WindowProposal | { reason: string }> };
+    const jobs: Job[] = [];
+    for (const src of order) {
+      const inp = proposalInputs(src);
+      if ('reason' in inp) {
+        proposalKeys.current[src.stem] = 'reason';
+        setProposals((p) => ({ ...p, [src.stem]: { key: 'reason', res: { reason: inp.reason ?? '' } } }));
+        continue;
+      }
+      if (proposalKeys.current[src.stem] === inp.key) continue;
+      jobs.push({
+        src,
+        key: inp.key,
+        steps: proposeWindowSteps({
+          far: impulseOfItem(src.far!, session.name, false),
+          near: impulseOfItem(src.near!, session.name, false),
+          referenceMs: sessionRef!.ms,
+          model: { kind: 'an4', f0Hz: inp.f0.f0Hz },
+          sdCm2: inp.sd,
+          sourceHeightMm: inp.heightMm,
+          rig: rigSetup,
+          planes,
+          planesUnknown: inp.unknown,
+        }),
+      });
+    }
+    if (jobs.length === 0) {
+      setProposalBusy(null);
       return;
     }
-    if (proposals[src.stem]?.key === inp.key) return;
-    setProposalBusy({ stem: src.stem, merges: 0 });
-    /* The scan is one full merge per window end (~0.3 s each; casus 1's mid needs 67), so it runs in
-     * slices: the page stays usable and says how far it is. */
     let h = 0;
     let cancelled = false;
-    const steps = proposeWindowSteps({
-        far: impulseOfItem(src.far!, session.name, false),
-        near: impulseOfItem(src.near!, session.name, false),
-        referenceMs: sessionRef!.ms,
-        model: { kind: 'an4', f0Hz: inp.f0.f0Hz },
-        sdCm2: inp.sd,
-        sourceHeightMm: inp.heightMm,
-        rig: rigSetup,
-        planes,
-        planesUnknown: inp.unknown,
-      });
+    let ix = 0;
+    let merges = 0;
+    const show = () => setProposalBusy({ stem: jobs[ix].src.stem, label: jobs[ix].src.label, index: ix, total: jobs.length, merges });
+    show();
     const slice = () => {
       if (cancelled) return;
       const until = performance.now() + PROPOSAL_SLICE_MS;
-      let merges = 0;
-      for (;;) {
-        const r = steps.next();
-        if (r.done) {
-          setProposals((p) => ({ ...p, [src.stem]: { key: inp.key, res: r.value } }));
+      while (performance.now() < until) {
+        const job = jobs[ix];
+        const r = job.steps.next();
+        if (!r.done) {
+          merges++;
+          continue;
+        }
+        proposalKeys.current[job.src.stem] = job.key;
+        setProposals((p) => ({ ...p, [job.src.stem]: { key: job.key, res: r.value } }));
+        ix++;
+        merges = 0;
+        if (ix >= jobs.length) {
           setProposalBusy(null);
           return;
         }
-        merges++;
-        if (performance.now() >= until) break;
       }
-      setProposalBusy((b) => (b && b.stem === src.stem ? { stem: src.stem, merges: b.merges + merges } : b));
+      show();
       h = window.setTimeout(slice, 0);
     };
     h = window.setTimeout(slice, 40);
     return () => {
       cancelled = true;
       window.clearTimeout(h);
+      setProposalBusy(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [st.step, tab, session, sessionRef, cfg, rig, planes, st.planeQ, obj.baffleW, props.geometry, props.sdCm2]);
+  }, [st.step, session, sessionRef, cfg, rig, planes, st.planeQ, obj.baffleW, props.geometry, props.sdCm2]);
   const takeOver = (stem: string, pr: WindowProposal, f0Hz: number) =>
     setC(stem, {
       winMode: 'proposal',
@@ -809,7 +898,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
         roles[f.name] = { role: /\b(port|poort|vent|reflex|pr)\b/.test(pr.stem) ? 'port' : pr.role, stem: pr.stem };
       }
       const nextCfg = { ...s.cfg };
-      for (const d of drivers) {
+      for (const d of [...drivers, ...farOnly]) {
         const c = { ...blankConfig(), ...nextCfg[d.stem] };
         const pw = proposeWay(d.stem);
         if (!c.way && pw) nextCfg[d.stem] = { ...c, way: pw.way, member: c.member || (pw.member ?? '') };
@@ -1069,8 +1158,15 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     );
                   })}
                   {farOnly.map((f) => (
-                    <li key={f.stem} className="derived">
-                      {f.label}: {t('far field only, no merge needed')}
+                    <li key={f.stem}>
+                      <strong>{f.label}</strong>{' '}
+                      <select value={cfg[f.stem].way} onChange={(e) => setC(f.stem, { way: e.target.value as MergeWay | '' })} aria-label={t('which driver')}>
+                        <option value="">—</option>
+                        <option value="low">{t('low')}</option>
+                        <option value="mid">{t('mid')}</option>
+                        <option value="high">{t('high')}</option>
+                      </select>{' '}
+                      <span className="derived">{t('far field only: no merge, but handed over gated and on this session’s level, so it sits beside the merges')}</span>
                     </li>
                   ))}
                 </ul>
@@ -1342,21 +1438,17 @@ export default function NfMergeTool(props: NfMergeToolProps) {
               <>
             {/* driver tabs: steps 3 and 4 */}
             <div className="nfm-tabs" role="tablist">
-              {drivers.map((d) => {
-                const s = statusFor(d.stem);
+              {[...drivers, ...farOnly].map((d) => {
+                const s = d.kind === 'far-only' ? null : statusFor(d.stem);
                 return (
                   <button key={d.stem} type="button" role="tab" aria-selected={d.stem === tab} className={`nfm-tab${d.stem === tab ? ' active' : ''}`} onClick={() => setTab(d.stem)}>
-                    {d.label} <span className={`nfm-status nfm-${s ?? 'none'}`}>{s ? t(STATUS_LABEL[s]) : '—'}</span>
+                    {d.label}{' '}
+                    <span className={`nfm-status nfm-${s ?? 'none'}`}>{d.kind === 'far-only' ? t('far field only') : s ? t(STATUS_LABEL[s]) : '—'}</span>
                     {st.accepted[d.stem] && <span className="nfm-accepted"> ✓ {t('accepted')}</span>}
                   </button>
                 );
               })}
             </div>
-            {farOnly.map((f) => (
-              <p key={f.stem} className="derived">
-                {f.label}: {t('far field only, no merge needed')}
-              </p>
-            ))}
 
 
               </>
@@ -1366,7 +1458,6 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 key={active.stem}
                 src={active}
                 c={cfg[active.stem]}
-                busy={proposalBusy?.stem === active.stem ? proposalBusy.merges : null}
                 proposal={proposals[active.stem]?.res ?? null}
                 f0={f0Proposal(cfg[active.stem])}
                 headerGate={activeGate && !('error' in activeGate) && activeGate.route === 'pir' ? activeGate.gate : null}
@@ -1375,6 +1466,40 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 cur={cur}
                 setC={(p) => setC(active.stem, p)}
                 onTakeOver={(pr, f0Hz) => takeOver(active.stem, pr, f0Hz)}
+                onGoto={goto}
+              />
+            )}
+
+            {step === 'window' &&
+              proposalBusy &&
+              createPortal(
+                <div className="busy-overlay nfm-proposal-overlay" role="status" aria-live="polite">
+                  <div className="busy-card">
+                    <strong>{t('Working out the window proposal')}</strong>
+                    <span>
+                      {t('Driver {i} of {n}: {label}', { i: proposalBusy.index + 1, n: proposalBusy.total, label: proposalBusy.label })}
+                    </span>
+                    <progress value={proposalBusy.index} max={proposalBusy.total} />
+                    <span className="derived">
+                      {t('{m} merges for this driver — one per window end; how many it takes depends on where the residual rises.', { m: proposalBusy.merges })}
+                    </span>
+                  </div>
+                </div>,
+                document.body,
+              )}
+            {(step === 'window' || step === 'merge') && activeFar && (
+              <FarOnlyPanel
+                key={activeFar.stem}
+                src={activeFar}
+                c={cfg[activeFar.stem]}
+                comp={farComputed.get(activeFar.stem) ?? null}
+                step={step}
+                accepted={st.accepted[activeFar.stem] ?? null}
+                setC={(p) => setC(activeFar.stem, p)}
+                onAccept={() => {
+                  const fc = farComputed.get(activeFar.stem);
+                  if (fc) acceptFar(activeFar, cfg[activeFar.stem], fc);
+                }}
                 onGoto={goto}
               />
             )}
@@ -1485,7 +1610,6 @@ function WindowStep(p: {
   src: SessionSource;
   c: SourceConfig;
   /** Merges done so far while the proposal is being worked out; null when it is not. */
-  busy: number | null;
   proposal: WindowProposal | { reason: string } | null;
   f0: { f0Hz: number; note: string } | { reason: string };
   headerGate: Gate | null;
@@ -1565,11 +1689,6 @@ function WindowStep(p: {
           <h4>
             {t('Window')} <span className="nfm-proposed">{t('proposed from the measurement')}</span>
           </h4>
-          {p.busy !== null && (
-            <p className="derived" role="status">
-              {t('Working out the proposal: one merge per window end')} — {p.busy} {t('done')}. {t('The page stays usable meanwhile.')}
-            </p>
-          )}
           {p.proposal && 'reason' in p.proposal && <p className="nl-warning">{p.proposal.reason}</p>}
           {pr && (
             <>
@@ -1909,6 +2028,72 @@ interface OverviewRow {
   accepted: boolean;
   validFrom: number | null;
   windowSrc: 'proposal' | 'self' | 'header';
+}
+/**
+ * I-4 far-only — steps 3 and 4 for a way the session measured far-field only: the window is the
+ * header's (nothing to propose without a near field), the level and reference are the session's,
+ * and "accept" hands a gated file over beside the merges. No residual, no echo check: there is no
+ * near field to hold the far field against, and the panel says so instead of showing an empty one.
+ */
+function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarComputed | null; step: GuideStep; accepted: ToolAccepted | null; setC: (patch: Partial<SourceConfig>) => void; onAccept: () => void; onGoto: (s: GuideStep) => void }) {
+  const { src, c, comp } = p;
+  const ok = comp && comp.error === null ? comp : null;
+  const canAccept = !!ok && !!c.way && num(c.validFrom) !== null;
+  const top = ok ? Math.ceil(Math.max(...ok.spec.spl.filter((_, i) => ok.spec.freq[i] >= 200 && ok.spec.freq[i] <= 20000)) / 5) * 5 + 5 : 0;
+  return (
+    <div className="nfm-body nfm-faronly">
+      <div className="nfm-work">
+        <h4>{t('Sources')}</h4>
+        <p className="derived">{t('far field: {f} · no near field in this session: nothing is merged, the far field is handed over as measured, through its gate', { f: src.far?.name ?? '—' })}</p>
+        <p>
+          {t('which driver')}: <strong>{c.way ? t(c.way) : t('not stated')}</strong>{' '}
+          <button type="button" className="linkish" onClick={() => p.onGoto('files')}>
+            {t('change in step {n}', { n: 1 })}
+          </button>
+        </p>
+        <h4>{t('Window')}</h4>
+        {comp && comp.error !== null && <p className="nl-warning">{comp.error}</p>}
+        {ok && (
+          <p>
+            {t('{src}, T = {tt} ms, 1/T = {hz} Hz', { src: ok.route === 'frd' ? t('the FRD export’s own') : t('from the FRD header'), tt: ok.gate.rightMs.toFixed(3), hz: ok.oneOverTHz.toFixed(1) })}
+            <br />
+            <span className="derived">{t('No near field, so nothing to propose: the window is the one the far field was exported with. Below 1/T this file says nothing.')}</span>
+          </p>
+        )}
+        <h4>{t('Calibration')}</h4>
+        <p className="derived">{ok ? (ok.calNote ?? t('none: the export and “Use in project” refuse — choose a calibration file, or load the FRD exports')) : '—'}</p>
+        {p.step === 'merge' && (
+          <>
+            <h4>{t('Accept')}</h4>
+            <p>
+              {t('valid from')} <Field value={c.validFrom} onCommit={(v) => p.setC({ validFrom: v })} ariaLabel={t('valid from')} /> Hz{' '}
+              <Field value={c.validFromReason} onCommit={(v) => p.setC({ validFromReason: v })} width={18} placeholder={t('why (stated)')} ariaLabel={t('valid from reason')} />
+              {ok && num(c.validFrom) === null && <span className="derived"> {t('the gate floor is 1/T = {hz} Hz; state what you believe, it is not filled in for you', { hz: ok.oneOverTHz.toFixed(0) })}</span>}
+            </p>
+            <button type="button" className="nfm-primary" disabled={!canAccept} onClick={p.onAccept} title={canAccept ? '' : t('needs: which driver (step 1), a readable window, and a stated "valid from"')}>
+              {t('Accept far field')}
+            </button>
+            {p.accepted && <p className="nfm-accepted">✓ {t('accepted as {name}', { name: p.accepted.name })}</p>}
+          </>
+        )}
+        {p.step === 'window' && (
+          <p>
+            <button type="button" className="linkish" onClick={() => p.onGoto('merge')}>
+              {t('to step 4: merge →')}
+            </button>
+          </p>
+        )}
+      </div>
+      <div className="nfm-charts">
+        {ok && (
+          <div className="nfm-chart">
+            <strong>{t('SPL, gated far field')}</strong>
+            <Chart series={[{ id: 'far', label: src.label, color: '#7f8c8d', x: ok.spec.freq, y: ok.spec.spl, width: 2 }]} xDomain={[20, 20000]} yDomain={[top - 60, top]} yTickStep={10} yUnit="dB" height={220} xMarkers={[{ x: ok.oneOverTHz, label: '1/T', color: '#c0392b' }]} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 const OVERVIEW_COLORS = ['var(--fg, #2c3e50)', '#c0392b', '#2980b9', '#27ae60', '#8e44ad', '#d35400'];
 function DriverOverview(p: { rows: OverviewRow[]; active: string; onSelect: (stem: string) => void }) {

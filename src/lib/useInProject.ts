@@ -37,13 +37,50 @@ export function branchFileName(way: MergeWay, sources: readonly { name: string }
   return sources.length === 1 ? sources[0].name : `${way}_merged_v2.frd`;
 }
 
+/**
+ * I-4 level — a merge whose `Merge calibration` line says LEVEL RELATIVE: its shape is calibrated,
+ * its level is the impulses' own scale (PIR + microphone file, no FRD export in the session).
+ * Measured 14-11-2026 on casus 1: such a merge sits ~130 dB under an FRD export of the same
+ * driver. Next to a branch on an absolute level the sum is not a loudspeaker.
+ */
+export function isLevelRelative(text: string): boolean {
+  const m = /^\s*\*\s*Merge calibration\s*=\s*(.+)$/m.exec(text);
+  return !!m && /LEVEL RELATIVE/.test(m[1]);
+}
+
+/** The project's other branches, as "Use in project" must see them: a response, or none. */
+export type OtherBranch = { way: MergeWay; name: string; text: string };
+
+/**
+ * Why a merge may not land beside what the project holds, or null. A relative merge beside an
+ * absolute branch (or the reverse) is refused with both named: the designer either loads the
+ * session's FRD exports (near or far field — the level then follows) or hands every way over from
+ * this session, so all are on one scale. A branch without a response constrains nothing.
+ */
+export function levelConflict(way: MergeWay, sources: readonly { name: string; text: string }[], others: readonly OtherBranch[]): string | null {
+  const rel = sources.map((s) => isLevelRelative(s.text));
+  if (rel.some(Boolean) && !rel.every(Boolean)) return `the ${way} merges are not on one level: ${sources.filter((_, i) => rel[i]).map((s) => s.name).join(', ')} LEVEL RELATIVE, the rest absolute — accept them under one calibration`;
+  const mineRel = rel[0] ?? false;
+  for (const o of others) {
+    if (o.way === way) continue;
+    const otherRel = isLevelRelative(o.text);
+    if (otherRel === mineRel) continue;
+    return mineRel
+      ? `${sources.map((s) => s.name).join(' + ')} is on a RELATIVE level (PIR + microphone file: the impulses' own scale) while the project's ${o.way} branch (${o.name}) is on an absolute level — the sum would sit ~130 dB apart. Load this session's FRD exports (near or far field) so the level follows, or hand every way over from this session`
+      : `${sources.map((s) => s.name).join(' + ')} is on an absolute level while the project's ${o.way} branch (${o.name}) is on a RELATIVE level (the impulses' own scale) — the sum would sit ~130 dB apart. Replace ${o.name} from a session with FRD exports, or hand every way over from the same session`;
+  }
+  return null;
+}
+
 /** Build and check the branch file before anything is applied. */
-export function prepareBranchUse(way: MergeWay | '' | null, sources: readonly { name: string; text: string }[]): Prepared {
+export function prepareBranchUse(way: MergeWay | '' | null, sources: readonly { name: string; text: string }[], others: readonly OtherBranch[] = []): Prepared {
   if (!way) return { ok: false, reason: 'no branch chosen' };
   if (sources.length === 0) return { ok: false, reason: `no accepted merge for the ${way} branch in this session` };
   /* I-4 PIR-only: the project takes what the export package would hold, and that refuses uncalibrated merges. */
   const raw = sources.filter((s) => isUncalibrated(s.text)).map((s) => s.name);
   if (raw.length) return { ok: false, reason: `not calibrated: ${raw.join(', ')} — choose a microphone calibration file for this session (or load its FRD exports), then accept again` };
+  const level = levelConflict(way, sources, others);
+  if (level) return { ok: false, reason: `level: ${level}` };
   let file: { name: string; text: string };
   try {
     file = branchFile(branchFileName(way, sources), sources);
