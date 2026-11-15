@@ -5276,7 +5276,17 @@ details.v2-stage-need > summary { cursor: pointer; }
 .nfm-cards { display: grid; gap: 1rem; }
 .nfm-card { border: 1px solid var(--border, #d0d5dd); border-radius: 8px; padding: 0.6rem 0.8rem; }
 .nfm-card h4 { margin-top: 0; }
-.nfm-nav { display: flex; justify-content: space-between; margin-top: 1rem; }
+.nfm-nav { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
+/* UI-5 — the step bar stays at the bottom of the merge page, and in step 4 it carries the approval. */
+.nfm-nav { position: sticky; bottom: 0; z-index: 5; background: var(--bg); border-top: 1px solid var(--border); padding: 0.6rem 0 0.9rem; }
+.merge-page:has(.nfm-nav) { padding-bottom: 0; }
+.nfm-nav-steps { display: flex; gap: 0.5rem; margin-left: auto; }
+.nfm-approve { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.nfm-approve-who { margin-right: 0.3rem; }
+.nfm-stale { color: var(--warn, #b45309); }
+.nfm-approvals { border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; margin-bottom: 1rem; }
+.nfm-approvals h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.nfm-approvals ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
 .linkish { background: none; border: none; color: #2a78d6; padding: 0; cursor: pointer; text-decoration: underline; }
 label.nfm-inline-check { display: inline-flex; flex-direction: row; align-items: center; gap: 0.35rem; }
 label.nfm-inline-check input { width: auto; margin: 0; }

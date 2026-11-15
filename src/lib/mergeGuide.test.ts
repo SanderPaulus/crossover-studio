@@ -281,7 +281,9 @@ describe('the tool — what a source scan can see', () => {
   });
   it('steps 4 and 5 open with an overview: one row per driver from the merges already computed, each with its SPL', () => {
     expect(src).toMatch(/\{step === 'merge' && <DriverOverview rows=\{overviewRows\}/);
-    expect(src).toMatch(/\{step === 'export' && \([\s\S]{0,300}<DriverOverview\s+rows=\{overviewRows\}/); // step 5 shows the same rows
+    // step 5 shows the same rows. (UI-5: the window was 300 characters; step 5 now opens with the
+    // approval list — what goes into export — and the overview follows it, so the span is wider.)
+    expect(src).toMatch(/\{step === 'export' && \([\s\S]{0,3000}<DriverOverview\s+rows=\{overviewRows\}/);
     expect(src).toMatch(/comp: computed\.get\(d\.stem\)/); // no second computation for the overview
     const body = src.slice(src.indexOf('function DriverOverview('), src.indexOf('function Charts('));
     expect(body).toMatch(/<Chart\b/);

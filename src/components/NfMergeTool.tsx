@@ -199,6 +199,47 @@ interface ToolAccepted {
   /** I-4 fase 4 — the same merge on the far field's own export grid, or null with why. */
   textOriginal?: string | null;
   originalNote?: string | null;
+  /** UI-5 — the fingerprint of what this copy was computed from (`approvalKey`). When the
+   *  settings move on, the copy is STALE: shown as such and left out of export and "Use in
+   *  project". Absent on approvals made before UI-5: those cannot be judged and count as current. */
+  fp?: string;
+}
+/** UI-5 — where a driver's approval stands. */
+type Approval = 'none' | 'current' | 'stale';
+/** UI-5 — a canonical key of a settings object: keys sorted, empty values dropped, so a field
+ *  added to a config later (empty by default) does not make every older approval stale. */
+export function stableKey(x: unknown): string {
+  const norm = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(norm);
+    if (v && typeof v === 'object') {
+      const o: Record<string, unknown> = {};
+      for (const k of Object.keys(v as object).sort()) {
+        const w = (v as Record<string, unknown>)[k];
+        if (w === undefined || w === null || w === '') continue;
+        o[k] = norm(w);
+      }
+      return o;
+    }
+    return v;
+  };
+  return JSON.stringify(norm(x));
+}
+/** UI-5 — what a merge still needs before it can be approved. ONE list, two readers: the
+ *  driver's work panel (which marks the fields) and the approve bar at the bottom of step 4.
+ *  The tooltip names what is MISSING, not the whole list of requirements (I-4 UI). */
+function mergeMissing(r: { flags: readonly unknown[] } | null, setupComplete: boolean, c: SourceConfig): string[] {
+  return [
+    !setupComplete ? t('the set-up (step 2)') : null,
+    !c.way ? t('which driver (step 1)') : null,
+    !r ? t('a computed merge') : null,
+    num(c.validFrom) === null ? t('a stated “valid from”') : null,
+    r && r.flags.length > 0 && c.reason.trim() === '' ? t('a reason (there are flags)') : null,
+  ].filter((x): x is string => !!x);
+}
+/** UI-5 — the same for a far field without a near field. */
+function farMissing(comp: FarComputed | null, c: SourceConfig): string[] {
+  const ok = comp && comp.error === null;
+  return [!c.way ? t('which driver (step 1)') : null, !ok ? t('a readable window') : null, num(c.validFrom) === null ? t('a stated “valid from”') : null].filter((x): x is string => !!x);
 }
 /** I-4 far-only: what the tool computed for a way without a near field, or why it could not. */
 type FarComputed =
@@ -444,6 +485,27 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   };
   const setC = (stem: string, patch: Partial<SourceConfig>) => setSt((s) => ({ ...s, cfg: { ...s.cfg, [stem]: { ...blankConfig(), ...s.cfg[stem], ...patch } } }));
   const goto = (step: GuideStep) => setSt((s) => ({ ...s, step }));
+  /* ---- UI-5: an approval is a copy of the merge AS IT WAS; it says when it no longer is ---- */
+  /** Everything a driver's merge is computed from that the tool's own state holds: its own
+   *  config (and its port's), the set-up, the planes, the measured object, the calibration and
+   *  the roles. Proposals (a cache) and the step/tab (navigation) are not in it. */
+  const approvalKey = (stem: string): string => {
+    const c = st.cfg[stem];
+    return stableKey({ c, port: c?.port ? st.cfg[c.port] ?? null : null, rig: st.rig, planes: st.planes, planeQ: st.planeQ, planeList: st.planeList, obj: st.obj, calId: st.calId, roles: st.roles });
+  };
+  const approvalOf = (stem: string): Approval => {
+    const a = st.accepted[stem];
+    if (!a) return 'none';
+    return a.fp === undefined || a.fp === approvalKey(stem) ? 'current' : 'stale';
+  };
+  /** Only CURRENT approvals go into export and "Use in project…". */
+  const currentAccepted: Record<string, ToolAccepted> = Object.fromEntries(Object.entries(st.accepted).filter(([stem]) => approvalOf(stem) === 'current'));
+  const withdraw = (stem: string) =>
+    setSt((s) => {
+      const accepted = { ...s.accepted };
+      delete accepted[stem];
+      return { ...s, accepted };
+    });
   const setRig = (patch: Partial<RigState>) => setSt((s) => ({ ...s, rig: { ...s.rig, ...patch } }));
   const setObj = (patch: Partial<ObjectState>) => setSt((s) => ({ ...s, obj: { ...s.obj, ...patch } }));
 
@@ -612,7 +674,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     label: d.label,
     comp: computed.get(d.stem) ?? null,
     status: statusFor(d.stem),
-    accepted: !!st.accepted[d.stem],
+    accepted: approvalOf(d.stem) === 'current',
+    stale: approvalOf(d.stem) === 'stale',
     validFrom: num(cfg[d.stem]?.validFrom ?? ''),
     windowSrc: cfg[d.stem]?.winMode === 'proposal' ? 'proposal' : cfg[d.stem]?.winMode === 'self' ? 'self' : 'header',
   }));
@@ -690,7 +753,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       timeBaseShared: session.timeBaseShared,
     });
     const name = `${src.stem.replace(/\s+/g, '_')}_far_gated.frd`;
-    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal: null, originalNote: 'a far field alone has no merge grid to rebuild on', status: 'unchecked', way: c.way as MergeWay, acceptedAt: new Date().toISOString() } } }));
+    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal: null, originalNote: 'a far field alone has no merge grid to rebuild on', status: 'unchecked', way: c.way as MergeWay, acceptedAt: new Date().toISOString(), fp: approvalKey(src.stem) } } }));
   };
 
   /* ---- accept: the merge becomes part of the tool's session ---- */
@@ -757,10 +820,10 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       }
     } else originalNote = 'the far field came without an FRD export';
     const name = `${src.stem.replace(/\s+/g, '_')}_merged_v2.frd`;
-    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal, originalNote, status: statusOf(comp.result!, sstat), way: c.way as MergeWay, acceptedAt: new Date().toISOString() } } }));
+    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal, originalNote, status: statusOf(comp.result!, sstat), way: c.way as MergeWay, acceptedAt: new Date().toISOString(), fp: approvalKey(src.stem) } } }));
   };
   const acceptedOf = (way: MergeWay): AcceptedSource[] =>
-    Object.entries(st.accepted)
+    Object.entries(currentAccepted)
       .filter(([, a]) => a.way === way)
       .map(([source, a]) => ({ source, name: a.name, text: a.text, session: current!.name, sessionId: current!.id, status: a.status }));
 
@@ -1479,7 +1542,11 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                       <span className={`nfm-status nfm-${s ?? 'none'}`}>
                         {d.kind === 'far-only' ? t('far field only') : s === 'explained' ? `✓ ${t('explained')}` : s === 'flags' ? `⚠ ${t('flags')}` : s ? t(STATUS_LABEL[s]) : t('not merged yet')}
                       </span>
-                      {d.kind !== 'far-only' && (st.accepted[d.stem] ? <span className="nfm-accepted">✓ {t('accepted')}</span> : <span className="nfm-open">{t('not yet accepted')}</span>)}
+                      {(() => {
+                        /* UI-5 — three states, far-only included: it is approved like a merge. */
+                        const ap = approvalOf(d.stem);
+                        return ap === 'current' ? <span className="nfm-accepted">✓ {t('approved')}</span> : ap === 'stale' ? <span className="nfm-stale">↻ {t('changed since approval')}</span> : <span className="nfm-open">{t('not yet approved')}</span>;
+                      })()}
                     </span>
                   </button>
                 );
@@ -1531,12 +1598,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 c={cfg[activeFar.stem]}
                 comp={farComputed.get(activeFar.stem) ?? null}
                 step={step}
-                accepted={st.accepted[activeFar.stem] ?? null}
+                approval={approvalOf(activeFar.stem)}
                 setC={(p) => setC(activeFar.stem, p)}
-                onAccept={() => {
-                  const fc = farComputed.get(activeFar.stem);
-                  if (fc) acceptFar(activeFar, cfg[activeFar.stem], fc);
-                }}
                 onGoto={goto}
               />
             )}
@@ -1569,8 +1632,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     geometry={props.geometry}
                     setC={(p) => setC(active.stem, p)}
                     setupComplete={sstat.complete}
-                    accepted={st.accepted[active.stem] ?? null}
-                    onAccept={() => cur && accept(active, cfg[active.stem], cur)}
+                    approval={approvalOf(active.stem)}
                     onGoto={goto}
                   />
                   <Charts comp={cur} bare={bare} reflectionModel={reflectionModel} setReflectionModel={setReflectionModel} sd={sdOf(cfg[active.stem])} targetFromHz={validity?.fromHz ?? null} />
@@ -1580,6 +1642,39 @@ export default function NfMergeTool(props: NfMergeToolProps) {
 
             {step === 'export' && (
               <div className="nfm-stepbody">
+                {/* UI-5 — one look at what goes along: every driver, approved, changed or open. */}
+                <section className="nfm-approvals" aria-label={t('What goes into export')}>
+                  <h3>{t('What goes into export and “Use in project…”')}</h3>
+                  <ul>
+                    {[...drivers, ...farOnly].map((d) => {
+                      const ap = approvalOf(d.stem);
+                      return (
+                        <li key={d.stem}>
+                          <strong>{d.label}</strong>{' '}
+                          {ap === 'current' ? (
+                            <span className="nfm-accepted">✓ {t('approved — {f}', { f: st.accepted[d.stem].name })}</span>
+                          ) : ap === 'stale' ? (
+                            <span className="nfm-stale">↻ {t('changed since approval — left out')}</span>
+                          ) : (
+                            <span className="nfm-open">{t('not approved — left out')}</span>
+                          )}{' '}
+                          {ap !== 'current' && (
+                            <button
+                              type="button"
+                              className="linkish"
+                              onClick={() => {
+                                setTab(d.stem);
+                                goto('merge');
+                              }}
+                            >
+                              {t('approve in step 4')}
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
                 {/* the same overview as step 4; a driver's name takes you back to it there, where it is changed */}
                 <DriverOverview
                   rows={overviewRows}
@@ -1591,25 +1686,81 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 />
                 <ExportPanel
                   session={session}
-                  merges={Object.entries(st.accepted).map(([source, a]) => ({ source, fileName: a.name, text: a.text, textOriginal: a.textOriginal ?? null, way: a.way, status: a.status }))}
+                  merges={Object.entries(currentAccepted).map(([source, a]) => ({ source, fileName: a.name, text: a.text, textOriginal: a.textOriginal ?? null, way: a.way, status: a.status }))}
                   rig={rigSetup}
                   measuredObjectNote={obj.kind === 'other' ? `${obj.label}, ${obj.volume} L ${obj.load}` : obj.kind === 'target' ? 'the target cabinet' : 'not stated'}
                   targetNote={obj.kind === 'other' ? `${obj.targetVolume} L ${obj.targetLoad}` : 'the measured object'}
                   onClose={() => goto('merge')}
                 />
-                <UsePanel acceptedOf={acceptedOf} accepted={st.accepted} inProject={props.inProject} onUse={props.onUse} responseNames={props.responseNames} />
+                <UsePanel acceptedOf={acceptedOf} accepted={currentAccepted} inProject={props.inProject} onUse={props.onUse} responseNames={props.responseNames} />
               </div>
             )}
 
+            {/* UI-5 — the step bar is a sticky footer, and in step 4 it carries the approval of the
+                driver on screen: one place to approve, the same place for every driver, with the
+                way on (the next open driver, or step 5) once it is done. */}
             <div className="nfm-nav">
-              <button type="button" disabled={GUIDE_STEPS.indexOf(step) === 0} onClick={() => goto(GUIDE_STEPS[GUIDE_STEPS.indexOf(step) - 1])}>
-                {t('← previous')}
-              </button>
-              {GUIDE_STEPS.indexOf(step) < GUIDE_STEPS.length - 1 && (
-                <button type="button" className="nfm-primary" onClick={() => goto(GUIDE_STEPS[GUIDE_STEPS.indexOf(step) + 1])}>
-                  {t('next →')}
+              {step === 'merge' && (active || activeFar) && (() => {
+                const src = (active ?? activeFar)!;
+                const stem = src.stem;
+                const ap = approvalOf(stem);
+                const missing = active ? mergeMissing(cur?.result ?? null, sstat.complete, cfg[stem]) : farMissing(farComputed.get(stem) ?? null, cfg[stem]);
+                const canAccept = missing.length === 0;
+                const flagged = !!active && (cur?.result?.flags.length ?? 0) > 0;
+                const nextOpen = [...drivers, ...farOnly].find((d) => d.stem !== stem && approvalOf(d.stem) !== 'current');
+                const approve = () => {
+                  if (active) {
+                    if (cur) accept(active, cfg[stem], cur);
+                  } else {
+                    const fc = farComputed.get(stem);
+                    if (fc) acceptFar(activeFar!, cfg[stem], fc);
+                  }
+                };
+                return (
+                  <div className="nfm-approve">
+                    <span className="nfm-approve-who">
+                      <strong>{src.label}</strong>{' '}
+                      {ap === 'current' ? (
+                        <span className="nfm-accepted">✓ {t('approved')}</span>
+                      ) : ap === 'stale' ? (
+                        <span className="nfm-stale">↻ {t('changed since approval')}</span>
+                      ) : (
+                        <span className="nfm-open">{t('not yet approved')}</span>
+                      )}
+                    </span>
+                    {ap !== 'current' && (
+                      <button type="button" className="nfm-primary" disabled={!canAccept} onClick={approve} title={canAccept ? '' : t('needs: {list}', { list: missing.join(', ') })}>
+                        {flagged ? t('Approve {d} anyway, with the reason', { d: src.label }) : ap === 'stale' ? t('Approve {d} again', { d: src.label }) : t('Approve {d}', { d: src.label })}
+                      </button>
+                    )}
+                    {ap !== 'none' && (
+                      <button type="button" onClick={() => withdraw(stem)}>
+                        {t('Withdraw approval')}
+                      </button>
+                    )}
+                    {ap === 'current' &&
+                      (nextOpen ? (
+                        <button type="button" className="nfm-primary" onClick={() => setTab(nextOpen.stem)}>
+                          {t('Next driver: {d} →', { d: nextOpen.label })}
+                        </button>
+                      ) : (
+                        <button type="button" className="nfm-primary" onClick={() => goto('export')}>
+                          {t('All approved — to step 5 →')}
+                        </button>
+                      ))}
+                  </div>
+                );
+              })()}
+              <span className="nfm-nav-steps">
+                <button type="button" disabled={GUIDE_STEPS.indexOf(step) === 0} onClick={() => goto(GUIDE_STEPS[GUIDE_STEPS.indexOf(step) - 1])}>
+                  {t('← previous')}
                 </button>
-              )}
+                {GUIDE_STEPS.indexOf(step) < GUIDE_STEPS.length - 1 && (
+                  <button type="button" className={step === 'merge' ? '' : 'nfm-primary'} onClick={() => goto(GUIDE_STEPS[GUIDE_STEPS.indexOf(step) + 1])}>
+                    {t('next →')}
+                  </button>
+                )}
+              </span>
             </div>
           </div>
         )}
@@ -1886,6 +2037,19 @@ function WindowStep(p: {
 
 /* ------------------------------------------------------------------ */
 
+/** UI-5 — where this driver's approval stands, in the panel where its fields are. The button
+ *  itself is in the bar at the bottom of step 4, one place for every driver. */
+function ApprovalLine(p: { approval: Approval; missing: string[] }) {
+  if (p.approval === 'current') return <p className="nfm-accepted">✓ {t('approved — goes into export and “Use in project…” (step 5)')}</p>;
+  if (p.approval === 'stale')
+    return <p className="nl-warning">↻ {t('changed since approval — the approved copy no longer matches what you see and is left out of export and “Use in project…”. Approve again in the bar below.')}</p>;
+  return (
+    <p className="derived">
+      {p.missing.length > 0 ? t('to approve, still needed: {list}', { list: p.missing.join(', ') }) : t('ready to approve — in the bar below')}
+    </p>
+  );
+}
+
 function WorkPanel(p: {
   src: SessionSource;
   c: SourceConfig;
@@ -1895,23 +2059,15 @@ function WorkPanel(p: {
   geometry: CabinetGeometryForMerge;
   setC: (patch: Partial<SourceConfig>) => void;
   setupComplete: boolean;
-  accepted: ToolAccepted | null;
-  onAccept: () => void;
+  /** UI-5 — approving happens in the bar at the bottom of step 4; the panel shows where it stands. */
+  approval: Approval;
   onGoto: (step: GuideStep) => void;
 }) {
   const { src, c, comp, session, setC } = p;
   const r = comp?.result ?? null;
   const ports = session.sources.filter((s) => s.kind === 'port');
   const icon = { ok: '✓', info: 'i', bad: '!' } as const;
-  const canAccept = !!r && p.setupComplete && !!c.way && num(c.validFrom) !== null && (r.flags.length === 0 || c.reason.trim() !== '');
-  /* I-4 UI — the tooltip names what is MISSING, not the whole list of requirements. */
-  const missing = [
-    !p.setupComplete ? t('the set-up (step 2)') : null,
-    !c.way ? t('which driver (step 1)') : null,
-    !r ? t('a computed merge') : null,
-    num(c.validFrom) === null ? t('a stated “valid from”') : null,
-    r && r.flags.length > 0 && c.reason.trim() === '' ? t('a reason (there are flags)') : null,
-  ].filter((x): x is string => !!x);
+  const missing = mergeMissing(r, p.setupComplete, c);
   /* I-4 UI — a proposal for "valid from", shown and never filled in: the near field carries the
    * branch to the grid bottom, unless a reflex box was measured without its port (then it must be
    * stated — the cone alone is not the system near the tuning). */
@@ -2028,10 +2184,7 @@ function WorkPanel(p: {
               {t('reason')} <Field value={c.reason} onCommit={(v) => setC({ reason: v })} width={22} placeholder={t('required to accept with flags')} ariaLabel={t('reason')} />
             </p>
           )}
-          <button type="button" className="nfm-primary" disabled={!canAccept} onClick={p.onAccept} title={canAccept ? '' : t('needs: {list}', { list: missing.join(', ') })}>
-            {r.flags.length > 0 ? t('Accept anyway, with reason…') : t('Accept merge')}
-          </button>{' '}
-          {p.accepted && <span className="derived">✓ {t('accepted')} — {t('export and “Use in project…” are in step 5')}</span>}
+          <ApprovalLine approval={p.approval} missing={missing} />
         </>
       )}
     </div>
@@ -2149,6 +2302,8 @@ interface OverviewRow {
   comp: Computed | null;
   status: MergeStatus | null;
   accepted: boolean;
+  /** UI-5 — approved once, changed since. */
+  stale: boolean;
   validFrom: number | null;
   windowSrc: 'proposal' | 'self' | 'header';
 }
@@ -2158,11 +2313,10 @@ interface OverviewRow {
  * and "accept" hands a gated file over beside the merges. No residual, no echo check: there is no
  * near field to hold the far field against, and the panel says so instead of showing an empty one.
  */
-function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarComputed | null; step: GuideStep; accepted: ToolAccepted | null; setC: (patch: Partial<SourceConfig>) => void; onAccept: () => void; onGoto: (s: GuideStep) => void }) {
+function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarComputed | null; step: GuideStep; approval: Approval; setC: (patch: Partial<SourceConfig>) => void; onGoto: (s: GuideStep) => void }) {
   const { src, c, comp } = p;
   const ok = comp && comp.error === null ? comp : null;
-  const canAccept = !!ok && !!c.way && num(c.validFrom) !== null;
-  const missing = [!c.way ? t('which driver (step 1)') : null, !ok ? t('a readable window') : null, num(c.validFrom) === null ? t('a stated “valid from”') : null].filter((x): x is string => !!x);
+  const missing = farMissing(comp, c);
   const top = ok ? Math.ceil(Math.max(...ok.spec.spl.filter((_, i) => ok.spec.freq[i] >= 200 && ok.spec.freq[i] <= 20000)) / 5) * 5 + 5 : 0;
   return (
     <div className="nfm-body nfm-faronly">
@@ -2188,16 +2342,13 @@ function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarCompute
         <p className="derived">{ok ? (ok.calNote ?? t('none: the export and “Use in project” refuse — choose a calibration file, or load the FRD exports')) : '—'}</p>
         {p.step === 'merge' && (
           <>
-            <h4>{t('Accept')}</h4>
+            <h4>{t('Approval')}</h4>
             <p>
               {t('valid from')} <Field value={c.validFrom} onCommit={(v) => p.setC({ validFrom: v })} ariaLabel={t('valid from')} /> Hz{' '}
               <Field value={c.validFromReason} onCommit={(v) => p.setC({ validFromReason: v })} width={18} placeholder={t('why (stated)')} ariaLabel={t('valid from reason')} />
               {ok && num(c.validFrom) === null && <span className="derived"> {t('the gate floor is 1/T = {hz} Hz; state what you believe, it is not filled in for you', { hz: ok.oneOverTHz.toFixed(0) })}</span>}
             </p>
-            <button type="button" className="nfm-primary" disabled={!canAccept} onClick={p.onAccept} title={canAccept ? '' : t('needs: {list}', { list: missing.join(', ') })}>
-              {t('Accept far field')}
-            </button>
-            {p.accepted && <p className="nfm-accepted">✓ {t('accepted as {name}', { name: p.accepted.name })}</p>}
+            <ApprovalLine approval={p.approval} missing={missing} />
           </>
         )}
         {p.step === 'window' && (
@@ -2255,7 +2406,8 @@ function DriverOverview(p: { rows: OverviewRow[]; active: string; onSelect: (ste
                   {row.label}
                 </button>{' '}
                 <span className={`nfm-status nfm-${row.status ?? 'none'}`}>{row.status ? t(STATUS_LABEL[row.status]) : '—'}</span>
-                {row.accepted && <span className="nfm-accepted"> ✓ {t('accepted')}</span>}
+                {row.accepted && <span className="nfm-accepted"> ✓ {t('approved')}</span>}
+                {row.stale && <span className="nfm-stale"> ↻ {t('changed since approval')}</span>}
               </h4>
               {r && inp && c?.fit && c?.splice ? (
                 <div className="nfm-overview-body">

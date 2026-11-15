@@ -9982,3 +9982,32 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   bestand, geen nieuwe test: `mergeGuide.test.ts` veranderde van inhoud en niet van telling. **Een eerdere
   run (264,0 s, dezelfde tellingen, groen) is weggegooid** omdat de knop ná zijn start is gebouwd. Geen
   volle run: geen motor-, poort-, venster- of corpuscode geraakt.
+
+### UI-5-guards (goedkeuren in de merge-tool: één plek, een vingerafdruk, intrekken; alleen de merge-tool, 15-11-2026)
+
+- **Aanleiding (Sander, 15-11-2026):** "de accept merge knop is onduidelijk en is per tabblad/per driver".
+- **De fout onder de knop:** "Accept" bevroor per driver een kopie van de merge. Werd daarna nog iets gewijzigd (venster, "valid from", opstelling, kalibratie), dan bleef de tab "✓ accepted" tonen en namen export en "Use in project…" STIL de oude kopie. Intrekken kon niet.
+- **De vingerafdruk.** Elke goedkeuring draagt een vingerafdruk (`ToolAccepted.fp`) van wat de merge bepaalt: de eigen config en die van de poort, rig, planes, `planeQ`, `planeList`, `obj`, `calId` en roles.
+  - `stableKey` sorteert de sleutels en laat lege waarden weg. Zo maakt een later toegevoegd, standaard leeg veld oude goedkeuringen niet stale.
+  - `approvalOf` geeft `none`, `current` of `stale`. Alleen `currentAccepted` gaat naar export en "Use in project…".
+  - Goedkeuringen van vóór UI-5 hebben geen `fp`. Die zijn niet te beoordelen en tellen als actueel; het gedrag blijft daar ongewijzigd.
+- **Eén plek om goed te keuren:** de vaste balk onderaan stap 4 (`.nfm-nav`, sticky). Daarin staan de driver met zijn staat, "Approve <driver>" (of "… anyway, with the reason" of "… again"), "Withdraw approval" en daarna "Next driver: … →" of "All approved — to step 5 →".
+  - De panelen (merge en far-only) tonen alleen nog de staat (`ApprovalLine`).
+  - Wat er nog ontbreekt staat in één lijst met twee lezers (`mergeMissing`, `farMissing`).
+  - De tabs, het overzicht en stap 5 tonen drie staten. Stap 5 opent met "What goes into export and “Use in project…”", met een link naar stap 4 per driver die niet meegaat.
+- `src/lib/ui5Approval.test.tsx` (5 claims):
+  - `stableKey` als zuivere functie;
+  - beide accept-functies schrijven `fp`;
+  - export en use lezen alleen `currentAccepted`;
+  - er is precies één `onClick={approve}`, in de balk, en er is geen `onAccept` meer;
+  - drie staten, far-only inbegrepen.
+
+  Opzettelijke breuk: de export weer `st.accepted` laten lezen gaf 1 rode claim. In `mergeGuide.test.ts` is één nabijheidsvenster verruimd in V15-vorm (300 → 3000 tekens), omdat stap 5 nu met de goedkeuringslijst opent.
+- **Browsercontrole** (dev-server, bestaande lokale sessie session-2026-11-14):
+  - mid ingetrokken en opnieuw goedgekeurd (nu mét vingerafdruk);
+  - "valid from" 20 → 21: tab, paneel en balk zeggen "↻ changed since approval";
+  - 21 → 20: weer "✓ approved";
+  - stap 5 toont alle vier als goedgekeurd met hun bestandsnaam.
+
+  Gevolg voor die lokale sessie: de mid-kopie is opnieuw aangemaakt, met dezelfde instellingen en de datum van vandaag.
+- **Gemeten (15-11-2026):** `npx tsc -b` groen. `npm run test:fast` **272,0 s, 249 bestanden (248 geslaagd, 1 overgeslagen), 3279 tests (3275 geslaagd, 4 overgeslagen), groen, alleen gedraaid met de dev-server gestopt** (run gestart 13:03:55, ná de laatste bronbewerking). Dat is +1 bestand en +5 tests tegen UI-4's 3274: exact `ui5Approval.test.tsx`. Geen volle run: er is geen motor-, poort-, venster- of corpuscode geraakt.
