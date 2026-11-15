@@ -182,7 +182,8 @@ describe('U-9 (2): a niets row is never rendered', () => {
     /* 07-11-2026 — the datasheet power rating and recommended range lost
      * their fields (Sander); carried in the file only, like phasePriority. */
     expect([...V2_NIETS_ROWS].sort()).toEqual(
-      ['excursionSpl', 'hpLpPref', 'maxCrossover', 'maxCrossoverOverride', 'minCrossover', 'phasePriority', 'powerRating', 'v1Thresholds'].sort(),
+      /* UI-6 (15-11-2026) — V15: `minCrossover` left the niets set: it is a field again (expert card + guided question). */
+      ['excursionSpl', 'hpLpPref', 'maxCrossover', 'maxCrossoverOverride', 'phasePriority', 'powerRating', 'v1Thresholds'].sort(),
     );
     expect(Object.keys(NIETS_CONTROLS).sort()).toEqual(['excursionSpl', 'v1Thresholds']);
   });

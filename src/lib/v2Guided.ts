@@ -829,7 +829,11 @@ export const LEVEL_WORK_OPTIONS: readonly { value: string; label: string }[] = O
  * handover of a hybrid, which has no default (P4) — and a builder who does not
  * know it is sent to expert and carries on passive.
  */
-export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'woofer' | 'order' | 'voicing' | 'parts';
+/** UI-6 — the orders a datasheet can name its minimum crossover at; the guided pane and the driver card map
+ *  over this so neither types a number of its own. */
+export const MIN_CROSSOVER_ORDERS = [1, 2, 3, 4] as const;
+export const minCrossoverOrderLabel = (o: number): string => (o === 1 ? '1st order' : o === 2 ? '2nd order' : o === 3 ? '3rd order' : '4th order');
+export type GuidedQuestionId = 'build' | 'amplifier' | 'load' | 'ambition' | 'woofer' | 'order' | 'tweeterMin' | 'voicing' | 'parts';
 
 export interface GuidedQuestion {
   id: GuidedQuestionId;
@@ -837,7 +841,7 @@ export interface GuidedQuestion {
   /** How the screen answers: a profile pick, the architecture choice, the voicing choice,
    *  the filter order per handover (`guidedOrder.ts` — the band form's slope selects, not a
    *  requirement), or the component quality (`guidedPartsQuality.ts` — the snap profile). */
-  kind: 'architecture' | 'profile' | 'order' | 'voicing' | 'parts';
+  kind: 'architecture' | 'profile' | 'order' | 'tweeterMin' | 'voicing' | 'parts';
   /** Register rows a FREE field asks for, and on which path. Never on the passive path. */
   freeFields: readonly { rowId: string; onlyWhen: 'hybrid' }[];
   /** What “I don’t know” costs, in one sentence. */
@@ -897,6 +901,18 @@ export const GUIDED_QUESTIONS: readonly GuidedQuestion[] = Object.freeze([
     kind: 'order',
     freeFields: [],
     unknownMeans: 'The app’s own default: 4th order on every handover (a 24 dB/oct target on the lower flank of each) — nobody chose it, and it stands until you change it here or in expert.',
+  },
+  /* UI-6 (15-11-2026, Sander): the manufacturer's minimum crossover for the
+   * tweeter — a datasheet figure, not a requirement: it is a FLOOR on the
+   * crossover window (rule stated-min, U-3g) and judges nothing. Placed after
+   * the filter order, which the floor depends on in the sheet's own words
+   * ("2200 Hz @ 2nd order"). Writes the two card fields expert uses. */
+  {
+    id: 'tweeterMin',
+    title: 'What is the lowest crossover the tweeter\'s datasheet allows?',
+    kind: 'tweeterMin',
+    freeFields: [],
+    unknownMeans: 'The trade rule alone sets the floor of the mid→tweeter window: 18 dB attenuation on the tweeter\'s f_s (1.68 × f_s at 4th order). The manufacturer\'s own figure, usually higher, is not read.',
   },
   {
     id: 'voicing',

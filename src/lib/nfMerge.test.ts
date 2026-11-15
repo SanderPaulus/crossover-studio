@@ -790,9 +790,14 @@ describe('I-2 — the app wiring', () => {
     // tool now takes the result back (`runUse`) and the app builds the file through `prepareBranchUse`.
     expect(SECTION).toContain('res = p.onUse(way, toUse)');
     expect(APP.slice(APP.indexOf('<NfMergeTool'))).toContain('onUse={acceptMergeV2}');
-    const accept = APP.slice(APP.indexOf('const acceptMergeV2'), APP.indexOf('const mergeGeometry'));
+    /* UI-6 — V15: WAS one callback (`acceptMergeV2`) that checked AND applied; IS the apply half in
+     * `applyBranchUse`, called by `acceptMergeV2` (one way) and `acceptMergeV2All` (every way at once).
+     * The slice starts at `applyBranchUse` so it holds all three, and the response still changes only there. */
+    const accept = APP.slice(APP.indexOf('const applyBranchUse'), APP.indexOf('const mergeGeometry'));
     expect(accept).toContain('setWoofer(next)');
+    expect(accept.match(/setWoofer\(next\)/g)?.length).toBe(1); // the one apply half
     expect(accept).toContain('prepareBranchUse(');
+    expect(accept).toContain('prepareAllBranchUse(');
     // the response it replaces is KEPT, and a re-accept does not overwrite it
     expect(accept).toContain('far: n[role].far ?? { name: loaded.name, raw: loaded.raw }');
   });
@@ -818,7 +823,10 @@ describe('I-2 — the app wiring', () => {
   /** Every refusal names the input it is missing (P4) — none of them fills one in. */
   it('refuses by naming the missing input rather than substituting one', () => {
     expect(SECTION).toContain("'port weight: state it");
-    expect(SECTION).toContain("'model: state f0 for the AN4 form'");
+    /* UI-6 — V15: WAS a bare "state f0" refusal; IS the AN4 f0 proposed from the pod or baffle width, and
+     * the refusal names what THAT proposal lacked (the pod diameter, the baffle width) — still a name,
+     * never a substituted number. */
+    expect(SECTION).toContain("`model: ${f0p && 'reason' in f0p ? f0p.reason : 'state f0 for the AN4 form'}`");
     expect(SECTION).not.toMatch(/\?\?\s*0\.205/);
     expect(SECTION).not.toMatch(/\|\|\s*500/);
   });

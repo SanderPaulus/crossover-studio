@@ -10011,3 +10011,90 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 
   Gevolg voor die lokale sessie: de mid-kopie is opnieuw aangemaakt, met dezelfde instellingen en de datum van vandaag.
 - **Gemeten (15-11-2026):** `npx tsc -b` groen. `npm run test:fast` **272,0 s, 249 bestanden (248 geslaagd, 1 overgeslagen), 3279 tests (3275 geslaagd, 4 overgeslagen), groen, alleen gedraaid met de dev-server gestopt** (run gestart 13:03:55, ná de laatste bronbewerking). Dat is +1 bestand en +5 tests tegen UI-4's 3274: exact `ui5Approval.test.tsx`. Geen volle run: er is geen motor-, poort-, venster- of corpuscode geraakt.
+
+### UI-6-guards (de merge-tool doet het werk zelf: zeven punten op één middag; 15-11-2026)
+
+- **Het nummer:** een parallelle sessie boekte dezelfde middag UI-5 (goedkeuren op één plek, `116a20f`); dit
+  werk is daarom UI-6, en de `UI-6`-markeringen in de code zijn de zijne.
+
+- **Aanleiding (Sander, 15-11-2026):** "ik moet echt veel zelf invullen voor iets wat het voor mij zou
+  moeten doen; ik heb hier geen verstand van." Zeven punten, in deze volgorde gebouwd en elk op casus 1
+  nagemeten. De merge-kern (`nfMergeV2.ts`) en de guide (`mergeGuide.ts`) zijn geraakt; geen engine2-,
+  poort-, budget- of corpuscode.
+- **1 De knie-regel** (`mergeGuide.ts`, `merge-guide/1.2`): de knie is het laatste venstereinde vóórdat het
+  residu boven **`KNEE_DEG` = `FIT_RESIDUAL_FLAG_DEG` / 2 = 5°** komt; tot UI-6 was het "1,5° stijging boven het
+  minimum". **Gemeten vóór de wijziging, de scan tot 6 ms doorgetrokken:** de mid van casus 1 kruipt van 1,5°
+  naar 6° over vier milliseconden zonder enige stap (de eigen diffractie van pod en kast, die in het verre
+  veld HOORT), en de oude regel stopte het venster op 1,27 ms (573 Hz) voor een merge die tot de vloer
+  "explained" blijft; een echte reflectie is een stap (woofer down: 2,1° → 7,5° binnen een milliseconde).
+  Nieuwe voorstellen: **mid 3,01 ms / 287 Hz** (was 1,27 / 573), **woofer up 3,01 / 269 uit de opstelling**
+  (was knie 2,14 / 351), woofer down 1,95 / 339 ongewijzigd; met "weet ik niet" op het overstek: mid 2,98 /
+  289, woofer up 3,74 / 225, woofer down 2,37 / 297 (dat laatste gaf tot UI-6 helemaal geen voorstel).
+  Drie structuurwijzigingen in `proposeWindowSteps`: élke pas scant tot de opstellingsgrens (een pas die
+  tot zijn eigen bandeinde keek zag het residu er net voorbij niet boven de grens komen en meldde "geen
+  knie"); een pas waarvan het eerste punt al boven de grens ligt neemt dat punt als ANKER voor de volgende
+  band (een band van een ver einde start de scan ná de echte knie); en ná convergentie loopt de scan op de
+  eindband door tot de grens, zodat het plateau — of de stijging — in de grafiek staat. Kost ~17–31 s per
+  driver (elke merge ~0,6 s). `mergeGuide.test.ts` in V15-vorm: de knie-handberekening, woofer up uit de
+  opstelling, een nieuwe mid-claim (pod 206 mm, S_d 69) en de scanlengte.
+- **2 Het tafeloverstek** (stap 2): het GETAL is de bediening; "hoogstens …" en "weet ik niet" staan er als
+  uitzondering naast. Tot UI-6 kwam eerst een modus-select ("—") en pas na "a measure" het veld, en zo
+  bleven sessies op "weet ik niet" staan — waarmee het voorstel op de knie terugviel in plaats van op de
+  reflectie. De engine kende het getal al (`surfaceOverhangMm`, B-4); alleen de UI is veranderd.
+- **3 Band en f0 volgen het venster in gebruik** (`compute` in `NfMergeTool.tsx`): het voorstel voor het
+  venster dat IN GEBRUIK is, is de waarde tenzij het Advanced-blok er een stelt; `Computed.bandSource` /
+  `f0Source` zeggen welke, stap 4 drukt "(proposed for the window in use)" en de Advanced-velden tonen het
+  voorstel grijs. "Take over the proposal" en "Window from the FRD header" KOPIËREN de band en f0 niet meer
+  in de velden (en wissen wat een eerdere overname typte): een handmatig venster erna kan geen band van een
+  ander venster meer vasthouden — precies wat Sander overkwam (537–1107 bij een venster van 314 Hz, en
+  "model: state f0"). `f0Proposal` is daarvoor BOVEN `compute` gedeclareerd (de TDZ-les van U-9). Stap 3
+  geldt als "done" op een band in gebruik, niet meer op een getypte.
+- **4 Valid from is het voorstel tenzij gesteld** (`effectiveValidFrom`, `validFromProposalFor`,
+  `farValidFromProposal`): `accept`/`acceptFar` schrijven het voorstel mét zijn reden ("… proposed by the
+  merge tool, not overridden"), het veld toont het grijs, en "a stated valid from" ontbreekt alleen nog
+  waar géén voorstel bestaat (reflexkast zonder poortmeting). Voor een far-field-only weg is het voorstel
+  1/T van zijn gate. Eén berekening in de ouder, twee lezers (paneel en accept) — de UI-4-knop blijft voor
+  wie een eigen getal typte.
+- **5 Echo's binnen de eigen omvang** (`nf-merge/2.3`, `MergeV2Input.ownExtentM`, `FoundEcho.own`): een
+  onverklaarde echo in de gate waarvan het extra pad korter is dan de KASTDIAGONAAL (uit de geometrie van het
+  ontwerp of van het gemeten object; de pod van een mid zit óp die baffle) is randdiffractie — de
+  luidspreker zelf, die in het verre veld hoort — en wordt als noot gemeld, niet gevlagd; `checksOf` zet
+  hem als "i … the loudspeaker itself". Zonder `ownExtentM` verandert niets. Gemeten op de mid van casus 1
+  door ARTA's 5,021 ms-gate: de −19 dB-echo op 1,0 ms (0,35 m) is eigen; de vloerecho van woofer down op
+  3,6 ms (1,24 m) blijft gevlagd (`mergeSession.test.ts`, +1 claim). Daarmee is de mid "explained" zonder
+  reden-veld.
+- **6 "Use all in project"** (`prepareAllBranchUse` in `useInProject.ts`, `acceptMergeV2All` in `App.tsx`,
+  het `UsePanel`): één knop zet élke geaccepteerde weg op zijn eigen weg uit stap 1, woofers complex
+  gesommeerd, far-field-only mee; de niveaucontrole van elke weg ziet de ÁNDERE wegen zoals ze ná de
+  overdracht zijn (de eigen bestanden van het plan) plus wat het project houdt — drie relatieve merges uit
+  één sessie landen dus samen waar één-voor-één de eerste tegen de demo-tweeter weigerde. Eén status per
+  weg, teruggelezen uit het project; "One way at a time" blijft als uitklap. `applyBranchUse` is de ene
+  toepas-helft voor beide ingangen.
+- **7 De minimale kruisfrequentie van de tweeter** (Sander: "zolang het in expert ingevoerd kan worden"):
+  terug als veld op de driverkaart (expert, naast "Max drive on f_s") én als guided-vraag `tweeterMin` ná
+  de orde-vraag (negen schermen; zes eisvragen blijven zes — het is een VENSTERVLOER, `stated-min` U-3g, en
+  oordeelt niets). Beide schrijven `v2Meas[role].minCrossoverHz/Order`; het branch-literal geeft
+  `minCrossover` weer aan de adapter (G-5 had dat weggehaald). Nagemeten in de browser: 2200 Hz @ 2e orde op
+  de tweeter → `mid→high · floor: stated-min 2200 Hz · ceiling: breakup 2335 Hz`. De ordelijst
+  (`MIN_CROSSOVER_ORDERS`) woont in `v2Guided.ts` omdat het guided-paneel geen eigen getal mag dragen (de
+  P6-claim van U-9 fase 3). Elf bronscans gingen rood en zijn in V15-vorm bijgewerkt (`v2InputPlacement`,
+  `useInProject`, `mergeGuide`, `guidedOrder`, `u9Fase3`, `u9FieldEffects`, `statedMinCrossover`); geen
+  claim versoepeld.
+- **Browsercontrole (dev-server, de 14-11-sessie in de pane, 15-11-2026):** het venstervoorstel van de mid
+  leest "end 2.51 ms · 1/T 334 Hz … the residual passes 5° after 2.51 ms", de residugrafiek loopt tot 6 ms;
+  "Take over" zet de band op 334–1107 (proposed), f0 131 (proposed), valid from grijs 20; stap 4 "explained"
+  met de echo op 1,06 ms als "the loudspeaker itself"; "Use all in project" zet alle drie de wegen in één
+  druk ("✓ Done — the project's low branch now uses low_merged_v2.frd", idem mid en high); guided toont de
+  tweeter-vraag; de expert-kaart draagt het veld op alle drie de kaarten. Console leeg.
+- **Niet gedaan:** de knopbalk "5 Export" staat uit zolang een driver het HEADER-venster gebruikt
+  (`winMode` leeg geldt niet als "done") — een bestaande regel; stap 5 is via "next →" bereikbaar. Geen
+  volle run: `nfMergeV2.ts` is geraakt maar niets daarin bereikt de zoektocht of een corpus.
+- **Gemeten 15-11-2026:** `npx tsc -b` groen. `npm run test:fast` **272,3 s, 249 bestanden (248 geslaagd,
+  1 overgeslagen), 3281 tests (3277 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 20:55:21, run gestart 20:55:51 (de H-2-regel).** Tegen UI-4's
+  3274 (3270 + 4) is dat +1 bestand en +7 tests, en die telling sluit: VIJF uit `ui5Approval.test.tsx` van
+  de parallelle UI-5-commit, plus ÉÉN in `mergeGuide.test.ts` (de mid-claim; de knie-claim verving er een)
+  en ÉÉN in `mergeSession.test.ts` (de eigen-omvang-claim). **Twee eerdere runs zijn weggegooid**, beide om
+  de H-2-reden: de eerste (273,8 s) had twee rode I-2-bronscans die hun werk deden (de bedrading van "Use in
+  project" en de f0-weigering, allebei in V15-vorm herankerd), de tweede (275,0 s, groen) mat een boom
+  waarin de markeringen nog UI-5 heetten. Geen volle run (zie "Niet gedaan").

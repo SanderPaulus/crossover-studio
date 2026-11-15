@@ -18,11 +18,16 @@
  *  reads low because nothing is compared, not because the fit is good. (Measured: starting at half a
  *  period found "knees" at 0.7–1.3 ms on casus 1 that were exactly that.)
  *
- * THE KNEE: the last end before the residual rises more than KNEE_RISE_DEG above its lowest value so far.
- * A convention, visible and named. Measured on casus 1 (14-11-2026, steps of 0.125 ms): woofer down
- * no knee before the 1.95 ms proposal; woofer up knee 2.13 ms (proposal from the floor 3.01 ms); mid
- * knee 2.63 ms (proposal from the floor 4.60 ms). A slope criterion was tried and refused: the residual
- * ripples (±3 °/ms) on the way.
+ * THE KNEE (UI-6, 15-11-2026): the last end before the residual exceeds KNEE_DEG — half the FIT_RESIDUAL_FLAG_DEG
+ * convention the merge is judged by. Until UI-6 it was "a rise of more than 1.5° above the lowest so far",
+ * and that fired on a slow creep: measured on casus 1 (15-11-2026, the scan run to 6 ms), the mid's
+ * residual climbs from 1.5° to 6° over four milliseconds with no step anywhere — the loudspeaker's own
+ * diffraction entering the window, which the near-field model does not carry and which BELONGS in the far
+ * field — and the rule stopped the window at 1.27 ms (573 Hz) for a merge that stays "explained" out to the
+ * floor. A real reflection is a step (woofer down: 2.1° → 7.5° within a millisecond). What the window buys
+ * with length is 1/T, and an end that keeps the residual under half the convention costs the judgement
+ * nothing; so the knee is that end, and the scan runs on to the set-up's own limit so the plateau is seen.
+ * A slope criterion was tried at B-4 and refused: the residual ripples (±3 °/ms) on the way.
  *
  * THE REFERENCE (the phase zero) is the SESSION's, shared by every driver — otherwise the timing between
  * the drivers is lost: the FRD exports' own reference when they are there (V56), else the earliest
@@ -34,27 +39,29 @@
  * 808–1165 Hz with the upper-half rule and the top on ka itself; August used 500–800). The margin is the
  * one `merger.ts` states and the two other proposers already carry.
  */
-import { arrivalMs, mergeImpulsesV2, planeEchoDelayS, type Gate, type Impulse, type NearToFarModel, type PlaneEcho } from './nfMergeV2.ts';
+import { arrivalMs, FIT_RESIDUAL_FLAG_DEG, mergeImpulsesV2, planeEchoDelayS, type Gate, type Impulse, type NearToFarModel, type PlaneEcho } from './nfMergeV2.ts';
 import { echoesForSource, kaOneHz, type PlanesStated, type RigSetup } from './mergeSession.ts';
 import { SPLICE_KA_MARGIN } from './merger.ts';
 
-/** 1.0 → 1.1 (15-11-2026): the proposed fit band and handover are the whole overlap 1/T … 0.95·ka (was the upper half to ka). */
-export const MERGE_GUIDE_VERSION = 'merge-guide/1.1';
+/** 1.0 → 1.1 (15-11-2026): the proposed fit band and handover are the whole overlap 1/T … 0.95·ka (was the upper half to ka).
+ *  1.1 → 1.2 (15-11-2026, UI-6): the knee is an absolute level (KNEE_DEG) and the scan runs to the set-up's limit. */
+export const MERGE_GUIDE_VERSION = 'merge-guide/1.2';
 /** The window proposal's conventions, each one stated by Sander (14-11-2026). */
 export const PROPOSAL_PRE_PEAK_MS = 0.4;
 export const PROPOSAL_TAPER = 0.25;
 /** AN4: f0 = AN4_F0_HZ_M / d. */
 export const AN4_F0_HZ_M = 34.16;
-/** The knee: a rise of more than this above the lowest residual so far (degrees rms). */
-export const KNEE_RISE_DEG = 1.5;
+/** The knee: the residual (degrees rms) a window end may not push the fit past — half the convention the
+ *  merge is judged by, so a proposed end never lands near "not explained". */
+export const KNEE_DEG = FIT_RESIDUAL_FLAG_DEG / 2;
 /** Scan grid for the residual-versus-end check, ms. */
 export const SCAN_STEP_MS = 0.125;
 /** Without a proposal from the set-up (planes "don't know"), the scan looks this far after the peak. */
 export const SCAN_MAX_AFTER_PEAK_MS = 6;
 /** At most this many passes to let the band follow the knee ("don't know"). */
 export const KNEE_ITERATIONS = 4;
-/** Points the scan keeps after the residual first rises past the knee rule: enough to SHOW the rise in the
- *  check chart, and the knee itself is settled by then (kneeOf reads the first exceedance only). */
+/** With `stopAfterKnee`: points the scan keeps after the residual first passes KNEE_DEG — enough to show
+ *  the rise. The proposal does NOT stop there (UI-6): it scans to the set-up's limit so the plateau is seen. */
 export const KNEE_TAIL_POINTS = 4;
 
 export const GUIDE_STEPS = ['files', 'setup', 'window', 'merge', 'export'] as const;
@@ -156,7 +163,6 @@ export interface ResidualScanOpts {
 export function* residualScanSteps(opts: ResidualScanOpts): Generator<number, ScanPoint[]> {
   const peak = arrivalMs(opts.far);
   const out: ScanPoint[] = [];
-  let min = Infinity;
   let tail = -1;
   for (let x = opts.fromMs; x <= opts.toMs + 1e-9; x += SCAN_STEP_MS) {
     if (opts.stopAfterKnee && tail >= KNEE_TAIL_POINTS) break;
@@ -166,8 +172,7 @@ export function* residualScanSteps(opts: ResidualScanOpts): Generator<number, Sc
       const r = mergeImpulsesV2({ far: opts.far, near: opts.near, gate, model: opts.model, echoes: [], sdCm2: null, fitBandHz: opts.fitHz, spliceBandHz: opts.spliceHz, output: { fromHz: 20, toHz: Math.min(20000, opts.far.sampleRate / 2.2), pointsPerOctave: 12 } });
       out.push({ endAfterPeakMs: x, deg: r.fit.residualRmsDeg, db: r.fit.residualRmsDb });
       if (tail >= 0) tail++;
-      else if (r.fit.residualRmsDeg > min + KNEE_RISE_DEG) tail = 0;
-      min = Math.min(min, r.fit.residualRmsDeg);
+      else if (r.fit.residualRmsDeg > KNEE_DEG) tail = 0;
     } catch {
       /* a window the kernel refuses is not a point */
     }
@@ -176,13 +181,9 @@ export function* residualScanSteps(opts: ResidualScanOpts): Generator<number, Sc
   return out;
 }
 
-/** The knee: the last end before the residual rises more than KNEE_RISE_DEG above its lowest so far. */
+/** The knee: the last end before the residual exceeds KNEE_DEG (UI-6; until then a rise of 1.5° above the lowest so far). */
 export function kneeOf(scan: readonly ScanPoint[]): ScanPoint | null {
-  let min = Infinity;
-  for (let i = 0; i < scan.length; i++) {
-    if (scan[i].deg > min + KNEE_RISE_DEG) return i > 0 ? scan[i - 1] : null;
-    min = Math.min(min, scan[i].deg);
-  }
+  for (let i = 0; i < scan.length; i++) if (scan[i].deg > KNEE_DEG) return i > 0 ? scan[i - 1] : null;
   return null;
 }
 
@@ -246,27 +247,49 @@ export function* proposeWindowSteps(opts: ProposeWindowOpts): Generator<number, 
    * iterated until the knee stands still (at most KNEE_ITERATIONS passes): a band from a far end starts
    * the scan after the real knee. Measured on casus 1: without this, "don't know" put woofer down's knee
    * at 2.65 ms (7.1°); with it at 1.95 ms — the set-up's own proposal. */
-  type Pass = { reason: string } | { scan: ScanPoint[]; knee: ScanPoint | null };
-  const scanFor = function* (bandEnd: number): Generator<number, Pass> {
+  type Pass = { reason: string } | { scan: ScanPoint[]; knee: ScanPoint | null; bands: { fitHz: [number, number]; spliceHz: [number, number] }; fromMs: number };
+  const limit = setupEnd ?? SCAN_MAX_AFTER_PEAK_MS;
+  const scanFor = function* (bandEnd: number, stopAfterKnee: boolean): Generator<number, Pass> {
     const bands = scanBandsGuide(1000 / gateForEnd(peak, opts.referenceMs, bandEnd).rightMs, opts.sdCm2);
     if ('reason' in bands) return { reason: bands.reason };
-    const scan = yield* residualScanSteps({ far: opts.far, near: opts.near, model: opts.model, referenceMs: opts.referenceMs, fitHz: bands.fitHz, spliceHz: bands.spliceHz, fromMs: Math.max(SCAN_STEP_MS, 1000 / bands.spliceHz[0] - (peak - opts.referenceMs)), toMs: bandEnd, stopAfterKnee: true });
-    return { scan, knee: kneeOf(scan) };
+    const fromMs = Math.max(SCAN_STEP_MS, 1000 / bands.spliceHz[0] - (peak - opts.referenceMs));
+    /* The BAND follows the end given; the scan itself runs to the set-up's limit (and stops a few points
+     * past the knee when asked): a pass that only looked as far as its own band's end could not see the
+     * residual pass the level just beyond it, and reported "no knee" for a window that has one. */
+    const scan = yield* residualScanSteps({ far: opts.far, near: opts.near, model: opts.model, referenceMs: opts.referenceMs, fitHz: bands.fitHz, spliceHz: bands.spliceHz, fromMs, toMs: limit, stopAfterKnee });
+    return { scan, knee: kneeOf(scan), bands, fromMs };
   };
-  const first = yield* scanFor(setupEnd ?? SCAN_MAX_AFTER_PEAK_MS);
+  /* The anchor of the next pass: the knee, or — when the residual is already past the level at the
+   * first end that resolves the band — that first end: a band from a far end starts the scan after the
+   * real knee (UI-6: on casus 1's woofer down, "don't know" read 5.4° at its first point, 2.4 ms, on
+   * the band for 6 ms, and would have had no proposal at all). */
+  const anchorOf = (x: Exclude<Pass, { reason: string }>): ScanPoint | null => x.knee ?? (x.scan.length > 0 && x.scan[0].deg > KNEE_DEG ? x.scan[0] : null);
+  const first = yield* scanFor(limit, true);
   if ('reason' in first) return { reason: first.reason };
-  let pass: { scan: ScanPoint[]; knee: ScanPoint | null } = first;
-  if (pass.knee && (setupEnd === null || pass.knee.endAfterPeakMs < setupEnd)) {
-    for (let i = 0; i < KNEE_ITERATIONS && pass.knee; i++) {
-      const next = yield* scanFor(pass.knee.endAfterPeakMs);
-      if ('reason' in next || !next.knee) break;
-      if (setupEnd !== null && next.knee.endAfterPeakMs >= setupEnd) break;
-      const moved = Math.abs(next.knee.endAfterPeakMs - pass.knee.endAfterPeakMs) > SCAN_STEP_MS / 2;
+  let pass: Exclude<Pass, { reason: string }> = first;
+  let anchor = anchorOf(pass);
+  if (anchor && (setupEnd === null || anchor.endAfterPeakMs < setupEnd)) {
+    for (let i = 0; i < KNEE_ITERATIONS && anchor; i++) {
+      const next = yield* scanFor(anchor.endAfterPeakMs, true);
+      if ('reason' in next) break;
+      const nextAnchor = anchorOf(next);
+      if (!nextAnchor) break;
+      if (setupEnd !== null && nextAnchor.endAfterPeakMs >= setupEnd) break;
+      const moved = Math.abs(nextAnchor.endAfterPeakMs - anchor.endAfterPeakMs) > SCAN_STEP_MS / 2;
       pass = next;
+      anchor = nextAnchor;
       if (!moved) break;
     }
   }
-  const scan = pass.scan;
+  if (pass.knee === null && pass.scan.length > 0 && pass.scan[0].deg > KNEE_DEG)
+    return { reason: `the residual is above ${KNEE_DEG}° at every window end that resolves its own band (from ${pass.scan[0].endAfterPeakMs.toFixed(2)} ms after the peak) — set the window yourself` };
+  /* UI-6: the passes above stop a few points past the knee (cheap); the curve the designer sees runs
+   * on to the set-up's own limit on the final band, so the plateau — or the rise — is visible. */
+  const last = pass.scan.length ? pass.scan[pass.scan.length - 1].endAfterPeakMs : pass.fromMs - SCAN_STEP_MS;
+  const tail = last + SCAN_STEP_MS <= limit + 1e-9
+    ? yield* residualScanSteps({ far: opts.far, near: opts.near, model: opts.model, referenceMs: opts.referenceMs, fitHz: pass.bands.fitHz, spliceHz: pass.bands.spliceHz, fromMs: last + SCAN_STEP_MS, toMs: limit, stopAfterKnee: false })
+    : [];
+  const scan = [...pass.scan, ...tail];
   const knee = pass.knee;
   let end: number;
   let source: 'setup' | 'knee';
@@ -280,8 +303,8 @@ export function* proposeWindowSteps(opts: ProposeWindowOpts): Generator<number, 
     end = knee.endAfterPeakMs;
     source = 'knee';
     why = setupEnd !== null
-      ? `the residual already rises at ${knee.endAfterPeakMs.toFixed(2)} ms (more than ${KNEE_RISE_DEG}° above its lowest), before the ${refl!.label} reflection (${refl!.ms.toFixed(2)} ms − one period = ${setupEnd.toFixed(2)} ms)`
-      : `no reflection known from the set-up${reflNote ? ` (${reflNote})` : ''}; the residual rises more than ${KNEE_RISE_DEG}° above its lowest after ${knee.endAfterPeakMs.toFixed(2)} ms`;
+      ? `the residual passes ${KNEE_DEG}° (half the ${FIT_RESIDUAL_FLAG_DEG}° convention) after ${knee.endAfterPeakMs.toFixed(2)} ms, before the ${refl!.label} reflection (${refl!.ms.toFixed(2)} ms − one period = ${setupEnd.toFixed(2)} ms)`
+      : `no reflection known from the set-up${reflNote ? ` (${reflNote})` : ''}; the residual passes ${KNEE_DEG}° (half the ${FIT_RESIDUAL_FLAG_DEG}° convention) after ${knee.endAfterPeakMs.toFixed(2)} ms`;
     if (setupEnd !== null) question = `there is something before your first known reflection (${refl!.label}, ${refl!.ms.toFixed(2)} ms): which plane?`;
   } else return { reason: `no reflection known from the set-up${reflNote ? ` (${reflNote})` : ''} and no knee in the residual up to ${SCAN_MAX_AFTER_PEAK_MS} ms — set the window yourself` };
   const gate = gateForEnd(peak, opts.referenceMs, end);

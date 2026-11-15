@@ -38,6 +38,7 @@ import { crossoverToNetlist } from './lib/vxpNetwork.ts';
 import { assessNetwork, notSimulatedTag, type NetworkReadiness } from './lib/networkReadiness.ts';
 import { solveNetwork, type Netlist } from './lib/network.ts';
 import type { WayWiring } from './lib/engine2/ingest/wiring.ts';
+import type { DriverMinCrossover } from './lib/engine2/predesign/xoWindow.ts';
 import {
   canonicalModelForRole,
   isTweeterModel,
@@ -291,6 +292,8 @@ import {
   EXPERT_ONLY_ROW_IDS,
   GATE_LIMIT_KEYS,
   GUIDED_QUESTIONS,
+  MIN_CROSSOVER_ORDERS,
+  minCrossoverOrderLabel,
 } from './lib/v2Guided.ts';
 /* U-9 fase 3 — the guided profiles, as data: the approved values and their
  * basis (`guidedProfiles.ts`, the one place a profile value is typed). */
@@ -496,7 +499,7 @@ import Chart, { type ChartHandle, type Series } from './components/Chart.tsx';
 import NfMergeTool, { type AcceptedSource } from './components/NfMergeTool.tsx';
 import ProjectMenu from './components/ProjectMenu.tsx';
 import type { CabinetGeometryForMerge } from './lib/mergeSession.ts';
-import { isLevelRelative, prepareBranchUse, type OtherBranch, mergeCardState, type Prepared } from './lib/useInProject.ts';
+import { isLevelRelative, prepareAllBranchUse, prepareBranchUse, type OtherBranch, mergeCardState, type Prepared } from './lib/useInProject.ts';
 import { parseFarOnlyBlock } from './lib/farOnly.ts';
 import { readMergePackageZip } from './lib/mergeExport.ts';
 import { parseMergeBlockV2 } from './lib/nfMergeV2Block.ts';
@@ -4503,10 +4506,20 @@ export default function App() {
            * id by the adapter like R_e and the card. */
           ...(driveOnFsMaxDbByRole[role] !== undefined ? { driveOnFsMaxDb: driveOnFsMaxDbByRole[role] } : {}),
           /* U-4 — the measured breakup divisor. (The datasheet power rating
-           * and recommended range no longer travel from the app: 07-11-2026.) */
+           * and recommended MAXIMUM no longer travel from the app: 07-11-2026.) */
           ...(breakupDivisorByRole[role] !== undefined
             ? { breakupDivisor: breakupDivisorByRole[role] }
             : {}),
+          /* UI-6 (15-11-2026, Sander): the datasheet's MINIMUM crossover travels
+           * again — the `stated-min` window floor (U-3g), typed on the driver
+           * card in expert or answered in guided (question "tweeter"). The order
+           * goes with it only when stated; blank = the trade-rule floor. */
+          ...((): { minCrossover?: DriverMinCrossover } => {
+            const hz = stated(v2Meas[role].minCrossoverHz);
+            if (hz === undefined || !(hz > 0)) return {};
+            const ord = stated(v2Meas[role].minCrossoverOrder);
+            return { minCrossover: { hz, ...(ord !== undefined && ord >= 1 && ord <= 4 ? { order: Math.round(ord) } : {}), source: 'driver card / guided (datasheet)' } };
+          })(),
           /* V51 — the way's wiring: the count from the cabinet form, the two
            * wirings from the measurement block. Only complete statements
            * travel; a half-stated wiring is absent. */
@@ -5480,6 +5493,41 @@ export default function App() {
    * sum. Nothing is overwritten: the response it replaces is kept beside the
    * near field (`far`), the I-2 rule, so "undo merge" puts it back.
    */
+  /* UI-6 — the apply half of "Use in project", one way; `acceptMergeV2` (one way, checked against the
+   * project as it stands) and `acceptMergeV2All` (every way of a session at once, checked against each
+   * other) both end here. */
+  const applyBranchUse = useCallback(
+    (role: BranchRole, sources: AcceptedSource[], prep: Prepared & { ok: true }) => {
+      const loaded = role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
+      setMergeV2((m) => ({ ...m, [role]: sources }));
+      if (loaded && loaded.name !== prep.file.name)
+        setNearField((n) => ({ ...n, [role]: { ...n[role], far: n[role].far ?? { name: loaded.name, raw: loaded.raw }, mergedName: prep.file.name } }));
+      const next: Loaded = { name: prep.file.name, raw: prep.file.text, frd: prep.frd };
+      if (role === 'low') setWoofer(next);
+      else if (role === 'mid') setMidDrv(next);
+      else setTweeter(next);
+    },
+    [woofer, midDrv, tweeter],
+  );
+  const acceptMergeV2All = useCallback(
+    (plan: { way: BranchRole; sources: AcceptedSource[] }[]): Partial<Record<BranchRole, Prepared>> => {
+      const project: OtherBranch[] = (['low', 'mid', 'high'] as BranchRole[])
+        .map((r) => ({ r, l: r === 'low' ? woofer : r === 'mid' ? midDrv : tweeter }))
+        .filter((x): x is { r: BranchRole; l: Loaded } => !!x.l)
+        .map((x) => ({ way: x.r, name: x.l.name, text: x.l.raw }));
+      const res = prepareAllBranchUse(plan, project);
+      for (const p of plan) {
+        const prep = res[p.way];
+        if (prep?.ok) applyBranchUse(p.way, p.sources, prep);
+      }
+      if (welcomeOpen && plan.some((p) => res[p.way]?.ok)) {
+        localStorage.setItem('ads-welcomed', '1');
+        setWelcomeOpen(false);
+      }
+      return res;
+    },
+    [woofer, midDrv, tweeter, welcomeOpen, applyBranchUse],
+  );
   const acceptMergeV2 = useCallback(
     (role: BranchRole, sources: AcceptedSource[]): Prepared => {
       /* I-4 B-4 nazorg — built and read back BEFORE anything is applied; a failure is a reason the
@@ -5493,14 +5541,7 @@ export default function App() {
         .map((x) => ({ way: x.r, name: x.l.name, text: x.l.raw }));
       const prep = prepareBranchUse(role, sources, others);
       if (!prep.ok) return prep;
-      const loaded = role === 'low' ? woofer : role === 'mid' ? midDrv : tweeter;
-      setMergeV2((m) => ({ ...m, [role]: sources }));
-      if (loaded && loaded.name !== prep.file.name)
-        setNearField((n) => ({ ...n, [role]: { ...n[role], far: n[role].far ?? { name: loaded.name, raw: loaded.raw }, mergedName: prep.file.name } }));
-      const next: Loaded = { name: prep.file.name, raw: prep.file.text, frd: prep.frd };
-      if (role === 'low') setWoofer(next);
-      else if (role === 'mid') setMidDrv(next);
-      else setTweeter(next);
+      applyBranchUse(role, sources, prep);
       /* The project now has content: the first-run welcome card must not open over it, and its
        * primary choice (the demo) would silently replace this response. Dismissed without action. */
       if (welcomeOpen) {
@@ -5509,7 +5550,7 @@ export default function App() {
       }
       return prep;
     },
-    [woofer, midDrv, tweeter, welcomeOpen],
+    [woofer, midDrv, tweeter, welcomeOpen, applyBranchUse],
   );
   /** I-4 B-4 — the optimizer's cabinet geometry as the merge tool reads it (nulls where the project
    *  states nothing; the tool then asks). Driver heights are derived there, never typed per source. */
@@ -15228,6 +15269,36 @@ export default function App() {
                           * question (question 3) states this figure through its
                           * profile; a second, bare entry for the same requirement
                           * on the card is an expert's tool. */}
+                        {/* UI-6 (15-11-2026): the datasheet's minimum crossover, back on the
+                           * card as an EXPERT field (G-5 took it off: not every designer has a
+                           * sheet). Guided asks it as its own question ("tweeter"), writing the
+                           * same two fields. Blank = the trade-rule floor (18 dB on f_s). */}
+                        {uiMode !== 'guided' && (<>
+                            <span className="cd-label">{t('Minimum crossover')}</span>
+                            <span
+                              className="cd-fields"
+                              title={t('The lowest crossover the manufacturer recommends for this driver, from its datasheet, with the filter order it names if any (BlieSMa: "2200 Hz @ 2nd order"). It is a FLOOR on the crossover window when this driver is the upper one of a handover (rule stated-min); a steeper filter does not lower it. Blank = the trade rule alone: 18 dB attenuation on f_s.')}
+                            >
+                              <input
+                                type="number"
+                                min={0}
+                                step={10}
+                                placeholder="—"
+                                value={v2Meas[role].minCrossoverHz}
+                                onChange={(e) => setV2MeasField(role, 'minCrossoverHz', e.target.value)}
+                                style={{ width: '5rem' }}
+                              />
+                              {' Hz · '}
+                              <select value={v2Meas[role].minCrossoverOrder} onChange={(e) => setV2MeasField(role, 'minCrossoverOrder', e.target.value)} aria-label={t('order of the minimum crossover')}>
+                                <option value="">{t('order not stated')}</option>
+                                {MIN_CROSSOVER_ORDERS.map((o) => (
+                                  <option key={o} value={String(o)}>
+                                    {t(minCrossoverOrderLabel(o))}
+                                  </option>
+                                ))}
+                              </select>
+                            </span>
+                          </>)}
                         {uiMode !== 'guided' && (<>
                             <span className="cd-label">{t('Max drive on f_s')}</span>
                             <span
@@ -17979,6 +18050,7 @@ export default function App() {
             sdCm2={mergeSd}
             inProject={mergeV2}
             onUse={acceptMergeV2}
+            onUseAll={acceptMergeV2All}
             responseNames={{ low: woofer?.name ?? null, mid: midDrv?.name ?? null, high: tweeter?.name ?? null }}
             designRig={mergeDesignRig}
             openId={mergeRoute.id}
@@ -19639,6 +19711,11 @@ export default function App() {
                   return c ? t(c.label) : t('a voicing stated in expert');
                 }
                 if (qid === 'parts') return guidedPartsQualityLabel(snapProfile) ? t(guidedPartsQualityLabel(snapProfile)!) : null;
+                /* UI-6 — the tweeter's datasheet minimum, read off the card's own two fields. */
+                if (qid === 'tweeterMin') {
+                  const hz = v2Meas.high.minCrossoverHz.trim();
+                  return hz !== '' ? `${hz} Hz${v2Meas.high.minCrossoverOrder ? ` @ ${t('order')} ${v2Meas.high.minCrossoverOrder}` : ''}` : null;
+                }
                 /* G-13 — the order per handover, read off the band form's slope selects. */
                 if (qid === 'order') {
                   if (!guidedOrderRows) return null;
@@ -20065,6 +20142,43 @@ export default function App() {
                                   </p>
                                 </>
                               )}
+                            </div>
+                          )}
+                          {q.kind === 'tweeterMin' && (
+                            /* UI-6 (15-11-2026, Sander): the manufacturer's minimum crossover
+                               for the TOP way — a datasheet figure anyone can look up. Writes the
+                               same two card fields expert uses; blank = the trade-rule floor. */
+                            <div className="guided-tweeter-min">
+                              <p>
+                                {t('Minimum crossover for the tweeter, from its datasheet')}{' '}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={10}
+                                  placeholder="—"
+                                  value={v2Meas.high.minCrossoverHz}
+                                  onChange={(e) => setV2MeasField('high', 'minCrossoverHz', e.target.value)}
+                                  style={{ width: '5rem' }}
+                                  aria-label={t('Minimum crossover')}
+                                />
+                                {' Hz · '}
+                                <select value={v2Meas.high.minCrossoverOrder} onChange={(e) => setV2MeasField('high', 'minCrossoverOrder', e.target.value)} aria-label={t('order of the minimum crossover')}>
+                                  <option value="">{t('order not stated')}</option>
+                                  {MIN_CROSSOVER_ORDERS.map((o) => (
+                                    <option key={o} value={String(o)}>
+                                      {t(minCrossoverOrderLabel(o))}
+                                    </option>
+                                  ))}
+                                </select>
+                              </p>
+                              <p className="v2-muted">
+                                {t('The sheet prints it as a frequency with the filter order it was tested at, or as a recommended range. With it, no candidate crosses to the tweeter below that figure; without it the trade rule alone sets the floor (its attenuation on the tweeter\'s f_s).')}
+                              </p>
+                              <p className="v2-muted">
+                                {v2Meas.high.minCrossoverHz.trim() !== ''
+                                  ? t('Stated: {hz} Hz{ord}. Clear the field to go back to the trade rule.', { hz: v2Meas.high.minCrossoverHz, ord: v2Meas.high.minCrossoverOrder ? ` @ ${v2Meas.high.minCrossoverOrder}` : '' })
+                                  : t('Not stated: the trade rule sets the floor.')}
+                              </p>
                             </div>
                           )}
                           {q.kind === 'parts' && (

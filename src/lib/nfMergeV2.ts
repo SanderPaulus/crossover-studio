@@ -50,7 +50,10 @@
 import { fftInPlace, ifftInPlace } from './fft.ts';
 import { planeExtraPathMm } from './cabinet.ts';
 
-export const NF_MERGE_V2_VERSION = 'nf-merge/2.2';
+/** 2.2 → 2.3 (UI-6, 15-11-2026): an unmodelled echo inside the gate whose extra path lies within the
+ *  loudspeaker's OWN extent (`ownExtentM`) is the loudspeaker itself — edge diffraction — and is noted, not
+ *  flagged. Without `ownExtentM` nothing changes. */
+export const NF_MERGE_V2_VERSION = 'nf-merge/2.3';
 
 /** c, m/s — the one physical constant the project whitelists (CLAUDE.md, P6). */
 export const SPEED_OF_SOUND_M_S = 343;
@@ -216,6 +219,14 @@ export interface MergeV2Input {
   echoes: readonly EchoTerm[];
   /** Cone area, cm² — gives echo terms the piston's directivity. Null: omnidirectional. */
   sdCm2?: number | null;
+  /**
+   * UI-6 — the loudspeaker's own extent, m: the longest path an edge of the baffle (or the pod) can
+   * add to the direct sound, by the caller's own geometry (the tool takes the baffle diagonal). A found
+   * echo whose extra path is shorter than this cannot be told from the loudspeaker's own edge
+   * diffraction — which belongs in the far field — so it is reported as the loudspeaker itself and not
+   * flagged as an unmodelled reflection. Absent or null: every unmodelled echo is flagged, as before.
+   */
+  ownExtentM?: number | null;
   /** Where gain and delay are fitted, Hz. Stated (suggestions live in `nfMerge.ts`). */
   fitBandHz: readonly [number, number];
   /** Where the output hands over from prediction to far field, Hz. */
@@ -237,6 +248,8 @@ export interface FoundEcho {
   windowWeight: number;
   /** True when a stated echo term sits within 0.15 ms of it. */
   modelled: boolean;
+  /** UI-6 — within the loudspeaker's own extent (`ownExtentM`): edge diffraction, the loudspeaker itself. */
+  own?: boolean;
 }
 
 export interface MergeV2Result {
@@ -976,12 +989,22 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
     const eLo = fitLo * 2 ** ECHO_FINDER_BAND_OCT[0];
     const eHi = Math.min(fs / 4, fitHi * 2 ** ECHO_FINDER_BAND_OCT[1]);
     echoesFound = findEchoes(farRaw, P, fit, f, n, eLo, eHi, input);
+    const ownM = input.ownExtentM ?? null;
+    if (ownM !== null && ownM > 0) echoesFound = echoesFound.map((e) => ({ ...e, own: (e.afterDirectMs / 1000) * SPEED_OF_SOUND_M_S <= ownM }));
     notes.push(
       `echo finder band ${Math.round(eLo)}–${Math.round(eHi)} Hz: echoes closer than ${(1000 / (eHi - eLo)).toFixed(1)} ms ` +
         `to the direct sound cannot be told apart from it there — the fit residual is the check for those`,
     );
     const resolutionMs = 1000 / (eHi - eLo);
     for (const e of echoesFound) {
+      if (e.insideGate && !e.modelled && e.levelDb > ECHO_HINT_DB && e.own) {
+        notes.push(
+          `An echo ${e.afterDirectMs.toFixed(2)} ms after the direct sound (${e.levelDb.toFixed(0)} dB) lies inside the gate; its extra path ` +
+            `(${((e.afterDirectMs / 1000) * SPEED_OF_SOUND_M_S).toFixed(2)} m) is within the loudspeaker's own extent (${ownM!.toFixed(2)} m): ` +
+            `edge diffraction of the baffle or pod — the loudspeaker itself, which belongs in the far field. Not flagged.`,
+        );
+        continue;
+      }
       if (e.insideGate && !e.modelled && e.levelDb > ECHO_HINT_DB) {
         flags.push(
           `An echo ${e.afterDirectMs.toFixed(2)} ms after the direct sound (${e.levelDb.toFixed(0)} dB) lies inside the gate and is not modelled. ` +

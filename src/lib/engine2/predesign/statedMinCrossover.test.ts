@@ -190,18 +190,28 @@ describe('U-3g — the BlieSMa T25T-6, and why the inverting reading was refused
  * app hands nothing over — the window comes from the MEASURED impedance. The
  * engine still reads the statement where a casus states it (sections 1–3 and
  * casus 1's manifest below). */
-describe('U-3g — the app no longer hands it over (07-11-2026)', () => {
-  it('the register row is carried-only: niets, no control', () => {
+/* UI-6 (15-11-2026, V15 form). WAS (G-5, 07-11-2026): the app no longer hands it over — a niets row with no
+ * control, because a datasheet is not what a designer routinely has. IS: a field again, on Sander's decision
+ * — the 18-dB floor put the tweeter window at 1554 Hz where the sheet says 2200 @ 2nd order, and the
+ * manufacturer's figure is what someone without expertise CAN look up. Expert types it on the card; guided
+ * asks it as its own question ("tweeterMin"); both write the same two fields, and the branch literal hands
+ * them to the adapter. The engine side (the rule) never changed. */
+describe('UI-6 — the app hands it over again (15-11-2026)', () => {
+  it('the register row is a field: zoekt, two card controls', () => {
     const row = V2_INPUT_REGISTER.find((r) => r.id === 'minCrossover')!;
     expect(row.source).toBe('datasheet');
-    expect(row.effect).toBe('niets');
-    expect(V2_FORM_FIELDS.filter((f) => f.row === 'minCrossover')).toEqual([]);
+    expect(row.effect).toBe('zoekt');
+    expect(V2_FORM_FIELDS.filter((f) => f.row === 'minCrossover').map((f) => f.control).sort()).toEqual(
+      ['value={v2Meas[role].minCrossoverHz}', 'value={v2Meas[role].minCrossoverOrder}'].sort(),
+    );
   });
 
-  it('App.tsx draws no field for it and hands no minCrossover to the adapter', () => {
-    expect(APP).not.toContain('const minCrossoverByRole');
-    expect(APP).not.toContain('value={v2Meas[role].minCrossoverHz}');
-    expect(APP).not.toMatch(/minCrossover: minCrossoverByRole/);
+  it('App.tsx draws the field (expert only) and the guided question, and hands minCrossover to the adapter', () => {
+    expect(APP).toContain('value={v2Meas[role].minCrossoverHz}');
+    expect(APP).toContain("value={v2Meas.high.minCrossoverHz}");
+    expect(APP).toMatch(/\(\): \{ minCrossover\?: DriverMinCrossover \} => \{\s*const hz = stated\(v2Meas\[role\]\.minCrossoverHz\);/);
+    const card = APP.slice(APP.indexOf("{t('Minimum crossover')}") - 400, APP.indexOf("{t('Minimum crossover')}"));
+    expect(card).toContain("{uiMode !== 'guided' && (<>");
   });
 });
 

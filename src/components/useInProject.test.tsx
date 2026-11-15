@@ -95,12 +95,17 @@ describe('I-4 B-4 nazorg — Use in project never fails silently', () => {
     expect(accept).not.toContain('setError(');
     const page = app.slice(app.indexOf('<NfMergeTool'), app.indexOf('</main>', app.indexOf('<NfMergeTool')));
     expect(page).toContain('onUse={acceptMergeV2}');
+    expect(page).toContain('onUseAll={acceptMergeV2All}'); // UI-6: every way at once, checked against each other
     expect(page).toContain('responseNames={{ low: woofer?.name ?? null, mid: midDrv?.name ?? null, high: tweeter?.name ?? null }}');
     expect(page).not.toContain("location.hash = '#/'");
     expect(app).toContain('mergeCardState(role, mergeV2[role], loadedDrv?.name ?? null)');
     const tool = src('./NfMergeTool.tsx');
-    expect(tool).toMatch(/if \(!res\.ok\) setUse\(\{ kind: 'error', way, reason: res\.reason \}\)/);
-    expect(tool).toContain('confirmBranchUse(use, { responseName: p.responseNames[use.way]');
-    expect(tool).toContain('<UseStatusLine status={use} />');
+    /* UI-6 — V15: WAS one status (`use`) for the one way of the select; IS one status PER WAY (`uses`),
+     * fed by "Use all in project" and by the single-way form alike, each read back from the project. */
+    expect(tool).toMatch(/if \(!res\.ok\) setUses\(\(m\) => \(\{ \.\.\.m, \[way\]: \{ kind: 'error', way, reason: res\.reason \} \}\)\)/);
+    expect(tool).toMatch(/if \(r && !r\.ok\) next\[x\.way\] = \{ kind: 'error', way: x\.way, reason: r\.reason \};/);
+    expect(tool).toContain('confirmBranchUse(u, { responseName: p.responseNames[u.way]');
+    expect(tool).toContain('<UseStatusLine status={uses[x.way]!} />');
+    expect(tool).toContain("{anyBusy ? t('Using…') : t('Use all in project')}");
   });
 });

@@ -165,8 +165,10 @@ describe('U-3b — the placement rule', () => {
      * not counted. */
     expect(shown.sort()).toEqual(
       /* 07-11-2026 — V15: WAS also powerRating, minCrossover, maxCrossover; IS
-       * without them — they lost their fields and are carried only. */
-      ['baffleHeight', 'blTm', 'micDistance', 'mmsG',
+       * without them — they lost their fields and are carried only.
+       * UI-6 (15-11-2026) — V15: `minCrossover` is BACK (expert card + guided
+       * question, Sander): a datasheet row, so in the default view by the rule. */
+      ['baffleHeight', 'blTm', 'micDistance', 'minCrossover', 'mmsG',
         'refDriver', 'referencePoint', 'sourceCount', 'xmaxMm',
         /* E-6 — `phasePriority` left with its slider (no placement to make). */
         'dirWeight', 'ampTarget', 'powerMetric', 'costWeight', 'dissipationWeight',
@@ -196,8 +198,10 @@ describe('U-3b — the placement rule', () => {
      * it waits rather than sits in the default view. */
     /* 07-11-2026 — the three datasheet rows whose fields were removed (power
      * rating, recommended range) are carried in the file only: `niets`, no
-     * control, so no form. Named, not counted. */
-    const carriedOnly = ['maxCrossover', 'minCrossover', 'powerRating'];
+     * control, so no form. Named, not counted.
+     * UI-6 (15-11-2026) — V15: WAS three; IS two — the MINIMUM is a field again
+     * (expert card + guided question), on Sander's decision. */
+    const carriedOnly = ['maxCrossover', 'powerRating'];
     expect(sheet.filter((r) => !governed.has(r.id)).map((r) => r.id).sort()).toEqual(carriedOnly);
     for (const id of carriedOnly) expect(rowById(id)!.effect, id).toBe('niets');
     for (const r of sheet) {

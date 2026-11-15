@@ -176,6 +176,43 @@ describe('a merge through the section logic, casus 1 woofer down', () => {
     expect(echoLine.text).toMatch(/what stands about 0\.63 m away/);
     expect(planeEchoDelayS(echoes[0] as PlaneEcho) * 1000).toBeCloseTo(3.6, 1);
   }, 60_000);
+  it('UI-6: an echo whose extra path lies within the loudspeaker\'s own extent is the loudspeaker itself (noted, not flagged); one beyond it is still flagged', () => {
+    /* The mid of casus 1 through ARTA's own 5.021 ms gate: its −19 dB echo at ~1.0 ms (0.35 m extra path) is the
+     * pod's and the cabinet's edge diffraction — Sander had to accept it "with reason" (15-11-2026). The extent is the
+     * casus-1 baffle diagonal, 260 × 1124 mm. */
+    const mid = session.sources.find((s) => s.stem === 'mid')!;
+    const gm = gateOf(mid.far!);
+    if (!('gate' in gm)) throw new Error('no gate');
+    const base = {
+      far: impulseOfItem(mid.far!, 'augustus', false),
+      near: impulseOfItem(mid.near!, 'augustus', false),
+      gate: gm.gate,
+      model: { kind: 'an4' as const, f0Hz: 34.16 / 0.206 },
+      echoes: [] as PlaneEcho[],
+      sdCm2: 69,
+      fitBandHz: [300, 1107] as [number, number],
+      spliceBandHz: [300, 1107] as [number, number],
+      output: { fromHz: 20, toHz: 20000, pointsPerOctave: 48 },
+    };
+    const extentM = Math.hypot(0.26, 1.124);
+    const bare = mergeImpulsesV2(base);
+    const own = mergeImpulsesV2({ ...base, ownExtentM: extentM });
+    const early = (r: typeof bare) => r.echoesFound!.find((e) => e.insideGate && e.afterDirectMs < 1.2 && e.levelDb > -20)!;
+    expect(early(bare)).toBeTruthy();
+    expect(early(bare).own).toBeUndefined();
+    expect(bare.flags.some((f) => /echo .* inside the gate and is not modelled/.test(f))).toBe(true);
+    expect(early(own).own).toBe(true);
+    expect(own.flags.some((f) => /echo .* inside the gate and is not modelled/.test(f))).toBe(false);
+    expect(own.notes.some((n) => /within the loudspeaker's own extent/.test(n))).toBe(true);
+    const line = checksOf(own, FIT_RESIDUAL_FLAG_DEG).find((c) => c.id === `echo-${early(own).afterDirectMs.toFixed(2)}`)!;
+    expect(line.icon).toBe('info');
+    expect(line.text).toMatch(/the loudspeaker itself/);
+    // the counter-proof: woofer down's floor echo at 3.6 ms (1.24 m extra path) lies beyond the same extent and stays flagged
+    const wd = mergeImpulsesV2({ far, near: impulseOfItem(src.near!, 'augustus', false), gate: g.gate, model: { kind: 'an4', f0Hz: 150 }, echoes: [], sdCm2: 255, fitBandHz: [300, 576], spliceBandHz: [400, 550], output: { fromHz: 20, toHz: 20000, pointsPerOctave: 48 }, ownExtentM: extentM });
+    const floorEcho = wd.echoesFound!.find((e) => e.insideGate && Math.abs(e.afterDirectMs - 3.6) < 0.2)!;
+    expect(floorEcho.own).toBe(false);
+    expect(wd.flags.some((f) => /echo 3\.\d+ ms .* inside the gate and is not modelled/.test(f))).toBe(true);
+  }, 120_000);
   it('the proposals come from the window and ka', () => {
     const p = proposeBands(gateAfterArrivalMs(g.gate, far), 255);
     expect(p.fitHz![1]).toBeCloseTo(0.95 * 343 / (2 * Math.PI * Math.sqrt(0.0255 / Math.PI)), 6);

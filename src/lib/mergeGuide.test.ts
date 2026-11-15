@@ -12,10 +12,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { impulseOfItem, kaOneHz, loadSession, proposeWay, type PlanesStated, type RigSetup } from './mergeSession.ts';
 import { SPLICE_KA_MARGIN } from './merger.ts';
+import { FIT_RESIDUAL_FLAG_DEG } from './nfMergeV2.ts';
 import { asStoredSetup } from './mergeStore.ts';
 import {
   AN4_F0_HZ_M,
-  KNEE_RISE_DEG,
+  KNEE_DEG,
   KNEE_TAIL_POINTS,
   PROPOSAL_PRE_PEAK_MS,
   SCAN_STEP_MS,
@@ -83,16 +84,18 @@ describe('the pieces, by hand', () => {
     expect(src.match(/const bands = scanBandsGuide\(/g)?.length).toBe(1);
     expect(src).not.toMatch(/const bands = proposeBandsGuide\(/);
     // the rule moved, so the version moved, and the tool keys its persisted proposals on it
-    expect(src).toMatch(/MERGE_GUIDE_VERSION = 'merge-guide\/1\.1'/);
+    expect(src).toMatch(/MERGE_GUIDE_VERSION = 'merge-guide\/1\.2'/);
     const tool = readFileSync(new URL('../components/NfMergeTool.tsx', import.meta.url), 'utf8');
     expect(tool).toMatch(/const key = JSON\.stringify\(\[MERGE_GUIDE_VERSION, src\.stem/);
   });
-  it(`the knee: the last point before the residual rises more than ${KNEE_RISE_DEG}° above its lowest so far`, () => {
+  it(`the knee: the last point before the residual passes ${KNEE_DEG}° — half the ${FIT_RESIDUAL_FLAG_DEG}° convention (UI-6; until then a rise of 1.5° above the lowest so far)`, () => {
+    expect(KNEE_DEG).toBe(FIT_RESIDUAL_FLAG_DEG / 2);
     const s = (degs: number[]): ScanPoint[] => degs.map((deg, i) => ({ endAfterPeakMs: 1 + i * SCAN_STEP_MS, deg, db: 0 }));
-    expect(kneeOf(s([3, 2, 1, 1.4, 2.4, 5]))?.deg).toBe(2.4); // 2.4 ≤ 1 + 1.5; 5 is the first past it
-    expect(kneeOf(s([3, 2, 1, 1.4, 2.6]))?.deg).toBe(1.4);
+    expect(kneeOf(s([3, 2, 1, 1.4, 2.4, 5.2]))?.deg).toBe(2.4); // 5.2 is the first past KNEE_DEG
+    expect(kneeOf(s([1.5, 1.7, 2.3, 3.1, 3.7, 4.0, 4.1, 4.1, 4.0, 3.9]))).toBeNull(); // the mid's slow creep (casus 1): no knee, the window runs on
     expect(kneeOf(s([3, 2, 1, 1.2]))).toBeNull();
     expect(kneeOf(s([1, 9]))?.deg).toBe(1);
+    expect(kneeOf(s([9, 1]))).toBeNull(); // past the level from the first point: no end before it
   });
 });
 
@@ -157,16 +160,44 @@ describe('step 3 — the window proposal on casus 1, against the set-up Sander s
     expect(p.question).toBeNull();
   }, 60_000);
 
-  it('woofer up: the residual rises before the floor — the knee (2.14 ms) is the proposal, and it asks which plane', () => {
+  it('woofer up: the end comes from the set-up — the floor (4.66 ms) minus one period — 3.01 ms; the residual stays under the knee level all the way (UI-6: until then the 1.5°-rise rule stopped it at 2.14 ms)', () => {
     const p = run('woofer up', 1070);
-    expect(p.source).toBe('knee');
-    expect(p.endAfterPeakMs).toBeCloseTo(2.14, 2);
-    expect(p.question).toMatch(/which plane\?/);
-    // the scan stops KNEE_TAIL_POINTS after the knee: the rise is shown, and nothing past it is computed
-    const after = p.scan.filter((x) => x.endAfterPeakMs > p.knee!.endAfterPeakMs + 1e-9);
-    expect(after.length).toBeLessThanOrEqual(KNEE_TAIL_POINTS + 1);
-    expect(after.some((x) => x.deg > Math.min(...p.scan.map((y) => y.deg)) + KNEE_RISE_DEG)).toBe(true);
+    expect(p.source).toBe('setup');
+    expect(p.reflection?.label).toBe('floor');
+    expect(p.endAfterPeakMs).toBeCloseTo(3.01, 2);
+    expect(p.oneOverTHz).toBeCloseTo(269, 0);
+    expect(p.question).toBeNull();
+    // the scan runs to the set-up's limit and shows the whole curve: its last point lies within one step of that end
+    expect(p.endAfterPeakMs - p.scan[p.scan.length - 1].endAfterPeakMs).toBeLessThan(SCAN_STEP_MS + 1e-9);
+    expect(Math.max(...p.scan.map((x) => x.deg))).toBeLessThanOrEqual(KNEE_DEG);
+    expect(p.scan.length).toBeGreaterThan(KNEE_TAIL_POINTS + 1);
   }, 60_000);
+
+  it('the mid (pod 206 mm, S_d 69 cm²): the floor lies at 5.46 ms, but the residual passes the knee level first — the knee (3.01 ms, 287 Hz) is the proposal and it asks which plane (UI-6: the rise rule said 1.27 ms, 573 Hz)', () => {
+    const src = session.sources.find((s) => s.stem === 'mid')!;
+    const p = proposeWindow({
+      far: impulseOfItem(src.far!, 'aug', false),
+      near: impulseOfItem(src.near!, 'aug', false),
+      referenceMs: 8.75,
+      model: { kind: 'an4', f0Hz: 34.16 / 0.206 },
+      sdCm2: 69,
+      sourceHeightMm: 1314,
+      rig,
+      planes,
+      planesUnknown: false,
+    });
+    if ('reason' in p) throw new Error(p.reason);
+    expect(p.source).toBe('knee');
+    expect(p.reflection?.label).toBe('floor');
+    expect(p.reflection?.ms).toBeCloseTo(5.46, 2);
+    expect(p.endAfterPeakMs).toBeCloseTo(3.01, 2);
+    expect(p.oneOverTHz).toBeCloseTo(287, 0);
+    expect(p.question).toMatch(/which plane\?/);
+    // the scan did not stop at the knee: it ran on past it, to the set-up's limit
+    const after = p.scan.filter((x) => x.endAfterPeakMs > p.knee!.endAfterPeakMs + 1e-9);
+    expect(after.length).toBeGreaterThan(KNEE_TAIL_POINTS + 1);
+    expect(after[0].deg).toBeGreaterThan(KNEE_DEG);
+  }, 120_000);
 
   it('the steps and the synchronous form are one computation: draining the generator gives the same proposal', () => {
     const src = session.sources.find((s) => s.stem === 'woofer down')!;
@@ -258,7 +289,9 @@ describe('the tool — what a source scan can see', () => {
     expect(src).toMatch(/<option value="none">\{t\('no file'\)\}<\/option>/);
     expect(src).toMatch(/title=\{canAccept \? '' : t\('needs: \{list\}', \{ list: missing\.join\(', '\) \}\)\}/);
     expect(src).not.toMatch(/needs: the set-up stated, which driver/);
-    expect(src).toMatch(/setUseWay\(e\.target\.value as MergeWay\);\s*setUse\(\{ kind: 'idle' \}\);/);
+    // UI-6 — V15: WAS "a branch switch clears the use-status" (one status, one select); IS one status per way,
+    // so the select only picks the way and no status is cleared by switching.
+    expect(src).toMatch(/onChange=\{\(e\) => setUseWay\(e\.target\.value as MergeWay\)\}/);
     expect(src).toMatch(/suggestValidFrom\(\{/);
     // UI-4: shown while empty or while the stated value differs from it; it reaches the field through
     // ONE press only (the window's "Take over the proposal", one row further) — nothing writes it by itself.

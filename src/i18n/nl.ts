@@ -2482,6 +2482,12 @@ export const nl: Record<string, string> = {
     'voorstel: {hz} Hz — {why} Niet ingevuld: geef het op.',
   'proposal: {hz} Hz — {why}':
     'voorstel: {hz} Hz — {why}',
+  'proposed: {hz} Hz — {why} In use unless you type another figure.':
+    'voorgesteld: {hz} Hz — {why} In gebruik tenzij je een ander getal typt.',
+  'no proposal: {why} State it.':
+    'geen voorstel: {why} Geef het op.',
+  'proposed: the gate floor 1/T = {hz} Hz — in use unless you type another figure':
+    'voorgesteld: de gatevloer 1/T = {hz} Hz — in gebruik tenzij je een ander getal typt',
   'no proposal: {why}':
     'geen voorstel: {why}',
   '“Your cabinet” gives this way its own sealed enclosure. Is that a pod with its own baffle? Then tick this and state its diameter: the model’s f0 follows from the pod, not from the cabinet width.':
@@ -2598,6 +2604,8 @@ export const nl: Record<string, string> = {
     'binnen het venster',
   'outside the window':
     'buiten het venster',
+  'the loudspeaker itself (edge diffraction)':
+    'de luidspreker zelf (randdiffractie)',
   'modelled':
     'gemodelleerd',
   'Outside the window they do not count; an unmodelled echo inside the window above −20 dB is flagged.':
@@ -2705,6 +2713,42 @@ export const nl: Record<string, string> = {
     '{h} mm boven de vloer, uit {from}',
   'mouth above the object’s bottom':
     'monding boven de bodem van het object',
+  'Use all in project':
+    'Alles in project gebruiken',
+  'One way at a time':
+    'Eén weg tegelijk',
+  '{list} — summed complex':
+    '{list} — complex gesommeerd',
+  'replaces {list}':
+    'vervangt {list}',
+  'Minimum crossover':
+    'Minimale kruisfrequentie',
+  'order of the minimum crossover':
+    'orde van de minimale kruisfrequentie',
+  'order not stated':
+    'orde niet opgegeven',
+  '1st order':
+    '1e orde',
+  '2nd order':
+    '2e orde',
+  '3rd order':
+    '3e orde',
+  '4th order':
+    '4e orde',
+  'The lowest crossover the manufacturer recommends for this driver, from its datasheet, with the filter order it names if any (BlieSMa: "2200 Hz @ 2nd order"). It is a FLOOR on the crossover window when this driver is the upper one of a handover (rule stated-min); a steeper filter does not lower it. Blank = the trade rule alone: 18 dB attenuation on f_s.':
+    'De laagste kruisfrequentie die de fabrikant voor deze driver aanbeveelt, uit het datasheet, met de filterorde die erbij staat als die er is (BlieSMa: "2200 Hz @ 2e orde"). Het is een VLOER voor het kruisvenster wanneer deze driver de bovenste van een overname is (regel stated-min); een steiler filter verlaagt hem niet. Leeg = alleen de vakregel: 18 dB verzwakking op f_s.',
+  'Minimum crossover for the tweeter, from its datasheet':
+    'Minimale kruisfrequentie van de tweeter, uit het datasheet',
+  'The sheet prints it as a frequency with the filter order it was tested at, or as a recommended range. With it, no candidate crosses to the tweeter below that figure; without it the trade rule alone sets the floor (its attenuation on the tweeter\'s f_s).':
+    'Het blad drukt het af als een frequentie met de filterorde waarbij hij getest is, of als aanbevolen bereik. Hiermee kruist geen kandidaat onder dat getal naar de tweeter; zonder zet alleen de vakregel de vloer (haar verzwakking op de f_s van de tweeter).',
+  'Stated: {hz} Hz{ord}. Clear the field to go back to the trade rule.':
+    'Opgegeven: {hz} Hz{ord}. Maak het veld leeg om terug te gaan naar de vakregel.',
+  'Not stated: the trade rule sets the floor.':
+    'Niet opgegeven: de vakregel zet de vloer.',
+  'What is the lowest crossover the tweeter\'s datasheet allows?':
+    'Wat is de laagste kruisfrequentie die het datasheet van de tweeter toestaat?',
+  'The trade rule alone sets the floor of the mid→tweeter window: 18 dB attenuation on the tweeter\'s f_s (1.68 × f_s at 4th order). The manufacturer\'s own figure, usually higher, is not read.':
+    'Alleen de vakregel zet de vloer van het mid→tweeter-venster: 18 dB verzwakking op de f_s van de tweeter (1,68 × f_s bij 4e orde). Het eigen getal van de fabrikant, meestal hoger, wordt niet gelezen.',
   'Use in project…':
     'Gebruik in project…',
   'branch to use in':
@@ -2890,6 +2934,12 @@ export const nl: Record<string, string> = {
     'negeren',
   'proposed':
     'voorgesteld',
+  'proposed for the window in use':
+    'voorgesteld voor het venster in gebruik',
+  'stated below':
+    'hieronder opgegeven',
+  'Empty = the proposal for the window in use (shown greyed). Both fields of a band must be typed for it to count.':
+    'Leeg = het voorstel voor het venster in gebruik (grijs getoond). Een band telt pas als beide velden ingevuld zijn.',
   'driver of {f}':
     'driver van {f}',
   'impulse, peak at {ms} ms':
@@ -2940,8 +2990,8 @@ export const nl: Record<string, string> = {
     'B: overstek ten hoogste',
   'B: overhang':
     'B: overstek',
-  'With “don’t know” the floor is not taken into account.':
-    'Bij “weet ik niet” wordt de vloer niet meegenomen.',
+  'A measure lets the tool decide whether the table top or the floor reflects, and the window proposal stops before it. With “don’t know” neither is modelled and the proposal comes from the residual alone.':
+    'Met een maat beslist de tool of het tafelblad of de vloer reflecteert, en stopt het venstervoorstel daarvóór. Met “weet ik niet” wordt geen van beide gemodelleerd en komt het voorstel alleen uit het residu.',
   'Microphone to the baffle':
     'Microfoon tot de baffle',
   'C: microphone to the baffle':
@@ -3070,8 +3120,8 @@ export const nl: Record<string, string> = {
     'Controle: residu tegen het venstereinde',
   'proposed end':
     'voorgesteld einde',
-  'The knee: the last end before the residual rises more than {d}° above its lowest so far (a convention).':
-    'De knik: het laatste einde voordat het residu meer dan {d}° boven zijn laagste waarde tot dan stijgt (een conventie).',
+  'The knee: the last end before the residual passes {d}° — half the {f}° the merge is judged by (a convention). The scan runs on to the set-up’s own limit.':
+    'De knie: het laatste einde vóórdat het residu boven {d}° komt — de helft van de {f}° waarop de merge beoordeeld wordt (een conventie). De scan loopt door tot de grens van de opstelling.',
   'proposed, nothing to fill in':
     'voorgesteld, je hoeft niets in te vullen',
   'model near → far':

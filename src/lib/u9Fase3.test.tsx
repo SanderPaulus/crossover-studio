@@ -364,10 +364,13 @@ describe('U-9 fase 3: five questions, and where every requirement goes', () => {
        the band form's slope selects and judges nothing), so the requirement
        count stays six. WHY: Sander — every guided run built 4th order on a
        hidden app default, and Extended could never build another order. */
-    const requirementQs = GUIDED_QUESTIONS.filter((q) => q.kind !== 'parts' && q.kind !== 'order');
+    /* UI-6 (15-11-2026, V15 form). WAS eight screens; IS NINE — the tweeter's datasheet minimum
+       crossover after the order question. A datasheet figure and a window FLOOR (stated-min), not a
+       requirement: it judges nothing, so the requirement count stays six. */
+    const requirementQs = GUIDED_QUESTIONS.filter((q) => q.kind !== 'parts' && q.kind !== 'order' && q.kind !== 'tweeterMin');
     expect(requirementQs.length).toBeLessThanOrEqual(6);
     expect(requirementQs).toHaveLength(6);
-    expect(GUIDED_QUESTIONS.map((q) => q.id)).toEqual(['build', 'amplifier', 'load', 'ambition', 'woofer', 'order', 'voicing', 'parts']);
+    expect(GUIDED_QUESTIONS.map((q) => q.id)).toEqual(['build', 'amplifier', 'load', 'ambition', 'woofer', 'order', 'tweeterMin', 'voicing', 'parts']);
     const woofer = GUIDED_QUESTIONS.find((q) => q.id === 'woofer')!;
     expect(woofer.kind).toBe('profile');
     expect(woofer.unknownMeans).toMatch(/pad it down with series resistance/);

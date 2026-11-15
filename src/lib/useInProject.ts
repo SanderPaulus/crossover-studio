@@ -101,6 +101,35 @@ export function prepareBranchUse(way: MergeWay | '' | null, sources: readonly { 
 }
 
 /**
+ * UI-6 — "Use all in project": every way of the plan at once. The level check of each way sees the
+ * OTHER ways as they will be after the hand-over (the plan's own files) plus the project's branches
+ * the plan does not replace — so three relative merges from one session land together where
+ * one-at-a-time would have refused the first against the demo's absolute tweeter.
+ */
+export function prepareAllBranchUse(
+  plan: readonly { way: MergeWay; sources: readonly { name: string; text: string }[] }[],
+  project: readonly OtherBranch[],
+): Partial<Record<MergeWay, Prepared>> {
+  const built: Partial<Record<MergeWay, { name: string; text: string }>> = {};
+  for (const p of plan) {
+    try {
+      if (p.sources.length) built[p.way] = branchFile(branchFileName(p.way, p.sources), p.sources);
+    } catch {
+      /* the per-way prepare below reports it */
+    }
+  }
+  const out: Partial<Record<MergeWay, Prepared>> = {};
+  for (const p of plan) {
+    const others: OtherBranch[] = [
+      ...plan.filter((q) => q.way !== p.way && built[q.way]).map((q) => ({ way: q.way, name: built[q.way]!.name, text: built[q.way]!.text })),
+      ...project.filter((o) => o.way !== p.way && !plan.some((q) => q.way === o.way)),
+    ];
+    out[p.way] = prepareBranchUse(p.way, p.sources, others);
+  }
+  return out;
+}
+
+/**
  * The status, read back from the project: done when the branch's response is the file and the
  * provenance record holds the sources; still busy until the wait runs out; then an error that says
  * what the branch holds instead.

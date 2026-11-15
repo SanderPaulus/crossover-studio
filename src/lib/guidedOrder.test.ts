@@ -122,7 +122,10 @@ describe('G-13 — the app', () => {
   it('asks it as a guided question after the woofer question and before the voicing, and it is no requirement', () => {
     const ids = GUIDED_QUESTIONS.map((q) => q.id);
     expect(ids.indexOf('order')).toBe(ids.indexOf('woofer') + 1);
-    expect(ids.indexOf('voicing')).toBe(ids.indexOf('order') + 1);
+    /* UI-6 — V15: WAS voicing right after order; IS the tweeter's datasheet minimum between them
+     * (it reads the order the sheet names, so it follows the order question). */
+    expect(ids.indexOf('tweeterMin')).toBe(ids.indexOf('order') + 1);
+    expect(ids.indexOf('voicing')).toBe(ids.indexOf('tweeterMin') + 1);
     expect(GUIDED_QUESTIONS.find((q) => q.id === 'order')?.kind).toBe('order');
   });
 

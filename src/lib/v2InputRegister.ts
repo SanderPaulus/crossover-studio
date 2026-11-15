@@ -768,17 +768,19 @@ const NICE: readonly V2InputRowDef[] = [
   {
     id: 'minCrossover',
     label: 'Minimum crossover (Hz, at order)',
-    form: 'no control since 07-11-2026 (carried in the project file only)',
-    travels:
-      'was v2Meas[role].minCrossoverHz / minCrossoverOrder → the A5d.3 window floor (rule stated-min); the app no longer hands it over',
+    form: 'driver card (expert) · guided question "tweeter" (the top way)',
+    travels: 'v2Meas[role].minCrossoverHz / minCrossoverOrder → AdapterBranch.minCrossover → the A5d.3 window floor (rule stated-min)',
     cls: 'nice',
-    effect: 'niets',
-    emptyMeans: 'not applicable: the app no longer reads it.',
+    effect: 'zoekt',
+    emptyMeans: 'the trade rule alone sets the floor: 18 dB attenuation on f_s.',
     source: 'datasheet',
+    placement: 'always',
+    placementWhy: 'a datasheet row (U-3c): in the default view of the card, expert only — guided asks it as its own question',
     effectNote:
-      '07-11-2026 — no longer a field (Sander: a datasheet is not what a designer routinely has). The window is ' +
-      'derived from the MEASURED impedance (k·f_s and the drive floor); the engine still reads this where a casus ' +
-      'states it in its manifest. A project that holds a value carries it unread, and the open notice names it.',
+      '15-11-2026 (UI-6, Sander) — back as a field: the 18-dB floor put the tweeter window at 1554 Hz where the sheet ' +
+      'says 2200 @ 2nd order, and the manufacturer\'s figure is what someone without expertise CAN look up. Expert types ' +
+      'it on the card; guided asks it as its own question. G-5 (07-11-2026) had taken the field off (a datasheet is not ' +
+      'what a designer routinely has); the engine always kept reading it where a casus states it.',
   },
   {
     id: 'maxCrossover',
@@ -2398,6 +2400,8 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'driveVoltageV', form: 'driver-card', control: 'value={v2Meas[role].driveVoltageV}' },
   { row: 'breakupDivisor', form: 'driver-card', control: 'value={v2Meas[role].breakupDivisor}' },
   { row: 'breakupDivisor', form: 'driver-card', control: 'value={v2Meas[role].breakupDivisorNote}' },
+  { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverHz}' },
+  { row: 'minCrossover', form: 'driver-card', control: 'value={v2Meas[role].minCrossoverOrder}' },
   { row: 'driveOnFsMaxDb-per-way', form: 'driver-card', control: 'value={v2Meas[role].driveOnFsMaxDb}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringMeasured}' },
   { row: 'wiring', form: 'driver-card', control: 'value={v2Meas[role].wiringDesired}' },
@@ -2514,9 +2518,9 @@ export const V2_UNGOVERNED_ROWS: readonly string[] = Object.freeze([
   'hpLpPref',
   /* E-6 — no control; carried in the project file only. */
   'phasePriority',
-  /* 07-11-2026 — the datasheet power rating and recommended range: no control,
-   * carried in the project file only. */
-  'powerRating', 'minCrossover', 'maxCrossover', 'maxCrossoverOverride',
+  /* 07-11-2026 — the datasheet power rating and recommended MAXIMUM: no control,
+   * carried in the project file only. (The minimum is a field again since UI-6.) */
+  'powerRating', 'maxCrossover', 'maxCrossoverOverride',
 ]);
 
 /**
@@ -2539,6 +2543,9 @@ export interface V2AppControl {
 export const V2_APP_CONTROLS: readonly V2AppControl[] = Object.freeze([
   // ---- App.tsx: the Drivers / Import tab ----
   { row: 'responses', file: 'App.tsx', control: 'onChange={loadDriverFiles(' },
+  /* UI-6 — the guided question "tweeter" writes the top way's two card fields. */
+  { row: 'minCrossover', file: 'App.tsx', control: 'value={v2Meas.high.minCrossoverHz}' },
+  { row: 'minCrossover', file: 'App.tsx', control: 'value={v2Meas.high.minCrossoverOrder}' },
   { row: 'referenceFile', file: 'App.tsx', control: 'void loadVerificationFile(f)' },
   { row: 'fileNote', file: 'App.tsx', control: 'value={fileNotes[r.key]' },
   { row: 'networkSource', file: 'App.tsx', control: 'onChange={loadVituixFiles}' },

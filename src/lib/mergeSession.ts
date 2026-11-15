@@ -573,7 +573,7 @@ export function checksOf(r: MergeV2Result, residualFlagDeg: number): Check[] {
   }
   if (r.echoesFound) {
     const note = r.notes.find((n) => /echo finder band/.test(n)) ?? '';
-    const unexplained = r.echoesFound.filter((e) => e.insideGate && !e.modelled && e.levelDb > -20);
+    const unexplained = r.echoesFound.filter((e) => e.insideGate && !e.modelled && !e.own && e.levelDb > -20);
     out.push({ id: 'echo-band', icon: 'info', text: note });
     for (const e of r.echoesFound.filter((x) => x.insideGate)) {
       out.push({
@@ -581,7 +581,10 @@ export function checksOf(r: MergeV2Result, residualFlagDeg: number): Check[] {
         icon: e.modelled ? 'ok' : unexplained.includes(e) ? 'bad' : 'info',
         text: e.modelled
           ? `echo ${e.afterDirectMs.toFixed(2)} ms (${e.levelDb.toFixed(0)} dB) matches a stated plane within 0.1 ms`
-          : `echo ${e.afterDirectMs.toFixed(2)} ms (${e.levelDb.toFixed(0)} dB) not explained — what stands about ${((e.afterDirectMs * C_MM_PER_MS) / 2 / 1000).toFixed(2)} m away?`,
+          : e.own
+            /* UI-6: an extra path within the loudspeaker's own extent is its own edge diffraction, not a reflection */
+            ? `echo ${e.afterDirectMs.toFixed(2)} ms (${e.levelDb.toFixed(0)} dB) within the loudspeaker's own extent (${((e.afterDirectMs * C_MM_PER_MS) / 1000).toFixed(2)} m extra path): edge diffraction, the loudspeaker itself — kept in the far field`
+            : `echo ${e.afterDirectMs.toFixed(2)} ms (${e.levelDb.toFixed(0)} dB) not explained — what stands about ${((e.afterDirectMs * C_MM_PER_MS) / 2 / 1000).toFixed(2)} m away?`,
       });
     }
   }
