@@ -29,13 +29,17 @@
  * (peak − 0.4 ms) over the session's far fields.
  *
  * THE MODEL: AN4's own formula f0 = 34.16 / d (d in m) — for a cone in the cabinet d = the baffle width,
- * for a driver in its own pod d = the pod's diameter (asked when the design has none). Fit band 1/T …
- * ka = 1; handover √(1/T · ka) … ka.
+ * for a driver in its own pod d = the pod's diameter (asked when the design has none). Fit band and
+ * handover are ONE band, 1/T … SPLICE_KA_MARGIN × ka = 1 (15-11-2026, Sander: the mid's handover sat at
+ * 808–1165 Hz with the upper-half rule and the top on ka itself; August used 500–800). The margin is the
+ * one `merger.ts` states and the two other proposers already carry.
  */
 import { arrivalMs, mergeImpulsesV2, planeEchoDelayS, type Gate, type Impulse, type NearToFarModel, type PlaneEcho } from './nfMergeV2.ts';
 import { echoesForSource, kaOneHz, type PlanesStated, type RigSetup } from './mergeSession.ts';
+import { SPLICE_KA_MARGIN } from './merger.ts';
 
-export const MERGE_GUIDE_VERSION = 'merge-guide/1.0';
+/** 1.0 → 1.1 (15-11-2026): the proposed fit band and handover are the whole overlap 1/T … 0.95·ka (was the upper half to ka). */
+export const MERGE_GUIDE_VERSION = 'merge-guide/1.1';
 /** The window proposal's conventions, each one stated by Sander (14-11-2026). */
 export const PROPOSAL_PRE_PEAK_MS = 0.4;
 export const PROPOSAL_TAPER = 0.25;
@@ -70,13 +74,36 @@ export function an4F0(diameterMm: number | null, what: string): { f0Hz: number; 
   return { f0Hz: f0, note: `AN4: f0 = ${AN4_F0_HZ_M} / d, d = ${what} ${diameterMm} mm → ${f0.toFixed(0)} Hz` };
 }
 
-/** Fit band 1/T … ka = 1 and handover √(1/T·ka) … ka. A reason when they leave no band. */
+/**
+ * Fit band AND handover: the whole overlap 1/T … SPLICE_KA_MARGIN × ka = 1. A reason when they leave no band.
+ * Until 15-11-2026 the handover was the upper half, √(1/T·ka) … ka, with the top on ka itself: on the mid
+ * (1/T 561 Hz from an early knee, ka 1165 Hz) that put the crossfade at 808–1165 Hz where August had
+ * 500–800. The whole overlap centres the crossfade on the band both halves are valid in (the v1 rule of
+ * `suggestSpliceBand`), and the top takes the margin the other two proposers carry.
+ */
 export function proposeBandsGuide(oneOverTHz: number, sdCm2: number | null): { fitHz: [number, number]; spliceHz: [number, number]; note: string } | { reason: string } {
   if (!(sdCm2 && sdCm2 > 0)) return { reason: 'no cone area (S_d): the top of the band (ka = 1) cannot be proposed — state S_d or the band' };
   const ka = kaOneHz(sdCm2);
+  const hi = SPLICE_KA_MARGIN * ka;
+  if (!(hi > oneOverTHz * 1.25)) return { reason: `1/T (${oneOverTHz.toFixed(0)} Hz) and ${SPLICE_KA_MARGIN} × ka = 1 (${hi.toFixed(0)} Hz) leave no band — a longer window, or state the band` };
+  return { fitHz: [oneOverTHz, hi], spliceHz: [oneOverTHz, hi], note: `fit and handover 1/T ${oneOverTHz.toFixed(0)} Hz … ${SPLICE_KA_MARGIN} × ka = 1 ${hi.toFixed(0)} Hz (ka = 1 at ${ka.toFixed(0)} Hz)` };
+}
+
+/**
+ * The RESIDUAL SCAN's band — an instrument setting, not the merge's bands. The scan reads the fit
+ * residual for window ends SHORTER than the band's own end, and a window shorter than T supports no
+ * frequency below 1/T: so the scan's splice must start ABOVE 1/T(bandEnd), and its first point is the
+ * end whose period is that bottom (`fromMs` in `proposeWindowSteps`). With the merge's own band
+ * (1/T … 0.95 ka) the scan would start at its own end and have one point — measured 15-11-2026: the
+ * woofer-up knee at 2.14 ms vanished and the end fell back to the set-up. The scan therefore keeps the
+ * band it was calibrated on (fit 1/T … ka, read from √(1/T·ka)): the knees of casus 1 (1.95 / 2.14 /
+ * 1.30 ms) are pinned on it.
+ */
+export function scanBandsGuide(oneOverTHz: number, sdCm2: number | null): { fitHz: [number, number]; spliceHz: [number, number] } | { reason: string } {
+  if (!(sdCm2 && sdCm2 > 0)) return { reason: 'no cone area (S_d): the top of the band (ka = 1) cannot be proposed — state S_d or the band' };
+  const ka = kaOneHz(sdCm2);
   if (!(ka > oneOverTHz * 1.25)) return { reason: `1/T (${oneOverTHz.toFixed(0)} Hz) and ka = 1 (${ka.toFixed(0)} Hz) leave no band — a longer window, or state the band` };
-  const mid = Math.sqrt(oneOverTHz * ka);
-  return { fitHz: [oneOverTHz, ka], spliceHz: [mid, ka], note: `fit 1/T ${oneOverTHz.toFixed(0)} Hz … ka = 1 ${ka.toFixed(0)} Hz; handover from their geometric mean ${mid.toFixed(0)} Hz` };
+  return { fitHz: [oneOverTHz, ka], spliceHz: [Math.sqrt(oneOverTHz * ka), ka] };
 }
 
 /** The window for an end (ms after the direct-sound peak), on the session reference. */
@@ -221,7 +248,7 @@ export function* proposeWindowSteps(opts: ProposeWindowOpts): Generator<number, 
    * at 2.65 ms (7.1°); with it at 1.95 ms — the set-up's own proposal. */
   type Pass = { reason: string } | { scan: ScanPoint[]; knee: ScanPoint | null };
   const scanFor = function* (bandEnd: number): Generator<number, Pass> {
-    const bands = proposeBandsGuide(1000 / gateForEnd(peak, opts.referenceMs, bandEnd).rightMs, opts.sdCm2);
+    const bands = scanBandsGuide(1000 / gateForEnd(peak, opts.referenceMs, bandEnd).rightMs, opts.sdCm2);
     if ('reason' in bands) return { reason: bands.reason };
     const scan = yield* residualScanSteps({ far: opts.far, near: opts.near, model: opts.model, referenceMs: opts.referenceMs, fitHz: bands.fitHz, spliceHz: bands.spliceHz, fromMs: Math.max(SCAN_STEP_MS, 1000 / bands.spliceHz[0] - (peak - opts.referenceMs)), toMs: bandEnd, stopAfterKnee: true });
     return { scan, knee: kneeOf(scan) };

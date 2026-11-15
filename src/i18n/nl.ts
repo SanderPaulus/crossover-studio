@@ -3074,8 +3074,10 @@ export const nl: Record<string, string> = {
     'deze driver zit in een eigen pod',
   'pod diameter':
     'poddiameter',
-  '1/T to ka = 1':
-    '1/T tot ka = 1',
+  '1/T to 0.95 × ka = 1':
+    '1/T tot 0,95 × ka = 1',
+  'the whole band':
+    'de hele band',
   'Advanced: set it yourself ▸':
     'Geavanceerd: zelf instellen ▸',
   'to step 4: merge →':

@@ -10,7 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { impulseOfItem, loadSession, proposeWay, type PlanesStated, type RigSetup } from './mergeSession.ts';
+import { impulseOfItem, kaOneHz, loadSession, proposeWay, type PlanesStated, type RigSetup } from './mergeSession.ts';
+import { SPLICE_KA_MARGIN } from './merger.ts';
 import { asStoredSetup } from './mergeStore.ts';
 import {
   AN4_F0_HZ_M,
@@ -26,6 +27,7 @@ import {
   proposeWindow,
   proposeWindowSteps,
   rigFromDesign,
+  scanBandsGuide,
   sessionReferenceMs,
   type ScanPoint,
   type WindowProposal,
@@ -56,13 +58,34 @@ describe('the pieces, by hand', () => {
     expect(g.rightMs).toBeCloseTo(2.55, 12);
     expect(gateForEnd(9.0, 8.75, 1).leftMs).toBeCloseTo(0.15, 12); // reference after peak − 0.4: begin at peak − 0.4
   });
-  it('the bands: fit 1/T … ka, handover from their geometric mean; too short a window is a reason', () => {
+  it('the bands: fit and handover are the whole overlap 1/T … 0.95 × ka = 1 (since 15-11-2026); too short a window is a reason', () => {
     const b = proposeBandsGuide(400, 255);
     if (!('fitHz' in b)) throw new Error(b.reason);
     expect(b.fitHz[0]).toBe(400);
-    expect(b.spliceHz[0]).toBeCloseTo(Math.sqrt(400 * b.fitHz[1]), 9);
+    expect(b.fitHz[1]).toBeCloseTo(SPLICE_KA_MARGIN * kaOneHz(255), 9);
+    expect(b.spliceHz).toEqual(b.fitHz);
+    // the mid of casus 1 with the knee-derived 1/T of 561 Hz: 561–1107 Hz, where the upper-half rule to ka itself
+    // gave 808–1165 (Sander, 15-11-2026: "de overgang van de mid ligt erg hoog"; August used 500–800)
+    const m = proposeBandsGuide(561, 69);
+    if (!('fitHz' in m)) throw new Error(m.reason);
+    expect(Math.round(m.spliceHz[0])).toBe(561);
+    expect(Math.round(m.spliceHz[1])).toBe(1107);
+    expect(Math.round(kaOneHz(69))).toBe(1165);
     expect('reason' in proposeBandsGuide(1100, 69)).toBe(true);
     expect('reason' in proposeBandsGuide(400, null)).toBe(true);
+    // the SCAN keeps its own band (fit 1/T … ka, read from √(1/T·ka)): with the merge's band it would start at its
+    // own end and read one point — the woofer-up knee below is pinned on this, and a source scan pins the reader
+    const sc = scanBandsGuide(400, 255);
+    if (!('fitHz' in sc)) throw new Error(sc.reason);
+    expect(sc.fitHz).toEqual([400, kaOneHz(255)]);
+    expect(sc.spliceHz[0]).toBeCloseTo(Math.sqrt(400 * kaOneHz(255)), 9);
+    const src = readFileSync(new URL('./mergeGuide.ts', import.meta.url), 'utf8');
+    expect(src.match(/const bands = scanBandsGuide\(/g)?.length).toBe(1);
+    expect(src).not.toMatch(/const bands = proposeBandsGuide\(/);
+    // the rule moved, so the version moved, and the tool keys its persisted proposals on it
+    expect(src).toMatch(/MERGE_GUIDE_VERSION = 'merge-guide\/1\.1'/);
+    const tool = readFileSync(new URL('../components/NfMergeTool.tsx', import.meta.url), 'utf8');
+    expect(tool).toMatch(/const key = JSON\.stringify\(\[MERGE_GUIDE_VERSION, src\.stem/);
   });
   it(`the knee: the last point before the residual rises more than ${KNEE_RISE_DEG}° above its lowest so far`, () => {
     const s = (degs: number[]): ScanPoint[] => degs.map((deg, i) => ({ endAfterPeakMs: 1 + i * SCAN_STEP_MS, deg, db: 0 }));

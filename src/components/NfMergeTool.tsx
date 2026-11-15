@@ -20,7 +20,7 @@ import { parseFrd } from '../lib/parsers/frd.ts';
 import { chooseCalibration, micCorrectionAt, parseMicCal, type MicCal } from '../lib/micCal.ts';
 import { renderFarOnlyFrd } from '../lib/farOnly.ts';
 import { suggestValidFrom } from '../lib/nfMerge.ts';
-import { an4F0, rigFromDesign, GUIDE_STEPS, KNEE_RISE_DEG, proposeBandsGuide, proposeWindowSteps, sessionReferenceMs, type GuideStep, type WindowProposal } from '../lib/mergeGuide.ts';
+import { an4F0, rigFromDesign, GUIDE_STEPS, KNEE_RISE_DEG, MERGE_GUIDE_VERSION, proposeBandsGuide, proposeWindowSteps, sessionReferenceMs, type GuideStep, type WindowProposal } from '../lib/mergeGuide.ts';
 import { envelope } from '../lib/fft.ts';
 import { zipStore } from '../lib/zip.ts';
 import {
@@ -783,7 +783,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const unknown = st.planeQ === 'unknown';
     if ('missing' in h && !unknown) return { reason: `height above the floor: ${h.missing.join('; ')}` } as const;
     const sd = sdOf(c);
-    const key = JSON.stringify([src.stem, sessionRef.ms, f0.f0Hz, sd, 'mm' in h ? h.mm : null, rigSetup, planes, st.planeQ]);
+    // MERGE_GUIDE_VERSION is in the key: a proposal persisted in the session (U-9/I-4) must not outlive the rule that made it
+    const key = JSON.stringify([MERGE_GUIDE_VERSION, src.stem, sessionRef.ms, f0.f0Hz, sd, 'mm' in h ? h.mm : null, rigSetup, planes, st.planeQ]);
     return { key, f0, sd, heightMm: 'mm' in h ? h.mm : null, unknown } as const;
   };
   /* Every driver's proposal is worked out as soon as step 3 opens — the active tab first, then the
@@ -1793,7 +1794,7 @@ function WindowStep(p: {
           </p>
           {pr && (
             <p>
-              {t('fit band')} {pr.fitHz[0].toFixed(0)}–{pr.fitHz[1].toFixed(0)} Hz ({t('1/T to ka = 1')}) · {t('handover')} {pr.spliceHz[0].toFixed(0)}–{pr.spliceHz[1].toFixed(0)} Hz
+              {t('fit band')} {pr.fitHz[0].toFixed(0)}–{pr.fitHz[1].toFixed(0)} Hz ({t('1/T to 0.95 × ka = 1')}) · {t('handover')} {pr.spliceHz[0].toFixed(0)}–{pr.spliceHz[1].toFixed(0)} Hz ({t('the whole band')})
             </p>
           )}
           <details>
