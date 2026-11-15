@@ -19,6 +19,7 @@ import { t } from '../lib/i18n.ts';
 import { parseFrd } from '../lib/parsers/frd.ts';
 import { chooseCalibration, micCorrectionAt, parseMicCal, type MicCal } from '../lib/micCal.ts';
 import { renderFarOnlyFrd } from '../lib/farOnly.ts';
+import { suggestValidFrom } from '../lib/nfMerge.ts';
 import { an4F0, rigFromDesign, GUIDE_STEPS, KNEE_RISE_DEG, proposeBandsGuide, proposeWindowSteps, sessionReferenceMs, type GuideStep, type WindowProposal } from '../lib/mergeGuide.ts';
 import { envelope } from '../lib/fft.ts';
 import { zipStore } from '../lib/zip.ts';
@@ -255,6 +256,9 @@ interface ToolState {
   /** Step 2: the single planes question and, for "yes", the planes stated. */
   planeQ?: '' | 'no' | 'yes' | 'unknown';
   planeList?: { kind: keyof PlanesStated; mm: string }[];
+  /** I-4 UI — the window proposals, keyed by what they were computed from, so a reopened session
+   *  does not spend thirty seconds recomputing what nothing has changed. */
+  proposals?: Record<string, { key: string; res: WindowProposal | { reason: string } }>;
 }
 const blankState = (): ToolState => ({
   rig: { bottom: '', surface: '', overhang: '', micDist: '', micHeight: '' },
@@ -291,6 +295,7 @@ function restoreState(x: unknown, sources: readonly SessionSource[]): ToolState 
   const cfg: Record<string, SourceConfig> = {};
   for (const src of sources) cfg[src.stem] = { ...blankConfig(), ...(s.cfg?.[src.stem] ?? {}) };
   return {
+    proposals: s.proposals ?? {},
     rig: { ...b.rig, ...(s.rig ?? {}) },
     planes: { ...b.planes, ...(s.planes ?? {}) },
     obj: { ...b.obj, ...(s.obj ?? {}) },
@@ -453,7 +458,11 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     micHeightMm: num(rig.micHeight),
   };
   const sstat = setupStatus(rigSetup, planes);
-  const chosenCal = cals.find((c) => c.id === st.calId) ?? null;
+  /* I-4 UI — one calibration file in the store and nothing chosen: that file, said as taken over.
+   * "no file" is a CHOICE ('none'), not the absence of one: the header read "no calibration" on a
+   * session with exactly one .mic beside it, and the designer thought it was in use. */
+  const chosenCal = cals.find((c) => c.id === st.calId) ?? ((st.calId ?? '') === '' && cals.length === 1 ? cals[0] : null);
+  const calTakenOver = (st.calId ?? '') === '' && cals.length === 1;
   const calChoice = chooseCalibration(session?.calibration ?? null, chosenCal);
   const drivers = session?.sources.filter((s) => s.kind === 'driver') ?? [];
   const farOnly = session?.sources.filter((s) => s.kind === 'far-only') ?? [];
@@ -761,7 +770,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   };
   const f0Proposal = (c: SourceConfig) =>
     c.inPod ? an4F0(num(c.podDiameter ?? ''), 'the pod diameter') : an4F0(ownGeometry ? num(obj.baffleW) : props.geometry.baffleWidthMm, 'the baffle width');
-  const [proposals, setProposals] = useState<Record<string, { key: string; res: WindowProposal | { reason: string } }>>({});
+  const proposals = st.proposals ?? {};
+  const setProposals = (fn: (p: Record<string, { key: string; res: WindowProposal | { reason: string } }>) => Record<string, { key: string; res: WindowProposal | { reason: string } }>) =>
+    setSt((s) => ({ ...s, proposals: fn(s.proposals ?? {}) }));
   const [proposalBusy, setProposalBusy] = useState<{ stem: string; label: string; index: number; total: number; merges: number } | null>(null);
   const proposalInputs = (src: SessionSource) => {
     const c = cfg[src.stem];
@@ -792,7 +803,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
         setProposals((p) => ({ ...p, [src.stem]: { key: 'reason', res: { reason: inp.reason ?? '' } } }));
         continue;
       }
-      if (proposalKeys.current[src.stem] === inp.key) continue;
+      if (proposalKeys.current[src.stem] === inp.key || proposals[src.stem]?.key === inp.key) continue; // computed before: this session, or a stored one
       jobs.push({
         src,
         key: inp.key,
@@ -1176,14 +1187,15 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 {st.rolesConfirmed && <span className="derived">✓ {t('confirmed')}</span>}
                 <div className="nfm-tile nfm-cal">
                 <strong>{t('Calibration')}</strong>{' '}
-                <select value={st.calId ?? ''} onChange={(e) => setSt((s) => ({ ...s, calId: e.target.value }))} aria-label={t('calibration for this session')}>
-                  <option value="">{t('no file')}</option>
+                <select value={st.calId === 'none' ? 'none' : (chosenCal?.id ?? '')} onChange={(e) => setSt((s) => ({ ...s, calId: e.target.value }))} aria-label={t('calibration for this session')}>
+                  <option value="none">{t('no file')}</option>
                   {cals.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
                 </select>{' '}
+                {calTakenOver && chosenCal && <span className="nfm-proposed">{t('the only file, taken over')}</span>}{' '}
                 <span className={calChoice.kind === 'none' ? 'nl-warning' : 'derived'}>
                   {calChoice.kind === 'none'
                     ? t('{r} — merging and fitting work; export and “Use in project” refuse.', { r: calChoice.reason })
@@ -1464,6 +1476,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 sd={sdOf(cfg[active.stem])}
                 sessionName={session.name}
                 cur={cur}
+                enclosure={cfg[active.stem].way ? props.geometry.drivers[cfg[active.stem].way as MergeWay]?.enclosure ?? null : null}
                 setC={(p) => setC(active.stem, p)}
                 onTakeOver={(pr, f0Hz) => takeOver(active.stem, pr, f0Hz)}
                 onGoto={goto}
@@ -1616,6 +1629,8 @@ function WindowStep(p: {
   sd: number | null;
   sessionName: string;
   cur: Computed | null;
+  /** I-4 UI — what "Your cabinet" says about this way's enclosure, or null; a hint, never a tick. */
+  enclosure: string | null;
   setC: (patch: Partial<SourceConfig>) => void;
   onTakeOver: (pr: WindowProposal, f0Hz: number) => void;
   onGoto: (step: GuideStep) => void;
@@ -1763,6 +1778,12 @@ function WindowStep(p: {
             <label className="nfm-inline-check">
               <input type="checkbox" checked={!!c.inPod} onChange={(e) => setC({ inPod: e.target.checked })} /> {t('this driver sits in its own pod')}
             </label>
+            {!c.inPod && p.enclosure === 'sealed' && c.way !== 'high' && (
+              <span className="derived nfm-pod-hint">
+                {' '}
+                {t('“Your cabinet” gives this way its own sealed enclosure. Is that a pod with its own baffle? Then tick this and state its diameter: the model’s f0 follows from the pod, not from the cabinet width.')}
+              </span>
+            )}
             {c.inPod && (
               <>
                 {' · '}
@@ -1832,6 +1853,28 @@ function WorkPanel(p: {
   const ports = session.sources.filter((s) => s.kind === 'port');
   const icon = { ok: '✓', info: 'i', bad: '!' } as const;
   const canAccept = !!r && p.setupComplete && !!c.way && num(c.validFrom) !== null && (r.flags.length === 0 || c.reason.trim() !== '');
+  /* I-4 UI — the tooltip names what is MISSING, not the whole list of requirements. */
+  const missing = [
+    !p.setupComplete ? t('the set-up (step 2)') : null,
+    !c.way ? t('which driver (step 1)') : null,
+    !r ? t('a computed merge') : null,
+    num(c.validFrom) === null ? t('a stated “valid from”') : null,
+    r && r.flags.length > 0 && c.reason.trim() === '' ? t('a reason (there are flags)') : null,
+  ].filter((x): x is string => !!x);
+  /* I-4 UI — a proposal for "valid from", shown and never filled in: the near field carries the
+   * branch to the grid bottom, unless a reflex box was measured without its port (then it must be
+   * stated — the cone alone is not the system near the tuning). */
+  const encl = p.ownGeometry ? 'unknown' : p.geometry.drivers[(c.way || 'low') as MergeWay]?.enclosure ?? 'unknown';
+  const validFromProposal = r && comp?.input
+    ? suggestValidFrom({
+        enclosure: encl === 'sealed' ? 'sealed' : encl === 'ported' ? 'reflex' : 'unknown',
+        boxTuneHz: null,
+        portSummed: !!comp.input.port,
+        nearLowestHz: r.freq[0],
+        gridLowestHz: r.freq[0],
+        farFloorHz: comp.window?.oneOverTHz ?? null,
+      })
+    : null;
   /* B-4 guide: what steps 1–3 fixed is shown here, read-only, with the way back */
   const back = (step: GuideStep, n: number) => (
     <button type="button" className="linkish" onClick={() => p.onGoto(step)}>
@@ -1907,13 +1950,21 @@ function WorkPanel(p: {
           <p>
             {t('valid from')} <Field value={c.validFrom} onCommit={(v) => setC({ validFrom: v })} ariaLabel={t('valid from')} /> Hz{' '}
             <Field value={c.validFromReason} onCommit={(v) => setC({ validFromReason: v })} width={18} placeholder={t('why (stated)')} ariaLabel={t('valid from reason')} />
+            {validFromProposal && num(c.validFrom) === null && (
+              <span className="derived nfm-vf-proposal">
+                {' '}
+                {validFromProposal.hz !== null
+                  ? t('proposal: {hz} Hz — {why} Not filled in: state it.', { hz: validFromProposal.hz.toFixed(0), why: validFromProposal.reason })
+                  : t('no proposal: {why}', { why: validFromProposal.reason })}
+              </span>
+            )}
           </p>
           {r.flags.length > 0 && (
             <p>
               {t('reason')} <Field value={c.reason} onCommit={(v) => setC({ reason: v })} width={22} placeholder={t('required to accept with flags')} ariaLabel={t('reason')} />
             </p>
           )}
-          <button type="button" className="nfm-primary" disabled={!canAccept} onClick={p.onAccept} title={canAccept ? '' : t('needs: the set-up stated, which driver, a stated "valid from", and a reason when there are flags')}>
+          <button type="button" className="nfm-primary" disabled={!canAccept} onClick={p.onAccept} title={canAccept ? '' : t('needs: {list}', { list: missing.join(', ') })}>
             {r.flags.length > 0 ? t('Accept anyway, with reason…') : t('Accept merge')}
           </button>{' '}
           {p.accepted && <span className="derived">✓ {t('accepted')} — {t('export and “Use in project…” are in step 5')}</span>}
@@ -1971,7 +2022,15 @@ function UsePanel(p: {
     <div className="nfm-use">
       <h4>{t('Use in project…')}</h4>
       {t('branch')}{' '}
-      <select value={way} onChange={(e) => setUseWay(e.target.value as MergeWay)} aria-label={t('branch to use in')}>
+      <select
+        value={way}
+        onChange={(e) => {
+          /* I-4 UI — the status line is about ONE branch: a new choice starts blank, so "Done — low" never stands under "mid". */
+          setUseWay(e.target.value as MergeWay);
+          setUse({ kind: 'idle' });
+        }}
+        aria-label={t('branch to use in')}
+      >
         <option value="low">{t('low')}</option>
         <option value="mid">{t('mid')}</option>
         <option value="high">{t('high')}</option>
@@ -2039,6 +2098,7 @@ function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarCompute
   const { src, c, comp } = p;
   const ok = comp && comp.error === null ? comp : null;
   const canAccept = !!ok && !!c.way && num(c.validFrom) !== null;
+  const missing = [!c.way ? t('which driver (step 1)') : null, !ok ? t('a readable window') : null, num(c.validFrom) === null ? t('a stated “valid from”') : null].filter((x): x is string => !!x);
   const top = ok ? Math.ceil(Math.max(...ok.spec.spl.filter((_, i) => ok.spec.freq[i] >= 200 && ok.spec.freq[i] <= 20000)) / 5) * 5 + 5 : 0;
   return (
     <div className="nfm-body nfm-faronly">
@@ -2070,7 +2130,7 @@ function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarCompute
               <Field value={c.validFromReason} onCommit={(v) => p.setC({ validFromReason: v })} width={18} placeholder={t('why (stated)')} ariaLabel={t('valid from reason')} />
               {ok && num(c.validFrom) === null && <span className="derived"> {t('the gate floor is 1/T = {hz} Hz; state what you believe, it is not filled in for you', { hz: ok.oneOverTHz.toFixed(0) })}</span>}
             </p>
-            <button type="button" className="nfm-primary" disabled={!canAccept} onClick={p.onAccept} title={canAccept ? '' : t('needs: which driver (step 1), a readable window, and a stated "valid from"')}>
+            <button type="button" className="nfm-primary" disabled={!canAccept} onClick={p.onAccept} title={canAccept ? '' : t('needs: {list}', { list: missing.join(', ') })}>
               {t('Accept far field')}
             </button>
             {p.accepted && <p className="nfm-accepted">✓ {t('accepted as {name}', { name: p.accepted.name })}</p>}

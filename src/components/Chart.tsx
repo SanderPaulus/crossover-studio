@@ -107,6 +107,29 @@ interface ChartProps {
 
 const W = 900; // viewBox width; scales responsively
 const PAD = { l: 46, r: 12, t: 10, b: 26 };
+/* I-4 UI — band and marker labels used to share ONE y, so two that start near each other overprinted
+ * ("window (proposed)" over "Tukey flank"; "knee" over "proposed end"). Each label now takes the
+ * first row where it does not overlap an earlier label: row 0 is the old place, so a chart with one
+ * label, or labels far apart, renders exactly as before. The width is an estimate (the SVG is not
+ * measured): LABEL_CHAR_PX per character plus a gap. Exported for the test. */
+export const LABEL_ROW_PX = 12;
+const LABEL_CHAR_PX = 6.2;
+const LABEL_GAP_PX = 8;
+export function labelRows(items: readonly { x: number; label?: string }[]): number[] {
+  const placed: { row: number; x0: number; x1: number }[] = [];
+  return items.map((it) => {
+    if (!it.label) return 0;
+    const x0 = it.x;
+    const x1 = it.x + it.label.length * LABEL_CHAR_PX + LABEL_GAP_PX;
+    let row = 0;
+    for (;;) {
+      if (!placed.some((q) => q.row === row && q.x0 < x1 && x0 < q.x1)) break;
+      row++;
+    }
+    placed.push({ row, x0, x1 });
+    return row;
+  });
+}
 
 export const FREQ_TICKS = [
   5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000,
@@ -705,28 +728,31 @@ export default function Chart({
           );
         })}
         {/* vertical frequency zones (e.g. integration bandwidth) */}
-        {xBands?.map((b, i) => {
-          const f0 = Math.max(vx[0], Math.min(b.from, b.to));
-          const f1 = Math.min(vx[1], Math.max(b.from, b.to));
-          if (f1 <= f0) return null;
-          return (
-            <g key={`xb${i}`}>
-              <rect
-                x={xPos(f0)}
-                width={xPos(f1) - xPos(f0)}
-                y={PAD.t}
-                height={plotH}
-                fill={b.color}
-                opacity={b.opacity ?? 0.08}
-              />
-              {b.label && (
-                <text x={xPos(f0) + 5} y={PAD.t + 12} className="tick xband-label">
-                  {b.label}
-                </text>
-              )}
-            </g>
-          );
-        })}
+        {(() => {
+          const rows = labelRows((xBands ?? []).map((b) => ({ x: xPos(Math.max(vx[0], Math.min(b.from, b.to))) + 5, label: b.label })));
+          return xBands?.map((b, i) => {
+            const f0 = Math.max(vx[0], Math.min(b.from, b.to));
+            const f1 = Math.min(vx[1], Math.max(b.from, b.to));
+            if (f1 <= f0) return null;
+            return (
+              <g key={`xb${i}`}>
+                <rect
+                  x={xPos(f0)}
+                  width={xPos(f1) - xPos(f0)}
+                  y={PAD.t}
+                  height={plotH}
+                  fill={b.color}
+                  opacity={b.opacity ?? 0.08}
+                />
+                {b.label && (
+                  <text x={xPos(f0) + 5} y={PAD.t + 12 + LABEL_ROW_PX * rows[i]} className="tick xband-label">
+                    {b.label}
+                  </text>
+                )}
+              </g>
+            );
+          });
+        })()}
         {/* gridlines */}
         {xTicks.map((f) => (
           <line key={f} x1={xPos(f)} x2={xPos(f)} y1={PAD.t} y2={H - PAD.b} className="grid" />
@@ -744,29 +770,32 @@ export default function Chart({
           />
         )}
         {/* vertical markers (e.g. overlap centre) */}
-        {xMarkers?.map((m, i) =>
-          m.x >= vx[0] && m.x <= vx[1] ? (
-            <g key={`xm${i}`}>
-              <line
-                x1={xPos(m.x)}
-                x2={xPos(m.x)}
-                y1={PAD.t}
-                y2={H - PAD.b}
-                className="xmarker"
-                style={m.color ? { stroke: m.color } : undefined}
-              />
-              {m.label && (
-                <text
-                  x={xPos(m.x) + 4}
-                  y={H - PAD.b - 6}
-                  className="tick xband-label"
-                >
-                  {m.label}
-                </text>
-              )}
-            </g>
-          ) : null,
-        )}
+        {(() => {
+          const rows = labelRows((xMarkers ?? []).map((m) => ({ x: xPos(m.x) + 4, label: m.label })));
+          return xMarkers?.map((m, i) =>
+            m.x >= vx[0] && m.x <= vx[1] ? (
+              <g key={`xm${i}`}>
+                <line
+                  x1={xPos(m.x)}
+                  x2={xPos(m.x)}
+                  y1={PAD.t}
+                  y2={H - PAD.b}
+                  className="xmarker"
+                  style={m.color ? { stroke: m.color } : undefined}
+                />
+                {m.label && (
+                  <text
+                    x={xPos(m.x) + 4}
+                    y={H - PAD.b - 6 - LABEL_ROW_PX * rows[i]}
+                    className="tick xband-label"
+                  >
+                    {m.label}
+                  </text>
+                )}
+              </g>
+            ) : null,
+          );
+        })()}
         {/* annotated points on a curve (loudest / quietest spot) — the ring
             only; the label rides in an HTML overlay below, see there. */}
         {points?.map((p, i) =>

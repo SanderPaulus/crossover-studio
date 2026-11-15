@@ -2460,10 +2460,30 @@ export const nl: Record<string, string> = {
     'Accepteren',
   'the gate floor is 1/T = {hz} Hz; state what you believe, it is not filled in for you':
     'de vensterbodem is 1/T = {hz} Hz; geef op wat jij gelooft, het wordt niet voor je ingevuld',
-  'needs: which driver (step 1), a readable window, and a stated "valid from"':
-    'nodig: welke driver (stap 1), een leesbaar venster en een opgegeven "geldig vanaf"',
   '{src} · far field only, gated · 1/T {hz} Hz · valid from {vf} Hz · session {s}':
     '{src} · alleen ver veld, gegated · 1/T {hz} Hz · geldig vanaf {vf} Hz · sessie {s}',
+  'the only file, taken over':
+    'het enige bestand, overgenomen',
+  'the set-up (step 2)':
+    'de opstelling (stap 2)',
+  'which driver (step 1)':
+    'welke driver (stap 1)',
+  'a computed merge':
+    'een berekende merge',
+  'a stated “valid from”':
+    'een opgegeven “geldig vanaf”',
+  'a reason (there are flags)':
+    'een reden (er zijn vlaggen)',
+  'a readable window':
+    'een leesbaar venster',
+  'needs: {list}':
+    'nodig: {list}',
+  'proposal: {hz} Hz — {why} Not filled in: state it.':
+    'voorstel: {hz} Hz — {why} Niet ingevuld: geef het op.',
+  'no proposal: {why}':
+    'geen voorstel: {why}',
+  '“Your cabinet” gives this way its own sealed enclosure. Is that a pod with its own baffle? Then tick this and state its diameter: the model’s f0 follows from the pod, not from the cabinet width.':
+    '“Je kast” geeft deze weg een eigen gesloten behuizing. Is dat een pod met een eigen baffle? Vink dit dan aan en geef de diameter op: de f0 van het model volgt uit de pod, niet uit de kastbreedte.',
   'Accept far field':
     'Ver veld accepteren',
   'accepted as {name}':
@@ -2679,8 +2699,6 @@ export const nl: Record<string, string> = {
     '{h} mm boven de vloer, uit {from}',
   'mouth above the object’s bottom':
     'monding boven de bodem van het object',
-  'needs: the set-up stated, which driver, a stated "valid from", and a reason when there are flags':
-    'nodig: de opstelling gesteld, welke driver, een gesteld "geldig vanaf", en een reden bij vlaggen',
   'Use in project…':
     'Gebruik in project…',
   'branch to use in':

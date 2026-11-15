@@ -755,7 +755,8 @@ export interface CabinetGeometryForMerge {
   baffleWidthMm: number | null;
   baffleHeightMm: number | null;
   refFromTopMm: number | null;
-  drivers: Record<MergeWay, { yMm: number | null; count: number | null; spacingMm: number | null; facingFront: boolean; opposed: boolean }>;
+  /** `enclosure`: as the cabinet form states it ('sealed' | 'ported' | 'open' | 'unknown'); absent on older callers. */
+  drivers: Record<MergeWay, { yMm: number | null; count: number | null; spacingMm: number | null; facingFront: boolean; opposed: boolean; enclosure?: string | null }>;
 }
 export type SourcePlacement =
   | { kind: 'cabinet'; way: MergeWay | null; member: 'single' | 'upper' | 'lower' | null }

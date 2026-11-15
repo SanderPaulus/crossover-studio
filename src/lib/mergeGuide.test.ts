@@ -225,6 +225,23 @@ describe('the tool — what a source scan can see', () => {
     expect(eff).not.toMatch(/\btab,/); // switching tabs does not restart the run
     expect(src).toMatch(/\{step === 'window' &&\s+proposalBusy &&\s+createPortal\(\s+<div className="busy-overlay/);
     expect(src).toMatch(/<progress value=\{proposalBusy\.index\} max=\{proposalBusy\.total\}/);
+
+    // the proposals live in the stored tool state: a reopened session does not recompute them
+    expect(src).toMatch(/proposals: s\.proposals \?\? \{\},/);
+    expect(src).toMatch(/\|\| proposals\[src\.stem\]\?\.key === inp\.key\) continue;/);
+  });
+  it('I-4 UI audit: the only calibration file is taken over, the Accept tooltip names what is missing, a branch switch clears the use-status, valid-from is proposed and never filled, the pod hint reads the cabinet form', () => {
+    expect(src).toMatch(/cals\.length === 1 \? cals\[0\] : null/);
+    expect(src).toMatch(/<option value="none">\{t\('no file'\)\}<\/option>/);
+    expect(src).toMatch(/title=\{canAccept \? '' : t\('needs: \{list\}', \{ list: missing\.join\(', '\) \}\)\}/);
+    expect(src).not.toMatch(/needs: the set-up stated, which driver/);
+    expect(src).toMatch(/setUseWay\(e\.target\.value as MergeWay\);\s*setUse\(\{ kind: 'idle' \}\);/);
+    expect(src).toMatch(/suggestValidFrom\(\{/);
+    expect(src).toMatch(/validFromProposal && num\(c\.validFrom\) === null/); // shown while empty, never written into the field
+    expect(src).not.toMatch(/setC\(\{ validFrom: validFromProposal/);
+    expect(src).toMatch(/!c\.inPod && p\.enclosure === 'sealed' && c\.way !== 'high'/);
+    const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
+    expect(app).toMatch(/enclosure: d\.enclosure \?\? null/); // the cabinet form's enclosure travels to the tool
   });
   it('in one column the sessions block scrolls away: the narrow-screen rule comes after the sticky rule', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8');

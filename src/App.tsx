@@ -5504,7 +5504,7 @@ export default function App() {
     const n = (v: string) => (v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
     const one = (r: BranchRole) => {
       const d = cabinet.drivers[r];
-      return { yMm: n(d.yMm), count: n(d.count), spacingMm: n(d.spacingMm), facingFront: d.facing === 'front', opposed: d.opposed };
+      return { yMm: n(d.yMm), count: n(d.count), spacingMm: n(d.spacingMm), facingFront: d.facing === 'front', opposed: d.opposed, enclosure: d.enclosure ?? null };
     };
     return {
       baffleWidthMm: n(cabinet.baffleWidthMm),
