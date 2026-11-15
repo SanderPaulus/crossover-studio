@@ -5212,10 +5212,18 @@ details.v2-stage-need > summary { cursor: pointer; }
 .nfm-tile > strong { display: inline-block; min-width: 10.5rem; }
 .nfm-tile input[type='text'] { padding: 0.1rem 0.3rem; }
 .nfm-obj { display: inline; }
-.nfm-tabs { display: flex; gap: 0.25rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
-.nfm-tab { border: 1px solid var(--border); border-bottom: none; border-radius: 6px 6px 0 0; background: transparent; padding: 0.35rem 0.75rem; }
-.nfm-tab.active { background: var(--panel); font-weight: 600; }
-.nfm-status { font-size: 0.8em; padding: 0.05rem 0.4rem; border-radius: 999px; margin-left: 0.3rem; border: 1px solid var(--border); }
+/* UI-4: the driver tabs of steps 3 and 4 read as tabs. Two lines each (the driver, then verdict + accepted),
+   a wider hit area, the active one joined to the panel below it with an accent top edge; the others dimmed. */
+.nfm-tabs { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: flex-end; border-bottom: 2px solid var(--border); }
+.nfm-tab { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; min-width: 11rem; margin-bottom: -2px; border: 1px solid var(--border); border-bottom: 2px solid var(--border); border-top: 3px solid transparent; border-radius: 8px 8px 0 0; background: transparent; padding: 0.5rem 0.9rem 0.5rem; color: var(--muted); cursor: pointer; text-align: left; }
+.nfm-tab:hover { color: inherit; }
+.nfm-tab.active { background: var(--panel); color: inherit; border-top-color: var(--accent); border-bottom-color: var(--panel); }
+.nfm-tab-name { font-size: 1.05em; font-weight: 600; }
+.nfm-tab-line { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; font-size: 0.8em; }
+.nfm-open { color: var(--muted); }
+.nfm-status { font-size: 0.8em; padding: 0.05rem 0.4rem; border-radius: 999px; border: 1px solid var(--border); }
+.nfm-tab-line .nfm-status { font-size: 1em; }
+.nfm-tab .nfm-accepted { font-size: 1em; }
 .nfm-explained { color: #15803d; border-color: #15803d; }
 .nfm-flags { color: #b45309; border-color: #b45309; }
 .nfm-unchecked { color: var(--muted); }

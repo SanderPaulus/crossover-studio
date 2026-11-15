@@ -9955,3 +9955,30 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   - de lege pagina leest `GUIDE_STEPS`.
 - **Niet gedaan:** de bovenbalk op een telefoonbreedte is niet apart nagelopen. De Nederlandse teksten zijn toegevoegd maar niet in de browser bekeken. De lege toestand van een project is niet in de browser bekeken, omdat dat de lokale autosave had gewist.
 - **Gemeten (15-11-2026):** `npx tsc -b` groen. `npm run test:fast` **270,9 s, 248 bestanden (247 geslaagd, 1 overgeslagen), 3274 tests (3270 geslaagd, 4 overgeslagen), groen, alleen gedraaid met de dev-server gestopt, op de boom die gecommit wordt** (run gestart 11:22:19, ná de laatste bronbewerking). Alleen CLAUDE.md is daarna nog bewerkt, en geen enkele test leest dat bestand. Geen volle run: er is geen motor-, poort-, venster-, metriek- of corpuscode geraakt.
+
+### UI-4-guards (de drivertabs van de merge-tool, en "valid from" overnemen met één druk; alleen UI, 15-11-2026)
+
+- **Aanleiding (Sander, 15-11-2026):** de tabs van stap 3 en 4 waren één regel per driver met twee kleine
+  badges, nauwelijks te onderscheiden van de rest; en "valid from" moest getypt worden terwijl de tool al een
+  voorstel toonde.
+- **De tabs** (`.nfm-tab`): twee regels per driver — de naam als titel, eronder het oordeel van de merge
+  (✓ explained / ⚠ flags / not checked for reflections / far field only / not merged yet) en of hij
+  geaccepteerd is (✓ accepted / not yet accepted). Bredere trefzone, de actieve tab sluit met een accentrand
+  bovenaan aan op het paneel eronder, de andere gedimd. Geen test pint de tabmarkering; wel in de browser
+  gezien op 1600 px en op de smalle pane (de tabs wrappen).
+- **"Take over the proposal" bij valid from** (`takeOverValidFrom`): dezelfde daad als bij het venster, één
+  druk schrijft het voorgestelde getal én zijn reden in de twee velden. Het voorstel staat sindsdien ook
+  als de gestelde waarde ervan afwijkt. De I-4-claim "valid-from is proposed and never filled" is in
+  V15-vorm aangepast: niets vult het veld uit zichzelf (geen effect, precies één `setC` en die zit in de
+  handler achter `onClick`); de druk is een daad en geen auto-fill. In de browser nagemeten op Sanders
+  sessie: mid 60 → 20 Hz met de reden "the near field carries this branch down to 20.0 Hz; …".
+- **Waarom het veld überhaupt bestaat, voor wie het vraagt:** het is de `Valid from` van het gemergde
+  bestand, de bindende geldigheidsvloer die de engine leest (herkomst `merge-block`) en zonder welke de
+  v1-laag de run weigert (P-1). Een merge heeft geen eigen gate, dus geen 1/T om op terug te vallen; het is
+  een uitspraak over de meting en daarom gesteld (A3h).
+- **Gemeten:** `npx tsc -b` groen. `npm run test:fast` **257,4 s, 248 bestanden (247 geslaagd,
+  1 overgeslagen), 3274 tests (3270 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 12:47:44, run gestart 12:50:20 (de H-2-regel).** Geen nieuw
+  bestand, geen nieuwe test: `mergeGuide.test.ts` veranderde van inhoud en niet van telling. **Een eerdere
+  run (264,0 s, dezelfde tellingen, groen) is weggegooid** omdat de knop ná zijn start is gebouwd. Geen
+  volle run: geen motor-, poort-, venster- of corpuscode geraakt.

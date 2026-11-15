@@ -1472,9 +1472,15 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 const s = d.kind === 'far-only' ? null : statusFor(d.stem);
                 return (
                   <button key={d.stem} type="button" role="tab" aria-selected={d.stem === tab} className={`nfm-tab${d.stem === tab ? ' active' : ''}`} onClick={() => setTab(d.stem)}>
-                    {d.label}{' '}
-                    <span className={`nfm-status nfm-${s ?? 'none'}`}>{d.kind === 'far-only' ? t('far field only') : s ? t(STATUS_LABEL[s]) : '—'}</span>
-                    {st.accepted[d.stem] && <span className="nfm-accepted"> ✓ {t('accepted')}</span>}
+                    {/* Two lines per tab: the driver as a title, and under it the two facts a reader looks for —
+                        the merge's verdict and whether it has been accepted (UI-4). */}
+                    <span className="nfm-tab-name">{d.label}</span>
+                    <span className="nfm-tab-line">
+                      <span className={`nfm-status nfm-${s ?? 'none'}`}>
+                        {d.kind === 'far-only' ? t('far field only') : s === 'explained' ? `✓ ${t('explained')}` : s === 'flags' ? `⚠ ${t('flags')}` : s ? t(STATUS_LABEL[s]) : t('not merged yet')}
+                      </span>
+                      {d.kind !== 'far-only' && (st.accepted[d.stem] ? <span className="nfm-accepted">✓ {t('accepted')}</span> : <span className="nfm-open">{t('not yet accepted')}</span>)}
+                    </span>
                   </button>
                 );
               })}
@@ -1920,6 +1926,9 @@ function WorkPanel(p: {
         farFloorHz: comp.window?.oneOverTHz ?? null,
       })
     : null;
+  const takeOverValidFrom = () => {
+    if (validFromProposal && validFromProposal.hz !== null) setC({ validFrom: validFromProposal.hz.toFixed(0), validFromReason: validFromProposal.reason });
+  };
   /* B-4 guide: what steps 1–3 fixed is shown here, read-only, with the way back */
   const back = (step: GuideStep, n: number) => (
     <button type="button" className="linkish" onClick={() => p.onGoto(step)}>
@@ -1995,12 +2004,22 @@ function WorkPanel(p: {
           <p>
             {t('valid from')} <Field value={c.validFrom} onCommit={(v) => setC({ validFrom: v })} ariaLabel={t('valid from')} /> Hz{' '}
             <Field value={c.validFromReason} onCommit={(v) => setC({ validFromReason: v })} width={18} placeholder={t('why (stated)')} ariaLabel={t('valid from reason')} />
-            {validFromProposal && num(c.validFrom) === null && (
+            {validFromProposal && (num(c.validFrom) === null || (validFromProposal.hz !== null && Number(validFromProposal.hz.toFixed(0)) !== num(c.validFrom))) && (
               <span className="derived nfm-vf-proposal">
                 {' '}
                 {validFromProposal.hz !== null
-                  ? t('proposal: {hz} Hz — {why} Not filled in: state it.', { hz: validFromProposal.hz.toFixed(0), why: validFromProposal.reason })
+                  ? num(c.validFrom) === null
+                    ? t('proposal: {hz} Hz — {why} Not filled in: state it.', { hz: validFromProposal.hz.toFixed(0), why: validFromProposal.reason })
+                    : t('proposal: {hz} Hz — {why}', { hz: validFromProposal.hz.toFixed(0), why: validFromProposal.reason })
                   : t('no proposal: {why}', { why: validFromProposal.reason })}
+                {/* UI-4: the proposal reaches the field only through this press — the same deed as the
+                    window's "Take over the proposal"; nothing writes it by itself. */}
+                {validFromProposal.hz !== null && (
+                  <>
+                    {' '}
+                    <button type="button" className="linkish" onClick={takeOverValidFrom}>{t('Take over the proposal')}</button>
+                  </>
+                )}
               </span>
             )}
           </p>

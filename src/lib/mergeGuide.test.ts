@@ -260,8 +260,14 @@ describe('the tool — what a source scan can see', () => {
     expect(src).not.toMatch(/needs: the set-up stated, which driver/);
     expect(src).toMatch(/setUseWay\(e\.target\.value as MergeWay\);\s*setUse\(\{ kind: 'idle' \}\);/);
     expect(src).toMatch(/suggestValidFrom\(\{/);
-    expect(src).toMatch(/validFromProposal && num\(c\.validFrom\) === null/); // shown while empty, never written into the field
-    expect(src).not.toMatch(/setC\(\{ validFrom: validFromProposal/);
+    // UI-4: shown while empty or while the stated value differs from it; it reaches the field through
+    // ONE press only (the window's "Take over the proposal", one row further) — nothing writes it by itself.
+    // (Until UI-4 this claim read "never written into the field"; the press is a deed, not an auto-fill.)
+    expect(src).toMatch(/validFromProposal && \(num\(c\.validFrom\) === null \|\|/);
+    expect(src).toMatch(/const takeOverValidFrom = \(\) => \{\s*if \(validFromProposal && validFromProposal\.hz !== null\) setC\(\{ validFrom: validFromProposal\.hz\.toFixed\(0\), validFromReason: validFromProposal\.reason \}\);/);
+    expect(src.match(/setC\(\{ validFrom: validFromProposal/g)?.length).toBe(1); // the handler, and nowhere else
+    expect(src).toMatch(/onClick=\{takeOverValidFrom\}/);
+    expect(src).not.toMatch(/useEffect\([^;]*validFromProposal/); // no effect fills it in
     expect(src).toMatch(/!c\.inPod && p\.enclosure === 'sealed' && c\.way !== 'high'/);
     const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
     expect(app).toMatch(/enclosure: d\.enclosure \?\? null/); // the cabinet form's enclosure travels to the tool

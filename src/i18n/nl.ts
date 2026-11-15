@@ -2480,6 +2480,8 @@ export const nl: Record<string, string> = {
     'nodig: {list}',
   'proposal: {hz} Hz — {why} Not filled in: state it.':
     'voorstel: {hz} Hz — {why} Niet ingevuld: geef het op.',
+  'proposal: {hz} Hz — {why}':
+    'voorstel: {hz} Hz — {why}',
   'no proposal: {why}':
     'geen voorstel: {why}',
   '“Your cabinet” gives this way its own sealed enclosure. Is that a pod with its own baffle? Then tick this and state its diameter: the model’s f0 follows from the pod, not from the cabinet width.':
@@ -2665,6 +2667,10 @@ export const nl: Record<string, string> = {
     'belasting doelkast',
   'accepted':
     'geaccepteerd',
+  'not yet accepted':
+    'nog niet geaccepteerd',
+  'not merged yet':
+    'nog niet gemerged',
   'header: left {l} ms · reference {r} ms · right {rt} ms · Tukey {a}':
     'kop: links {l} ms · referentie {r} ms · rechts {rt} ms · Tukey {a}',
   'used':
