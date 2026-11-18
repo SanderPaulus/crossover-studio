@@ -305,6 +305,23 @@ describe('the tool — what a source scan can see', () => {
     const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
     expect(app).toMatch(/enclosure: d\.enclosure \?\? null/); // the cabinet form's enclosure travels to the tool
   });
+  it('UI-6: "Your cabinet — what the merge needs" sits in step 2, before A–D, and writes the project\'s own fields through the app', () => {
+    const i = src.indexOf("t('Your cabinet — what the merge needs')");
+    expect(i).toBeGreaterThan(0);
+    expect(i).toBeLessThan(src.indexOf("t('How was the measurement set up?')", i)); // before the four measures
+    const block = src.slice(i, src.indexOf("t('Earlier set-up')", i));
+    expect(block).toContain('props.onCabinet({ baffleWidthMm: v })');
+    expect(block).toContain('props.onCabinet({ baffleHeightMm: v })');
+    expect(block).toContain('props.onSd(w, v)');
+    expect(block).toContain('yFromAboveBottom(hv, H, props.geometry.refFromTopMm)'); // the one conversion, never a second formula
+    expect(block).not.toMatch(/useState/); // no state of its own: the project's fields are the state
+    const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
+    expect(app).toContain('onCabinet={mergeCabinetPatch}');
+    expect(app).toMatch(/onSd=\{\(way, v\) => setSdCm2\(\(q\) => \(\{ \.\.\.q, \[way\]: v \}\)\)\}/);
+    const patch = app.slice(app.indexOf('const mergeCabinetPatch'), app.indexOf('const mergeGeometry'));
+    expect(patch).toContain('setCabinet((c) =>');
+    expect(patch).not.toMatch(/useState/);
+  });
   it('in one column the sessions block scrolls away: the narrow-screen rule comes after the sticky rule', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8');
     const sticky = css.indexOf('.nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky');

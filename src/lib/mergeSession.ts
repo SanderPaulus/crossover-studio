@@ -761,6 +761,28 @@ export interface CabinetGeometryForMerge {
   /** `enclosure`: as the cabinet form states it ('sealed' | 'ported' | 'open' | 'unknown'); absent on older callers. */
   drivers: Record<MergeWay, { yMm: number | null; count: number | null; spacingMm: number | null; facingFront: boolean; opposed: boolean; enclosure?: string | null }>;
 }
+/**
+ * UI-6 — "Your cabinet" inside the merge tool writes the project's OWN fields. The project keeps a
+ * driver's vertical position RELATIVE TO THE REFERENCE POINT (y up, the card shows it as "mm below
+ * the top"); the merge thinks in height ABOVE THE CABINET BOTTOM. The two conversions, one place:
+ *   above bottom = H − ref + y   ⇔   y = h − H + ref.
+ * Without a reference point the tool puts it ON THE BOTTOM EDGE (ref = H), so y = h and the card
+ * reads "H − h mm below the top" — a convention the project did not have yet, not a change to one.
+ */
+export function aboveBottomFromY(yMm: number | null, baffleHeightMm: number | null, refFromTopMm: number | null): number | null {
+  return yMm !== null && baffleHeightMm !== null && refFromTopMm !== null ? baffleHeightMm - refFromTopMm + yMm : null;
+}
+export function yFromAboveBottom(aboveBottomMm: number, baffleHeightMm: number, refFromTopMm: number | null): { yMm: number; refFromTopMm: number } {
+  const ref = refFromTopMm ?? baffleHeightMm;
+  return { yMm: aboveBottomMm - baffleHeightMm + ref, refFromTopMm: ref };
+}
+/** What the merge tool may write back into the project's cabinet form (strings, as the form holds them). */
+export interface CabinetPatchForMerge {
+  baffleWidthMm?: string;
+  baffleHeightMm?: string;
+  refFromTopMm?: string;
+  drivers?: Partial<Record<MergeWay, { yMm?: string; count?: string; spacingMm?: string }>>;
+}
 export type SourcePlacement =
   | { kind: 'cabinet'; way: MergeWay | null; member: 'single' | 'upper' | 'lower' | null }
   | { kind: 'own'; aboveBottomMm: number | null };

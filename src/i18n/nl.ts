@@ -2964,6 +2964,40 @@ export const nl: Record<string, string> = {
     'Hoe stond de meting opgesteld?',
   'Four measures, once per set-up. The tool keeps them.':
     'Vier maten, één keer per opstelling. De tool bewaart ze.',
+  'Your cabinet — what the merge needs':
+    'Je kast — wat de merge nodig heeft',
+  'These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.':
+    'Dit zijn de eigen kast- en drivervelden van het project; wat je hier typt landt in “Je kast” en op de driverkaarten, en wat daar al staat zie je hier.',
+  'front panel':
+    'frontpaneel',
+  'front panel width':
+    'breedte frontpaneel',
+  'front panel height':
+    'hoogte frontpaneel',
+  'width × height':
+    'breedte × hoogte',
+  'Without the width there is no near→far model (AN4 reads it) and no echo extent: no merge.':
+    'Zonder de breedte is er geen model nabij→ver (AN4 leest hem) en geen echo-omvang: geen merge.',
+  'Without the height no driver height can be placed above the floor: no reflection model, no arrival check.':
+    'Zonder de hoogte kan geen driverhoogte boven de vloer bepaald worden: geen reflectiemodel, geen aankomstcontrole.',
+  'Width: the near→far model and the echo extent. Height: where each driver stands above the floor.':
+    'Breedte: het model nabij→ver en de echo-omvang. Hoogte: waar elke driver boven de vloer staat.',
+  '{w}: S_d':
+    '{w}: S_d',
+  'centre above the cabinet bottom':
+    'midden boven de kastbodem',
+  '{w}: height above the bottom':
+    '{w}: hoogte boven de bodem',
+  'state the front panel height first':
+    'geef eerst de hoogte van het frontpaneel op',
+  'spacing of the pair':
+    'afstand van het paar',
+  '{w}: spacing':
+    '{w}: afstand',
+  'Without S_d the top of the band (ka = 1) cannot be proposed. ':
+    'Zonder S_d kan de bovenkant van de band (ka = 1) niet voorgesteld worden. ',
+  'Without the height: no reflection model and no arrival check for this driver.':
+    'Zonder de hoogte: geen reflectiemodel en geen aankomstcontrole voor deze driver.',
   'Earlier set-up':
     'Eerdere opstelling',
   'earlier set-up':

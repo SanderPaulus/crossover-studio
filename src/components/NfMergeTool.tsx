@@ -71,6 +71,9 @@ import {
   type SessionSource,
   type SourcePlacement,
   type Surface,
+  aboveBottomFromY,
+  yFromAboveBottom,
+  type CabinetPatchForMerge,
 } from '../lib/mergeSession.ts';
 import { convertLowEnd, loadValidity, LOAD_RATIO_TOL_DB, LOAD_RATIO_TOL_DEG, type BoxSpec, type MeasuredObject } from '../lib/measuredObject.ts';
 import {
@@ -102,6 +105,10 @@ export interface NfMergeToolProps {
   onUse: (way: MergeWay, sources: AcceptedSource[]) => Prepared;
   /** UI-6 — every accepted way of the session at once, checked against each other (one deed). */
   onUseAll: (plan: { way: MergeWay; sources: AcceptedSource[] }[]) => Partial<Record<MergeWay, Prepared>>;
+  /** UI-6 — "Your cabinet" inside the tool: what it types lands in the project's own cabinet form and
+   *  driver cards (one mechanism, two entrances), so the tool stands on its own without the optimizer. */
+  onCabinet: (patch: CabinetPatchForMerge) => void;
+  onSd: (way: MergeWay, value: string) => void;
   /** The name of each branch's current response, so "done" is read back from the project, not assumed. */
   responseNames: Record<MergeWay, string | null>;
   /** The measurement set-up as "Your cabinet" states it (mic distance and angle, reference height); nulls where it does not. */
@@ -1364,6 +1371,66 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                   <p className="derived">{t('The tool works out per driver where floor and table top give a reflection, and whether it falls in the window. That is why these four measures.')}</p>
                 </div>
                 <div className="nfm-setup-form">
+                  {/* UI-6 (Sander, 18-11-2026): what the merge needs from "Your cabinet", askable HERE — the
+                      front and, per driver, S_d and the height above the bottom — written into the project's
+                      own fields, so the tool works without the optimizer and the optimizer finds them filled. */}
+                  {!ownGeometry && (
+                    <div className="nfm-card nfm-cabinet-min">
+                      <h3>{t('Your cabinet — what the merge needs')}</h3>
+                      <p className="derived">{t('These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.')}</p>
+                      <p className="nfm-abcd">
+                        {t('front panel')}{' '}
+                        <Field value={props.geometry.baffleWidthMm !== null ? String(props.geometry.baffleWidthMm) : ''} onCommit={(v) => props.onCabinet({ baffleWidthMm: v })} ariaLabel={t('front panel width')} /> ×{' '}
+                        <Field value={props.geometry.baffleHeightMm !== null ? String(props.geometry.baffleHeightMm) : ''} onCommit={(v) => props.onCabinet({ baffleHeightMm: v })} ariaLabel={t('front panel height')} /> mm ({t('width × height')})
+                        <br />
+                        <span className="derived">
+                          {props.geometry.baffleWidthMm === null
+                            ? t('Without the width there is no near→far model (AN4 reads it) and no echo extent: no merge.')
+                            : props.geometry.baffleHeightMm === null
+                              ? t('Without the height no driver height can be placed above the floor: no reflection model, no arrival check.')
+                              : t('Width: the near→far model and the echo extent. Height: where each driver stands above the floor.')}
+                        </span>
+                      </p>
+                      {(['low', 'mid', 'high'] as MergeWay[])
+                        .filter((w) => drivers.some((d) => cfg[d.stem]?.way === w) || farOnly.some((d) => cfg[d.stem]?.way === w))
+                        .map((w) => {
+                          const g = props.geometry.drivers[w];
+                          const members = drivers.filter((d) => cfg[d.stem]?.way === w).length + farOnly.filter((d) => cfg[d.stem]?.way === w).length;
+                          const h = aboveBottomFromY(g.yMm, props.geometry.baffleHeightMm, props.geometry.refFromTopMm);
+                          const H = props.geometry.baffleHeightMm;
+                          return (
+                            <p className="nfm-abcd" key={w}>
+                              <strong>{t(w === 'low' ? 'woofer' : w === 'mid' ? 'midrange' : 'tweeter')}</strong>{' '}
+                              S_d <Field value={props.sdCm2[w] !== null ? String(props.sdCm2[w]) : ''} onCommit={(v) => props.onSd(w, v)} ariaLabel={t('{w}: S_d', { w })} /> cm² ·{' '}
+                              {t('centre above the cabinet bottom')}{' '}
+                              <Field
+                                value={h !== null ? String(Math.round(h * 10) / 10) : ''}
+                                onCommit={(v) => {
+                                  const hv = num(v);
+                                  if (hv === null || H === null) return;
+                                  const y = yFromAboveBottom(hv, H, props.geometry.refFromTopMm);
+                                  props.onCabinet({ refFromTopMm: String(y.refFromTopMm), drivers: { [w]: { yMm: String(Math.round(y.yMm * 10) / 10), ...(members >= 2 && (g.count ?? 0) < 2 ? { count: String(members) } : {}) } } });
+                                }}
+                                title={H === null ? t('state the front panel height first') : undefined}
+                                ariaLabel={t('{w}: height above the bottom', { w })}
+                              />{' '}
+                              mm
+                              {members >= 2 && (
+                                <>
+                                  {' · '}
+                                  {t('spacing of the pair')} <Field value={g.spacingMm !== null ? String(g.spacingMm) : ''} onCommit={(v) => props.onCabinet({ drivers: { [w]: { spacingMm: v, count: String(members) } } })} ariaLabel={t('{w}: spacing', { w })} /> mm
+                                </>
+                              )}
+                              <br />
+                              <span className="derived">
+                                {props.sdCm2[w] === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : ''}
+                                {h === null ? t('Without the height: no reflection model and no arrival check for this driver.') : ''}
+                              </span>
+                            </p>
+                          );
+                        })}
+                    </div>
+                  )}
                   <h3>{t('How was the measurement set up?')}</h3>
                   <p className="derived">{t('Four measures, once per set-up. The tool keeps them.')}</p>
                   <p>

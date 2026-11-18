@@ -24,6 +24,8 @@ import {
   type CabinetGeometryForMerge,
   type PlanesStated,
   type RigSetup,
+  aboveBottomFromY,
+  yFromAboveBottom,
 } from './mergeSession.ts';
 
 const FIX = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'test-fixtures');
@@ -176,6 +178,16 @@ describe('a merge through the section logic, casus 1 woofer down', () => {
     expect(echoLine.text).toMatch(/what stands about 0\.63 m away/);
     expect(planeEchoDelayS(echoes[0] as PlaneEcho) * 1000).toBeCloseTo(3.6, 1);
   }, 60_000);
+  it('UI-6: height above the bottom ⇔ y relative to the reference point, and a project without a reference gets one on the bottom edge', () => {
+    // casus 1's demo cabinet: front 1124 mm, reference 244 mm below the top; the tweeter at y = +74 → 1124 − 244 + 74 = 954 above the bottom
+    expect(aboveBottomFromY(74, 1124, 244)).toBe(954);
+    expect(yFromAboveBottom(954, 1124, 244)).toEqual({ yMm: 74, refFromTopMm: 244 });
+    expect(aboveBottomFromY(74, null, 244)).toBeNull();
+    expect(aboveBottomFromY(74, 1124, null)).toBeNull();
+    // no reference point yet: the tool puts it on the bottom edge, so y is the height itself
+    expect(yFromAboveBottom(954, 1124, null)).toEqual({ yMm: 954, refFromTopMm: 1124 });
+    expect(aboveBottomFromY(954, 1124, 1124)).toBe(954);
+  });
   it('UI-6: an echo whose extra path lies within the loudspeaker\'s own extent is the loudspeaker itself (noted, not flagged); one beyond it is still flagged', () => {
     /* The mid of casus 1 through ARTA's own 5.021 ms gate: its −19 dB echo at ~1.0 ms (0.35 m extra path) is the
      * pod's and the cabinet's edge diffraction — Sander had to accept it "with reason" (15-11-2026). The extent is the

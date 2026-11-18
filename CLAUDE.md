@@ -10098,3 +10098,33 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   de H-2-reden: de eerste (273,8 s) had twee rode I-2-bronscans die hun werk deden (de bedrading van "Use in
   project" en de f0-weigering, allebei in V15-vorm herankerd), de tweede (275,0 s, groen) mat een boom
   waarin de markeringen nog UI-5 heetten. Geen volle run (zie "Niet gedaan").
+
+### UI-6 punt 8 — "Your cabinet" in de merge-tool (18-11-2026)
+
+- **Aanleiding (Sander, 18-11-2026):** "als iemand alleen deze tool wil gebruiken om te mergen en de
+  optimizer niet nodig heeft, wat gebeurt er dan?" Dan liep hij op drie plekken vast: de kastbreedte
+  (het AN4-model: "state it", geen merge), S_d (de bovenkant van de band: geen voorstel) en de
+  driverhoogte (geen reflectiemodel, geen aankomstcontrole) komen alle drie uit "Your cabinet" en de
+  driverkaarten van het project. De sluipweg "een andere kast, eigen front" vroeg S_d nog steeds niet.
+- **Wat er staat:** een blok **"Your cabinet — what the merge needs"** bovenaan stap 2, vóór A–D (die
+  rekenen ermee): frontbreedte × -hoogte, en per weg in de sessie S_d, het midden boven de kastbodem en,
+  bij twee bronnen, de afstand van het paar. **Het is dezelfde "Your cabinet", geen tweede** (Sanders
+  regel): de velden LEZEN `props.geometry`/`props.sdCm2` en SCHRIJVEN via `onCabinet`/`onSd` in de kast-
+  en driverkaartstate van het project (`mergeCabinetPatch`, `setSdCm2`); het blok heeft geen eigen state.
+  Wie later de optimizer opent vindt ze ingevuld; wie het project al had ziet ze hier staan. Elk leeg veld
+  zegt wat het ontbreken kost (P4). Verborgen zodra het gemeten object een "andere kast met eigen front" is.
+- **De conversie heeft één huis** (`aboveBottomFromY`, `yFromAboveBottom` in `mergeSession.ts`): het project
+  bewaart y RELATIEF AAN HET REFERENTIEPUNT (+ omhoog; de kaart toont "mm below the top"), de merge denkt
+  in hoogte boven de kastbodem: `h = H − ref + y`. Een project zónder referentiepunt krijgt het OP DE
+  BODEMRAND (`ref = H`, dus y = h) — een conventie die het project nog niet had, geen wijziging van een
+  bestaande. Gepind op de demokast (tweeter y +74, ref 244, H 1124 → 954 mm boven de bodem) in
+  `mergeSession.test.ts` (+1 claim); de bronscan in `mergeGuide.test.ts` (+1) pint plaats, de drie
+  schrijfpaden, de ene conversie en "geen eigen state" aan beide kanten.
+- **Browsercontrole (dev-server, de 14-11-sessie, 18-11-2026):** het blok toont front 260 × 1124, woofer
+  S_d 255 / 431,6 mm / afstand 275,75, mid 69 / 814, tweeter 5,6 / 954; een getypte S_d (300) komt via het
+  project terug in het veld en is hersteld. Console leeg.
+- **Gemeten 18-11-2026:** `npx tsc -b` groen. `npm run test:fast` **271,3 s, 249 bestanden (248 geslaagd,
+  1 overgeslagen), 3283 tests (3279 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 19:35:59, run gestart 19:37:23 (de H-2-regel).** +2 tests tegen
+  UI-6's 3281, exact de twee nieuwe claims; geen nieuw bestand. Geen volle run: geen engine-, poort-,
+  venster-, metriek- of corpuscode geraakt.

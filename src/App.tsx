@@ -39,6 +39,7 @@ import { assessNetwork, notSimulatedTag, type NetworkReadiness } from './lib/net
 import { solveNetwork, type Netlist } from './lib/network.ts';
 import type { WayWiring } from './lib/engine2/ingest/wiring.ts';
 import type { DriverMinCrossover } from './lib/engine2/predesign/xoWindow.ts';
+import type { CabinetPatchForMerge } from './lib/mergeSession.ts';
 import {
   canonicalModelForRole,
   isTweeterModel,
@@ -5552,6 +5553,20 @@ export default function App() {
     },
     [woofer, midDrv, tweeter, welcomeOpen, applyBranchUse],
   );
+  /* UI-6 — the merge tool writes "Your cabinet": the same state the cabinet form and the driver cards
+   * hold, nothing beside it. A patch touches only what it names. */
+  const mergeCabinetPatch = useCallback((patch: CabinetPatchForMerge) => {
+    setCabinet((c) => {
+      const next: CabinetState = { ...c, drivers: { ...c.drivers } };
+      if (patch.baffleWidthMm !== undefined) next.baffleWidthMm = patch.baffleWidthMm;
+      if (patch.baffleHeightMm !== undefined) next.baffleHeightMm = patch.baffleHeightMm;
+      if (patch.refFromTopMm !== undefined) next.refFromTopMm = patch.refFromTopMm;
+      for (const [role, d] of Object.entries(patch.drivers ?? {}) as [BranchRole, { yMm?: string; count?: string; spacingMm?: string }][]) {
+        next.drivers[role] = { ...c.drivers[role], ...(d.yMm !== undefined ? { yMm: d.yMm } : {}), ...(d.count !== undefined ? { count: d.count } : {}), ...(d.spacingMm !== undefined ? { spacingMm: d.spacingMm } : {}) };
+      }
+      return next;
+    });
+  }, []);
   /** I-4 B-4 — the optimizer's cabinet geometry as the merge tool reads it (nulls where the project
    *  states nothing; the tool then asks). Driver heights are derived there, never typed per source. */
   const mergeGeometry = useMemo((): CabinetGeometryForMerge => {
@@ -18051,6 +18066,8 @@ export default function App() {
             inProject={mergeV2}
             onUse={acceptMergeV2}
             onUseAll={acceptMergeV2All}
+            onCabinet={mergeCabinetPatch}
+            onSd={(way, v) => setSdCm2((q) => ({ ...q, [way]: v }))}
             responseNames={{ low: woofer?.name ?? null, mid: midDrv?.name ?? null, high: tweeter?.name ?? null }}
             designRig={mergeDesignRig}
             openId={mergeRoute.id}
