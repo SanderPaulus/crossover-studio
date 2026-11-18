@@ -315,7 +315,10 @@ describe('the tool — what a source scan can see', () => {
     expect(block).toContain('props.onSd(w, v)');
     expect(block).toContain('yFromAboveBottom(hv, H, props.geometry.refFromTopMm)'); // the one conversion, never a second formula
     expect(block).not.toMatch(/useState/); // no state of its own: the project's fields are the state
+    expect(block).toContain('onClick={props.onOpenCabinet}'); // and one link to the full form for whoever wants more
     const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
+    expect(app).toContain('onOpenCabinet={openCabinetFromMerge}');
+    expect(app).toMatch(/const openCabinetFromMerge = useCallback\(\(\) => \{\s*location\.hash = '#\/';\s*setUiMode\(designView\);\s*setDesignTab\('data'\);/);
     expect(app).toContain('onCabinet={mergeCabinetPatch}');
     expect(app).toMatch(/onSd=\{\(way, v\) => setSdCm2\(\(q\) => \(\{ \.\.\.q, \[way\]: v \}\)\)\}/);
     const patch = app.slice(app.indexOf('const mergeCabinetPatch'), app.indexOf('const mergeGeometry'));

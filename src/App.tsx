@@ -5553,6 +5553,13 @@ export default function App() {
     },
     [woofer, midDrv, tweeter, welcomeOpen, applyBranchUse],
   );
+  /* UI-6 — the one link from the merge tool to the full form: Design → Setup; the merge session stays
+   * where it is. A named handler, not a jump inside "Use in project" (B-4 nazorg pins that page clean). */
+  const openCabinetFromMerge = useCallback(() => {
+    location.hash = '#/';
+    setUiMode(designView);
+    setDesignTab('data');
+  }, [designView]);
   /* UI-6 — the merge tool writes "Your cabinet": the same state the cabinet form and the driver cards
    * hold, nothing beside it. A patch touches only what it names. */
   const mergeCabinetPatch = useCallback((patch: CabinetPatchForMerge) => {
@@ -18067,6 +18074,7 @@ export default function App() {
             onUse={acceptMergeV2}
             onUseAll={acceptMergeV2All}
             onCabinet={mergeCabinetPatch}
+            onOpenCabinet={openCabinetFromMerge}
             onSd={(way, v) => setSdCm2((q) => ({ ...q, [way]: v }))}
             responseNames={{ low: woofer?.name ?? null, mid: midDrv?.name ?? null, high: tweeter?.name ?? null }}
             designRig={mergeDesignRig}

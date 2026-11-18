@@ -2968,6 +2968,8 @@ export const nl: Record<string, string> = {
     'Je kast — wat de merge nodig heeft',
   'These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.':
     'Dit zijn de eigen kast- en drivervelden van het project; wat je hier typt landt in “Je kast” en op de driverkaarten, en wat daar al staat zie je hier.',
+  'Open the full “Your cabinet” →':
+    'Open het volledige “Je kast” →',
   'front panel':
     'frontpaneel',
   'front panel width':

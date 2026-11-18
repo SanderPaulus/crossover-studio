@@ -109,6 +109,8 @@ export interface NfMergeToolProps {
    *  driver cards (one mechanism, two entrances), so the tool stands on its own without the optimizer. */
   onCabinet: (patch: CabinetPatchForMerge) => void;
   onSd: (way: MergeWay, value: string) => void;
+  /** UI-6 — one link to the full form (Design → Setup) for whoever wants more than the four figures. */
+  onOpenCabinet: () => void;
   /** The name of each branch's current response, so "done" is read back from the project, not assumed. */
   responseNames: Record<MergeWay, string | null>;
   /** The measurement set-up as "Your cabinet" states it (mic distance and angle, reference height); nulls where it does not. */
@@ -1377,7 +1379,12 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                   {!ownGeometry && (
                     <div className="nfm-card nfm-cabinet-min">
                       <h3>{t('Your cabinet — what the merge needs')}</h3>
-                      <p className="derived">{t('These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.')}</p>
+                      <p className="derived">
+                        {t('These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.')}{' '}
+                        <button type="button" className="linkish" onClick={props.onOpenCabinet}>
+                          {t('Open the full “Your cabinet” →')}
+                        </button>
+                      </p>
                       <p className="nfm-abcd">
                         {t('front panel')}{' '}
                         <Field value={props.geometry.baffleWidthMm !== null ? String(props.geometry.baffleWidthMm) : ''} onCommit={(v) => props.onCabinet({ baffleWidthMm: v })} ariaLabel={t('front panel width')} /> ×{' '}

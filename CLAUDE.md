@@ -10128,3 +10128,14 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   dev-server gestopt; laatste bronbewerking 19:35:59, run gestart 19:37:23 (de H-2-regel).** +2 tests tegen
   UI-6's 3281, exact de twee nieuwe claims; geen nieuw bestand. Geen volle run: geen engine-, poort-,
   venster-, metriek- of corpuscode geraakt.
+- **Nazorg (Sander: "het moet gewoon makkelijk zijn"):** het blok houdt de vier getallen en krijgt één link
+  "Open the full “Your cabinet” →" naar Design → Setup (`onOpenCabinet`: `location.hash = '#/'`,
+  `setDesignTab('data')`; de merge-sessie blijft staan). Het kastformulier zelf hergebruiken vraagt het
+  eerst uit `App.tsx` te lichten (het wordt daar twee keer getekend) en is een eigen sessie. De link is
+  met een bronscan gepind en niet in de browser nagelopen.
+- **Gemeten 18-11-2026 (nazorg):** `npm run test:fast` **276,0 s, 249 bestanden (248 + 1 overgeslagen),
+  3283 tests (3279 + 4), in één keer groen, alleen gedraaid met de dev-server gestopt; laatste
+  bronbewerking 20:01:30, run gestart 20:02:23.** Geen nieuwe test. **Eén eerdere run (274,1 s) had één
+  rode claim en die deed haar werk:** de B-4-nazorg pint dat de merge-pagina geen `location.hash = '#/'`
+  bevat (geen "fire-and-forget"-sprong rond "Use in project"), en de eerste vorm van de link schreef die
+  sprong in de JSX van die pagina; sindsdien is het de benoemde callback `openCabinetFromMerge`.
