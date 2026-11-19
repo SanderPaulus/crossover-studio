@@ -10139,3 +10139,56 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   rode claim en die deed haar werk:** de B-4-nazorg pint dat de merge-pagina geen `location.hash = '#/'`
   bevat (geen "fire-and-forget"-sprong rond "Use in project"), en de eerste vorm van de link schreef die
   sprong in de JSX van die pagina; sindsdien is het de benoemde callback `openCabinetFromMerge`.
+
+### UI-7-guards (een gestelde echo wordt uitgedeeld naar wat de gate ervan overliet; nf-merge/2.4; 19-11-2026)
+
+- **Aanleiding (Sander, 19-11-2026, met twee screenshots):** met B "hooguit 200 mm" op de tafel kreeg de
+  mid een kam van ~180 Hz in de grijze ("far field, gated as used") en de witte lijn; zonder B was de
+  merge schoon. "Wat ik er van begreep is dat we de NF data gaan analyseren op reflecties die aanwezig
+  zijn in de data, niet reflecties toevoegen toch?" Dat begrip klopte en de tool deed het niet.
+- **De oorzaak zat in de UITVOER van de kern, niet in de fit.** De opstelling (A 500, B ≤ 200, D 1380)
+  beslist dat de vloer reflecteert (xCut 302 mm > 200) en bouwt een echo-term voor de mid op 5,46 ms na het
+  directe geluid. De FIT laat zijn voorspelling door hetzelfde venster lopen (V60) en knipt die echo er
+  dus weer uit: residu 4,70° → 4,74°. De UITVOER deelde de gegate FF door de VOLLE echo-term, op de aanname
+  dat de FF de reflectie nog bevat. Met het venstervoorstel — dat per constructie vóór de eerste reflectie
+  stopt (3,49 ms) — is dat nooit zo: de inverse van een al weggehaalde echo kwam in schone data terecht.
+- **De reparatie: `gateWeightAfterDirect(input, ms)`** (`nfMergeV2.ts`), ÉÉN lezer voor twee plaatsen — de
+  `windowWeight` van een gevonden echo (2.2, was een inline formule in `findEchoes`) én het gewicht
+  waarmee een gestelde term wordt uitgedeeld (2.4): 1 op het vlakke deel, de raised-cosine-fractie in de
+  taperflank, 0 op en voorbij het venstereinde. `echoSpec` kreeg een optionele `weightOf`; de uitvoer deelt
+  door `Eg` (gewogen), de fit en de echo-finder houden `E` (volle termen, want die gaan zelf door het
+  venster of vergelijken met de RUWE FF). Per term een notitie: "lies inside the gate: divided out" /
+  "in the window's taper flank (window weight 0,42): … at that weight" / "lies past the gate end (… ms):
+  removed by the gate, not divided out". Zonder plane-termen verandert niets; de B-4-claim "een vlak op een
+  ongestelde hoogte produceert zijn eigen spookecho" staat ongewijzigd (die loopt via de finder, op de ruwe FF).
+- **De vingerafdruk van UI-5 draagt sinds UI-7 de KERNVERSIE** (`approvalKey`: `kernel: NF_MERGE_V2_VERSION`
+  voorop): een merge is een functie van zijn invoer én van de rekenkunde die haar las, dus een goedkeuring
+  onder 2.3 leest na de upgrade "changed since approval" in plaats van een resultaat te dragen dat de tool
+  niet meer maakt. Goedkeuringen van vóór UI-5 (zonder `fp`) blijven zoals zij waren.
+- **De synthetische claims** (`nfMergeV2.test.ts`, +3): het gewicht met de hand (vlak 1, midden flank 0,5,
+  einde 0, taper 0 → 1 tot het einde); een gestelde echo 1,9 ms VOORBIJ de gate laat `farGatedDb` en
+  `farGatedPhaseDeg` BYTE-GELIJK aan de run zonder term, met de notitie en zonder "divided out"-regel;
+  dezelfde echo onder een gate die hem toelaat wordt wél uitgedeeld en de FF-helft wordt de FF zoals
+  gemeten zonder het vlak (>600 Hz binnen 0,25 dB van een schone synth-run; ongedeeld 5,1 dB kam). **Twee
+  metingen die de eerste vorm van de claims corrigeerden:** (1) de FIT beweegt een haar met een term
+  voorbij de gate (0,0004 ms, 0,06 dB) — de nulfase-handoff-filter (V60) smeert een echo symmetrisch in de
+  tijd, dus een term die in de RUWE data zit maakt de vergelijking ook voorbij het venster iets
+  consistenter; dat is het oudere gedrag van de fit en geen 2.4, en de claim pint alleen de uitvoer exact;
+  (2) "piek-tot-piek boven 600 Hz" meet de LP-helling van de synth-driver (4,95 dB) en geen kam — daarom
+  vergelijkt de claim tegen de schone run. `ui5Approval.test.tsx` +1 (de kernversie in de sleutel).
+- **Browsercontrole (dev-server, de lokale 14-11-sessie, Sanders opstelling nagezet: A 500, B hooguit 200,
+  D volgt naar 1380, planes "don't know"):** stap 4 zegt voor de mid *"the stated bound (overhang less than
+  200 mm) lies short of both — the floor reflects"* met de marker ▲ floor, en de overzichtskaart is SCHOON
+  (T 2,991 ms, residu 4,64°, flags none); de woofers (venster 2,95/2,85 ms, vloer 3,6 ms) ook. De mid leest
+  "↻ changed since approval" (goedgekeurd onder 2.3 mét fp), de woofers "✓ approved" (goedgekeurd vóór
+  UI-5, zonder fp). Console: alleen de HMR-websocketruis van de pane. Die lokale sessie draagt sindsdien
+  deze opstelling.
+- **Wat de UI nog NIET toont:** de nieuwe per-term-notities staan in `result.notes` en niet in de
+  checklijst van stap 4 (`checksOf` leest een vaste set). Het venstervoorstel zegt met planes "don't know"
+  *"no reflection known from the set-up"* hoewel de vloer wél bekend is — de proposal onthoudt zich dan
+  van élke reflectie; niet aangeraakt.
+- **Gemeten 19-11-2026:** `npx tsc -b` groen. `npm run test:fast` **269,5 s, 249 bestanden (248 geslaagd,
+  1 overgeslagen), 3287 tests (3283 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 10:43:49, run gestart 10:48:03 (de H-2-regel).** +4 tests
+  tegen UI-6 punt 8's 3283: exact de drie kernclaims en de vingerafdrukclaim; geen nieuw bestand. Geen
+  volle run: `nfMergeV2.ts` is geraakt maar niets daarin bereikt de zoektocht of een corpus (de UI-6-afweging).

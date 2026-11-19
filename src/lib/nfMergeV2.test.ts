@@ -12,6 +12,7 @@ import {
   arrivalMs,
   besselJ1,
   gateFromArtaHeader,
+  gateWeightAfterDirect,
   GATE_TAIL_FLAG_DB,
   impulseFromFrd,
   impulseFromPir,
@@ -149,6 +150,64 @@ describe(`nfMergeV2 (${NF_MERGE_V2_VERSION}) — synthetic source, known answer`
     expect(r.fit.residualRmsDeg).toBeLessThan(0.5);
     expect(Math.abs(r.fit.delayMs - TRUE_TAU * 1000)).toBeLessThan(0.002);
     expect(r.flags).toEqual([]);
+  });
+
+  /* 2.4 (UI-7, 19-11-2026) — a stated echo is divided out of the OUTPUT only as far as the gate let it
+   * in. Until 2.3 the division took every stated echo at full weight, so a reflection the window had
+   * already cut away came back inverted (Sander's casus 1 mid: floor echo 5.4 ms, window 3.49 ms, a
+   * comb in the far-field half). The fit never had the defect: its prediction goes through the window. */
+  const LATE: PlaneEcho = { ...ECHO, label: 'vloer', sourceAboveM: 0.9, micAboveM: 1.4 };
+  it('the window weight of an arrival, by hand: 1 on the flat part, the raised cosine in the flank, 0 at the end', () => {
+    const { far } = synth({});
+    const g = gateFor(far);
+    const end = g.referenceMs + g.rightMs - arrivalMs(far);
+    const flankStart = g.referenceMs + g.rightMs * (1 - g.rightTaper) - arrivalMs(far);
+    expect(gateWeightAfterDirect({ gate: g, far }, flankStart - 0.1)).toBe(1);
+    expect(gateWeightAfterDirect({ gate: g, far }, (flankStart + end) / 2)).toBeCloseTo(0.5, 9);
+    expect(gateWeightAfterDirect({ gate: g, far }, end)).toBe(0);
+    expect(gateWeightAfterDirect({ gate: { ...g, rightTaper: 0 }, far }, end - 0.01)).toBe(1);
+  });
+  it('a stated echo PAST the gate is not divided out: the far-field half is byte-identical to the run without the term', () => {
+    const { near, far } = synth({ echo: LATE });
+    const g = gateFor(far);
+    const ms = planeEchoDelayS(LATE) * 1000;
+    expect(ms).toBeGreaterThan(g.referenceMs + g.rightMs - arrivalMs(far) + 1); // more than a millisecond past the window
+    expect(gateWeightAfterDirect({ gate: g, far }, ms)).toBe(0);
+    const stated = mergeImpulsesV2(input({ near, far, echoes: [LATE] }));
+    const bare = mergeImpulsesV2(input({ near, far, echoes: [] }));
+    expect(stated.farGatedDb).toEqual(bare.farGatedDb);
+    expect(stated.farGatedPhaseDeg).toEqual(bare.farGatedPhaseDeg);
+    // The FIT may move a hair (measured: 0.0004 ms, 0.06 dB): the zero-phase handoff filter (V60) smears
+    // an echo's energy symmetrically in time, so a term that IS in the raw data makes the comparison
+    // marginally more consistent even past the window. That is the fit's own, older behaviour, not 2.4.
+    expect(Math.abs(stated.fit.delayMs - bare.fit.delayMs)).toBeLessThan(0.001);
+    expect(Math.abs(stated.fit.gainDb - bare.fit.gainDb)).toBeLessThan(0.1);
+    let maxDb = 0;
+    for (let i = 0; i < bare.spl.length; i++) maxDb = Math.max(maxDb, Math.abs(stated.spl[i] - bare.spl[i]));
+    expect(maxDb).toBeLessThan(0.1);
+    expect(stated.notes.some((n) => /echo term "vloer" \(\d\.\d\d ms after the direct sound\) lies past the gate end \(\d\.\d\d ms after the direct sound\): removed by the gate, not divided out/.test(n))).toBe(true);
+    expect(stated.notes.some((n) => /echo terms divided out/.test(n))).toBe(false);
+    expect(stated.flags).toEqual(bare.flags);
+  });
+  it('the same echo under a gate that admits it IS divided out: the far-field half becomes the far field as measured without the plane', () => {
+    const { near, far } = synth({ echo: LATE });
+    const clean = synth({});
+    const ms = planeEchoDelayS(LATE) * 1000;
+    const g: Gate = { ...gateFor(far), rightMs: (ms + 0.4 + 0.6) / (1 - 0.25) }; // the echo on the flat part, 0.6 ms short of the flank
+    expect(gateWeightAfterDirect({ gate: g, far }, ms)).toBe(1);
+    const stated = mergeImpulsesV2(input({ near, far, gate: g, echoes: [LATE] }));
+    const bare = mergeImpulsesV2(input({ near, far, gate: g, echoes: [] }));
+    const ref = mergeImpulsesV2(input({ near: clean.near, far: clean.far, gate: { ...g, referenceMs: arrivalMs(clean.far) - 0.4 }, echoes: [] }));
+    const maxAbove = (a: number[], b: number[], hz: number): number => {
+      let m = 0;
+      for (let i = 0; i < ref.freq.length; i++) if (ref.freq[i] > hz) m = Math.max(m, Math.abs(a[i] - b[i]));
+      return m;
+    };
+    // measured: 0.14 dB left (the echo copy's own tail running into the taper), against 5.1 dB of comb undivided
+    expect(maxAbove(stated.farGatedDb, ref.farGatedDb, 600)).toBeLessThan(0.25);
+    expect(maxAbove(bare.farGatedDb, ref.farGatedDb, 600)).toBeGreaterThan(3);
+    expect(stated.notes.some((n) => /echo term "vloer" \(\d\.\d\d ms after the direct sound\) lies inside the gate: divided out of the far-field half/.test(n))).toBe(true);
+    expect(stated.notes.some((n) => /echo terms divided out/.test(n))).toBe(true);
   });
 
   it('an unstated echo too close to resolve is caught by the residual, not fitted away', () => {

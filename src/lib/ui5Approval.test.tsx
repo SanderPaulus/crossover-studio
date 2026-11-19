@@ -22,6 +22,13 @@ describe('UI-5 — the fingerprint', () => {
     expect(stableKey({ validFrom: '60' })).not.toBe(stableKey({ validFrom: '80' }));
     expect(stableKey({ list: [1, 2] })).not.toBe(stableKey({ list: [2, 1] }));
   });
+  /* UI-7 (19-11-2026): the kernel version is part of the fingerprint. nf-merge 2.3 → 2.4 changed what
+   * the output holds for a stated echo past the gate; an approval given under 2.3 must read "changed
+   * since approval" and not carry a result the tool no longer produces. */
+  it('the kernel version is in the key, first: an approval outlives neither a setting nor the arithmetic', () => {
+    expect(SRC).toMatch(/return stableKey\(\{ kernel: NF_MERGE_V2_VERSION, c, port:/);
+    expect(stableKey({ kernel: 'nf-merge/2.3', c: 1 })).not.toBe(stableKey({ kernel: 'nf-merge/2.4', c: 1 }));
+  });
 });
 
 describe('UI-5 — approval in the tool', () => {

@@ -52,8 +52,15 @@ import { planeExtraPathMm } from './cabinet.ts';
 
 /** 2.2 → 2.3 (UI-6, 15-11-2026): an unmodelled echo inside the gate whose extra path lies within the
  *  loudspeaker's OWN extent (`ownExtentM`) is the loudspeaker itself — edge diffraction — and is noted, not
- *  flagged. Without `ownExtentM` nothing changes. */
-export const NF_MERGE_V2_VERSION = 'nf-merge/2.3';
+ *  flagged. Without `ownExtentM` nothing changes.
+ *  2.3 → 2.4 (UI-7, 19-11-2026): a stated echo term is divided out of the far-field half AT THE WEIGHT
+ *  THE GATE GIVES IT — 1 on the flat part of the window, the taper fraction in the flank, 0 past the window.
+ *  Until 2.3 the division assumed the gated far field still held every stated reflection; with the window
+ *  proposal (which stops BEFORE the first reflection by construction) that was never so, and dividing out
+ *  an echo the gate had already removed put its inverse into clean data — Sander's casus 1 mid, 19-11-2026:
+ *  floor echo at 5.4 ms, window 3.49 ms, a comb with ~180 Hz spacing in the output. The FIT was right all
+ *  along (its prediction goes through the same window). Without plane echo terms nothing changes. */
+export const NF_MERGE_V2_VERSION = 'nf-merge/2.4';
 
 /** c, m/s — the one physical constant the project whitelists (CLAUDE.md, P6). */
 export const SPEED_OF_SOUND_M_S = 343;
@@ -452,12 +459,21 @@ export function planeEchoDelayS(e: PlaneEcho): number {
   return mm / 1000 / SPEED_OF_SOUND_M_S;
 }
 
-function echoSpec(echoes: readonly EchoTerm[], f: Float64Array, sdCm2: number | null): Spec {
+/**
+ * The echo terms as a spectrum: Π (1 + g·e^{jφ}) over the plane echoes. `weightOf` (2.4) scales each
+ * echo's g by what the far-field WINDOW leaves of it at its arrival: 1 on the flat part, the taper
+ * fraction in the flank, 0 past the window. Absent (the default) every echo weighs 1 — the full
+ * reflection, which is what the raw far field holds and what the fit's prediction must therefore
+ * carry before it goes through the window itself.
+ */
+function echoSpec(echoes: readonly EchoTerm[], f: Float64Array, sdCm2: number | null, weightOf: (e: PlaneEcho) => number = () => 1): Spec {
   const re = new Float64Array(f.length).fill(1);
   const im = new Float64Array(f.length);
   const radius = sdCm2 && sdCm2 > 0 ? Math.sqrt(sdCm2 / 1e4 / Math.PI) : 0;
   for (const e of echoes) {
     if (e.kind === 'boundary') continue; // part of the source as measured — not an echo
+    const wGate = weightOf(e);
+    if (!(wGate > 0)) continue; // past the window: the gate removed it, there is nothing to divide out
     const rd = Math.hypot(e.horizontalM, e.micAboveM - e.sourceAboveM);
     const ri = Math.hypot(e.horizontalM, e.micAboveM + e.sourceAboveM);
     const td = Math.atan2(e.micAboveM - e.sourceAboveM, e.horizontalM);
@@ -465,7 +481,7 @@ function echoSpec(echoes: readonly EchoTerm[], f: Float64Array, sdCm2: number | 
     const dt = planeEchoDelayS(e); // the one geometry (V57)
     for (let k = 0; k < f.length; k++) {
       const dir = radius > 0 ? piston(f[k], radius, ti) / piston(f[k], radius, td) : 1;
-      const g = (rd / ri) * dir;
+      const g = (rd / ri) * dir * wGate;
       const ph = -2 * Math.PI * f[k] * dt;
       // multiply the running product by (1 + g·e^{jph}) — echoes of distinct planes multiply
       const tr = 1 + g * Math.cos(ph);
@@ -1019,8 +1035,23 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
   }
 
   // Output: anechoic prediction below the splice, far field (echoes divided out) above, phase re the gate reference.
+  // 2.4: divided out AT THE WEIGHT THE GATE LEAVES — the gated far field holds a reflection only as far as
+  // the window let it in. `E` (every echo at full weight) stays what the fit's prediction carries, because
+  // that prediction goes through the window itself; dividing the output by the same full-weight E put the
+  // inverse of an already-removed echo into clean data (Sander, casus 1 mid, 19-11-2026).
   const tRef = input.gate.referenceMs / 1000;
   const floor = 10 ** (ECHO_DIVIDE_FLOOR_DB / 20);
+  const gateWeightOfEcho = (e: PlaneEcho): number => gateWeightAfterDirect(input, planeEchoDelayS(e) * 1000);
+  const Eg = echoSpec(input.echoes, f, input.sdCm2 ?? null, gateWeightOfEcho);
+  for (const e of input.echoes) {
+    if (e.kind !== 'plane') continue;
+    const ms = planeEchoDelayS(e) * 1000;
+    const wGate = gateWeightOfEcho(e);
+    const end = input.gate.referenceMs + input.gate.rightMs - arrivalMs(input.far);
+    if (wGate >= 1) notes.push(`echo term "${e.label}" (${ms.toFixed(2)} ms after the direct sound) lies inside the gate: divided out of the far-field half`);
+    else if (wGate > 0) notes.push(`echo term "${e.label}" (${ms.toFixed(2)} ms after the direct sound) lies in the window's taper flank (window weight ${wGate.toFixed(2)}): divided out of the far-field half at that weight`);
+    else notes.push(`echo term "${e.label}" (${ms.toFixed(2)} ms after the direct sound) lies past the gate end (${end.toFixed(2)} ms after the direct sound): removed by the gate, not divided out`);
+  }
   const grid: number[] = [];
   {
     const o = input.output;
@@ -1055,7 +1086,7 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
     let [lr, li] = [g * (pr0 * Math.cos(ph) - pi0 * Math.sin(ph)), g * (pr0 * Math.sin(ph) + pi0 * Math.cos(ph))];
     [lr, li] = toRef(lr, li, fk);
     const [fr0, fi0] = at(Fg, fk);
-    const [er0, ei0] = at(E, fk);
+    const [er0, ei0] = at(Eg, fk);
     const em = Math.hypot(er0, ei0);
     const sc = em < floor ? floor / em : 1;
     const den = (er0 * sc) ** 2 + (ei0 * sc) ** 2 || 1e-30;
@@ -1074,7 +1105,7 @@ export function mergeImpulsesV2(input: MergeV2Input): MergeV2Result {
     farGatedDb.push(20 * Math.log10(Math.hypot(hr, hi) || 1e-30));
     farGatedPhaseDeg.push((Math.atan2(hi, hr) * 180) / Math.PI);
   }
-  if (input.echoes.length) notes.push(`echo terms divided out of the far-field half (never below ${ECHO_DIVIDE_FLOOR_DB} dB)`);
+  if (input.echoes.some((e) => e.kind === 'plane' && gateWeightOfEcho(e) > 0)) notes.push(`echo terms divided out of the far-field half (never below ${ECHO_DIVIDE_FLOOR_DB} dB)`);
 
   return {
     version: NF_MERGE_V2_VERSION,
@@ -1137,6 +1168,20 @@ export function gateFlankAfterDirectMs(input: Pick<MergeV2Input, 'gate' | 'far'>
   return [g.referenceMs + g.rightMs * (1 - g.rightTaper) - a, g.referenceMs + g.rightMs - a];
 }
 
+/**
+ * What the far-field window leaves of an event `afterDirectMs` after the direct sound: 1 on the flat
+ * part, the raised-cosine fraction in the taper flank, 0 at and past the window's end. One reader for
+ * the echo finder (`windowWeight` on a found echo, 2.2) and for the stated echo terms the output divides
+ * out (2.4) — two weights for one window would be the gate disagreeing with itself.
+ */
+export function gateWeightAfterDirect(input: Pick<MergeV2Input, 'gate' | 'far'>, afterDirectMs: number): number {
+  const gateEndAfterDirect = input.gate.referenceMs + input.gate.rightMs - arrivalMs(input.far);
+  if (afterDirectMs >= gateEndAfterDirect) return 0;
+  const flank = gateFlankAfterDirectMs(input);
+  if (flank && afterDirectMs > flank[0]) return 0.5 * (1 + Math.cos((Math.PI * (afterDirectMs - flank[0])) / (flank[1] - flank[0])));
+  return 1;
+}
+
 function findEchoes(
   farRaw: Spec,
   /** The prediction with every stated reflection, per source: near · model · echoes. */
@@ -1194,7 +1239,6 @@ function findEchoes(
   const sep = Math.round((ECHO_MIN_SEPARATION_MS / 1000) * fs);
   const look = Math.round((ECHO_LOOK_MS / 1000) * fs);
   const gateEndAfterDirect = input.gate.referenceMs + input.gate.rightMs - arrivalMs(input.far);
-  const flank = gateFlankAfterDirectMs(input);
   const modelled = [...input.echoes, ...(input.port?.echoes ?? [])]
     .filter((e): e is PlaneEcho => e.kind === 'plane')
     .map((e) => planeEchoDelayS(e) * 1000);
@@ -1207,8 +1251,7 @@ function findEchoes(
     const db = 20 * Math.log10(v / peak);
     if (db < ECHO_HINT_DB - 10) continue;
     const ms = (d / fs) * 1000;
-    const windowWeight =
-      ms >= gateEndAfterDirect ? 0 : flank && ms > flank[0] ? 0.5 * (1 + Math.cos((Math.PI * (ms - flank[0])) / (flank[1] - flank[0]))) : 1;
+    const windowWeight = gateWeightAfterDirect(input, ms);
     out.push({ afterDirectMs: ms, levelDb: db, insideGate: ms < gateEndAfterDirect, windowWeight, modelled: modelled.some((m) => Math.abs(m - ms) < 0.15) });
   }
   return out.slice(0, 12);

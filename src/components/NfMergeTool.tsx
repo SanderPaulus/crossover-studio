@@ -517,10 +517,13 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   /* ---- UI-5: an approval is a copy of the merge AS IT WAS; it says when it no longer is ---- */
   /** Everything a driver's merge is computed from that the tool's own state holds: its own
    *  config (and its port's), the set-up, the planes, the measured object, the calibration and
-   *  the roles. Proposals (a cache) and the step/tab (navigation) are not in it. */
+   *  the roles — and, since UI-7, the KERNEL VERSION: a merge is a function of its inputs AND of the
+   *  arithmetic that read them, so an approval given under an older kernel reads "changed since
+   *  approval" after an upgrade instead of carrying a result the tool no longer produces.
+   *  Proposals (a cache) and the step/tab (navigation) are not in it. */
   const approvalKey = (stem: string): string => {
     const c = st.cfg[stem];
-    return stableKey({ c, port: c?.port ? st.cfg[c.port] ?? null : null, rig: st.rig, planes: st.planes, planeQ: st.planeQ, planeList: st.planeList, obj: st.obj, calId: st.calId, roles: st.roles });
+    return stableKey({ kernel: NF_MERGE_V2_VERSION, c, port: c?.port ? st.cfg[c.port] ?? null : null, rig: st.rig, planes: st.planes, planeQ: st.planeQ, planeList: st.planeList, obj: st.obj, calId: st.calId, roles: st.roles });
   };
   const approvalOf = (stem: string): Approval => {
     const a = st.accepted[stem];
