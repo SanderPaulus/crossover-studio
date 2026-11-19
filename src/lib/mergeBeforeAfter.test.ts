@@ -67,20 +67,27 @@ describe('UI-8 — the step-4 charts draw before and after (source scan on NfMer
     expect(m![1]).toMatch(/cur\?\.echoes\.some\(\(e\) => e\.kind === 'plane'\) \? compute\(active, cfg\[active\.stem\], false\) : null/);
     expect(m![1]).not.toMatch(/reflectionModel/);
   });
-  it('the overlay exists only where a stated term reaches the gate, and the solid lines follow the one "reflection model" box', () => {
+  it('the block "Before / after the set-up" draws BOTH merges whenever a plane reflection is stated — also when they are the same — and the solid lines below follow the one "reflection model" box', () => {
+    // UI-8 nazorg — V15: WAS an overlay of two dotted lines inside the SPL chart, drawn only where a term
+    // reached the gate (Sander: "ik zie geen voor en na"); IS its own block with two graphs side by side,
+    // on one reference, shown whenever the set-up states a plane reflection.
     expect(src).toMatch(/const reaches = bareR !== null && setUpReachesGate\(inp\);/);
     expect(src).toMatch(/const r = !p\.reflectionModel && bareR \? bareR : withSetUp;/);
-    expect(src).toMatch(/const other = reaches \? \(r === withSetUp \? bareR : withSetUp\) : null;/);
-    expect(src).toMatch(/id: 'far-other'[^\n]*y: norm\(other\.farGatedDb\), dash:/);
-    expect(src).toMatch(/id: 'res-other'[^\n]*y: norm\(other\.spl\), dash:/);
+    expect(src).toMatch(/const top = Math\.max\(\.\.\.withSetUp\.spl\.filter/); // one reference for both merges
+    expect(src).toMatch(/\{hasPlane && bareR && \(\s*<div className="nfm-chart nfm-before-after">/);
+    expect(src).toMatch(/<Chart series=\{linesOf\(bareR, 'b'\)\}/);
+    expect(src).toMatch(/<Chart series=\{linesOf\(withSetUp, 'a'\)\}/);
+    expect(src).not.toMatch(/id: 'far-other'|id: 'res-other'/);
     expect(src.match(/type="checkbox" checked=\{p\.reflectionModel\}/g)?.length).toBe(1);
     expect(src).toMatch(/const resSrc = r;/);
   });
-  it('the difference line reads largestDelta on the far-field half above the splice start and on the result, and says when there is nothing to draw twice', () => {
-    expect(src).toMatch(/const deltaFar = reaches && bareR \? largestDelta\(grid, bareR\.farGatedDb, withSetUp\.farGatedDb, admitFar\) : null;/);
+  it('the sentence above the pair names every stated reflection against the window end, and the largest difference only where a term reaches the gate', () => {
+    expect(src).toMatch(/e\.ms < afterArr \? t\('\{l\} at \{ms\} ms, inside the window \(ends \{w\} ms after the direct sound\)'/);
+    expect(src).toMatch(/t\('\{l\} at \{ms\} ms, past the window end \(\{w\} ms after the direct sound\)'/);
+    expect(src).toMatch(/const deltaFar = bareR \? largestDelta\(grid, bareR\.farGatedDb, withSetUp\.farGatedDb, admitFar\) : null;/);
     expect(src).toMatch(/const admitFar = \(hz: number, i: number\) => mask\[i\] && hz >= spliceLo;/);
-    expect(src).toMatch(/const deltaRes = reaches && bareR \? largestDelta\(grid, bareR\.spl, withSetUp\.spl, \(_hz, i\) => mask\[i\]\) : null;/);
-    expect(src).toMatch(/Difference made by the set-up — far-field half: up to \{f\} dB at \{fh\} Hz; result: up to \{r\} dB at \{rh\} Hz\./);
-    expect(src).toMatch(/none of its terms reaches the gate: with and without the set-up the merge is the same/);
+    expect(src).toMatch(/const deltaRes = bareR \? largestDelta\(grid, bareR\.spl, withSetUp\.spl, \(_hz, i\) => mask\[i\]\) : null;/);
+    expect(src).toMatch(/reaches && deltaFar && deltaRes\s*\? t\('The reflection falls inside the window, so the merge divides it out of the far-field half: difference up to \{f\} dB at \{fh\} Hz \(far-field half\), up to \{r\} dB at \{rh\} Hz \(result\)\.'/);
+    expect(src).toMatch(/The window already cuts the reflection out, so there is nothing to divide out: both merges are the same\./);
   });
 });

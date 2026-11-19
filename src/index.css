@@ -5242,6 +5242,10 @@ details.v2-stage-need > summary { cursor: pointer; }
 .nfm-check-bad .nfm-icon { color: #b91c1c; }
 .nfm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr)); gap: 0.75rem; min-width: 0; }
 .nfm-chart { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; min-width: 0; }
+/* UI-8 — before / after the set-up: the block spans the chart grid, the two merges sit side by side where they fit */
+.nfm-before-after { grid-column: 1 / -1; }
+.nfm-before-after-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); gap: 0.75rem; min-width: 0; }
+.nfm-before-after-pair em { display: block; font-style: normal; font-weight: 600; margin: 0.35rem 0 0.1rem; }
 .nfm-echoes { margin: 0.25rem 0 0; padding-left: 1rem; font-size: 0.85em; }
 .nfm-export { border: 1px solid var(--accent); border-radius: 8px; padding: 0.75rem; background: var(--panel); }
 .nfm-warn { border-left: 3px solid #b45309; padding-left: 0.5rem; }

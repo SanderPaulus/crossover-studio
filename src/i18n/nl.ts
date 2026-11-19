@@ -2598,10 +2598,20 @@ export const nl: Record<string, string> = {
     'zonder opstelling',
   'with the set-up':
     'met opstelling',
-  'The set-up states a reflection, but none of its terms reaches the gate: with and without the set-up the merge is the same, so there is nothing to draw twice.':
-    'De opstelling stelt een reflectie, maar geen van haar termen haalt de gate: met en zonder opstelling is de merge gelijk, dus er valt niets twee keer te tekenen.',
-  'Difference made by the set-up — far-field half: up to {f} dB at {fh} Hz; result: up to {r} dB at {rh} Hz. The dotted red lines are the merge {o}.':
-    'Verschil door de opstelling — verre-veldhelft: tot {f} dB bij {fh} Hz; resultaat: tot {r} dB bij {rh} Hz. De rode stippellijnen zijn de merge {o}.',
+  'Before / after the set-up':
+    'Vóór / ná de opstelling',
+  'Before — without the set-up':
+    'Vóór — zonder de opstelling',
+  'After — with the set-up':
+    'Ná — met de opstelling',
+  '{l} at {ms} ms, inside the window (ends {w} ms after the direct sound)':
+    '{l} op {ms} ms, binnen het venster (eindigt {w} ms na het directe geluid)',
+  '{l} at {ms} ms, past the window end ({w} ms after the direct sound)':
+    '{l} op {ms} ms, voorbij het venstereinde ({w} ms na het directe geluid)',
+  'The reflection falls inside the window, so the merge divides it out of the far-field half: difference up to {f} dB at {fh} Hz (far-field half), up to {r} dB at {rh} Hz (result).':
+    'De reflectie valt binnen het venster, dus de merge deelt haar uit de verre-veldhelft: verschil tot {f} dB bij {fh} Hz (verre-veldhelft), tot {r} dB bij {rh} Hz (resultaat).',
+  'The window already cuts the reflection out, so there is nothing to divide out: both merges are the same.':
+    'Het venster snijdt de reflectie er al uit, dus er valt niets uit te delen: beide merges zijn gelijk.',
   'rms {d}° / {b} dB':
     'rms {d}° / {b} dB',
   'ETC of the far field (0 = direct sound)':

@@ -2689,25 +2689,40 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
   const withSetUp = comp?.result;
   const inp = comp?.input;
   if (!withSetUp || !inp || !comp.fit || !comp.splice) return <div className="nfm-charts" />;
-  /* UI-8 — before and after the set-up. `other` is the merge in the OTHER state of the "reflection
-   * model" box; it exists only where the set-up states a plane reflection that reaches the gate, since a
-   * term the gate removed entirely leaves the two merges identical (UI-7) and two coincident lines would
-   * suggest a difference that is not there. The box picks which of the two the solid lines show. */
+  /* UI-8 — before and after the set-up: the merge WITHOUT the stated reflections (`bareR`) and the merge
+   * WITH them, side by side in their own block whenever the set-up states a plane reflection — also when
+   * the two are identical, because a term the gate removed entirely (UI-7) is exactly what a reader wants
+   * to SEE rather than read in a sentence (Sander, 19-11-2026: "ik zie geen voor en na"). `reaches` says
+   * whether any term falls inside the gate, i.e. whether the kernel divided anything out; the "reflection
+   * model" box picks which of the two the solid lines of the graphs below show. */
   const bareR = p.bare?.result ?? null;
   const reaches = bareR !== null && setUpReachesGate(inp);
   const r = !p.reflectionModel && bareR ? bareR : withSetUp;
-  const other = reaches ? (r === withSetUp ? bareR : withSetUp) : null;
-  const otherTag = r === withSetUp ? t('without the set-up') : t('with the set-up');
   const grid = r.freq;
   const mask = grid.map((f) => f >= 20 && f <= 3000);
-  const top = Math.max(...r.spl.filter((_, i) => mask[i]));
+  const top = Math.max(...withSetUp.spl.filter((_, i) => mask[i])); // one reference for both merges, so a level difference stays visible
   const norm = (a: number[]) => a.map((v, i) => (mask[i] ? v - top : NaN));
   const spliceLo = comp.splice[0];
   const admitFar = (hz: number, i: number) => mask[i] && hz >= spliceLo;
-  const deltaFar = reaches && bareR ? largestDelta(grid, bareR.farGatedDb, withSetUp.farGatedDb, admitFar) : null;
-  const deltaRes = reaches && bareR ? largestDelta(grid, bareR.spl, withSetUp.spl, (_hz, i) => mask[i]) : null;
+  const deltaFar = bareR ? largestDelta(grid, bareR.farGatedDb, withSetUp.farGatedDb, admitFar) : null;
+  const deltaRes = bareR ? largestDelta(grid, bareR.spl, withSetUp.spl, (_hz, i) => mask[i]) : null;
   const arrival = arrivalMs(inp.far);
   const afterArr = gateAfterArrivalMs(inp.gate, inp.far);
+  const predicted = comp.echoes.filter((e): e is PlaneEcho => e.kind === 'plane').map((e) => ({ label: e.label, ms: planeEchoDelayS(e) * 1000 }));
+  const hasPlane = predicted.length > 0;
+  /** The three lines of one merge, on the shared reference — drawn twice in the before/after block. */
+  const linesOf = (m: MergeV2Result, key: string): Series[] => [
+    { id: `${key}-pred`, label: t('near field + model'), color: '#2980b9', x: m.freq, y: norm(m.predictionDb), dash: '5 3' },
+    { id: `${key}-far`, label: t('far field, gated as used'), color: '#7f8c8d', x: m.freq, y: norm(m.farGatedDb) },
+    { id: `${key}-res`, label: t('result'), color: 'var(--fg, #2c3e50)', x: m.freq, y: norm(m.spl), width: 3 },
+  ];
+  const beforeAfterBands = [
+    { from: comp.fit[0], to: comp.fit[1], color: '#3498db', opacity: 0.1, label: t('fit band') },
+    { from: comp.splice[0], to: comp.splice[1], color: '#3498db', opacity: 0.22 },
+  ];
+  const reflectionsLine = predicted
+    .map((e) => (e.ms < afterArr ? t('{l} at {ms} ms, inside the window (ends {w} ms after the direct sound)', { l: e.label, ms: e.ms.toFixed(2), w: afterArr.toFixed(2) }) : t('{l} at {ms} ms, past the window end ({w} ms after the direct sound)', { l: e.label, ms: e.ms.toFixed(2), w: afterArr.toFixed(2) })))
+    .join(' · ');
   const gateHz = 1000 / afterArr;
   const ka = p.sd ? kaOneHz(p.sd) : null;
   const markers = [
@@ -2716,12 +2731,6 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
     ...(p.targetFromHz ? [{ x: p.targetFromHz, label: t('target limit'), color: '#c0392b' }] : []),
   ];
   const spl: Series[] = [
-    ...(other
-      ? [
-          { id: 'far-other', label: `${t('far field, gated as used')} — ${otherTag}`, color: '#c0392b', x: grid, y: norm(other.farGatedDb), dash: '2 3' },
-          { id: 'res-other', label: `${t('result')} — ${otherTag}`, color: '#c0392b', x: grid, y: norm(other.spl), dash: '6 4', width: 2 },
-        ]
-      : []),
     { id: 'pred', label: t('near field + model'), color: '#2980b9', x: grid, y: norm(r.predictionDb), dash: '5 3' },
     { id: 'far', label: t('far field, gated as used'), color: '#7f8c8d', x: grid, y: norm(r.farGatedDb) },
     { id: 'res', label: t('result'), color: 'var(--fg, #2c3e50)', x: grid, y: norm(r.spl), width: 3 },
@@ -2756,10 +2765,35 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
   const winHi = inp.gate.referenceMs + inp.gate.rightMs - arrival;
   const taperLo = inp.gate.referenceMs + inp.gate.rightMs * (1 - inp.gate.rightTaper) - arrival;
   const found = r.echoesFound ?? [];
-  const predicted = comp.echoes.filter((e): e is PlaneEcho => e.kind === 'plane').map((e) => ({ label: e.label, ms: planeEchoDelayS(e) * 1000 }));
-  const hasPlane = predicted.length > 0;
   return (
     <div className="nfm-charts">
+      {hasPlane && bareR && (
+        <div className="nfm-chart nfm-before-after">
+          <strong>{t('Before / after the set-up')}</strong>
+          <p className="derived">
+            {reflectionsLine}
+            {'. '}
+            {reaches && deltaFar && deltaRes
+              ? t('The reflection falls inside the window, so the merge divides it out of the far-field half: difference up to {f} dB at {fh} Hz (far-field half), up to {r} dB at {rh} Hz (result).', {
+                  f: deltaFar.db.toFixed(2),
+                  fh: deltaFar.hz.toFixed(0),
+                  r: deltaRes.db.toFixed(2),
+                  rh: deltaRes.hz.toFixed(0),
+                })
+              : t('The window already cuts the reflection out, so there is nothing to divide out: both merges are the same.')}
+          </p>
+          <div className="nfm-before-after-pair">
+            <div>
+              <em>{t('Before — without the set-up')}</em>
+              <Chart series={linesOf(bareR, 'b')} xDomain={[20, 3000]} yDomain={[-40, 5]} yTickStep={10} yUnit="dB" height={190} xBands={beforeAfterBands} xMarkers={markers} />
+            </div>
+            <div>
+              <em>{t('After — with the set-up')}</em>
+              <Chart series={linesOf(withSetUp, 'a')} xDomain={[20, 3000]} yDomain={[-40, 5]} yTickStep={10} yUnit="dB" height={190} xBands={beforeAfterBands} xMarkers={markers} />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="nfm-chart">
         <strong>{t('SPL, normalised to the result')}</strong>{' '}
         <label className={`nfm-inline-check${hasPlane ? '' : ' derived'}`}>
@@ -2778,21 +2812,6 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
           ]}
           xMarkers={markers}
         />
-        {hasPlane && (
-          <p className="derived nfm-before-after">
-            {!reaches
-              ? t('The set-up states a reflection, but none of its terms reaches the gate: with and without the set-up the merge is the same, so there is nothing to draw twice.')
-              : deltaFar && deltaRes
-                ? t('Difference made by the set-up — far-field half: up to {f} dB at {fh} Hz; result: up to {r} dB at {rh} Hz. The dotted red lines are the merge {o}.', {
-                    f: deltaFar.db.toFixed(2),
-                    fh: deltaFar.hz.toFixed(0),
-                    r: deltaRes.db.toFixed(2),
-                    rh: deltaRes.hz.toFixed(0),
-                    o: otherTag,
-                  })
-                : ''}
-          </p>
-        )}
       </div>
       <div className="nfm-chart">
         <strong>{t('Phase, delay removed, relative to the direct arrival')}</strong>

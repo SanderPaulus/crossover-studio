@@ -10234,3 +10234,34 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   +9 tests tegen UI-7's 3287: exact `mergeBeforeAfter.test.ts`. Geen volle run: geen kernel-, engine-,
   poort-, venster- of corpuscode geraakt; de merge die de overlay voedt is dezelfde `compute(…, false)`
   die er al was.
+- **NAZORG (19-11-2026, dezelfde middag): "ik zie geen voor en na".** Terecht: op Sanders opstelling haalt
+  geen enkele term de gate (vloer 5,46 ms, venster 2,51 ms na het directe geluid), dus de overlay bleef per
+  constructie weg en er stond alleen een zin. Correct, en als antwoord op "laat me zien wat er gebeurt" te
+  stil. **Sinds de nazorg is het een eigen blok "Before / after the set-up"** boven de SPL-grafiek, getekend
+  zodra de opstelling een planeterm stelt — óók als de twee merges gelijk zijn, want dat is precies wat een
+  lezer wil ZIEN: twee grafieken (links/boven "Before — without the set-up", rechts/onder "After — with the
+  set-up"), dezelfde drie lijnen, dezelfde schaal, één referentie (de top van de merge mét opstelling, zodat
+  een niveauverschil zichtbaar blijft), en erboven per gestelde reflectie waar zij ligt tegenover het
+  venstereinde ("floor at 5.46 ms, past the window end (2.51 ms after the direct sound)") plus óf het
+  verschil in dB met zijn frequentie, óf de zin dat het venster haar er al uit snijdt. De overlay en de
+  verschilregel IN de SPL-grafiek zijn weg (één plek); het vinkje "reflection model" blijft daar en kiest
+  nog steeds de doorgetrokken lijnen van SPL, fase en residu. `largestDelta` wordt sindsdien altijd gelezen
+  (niet alleen bij `reaches`), de zin kiest. CSS: `.nfm-before-after` over de volle breedte van het
+  grafiekraster, `.nfm-before-after-pair` naast elkaar vanaf 2 × 24 rem, anders gestapeld.
+- `mergeBeforeAfter.test.ts` blijft 9 claims; de twee bronscans zijn in V15-vorm herschreven (de overlay-
+  pins eruit, de blok-pins erin, met de reden). Geen claim versoepeld.
+- **Browsercontrole (dev-server, de lokale 14-11-sessie):** op het venstervoorstel staat het blok met de
+  zin "floor at 5.46 ms, past the window end (2.51 ms …). The window already cuts the reflection out …" en
+  twee gelijke grafieken; met het mid-venster tijdelijk op 7,5 ms "floor at 5.46 ms, inside the window
+  (ends 7.02 ms …) … difference up to 3.39 dB at 274 Hz (far-field half), up to 3.04 dB at 1004 Hz
+  (result)", de kam in "Before" en de gladde merge in "After". Daarna het voorstel teruggenomen (T 2,991 ms).
+  In de smalle grafiekkolom van stap 4 staan de twee onder elkaar; naast elkaar pas op een breed venster.
+  Console leeg.
+- **Gemeten 19-11-2026 (nazorg):** `npx tsc -b` groen. `npm run test:fast` **280,5 s, 251 bestanden (250
+  geslaagd, 1 overgeslagen), 3306 tests (3302 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid
+  met de dev-server gestopt; laatste bronbewerking 17:30:54, run gestart 17:32:55.** De nazorg voegt GEEN
+  test toe (de 9 claims zijn herschreven, niet geteld); **+1 bestand en +10 tests tegen UI-8's 250/3296 zijn
+  `idealParts.test.tsx` van de PARALLELLE sessie G-20, die op het moment van de run ongecommit in dezelfde
+  werkboom stond** (met haar `netOptimizer.ts`- en `App.tsx`-wijzigingen) — de U-5c-situatie opnieuw. De
+  uitslag beschrijft dus de VERENIGING van beide; alleen de UI-8-bestanden zijn in deze commit gestaged, en
+  geen daarvan importeert iets van G-20. Geen volle run: alleen weergave.
