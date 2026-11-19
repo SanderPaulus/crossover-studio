@@ -10192,3 +10192,45 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   dev-server gestopt; laatste bronbewerking 10:43:49, run gestart 10:48:03 (de H-2-regel).** +4 tests
   tegen UI-6 punt 8's 3283: exact de drie kernclaims en de vingerafdrukclaim; geen nieuw bestand. Geen
   volle run: `nfMergeV2.ts` is geraakt maar niets daarin bereikt de zoektocht of een corpus (de UI-6-afweging).
+
+### UI-8-guards (vóór en ná de opstelling, op één grafiek; alleen weergave, 19-11-2026)
+
+- **Aanleiding (Sander, 19-11-2026, direct na UI-7):** "kunnen we een voor en na overzicht erbij krijgen,
+  zodoende we visueel zien wat er gebeurt?" UI-7 zei in een notitie wat een gestelde reflectie met de
+  verre-veldhelft doet; een notitie is niet waarmee iemand een grafiek controleert.
+- **Wat er staat, in stap 4:** de SPL-grafiek tekent naast de merge MÉT de opstelling de merge ZONDER
+  (twee rode stippellijnen: de verre-veldhelft zoals gegate en het resultaat), met eronder één regel —
+  *"Verschil door de opstelling — verre-veldhelft: tot {f} dB bij {fh} Hz; resultaat: tot {r} dB bij
+  {rh} Hz."* Het vinkje "reflection model" is verhuisd van de residugrafiek naar dit blok en kiest welke
+  van de twee de doorgetrokken lijnen zijn; de residugrafiek zegt sindsdien in woorden welke stand zij
+  toont. **Getekend alleen waar een gestelde planeterm de gate HAALT** (`setUpReachesGate`, dezelfde
+  `gateWeightAfterDirect` als de kernel): daarbuiten zijn de twee merges per constructie gelijk (UI-7) en
+  zegt de regel dat er niets twee keer te tekenen valt. De verschilregel leest de verre-veldhelft alleen
+  boven de splice-start (eronder is het resultaat de nabij-veldvoorspelling) en het resultaat over de
+  hele getekende band.
+- **`src/lib/mergeBeforeAfter.ts` (`merge-before-after/1.0`)**: `largestDelta` (de grootste |ná − vóór|
+  met haar frequentie; `null` alleen als niets toegelaten is, NaN overgeslagen) en `setUpReachesGate`.
+  Geen engine-import, geen tweede merge: de "zonder"-merge is `compute(…, false)`, die er al was en sinds
+  UI-8 wordt berekend zodra er een planeterm gesteld is en niet alleen terwijl het vinkje uit staat (één
+  extra merge van ~0,6 s op de actieve tab).
+- `src/lib/mergeBeforeAfter.test.ts` (9 claims): de helper met de hand (de top, het masker, NaN, `null`
+  tegen 0, twee gelijke merges lezen exact 0), de gate-regel op een spike-impuls (tafel binnen → ja, vloer
+  voorbij → nee, boundary en leeg → nee, een langere gate laat de vloer toe — de regel volgt de gate), en
+  een bronscan op `NfMergeTool.tsx` (de bare-memo zonder `reflectionModel`, één vinkje, de overlay achter
+  `reaches`, de verschilregel en de "niets twee keer"-zin).
+- **Browsercontrole (dev-server, de lokale 14-11-sessie met Sanders opstelling: tafel ≤ 200 mm).** Op de
+  mid met het venstervoorstel (2,99 ms; de vloerecho ligt op 5,21 ms) staat de regel *"none of its terms
+  reaches the gate … nothing to draw twice"* en geen overlay. Met het mid-venster TIJDELIJK op 7,5 ms
+  gezet (de vloerecho −10 dB valt dan in de gate) verschijnen de twee rode lijnen — de kam van UI-7 in de
+  "zonder"-merge, de gladde "met"-merge eroverheen — met *"far-field half: up to 3.39 dB at 274 Hz;
+  result: up to 3.04 dB at 1004 Hz"*; het vinkje uit draait de rollen om en de residugrafiek leest
+  "without the set-up" (rms 10,76° tegen 4,64° met). Daarna het voorstel teruggenomen: de sessie staat
+  weer op T 2,991 ms en de "niets twee keer"-regel. Console leeg.
+- **Niet gedaan:** de overzichtskaart (wat de goedkeuring draagt) krijgt geen overlay; de fase- en
+  residugrafiek evenmin — de vraag was wat de opstelling met het RESULTAAT doet.
+- **Gemeten 19-11-2026:** `npx tsc -b` groen. `npm run test:fast` **289,0 s, 250 bestanden (249 geslaagd,
+  1 overgeslagen), 3296 tests (3292 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 14:12:40, run gestart 14:17:02 (de H-2-regel).** +1 bestand en
+  +9 tests tegen UI-7's 3287: exact `mergeBeforeAfter.test.ts`. Geen volle run: geen kernel-, engine-,
+  poort-, venster- of corpuscode geraakt; de merge die de overlay voedt is dezelfde `compute(…, false)`
+  die er al was.

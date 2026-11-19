@@ -2594,6 +2594,14 @@ export const nl: Record<string, string> = {
     'Restfout in de fitband',
   'reflection model':
     'reflectiemodel',
+  'without the set-up':
+    'zonder opstelling',
+  'with the set-up':
+    'met opstelling',
+  'The set-up states a reflection, but none of its terms reaches the gate: with and without the set-up the merge is the same, so there is nothing to draw twice.':
+    'De opstelling stelt een reflectie, maar geen van haar termen haalt de gate: met en zonder opstelling is de merge gelijk, dus er valt niets twee keer te tekenen.',
+  'Difference made by the set-up — far-field half: up to {f} dB at {fh} Hz; result: up to {r} dB at {rh} Hz. The dotted red lines are the merge {o}.':
+    'Verschil door de opstelling — verre-veldhelft: tot {f} dB bij {fh} Hz; resultaat: tot {r} dB bij {rh} Hz. De rode stippellijnen zijn de merge {o}.',
   'rms {d}° / {b} dB':
     'rms {d}° / {b} dB',
   'ETC of the far field (0 = direct sound)':

@@ -39,6 +39,7 @@ import {
   type PlaneEcho,
 } from '../lib/nfMergeV2.ts';
 import { renderMergedFrdV2 } from '../lib/nfMergeV2Block.ts';
+import { largestDelta, setUpReachesGate } from '../lib/mergeBeforeAfter.ts';
 import { addHeaderLines, gridText, phaseConventionText, phaseZeroMsOf, type ExportGrid, type ExportPhase } from '../lib/mergeExport.ts';
 import { branchFileName, confirmBranchUse, USE_CONFIRM_WAIT_MS, type Prepared, type UseStatus } from '../lib/useInProject.ts';
 import {
@@ -735,10 +736,13 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   const active = drivers.find((d) => d.stem === tab) ?? null;
   const activeFar = farOnly.find((d) => d.stem === tab) ?? null;
   const cur = active ? computed.get(active.stem) ?? null : null;
+  /* UI-8 — the merge WITHOUT the set-up, computed whenever the set-up states a plane reflection and not
+   * only while the "reflection model" box is off: step 4 draws it next to the merge WITH the set-up, so
+   * a reader sees what the stated reflection does instead of reading a sentence about it. */
   const bare = useMemo(
-    () => (active && cur?.echoes.some((e) => e.kind === 'plane') && !reflectionModel ? compute(active, cfg[active.stem], false) : null),
+    () => (active && cur?.echoes.some((e) => e.kind === 'plane') ? compute(active, cfg[active.stem], false) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [active, cur, reflectionModel],
+    [active, cur],
   );
   const statusFor = (stem: string): MergeStatus | null => {
     const r = computed.get(stem)?.result;
@@ -2682,13 +2686,26 @@ const tmsFmt = (v: number | null) => (v === null ? '—' : v.toFixed(3));
 
 function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionModel: boolean; setReflectionModel: (v: boolean) => void; sd: number | null; targetFromHz: number | null }) {
   const comp = p.comp;
-  const r = comp?.result;
+  const withSetUp = comp?.result;
   const inp = comp?.input;
-  if (!r || !inp || !comp.fit || !comp.splice) return <div className="nfm-charts" />;
+  if (!withSetUp || !inp || !comp.fit || !comp.splice) return <div className="nfm-charts" />;
+  /* UI-8 — before and after the set-up. `other` is the merge in the OTHER state of the "reflection
+   * model" box; it exists only where the set-up states a plane reflection that reaches the gate, since a
+   * term the gate removed entirely leaves the two merges identical (UI-7) and two coincident lines would
+   * suggest a difference that is not there. The box picks which of the two the solid lines show. */
+  const bareR = p.bare?.result ?? null;
+  const reaches = bareR !== null && setUpReachesGate(inp);
+  const r = !p.reflectionModel && bareR ? bareR : withSetUp;
+  const other = reaches ? (r === withSetUp ? bareR : withSetUp) : null;
+  const otherTag = r === withSetUp ? t('without the set-up') : t('with the set-up');
   const grid = r.freq;
   const mask = grid.map((f) => f >= 20 && f <= 3000);
   const top = Math.max(...r.spl.filter((_, i) => mask[i]));
   const norm = (a: number[]) => a.map((v, i) => (mask[i] ? v - top : NaN));
+  const spliceLo = comp.splice[0];
+  const admitFar = (hz: number, i: number) => mask[i] && hz >= spliceLo;
+  const deltaFar = reaches && bareR ? largestDelta(grid, bareR.farGatedDb, withSetUp.farGatedDb, admitFar) : null;
+  const deltaRes = reaches && bareR ? largestDelta(grid, bareR.spl, withSetUp.spl, (_hz, i) => mask[i]) : null;
   const arrival = arrivalMs(inp.far);
   const afterArr = gateAfterArrivalMs(inp.gate, inp.far);
   const gateHz = 1000 / afterArr;
@@ -2699,6 +2716,12 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
     ...(p.targetFromHz ? [{ x: p.targetFromHz, label: t('target limit'), color: '#c0392b' }] : []),
   ];
   const spl: Series[] = [
+    ...(other
+      ? [
+          { id: 'far-other', label: `${t('far field, gated as used')} — ${otherTag}`, color: '#c0392b', x: grid, y: norm(other.farGatedDb), dash: '2 3' },
+          { id: 'res-other', label: `${t('result')} — ${otherTag}`, color: '#c0392b', x: grid, y: norm(other.spl), dash: '6 4', width: 2 },
+        ]
+      : []),
     { id: 'pred', label: t('near field + model'), color: '#2980b9', x: grid, y: norm(r.predictionDb), dash: '5 3' },
     { id: 'far', label: t('far field, gated as used'), color: '#7f8c8d', x: grid, y: norm(r.farGatedDb) },
     { id: 'res', label: t('result'), color: 'var(--fg, #2c3e50)', x: grid, y: norm(r.spl), width: 3 },
@@ -2713,7 +2736,7 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
     { id: 'pp', label: t('near field + model (fitted τ)'), color: '#2980b9', x: grid, y: toArrival(r.predictionPhaseDeg), dash: '5 3' },
     { id: 'fp', label: t('far field, gated'), color: '#7f8c8d', x: grid, y: toArrival(r.farGatedPhaseDeg) },
   ];
-  const resSrc = !p.reflectionModel && p.bare?.result ? p.bare.result : r;
+  const resSrc = r; // UI-8: `r` already follows the "reflection model" box
   const residual: Series[] = [
     { id: 'rdeg', label: '°', color: '#8e44ad', x: resSrc.fit.residual.freq, y: resSrc.fit.residual.deg },
     { id: 'rdb', label: 'dB', color: '#16a085', x: resSrc.fit.residual.freq, y: resSrc.fit.residual.db, axis: 'y2' },
@@ -2738,7 +2761,10 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
   return (
     <div className="nfm-charts">
       <div className="nfm-chart">
-        <strong>{t('SPL, normalised to the result')}</strong>
+        <strong>{t('SPL, normalised to the result')}</strong>{' '}
+        <label className={`nfm-inline-check${hasPlane ? '' : ' derived'}`}>
+          <input type="checkbox" checked={p.reflectionModel} disabled={!hasPlane} onChange={(e) => p.setReflectionModel(e.target.checked)} /> {t('reflection model')}
+        </label>
         <Chart
           series={spl}
           xDomain={[20, 3000]}
@@ -2752,6 +2778,21 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
           ]}
           xMarkers={markers}
         />
+        {hasPlane && (
+          <p className="derived nfm-before-after">
+            {!reaches
+              ? t('The set-up states a reflection, but none of its terms reaches the gate: with and without the set-up the merge is the same, so there is nothing to draw twice.')
+              : deltaFar && deltaRes
+                ? t('Difference made by the set-up — far-field half: up to {f} dB at {fh} Hz; result: up to {r} dB at {rh} Hz. The dotted red lines are the merge {o}.', {
+                    f: deltaFar.db.toFixed(2),
+                    fh: deltaFar.hz.toFixed(0),
+                    r: deltaRes.db.toFixed(2),
+                    rh: deltaRes.hz.toFixed(0),
+                    o: otherTag,
+                  })
+                : ''}
+          </p>
+        )}
       </div>
       <div className="nfm-chart">
         <strong>{t('Phase, delay removed, relative to the direct arrival')}</strong>
@@ -2759,9 +2800,7 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
       </div>
       <div className="nfm-chart">
         <strong>{t('Residual in the fit band')}</strong>{' '}
-        <label className={`nfm-inline-check${hasPlane ? '' : ' derived'}`}>
-          <input type="checkbox" checked={p.reflectionModel} disabled={!hasPlane} onChange={(e) => p.setReflectionModel(e.target.checked)} /> {t('reflection model')}
-        </label>
+        {hasPlane && <span className="derived">{p.reflectionModel ? t('with the set-up') : t('without the set-up')}</span>}
         <Chart
           series={residual}
           xDomain={[comp.fit[0], comp.fit[1]]}
