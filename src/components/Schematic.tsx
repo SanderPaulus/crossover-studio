@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { VxpCrossover, VxpPart } from '../lib/parsers/vxp.ts';
 import { describeStackMembers, stackMembersOf } from '../lib/catalog.ts';
+import { isIdealValue } from '../lib/idealParts.ts';
+import { t } from '../lib/i18n.ts';
 
 /**
  * Read-only schematic rendering of a VituixCAD crossover, drawn straight from
@@ -109,8 +111,22 @@ export default function Schematic({ xo }: { xo: VxpCrossover }) {
   );
 }
 
-export function PartGlyph({ part: p, min }: { part: VxpPart; min: Pt }) {
+export function PartGlyph({
+  part: p,
+  min,
+  markIdeal = false,
+}: {
+  part: VxpPart;
+  min: Pt;
+  /**
+   * G-20 — mark a value that is no catalogue part. Asked for only where the
+   * run is meant to land on real parts (snap on, catalogue loaded); without
+   * that every value is ideal by choice and a mark on each would be noise.
+   */
+  markIdeal?: boolean;
+}) {
   if (p.wires.length === 0) return null;
+  const ideal = markIdeal && isIdealValue(p);
 
   if (p.type === 'Wire') {
     const d = p.wires.map((w, i) => `${i === 0 ? 'M' : 'L'}${px(w, min).x},${px(w, min).y}`).join('');
@@ -152,9 +168,11 @@ export function PartGlyph({ part: p, min }: { part: VxpPart; min: Pt }) {
         x={vertical ? 10 : 0}
         y={vertical ? 10 : 24}
         textAnchor={vertical ? 'start' : 'middle'}
-        className="sch-value"
+        className={ideal ? 'sch-value sch-value-ideal' : 'sch-value'}
       >
+        {ideal && <title>{t('Ideal value — no catalogue part has it, so it cannot be ordered as drawn.')}</title>}
         {p.shorted || p.open ? '' : partValue(p)}
+        {ideal && <tspan className="sch-ideal-tag">{` · ${t('ideal')}`}</tspan>}
       </text>
     </g>
   );

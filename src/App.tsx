@@ -405,6 +405,7 @@ import {
   type CatalogSeries,
   type SnapPrefs,
 } from './lib/catalog.ts';
+import { idealValuesCause, isIdealValue, passiveValueKey } from './lib/idealParts.ts';
 import { fitCoilDcrFamilies } from './lib/coilDcr.ts';
 import {
   cancelOptimTasks,
@@ -3117,20 +3118,17 @@ export default function App() {
       (p) => (p.type === 'Resistor' || p.type === 'Inductor' || p.type === 'Capacitor') && !p.open && !p.shorted,
     );
     if (rlc.length === 0) return null;
-    const why = !hasImportedCatalog()
-      ? t('No catalogue is loaded — load one under Expert → Filters → Components.')
-      : !catalogSnap
-        ? t('“Use real catalog parts” is switched off (Expert → Filters → Components).')
-        : t('The catalogue snap did not land on this design: real parts would break a hard limit (often the source resistance of thin coil wire) — the run notes say which.');
+    /* G-20 — the WHY is not decided here: whether the design on screen is a
+     * refused stated candidate is known only next to the shortlist, so the
+     * sentence (`idealValuesCause`) is joined in where this is rendered. */
     return {
       total: rlc.length,
       catalog: rlc.filter((p) => p.catalog).length,
-      why,
       /* G-19 — positions realised as a bank: the same `catalog` stamp the BOM reads. */
       stacked: rlc.filter((p) => stackMembersOf(p) !== null).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDesign, catalogSnap, catalogRev]);
+  }, [activeDesign, catalogRev]);
 
   /**
    * A5e.2 — the voicing the ACTIVE design is judged and searched against.
@@ -9152,7 +9150,14 @@ export default function App() {
      * staged pass prunes and adds, and its stop goal would refuse a bare
      * ladder for missing what only a correction could reach). */
     ...(topologyChoiceOf(engineV2Settings.topology) === 'standard'
-      ? { topology: 'standard' as const, targets: undefined }
+      ? {
+          topology: 'standard' as const,
+          targets: undefined,
+          /* S-5 — a bare ladder is a VALUES problem, so with the snap on it is
+           * searched on purchasable parts only: no simulation of a value no
+           * series stocks, and a refused design is made of parts you can buy. */
+          ...(catalogSnap && hasImportedCatalog() ? { valueSearch: 'catalog' as const } : {}),
+        }
       : {}),
   };
   };
@@ -9198,7 +9203,14 @@ export default function App() {
     safety: args.safety,
     /* G-15 — the standard filter, as on the three-way chain. */
     ...(topologyChoiceOf(engineV2Settings.topology) === 'standard'
-      ? { topology: 'standard' as const, targets: undefined }
+      ? {
+          topology: 'standard' as const,
+          targets: undefined,
+          /* S-5 — a bare ladder is a VALUES problem, so with the snap on it is
+           * searched on purchasable parts only: no simulation of a value no
+           * series stocks, and a refused design is made of parts you can buy. */
+          ...(catalogSnap && hasImportedCatalog() ? { valueSearch: 'catalog' as const } : {}),
+        }
       : {}),
   });
 
@@ -11939,6 +11951,25 @@ export default function App() {
    * a substitute for a list that came out empty (`selection.ts`).
    */
   const [shortlistPick, setShortlistPick] = useState<string | null>(null);
+  /**
+   * G-20 — IS THE DESIGN ON SCREEN A REFUSED STATED CANDIDATE? Then the rule
+   * that refused it is the reason its values were never matched to catalogue
+   * parts (U-5 hands such a tune over as it stood, before any snap). Read off
+   * the loaded shortlist entry AND the drawing: once the network is edited it
+   * is no longer the refused tune, and the claim ends (`passiveValueKey`).
+   */
+  const loadedRefusal = useMemo(() => {
+    if (!shortlistPick || !v2Shortlist || !activeDesign) return null;
+    const e = v2Shortlist.stated.find((x) => x.label === shortlistPick && !x.isRow);
+    if (!e?.refusal) return null;
+    return passiveValueKey(e.parts) === passiveValueKey(activeDesign.parts) ? e.refusal.reason : null;
+  }, [shortlistPick, v2Shortlist, activeDesign]);
+  /** G-20 — one sentence, two readers: the guided parts line and the note under the network editor. */
+  const idealCause = idealValuesCause({
+    catalogLoaded: hasImportedCatalog(),
+    snapOn: catalogSnap,
+    refusal: loadedRefusal,
+  });
   /**
    * U-6 — THE TWO FOLDS OF THE RESULT AREA, remembered per SESSION.
    *
@@ -22974,7 +23005,26 @@ export default function App() {
                   canUndo={schHistory.length > 0}
                   onRedo={redoSchematic}
                   canRedo={schFuture.length > 0}
+                  markIdeal={catalogSnap && hasImportedCatalog()}
                 />
+                {/* G-20 — when the run is meant to land on real parts, say under
+                    the drawing how many values did not, and why, in the same
+                    sentence the guided parts line uses. Without the snap every
+                    value is ideal by choice and the drawing stays unmarked. */}
+                {catalogSnap && hasImportedCatalog() && (() => {
+                  const rlc = schematic.parts.filter((p) => p.type === 'Resistor' || p.type === 'Inductor' || p.type === 'Capacitor');
+                  const ideal = rlc.filter(isIdealValue).length;
+                  if (ideal === 0) return null;
+                  return (
+                    <p className="sch-ideal-note">
+                      {t('{n} of {m} values are ideal values, not catalogue parts — marked “ideal” on the drawing.', {
+                        n: ideal,
+                        m: rlc.filter((p) => !p.open && !p.shorted).length,
+                      })}{' '}
+                      {idealCause}
+                    </p>
+                  );
+                })()}
                 {/* UI-2 — the simulation status of THIS drawing, right under
                     the editor: solved as drawn (with every defect by name), or
                     refused with the reason. This is the place where, until
@@ -25256,7 +25306,7 @@ export default function App() {
           uiMode === 'guided' ? (
             <GuidedV2Summary
               report={engineV2Report.report}
-              parts={guidedPartsReality}
+              parts={guidedPartsReality ? { ...guidedPartsReality, why: idealCause, refused: loadedRefusal } : null}
               partsQuality={
                 v2Run?.snapProfile
                   ? t(guidedPartsQualityLabel(v2Run.snapProfile) ?? 'expert profile {p}', { p: v2Run.snapProfile })

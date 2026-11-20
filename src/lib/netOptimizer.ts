@@ -405,6 +405,24 @@ export interface NetOptimizeOptions {
    *  synthesis snapped — Sanders BOM stayed full of "no exact catalog value"
    *  with Snap to catalog on. */
   catalogSnap?: boolean;
+  /**
+   * S-5 (19-11-2026) — WHAT VALUES THE SEARCH MOVES THROUGH.
+   *
+   * Absent = `'continuous'`: the value tune moves every free value continuously
+   * and the catalogue snap lands the result on purchasable parts at the very
+   * end — every run before S-5, byte for byte.
+   *
+   * `'catalog'`: the search starts ON purchasable parts (the nearest catalogue
+   * realisation of every seed value, through the snap's own pools, ceilings and
+   * families) and only ever steps to another purchasable part — a discrete
+   * coordinate descent judged on the snap's own score and the stated gates, on
+   * the full grid. No continuous value is simulated, so nothing the search
+   * leaned on can disappear at a snap, and a design a gate refuses is refused
+   * on parts you can buy. No structural pass runs (no prune, escalation, part
+   * audit or repair pass): the topology is the seed's. Needs `catalogSnap` and
+   * a loaded catalogue; otherwise it is the continuous search (P4).
+   */
+  valueSearch?: 'continuous' | 'catalog';
   /** Budget pressure for the snap: score ×(1 + costWeight·ΣEUR). Default 0.0015. */
   costWeight?: number;
   /** Component-wizard preferences: binding series per kind, tier profile per
@@ -1466,6 +1484,30 @@ export class NetOptimizeError extends Error {}
  * only, and capped — a report nobody can read is a report nobody reads.
  */
 const GATE_REFUSAL_LOG_MAX = 24;
+
+/**
+ * S-5 — the catalogue-only search (`valueSearch: 'catalog'`). Search
+ * constants, no project numbers: per slot and per pass the neighbours are the
+ * catalogue realisations nearest to the current value times each of these
+ * ratios (the snap's own `pickCandidates`, three per ratio, de-duplicated), a
+ * pass visits every slot once, and the descent stops when a pass moves
+ * nothing or after the cap.
+ */
+const CATALOG_SEARCH_STEPS = [0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.4] as const;
+const CATALOG_SEARCH_MAX_PASSES = 40;
+/** Iterated local search: after each descent the best network is kicked by one of these (every way at once) and descended again. */
+const CATALOG_SEARCH_KICKS = [
+  { mode: 'frequency', r: 1.3 },
+  { mode: 'frequency', r: 1 / 1.3 },
+  { mode: 'impedance', r: 1.3 },
+  { mode: 'impedance', r: 1 / 1.3 },
+] as const;
+/** Branch moves: every L and C of one way scaled together by these ratios (shifts that way's corners). */
+const CATALOG_SEARCH_BRANCH_SCALES = [0.85, 0.92, 1.08, 1.18] as const;
+/** Added to the score of a network a stated gate refuses, so a gate-clean network always ranks first. */
+const CATALOG_SEARCH_GATE_PENALTY = 1e9;
+/** S-5 — the discrete objective's penalty for a value outside a hard box, a stated cap or a hard sum ceiling. */
+const DISCRETE_BOX_PENALTY = 1e6;
 
 const PARAM_OF: Record<'R' | 'L' | 'C', { name: string; factor: number }> = {
   R: { name: 'R', factor: 1 },
@@ -4217,75 +4259,27 @@ export function optimizeNetworkValues(
    *  the fit stays inside the goal region whenever one is reachable —
    *  without it the blended objective happily trades ripple past the target
    *  for phase the targets never asked for. */
-  const tune = (
+  /**
+   * S-5 (19-11-2026) — THE TUNE'S OBJECTIVE, on any network: the search box
+   * (soft windows, hard boxes, stated caps), the sum ceilings, the barriers and
+   * `fxOf`, exactly as `tune` scores a point. Moved verbatim out of `tune` so the
+   * catalogue-only search scores a purchasable network on the SAME terms the
+   * continuous search does — one objective, two readers. `discrete` is false for
+   * `tune` and then every line is what it was (the byte baselines reproduce); it
+   * is true for the catalogue search, where a value is never clamped or
+   * projected (a box it breaks is a penalty that ranks it behind every network
+   * inside the box) and a coil keeps its catalogue part's own DCR.
+   */
+  const objectiveOn = (
     ps: readonly VxpPart[],
-    budgetScale = 1,
-    barrier: { rippleDb: number; phaseDeg: number } | null = null,
-    applyWindow = true,
-    /** Amp-load floor barrier. Two callers now, and the DEFAULT is what
-     *  changed at V30: it used to be a literal `false` (the objective stayed
-     *  clean unless the repair pass asked), and it is now `zFloorGoal` — the
-     *  run-level decision made once beside `ampFloorOhm`. With the option
-     *  absent `zFloorGoal` is false and this is the same default it always
-     *  was. The repair pass still passes `true` explicitly. */
-    zFloorBarrier = zFloorGoal,
-    /** True for the amp-load REPAIR pass and for nothing else.
-     *
-     *  Separated from `zFloorBarrier` at V30, because until then the two were
-     *  the same thing and two behaviours were quietly keyed on that: the
-     *  corridor cancellation below, and the block-coordinate refinement
-     *  further down. Both were measured FOR the repair — a local retune from
-     *  an already-good point — and neither was ever a statement about a search
-     *  that has the floor in its objective. Keeping them on `zFloorBarrier`
-     *  would have made "the floor is a goal" silently also mean "the corridor
-     *  stops counting and the deep polish is skipped", which is two more
-     *  changes than anyone asked for. */
-    zFloorRepairPass = false,
-    /** E-5c — stop the search at this many iterations per simplex call, when
-     *  that is FEWER than the budget. Null = the search this function has
-     *  always run, byte for byte. Only the staged pass's two structure retunes
-     *  ever pass it. */
-    capIterations: number | null = null,
-  ): TuneOut => {
-    /* E-5c — THE RUN-SCOPED FIT MEMO, and it is only consulted when the run
-     * asked for it. Keyed on everything the fit reads that can differ between
-     * two calls: the parts as values, and every argument above. RUN-SCOPED for
-     * the reason the gate cache states one screen up — a module-level memo
-     * would survive into the next run, where the measurements are different
-     * objects, and a reproducibility claim that rests on remembering to clear a
-     * map is not a claim. A hit returns CLONED parts, so no caller can reach
-     * another caller's array. */
-    const memoKey =
-      reuseTunes
-        ? JSON.stringify([
-            budgetScale,
-            barrier,
-            applyWindow,
-            zFloorBarrier,
-            zFloorRepairPass,
-            capIterations,
-            ps.map((q) => [
-              q.partId ?? q.type,
-              q.type,
-              q.open === true,
-              q.shorted === true,
-              q.locked === true,
-              q.params.map((par) => [par.name, par.value]),
-            ]),
-          ])
-        : null;
-    if (memoKey !== null) {
-      const hit = tuneMemo.get(memoKey);
-      if (hit) {
-        tuneMemoHits++;
-        return { ...hit, parts: cloneParts(hit.parts) };
-      }
-    }
-    const { work, free } = buildWork(ps);
-    if (free.length === 0) {
-      const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
-      return remember(memoKey, { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m, cappedEarly: false });
-    }
+    work: ReturnType<typeof buildWork>['work'],
+    free: ReturnType<typeof buildWork>['free'],
+    barrier: { rippleDb: number; phaseDeg: number } | null,
+    applyWindow: boolean,
+    zFloorBarrier: boolean,
+    zFloorRepairPass: boolean,
+    discrete = false,
+  ) => {
     /* A5e.3 — THE DCR THAT MOVES WITH THE INDUCTANCE. A free coil on a way
      * with a stated family re-reads its DCR from the fit at every evaluation,
      * so the network the solver stamps is the network a builder would wind at
@@ -4296,7 +4290,8 @@ export function optimizeNetworkValues(
     const elementById = new Map(work.elements.map((e) => [e.id, e] as const));
     const freeIndexById = new Map(free.map((e, i) => [e.id, i] as const));
     const refreshDcr = (): void => {
-      if (!anyDcr) return;
+      // S-5 — in the discrete mode every coil carries its catalogue part's own DCR.
+      if (!anyDcr || discrete) return;
       for (let i = 0; i < free.length; i++) {
         const f = dcrFit[i];
         if (!f) continue;
@@ -4471,6 +4466,13 @@ export function optimizeNetworkValues(
           }
           continue;
         }
+        /* S-5 — the discrete mode never projects: a purchasable value is
+         * not scaled to a value no series stocks. Over the budget = outside
+         * the box, so it ranks behind every network inside it. */
+        if (discrete) {
+          if (room <= 0 || total > room) softOver += DISCRETE_BOX_PENALTY;
+          continue;
+        }
         if (room <= 0) {
           for (const i of g.idx) free[i].value = 10 ** winLo[i];
           continue;
@@ -4498,6 +4500,22 @@ export function optimizeNetworkValues(
       tick();
       let penalty = 0;
       for (let i = 0; i < free.length; i++) {
+        if (discrete && (hard[i] || capLg[i] !== null)) {
+          /* S-5 — a purchasable value is taken as it is: a hard box or a stated
+           * cap it lies outside is a network outside the box, never a clamp
+           * to a value no series stocks. */
+          free[i].value = 10 ** logVals[i];
+          const eps = 1e-9;
+          const out = hard[i]
+            ? logVals[i] < winLo[i] - eps || logVals[i] > winHi[i] + eps
+            : logVals[i] > capLg[i]! + eps;
+          if (out) penalty += DISCRETE_BOX_PENALTY;
+          if (!hard[i]) {
+            if (logVals[i] < winLo[i]) penalty += (winLo[i] - logVals[i]) ** 2;
+            else if (logVals[i] > winHi[i]) penalty += (logVals[i] - winHi[i]) ** 2;
+          }
+          continue;
+        }
         if (hard[i]) {
           // Value window = a true box constraint: clamp, never penalise out.
           free[i].value = 10 ** Math.min(Math.max(logVals[i], winLo[i]), winHi[i]);
@@ -4582,6 +4600,87 @@ export function optimizeNetworkValues(
       }
       return fxOf(m) + barr + 8 * penalty;
     };
+    return { objective, hard, winLo, winHi, capLg, projectSums, refreshDcr };
+  };
+
+  const tune = (
+    ps: readonly VxpPart[],
+    budgetScale = 1,
+    barrier: { rippleDb: number; phaseDeg: number } | null = null,
+    applyWindow = true,
+    /** Amp-load floor barrier. Two callers now, and the DEFAULT is what
+     *  changed at V30: it used to be a literal `false` (the objective stayed
+     *  clean unless the repair pass asked), and it is now `zFloorGoal` — the
+     *  run-level decision made once beside `ampFloorOhm`. With the option
+     *  absent `zFloorGoal` is false and this is the same default it always
+     *  was. The repair pass still passes `true` explicitly. */
+    zFloorBarrier = zFloorGoal,
+    /** True for the amp-load REPAIR pass and for nothing else.
+     *
+     *  Separated from `zFloorBarrier` at V30, because until then the two were
+     *  the same thing and two behaviours were quietly keyed on that: the
+     *  corridor cancellation below, and the block-coordinate refinement
+     *  further down. Both were measured FOR the repair — a local retune from
+     *  an already-good point — and neither was ever a statement about a search
+     *  that has the floor in its objective. Keeping them on `zFloorBarrier`
+     *  would have made "the floor is a goal" silently also mean "the corridor
+     *  stops counting and the deep polish is skipped", which is two more
+     *  changes than anyone asked for. */
+    zFloorRepairPass = false,
+    /** E-5c — stop the search at this many iterations per simplex call, when
+     *  that is FEWER than the budget. Null = the search this function has
+     *  always run, byte for byte. Only the staged pass's two structure retunes
+     *  ever pass it. */
+    capIterations: number | null = null,
+  ): TuneOut => {
+    /* E-5c — THE RUN-SCOPED FIT MEMO, and it is only consulted when the run
+     * asked for it. Keyed on everything the fit reads that can differ between
+     * two calls: the parts as values, and every argument above. RUN-SCOPED for
+     * the reason the gate cache states one screen up — a module-level memo
+     * would survive into the next run, where the measurements are different
+     * objects, and a reproducibility claim that rests on remembering to clear a
+     * map is not a claim. A hit returns CLONED parts, so no caller can reach
+     * another caller's array. */
+    const memoKey =
+      reuseTunes
+        ? JSON.stringify([
+            budgetScale,
+            barrier,
+            applyWindow,
+            zFloorBarrier,
+            zFloorRepairPass,
+            capIterations,
+            ps.map((q) => [
+              q.partId ?? q.type,
+              q.type,
+              q.open === true,
+              q.shorted === true,
+              q.locked === true,
+              q.params.map((par) => [par.name, par.value]),
+            ]),
+          ])
+        : null;
+    if (memoKey !== null) {
+      const hit = tuneMemo.get(memoKey);
+      if (hit) {
+        tuneMemoHits++;
+        return { ...hit, parts: cloneParts(hit.parts) };
+      }
+    }
+    const { work, free } = buildWork(ps);
+    if (free.length === 0) {
+      const m = metricsOn(work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
+      return remember(memoKey, { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m, cappedEarly: false });
+    }
+    const { objective, hard, winLo, winHi, capLg, projectSums, refreshDcr } = objectiveOn(
+      ps,
+      work,
+      free,
+      barrier,
+      applyWindow,
+      zFloorBarrier,
+      zFloorRepairPass,
+    );
     const x0 = free.map((e) => Math.log10(e.value));
     const budget = Math.max(
       200,
@@ -4779,6 +4878,280 @@ export function optimizeNetworkValues(
     !solo || rawMedianRef - m.medianDb <= soloLossCap;
 
   if (solo) soloLossCap = Math.max(soloSensBudgetDb, rawMedianRef - before.medianDb);
+
+  /* S-5 (19-11-2026) — THE SNAP'S KIT, on any network. Moved verbatim out of
+   * the catalogue snap below (`cur.parts` became `base`), so the snap and the
+   * catalogue-only search (`valueSearch: 'catalog'`) read ONE implementation of
+   * which parts may snap, what each may become and how a choice is scored. Built
+   * where it was built before for the snap, so every run without the search is
+   * byte-identical (the byte baselines reproduce). */
+  const snapKitFor = (base: readonly VxpPart[]) => {
+    const KIND_OF: Record<string, 'L' | 'C' | 'R'> = {
+      Inductor: 'L',
+      Capacitor: 'C',
+      Resistor: 'R',
+    };
+    const cw = opts.costWeight ?? 0.0015;
+    const upsert = (params: VxpPart['params'], name: string, value: number, unit: string) => {
+      const hit = params.find((q) => q.name === name);
+      if (hit) return params.map((q) => (q.name === name ? { ...q, value } : { ...q }));
+      return [...params.map((q) => ({ ...q })), { name, value, unit }];
+    };
+    // Reference impedance for the coil DCR budget: the median |Z| the network
+    // actually works into. Measured, not assumed, so a 4 Ω mid gets a tighter
+    // ceiling than an 8 Ω woofer without a second constant to keep in sync.
+    const refOhms = (() => {
+      const zs: number[] = [];
+      for (const z of Object.values(driverZ)) {
+        for (const c of z) zs.push(Math.hypot(c.re, c.im));
+      }
+      zs.sort((a, b) => a - b);
+      return zs.length > 0 ? zs[Math.floor(zs.length / 2)] : 0;
+    })();
+    const snapPrefs: SnapPrefs = { profile: 'auto', ...(opts.snapPrefs ?? {}), refOhms };
+    const snapables = base
+      .map((q, i) => ({ q, i }))
+      .filter(({ q }) => KIND_OF[q.type] && !q.locked && !q.open && !q.shorted && q.partId);
+    // Position per part: shared bus-path BFS (see busTopology) — the same
+    // classification the tuner's realism anchor uses, plus which driver each
+    // series element feeds.
+    const bus = busTopology(base);
+    const posOfPart = bus.positionOf;
+    /* PER-BRANCH COIL DCR BUDGET (aug 2026 — Sanders "19 simulaties en we
+     * kunnen niets beters verzinnen"). Two things were wrong at once, and
+     * together they handed the amplifier 1.7 Ω where his own hand-built filter
+     * sits at 0.23 Ω:
+     *
+     *  (1) the reference was the median |Z| POOLED over every driver (5.66 Ω
+     *      on the KOAN set, lifted by the tweeter and by every coil's
+     *      inductive rise) while the coil in question feeds a woofer pair
+     *      whose Re is 3.2 Ω — the guard was twice as generous as it should be
+     *      exactly in the branch that carries the current;
+     *  (2) the allowance was PER PART while source resistance is PER BRANCH,
+     *      so two or three series elements each cleared their own 0.5 dB and
+     *      the branch total was never looked at.
+     *
+     * So: reference = the MINIMUM |Z| of that branch's own driver (Re-like:
+     * the dip above resonance, before the inductive rise), budget = one branch
+     * allowance (branchDcrBudgetOhms), split over the branch's series coils in
+     * proportion to L^0.65 — the same exponent estimateCoilDcr uses, because a
+     * big coil legitimately needs more copper than a small one. An element on
+     * a shared section belongs to several drivers and takes the strictest.
+     *
+     * Feasibility, not preference: it applies at every profile, it never
+     * empties a pool (pickCandidates keeps the lowest-DCR part), and it is a
+     * bound on the SEARCH SPACE — it is never a term in the objective. */
+    const reOf = (model: string): number => {
+      const z = driverZ[model];
+      if (!z || z.length === 0) return 0;
+      let lo = Infinity;
+      for (const c of z) lo = Math.min(lo, Math.hypot(c.re, c.im));
+      return isFinite(lo) ? lo : 0;
+    };
+    /* The same three states as `rSourceLimit` above, and deliberately the same
+     * expression: this is the branch-DCR ceiling the catalogue snap works
+     * against, and a tier that meant one thing to the search and another to the
+     * snap is the arrangement `impedanceFloor.ts` exists to prevent. */
+    const rSrcLimit = rSourceLimit;
+    const coilWeight = (q: VxpPart): number => {
+      const v = q.params.find((p) => p.name === 'L')?.value ?? 0;
+      return v > 0 ? v ** 0.65 : 0;
+    };
+    /** Per-branch series-coil weight totals, for the proportional split. */
+    const branchCoilWeight = new Map<string, number>();
+    for (const { q } of snapables) {
+      if (q.type !== 'Inductor') continue;
+      for (const m of bus.driversOf(q.partId!)) {
+        branchCoilWeight.set(m, (branchCoilWeight.get(m) ?? 0) + coilWeight(q));
+      }
+    }
+    /** The ceiling a COPPER MODEL gives this coil, or undefined when no model judged it. */
+    const modelDcrCeilFor = (q: VxpPart): number | undefined => {
+      if (q.type !== 'Inductor') return undefined;
+      const henry = q.params.find((p) => p.name === 'L')?.value;
+      if (henry === undefined) return undefined;
+      /* E-4 — A COIL WITH A STATED FAMILY IS JUDGED BY THAT FAMILY. The search
+       * designed this coil with its family's copper (`refreshDcr`, A5e.3) and
+       * every gate read that number; the branch budget below is a v1 opinion
+       * that predates the family and refuses the design's own wire. Only when
+       * the run asks for it, and only for a coil the model actually named —
+       * everything else falls through to the ceiling it always had (P2/P4). */
+      if (opts.coilSnapDcrCeiling === 'family') {
+        const fit = dcrFitById[q.partId!];
+        if (fit) {
+          const ceil = snapDcrCeilingOhm(henry * 1e-3, fit); // mH → H, the reader's own conversion (vxpNetwork.ts)
+          if (ceil !== null) return ceil;
+        }
+      }
+      /* G-18 — A COIL WHOSE COPPER THE SEARCH TRACKED IS JUDGED BY THAT COPPER.
+       * The seed anchor is the same thing as a family one step earlier: the
+       * tune leaned on these ohms at every evaluation, every gate and inversion
+       * read them, and on the three-way demo the woofer's series coil carried
+       * 1.42 Ω that held the amplifier floor at 82 Hz. The branch budget
+       * allowed it 0.27 Ω, so the pool held core coils only, the snap took the
+       * copper away and the floor fell through — measured, part by part, with
+       * every other part continuous. The ceiling is the tracked ohms widened by
+       * the catalogue's own reach (`SEED_ANCHORED_DCR_REACH`, in the fit's
+       * `maxPct`); it exists only where the anchor exists, i.e. under the snap
+       * with a catalogue, so every other run keeps the ceiling it had (P2). */
+      const tracked = seedAnchoredFitById[q.partId!];
+      if (tracked) {
+        const ceil = snapDcrCeilingOhm(henry * 1e-3, tracked);
+        if (ceil !== null) return ceil;
+      }
+      return undefined;
+    };
+    const dcrCeilFor = (q: VxpPart): number | undefined => {
+      if (q.type !== 'Inductor') return undefined;
+      const model = modelDcrCeilFor(q);
+      if (model !== undefined) return model;
+      const models = bus.driversOf(q.partId!);
+      if (models.length === 0) return undefined;
+      const w = coilWeight(q);
+      if (!(w > 0)) return undefined;
+      let ceil = Infinity;
+      for (const m of models) {
+        const total = branchCoilWeight.get(m) ?? 0;
+        if (!(total > 0)) continue;
+        const budget = branchDcrBudgetOhms(reOf(m), rSrcLimit);
+        ceil = Math.min(ceil, (budget * w) / total);
+      }
+      return isFinite(ceil) ? ceil : undefined;
+    };
+    /* G-18 — THE PER-PART ALLOWANCE IS OFF FOR A MODEL-JUDGED COIL.
+     * `pickCandidates` takes the STRICTER of the caller's ceiling and its own
+     * per-part allowance (`DCR_BUDGET_DB` on the pooled median |Z|, 0.34 Ω on
+     * the demo's series coils) — so a family or tracked ceiling of 1.4 Ω was
+     * clipped back to a third of an ohm and the model never reached the pool.
+     * E-4's family coils survived that only through the "budget unreachable"
+     * fallback inside `withinDcr`, by the order of two filters. For a coil a
+     * copper model judged, the model IS the allowance: `refOhms: 0` is the
+     * documented way to ask `pickCandidates` for none. Every other coil keeps
+     * both ceilings exactly as before. */
+    const snapPrefsFor = (q: VxpPart): SnapPrefs =>
+      modelDcrCeilFor(q) !== undefined ? { ...snapPrefs, refOhms: 0 } : snapPrefs;
+    const cands = snapables.map(({ q }) => {
+      const kind = KIND_OF[q.type];
+      const u = PARAM_OF[kind];
+      const raw = q.params.find((p) => p.name === u.name)?.value ?? 0;
+      /* A5e.3 — a coil the DCR model gave a family snaps INSIDE that family,
+       * so the continuous → snapped transition is the family's own residual
+       * and not a jump to another gauge; `pickCandidates` keeps the whole
+       * pool when the family cannot cover the value (the 25 % reach rule). */
+      const fit = kind === 'L' ? dcrFitById[q.partId!] : undefined;
+      const only = fit ? (p: CatalogPart) => catalogFamilyOf(p) === fit.family : undefined;
+      return pickCandidates(kind, raw / u.factor, 3, snapPrefsFor(q), posOfPart(q.partId!), dcrCeilFor(q), only);
+    });
+    const applied = (ch: (CatalogPick | null)[]): VxpPart[] => {
+      const out = cloneParts(base);
+      snapables.forEach(({ q, i }, j) => {
+        const p = ch[j];
+        if (!p) return;
+        const kind = KIND_OF[q.type];
+        const u = PARAM_OF[kind];
+        let params = upsert(out[i].params, u.name, Number((p.value * u.factor).toPrecision(4)), '');
+        if (kind === 'L') params = upsert(params, 'DCR', Number(p.seriesR.toPrecision(3)), 'Ω');
+        if (kind === 'C') params = upsert(params, 'ESR', Number(p.seriesR.toPrecision(3)), 'Ω');
+        out[i] = { ...out[i], params, catalog: p.parts.map((x) => x.id).join('+') };
+      });
+      return out;
+    };
+    /* AMP LOAD SURVIVES THE SNAP. The snap judges on fxOf(), and the amp-load
+     * floor is deliberately absent there (see the amplifier-load note) — so the discrete
+     * pass happily undid the repair that ran two steps earlier. Measured on
+     * Sander's 3-way: "minimum lifted 2.1 → 2.4 Ω" in the note while the
+     * delivered network sat at 1.9 Ω, because the catalog values that fit best
+     * put the dip back. Same disease as the relative repair bar: a guard
+     * enforced at one step and silently undone at the next.
+     *
+     * Kept at DECISION level, and deliberately a steep penalty rather than a
+     * hard reject: when no purchasable combination clears the bar the descent
+     * must still rank the least-bad ones instead of collapsing to "first
+     * candidate in every slot". Asking for more than the floor is pointless,
+     * and a pre-snap network already under it only has to not get worse. */
+    /* With a rating: aim at it, and never worse than the network already is.
+     * WITHOUT one: purely RELATIVE — "do not give back what the value tune
+     * achieved". That needs no assumption about anybody's amplifier and is
+     * the only part of the old floor's job that survives its removal. */
+    /* ---- THE SNAP DECIDES ON WHAT IT DELIVERS ------------------------------
+     *
+     * `quickFxZ` scores on the DECIMATED optimisation grid (48 of 240 points
+     * here). For the value tune that is fine: it perturbs continuously and the
+     * decimation averages out. The snap does something else — it runs a
+     * coordinate descent over discrete alternatives and moves a long way.
+     * Measured on Sanders 400/2100 candidate, the network the repair handed
+     * over versus the one the snap chose:
+     *
+     *     coarse (48)   fx 132.2 → 42.5     "three times better"
+     *     full  (240)   peak 2.44 → 3.17 dB, phase 16.4 → 34.2°
+     *
+     * It optimised itself into a hole it could not see. Both other suspects
+     * were measured and cleared first: the impedance term costs nothing
+     * (with it 34.2°, without it 34.3° — it buys 1.19 Ω for a tenth of a
+     * degree), and the end audit costs 0.01 dB and 0.6°.
+     *
+     * So the snap scores on the grid it delivers on. It is the same lesson
+     * this file keeps paying for — a decision taken on a coarser quantity than
+     * the thing being decided — and the same one that broke a guard of mine
+     * earlier the same day. The extra solves are the price of the answer being
+     * about the network that ships. */
+    const snapFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number; floorShort: number } => {
+      tick();
+      const { work } = buildWork(ps);
+      const m = metricsOn(work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
+      /* G-18 — THE FLOOR, READ WHERE THE BARRIER READS IT. `m.zMinOhm` is the
+       * evaluation grid's minimum, and on a measurement set whose far-field
+       * span starts above the impedance minimum that grid is blind to the dip
+       * the gate refuses — V33's finding, on the snap: the demo's chain grid
+       * begins at 397 Hz, the woofer pair's saddle sits at 82 Hz, and the snap
+       * ranked twenty-nine coils on a shortfall it could not see. The barrier's
+       * own reading (`barrierShortOhm`, exact: no tracker) is the graded
+       * quantity on the gate's band; without a floor or without a place to
+       * read it the term is zero and the score is what it was. */
+      const floorShort = ampFloorOhm === null ? 0 : barrierShortOhm(m, work, true);
+      return { fx: fxOf(m), zMin: m.zMinOhm, floorShort };
+    };
+    const pre = snapFxZ(base);
+    const zPre = pre.zMin;
+    const zSnapTarget = ampFloorOhm === null ? zPre : Math.min(ampFloorOhm, zPre);
+    const snapScore = (ch: (CatalogPick | null)[]): number => {
+      const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
+      const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
+      let fx: number;
+      let zMin: number;
+      let floorShort: number;
+      try {
+        ({ fx, zMin, floorShort } = snapFxZ(applied(ch)));
+      } catch (caught) {
+        rethrowIfPlatformError(caught);
+        return 1e12;
+      }
+      /* The same rule on both readings: aim at the floor, and never worse
+       * than the network the snap starts from. */
+      const zShort = Math.max(0, zSnapTarget - zMin, floorShort - pre.floorShort);
+      return fx * (1 + 0.05 * extra) * (1 + cw * cost) * (1 + 20 * zShort);
+    };
+    const descend = (candSets: CatalogPick[][]): { picks: (CatalogPick | null)[]; score: number } => {
+      let ps: (CatalogPick | null)[] = candSets.map((c) => c[0] ?? null);
+      let best = snapScore(ps);
+      for (let pass = 0; pass < 2; pass++) {
+        for (let j = 0; j < ps.length; j++) {
+          for (const cand of candSets[j]) {
+            if (cand === ps[j]) continue;
+            const trial = [...ps];
+            trial[j] = cand;
+            const sc = snapScore(trial);
+            if (sc < best) {
+              best = sc;
+              ps = trial;
+            }
+          }
+        }
+      }
+      return { picks: ps, score: best };
+    };
+    return { KIND_OF, cw, upsert, refOhms, snapPrefs, snapables, bus, posOfPart, reOf, rSrcLimit, coilWeight, branchCoilWeight, modelDcrCeilFor, dcrCeilFor, snapPrefsFor, cands, applied, snapFxZ, pre, zPre, zSnapTarget, snapScore, descend };
+  };
 
   stage('value tune');
   /* ---- Stage: value tuning (always) — MULTI-START. The response landscape
@@ -5052,6 +5425,260 @@ export function optimizeNetworkValues(
     const m = metricsOn(buildWork(ps).work, optW.freq, optW, optT, optM, optZ, optAngles, optActive);
     return { parts: cloneParts(ps), freeCount: 0, fx: fxOf(m), metrics: m };
   };
+
+  /* ---- S-5: THE CATALOGUE-ONLY SEARCH (`valueSearch: 'catalog'`) --------
+   *
+   * Sander, 19-11-2026: "bij de snap mag hij alleen de beschikbare componenten
+   * gebruiken". The continuous tune spends nearly all of a run on values that
+   * no series stocks and the snap then throws that precision away — and when a
+   * gate refuses the tune before the snap, what is left is a design of values
+   * nobody can buy. Here the search never leaves the catalogue: the nearest
+   * purchasable realisation of every seed value first, then a coordinate
+   * descent over neighbouring purchasable parts, scored exactly as the snap
+   * scores (`snapScore`: fit, extra parts in a stack, cost, the load floor) and
+   * with a stated gate as a hard rank. Absent = the continuous route below,
+   * untouched (P2). */
+  /* Only on a run that adds and removes no part: the catalogue search moves
+   * VALUES, and a run that asks for the staged pass or the part audit asks for
+   * a structure search this one does not do. Measured on the free filter
+   * (casus 1, 35 parts with corrections): ripple 6.6–9.4 dB against 2.2 for the
+   * continuous route. Asked for there, the continuous route runs and the note
+   * says why (P4). */
+  const catalogSearchStructural =
+    opts.valueSearch === 'catalog' && !!opts.catalogSnap && hasImportedCatalog() && (!!opts.staged || auditOn);
+  if (opts.valueSearch === 'catalog' && opts.catalogSnap && hasImportedCatalog() && !opts.staged && !auditOn) {
+    stage('catalog search');
+    const kit = snapKitFor(seedParts);
+    if (kit.snapables.length > 0) {
+      const keyOf = (c: CatalogPick | null) => (c ? c.parts.map((x) => x.id).join('+') : '');
+      const optionsAt = (j: number, value: number): CatalogPick[] => {
+        const { q } = kit.snapables[j];
+        const kind = kit.KIND_OF[q.type];
+        const fit = kind === 'L' ? dcrFitById[q.partId!] : undefined;
+        const only = fit ? (p: CatalogPart) => catalogFamilyOf(p) === fit.family : undefined;
+        const seen = new Set<string>();
+        const out: CatalogPick[] = [];
+        for (const r of CATALOG_SEARCH_STEPS) {
+          for (const c of pickCandidates(kind, value * r, 3, kit.snapPrefsFor(q), kit.posOfPart(q.partId!), kit.dcrCeilFor(q), only)) {
+            const k = keyOf(c);
+            if (!seen.has(k)) {
+              seen.add(k);
+              out.push(c);
+            }
+          }
+        }
+        return out;
+      };
+      const gateOf = (ch: (CatalogPick | null)[]): string | null =>
+        opts.gateViolation ? cachedGateViolation(kit.applied(ch), 'catalogue search') : null;
+      const ranked = (sc: number, g: string | null) => (g ? CATALOG_SEARCH_GATE_PENALTY : 0) + sc;
+      /* THE TUNE'S OWN OBJECTIVE, in its discrete mode (`objectiveOn`): the
+       * search box, the sum ceilings, the barriers the main tune runs with (the
+       * load floor as a goal when the run states one) and `fxOf` — so a
+       * purchasable network is scored on exactly the terms a continuous point
+       * is. Measured why: on the snap's score alone the search broke the LF
+       * budget the continuous tune is held under by its sum ceiling (M-D 2.77
+       * against 1.4 dB). The snap's cost and stack terms ride on top, as in the
+       * snap. */
+      const score_ = (ch: (CatalogPick | null)[]): number => {
+        const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
+        const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
+        let v: number;
+        try {
+          const ps = kit.applied(ch);
+          const { work: w, free: f } = buildWork(ps);
+          if (f.length === 0) {
+            v = fxOf(metricsOn(w, optW.freq, optW, optT, optM, optZ, optAngles, optActive));
+          } else {
+            // No staged barrier: the search runs only where no staged pass is asked for, as the main tune.
+            const o = objectiveOn(ps, w, f, null, true, zFloorGoal, false, true);
+            v = o.objective(f.map((e) => Math.log10(e.value)));
+          }
+        } catch (caught) {
+          rethrowIfPlatformError(caught);
+          return 1e12;
+        }
+        return v * (1 + 0.05 * extra) * (1 + kit.cw * cost);
+      };
+      /* BRANCH MOVES: a coupled ladder cannot move its corner one part at a
+       * time — every L and C of one way scaled together is the move that does.
+       * A part belongs to the way whose bus it touches off the shared nodes. */
+      const models = [...new Set(seedParts.filter((q) => q.type === 'Driver' && q.model).map((q) => q.model!))];
+      const busOf = new Map(models.map((m) => [m, new Set(kit.bus.busNodesOf(m))]));
+      const shared = new Set([...(busOf.values().next().value ?? [])].filter((n) => [...busOf.values()].every((b) => b.has(n))));
+      const groups = models
+        .map((m) =>
+          kit.snapables
+            .map(({ q }, j) => ({ q, j }))
+            .filter(({ q }) => {
+              if (q.type === 'Resistor') return false;
+              const ns = kit.bus.nodesOf(q.partId!);
+              return !!ns && ns.some((n) => busOf.get(m)!.has(n) && !shared.has(n));
+            })
+            .map(({ j }) => j),
+        )
+        .filter((g) => g.length >= 2);
+      /* Two coupled moves per way: FREQUENCY (every L and C × r, the corners move
+       * by 1/r) and IMPEDANCE (L × r, C ÷ r, the level of the way's ladder moves
+       * and its corners stay). A ladder needs both, and neither is a sequence of
+       * single-part improvements. */
+      const scaled = (
+        ch: (CatalogPick | null)[],
+        group: readonly number[],
+        r: number,
+        mode: 'frequency' | 'impedance',
+      ): (CatalogPick | null)[] => {
+        const out = [...ch];
+        for (const j of group) {
+          const now = ch[j];
+          if (!now) continue;
+          const isC = kit.snapables[j].q.type === 'Capacitor';
+          const target = now.value * (mode === 'impedance' && isC ? 1 / r : r);
+          const opt = optionsAt(j, target)
+            .slice()
+            .sort((a, b) => Math.abs(Math.log(a.value / target)) - Math.abs(Math.log(b.value / target)))[0];
+          if (opt) out[j] = opt;
+        }
+        return out;
+      };
+      let picks: (CatalogPick | null)[] = kit.cands.map((c) => c[0] ?? null);
+      let score = 0;
+      let gate: string | null = null;
+      let passes = 0;
+      /** The nearest purchasable value one step below and one step above the current pick. */
+      const stepsOf = (j: number): CatalogPick[] => {
+        const now = picks[j];
+        if (!now) return [];
+        const opts = optionsAt(j, now.value);
+        const below = opts.filter((c) => c.value < now.value * (1 - 1e-6)).sort((x, y) => y.value - x.value)[0];
+        const above = opts.filter((c) => c.value > now.value * (1 + 1e-6)).sort((x, y) => x.value - y.value)[0];
+        return [below, above].filter((c): c is CatalogPick => !!c);
+      };
+      const tryMove = (trial: (CatalogPick | null)[]): boolean => {
+        const sc = score_(trial);
+        // A gate-clean network only moves to a better score; a refused one
+        // asks the gate of every trial, because leaving the refusal wins.
+        if (!gate && !(sc < score)) return false;
+        const g = gateOf(trial);
+        if (ranked(sc, g) < ranked(score, gate)) {
+          picks = trial;
+          score = sc;
+          gate = g;
+          return true;
+        }
+        return false;
+      };
+      const descendFrom = (start: (CatalogPick | null)[]) => {
+      picks = start;
+      score = score_(picks);
+      gate = gateOf(picks);
+      for (let pass = 0; pass < CATALOG_SEARCH_MAX_PASSES; pass++) {
+        passes++;
+        let moved = false;
+        for (const g of groups) {
+          for (const mode of ['frequency', 'impedance'] as const) {
+            for (const r of CATALOG_SEARCH_BRANCH_SCALES) if (tryMove(scaled(picks, g, r, mode))) moved = true;
+          }
+        }
+        for (let j = 0; j < picks.length; j++) {
+          const now = picks[j];
+          if (!now) continue;
+          for (const cand of optionsAt(j, now.value)) {
+            if (keyOf(cand) === keyOf(picks[j])) continue;
+            const trial = [...picks];
+            trial[j] = cand;
+            if (tryMove(trial)) moved = true;
+          }
+        }
+        /* PAIR MOVES: two parts of one way, each one catalogue step down or up
+         * at once — the move between "one part" and "the whole way" that a
+         * ladder's L–C pairs need. */
+        for (const g of groups) {
+          for (let a = 0; a < g.length; a++) {
+            for (let b = a + 1; b < g.length; b++) {
+              const sa = stepsOf(g[a]);
+              const sb = stepsOf(g[b]);
+              for (const pa of sa) {
+                for (const pb of sb) {
+                  const trial = [...picks];
+                  trial[g[a]] = pa;
+                  trial[g[b]] = pb;
+                  if (tryMove(trial)) moved = true;
+                }
+              }
+            }
+          }
+        }
+        if (!moved) break;
+      }
+      return { picks, score, gate };
+      };
+      /* ITERATED LOCAL SEARCH: kick the best network (every way moved at once,
+       * by `CATALOG_SEARCH_KICKS`), descend again, keep the better. A descent
+       * ends in the nearest valley; a kick is how it looks over the ridge.
+       * Deterministic — fixed kicks, no random draw. */
+      let best = descendFrom(kit.cands.map((c) => c[0] ?? null));
+      for (const kick of CATALOG_SEARCH_KICKS) {
+        let start = best.picks;
+        for (const g of groups) start = scaled(start, g, kick.r, kick.mode);
+        const r = descendFrom(start);
+        if (ranked(r.score, r.gate) < ranked(best.score, best.gate)) best = r;
+      }
+      picks = best.picks;
+      score = best.score;
+      gate = best.gate;
+      const outParts = kit.applied(picks);
+      const outM = metricsOn(buildWork(outParts).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
+      const stacks = picks.filter((p) => p && p.parts.length > 1).length;
+      const searchNote =
+        `catalogue-only search (S-5): ${kit.snapables.length} parts on purchasable values from the start, ` +
+        `${passes} pass(es), ${evaluations} evaluations` +
+        (stacks > 0 ? `, ${stacks} stack(s)` : '') +
+        ' — no continuous value was simulated, and no structural pass ran (the topology is the seed\'s)';
+      const refusedBy = opts.gateViolation ? gateRefusal(outParts, 'catalogue search') : null;
+      if (refusedBy !== null) {
+        return {
+          parts: cloneParts(parts),
+          before: report(before, parts),
+          after: report(before, parts),
+          tuned: 0,
+          evaluations,
+          removed: [],
+          added: [],
+          bandNote: bandNoteText,
+          snapNote: searchNote,
+          refusal: {
+            by: 'active-gate',
+            kinds: ['gate'],
+            reason: refusedBy,
+            note:
+              'An active gate refused every purchasable network the catalogue-only search reached, so ' +
+              'this run delivers no network (casebook V31). What it reached is made of parts you can buy.',
+          },
+          ...(opts.rejectedTuneReport
+            ? { rejectedTune: report(outM, outParts), rejectedParts: cloneParts(outParts) }
+            : {}),
+          gateRefusals,
+          gateEvaluations,
+          gateCacheHits,
+        };
+      }
+      const hard = constraintViolation(outParts);
+      return {
+        parts: outParts,
+        before: report(before, parts),
+        after: { ...report(outM, outParts), xoHz: outM.xoHz },
+        tuned: kit.snapables.length,
+        evaluations,
+        removed: [],
+        added: [],
+        bandNote: bandNoteText,
+        snapNote: searchNote,
+        ...(hard ? { infeasible: hard } : {}),
+        ...(opts.gateViolation ? { gateRefusals, gateEvaluations, gateCacheHits } : {}),
+      };
+    }
+  }
 
   let cur = tune(seedParts);
   /* F2 — the value search is where the V2 pathology is BORN (a phase target
@@ -5671,270 +6298,7 @@ export function optimizeNetworkValues(
    * values, judged on the ASSEMBLED network with real DCR/ESR riding along.
    * Runs last on purpose — any later value tune would un-snap it. ---- */
   if (opts.catalogSnap && hasImportedCatalog()) {
-    const KIND_OF: Record<string, 'L' | 'C' | 'R'> = {
-      Inductor: 'L',
-      Capacitor: 'C',
-      Resistor: 'R',
-    };
-    const cw = opts.costWeight ?? 0.0015;
-    const upsert = (params: VxpPart['params'], name: string, value: number, unit: string) => {
-      const hit = params.find((q) => q.name === name);
-      if (hit) return params.map((q) => (q.name === name ? { ...q, value } : { ...q }));
-      return [...params.map((q) => ({ ...q })), { name, value, unit }];
-    };
-    // Reference impedance for the coil DCR budget: the median |Z| the network
-    // actually works into. Measured, not assumed, so a 4 Ω mid gets a tighter
-    // ceiling than an 8 Ω woofer without a second constant to keep in sync.
-    const refOhms = (() => {
-      const zs: number[] = [];
-      for (const z of Object.values(driverZ)) {
-        for (const c of z) zs.push(Math.hypot(c.re, c.im));
-      }
-      zs.sort((a, b) => a - b);
-      return zs.length > 0 ? zs[Math.floor(zs.length / 2)] : 0;
-    })();
-    const snapPrefs: SnapPrefs = { profile: 'auto', ...(opts.snapPrefs ?? {}), refOhms };
-    const snapables = cur.parts
-      .map((q, i) => ({ q, i }))
-      .filter(({ q }) => KIND_OF[q.type] && !q.locked && !q.open && !q.shorted && q.partId);
-    // Position per part: shared bus-path BFS (see busTopology) — the same
-    // classification the tuner's realism anchor uses, plus which driver each
-    // series element feeds.
-    const bus = busTopology(cur.parts);
-    const posOfPart = bus.positionOf;
-    /* PER-BRANCH COIL DCR BUDGET (aug 2026 — Sanders "19 simulaties en we
-     * kunnen niets beters verzinnen"). Two things were wrong at once, and
-     * together they handed the amplifier 1.7 Ω where his own hand-built filter
-     * sits at 0.23 Ω:
-     *
-     *  (1) the reference was the median |Z| POOLED over every driver (5.66 Ω
-     *      on the KOAN set, lifted by the tweeter and by every coil's
-     *      inductive rise) while the coil in question feeds a woofer pair
-     *      whose Re is 3.2 Ω — the guard was twice as generous as it should be
-     *      exactly in the branch that carries the current;
-     *  (2) the allowance was PER PART while source resistance is PER BRANCH,
-     *      so two or three series elements each cleared their own 0.5 dB and
-     *      the branch total was never looked at.
-     *
-     * So: reference = the MINIMUM |Z| of that branch's own driver (Re-like:
-     * the dip above resonance, before the inductive rise), budget = one branch
-     * allowance (branchDcrBudgetOhms), split over the branch's series coils in
-     * proportion to L^0.65 — the same exponent estimateCoilDcr uses, because a
-     * big coil legitimately needs more copper than a small one. An element on
-     * a shared section belongs to several drivers and takes the strictest.
-     *
-     * Feasibility, not preference: it applies at every profile, it never
-     * empties a pool (pickCandidates keeps the lowest-DCR part), and it is a
-     * bound on the SEARCH SPACE — it is never a term in the objective. */
-    const reOf = (model: string): number => {
-      const z = driverZ[model];
-      if (!z || z.length === 0) return 0;
-      let lo = Infinity;
-      for (const c of z) lo = Math.min(lo, Math.hypot(c.re, c.im));
-      return isFinite(lo) ? lo : 0;
-    };
-    /* The same three states as `rSourceLimit` above, and deliberately the same
-     * expression: this is the branch-DCR ceiling the catalogue snap works
-     * against, and a tier that meant one thing to the search and another to the
-     * snap is the arrangement `impedanceFloor.ts` exists to prevent. */
-    const rSrcLimit = rSourceLimit;
-    const coilWeight = (q: VxpPart): number => {
-      const v = q.params.find((p) => p.name === 'L')?.value ?? 0;
-      return v > 0 ? v ** 0.65 : 0;
-    };
-    /** Per-branch series-coil weight totals, for the proportional split. */
-    const branchCoilWeight = new Map<string, number>();
-    for (const { q } of snapables) {
-      if (q.type !== 'Inductor') continue;
-      for (const m of bus.driversOf(q.partId!)) {
-        branchCoilWeight.set(m, (branchCoilWeight.get(m) ?? 0) + coilWeight(q));
-      }
-    }
-    /** The ceiling a COPPER MODEL gives this coil, or undefined when no model judged it. */
-    const modelDcrCeilFor = (q: VxpPart): number | undefined => {
-      if (q.type !== 'Inductor') return undefined;
-      const henry = q.params.find((p) => p.name === 'L')?.value;
-      if (henry === undefined) return undefined;
-      /* E-4 — A COIL WITH A STATED FAMILY IS JUDGED BY THAT FAMILY. The search
-       * designed this coil with its family's copper (`refreshDcr`, A5e.3) and
-       * every gate read that number; the branch budget below is a v1 opinion
-       * that predates the family and refuses the design's own wire. Only when
-       * the run asks for it, and only for a coil the model actually named —
-       * everything else falls through to the ceiling it always had (P2/P4). */
-      if (opts.coilSnapDcrCeiling === 'family') {
-        const fit = dcrFitById[q.partId!];
-        if (fit) {
-          const ceil = snapDcrCeilingOhm(henry * 1e-3, fit); // mH → H, the reader's own conversion (vxpNetwork.ts)
-          if (ceil !== null) return ceil;
-        }
-      }
-      /* G-18 — A COIL WHOSE COPPER THE SEARCH TRACKED IS JUDGED BY THAT COPPER.
-       * The seed anchor is the same thing as a family one step earlier: the
-       * tune leaned on these ohms at every evaluation, every gate and inversion
-       * read them, and on the three-way demo the woofer's series coil carried
-       * 1.42 Ω that held the amplifier floor at 82 Hz. The branch budget
-       * allowed it 0.27 Ω, so the pool held core coils only, the snap took the
-       * copper away and the floor fell through — measured, part by part, with
-       * every other part continuous. The ceiling is the tracked ohms widened by
-       * the catalogue's own reach (`SEED_ANCHORED_DCR_REACH`, in the fit's
-       * `maxPct`); it exists only where the anchor exists, i.e. under the snap
-       * with a catalogue, so every other run keeps the ceiling it had (P2). */
-      const tracked = seedAnchoredFitById[q.partId!];
-      if (tracked) {
-        const ceil = snapDcrCeilingOhm(henry * 1e-3, tracked);
-        if (ceil !== null) return ceil;
-      }
-      return undefined;
-    };
-    const dcrCeilFor = (q: VxpPart): number | undefined => {
-      if (q.type !== 'Inductor') return undefined;
-      const model = modelDcrCeilFor(q);
-      if (model !== undefined) return model;
-      const models = bus.driversOf(q.partId!);
-      if (models.length === 0) return undefined;
-      const w = coilWeight(q);
-      if (!(w > 0)) return undefined;
-      let ceil = Infinity;
-      for (const m of models) {
-        const total = branchCoilWeight.get(m) ?? 0;
-        if (!(total > 0)) continue;
-        const budget = branchDcrBudgetOhms(reOf(m), rSrcLimit);
-        ceil = Math.min(ceil, (budget * w) / total);
-      }
-      return isFinite(ceil) ? ceil : undefined;
-    };
-    /* G-18 — THE PER-PART ALLOWANCE IS OFF FOR A MODEL-JUDGED COIL.
-     * `pickCandidates` takes the STRICTER of the caller's ceiling and its own
-     * per-part allowance (`DCR_BUDGET_DB` on the pooled median |Z|, 0.34 Ω on
-     * the demo's series coils) — so a family or tracked ceiling of 1.4 Ω was
-     * clipped back to a third of an ohm and the model never reached the pool.
-     * E-4's family coils survived that only through the "budget unreachable"
-     * fallback inside `withinDcr`, by the order of two filters. For a coil a
-     * copper model judged, the model IS the allowance: `refOhms: 0` is the
-     * documented way to ask `pickCandidates` for none. Every other coil keeps
-     * both ceilings exactly as before. */
-    const snapPrefsFor = (q: VxpPart): SnapPrefs =>
-      modelDcrCeilFor(q) !== undefined ? { ...snapPrefs, refOhms: 0 } : snapPrefs;
-    const cands = snapables.map(({ q }) => {
-      const kind = KIND_OF[q.type];
-      const u = PARAM_OF[kind];
-      const raw = q.params.find((p) => p.name === u.name)?.value ?? 0;
-      /* A5e.3 — a coil the DCR model gave a family snaps INSIDE that family,
-       * so the continuous → snapped transition is the family's own residual
-       * and not a jump to another gauge; `pickCandidates` keeps the whole
-       * pool when the family cannot cover the value (the 25 % reach rule). */
-      const fit = kind === 'L' ? dcrFitById[q.partId!] : undefined;
-      const only = fit ? (p: CatalogPart) => catalogFamilyOf(p) === fit.family : undefined;
-      return pickCandidates(kind, raw / u.factor, 3, snapPrefsFor(q), posOfPart(q.partId!), dcrCeilFor(q), only);
-    });
-    const applied = (ch: (CatalogPick | null)[]): VxpPart[] => {
-      const out = cloneParts(cur.parts);
-      snapables.forEach(({ q, i }, j) => {
-        const p = ch[j];
-        if (!p) return;
-        const kind = KIND_OF[q.type];
-        const u = PARAM_OF[kind];
-        let params = upsert(out[i].params, u.name, Number((p.value * u.factor).toPrecision(4)), '');
-        if (kind === 'L') params = upsert(params, 'DCR', Number(p.seriesR.toPrecision(3)), 'Ω');
-        if (kind === 'C') params = upsert(params, 'ESR', Number(p.seriesR.toPrecision(3)), 'Ω');
-        out[i] = { ...out[i], params, catalog: p.parts.map((x) => x.id).join('+') };
-      });
-      return out;
-    };
-    /* AMP LOAD SURVIVES THE SNAP. The snap judges on fxOf(), and the amp-load
-     * floor is deliberately absent there (see the amplifier-load note) — so the discrete
-     * pass happily undid the repair that ran two steps earlier. Measured on
-     * Sander's 3-way: "minimum lifted 2.1 → 2.4 Ω" in the note while the
-     * delivered network sat at 1.9 Ω, because the catalog values that fit best
-     * put the dip back. Same disease as the relative repair bar: a guard
-     * enforced at one step and silently undone at the next.
-     *
-     * Kept at DECISION level, and deliberately a steep penalty rather than a
-     * hard reject: when no purchasable combination clears the bar the descent
-     * must still rank the least-bad ones instead of collapsing to "first
-     * candidate in every slot". Asking for more than the floor is pointless,
-     * and a pre-snap network already under it only has to not get worse. */
-    /* With a rating: aim at it, and never worse than the network already is.
-     * WITHOUT one: purely RELATIVE — "do not give back what the value tune
-     * achieved". That needs no assumption about anybody's amplifier and is
-     * the only part of the old floor's job that survives its removal. */
-    /* ---- THE SNAP DECIDES ON WHAT IT DELIVERS ------------------------------
-     *
-     * `quickFxZ` scores on the DECIMATED optimisation grid (48 of 240 points
-     * here). For the value tune that is fine: it perturbs continuously and the
-     * decimation averages out. The snap does something else — it runs a
-     * coordinate descent over discrete alternatives and moves a long way.
-     * Measured on Sanders 400/2100 candidate, the network the repair handed
-     * over versus the one the snap chose:
-     *
-     *     coarse (48)   fx 132.2 → 42.5     "three times better"
-     *     full  (240)   peak 2.44 → 3.17 dB, phase 16.4 → 34.2°
-     *
-     * It optimised itself into a hole it could not see. Both other suspects
-     * were measured and cleared first: the impedance term costs nothing
-     * (with it 34.2°, without it 34.3° — it buys 1.19 Ω for a tenth of a
-     * degree), and the end audit costs 0.01 dB and 0.6°.
-     *
-     * So the snap scores on the grid it delivers on. It is the same lesson
-     * this file keeps paying for — a decision taken on a coarser quantity than
-     * the thing being decided — and the same one that broke a guard of mine
-     * earlier the same day. The extra solves are the price of the answer being
-     * about the network that ships. */
-    const snapFxZ = (ps: readonly VxpPart[]): { fx: number; zMin: number; floorShort: number } => {
-      tick();
-      const { work } = buildWork(ps);
-      const m = metricsOn(work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
-      /* G-18 — THE FLOOR, READ WHERE THE BARRIER READS IT. `m.zMinOhm` is the
-       * evaluation grid's minimum, and on a measurement set whose far-field
-       * span starts above the impedance minimum that grid is blind to the dip
-       * the gate refuses — V33's finding, on the snap: the demo's chain grid
-       * begins at 397 Hz, the woofer pair's saddle sits at 82 Hz, and the snap
-       * ranked twenty-nine coils on a shortfall it could not see. The barrier's
-       * own reading (`barrierShortOhm`, exact: no tracker) is the graded
-       * quantity on the gate's band; without a floor or without a place to
-       * read it the term is zero and the score is what it was. */
-      const floorShort = ampFloorOhm === null ? 0 : barrierShortOhm(m, work, true);
-      return { fx: fxOf(m), zMin: m.zMinOhm, floorShort };
-    };
-    const pre = snapFxZ(cur.parts);
-    const zPre = pre.zMin;
-    const zSnapTarget = ampFloorOhm === null ? zPre : Math.min(ampFloorOhm, zPre);
-    const snapScore = (ch: (CatalogPick | null)[]): number => {
-      const extra = ch.reduce((a, p) => a + (p ? p.parts.length - 1 : 0), 0);
-      const cost = ch.reduce((a, p) => a + (p?.priceEur ?? 0), 0);
-      let fx: number;
-      let zMin: number;
-      let floorShort: number;
-      try {
-        ({ fx, zMin, floorShort } = snapFxZ(applied(ch)));
-      } catch (caught) {
-        rethrowIfPlatformError(caught);
-        return 1e12;
-      }
-      /* The same rule on both readings: aim at the floor, and never worse
-       * than the network the snap starts from. */
-      const zShort = Math.max(0, zSnapTarget - zMin, floorShort - pre.floorShort);
-      return fx * (1 + 0.05 * extra) * (1 + cw * cost) * (1 + 20 * zShort);
-    };
-    const descend = (candSets: CatalogPick[][]): { picks: (CatalogPick | null)[]; score: number } => {
-      let ps: (CatalogPick | null)[] = candSets.map((c) => c[0] ?? null);
-      let best = snapScore(ps);
-      for (let pass = 0; pass < 2; pass++) {
-        for (let j = 0; j < ps.length; j++) {
-          for (const cand of candSets[j]) {
-            if (cand === ps[j]) continue;
-            const trial = [...ps];
-            trial[j] = cand;
-            const sc = snapScore(trial);
-            if (sc < best) {
-              best = sc;
-              ps = trial;
-            }
-          }
-        }
-      }
-      return { picks: ps, score: best };
-    };
+    const { KIND_OF, snapables, bus, posOfPart, reOf, rSrcLimit, dcrCeilFor, snapPrefsFor, cands, applied, descend } = snapKitFor(cur.parts);
     const withStacks = descend(cands);
     let picks = withStacks.picks;
     // Conscious stacking: when stacks got picked, also price the singles-only
@@ -6126,6 +6490,13 @@ export function optimizeNetworkValues(
     }
   }
 
+  if (catalogSearchStructural) {
+    const why =
+      'catalogue-only search (S-5) not run: this run asks for a structure search (the staged pass or the ' +
+      'part audit), which moves parts in and out, and the catalogue search moves values only — the ' +
+      'continuous search ran instead';
+    snapNote = snapNote ? `${why} · ${snapNote}` : why;
+  }
   /* ---- GATE 4 (end): the same audit, and it runs LAST — after the shrink
    * ladder, the amplifier-load repair and the catalog snap. It used to sit
    * before all three, which meant the report the designer reads described a

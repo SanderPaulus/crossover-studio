@@ -51,6 +51,8 @@ export interface ChainSettings {
    * this chain byte for byte as it was (P2).
    */
   topology?: 'free' | 'standard';
+  /** S-5 — the tuner's `valueSearch`, carried for the candidate declaration; the chain itself reads nothing of it. */
+  valueSearch?: 'continuous' | 'catalog';
   angleData?: { woofer: AngleResponse[]; tweeter: AngleResponse[] };
   directivityWeight?: number;
   /** Power-response metric (bandMetrics.powerShape) and fold weight — see netOptimizer opts. */

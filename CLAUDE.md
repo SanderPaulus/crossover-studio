@@ -10265,3 +10265,118 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   werkboom stond** (met haar `netOptimizer.ts`- en `App.tsx`-wijzigingen) — de U-5c-situatie opnieuw. De
   uitslag beschrijft dus de VERENIGING van beide; alleen de UI-8-bestanden zijn in deze commit gestaged, en
   geen daarvan importeert iets van G-20. Geen volle run: alleen weergave.
+
+### G-20-guards (een waarde zonder catalogusonderdeel is te zien, en de reden klopt; alleen weergave, 19-11-2026)
+
+- **Aanleiding (Sander, 19-11-2026, met screenshot):** guided op de driewegdemo, standaardfilter, Premium;
+  alle achttien waarden in "Your build" continu (2,464 mH, 112,2 µF, 0,246 Ω …). Vraag: waarom niet de series?
+- **De audit, gemeten en niet aangenomen** (scratch `audit_snap.ts`, `audit_route.ts`):
+  - **Elke waarde uit de screenshot heeft een catalogusonderdeel vlakbij**, met Premium en met Standaard
+    (alleen C·R6 38,5 Ω valt buiten bereik: de weerstanden houden op bij 33 Ω). Geen dekkingsgat.
+  - **Op de echte workerroute (`v2Chain3One`, casus 1 'm3', standaardfilter, snap aan) landt de snap**:
+    Premium 20/20 en Standaard 20/20 catalogusonderdelen. Premium is niet de oorzaak.
+  - **De oorzaak is de volgorde weigering → snap.** Met de 3,2 Ω-vloer van het 4–8 Ω-profiel zakt een kaal
+    standaardfilter op deze drivers tot 2,60 Ω; de poort weigert de hele waardetune (`active-gate`) en dat
+    gebeurt vóór de snap. Een door de app bedachte kandidaat levert dan geen netwerk; een GESTELDE kandidaat
+    (U-5: Refine of eigen kruispunten) wordt overgedragen zoals de tune hem achterliet. Gemeten: dezelfde
+    kandidaat, gesteld, 0 van 20 catalogusonderdelen met "M-B/|Z|: 2.60 Ω falls below the stated floor of
+    3.20 Ω"; door de app bedacht, geen netwerk.
+  - **Twee dingen op het scherm waren fout:** de tekening gaf geen teken dat een waarde ideaal is, en de
+    guided-regel noemde een oorzaak die niet gebeurd was ("real parts would break a hard limit").
+- **`src/lib/idealParts.ts` (`ideal-parts/1.0`)** — één huis, twee lezers: `isIdealValue` (R/L/C met waarde
+  en zonder `catalog`-stempel), `passiveValueKey` (de passieve waarden als multiset; een bewerking eindigt de
+  claim) en `idealValuesCause` (één zin, in de volgorde van de feiten: geen catalogus / snap uit / dit
+  ontwerp is GEWEIGERD met de regel erbij / anders beide oorzaken naast elkaar met hun runnotitie-merk —
+  "⚠ snap REFUSED" of "STATED (U-5)" — in plaats van er één als feit te noemen).
+- **In `App.tsx`:** `loadedRefusal` leest de geladen gestelde shortlistingang (`shortlistPick`, `refusal`)
+  en eist dat de tekening nog dat netwerk is; `idealCause` gaat naar de guided-onderdelenregel
+  (`parts={guidedPartsReality ? { ...guidedPartsReality, why: idealCause } : null}`; de telling blijft van
+  de onderdelen) én naar een melding onder de netwerkeditor ("N of M values are ideal values, not
+  catalogue parts — marked “ideal” on the drawing." + de reden). Alleen waar de run op echte onderdelen
+  hoort te landen (snap aan, catalogus geladen); zonder snap is elke waarde ideaal by choice en blijft de
+  tekening ongemarkeerd.
+- **`PartGlyph` (`Schematic.tsx`) kreeg `markIdeal`**, doorgegeven door `SchematicEditor`: een ideale waarde
+  krijgt `sch-value-ideal` (waarschuwingskleur, cursief), het woord "ideal" en de reden als tooltip. Zonder de
+  prop is de markup byte-identiek (P2, geclaimd).
+- `src/lib/idealParts.test.tsx` (10 claims): het MECHANISME op de tuner (kleine v2-fixture, snap aan, Premium:
+  een poort die alles weigert geeft `active-gate` en overgedragen onderdelen zonder één stempel; dezelfde run
+  zonder weigering snapt elk onderdeel); de twee lezers en de zin; de tekening met en zonder markering; en de
+  app-bedrading als bronscan. `guidedV2Summary.test.tsx`: één bronscan in V15-vorm bijgewerkt (de
+  parts-prop). **Opzettelijke breuk:** `markIdeal` standaard aan → de P2-claim rood.
+- **NIET gedaan:** de weigering zelf is niet veranderd — een geweigerd ontwerp wordt niet alsnog gesnapt; dat
+  zou een geweigerd ontwerp bestelbaar laten lijken. De ontwerpvraag blijft: een kaal standaardfilter haalt de
+  3,2 Ω op deze drivers niet. **Niet in de browser bekeken** (het paneel mocht niet overgenomen worden); de
+  markering en de melding zijn door de render- en bronscanclaims gedekt.
+- **Gemeten:** `npx tsc -b` groen. `npm run test:fast` **266,7 s, 251 bestanden (250 geslaagd,
+  1 overgeslagen), 3306 tests (3302 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid, gestart
+  14:35:16 ná de laatste bronbewerking.** +1 bestand en +10 tests tegen UI-8's 3296: exact
+  `idealParts.test.tsx`. Geen volle run: geen motor-, poort-, venster-, metriek- of corpuscode geraakt.
+
+### S-5-guards (op het standaardfilter zoekt de optimizer op alleen catalogusonderdelen; 19-11-2026)
+
+- **Aanleiding (Sander, 19-11-2026, na G-20):** "prima dat hij weigert, maar hij heeft deze waardes wel
+  gebruikt in zijn simulaties … bij de snap mag hij alleen de beschikbare componenten gebruiken. Oftewel de
+  simulaties kunnen nog sneller gaan." De continue zoektocht rekent op waarden die geen serie heeft en de
+  snap gooit die precisie aan het eind weg; een tune die vóór de snap geweigerd wordt laat onkoopbare
+  waarden achter (G-20). Daarna: "Ja, bouw verder."
+- **`valueSearch: 'continuous' | 'catalog'`** (`NetOptimizeOptions`, de 41e CHOICE; 63 sleutels, 41/5/17;
+  de kandidaatverklaring verklaart hem ABSENT met P4 tenzij gesteld). Absent = de continue zoektocht, byte
+  voor byte. `'catalog'` loopt ALLEEN met `catalogSnap`, een catalogus én een run die geen onderdelen
+  toevoegt of weghaalt (geen `staged`, onderdelenaudit uit) — anders de continue zoektocht, en met snap en
+  catalogus erbij zegt de snapnotitie waarom ("not run: this run asks for a structure search"). Gemeten
+  waarom: op het volledige filter (35 onderdelen met correcties) gaf hij 6,6–9,4 dB rimpel tegen 2,2.
+- **Hoe hij zoekt.** Start op de dichtstbijzijnde koopbare realisatie van elke zaadwaarde (de pools,
+  plafonds en families van de snap), en stapt alleen naar andere koopbare realisaties: per onderdeel
+  (`CATALOG_SEARCH_STEPS` 0,7–1,4), per weg twee gekoppelde stappen (FREQUENTIE: elke L en C × r;
+  IMPEDANTIE: L × r, C ÷ r; `CATALOG_SEARCH_BRANCH_SCALES`), en per paar onderdelen van één weg elk één
+  catalogusstap omlaag of omhoog. Tot een ronde niets verplaatst (cap 40). Daarna ITERATED LOCAL SEARCH:
+  vier vaste schoppen (frequentie en impedantie × 1,3 en ÷ 1,3, elke weg tegelijk), opnieuw dalen, de
+  betere houden — deterministisch, geen toevalstrekking. Een gestelde poort is een harde rangorde; een
+  geweigerd resultaat draagt koopbare `rejectedParts`.
+- **De score IS de doelfunctie van de tune** (`objectiveOn`, letterlijk uit `tune` gelicht: zoekdoos,
+  somgrenzen, barrières, `fxOf`), in een DISCRETE stand: een waarde wordt nooit geklemd of geprojecteerd
+  (buiten een harde doos, een gesteld plafond of een harde somgrens = `DISCRETE_BOX_PENALTY`) en een spoel
+  houdt de DCR van haar catalogusonderdeel. Plus de kosten- en stapeltermen van de snap. **Waarom dezelfde
+  doelfunctie:** op de score van de snap alleen brak de zoektocht het LF-budget waar de continue tune door
+  zijn somgrens onder gehouden wordt (M-D 2,77 tegen 1,4 dB); met `objectiveOn` niet meer.
+- **Twee extracties, byte-neutraal:** `snapKitFor(base)` (de hulpstukken van de snap) en `objectiveOn(...)`
+  (de doelfunctie van `tune`). Snap, tune en zoektocht lezen elk één implementatie; `f4cRegression`,
+  `workerRouteRegression` en de snaptests reproduceren.
+- **In de app gewapend op het STANDAARDFILTER met de snap aan** (`threeWayChainSettings` en
+  `twoWayChainSettings`, via `candidateDeclarationFor` → `valueSearch: s.valueSearch`). Het volledige
+  filter houdt de continue zoektocht. **Gevolg dat G-20 raakt:** een geweigerde gestelde kandidaat bestaat
+  dan uit koopbare onderdelen, en de guided-regel zegt sindsdien "Alle N onderdelen zijn echte
+  catalogusonderdelen, maar dit ontwerp is GEWEIGERD — …" in plaats van "deze lijst kun je bestellen".
+- **DE METING (workerroute `v2Chain3One`, casus 1 'm3', standaardfilter, Premium, snap aan, de poorten van
+  casus 1; scratch `audit_route.ts`):**
+
+  | kruispunt | zoektocht | tijd | rimpel | gem. | fase | min \|Z\| | uitkomst |
+  | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+  | 518,8 · 2251,4 | continu | 139 s | 2,64 | 0,88 | 6,3° | 2,60 | geleverd, 20/20 catalogus |
+  | 518,8 · 2251,4 | catalogus | 40 s | 2,68 | 0,96 | 9,9° | 2,60 | geleverd, 20/20 catalogus |
+  | 362,3 · 2251,4 | continu | 119 s | 2,87 | 0,97 | 6,3° | 2,62 | geweigerd: M-D |
+  | 362,3 · 2251,4 | catalogus | 40 s | 3,05 | 0,95 | 5,1° | 2,62 | geweigerd: M-D |
+  | 253 · 2251,4 | continu | 111 s | 3,08 | 0,85 | 5,9° | 2,64 | geweigerd: M-D |
+  | 253 · 2251,4 | catalogus | 42 s | 3,27 | 1,19 | 6,8° | 2,87 | geweigerd: M-D |
+
+  **Ongeveer 3× sneller, gelijk tot iets slechter** (rimpel +0,04 tot +0,19 dB, gemiddelde −0,02 tot +0,34
+  dB, fase wisselend). Op 253 en 362 Hz weigeren beide de basopslingering: dat is het kale filter op deze
+  drivers, niet de zoektocht. De tussenstappen staan als les: de eerste bouw (alleen per onderdeel, de
+  snapscore met een relatieve vloer) haalde 5,1 dB rimpel en 1,28 Ω; met de vloer absoluut en
+  takbewegingen 2,94 dB maar M-D gebroken; met `objectiveOn` en impedantiestappen geleverd op 3,21 dB; met
+  paarstappen en de schoppen 2,68 dB.
+- `src/lib/engine2/optimizer/catalogSearch.test.ts` (5 claims): P2, P4, gewapend (elk geleverd passief
+  onderdeel is een catalogusonderdeel, de notitie noemt de evaluaties), de structuurregel (met audit of
+  staged de continue zoektocht, dezelfde onderdelen, met de notitie), en de app-bedrading als bronscan.
+  `idealParts.test.tsx` +1 (een geweigerd koopbaar ontwerp is geen "lijst om te bestellen").
+  `choiceKeyGuard.test.ts` in V15-vorm bijgewerkt (62 → 63, 40 → 41).
+- **NIET gedaan, met naam:** (1) het volledige filter (de structuurzoektocht blijft continu, en zijn
+  eindsnap blijft de zwakke afdaling over drie kandidaten — die vervangen door deze zoektocht vanuit het
+  continue resultaat is een eigen meting); (2) niet in de browser bekeken; (3) geen corpus of casus stelt
+  de sleutel, dus geen live ketenrun beweegt.
+- **Gemeten 19-11-2026:** `npx tsc -b` groen. `npx vitest run` **433,8 s, 252 bestanden, 3312 tests, niets
+  overgeslagen, in één keer groen, alleen gedraaid (gestart 18:24:03 ná de laatste bronbewerking).** Gedraaid
+  omdat S-5 `netOptimizer.ts` aanraakt (twee extracties, een sleutel, een tak). **Alle vier de live
+  ketenruns reproduceren byte voor byte**, en `f4cRegression`, `workerRouteRegression` en
+  `toggleRegression` staan. +1 bestand en +6 tests tegen G-20's 3306: `catalogSearch.test.ts` (5) en één
+  claim in `idealParts.test.tsx`. Geen corpus, geen vingerafdruk en geen versie beweegt.

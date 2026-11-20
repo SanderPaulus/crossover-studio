@@ -106,7 +106,11 @@ describe('the guided result summary', () => {
 
   it('App: the parts line is counted off the parts themselves', () => {
     const app = readFileSync(fileURLToPath(new URL('../App.tsx', import.meta.url)), 'utf8');
-    expect(app).toMatch(/parts=\{guidedPartsReality\}/);
+    /* V15 — stond: `parts={guidedPartsReality}`. Staat sinds G-20 (19-11-2026):
+     * dezelfde telling, met de reden erbij uit `idealValuesCause`, want of het
+     * geladen ontwerp een geweigerde gestelde kandidaat is weet alleen de plek
+     * naast de shortlist. De telling zelf komt nog steeds van de onderdelen. */
+    expect(app).toMatch(/parts=\{guidedPartsReality \? \{ \.\.\.guidedPartsReality, why: idealCause, refused: loadedRefusal \} : null\}/);
     expect(app).toMatch(/catalog: rlc\.filter\(\(p\) => p\.catalog\)\.length/);
   });
 });

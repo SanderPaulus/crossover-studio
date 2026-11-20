@@ -2220,8 +2220,19 @@ export const nl: Record<string, string> = {
     'Er is geen catalogus geladen — laad er een onder Expert → Filters → Componenten.',
   '“Use real catalog parts” is switched off (Expert → Filters → Components).':
     '„Echte catalogusonderdelen gebruiken” staat uit (Expert → Filters → Componenten).',
-  'The catalogue snap did not land on this design: real parts would break a hard limit (often the source resistance of thin coil wire) — the run notes say which.':
-    'De catalogussnap is op dit ontwerp niet geland: echte onderdelen zouden een harde grens breken (vaak de bronweerstand van dunne spoeldraad) — de runnotities zeggen welke.',
+  // G-20 — why values were not matched to catalogue parts (idealParts.ts)
+  'This design was REFUSED — {reason} — and is shown as the tune left it, because you stated its crossings. A refused design is not matched to catalogue parts: change the requirement that refused it, or pick another design, for a list you can order.':
+    'Dit ontwerp is GEWEIGERD — {reason} — en staat er zoals de tune het achterliet, omdat jij de kruispunten stelde. Een geweigerd ontwerp wordt niet naar catalogusonderdelen omgezet: pas de eis aan die het weigerde, of kies een ander ontwerp, voor een lijst die je kunt bestellen.',
+  'Either the catalogue snap was refused because real parts would break a hard limit (“⚠ snap REFUSED” in the run notes), or the design was refused before the snap ran (“STATED (U-5)” in the run notes).':
+    'Óf de catalogussnap is geweigerd omdat echte onderdelen een harde grens zouden breken („⚠ snap REFUSED” in de runnotities), óf het ontwerp is geweigerd voordat de snap draaide („STATED (U-5)” in de runnotities).',
+  '{n} of {m} values are ideal values, not catalogue parts — marked “ideal” on the drawing.':
+    '{n} van de {m} waarden zijn ideale waarden, geen catalogusonderdelen — gemarkeerd met „ideaal” in de tekening.',
+  'Ideal value — no catalogue part has it, so it cannot be ordered as drawn.':
+    'Ideale waarde — geen catalogusonderdeel heeft deze waarde, dus zoals getekend is hij niet te bestellen.',
+  ideal:
+    'ideaal',
+  'All {n} parts are real catalogue parts, but this design was REFUSED — {reason}. It is shown because you stated its crossings, not as a design to build.':
+    'Alle {n} onderdelen zijn echte catalogusonderdelen, maar dit ontwerp is GEWEIGERD — {reason}. Het staat er omdat jij de kruispunten stelde, niet als ontwerp om te bouwen.',
   // Guided component quality (guidedPartsQuality.ts)
   'Component quality':
     'Kwaliteit van de onderdelen',

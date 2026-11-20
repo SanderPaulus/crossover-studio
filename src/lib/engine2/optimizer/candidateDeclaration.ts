@@ -75,6 +75,7 @@ export type StatedByDesigner = Partial<
     | 'phaseMetric'
     | 'catalogSnap'
     | 'snapPrefs'
+    | 'valueSearch'
     | 'breakupGuard'
     | 'safety'
     | 'audit'
@@ -250,6 +251,7 @@ export function declareCandidateChoices(input: CandidateDeclarationInput): Choic
   put('phaseMetric', 'phase metric');
   put('catalogSnap', 'catalogue-snap choice');
   put('snapPrefs', 'snap preferences');
+  put('valueSearch', 'catalogue-only value search (S-5)');
   put('breakupGuard', 'breakup-guard choice');
   put('safety', 'full-band safety set');
   put('audit', 'part-audit settings');

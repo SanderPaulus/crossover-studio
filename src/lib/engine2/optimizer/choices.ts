@@ -141,6 +141,10 @@ export const CHOICE_KEYS = [
   /* --- whether the catalogue binds --- */
   'catalogSnap',
   'snapPrefs',
+  /* S-5 — and whether the SEARCH may leave it: the catalogue-only search
+   * moves through purchasable parts only, so it decides which networks are
+   * ever evaluated, not how one is polished. */
+  'valueSearch',
   /* --- what is forbidden outright --- */
   'rSourceDisqualifyOhm',
   /* …and WHICH RULE forbids an unprotected upper driver. V47, and it belongs

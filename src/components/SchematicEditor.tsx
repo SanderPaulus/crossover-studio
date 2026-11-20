@@ -49,12 +49,14 @@ interface Props {
   canUndo: boolean;
   onRedo: () => void;
   canRedo: boolean;
+  /** G-20 — mark values that are no catalogue part (see `PartGlyph`). */
+  markIdeal?: boolean;
 }
 
 const MIN_W = 46; // grid units the canvas at least shows
 const MIN_H = 24;
 
-export default function SchematicEditor({ parts, models, onChange, onUndo, canUndo, onRedo, canRedo }: Props) {
+export default function SchematicEditor({ parts, models, onChange, onUndo, canUndo, onRedo, canRedo, markIdeal = false }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [tool, setTool] = useState<Tool>({ kind: 'select' });
   /* How many physical parts the selected slot should be built from (Sanders:
@@ -242,7 +244,7 @@ export default function SchematicEditor({ parts, models, onChange, onUndo, canUn
           <rect x={0} y={0} width={width} height={height} fill="url(#sch-grid)" />
           {view.map((p, i) => (
             <g key={i} className={i === sel ? 'sch-selected' : undefined}>
-              <PartGlyph part={p} min={MIN0} />
+              <PartGlyph part={p} min={MIN0} markIdeal={markIdeal} />
             </g>
           ))}
           {junctions.map((j, i) => {

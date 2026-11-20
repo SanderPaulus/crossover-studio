@@ -2436,6 +2436,25 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
+/* G-20 — a value that is no catalogue part, on a run meant to land on real parts. */
+.sch-label .sch-value.sch-value-ideal {
+  fill: var(--warn);
+  font-style: italic;
+}
+.sch-label .sch-ideal-tag {
+  font-style: normal;
+  font-weight: 600;
+}
+.sch-ideal-note {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  color: var(--warn);
+  background: var(--warn-bg);
+  font-size: 0.85rem;
+}
+
 /* ---- Synthesis results ---- */
 
 .synth-result h3 {

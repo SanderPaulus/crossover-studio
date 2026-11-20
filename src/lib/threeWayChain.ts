@@ -99,6 +99,8 @@ export interface Chain3Settings {
    * (`chainChoices.ts`, the eighth key).
    */
   topology?: 'free' | 'standard';
+  /** S-5 — the tuner's `valueSearch`, carried for the candidate declaration; the chain itself reads nothing of it. */
+  valueSearch?: 'continuous' | 'catalog';
   /**
    *  The lean-mode threshold handed to per-branch SYNTHESIS (dB): the bare
    *  ladder's fit error below which no correction network is bought.

@@ -513,6 +513,8 @@ export function candidateDeclarationFor(args: {
       phaseMetric: s.phaseMetric,
       catalogSnap: s.catalogSnap,
       snapPrefs: s.snapPrefs,
+      /* S-5 — the app states it on the standard filter with the snap on. */
+      valueSearch: s.valueSearch,
       breakupGuard: s.breakupGuard,
       safety: s.safety,
       audit: s.audit,

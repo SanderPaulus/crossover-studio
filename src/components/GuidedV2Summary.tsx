@@ -119,7 +119,7 @@ export interface GuidedV2SummaryProps {
    * parts carry a catalogue attribution, out of how many, and — when none do —
    * why (no catalogue loaded, or the snap switched off). Null = no network.
    */
-  parts?: { total: number; catalog: number; why: string | null; stacked?: number } | null;
+  parts?: { total: number; catalog: number; why: string | null; stacked?: number; refused?: string | null } | null;
   /**
    * The component quality the RUN snapped with, already in words (guided
    * label, or the expert profile by name); null when the run did not snap.
@@ -130,7 +130,14 @@ export interface GuidedV2SummaryProps {
 }
 
 /** The parts line: buildable, partly, or ideal values — with the reason. */
-export function partsLine(p: { total: number; catalog: number; why: string | null; stacked?: number }): { text: string; ok: boolean } {
+export function partsLine(p: {
+  total: number;
+  catalog: number;
+  why: string | null;
+  stacked?: number;
+  /** G-20/S-5 — the refusing rule's sentence when the design on screen is a refused stated candidate. */
+  refused?: string | null;
+}): { text: string; ok: boolean } {
   /* G-19 — a position built from two catalogue parts carries a value no
    * series stocks (82 + 27 = 109 µF). Say so, or the sum on the schematic reads
    * as an ideal value the snap failed to replace. */
@@ -138,6 +145,17 @@ export function partsLine(p: { total: number; catalog: number; why: string | nul
     ? ' ' + t('{s} of these positions are built from two or more catalogue parts (caps in parallel, coils in series); the schematic shows the sum and the parts.', { s: p.stacked ?? 0 })
     : '';
   if (p.catalog === p.total) {
+    /* S-5 — a refused design searched on catalogue parts is made of real parts
+     * and is still refused: "this list can be ordered" would read as a design
+     * to build. */
+    if (p.refused) {
+      return {
+        text:
+          t('All {n} parts are real catalogue parts, but this design was REFUSED — {reason}. It is shown because you stated its crossings, not as a design to build.', { n: p.total, reason: p.refused }) +
+          stacks,
+        ok: false,
+      };
+    }
     return { text: t('All {n} parts are real catalogue parts — this list can be ordered.', { n: p.total }) + stacks, ok: true };
   }
   if (p.catalog === 0) {
