@@ -20,7 +20,7 @@ import { t } from './i18n.ts';
  * the guided parts line, and the note under the network editor.
  */
 
-export const IDEAL_PARTS_VERSION = 'ideal-parts/1.0';
+export const IDEAL_PARTS_VERSION = 'ideal-parts/1.1';
 
 /** True for a passive part that carries a value and no catalogue attribution. */
 export function isIdealValue(p: Pick<VxpPart, 'type' | 'catalog' | 'open' | 'shorted'>): boolean {
@@ -47,10 +47,12 @@ export function passiveValueKey(parts: readonly VxpPart[]): string {
  * in one sentence, or null when there is nothing to explain.
  *
  * The order is the order of the facts: without a catalogue or with the snap
- * off nothing could be matched; a design the designer stated and a rule
- * REFUSED is shown as the tune left it; and otherwise the two remaining causes
- * are named side by side, with the run-note marker that tells them apart. That
- * last case used to state the first of the two as fact (F0).
+ * off nothing could be matched. Since the audit of 20-11-2026 a run with the
+ * snap on and a catalogue loaded hands over purchasable parts on every route —
+ * a refused snap, a design refused before the snap and a ✂ Minimize result
+ * included — so what is left are values the run did not set: typed or locked
+ * by hand, or a network from before that version. A refused stated design says
+ * so first.
  */
 export function idealValuesCause(s: {
   catalogLoaded: boolean;
@@ -60,13 +62,11 @@ export function idealValuesCause(s: {
 }): string {
   if (!s.catalogLoaded) return t('No catalogue is loaded — load one under Expert → Filters → Components.');
   if (!s.snapOn) return t('“Use real catalog parts” is switched off (Expert → Filters → Components).');
-  if (s.refusal) {
-    return t(
-      'This design was REFUSED — {reason} — and is shown as the tune left it, because you stated its crossings. A refused design is not matched to catalogue parts: change the requirement that refused it, or pick another design, for a list you can order.',
-      { reason: s.refusal },
-    );
-  }
-  return t(
-    'Either the catalogue snap was refused because real parts would break a hard limit (“⚠ snap REFUSED” in the run notes), or the design was refused before the snap ran (“STATED (U-5)” in the run notes).',
+  const left = t(
+    'A run with the snap on puts every value on a catalogue part, so these were not set by one: they were typed or locked by hand, or the network comes from before 20-11-2026. ⚙ Optimize components puts them on catalogue parts.',
   );
+  if (s.refusal) {
+    return `${t('This design was REFUSED — {reason} — and is shown because you stated its crossings.', { reason: s.refusal })} ${left}`;
+  }
+  return left;
 }

@@ -57,14 +57,20 @@ describe('G-20 — the mechanism, on the tuner', () => {
       gateViolation: () => (refuseAll ? 'M-B/|Z|: below the stated floor (this test)' : null),
     });
 
-  it('an active gate refuses the tune BEFORE the snap: what it hands over carries no catalogue part; the same run unrefused snaps', () => {
+  /* V15 — stond: "what it hands over carries no catalogue part" (de G-20-meting:
+   * de weigering komt vóór de snap, dus de overgedragen onderdelen waren
+   * continu). Staat sinds de audit van 20-11-2026: met de snap aan wordt een
+   * geweigerd netwerk gerapporteerd op koopbare onderdelen (`refusedForReport`
+   * in netOptimizer.ts), dus een gestelde kandidaat toont nooit meer waarden
+   * die niemand verkoopt. De weigering zelf staat ongewijzigd. */
+  it('an active gate refuses the tune BEFORE the snap, and since the audit what it hands over is on catalogue parts; the same run unrefused snaps', () => {
     loadCatalogue();
     const refused = run(true);
     expect(refused.refusal?.by).toBe('active-gate');
     const kept = rlcOf(refused.rejectedParts ?? []);
     expect(kept.length).toBeGreaterThan(0);
-    expect(kept.filter((p) => p.catalog)).toEqual([]);
-    expect(kept.every(isIdealValue)).toBe(true);
+    expect(kept.every((p) => !!p.catalog)).toBe(true);
+    expect(kept.some(isIdealValue)).toBe(false);
     // The tegenproef: nothing about the catalogue or the profile stops the snap.
     const passed = run(false);
     expect(passed.refusal).toBeUndefined();
@@ -91,16 +97,21 @@ describe('G-20 — the two readers and the one sentence', () => {
     expect(passiveValueKey([a, b])).not.toBe(passiveValueKey([cap({ params: [{ name: 'C', value: 120, unit: 'uF' }] }), b]));
   });
 
-  it('the cause, in the order of the facts — and the unrefused case names BOTH causes instead of guessing one', () => {
+  /* V15 — stond: de niet-geweigerde zin noemde twee oorzaken naast elkaar
+   * ("⚠ snap REFUSED" en "STATED (U-5)"), en een geweigerd ontwerp "is not
+   * matched to catalogue parts". Sinds de audit van 20-11-2026 levert een run
+   * met de snap aan op elke route koopbare onderdelen, ook bij een geweigerde
+   * snap en een weigering vóór de snap; wat dan nog ideaal is, is met de hand
+   * gezet of ouder. */
+  it('the cause, in the order of the facts — and with the snap on, what is left is a hand value or an older network', () => {
     expect(idealValuesCause({ catalogLoaded: false, snapOn: true, refusal: 'x' })).toMatch(/No catalogue is loaded/);
     expect(idealValuesCause({ catalogLoaded: true, snapOn: false, refusal: 'x' })).toMatch(/switched off/);
     const refused = idealValuesCause({ catalogLoaded: true, snapOn: true, refusal: 'M-B/|Z|: 2.60 Ω falls below the stated floor of 3.20 Ω' });
     expect(refused).toMatch(/REFUSED — M-B\/\|Z\|: 2\.60 Ω falls below the stated floor of 3\.20 Ω —/);
-    expect(refused).toMatch(/not matched to catalogue parts/);
+    expect(refused).toMatch(/typed or locked by hand/);
     const unknown = idealValuesCause({ catalogLoaded: true, snapOn: true, refusal: null });
-    expect(unknown).toMatch(/⚠ snap REFUSED/);
-    expect(unknown).toMatch(/STATED \(U-5\)/);
-    expect(unknown).toMatch(/^Either /);
+    expect(unknown).toMatch(/^A run with the snap on puts every value on a catalogue part/);
+    expect(unknown).not.toMatch(/snap REFUSED|STATED \(U-5\)/);
   });
 
   it('the guided parts line carries the refusal for a refused design with ideal values', () => {

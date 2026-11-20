@@ -1018,6 +1018,34 @@ export function describeStackMembers(members: readonly number[]): string {
     : members.map(fmt).join(' + ');
 }
 
+/**
+ * AUDIT 20-11-2026 — every R/L/C of a DRAWING on its nearest purchasable part,
+ * stamped, for the networks no tune snaps: a template, a synthesis seed. The
+ * snap's own pools and preferences (`pickCandidates`), singles only, nearest
+ * in value — no fit, because a template states no response to fit to.
+ *
+ * A part that is locked, open, shorted or already stamped keeps what it
+ * carries (a lock is the designer's value, a stamp is already a part). With no
+ * catalogue loaded the parts come back as they went in.
+ */
+export function snapToNearestCatalogue(parts: readonly VxpPart[], prefs: SnapPrefs | null = null): VxpPart[] {
+  if (!hasImportedCatalog()) return parts.map((p) => p);
+  return parts.map((p) => {
+    const meta = PART_KIND[p.type];
+    if (!meta || p.locked || p.open || p.shorted || p.catalog) return p;
+    const raw = p.params.find((q) => q.name === meta.param)?.value;
+    if (raw === undefined || !(raw > 0)) return p;
+    const pick = pickCandidates(meta.kind, raw * meta.toSi, 1, { profile: 'auto', ...(prefs ?? {}), allowStacks: false })[0];
+    if (!pick) return p;
+    const set = (ps: VxpPart['params'], name: string, value: number, unit: string) =>
+      ps.some((q) => q.name === name) ? ps.map((q) => (q.name === name ? { ...q, value } : q)) : [...ps, { name, value, unit }];
+    let params = set(p.params, meta.param, Number((pick.value / meta.toSi).toPrecision(4)), p.params.find((q) => q.name === meta.param)?.unit ?? '');
+    if (meta.kind === 'L') params = set(params, 'DCR', Number(pick.seriesR.toPrecision(3)), 'Ω');
+    if (meta.kind === 'C' && pick.seriesR > 0) params = set(params, 'ESR', Number(pick.seriesR.toPrecision(3)), 'Ω');
+    return { ...p, params, catalog: pick.parts.map((x) => x.id).join('+') };
+  });
+}
+
 /** Bill of materials for a schematic: every R/L/C matched against the catalog. */
 export function bomFor(parts: readonly VxpPart[]): Bom {
   const rows: BomRow[] = [];

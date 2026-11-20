@@ -5446,10 +5446,14 @@ export function optimizeNetworkValues(
    * says why (P4). */
   const catalogSearchStructural =
     opts.valueSearch === 'catalog' && !!opts.catalogSnap && hasImportedCatalog() && (!!opts.staged || auditOn);
-  if (opts.valueSearch === 'catalog' && opts.catalogSnap && hasImportedCatalog() && !opts.staged && !auditOn) {
-    stage('catalog search');
-    const kit = snapKitFor(seedParts);
-    if (kit.snapables.length > 0) {
+  /* AUDIT 20-11-2026 — the catalogue-only search as ONE closure with two
+   * callers: S-5 below (from the seed, in place of the continuous tune) and
+   * the end snap's fallback (from the tuned values, when the snap's own choice
+   * breaks a hard limit). Null when nothing is snapable. */
+  const catalogueSearch = (start: readonly VxpPart[]) => {
+    const kit = snapKitFor(start);
+    if (kit.snapables.length === 0) return null;
+    {
       const keyOf = (c: CatalogPick | null) => (c ? c.parts.map((x) => x.id).join('+') : '');
       const optionsAt = (j: number, value: number): CatalogPick[] => {
         const { q } = kit.snapables[j];
@@ -5503,7 +5507,7 @@ export function optimizeNetworkValues(
       /* BRANCH MOVES: a coupled ladder cannot move its corner one part at a
        * time — every L and C of one way scaled together is the move that does.
        * A part belongs to the way whose bus it touches off the shared nodes. */
-      const models = [...new Set(seedParts.filter((q) => q.type === 'Driver' && q.model).map((q) => q.model!))];
+      const models = [...new Set(start.filter((q) => q.type === 'Driver' && q.model).map((q) => q.model!))];
       const busOf = new Map(models.map((m) => [m, new Set(kit.bus.busNodesOf(m))]));
       const shared = new Set([...(busOf.values().next().value ?? [])].filter((n) => [...busOf.values()].every((b) => b.has(n))));
       const groups = models
@@ -5627,7 +5631,14 @@ export function optimizeNetworkValues(
       picks = best.picks;
       score = best.score;
       gate = best.gate;
-      const outParts = kit.applied(picks);
+      return { kit, picks, gate, passes, outParts: kit.applied(picks) };
+    }
+  };
+  if (opts.valueSearch === 'catalog' && opts.catalogSnap && hasImportedCatalog() && !opts.staged && !auditOn) {
+    stage('catalog search');
+    const found = catalogueSearch(seedParts);
+    if (found) {
+      const { kit, picks, passes, outParts } = found;
       const outM = metricsOn(buildWork(outParts).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
       const stacks = picks.filter((p) => p && p.parts.length > 1).length;
       const searchNote =
@@ -6114,6 +6125,27 @@ export function optimizeNetworkValues(
   let ampFloorSeedShort = 0;
   const fullOf = (ps: readonly VxpPart[]): Metrics =>
     metricsOn(buildWork(ps).work, grid, wBase, tBase, midFull, driverZ, angleData ?? null, activeFull);
+  /* AUDIT 20-11-2026 — A REFUSED NETWORK IS REPORTED ON PURCHASABLE PARTS when
+   * the run asked for the snap. V31 hands a refused tune back as reporting,
+   * and a stated candidate (U-5) is shown with it — so with the snap on it
+   * showed values nobody sells. Now: the end snap's own choice (fit, cost,
+   * real DCR/ESR) on the refused values, and no hard-limit check — the network
+   * is refused already. Without the snap or a catalogue: the refused values as
+   * they are (P2). */
+  const refusedForReport = (ps: readonly VxpPart[], m: Metrics): { rejectedTune: ReturnType<typeof report>; rejectedParts: VxpPart[] } => {
+    if (opts.catalogSnap && hasImportedCatalog()) {
+      try {
+        const k = snapKitFor(ps);
+        if (k.snapables.length > 0) {
+          const bp = k.applied(k.descend(k.cands).picks);
+          return { rejectedTune: report(fullOf(bp), bp), rejectedParts: bp };
+        }
+      } catch (caught) {
+        rethrowIfPlatformError(caught);
+      }
+    }
+    return { rejectedTune: report(m, ps), rejectedParts: cloneParts(ps) };
+  };
   /** Worst dip over the evaluation grid AND the safety grid — hoisted for the
    *  same reason: detection, acceptance and the delivered verdict must all use
    *  the one measure. */
@@ -6474,20 +6506,84 @@ export function optimizeNetworkValues(
         snapViolation = `${snapViolation}; with the thickest wire at each coil value: ${againViolation}`;
       }
     }
+    /* AUDIT 20-11-2026 — NEVER CONTINUOUS VALUES BACK. Until this audit a snap
+     * whose purchasable parts broke a hard limit was rolled back WHOLE, and
+     * the run delivered the continuous values — "honest", the note said, and
+     * still a network nobody can buy (Sander: "bij de snap mag hij alleen de
+     * beschikbare componenten gebruiken"). Now, in this order:
+     *  1. the catalogue-only search (S-5) from the TUNED values: purchasable
+     *     parts from the start, scored by the tune's own objective with the
+     *     gate as a hard rank — a different purchasable combination can hold
+     *     a limit the snap's nearest choice broke;
+     *  2. if that breaks a limit too and the limit is an active GATE, the run
+     *     refuses (V31/V33 form): no network, and what it reached is reported
+     *     on purchasable parts;
+     *  3. a tuner limit that is not a gate (the source-resistance tier, the
+     *     nominal-load floor) delivers the purchasable network as INFEASIBLE —
+     *     disqualified, and on parts you can buy. */
     if (snapViolation) {
-      infeasible =
-        `the catalog snap would land on purchasable parts whose ${snapViolation}. Rolled back to ` +
-        `the continuous values — those are not buyable, so this candidate cannot be built as it ` +
-        `stands: give the low branch thicker wire to choose from, or fewer series elements`;
-      snapNote =
-        (snapNote ? `${snapNote} · ` : '') +
-        /* The note names the limit that actually broke. It used to say "the
-         * source-resistance limit" whatever broke — a gate or the load floor
-         * read the same — and a reader then fixes the wrong thing (F0). */
-        `⚠ snap REFUSED: purchasable parts would break a hard limit — ${snapViolation}`;
-    } else {
-      cur = { ...cur, parts: snapped };
+      stage('catalog search (snap fallback)');
+      const found = catalogueSearch(cur.parts);
+      const fbViolation = found ? constraintViolation(found.outParts) : snapViolation;
+      if (found && !fbViolation) {
+        picks = found.picks;
+        snapped = found.outParts;
+        snapNote =
+          (snapNote ? `${snapNote} · ` : '') +
+          `snap: the nearest purchasable choice broke a hard limit (${snapViolation}); the catalogue-only ` +
+          `search from the tuned values landed within every hard limit (${found.passes} pass(es))`;
+        snapViolation = null;
+      } else {
+        const buyable = found ? found.outParts : snapped;
+        const why = fbViolation ?? snapViolation;
+        const gateWhy = opts.gateViolation ? cachedGateViolation(buyable, 'catalog snap') : null;
+        if (gateWhy) {
+          return {
+            parts: cloneParts(parts),
+            before: report(before, parts),
+            after: report(before, parts),
+            tuned: 0,
+            evaluations,
+            removed: [],
+            added: [],
+            bandNote: bandNoteText,
+            ...structureNote(),
+            snapNote:
+              (snapNote ? `${snapNote} · ` : '') +
+              `⚠ snap: no purchasable network holds every active gate — ${gateWhy}`,
+            refusal: {
+              by: 'active-gate',
+              kinds: ['gate'],
+              reason: gateWhy,
+              note:
+                'The tune held every active gate on continuous values, and no purchasable network does — ' +
+                'neither the snap\'s nearest choice nor the catalogue-only search from the tuned values. So ' +
+                'this run delivers no network rather than values nobody sells (casebook V31; audit ' +
+                '20-11-2026). What it reached is reported on purchasable parts.',
+            },
+            ...(opts.rejectedTuneReport
+              ? { rejectedTune: report(fullOf(buyable), buyable), rejectedParts: cloneParts(buyable) }
+              : {}),
+            ...(auditReport ? { audit: auditReport } : {}),
+            gateRefusals,
+            gateEvaluations,
+            gateCacheHits,
+          };
+        }
+        infeasible =
+          `the catalog snap lands on purchasable parts whose ${why}. No purchasable network holds that ` +
+          `limit, so this candidate cannot be built as it stands: give the low branch thicker wire to ` +
+          `choose from, or fewer series elements`;
+        snapNote =
+          (snapNote ? `${snapNote} · ` : '') +
+          /* The note names the limit that actually broke (F0). */
+          `⚠ snap: purchasable parts break a hard limit — ${why}; delivered on purchasable parts anyway ` +
+          `(never on values nobody sells), so this candidate is infeasible`;
+        snapped = buyable;
+        snapViolation = null;
+      }
     }
+    if (!snapViolation) cur = { ...cur, parts: snapped };
   }
 
   if (catalogSearchStructural) {
@@ -6674,7 +6770,7 @@ export function optimizeNetworkValues(
         bandNote: bandNoteText,
         ...structureNote(),
       ...(opts.rejectedTuneReport
-          ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
+          ? refusedForReport(outParts, after)
           : {}),
       /* V33 — the same refusal, in the one shape a caller detects (see
        * `refusal`). Absent on a v1 run, where neither v2 mechanism is armed. */
@@ -6824,7 +6920,7 @@ export function optimizeNetworkValues(
         : {}),
       /* V31 — what was thrown away. Reporting only; no rule above reads it. */
       ...(opts.rejectedTuneReport
-        ? { rejectedTune: report(after, outParts), rejectedParts: cloneParts(outParts) }
+        ? refusedForReport(outParts, after)
         : {}),
         // What the repair pass tried/achieved on the REJECTED tune — it
         // explains why the gate saw a dip. Prefixed because the network being
@@ -6887,10 +6983,7 @@ export function optimizeNetworkValues(
         ...(rSourceProbeNote ? { rSourceProbeNote } : {}),
         ...(dissipationRefNote ? { dissipationRefNote } : {}),
         ...(opts.rejectedTuneReport
-          ? {
-              rejectedTune: report(refusedMetrics, refusedValueTune.parts),
-              rejectedParts: cloneParts(refusedValueTune.parts),
-            }
+          ? refusedForReport(refusedValueTune.parts, refusedMetrics)
           : {}),
         ...(ampFloorNote ? { ampFloorNote: `the rejected tune — ${ampFloorNote}` } : {}),
         ...(auditReport ? { audit: auditReport } : {}),

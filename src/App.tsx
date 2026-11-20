@@ -401,6 +401,7 @@ import {
   catalogParts,
   setCustomSeries,
   stackMembersOf,
+  snapToNearestCatalogue,
   type CatalogPart,
   type CatalogSeries,
   type SnapPrefs,
@@ -11741,19 +11742,26 @@ export default function App() {
         return { fallback: `the acoustic seed was refused (${e instanceof Error ? e.message : String(e)})` };
       }
     })();
+    /* AUDIT 20-11-2026 — with the snap on, a template is drawn on purchasable
+     * parts too: its nearest single catalogue part per value, stamped. A
+     * template states no response to fit to, so this is nearest-in-value and
+     * nothing more; ⚙ Optimize components fits it afterwards. */
+    const templateSnap = catalogSnap && hasImportedCatalog();
+    const onCatalogue = (ps: VxpPart[]) => (templateSnap ? snapToNearestCatalogue(ps, snapPrefsValue() ?? null) : ps);
+    const snappedNote = templateSnap ? ' — every value put on its nearest catalogue part' : '';
     if (hybridSeed && 'xo' in hybridSeed) {
-      addDesign(hybridSeed.xo.name || 'New network', normalizeOrigin(hybridSeed.xo.parts));
-      setNetOptNote(`New from template (Hybrid mode): ${hybridSeed.note}`);
+      addDesign(hybridSeed.xo.name || 'New network', normalizeOrigin(onCatalogue(hybridSeed.xo.parts)));
+      setNetOptNote(`New from template (Hybrid mode): ${hybridSeed.note}${snappedNote}`);
       return;
     }
     const xo = filterTemplate({ order, wayCount: threeWay ? 3 : templateWays, models });
-    addDesign(xo.name || 'New network', normalizeOrigin(xo.parts));
+    addDesign(xo.name || 'New network', normalizeOrigin(onCatalogue(xo.parts)));
     /* H-3 — a textbook template SAYS what it is instead of breaking an
      * expectation silently. Only on the v2 route: with the flag off the app
      * is what it always was. */
     {
       setNetOptNote(
-        `New from template — ${TEMPLATE_NOMINAL_NOTE}` +
+        `New from template — ${TEMPLATE_NOMINAL_NOTE}${snappedNote}` +
           (hybridSeed && 'fallback' in hybridSeed ? ` (Hybrid mode: ${hybridSeed.fallback})` : ''),
       );
     }
@@ -12862,6 +12870,9 @@ export default function App() {
         audit: settings.audit,
         ampMinLoadOhm: settings.ampMinLoadOhm,
         zFloorStrict: true,
+        /* S-5 — the same catalogue-only search as the scan (the declaration of a
+         * drawn network states what the scan states); absent off the standard filter. */
+        valueSearch: settings.valueSearch,
       },
       targetCurve: activeTargetCurve,
       ...(engineV2Gates.maxDriveOnFsDb !== undefined ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb } : {}),
@@ -13098,6 +13109,9 @@ export default function App() {
         audit: settings.audit,
         ampMinLoadOhm: settings.ampMinLoadOhm,
         zFloorStrict: true,
+        /* S-5 — the same catalogue-only search as the scan (the declaration of a
+         * drawn network states what the scan states); absent off the standard filter. */
+        valueSearch: settings.valueSearch,
       },
       targetCurve: activeTargetCurve,
       ...(engineV2Gates.maxDriveOnFsDb !== undefined ? { driveOnFsLimitDb: engineV2Gates.maxDriveOnFsDb } : {}),
@@ -23427,7 +23441,7 @@ export default function App() {
                       <tbody>
                         {r.steps.map((st, i) => (
                           <tr key={i}>
-                            <td>{st.kind === 'remove' ? t('removed') : t('substituted')}</td>
+                            <td>{st.kind === 'remove' ? t('removed') : st.kind === 'land' ? t('landed on catalogue') : t('substituted')}</td>
                             <td>{st.label}</td>
                             <td>{st.savingEur !== null ? `−€${st.savingEur.toFixed(2)}` : t('[NO PRICE]')}</td>
                             <td>{st.after.peakDb.toFixed(2)} dB</td>

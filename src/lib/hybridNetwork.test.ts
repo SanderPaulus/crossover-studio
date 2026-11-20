@@ -299,7 +299,10 @@ describe('H-3 — App.tsx reads Hybrid mode on the Network tab', () => {
     expect(fn).toContain('const xo = filterTemplate({ order, wayCount: threeWay ? 3 : templateWays, models });');
     // U-10 fase 3 — WAS `if (engineV2Enabled) {`: the note now always applies.
     expect(fn).not.toContain('engineV2Enabled');
-    expect(fn).toContain('`New from template — ${TEMPLATE_NOMINAL_NOTE}`');
+    /* V15 — stond: '`New from template — ${TEMPLATE_NOMINAL_NOTE}`'. Sinds de
+     * audit van 20-11-2026 zegt dezelfde zin erachter dat elke waarde op haar
+     * dichtstbijzijnde catalogusonderdeel staat, zodra de snap aan staat. */
+    expect(fn).toContain('`New from template — ${TEMPLATE_NOMINAL_NOTE}${snappedNote}`');
   });
 
   it('⚙ Optimize components in Hybrid mode goes through the v2 worker on the chain’s own assembly', () => {

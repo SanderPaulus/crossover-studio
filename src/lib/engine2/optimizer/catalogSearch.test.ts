@@ -16,7 +16,11 @@
  * needs the snap and a catalogue (otherwise it is the continuous search, P4);
  * with both, every delivered passive part is a catalogue part and the note
  * says no continuous value was simulated; a structure search falls back and
- * says why; and the app states it on both chains.
+ * says why; the app states it on both chains; and (S-5 nazorg, 20-11-2026) the
+ * drawn-network route — ⚙ Optimize components and ✂ Minimize — states it too.
+ * Sander: "in expert mode gebruikt hij wel weer ongebruikelijke waardes": the
+ * ⚙ declaration listed every designer-stated key except this one, so a drawn
+ * standard filter was tuned on continuous values and only snapped at the end.
  */
 import { afterAll, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -25,6 +29,12 @@ import { applyCatalogPayload } from '../../catalog.ts';
 import { deserializeCatalog } from '../../catalogFile.ts';
 import { optimizeNetworkValues, type NetOptimizeOptions } from '../../netOptimizer.ts';
 import type { VxpPart } from '../../parsers/vxp.ts';
+import { logspace, type GriddedResponse } from '../../dsp.ts';
+import { cplx } from '../../complex.ts';
+import { filterTemplate } from '../../filterTemplates.ts';
+import type { Chain3Input } from '../../threeWayChain.ts';
+import { declareCandidateChainChoices, declareCandidateChoices } from './candidateDeclaration.ts';
+import { handleV2Request, type V2CandidateResult, type V2Response, type V2TuneNetlistResult } from './worker.ts';
 import { v2DriverZ, v2Responses, v2SeedParts, V2_GRID } from './v2.fixture.ts';
 
 const V9 = fileURLToPath(new URL('../../parsers/fixtures/catalog-v9.json', import.meta.url));
@@ -92,5 +102,74 @@ describe('S-5 — the catalogue-only search', () => {
     const arm = /\.\.\.\(catalogSnap && hasImportedCatalog\(\) \? \{ valueSearch: 'catalog' as const \} : \{\}\)/g;
     expect(app.match(arm)?.length).toBe(2);
     expect(read('./scanRequest.ts')).toMatch(/valueSearch: s\.valueSearch,/);
+    // S-5 nazorg: both drawn-network declarations (two-way and three-way ⚙/✂).
+    expect(app.match(/valueSearch: settings\.valueSearch,/g)?.length).toBe(2);
   });
+});
+
+describe('S-5 nazorg — ⚙ Optimize components on a drawn standard filter', () => {
+  /* The synthetic three-way of drawnTune3.test.ts: flat responses, 8 Ω drivers,
+   * the 2nd-order template as the drawing. */
+  const grid = logspace(60, 16000, 72);
+  const flat: GriddedResponse = { freq: [...grid], spl: grid.map(() => 88), phaseDeg: grid.map(() => 0) };
+  const z8 = grid.map(() => cplx(8, 0));
+  const BAND: [number, number] = [80, 14000];
+  const through = (valueSearch?: 'catalog') => {
+    const input: Chain3Input = {
+      grid: [...grid],
+      w: flat,
+      m: flat,
+      t: flat,
+      driverZ: { woofer: z8, mid: z8, tweeter: z8 },
+      tAdjust: { offsetMm: 0, trimDb: 0, inverted: false },
+      midAdjust: { offsetMm: 0, trimDb: 0, inverted: false },
+      xoLow: 0,
+      xoHigh: 0,
+      label: 'drawn 3-way',
+      settings: { phasePriority: 0.5, synthMode: 'acoustic', band: BAND, topology: 'standard', xoFloorPairs: [null, null] },
+    };
+    const payload = {
+      input,
+      parts: filterTemplate({ order: 2, wayCount: 3, models: [] }).parts,
+      label: 'drawn 3-way',
+      v2: { gates: {}, budgets: {}, determinism: { seed: 7, budgetEvaluations: 400 }, judgeBandHz: BAND },
+      candidate: {
+        declaration: declareCandidateChoices({
+          cages: [null, null],
+          windowFloorsHz: [null, null],
+          multiWay: true,
+          rippleStopFromLowestCrossing: true,
+          stated: {
+            band: BAND,
+            catalogSnap: true,
+            snapPrefs: { profile: 'balanced' },
+            audit: { enabled: true },
+            zFloorStrict: true,
+            ...(valueSearch ? { valueSearch } : {}),
+          },
+        }),
+        chainDeclaration: declareCandidateChainChoices({ stated: {}, standardTopology: true }),
+        provenance: 'this test — a drawn standard filter',
+      },
+    };
+    const out: V2CandidateResult<V2TuneNetlistResult>[] = [];
+    handleV2Request(structuredClone({ id: 1, kind: 'v2TuneNetlist3' as const, payload }), (m: V2Response) => {
+      if (m.kind === 'error') throw new Error(m.message);
+      if (m.kind === 'done') out.push(m.data as V2CandidateResult<V2TuneNetlistResult>);
+    });
+    if (out.length !== 1) throw new Error('the v2 route returned nothing');
+    return out[0];
+  };
+
+  it('stated, the drawn standard filter is searched on catalogue parts only; absent, it is the continuous tune', () => {
+    loadCatalogue();
+    const cat = through('catalog');
+    expect(cat.rejection).toBeNull();
+    const ps = rlc(cat.result.parts);
+    expect(ps.length).toBeGreaterThan(0);
+    expect(ps.every((p) => !!p.catalog)).toBe(true);
+    expect(cat.result.net.snapNote).toMatch(/catalogue-only search \(S-5\)/);
+    // The tegenproef: the same drawing without the key is the continuous tune.
+    expect(through().result.net.snapNote ?? '').not.toMatch(/catalogue-only search \(S-5\)/);
+  }, 120_000);
 });

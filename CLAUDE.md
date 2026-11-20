@@ -10380,3 +10380,78 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   ketenruns reproduceren byte voor byte**, en `f4cRegression`, `workerRouteRegression` en
   `toggleRegression` staan. +1 bestand en +6 tests tegen G-20's 3306: `catalogSearch.test.ts` (5) en één
   claim in `idealParts.test.tsx`. Geen corpus, geen vingerafdruk en geen versie beweegt.
+- **NAZORG (20-11-2026): ⚙ Optimize components en ✂ Minimize gaven de sleutel niet door.** Sander, met
+  een screenshot van een kaal standaardfilter vol vrije waarden: "in expert mode gebruikt hij wel weer
+  ongebruikelijke waardes." De twee declaraties van een GETEKEND netwerk (`runNetOptimizeV2`,
+  `runNetOptimizeV2_3`) noemden elke gestelde sleutel van de scan behalve `valueSearch`; een getekend
+  standaardfilter werd dus continu getuned en pas aan het eind gesnapt. Sinds de nazorg stellen beide
+  `valueSearch: settings.valueSearch` (absent buiten het standaardfilter, P2).
+  `catalogSearch.test.ts` +1 claim door de echte route (`v2TuneNetlist3`, het synthetische drieweg van
+  `drawnTune3.test.ts`, de v9-catalogus, standaardtopologie): mét de sleutel is elk geleverd passief
+  onderdeel een catalogusonderdeel, zonder is het de continue tune. De bronscan telt de twee
+  `valueSearch: settings.valueSearch`.
+  **Open, en niet door deze reparatie verklaard:** de screenshot draagt GEEN "ideal"-markering. Op de
+  build van G-20 met de snap aan staat die op elke onkoopbare waarde, dus óf de pagina draaide nog de
+  build van vóór 20-11 19:31 (de deploy van `b0a8667`), óf de snap stond in expert uit (het vinkje, of een
+  project dat `catalogSnap: false` bewaarde). Niet nagegaan in Sanders browser.
+  **Gemeten 20-11-2026:** `npx tsc -b` groen. `npm run test:fast` **266,7 s, 252 bestanden (251 geslaagd,
+  1 overgeslagen), 3313 tests (3309 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid (gestart
+  19:39:44 ná de laatste bronbewerking).** +1 test tegen S-5's 3312, exact de nieuwe route-claim. Geen volle
+  run: alleen `App.tsx` en een test zijn geraakt, geen motor-, poort-, venster- of corpuscode.
+
+### Audit-guards (geen fictieve waarden meer met de snap aan, in guided én expert; 20-11-2026)
+
+- **Aanleiding (Sander, 20-11-2026):** "een audit … om er zeker van te zijn dat we in zowel guided als
+  expert tussen alle snaps geen enkele keer meer fictieve waardes krijgen. Dit hoeven geen duizenden
+  tests te zijn!"
+- **DE ROUTES, en hoe elk op koopbare onderdelen landt (vóór de reparaties):**
+
+  | route | mechanisme | lek vóór de audit |
+  | --- | --- | --- |
+  | run, standaardfilter | catalogus-zoektocht (S-5) | geen (matrix: 10 van 10 schoon) |
+  | run, volledig filter | continue tune + eindsnap | brak de snap een harde grens, dan **terug naar de continue waarden** ("⚠ snap REFUSED") |
+  | geweigerd vóór de snap (V31/V33) | `rejectedParts` als rapportage | **continu**, en een gestelde kandidaat (U-5) wordt ermee getoond |
+  | ⚙ Optimize components, standaardfilter | continue tune + eindsnap | `valueSearch` niet doorgegeven (S-5-nazorg) |
+  | ✂ Minimize (v2 en solo) | elke hertune met de snap uit | **altijd continu** |
+  | "New from template" | schoolboekwaarden | **nooit gesnapt** |
+  | solo, vfRounds-synthese | eindsnap / synthese-snap | alleen de rollback hierboven |
+
+- **De matrix** (scratch, casus 1 'm3', workerroute `v2Chain3One`, vloer 2,6 Ω, snap aan): vijf profielen
+  (auto, budget, balanced, premium, position) × standaardfilter × {geleverd 518,8 · gesteld 362,3}: **tien
+  van tien 20/20 catalogus**, 31–76 s. Volledig filter × {balanced, premium} × dezelfde twee: drie geleverd
+  op 18/18, 19/19 en 21/21 catalogus, één door de worker geweigerd (geen netwerk), 507–748 s. **Op deze
+  casus en deze vloer trad de rollback niet op**; de lekken zitten in de paden die de matrix niet raakt.
+- **Reparaties, alle vier alleen waar de snap aan staat en een catalogus geladen is (P2):**
+  - **De eindsnap rolt nooit meer terug naar continue waarden** (`netOptimizer.ts`). Breekt de dichtstbijzijnde
+    keus een harde grens, dan (1) de catalogus-zoektocht vanuit de getunede waarden — sinds de audit één
+    closure `catalogueSearch(start)` met twee aanroepers (S-5 vanaf het zaad, deze terugval vanaf de tune);
+    (2) breekt ook die een ACTIEVE POORT, dan weigert de run in de V31/V33-vorm (`refusal.by 'active-gate'`)
+    met wat zij bereikte op koopbare onderdelen in `rejectedParts`; (3) een tunergrens die geen poort is
+    (de bronweerstandstier, de nominale-lastvloer) levert het koopbare netwerk als `infeasible` (gediskwalificeerd).
+  - **Een geweigerd netwerk wordt op koopbare onderdelen gerapporteerd** (`refusedForReport`): de keus van de
+    eindsnap zelf op de geweigerde waarden, zonder grenstoets. Op de drie refusal-paden die continue
+    onderdelen teruggaven (veiligheidspoort, solo-gevoeligheid, V33).
+  - **✂ Minimize landt op catalogusonderdelen** (`minimize.ts`): na de verwijderrondes de catalogus-zoektocht
+    (S-5) op het geminimaliseerde netwerk, gemeten met `measureOnly`, als stap `land` in het rapport.
+  - **Een sjabloon wordt op catalogusonderdelen getekend** (`snapToNearestCatalogue` in `catalog.ts`,
+    dichtstbijzijnde losse onderdeel, geen fit; vergrendelde onderdelen houden hun waarde).
+- **`idealParts.ts` 1.0 → 1.1:** de oorzaakzin noemt niet meer "⚠ snap REFUSED" of "STATED (U-5)" — die
+  paden leveren nu koopbare onderdelen — maar wat er overblijft: met de hand getypt of vergrendeld, of
+  een netwerk van vóór 20-11-2026.
+- **Wat bewust blijft:** de snap uit (expert-vinkje, of een project dat `catalogSnap: false` bewaarde),
+  geen catalogus, een getypte of vergrendelde waarde, en de `catch` rond de landing van ✂ Minimize
+  (een domeinfout laat het continue resultaat staan; de ideaal-markering zegt het dan).
+- `src/lib/noFictitiousValues.test.ts` (10 claims, ~18 s): elk profiel op beide filterroutes; een snap die
+  een actieve poort breekt weigert en rapporteert koopbaar (met de P2-tegenproef zonder catalogus); ✂
+  Minimize landt; een sjabloon landt en een slot houdt zijn waarde; en een bronscan. **Twee opzettelijke
+  breuken** (landing uit, rapportage continu) zetten precies de twee bijbehorende claims op rood.
+  `idealParts.test.tsx` en `hybridNetwork.test.ts` in V15-vorm bijgewerkt.
+- **Sanders eigen geval, op de gerepareerde code:** volledig filter, gesteld 518,8 · 2251,4, Premium, vloer
+  3,2 Ω — de kandidaat wordt nog steeds geweigerd (V33: M-B/|Z| 2,59 Ω tegen 3,20) en wordt getoond met
+  **35 van 35 catalogusonderdelen**; G-20 mat op hetzelfde soort geval 0 van 20.
+- **Gemeten 20-11-2026:** `npx tsc -b` groen. `npx vitest run` **433,7 s, 253 bestanden, 3323 tests, niets
+  overgeslagen, in één keer groen, alleen gedraaid (gestart 20:12:12; laatste bronbewerking 20:08:13).**
+  Gedraaid omdat de audit `netOptimizer.ts` en `minimize.ts` aanraakt. **Alle vier de live ketenruns
+  reproduceren byte voor byte**, en `f4cRegression`, `workerRouteRegression` en `toggleRegression` staan —
+  geen corpus snapt, dus elke reparatie is daar afwezig. +1 bestand en +10 tests tegen de S-5-nazorg
+  (3313): exact `noFictitiousValues.test.ts`.

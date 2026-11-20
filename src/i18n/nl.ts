@@ -2221,10 +2221,11 @@ export const nl: Record<string, string> = {
   '“Use real catalog parts” is switched off (Expert → Filters → Components).':
     '„Echte catalogusonderdelen gebruiken” staat uit (Expert → Filters → Componenten).',
   // G-20 — why values were not matched to catalogue parts (idealParts.ts)
-  'This design was REFUSED — {reason} — and is shown as the tune left it, because you stated its crossings. A refused design is not matched to catalogue parts: change the requirement that refused it, or pick another design, for a list you can order.':
-    'Dit ontwerp is GEWEIGERD — {reason} — en staat er zoals de tune het achterliet, omdat jij de kruispunten stelde. Een geweigerd ontwerp wordt niet naar catalogusonderdelen omgezet: pas de eis aan die het weigerde, of kies een ander ontwerp, voor een lijst die je kunt bestellen.',
-  'Either the catalogue snap was refused because real parts would break a hard limit (“⚠ snap REFUSED” in the run notes), or the design was refused before the snap ran (“STATED (U-5)” in the run notes).':
-    'Óf de catalogussnap is geweigerd omdat echte onderdelen een harde grens zouden breken („⚠ snap REFUSED” in de runnotities), óf het ontwerp is geweigerd voordat de snap draaide („STATED (U-5)” in de runnotities).',
+  'This design was REFUSED — {reason} — and is shown because you stated its crossings.':
+    'Dit ontwerp is GEWEIGERD — {reason} — en staat er omdat jij de kruispunten stelde.',
+  'A run with the snap on puts every value on a catalogue part, so these were not set by one: they were typed or locked by hand, or the network comes from before 20-11-2026. ⚙ Optimize components puts them on catalogue parts.':
+    'Een run met de snap aan zet elke waarde op een catalogusonderdeel, dus deze komen niet uit een run: ze zijn met de hand getypt of vergrendeld, of het netwerk is van vóór 20-11-2026. ⚙ Optimize components zet ze op catalogusonderdelen.',
+  'landed on catalogue': 'op catalogus gezet',
   '{n} of {m} values are ideal values, not catalogue parts — marked “ideal” on the drawing.':
     '{n} van de {m} waarden zijn ideale waarden, geen catalogusonderdelen — gemarkeerd met „ideaal” in de tekening.',
   'Ideal value — no catalogue part has it, so it cannot be ordered as drawn.':

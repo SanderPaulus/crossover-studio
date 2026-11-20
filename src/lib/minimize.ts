@@ -35,11 +35,12 @@ import {
   type NetworkAudit,
   DEFAULT_R_SOURCE_TIER_OHM,
 } from './partAudit.ts';
-import { bomFor, nearestParts, type CatalogPart } from './catalog.ts';
+import { bomFor, hasImportedCatalog, nearestParts, type CatalogPart } from './catalog.ts';
 import { crossoverToNetlist } from './vxpNetwork.ts';
 
 export interface MinimizeStep {
-  kind: 'remove' | 'substitute' | 'suggest';
+  /** 'land' — AUDIT 20-11-2026: the minimised network put on purchasable parts. */
+  kind: 'remove' | 'substitute' | 'suggest' | 'land';
   partIds: string[];
   label: string;
   /** EUR saved by this step (null when a price was missing). */
@@ -258,6 +259,60 @@ export function minimizeNetwork(
       }
     }
     void refM;
+  }
+
+  /* ---- AUDIT 20-11-2026: LAND ON PURCHASABLE PARTS ----
+   * Every retune above runs with the snap OFF — a removal is judged on what
+   * the values can do, not on what a catalogue happens to stock — so what came
+   * out was continuous, and "✂ Minimize" handed back values nobody sells while
+   * the run had asked for the snap. When the caller asked for it and a
+   * catalogue is loaded, the minimised network is landed with the
+   * catalogue-only search (S-5): purchasable values from the start, scored by
+   * the tune's own objective, topology kept (no staged pass, no audit). If an
+   * active gate refuses every purchasable network, the parts handed back are
+   * still the purchasable ones the search reached, and the caller's own
+   * judgement of them refuses the result — never the continuous values. */
+  if (opts.tuneOpts?.catalogSnap && hasImportedCatalog()) {
+    opts.onStage?.('minimize: catalogue landing');
+    try {
+      const land = optimizeNetworkValues(cur.parts, grid, wBase, tBase, driverZ, adjust, {
+        ...(opts.tuneOpts ?? {}),
+        staged: undefined,
+        audit: { ...(opts.tuneOpts?.audit ?? {}), enabled: false },
+        catalogSnap: true,
+        valueSearch: 'catalog',
+        rejectedTuneReport: true,
+        onStage: opts.onStage ? (l) => opts.onStage?.(l) : undefined,
+      });
+      const landed = land.refusal ? land.rejectedParts : land.parts;
+      if (landed && landed.length > 0) {
+        /* Measured as landed: `measureOnly` reports the parts as they are and
+         * runs no pass, so nothing pulls a value back off its catalogue part. */
+        const read = optimizeNetworkValues(landed, grid, wBase, tBase, driverZ, adjust, {
+          ...(opts.tuneOpts ?? {}),
+          staged: undefined,
+          audit: { ...(opts.tuneOpts?.audit ?? {}), enabled: false },
+          catalogSnap: false,
+          measureOnly: true,
+        });
+        cur = { ...read, parts: landed };
+        const m = measure(cur);
+        steps.push({
+          kind: 'land',
+          partIds: landed.filter((q) => q.catalog && q.partId).map((q) => q.partId!),
+          label: 'every value on a purchasable catalogue part',
+          savingEur: null,
+          after: m,
+          note:
+            (land.refusal ? `an active gate refuses every purchasable network the search reached — ${land.refusal.reason}; ` : '') +
+            (land.snapNote ?? 'catalogue-only search (S-5)'),
+        });
+      }
+    } catch (caught) {
+      rethrowIfPlatformError(caught);
+      /* the landing failed to run: the continuous result stands, and the
+       * caller's ideal-value marking says so */
+    }
   }
 
   // ---- C3: two-for-one suggestions (report only) ----
