@@ -8362,7 +8362,9 @@ export default function App() {
       ['staged', stagedOn !== APP_DEFAULTS.stagedOn, 'staged targets off', () => setStagedOn(APP_DEFAULTS.stagedOn)],
       ['ripple', targetRipple !== APP_DEFAULTS.targetRipple, `ripple target ${targetRipple} dB`, () => setTargetRipple(APP_DEFAULTS.targetRipple)],
       ['phase', targetPhase !== APP_DEFAULTS.targetPhase, `phase target ${targetPhase}°`, () => setTargetPhase(APP_DEFAULTS.targetPhase)],
-      ['pin', xoRangeOn, `crossover pinned at ${xoFreqHz} ± ${xoMarginHz} Hz`, () => setXoRangeOn(false)],
+      /* 21-11-2026 — a pin now runs ONLY its own positions, so it is named with
+       * both handovers on a three-way and with what it does to the run. */
+      ['pin', xoRangeOn, `crossover pinned at ${threeWay ? `${xoLowFreqHz} ± ${xoLowMarginHz} and ` : ''}${xoFreqHz} ± ${xoMarginHz} Hz — only these positions run`, () => setXoRangeOn(false)],
       /* U-9 — a field that is never rendered does not steer the run on any v2
        * route, so it is not "steering the run" here either. */
       ['guard', breakupGuard !== APP_DEFAULTS.breakupGuard, 'breakup guard off', () => setBreakupGuard(APP_DEFAULTS.breakupGuard)],
@@ -9525,6 +9527,15 @@ export default function App() {
             : stated.complete
               ? { statedPerAxisHz: stated.perAxisHz }
               : {}),
+          /* 21-11-2026 — A PINNED CROSSOVER POINT RUNS ONLY ITSELF. Sander: "in
+           * expert mode worden de crossover points niet gerespecteerd": with
+           * 450 ± 100 and 2100 ± 100 in 3 steps the run took 18 candidates — the
+           * nine pinned positions AND the nine the derivation offered beside
+           * them — under a step selector that said "3 (9 sims)". U-5b made the
+           * pin sugar for the stated list, and the list adds to the field; a pin
+           * is the designer saying WHERE, so it now takes the path Refine takes
+           * (`statedOnly`). The typed list alone still adds (U-5). */
+          ...(runOpts.refine || (xoRangeOn && stated.complete) ? { statedOnly: true as const } : {}),
         };
       })();
       const v2Generated = v2FieldRequest
@@ -9537,7 +9548,7 @@ export default function App() {
               ? {
                   statedPerAxisHz: v2FieldRequest.statedPerAxisHz,
                   statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
-                  ...(runOpts.refine ? { statedOnly: true } : {}),
+                  ...(v2FieldRequest.statedOnly ? { statedOnly: true } : {}),
                 }
               : {}),
           })
@@ -9990,7 +10001,7 @@ export default function App() {
                   ...(v2FieldRequest.statedPerAxisHz
                     ? {
                         statedPerAxisHz: v2FieldRequest.statedPerAxisHz.map((a) => [...a]),
-                        ...(runOpts.refine ? { statedOnly: true } : {}),
+                        ...(v2FieldRequest.statedOnly ? { statedOnly: true } : {}),
                         statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
                       }
                     : {}),
@@ -10824,6 +10835,15 @@ export default function App() {
             : stated.complete
               ? { statedPerAxisHz: stated.perAxisHz }
               : {}),
+            /* 21-11-2026 — A PINNED CROSSOVER POINT RUNS ONLY ITSELF. Sander: "in
+             * expert mode worden de crossover points niet gerespecteerd": with
+             * 450 ± 100 and 2100 ± 100 in 3 steps the run took 18 candidates — the
+             * nine pinned positions AND the nine the derivation offered beside
+             * them — under a step selector that said "3 (9 sims)". U-5b made the
+             * pin sugar for the stated list, and the list adds to the field; a pin
+             * is the designer saying WHERE, so it now takes the path Refine takes
+             * (`statedOnly`). The typed list alone still adds (U-5). */
+            ...(runOpts.refine || (xoRangeOn && stated.complete) ? { statedOnly: true as const } : {}),
           };
         })();
         const v2Generated = v2FieldRequest
@@ -10836,7 +10856,7 @@ export default function App() {
                 ? {
                     statedPerAxisHz: v2FieldRequest.statedPerAxisHz,
                     statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
-                    ...(runOpts.refine ? { statedOnly: true } : {}),
+                    ...(v2FieldRequest.statedOnly ? { statedOnly: true } : {}),
                   }
                 : {}),
             })
@@ -11214,7 +11234,7 @@ export default function App() {
                       ...(v2FieldRequest.statedPerAxisHz
                         ? {
                             statedPerAxisHz: v2FieldRequest.statedPerAxisHz.map((a) => [...a]),
-                        ...(runOpts.refine ? { statedOnly: true } : {}),
+                        ...(v2FieldRequest.statedOnly ? { statedOnly: true } : {}),
                             statedOn: engineV2StatedAt.statedCrossings ?? 'date not recorded',
                           }
                         : {}),
@@ -21258,7 +21278,7 @@ export default function App() {
 
                   </>
                 
-                <label title={t('Pin the ACOUSTIC crossover. On Engine v2 this is the short way of writing the "Crossings you state" list (U-5b): centre ± margin in N steps is expanded into N stated positions, each of which gets a full chain run, the full gate evaluation and the full requirement evaluation — past the feasible window and past the chain budget, exactly as a frequency typed into that list. The positions it will use are printed below. Off = nothing is stated and the derived field is the whole field.')}>
+                <label title={t('Pin the ACOUSTIC crossover. On Engine v2 this is the short way of writing the "Crossings you state" list (U-5b): centre ± margin in N steps is expanded into N stated positions, each of which gets a full chain run, the full gate evaluation and the full requirement evaluation — past the feasible window and past the chain budget, exactly as a frequency typed into that list. The positions it will use are printed below. On = ONLY these positions run, not the derived field beside them. Off = nothing is stated and the derived field is the whole field.')}>
                   <input
                     type="checkbox"
                     checked={xoRangeOn}

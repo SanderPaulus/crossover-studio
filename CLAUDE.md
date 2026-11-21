@@ -10455,3 +10455,33 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   reproduceren byte voor byte**, en `f4cRegression`, `workerRouteRegression` en `toggleRegression` staan —
   geen corpus snapt, dus elke reparatie is daar afwezig. +1 bestand en +10 tests tegen de S-5-nazorg
   (3313): exact `noFictitiousValues.test.ts`.
+
+### Pin-guards (een vastgezet crossoverpunt draait alleen zichzelf; alleen app/UI, 21-11-2026)
+
+- **Aanleiding (Sander, 21-11-2026, met screenshot):** "in expert mode worden de crossover points niet
+  gerespecteerd". Met 450 ± 100 en 2100 ± 100 Hz in 3 stappen draaide de run 18 kandidaten: de negen
+  vastgezette posities (U-5b) ÉN de negen van het afgeleide veld ernaast (149,4 / 295 / 582,6 ×
+  1554,5 / 1906 / 2337,1), onder een stappenkeuze die "3 (9 sims)" zei. U-5b maakte de pin suikervorm
+  voor de U-5-lijst, en die lijst VOEGT TOE aan het veld; alleen Refine (G-10) draaide `statedOnly`.
+- **Sinds de reparatie draait een pin alleen zijn eigen posities**: beide veldaanvragen (drieweg en
+  tweeweg) zetten `statedOnly` bij Refine óf bij `xoRangeOn && stated.complete`, en de vier plekken die
+  het naar `buildCandidateField` en de exportblokken brengen lezen `v2FieldRequest.statedOnly`. De
+  getypte lijst ALLEEN blijft toevoegen (U-5). Een pin die niet leesbaar is (`complete` false) meldt zijn
+  probleem in de runnotities en het veld draait zoals altijd.
+- **Wat het zegt:** `describeFieldMode` heeft een tak voor `statedOnly` ("Stated positions only — N
+  candidates you stated; the D derived candidates of the window did not run."); tot nu toe las een
+  Refine-run "Full field — 0 candidates … Plus 9 crossings you stated". De tooltip van het pinvakje zegt
+  "On = ONLY these positions run". Guided noemt de pin al op de ontwerpstap (`nonStandard`); die regel
+  noemt sindsdien op een drieweg beide overnames en "only these positions run".
+- **De "tweeter kept above 1849 Hz"-regel naast het vakje is NIET aangeraakt**: het is de vloer van de
+  ELEKTRISCHE knie (`hpFloorHz`, ≥ 2×f_s), niet van het akoestische kruispunt; het afgeleide veld lag op
+  1554,5 Hz (G-6: 1,68×f_s bij orde 4) en dat is geen tegenspraak.
+- **Tests:** `statedRange.test.ts` +2 (de pin op casus 1b: 3 kandidaten met `statedOnly`, de tegenproef
+  dat hij zonder optelt bij het afgeleide veld, de zin; en de app-bedrading als bronscan);
+  `refineRun.test.ts` in V15-vorm (één beslissing per route, vier lezers). **Opzettelijke breuk** (de pin
+  weer alleen bij Refine): 2 rood.
+- **Niet in de browser nagelopen** (de pane is niet overgenomen).
+- **Gemeten 21-11-2026:** `npx tsc -b` groen. `npm run test:fast` **268,7 s, 253 bestanden (252 geslaagd,
+  1 overgeslagen), 3325 tests (3321 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid (gestart
+  20:23:25; laatste bronbewerking 20:23:15).** +2 tests tegen de audit (3323), exact de twee nieuwe claims.
+  Geen volle run: geen motor-, poort-, venster- of corpuscode geraakt (`statedOnly` bestond al, G-10).

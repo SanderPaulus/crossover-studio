@@ -31,6 +31,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildCandidateField, candidateFieldKey } from './candidateField.ts';
+import { describeFieldMode } from './fieldMode.ts';
 import { WINDOW_SMOOTHING_OCTAVES } from '../constants.ts';
 import {
   describeStatedPositions,
@@ -447,5 +448,58 @@ describe('U-5b — the app expands the form it shows', () => {
     expect(APP).toContain('const v2StatedRangeLines = useMemo(');
     expect(APP).toContain('expandStatedRange(r, label)');
     expect(APP).toContain('{v2StatedRangeLines.map((l, i) => (');
+  });
+});
+
+/* ================================================================== *
+ * 6 — 21-11-2026: a pinned crossover point runs ONLY itself
+ *
+ * Sander: "in expert mode worden de crossover points niet gerespecteerd".
+ * With 450 ± 100 and 2100 ± 100 Hz in 3 steps the run took 18 candidates —
+ * the nine pinned positions AND the nine the derivation offered beside them —
+ * under a step selector that said "3 (9 sims)". A pin is the designer saying
+ * WHERE, so it now takes the path Refine takes (`statedOnly`); the typed list
+ * on its own still adds to the field (U-5).
+ * ================================================================== */
+
+describe('21-11-2026 — a pinned crossover point runs only the positions it pins', () => {
+  it('2100 ± 100 Hz in 3 steps is three candidates, not three beside the derived field', () => {
+    const merged = mergeStatedCrossings({
+      parsed: parseStatedCrossings('', PAIR_LABELS),
+      ranges: PAIR_LABELS.map(() => ({ centreHz: 2100, marginHz: 100, steps: 3 })),
+      pairLabels: PAIR_LABELS,
+    });
+    expect(merged.complete).toBe(true);
+    const derived = casus1bField().field;
+    // The defect, kept as the tegenproef: without statedOnly the pin ADDS.
+    const beside = casus1bField(merged.perAxisHz).field;
+    expect(derived.candidates.length).toBeGreaterThan(0);
+    expect(beside.candidates.length).toBe(derived.candidates.length + 3);
+    const only = buildCandidateField({
+      windowInputs: CASUS1B.predesign.windowInputs,
+      alignments: CASUS1B_FIELD_ALIGNMENTS,
+      perPair: CASUS1B.predesign.windowInputs.map(() => ({ statedOrder: CASUS1B_STATED_ORDER })),
+      minSpacingOctaves: WINDOW_SMOOTHING_OCTAVES,
+      statedPerAxisHz: merged.perAxisHz,
+      statedOn: '2026-11-21',
+      statedOnly: true,
+    }).field;
+    expect(only.candidates).toHaveLength(3);
+    expect(only.candidates.every((c) => !!c.stated)).toBe(true);
+    expect(only.candidates.map((c) => c.crossings[0].hz).sort((a, b) => a - b)).toEqual([2000, 2100, 2200]);
+    // The shortlist line says what ran, not "Full field — 0 candidates".
+    expect(describeFieldMode(only)).toMatch(
+      /^Stated positions only — 3 candidates you stated; the \d+ derived candidates? of the window did not run\./,
+    );
+  });
+
+  it('the app runs only the pinned positions on both routes; the typed list alone still adds', () => {
+    expect(
+      (APP.match(/\.\.\.\(runOpts\.refine \|\| \(xoRangeOn && stated\.complete\) \? \{ statedOnly: true as const \} : \{\}\),/g) ?? [])
+        .length,
+    ).toBe(2);
+    expect((APP.match(/\.\.\.\(v2FieldRequest\.statedOnly \? \{ statedOnly: true \} : \{\}\),/g) ?? []).length).toBe(4);
+    // Guided names the pin on its design step, with what it does to the run.
+    expect(APP).toContain('Hz — only these positions run`, () => setXoRangeOn(false)],');
   });
 });

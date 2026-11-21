@@ -278,6 +278,21 @@ export function describeFieldMode(field: CandidateField): string {
         'handover the other way round, designed and tuned in their own right and judged by the same ' +
         'gates (H-4).'
       : '');
+  /* 21-11-2026 — a field that runs ONLY the stated positions (a pinned
+   * crossover point, or Refine) says so, instead of "Full field — 0
+   * candidates … Plus 9 crossings you stated", which read as if a field had
+   * run and come back empty. */
+  if (p.statedOnly) {
+    return (
+      `Stated positions only — ${stated} candidate${stated === 1 ? '' : 's'} you stated; the ` +
+      `${p.derivedSize} derived candidate${p.derivedSize === 1 ? '' : 's'} of the window did not run.` +
+      (mirrored > 0
+        ? ` Plus ${mirrored} mirrored polarity arm${mirrored === 1 ? '' : 's'}: the same positions with a ` +
+          'handover the other way round, designed and tuned in their own right and judged by the same ' +
+          'gates (H-4).'
+        : '')
+    );
+  }
   if (mode === 'exploration') {
     return (
       `Exploration field — ${n} of ${p.derivedSize} derived candidate${p.derivedSize === 1 ? '' : 's'}: ` +

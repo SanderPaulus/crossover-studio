@@ -29,7 +29,11 @@ describe('refine around one design', () => {
 
   it('the app runs ONLY the stated positions, and the row stops the click from loading', () => {
     const APP = readFileSync(join(__dirname, '..', 'App.tsx'), 'utf-8');
-    expect(APP.match(/\.\.\.\(runOpts\.refine \? \{ statedOnly: true \} : \{\}\),/g)?.length).toBe(4);
+    /* V15 — stond: vier keer `...(runOpts.refine ? { statedOnly: true } : {})`.
+     * Staat sinds 21-11-2026: de veldaanvraag beslist één keer per route
+     * (Refine óf een vastgezet crossoverpunt) en de vier plekken lezen dat. */
+    expect(APP.match(/\.\.\.\(runOpts\.refine \|\| \(xoRangeOn && stated\.complete\) \? \{ statedOnly: true as const \} : \{\}\),/g)?.length).toBe(2);
+    expect(APP.match(/\.\.\.\(v2FieldRequest\.statedOnly \? \{ statedOnly: true \} : \{\}\),/g)?.length).toBe(4);
     expect(APP).toContain('e.stopPropagation();\n              refineAround(label, i);');
     expect(APP).toContain("setV2Field('fieldMode', id)");
   });
