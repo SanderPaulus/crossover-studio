@@ -5187,6 +5187,12 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-intro-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
 .nfm-intro-steps li { display: flex; align-items: baseline; gap: 0.6rem; }
 .nfm-intro-drop { padding: 1.2rem 1rem; }
+/* UI-9 — the merge page takes a drop anywhere (a new session); its zones light up like the import step's. */
+.nf-merge-tool.drop-armed { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.nf-merge-tool .dropzone.drop-armed { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.nfm-needs-list { margin: 0.25rem 0 0.5rem; padding-left: 1.1rem; }
+.nfm-needs-list li { margin: 0.2rem 0; }
+.nfm-optional-head { margin: 1rem 0 0.1rem; color: var(--muted); font-weight: 600; }
 .nfm-intro-steps .nfm-step-num { flex: none; width: 1.6em; height: 1.6em; border: 1px solid var(--border); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85em; }
 /* UI-3 — project menu, places, empty project, folded inventory */
 .project-menu { position: relative; }

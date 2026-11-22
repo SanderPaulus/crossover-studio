@@ -10485,3 +10485,96 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   1 overgeslagen), 3325 tests (3321 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid (gestart
   20:23:25; laatste bronbewerking 20:23:15).** +2 tests tegen de audit (3323), exact de twee nieuwe claims.
   Geen volle run: geen motor-, poort-, venster- of corpuscode geraakt (`statedOnly` bestond al, G-10).
+
+### UI-9-guards (de merge-tool voor een eerste bezoeker: slepen, een voorbeeldsessie, de checklist, het venster zonder FRD-kop; alleen UI, 22-11-2026)
+
+- **Aanleiding (Sander, 22-11-2026):** een vriend laadde de demo in de optimizer, opende NF/FF merge en
+  liep vast; "kan je nog eens goed kijken naar de minimale data die we nodig hebben en de velden", en
+  "we kunnen geen bestanden slepen naar de website". Drie oorzaken, gemeten en niet vermoed:
+  1. **De merge-pagina had geen sleepafhandeling.** De drie dropvlakken waren een `<label>` rond een
+     bestandskiezer zonder drag-handlers, en `pageDropHandlers` van de app wapent alleen op Design →
+     Project. Een bestand dat op de merge-pagina losgelaten werd opende de browser zelf; de tekst zei
+     wel "drop".
+  2. **De demo bevat geen `.pir`-impulsen** (het zijn al gemergde FRD/ZMA-exports), dus de merge-tool
+     — sessiegebonden, op ruwe impulsen — had niets, en de lege pagina bood drie dropvlakken en geen
+     voorbeeld.
+  3. **Zonder FRD-export is er geen vensterkop, en dan vroeg stap 3 per driver één druk ("Take over
+     the proposal") die nergens aangekondigd stond; stap 4 las daarna "not merged yet".** Dat is
+     gevonden op de voorbeeldsessie zelf, in de browser, vóór de reparatie.
+- **1 Slepen** (`fileDrop(zone, onDropped)` in `NfMergeTool.tsx`): het idioom van de driverkaarten
+  (een teller voor dragenter/leave, `preventDefault` op dragover). Het hele `<section>` neemt een drop
+  als nieuwe sessie; de twee sessiezones en de kalibratiezone nemen hun eigen drop en stoppen hem
+  (`stopPropagation`), de pagina negeert een al-afgehandelde (`defaultPrevented`). `.drop-armed` op de
+  pagina en op de zone. `onFiles`/`onCalFile` nemen sindsdien ook een `File[]`. **Gemeten in de
+  browser met een synthetische `DragEvent`:** dragover op de pagina én op een zone wordt
+  `preventDefault`'d; een drop van een kalibratietekst op de kalibratiezone maakte het bestand aan
+  (daarna verwijderd). Een echte muissleep kan de pane niet, en dat staat hier zo.
+- **2 De voorbeeldsessie** (`src/lib/mergeDemoSession.ts`, `merge-demo-session/1.0`): de acht `.pir` van
+  `test-fixtures/casus1_pir/` plus het `.mic`-bestand, per `?url` geïmporteerd — **gediend, niet
+  gekopieerd**: de bundel geeft dezelfde bytes die de tests lezen (Vite emit ze als assets, ~2 MB), en
+  zij worden pas bij de druk opgehaald (de C-1-catalogusvorm). Eén knop op de lege pagina; een al
+  geladen exemplaar wordt geopend en niet verdubbeld (op naam). De OPSTELLING wordt GELEZEN uit
+  `opstelling.json` (`mergeDemoSetup`): A 500 (tafel), B hooguit 130, C 1000, D 1380, vlakken niet
+  gesteld → "weet ik niet"; een record zonder een maat GOOIT (B-4) en de test pint dat geen van die
+  getallen in de module getypt staat. De kalibratie wordt geparseerd en bewaard, `calId` gezet. Een
+  project met een lege kast krijgt de demokast via de UI-6-ingangen (`onCabinet`/`onSd`); met de demo
+  geladen leest de tool de kast van het project (zoals voor élke sessie). **De vier open punten van het
+  fixture-record blijven open en zichtbaar**: de aankomstcontrole van stap 2 meldt op de woofers
+  50–80 mm verschil tussen de kasthoogten van het demoproject en de gestelde hoogten boven de vloer
+  (de "open_vraag" van het record) en woofer down leest ⚠ flags (de vloerecho van 3,6 ms met de vlakken
+  op "weet ik niet", precies wat het record zegt). Dat is de echte meting met haar echte vragen, geen
+  gepolijste demo.
+- **3 De checklist** "What you need" bovenaan de lege pagina, vóór "How it works": **Required** (per
+  driver nabij- en ver-veld `.pir` uit één tweekanaalssessie; kastfront en per driver S_d en hoogte —
+  uit "Your cabinet" of in stap 2; de vier maten en de ene vraag), **For the level** (de FRD-exports óf
+  een `.mic`; zonder mergt hij, maar weigeren export en "Use in project"), **Optional** (impedanties,
+  poort-nabijveld, gemeten object). Afgeleid uit `setupStatus`, `compute`, `calibrationChoice` en de
+  stap-1-tabel, niet uit een wens.
+- **4 Optioneel benoemd op élke zone:** ".pir impulses (required) · their .frd/.txt exports and
+  .zma/.lim impedances (optional)", en "— or click to choose" in de koppen, want klikken was altijd al
+  de werkende weg.
+- **5 Stap 2 opgeruimd:** "How was the measurement set up?" met "Required: the four measures and one
+  question" EERST (de From-"Your cabinet"-kaart, A–D, de vraag, de hoogten, "Still missing"), dan het
+  UI-6-kastblok (ook verplicht, maar van het project), dan `<h4>Optional</h4>` met de eerdere
+  opstelling, "Keep this set-up" en het gemeten object. **De UI-6-claim "het kastblok staat vóór A–D"
+  is in V15-vorm omgekeerd** (`mergeGuide.test.ts`), op Sanders woord.
+- **6 — niet besteld, wel de kern van "onintuïtief": zonder FRD-kop is het voorstel het venster in
+  gebruik.** Een effect past, zodra een voorstel landt, `takeOver(stem, pr, true)` toe voor élke driver
+  zonder gekozen venster waarvan het verre veld GEEN kop heeft (`'error' in gateOf(d.far)`); een kop
+  wint altijd (A5b.1(i)) en een gekozen venster wordt nooit aangeraakt. `winAuto` op de config laat de
+  uitlezing zeggen "the proposal, applied by the tool (no FRD window header) — change it here", in stap
+  3 én in de vensterregel van stap 4. Het voorstel-effect en zijn overlay draaien sindsdien óók op
+  stap 4: een sessie die daar heropend wordt, of stap 3 verliet vóór élk voorstel klaar was, bleef
+  anders op "not merged yet" staan met niets dat rekende — gemeten: de woofers van de voorbeeldsessie.
+- `src/lib/mergeDemoSession.test.ts` (9 claims): de bestandslijst IS de fixture-map (`readdirSync`,
+  acht `.pir`, geen meer of minder); de sessie laadt door hetzelfde pad met een `fetch` van schijf
+  (drie drivers, een poort, een far-only tweeter; het `.mic` parseert); de opstelling uit het record
+  mét de drie tegenproeven (exact overstek, gestelde vlakken → "no", een ontbrekende maat gooit); de
+  demokast veld voor veld gelijk aan `KOAN_3WAY_DEMO`; en vijf bronscans op `NfMergeTool.tsx` (de
+  handlers op pagina en drie zones en geen zone zonder; de voorbeeldknop met de open-bestaande-regel,
+  de opstelling en de kalibratie; de checklist vóór "How it works" en "optional" op beide zones; de
+  volgorde van stap 2; het automatische venster met zijn twee uitsluitingen en de ene automatische
+  aanroeper). `browserSafe.test.ts` staat: de module importeert geen fixture-LOADER, alleen URL's.
+- **Browsercontrole (dev-server, 22-11-2026):** lege pagina met checklist en knop; de knop haalt de
+  acht impulsen op (netwerklog), opent de sessie met "✓ Set-up" en de kalibratie toegepast; stap 1
+  bevestigd; stap 2 toont A 500 / B hooguit 130 / C 1000 / D 1380 en "Don't know" aangevinkt (JS-lezing
+  van de velden), in de nieuwe volgorde; stap 3 → stap 4 via "next →": mid "not checked for
+  reflections" met "Window … the proposal, applied by the tool (no FRD window header)", woofer down
+  "flags", woofer up "not checked for reflections", tweeter "far field only" — alle drie gemergd zonder
+  één druk in stap 3. Console leeg. **Twee dingen die de controle opleverden en gerepareerd zijn vóór
+  de meting:** de stapknoppen zelf zijn in de pane niet aanklikbaar gebleken op een lange pagina
+  (coördinaat verschoven ná een re-render; "next →" via JS werkt) — geen app-defect; en de
+  kalibratiezone heeft geen `dz-icon`, dus het eerste vervangscript faalde vóór het schreef.
+- **Niet gedaan:** een echte muissleep is niet getest (de pane kan geen OS-drop); de vier open punten
+  van `opstelling.json` zijn niet beantwoord; de FRD-exports van de augustusmeting zitten niet in de
+  voorbeeldsessie (de map heeft ze niet) — daarom het `.mic`, zodat export en "Use in project" werken.
+- **Gemeten 22-11-2026:** `npx tsc -b` groen. `npm run test:fast` **266,3 s, 254 bestanden (253 geslaagd,
+  1 overgeslagen), 3334 tests (3330 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 17:28:46, run gestart 17:29:28 (de H-2-regel).** +1 bestand en
+  +9 tests tegen HEAD's 253/3325 (de meting van 21-11): exact `mergeDemoSession.test.ts`; `mergeGuide.test.ts`
+  en `ui3Layout.test.tsx` veranderden van inhoud en niet van telling. **De EERSTE run (263,7 s) had precies
+  TWEE rode claims en beide deden hun werk:** de UI-3-scan pinde dat de route de lege pagina OPENT (de
+  checklist staat er nu vóór) en de B-4-scan pinde de voorstel-overlay op `step === 'window'` alleen (zij
+  draait nu ook op stap 4). Beide in V15-vorm herschreven, geen claim versoepeld, en de laag is opnieuw en
+  alleen gedraaid op de boom die gecommit wordt. Geen volle run: geen motor-, poort-, venster-, metriek- of
+  corpuscode geraakt.

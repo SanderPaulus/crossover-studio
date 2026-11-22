@@ -12,7 +12,7 @@
  * measured object's own geometry, and when either is missing the tool asks (`sourceAboveBottomMm`).
  * Every decision lives in `lib/mergeSession.ts` (tested); this component renders it.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { createPortal } from 'react-dom';
 import Chart, { type Series } from './Chart.tsx';
 import { t } from '../lib/i18n.ts';
@@ -40,6 +40,7 @@ import {
 } from '../lib/nfMergeV2.ts';
 import { renderMergedFrdV2 } from '../lib/nfMergeV2Block.ts';
 import { largestDelta, setUpReachesGate } from '../lib/mergeBeforeAfter.ts';
+import { MERGE_DEMO_SESSION_NAME, fetchMergeDemoSession, mergeDemoCabinet, mergeDemoSetup } from '../lib/mergeDemoSession.ts';
 import { addHeaderLines, gridText, phaseConventionText, phaseZeroMsOf, type ExportGrid, type ExportPhase } from '../lib/mergeExport.ts';
 import { branchFileName, confirmBranchUse, USE_CONFIRM_WAIT_MS, type Prepared, type UseStatus } from '../lib/useInProject.ts';
 import {
@@ -158,6 +159,8 @@ interface SourceConfig {
   pirTaper?: string;
   /** I-4 B-4 guide, step 3: which window — the proposal taken over, the FRD header's, or set by hand. */
   winMode?: '' | 'header' | 'proposal' | 'self';
+  /** UI-9: the proposal was applied by the tool itself because the far field has no FRD window header (said in the readout). */
+  winAuto?: boolean;
   /** The driver sits in its own pod: AN4's d is the pod's diameter (mm), not the baffle width. */
   inPod?: boolean;
   podDiameter?: string;
@@ -438,7 +441,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   useEffect(() => {
     void refreshCals();
   }, []);
-  const onCalFile = async (files: FileList | null) => {
+  const onCalFile = async (files: FileList | File[] | null) => {
     const f = files?.[0];
     if (!f) return;
     setCalError(null);
@@ -500,7 +503,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     }, 600);
   }, [st, current]);
 
-  const onFiles = async (files: FileList | null) => {
+  const onFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     const dropped = await Promise.all([...files].map(async (f) => ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
     const first = files[0] as File & { webkitRelativePath?: string };
@@ -512,6 +515,94 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     setSt(restoreState(null, loaded.sources));
     setTab(loaded.sources.find((x) => x.kind === 'driver')?.stem ?? '');
     props.onOpenId(id);
+  };
+  /* UI-9 — drag-and-drop on this page. The drop zones were labels round a file input with no drag
+   * handling, and the app's page-wide handler only arms on Design → Project, so a file dropped on the
+   * merge page opened in the browser (Sander's friend, 22-11-2026). Same idiom as the driver cards:
+   * dragenter/leave fire for every child crossed, so a counter tracks "still inside"; a zone takes its
+   * drop and stops it, the page takes whatever no zone took. */
+  const [dropArmed, setDropArmed] = useState<'page' | 'session' | 'cal' | null>(null);
+  const dropDepth = useRef(0);
+  const fileDrop = (zone: 'page' | 'session' | 'cal', onDropped: (files: File[]) => void) => ({
+    onDragEnter: (e: DragEvent) => {
+      if (!e.dataTransfer.types.includes('Files')) return;
+      e.preventDefault();
+      if (zone !== 'page') e.stopPropagation();
+      dropDepth.current += 1;
+      setDropArmed(zone);
+    },
+    onDragOver: (e: DragEvent) => {
+      if (!e.dataTransfer.types.includes('Files')) return;
+      e.preventDefault();
+      if (zone !== 'page') e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+    },
+    onDragLeave: () => {
+      dropDepth.current = Math.max(0, dropDepth.current - 1);
+      if (dropDepth.current === 0) setDropArmed(null);
+    },
+    onDrop: (e: DragEvent) => {
+      if (e.defaultPrevented) return; // a zone inside took it
+      e.preventDefault();
+      if (zone !== 'page') e.stopPropagation();
+      dropDepth.current = 0;
+      setDropArmed(null);
+      onDropped([...e.dataTransfer.files]);
+    },
+  });
+  /* UI-9 — the example session: the August 2026 KOAN impulses the tests run on, fetched on the press.
+   * An already-loaded copy is opened, not duplicated. The stated set-up (A–D, the planes "don't know")
+   * and the calibration file land with it; a project whose cabinet is still empty gets the demo
+   * cabinet through the UI-6 entrances, so step 2 is complete in a fresh browser too. */
+  const [demoBusy, setDemoBusy] = useState<string | null>(null);
+  const loadDemoSession = async () => {
+    const existing = sessions.find((x) => x.name === MERGE_DEMO_SESSION_NAME);
+    if (existing) {
+      props.onOpenId(existing.id);
+      return;
+    }
+    setDemoBusy(t('Fetching the example session…'));
+    try {
+      const demo = await fetchMergeDemoSession();
+      let calId = '';
+      const have = cals.find((c) => c.name === demo.cal.name);
+      if (have) calId = have.id;
+      else {
+        const r = parseMicCal(demo.cal.name, demo.cal.text);
+        if (r.ok) {
+          calId = `${demo.cal.name}-${Date.now().toString(36)}`;
+          await saveMicCal({ id: calId, ...r.cal });
+          await refreshCals();
+        }
+      }
+      const setup = mergeDemoSetup();
+      const loaded = loadSession(MERGE_DEMO_SESSION_NAME, demo.files);
+      const id = newSessionId(MERGE_DEMO_SESSION_NAME, new Date());
+      const base = restoreState(null, loaded.sources);
+      const unknown = { kind: 'unknown' as const };
+      setCurrent({ id, name: MERGE_DEMO_SESSION_NAME, files: demo.files, loaded });
+      setSt({
+        ...base,
+        rig: { ...base.rig, ...setup.rig },
+        planeQ: setup.planeQ,
+        planes:
+          setup.planeQ === 'unknown'
+            ? { ceiling: unknown, sideWall: unknown, wallBehindCabinet: unknown, wallBehindMic: unknown }
+            : { ceiling: { kind: 'farther' }, sideWall: { kind: 'farther' }, wallBehindCabinet: { kind: 'farther' }, wallBehindMic: { kind: 'farther' } },
+        calId,
+      });
+      setTab(loaded.sources.find((x) => x.kind === 'driver')?.stem ?? '');
+      if (props.geometry.baffleWidthMm === null && props.geometry.baffleHeightMm === null) {
+        const cab = mergeDemoCabinet();
+        props.onCabinet(cab.patch);
+        for (const w of ['low', 'mid', 'high'] as MergeWay[]) if (props.sdCm2[w] === null) props.onSd(w, cab.sdCm2[w]);
+      }
+      props.onOpenId(id);
+    } catch (err) {
+      setStoreError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDemoBusy(null);
+    }
   };
   const setC = (stem: string, patch: Partial<SourceConfig>) => setSt((s) => ({ ...s, cfg: { ...s.cfg, [stem]: { ...blankConfig(), ...s.cfg[stem], ...patch } } }));
   const goto = (step: GuideStep) => setSt((s) => ({ ...s, step }));
@@ -946,7 +1037,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
    * overlay that says which driver it is on and how far it is. */
   const proposalKeys = useRef<Record<string, string>>({});
   useEffect(() => {
-    if (st.step !== 'window' || !session) return;
+    /* UI-9: also on step 4 — a session reopened there, or left step 3 before every driver's proposal had
+     * landed, would otherwise keep a header-less driver on "not merged yet" with nothing computing. */
+    if ((st.step !== 'window' && st.step !== 'merge') || !session) return;
     const order = [...drivers].sort((a, b) => (a.stem === tab ? -1 : b.stem === tab ? 1 : 0));
     type Job = { src: SessionSource; key: string; steps: Generator<number, WindowProposal | { reason: string }> };
     const jobs: Job[] = [];
@@ -1014,9 +1107,25 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [st.step, session, sessionRef, cfg, rig, planes, st.planeQ, obj.baffleW, props.geometry, props.sdCm2]);
-  const takeOver = (stem: string, pr: WindowProposal) =>
+  /* UI-9 — without an FRD export there is no header window, so until now step 3 needed one press per
+   * driver ("Take over the proposal") that nothing announced, and step 4 then read "not merged yet"
+   * (Sander's friend, 22-11-2026). Where no header exists the proposal is the only window there is, so it
+   * is applied as soon as it lands — the UI-6 rule for the band and f0, one row up — and the readout says
+   * the tool did it. A header always wins (A5b.1(i)); a window the designer chose is never touched. */
+  useEffect(() => {
+    for (const d of drivers) {
+      const c = cfg[d.stem];
+      if (!c || c.winMode || !d.far || !d.near) continue;
+      if (!('error' in gateOf(d.far))) continue; // an FRD header exists: it is the window
+      const pr = proposals[d.stem]?.res;
+      if (pr && 'gate' in pr) takeOver(d.stem, pr, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposals, drivers.length]);
+  const takeOver = (stem: string, pr: WindowProposal, auto = false) =>
     setC(stem, {
       winMode: 'proposal',
+      winAuto: auto,
       pirRef: pr.gate.referenceMs.toFixed(4),
       pirLeft: pr.gate.leftMs.toFixed(4),
       pirRight: pr.gate.rightMs.toFixed(4),
@@ -1119,7 +1228,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   })();
 
   return (
-    <section className="nf-merge-tool" id="nf-merge-tool">
+    <section className={`nf-merge-tool${dropArmed === 'page' ? ' drop-armed' : ''}`} id="nf-merge-tool" {...fileDrop('page', (f) => void onFiles(f))}>
       {/* UI-3 — a page under the app's own top bar: a heading that says what
           the tool gives you, and where its result goes. The version stays in
           the heading's tooltip; it is for whoever traces a file, not for the
@@ -1143,11 +1252,11 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       <div className="nfm-layout">
         <aside className="nfm-sessions">
           <strong>{t('Sessions')}</strong>
-          <label className="dropzone">
+          <label className={`dropzone${dropArmed === 'session' ? ' drop-armed' : ''}`} {...fileDrop('session', (f) => void onFiles(f))}>
             <span className="dz-icon" aria-hidden="true">⬇</span>
             <span className="dz-text">
-              <strong>{t('New session')}</strong>
-              <span>{t('.pir + their .frd/.txt exports + .zma/.lim')}</span>
+              <strong>{t('New session — drop the files here, or click to choose them')}</strong>
+              <span>{t('.pir impulses (required) · their .frd/.txt exports and .zma/.lim impedances (optional)')}</span>
             </span>
             <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
           </label>
@@ -1177,9 +1286,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
             {sessions.length === 0 && <li className="derived">{t('No stored sessions yet.')}</li>}
           </ul>
           <strong>{t('Microphone calibration')}</strong>
-          <label className="dropzone nfm-cal-drop">
+          <label className={`dropzone nfm-cal-drop${dropArmed === 'cal' ? ' drop-armed' : ''}`} {...fileDrop('cal', (f) => void onCalFile(f))}>
             <span className="dz-text">
-              <strong>{t('Add a calibration file')}</strong>
+              <strong>{t('Add a calibration file — drop it here, or click')}</strong>
               <span>{t('ARTA / REW / JustOct text: frequency, dB, optional phase')}</span>
             </span>
             <input type="file" accept=".mic,.txt,.cal,.frd" aria-label={t('calibration file')} onChange={(e) => void onCalFile(e.target.files)} />
@@ -1383,81 +1492,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                   {/* UI-6 (Sander, 18-11-2026): what the merge needs from "Your cabinet", askable HERE — the
                       front and, per driver, S_d and the height above the bottom — written into the project's
                       own fields, so the tool works without the optimizer and the optimizer finds them filled. */}
-                  {!ownGeometry && (
-                    <div className="nfm-card nfm-cabinet-min">
-                      <h3>{t('Your cabinet — what the merge needs')}</h3>
-                      <p className="derived">
-                        {t('These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.')}{' '}
-                        <button type="button" className="linkish" onClick={props.onOpenCabinet}>
-                          {t('Open the full “Your cabinet” →')}
-                        </button>
-                      </p>
-                      <p className="nfm-abcd">
-                        {t('front panel')}{' '}
-                        <Field value={props.geometry.baffleWidthMm !== null ? String(props.geometry.baffleWidthMm) : ''} onCommit={(v) => props.onCabinet({ baffleWidthMm: v })} ariaLabel={t('front panel width')} /> ×{' '}
-                        <Field value={props.geometry.baffleHeightMm !== null ? String(props.geometry.baffleHeightMm) : ''} onCommit={(v) => props.onCabinet({ baffleHeightMm: v })} ariaLabel={t('front panel height')} /> mm ({t('width × height')})
-                        <br />
-                        <span className="derived">
-                          {props.geometry.baffleWidthMm === null
-                            ? t('Without the width there is no near→far model (AN4 reads it) and no echo extent: no merge.')
-                            : props.geometry.baffleHeightMm === null
-                              ? t('Without the height no driver height can be placed above the floor: no reflection model, no arrival check.')
-                              : t('Width: the near→far model and the echo extent. Height: where each driver stands above the floor.')}
-                        </span>
-                      </p>
-                      {(['low', 'mid', 'high'] as MergeWay[])
-                        .filter((w) => drivers.some((d) => cfg[d.stem]?.way === w) || farOnly.some((d) => cfg[d.stem]?.way === w))
-                        .map((w) => {
-                          const g = props.geometry.drivers[w];
-                          const members = drivers.filter((d) => cfg[d.stem]?.way === w).length + farOnly.filter((d) => cfg[d.stem]?.way === w).length;
-                          const h = aboveBottomFromY(g.yMm, props.geometry.baffleHeightMm, props.geometry.refFromTopMm);
-                          const H = props.geometry.baffleHeightMm;
-                          return (
-                            <p className="nfm-abcd" key={w}>
-                              <strong>{t(w === 'low' ? 'woofer' : w === 'mid' ? 'midrange' : 'tweeter')}</strong>{' '}
-                              S_d <Field value={props.sdCm2[w] !== null ? String(props.sdCm2[w]) : ''} onCommit={(v) => props.onSd(w, v)} ariaLabel={t('{w}: S_d', { w })} /> cm² ·{' '}
-                              {t('centre above the cabinet bottom')}{' '}
-                              <Field
-                                value={h !== null ? String(Math.round(h * 10) / 10) : ''}
-                                onCommit={(v) => {
-                                  const hv = num(v);
-                                  if (hv === null || H === null) return;
-                                  const y = yFromAboveBottom(hv, H, props.geometry.refFromTopMm);
-                                  props.onCabinet({ refFromTopMm: String(y.refFromTopMm), drivers: { [w]: { yMm: String(Math.round(y.yMm * 10) / 10), ...(members >= 2 && (g.count ?? 0) < 2 ? { count: String(members) } : {}) } } });
-                                }}
-                                title={H === null ? t('state the front panel height first') : undefined}
-                                ariaLabel={t('{w}: height above the bottom', { w })}
-                              />{' '}
-                              mm
-                              {members >= 2 && (
-                                <>
-                                  {' · '}
-                                  {t('spacing of the pair')} <Field value={g.spacingMm !== null ? String(g.spacingMm) : ''} onCommit={(v) => props.onCabinet({ drivers: { [w]: { spacingMm: v, count: String(members) } } })} ariaLabel={t('{w}: spacing', { w })} /> mm
-                                </>
-                              )}
-                              <br />
-                              <span className="derived">
-                                {props.sdCm2[w] === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : ''}
-                                {h === null ? t('Without the height: no reflection model and no arrival check for this driver.') : ''}
-                              </span>
-                            </p>
-                          );
-                        })}
-                    </div>
-                  )}
                   <h3>{t('How was the measurement set up?')}</h3>
-                  <p className="derived">{t('Four measures, once per set-up. The tool keeps them.')}</p>
-                  <p>
-                    {t('Earlier set-up')}{' '}
-                    <select value="" onChange={(e) => loadSetup(e.target.value)} aria-label={t('earlier set-up')}>
-                      <option value="">{t('— choose, or fill in a new one —')}</option>
-                      {setups.map((x) => (
-                        <option key={x.id} value={x.id}>
-                          {x.name} — {x.savedAt.slice(0, 10)}
-                        </option>
-                      ))}
-                    </select>
-                  </p>
+                  <p className="derived">{t('Required: the four measures and one question, once per set-up. The tool keeps them.')}</p>
                   {fromDesign && (
                     <div className="nfm-card nfm-from-design">
                       <p>
@@ -1604,6 +1640,83 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     })}
                   </p>
                   {!sstat.complete && <p className="derived alert">{t('Still missing: {m}.', { m: sstat.missing.join('; ') })}</p>}
+                  {/* UI-9 — the cabinet block is required too, but it comes from the project: it follows the four
+                      measures, which are typed here and nowhere else (Sander, 22-11-2026: A–D and the question on top). */}
+                  {!ownGeometry && (
+                    <div className="nfm-card nfm-cabinet-min">
+                      <h3>{t('Your cabinet — what the merge needs')}</h3>
+                      <p className="derived">
+                        {t('These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.')}{' '}
+                        <button type="button" className="linkish" onClick={props.onOpenCabinet}>
+                          {t('Open the full “Your cabinet” →')}
+                        </button>
+                      </p>
+                      <p className="nfm-abcd">
+                        {t('front panel')}{' '}
+                        <Field value={props.geometry.baffleWidthMm !== null ? String(props.geometry.baffleWidthMm) : ''} onCommit={(v) => props.onCabinet({ baffleWidthMm: v })} ariaLabel={t('front panel width')} /> ×{' '}
+                        <Field value={props.geometry.baffleHeightMm !== null ? String(props.geometry.baffleHeightMm) : ''} onCommit={(v) => props.onCabinet({ baffleHeightMm: v })} ariaLabel={t('front panel height')} /> mm ({t('width × height')})
+                        <br />
+                        <span className="derived">
+                          {props.geometry.baffleWidthMm === null
+                            ? t('Without the width there is no near→far model (AN4 reads it) and no echo extent: no merge.')
+                            : props.geometry.baffleHeightMm === null
+                              ? t('Without the height no driver height can be placed above the floor: no reflection model, no arrival check.')
+                              : t('Width: the near→far model and the echo extent. Height: where each driver stands above the floor.')}
+                        </span>
+                      </p>
+                      {(['low', 'mid', 'high'] as MergeWay[])
+                        .filter((w) => drivers.some((d) => cfg[d.stem]?.way === w) || farOnly.some((d) => cfg[d.stem]?.way === w))
+                        .map((w) => {
+                          const g = props.geometry.drivers[w];
+                          const members = drivers.filter((d) => cfg[d.stem]?.way === w).length + farOnly.filter((d) => cfg[d.stem]?.way === w).length;
+                          const h = aboveBottomFromY(g.yMm, props.geometry.baffleHeightMm, props.geometry.refFromTopMm);
+                          const H = props.geometry.baffleHeightMm;
+                          return (
+                            <p className="nfm-abcd" key={w}>
+                              <strong>{t(w === 'low' ? 'woofer' : w === 'mid' ? 'midrange' : 'tweeter')}</strong>{' '}
+                              S_d <Field value={props.sdCm2[w] !== null ? String(props.sdCm2[w]) : ''} onCommit={(v) => props.onSd(w, v)} ariaLabel={t('{w}: S_d', { w })} /> cm² ·{' '}
+                              {t('centre above the cabinet bottom')}{' '}
+                              <Field
+                                value={h !== null ? String(Math.round(h * 10) / 10) : ''}
+                                onCommit={(v) => {
+                                  const hv = num(v);
+                                  if (hv === null || H === null) return;
+                                  const y = yFromAboveBottom(hv, H, props.geometry.refFromTopMm);
+                                  props.onCabinet({ refFromTopMm: String(y.refFromTopMm), drivers: { [w]: { yMm: String(Math.round(y.yMm * 10) / 10), ...(members >= 2 && (g.count ?? 0) < 2 ? { count: String(members) } : {}) } } });
+                                }}
+                                title={H === null ? t('state the front panel height first') : undefined}
+                                ariaLabel={t('{w}: height above the bottom', { w })}
+                              />{' '}
+                              mm
+                              {members >= 2 && (
+                                <>
+                                  {' · '}
+                                  {t('spacing of the pair')} <Field value={g.spacingMm !== null ? String(g.spacingMm) : ''} onCommit={(v) => props.onCabinet({ drivers: { [w]: { spacingMm: v, count: String(members) } } })} ariaLabel={t('{w}: spacing', { w })} /> mm
+                                </>
+                              )}
+                              <br />
+                              <span className="derived">
+                                {props.sdCm2[w] === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : ''}
+                                {h === null ? t('Without the height: no reflection model and no arrival check for this driver.') : ''}
+                              </span>
+                            </p>
+                          );
+                        })}
+                    </div>
+                  )}
+                  <h4 className="nfm-optional-head">{t('Optional')}</h4>
+                  <p className="derived">{t('An earlier set-up to reuse, a name to keep this one under, and the measured object when it is not the target cabinet.')}</p>
+                  <p>
+                    {t('Earlier set-up')}{' '}
+                    <select value="" onChange={(e) => loadSetup(e.target.value)} aria-label={t('earlier set-up')}>
+                      <option value="">{t('— choose, or fill in a new one —')}</option>
+                      {setups.map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name} — {x.savedAt.slice(0, 10)}
+                        </option>
+                      ))}
+                    </select>
+                  </p>
                   <p>
                     <Field value={setupName} onCommit={setSetupName} width={18} placeholder={t('name, e.g. test cabinet on table — Aug 2026')} ariaLabel={t('set-up name')} />{' '}
                     <button type="button" disabled={!setupName.trim()} onClick={saveCurrentSetup}>
@@ -1726,7 +1839,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
               />
             )}
 
-            {step === 'window' &&
+            {(step === 'window' || step === 'merge') &&
               proposalBusy &&
               createPortal(
                 <div className="busy-overlay nfm-proposal-overlay" role="status" aria-live="polite">
@@ -1764,7 +1877,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                   <strong>{t('Window')}</strong>{' '}
                   {cur?.window
                     ? t('{src}, T = {tt} ms, 1/T = {hz} Hz', {
-                        src: cur.window.source === 'header' ? t('from the FRD header') : cfg[active.stem].winMode === 'proposal' ? t('the proposal, taken over') : t('set by hand'),
+                        src: cur.window.source === 'header' ? t('from the FRD header') : cfg[active.stem].winMode === 'proposal' ? (cfg[active.stem].winAuto ? t('the proposal, applied by the tool (no FRD window header)') : t('the proposal, taken over')) : t('set by hand'),
                         tt: (1000 / cur.window.oneOverTHz).toFixed(3),
                         hz: cur.window.oneOverTHz.toFixed(1),
                       })
@@ -1922,6 +2035,37 @@ export default function NfMergeTool(props: NfMergeToolProps) {
         {!session && (
           /* UI-3 — the empty page shows the route, not just "open a session". */
           <div className="nfm-intro">
+            {/* UI-9 — what the tool NEEDS comes first, as a list with required and optional marked, and
+                the example session as one press: a visitor who came from the demo project has no .pir
+                files and until now met three drop zones and no way to see the tool work. */}
+            <div className="nfm-card nfm-needs">
+              <h3>{t('What you need')}</h3>
+              <ul className="nfm-needs-list">
+                <li>
+                  <strong>{t('Required')}</strong> — {t('per driver a near-field and a far-field impulse (.pir) from one dual-channel session; the cabinet front (width, height) and per driver S_d and the height above the bottom — from “Your cabinet”, or typed in step 2; the four measures of the set-up and one question about walls and ceiling.')}
+                </li>
+                <li>
+                  <strong>{t('For the level')}</strong> — {t('the FRD exports of the far fields, or a microphone calibration file. Without either the tool merges and fits, but export and “Use in project” refuse.')}
+                </li>
+                <li>
+                  <strong>{t('Optional')}</strong> — {t('impedances (.zma/.lim, handed on to the project), a port near field for a vented box, the measured object when it is not the target cabinet.')}
+                </li>
+              </ul>
+              <p>
+                <button type="button" className="nfm-primary" disabled={demoBusy !== null} onClick={() => void loadDemoSession()}>
+                  {demoBusy ?? t('Load the example session (KOAN 2951, Aug 2026) →')}
+                </button>{' '}
+                <span className="derived">{t('The real August measurement of the demo loudspeaker: eight impulses, its calibration file and the set-up as stated — the whole route in two presses.')}</span>
+              </p>
+            </div>
+            <label className={`dropzone nfm-intro-drop${dropArmed === 'session' ? ' drop-armed' : ''}`} {...fileDrop('session', (f) => void onFiles(f))}>
+              <span className="dz-icon" aria-hidden="true">⬇</span>
+              <span className="dz-text">
+                <strong>{sessions.length > 0 ? t('Open a session on the left, or drop a new one here — or click to choose the files') : t('Drop your measuring session here to start — or click to choose the files')}</strong>
+                <span>{t('.pir impulses (required) · their .frd/.txt exports and .zma/.lim impedances (optional)')}</span>
+              </span>
+              <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
+            </label>
             <h3>{t('How it works')}</h3>
             <ol className="nfm-intro-steps">
               {GUIDE_STEPS.map((k, i) => (
@@ -1934,16 +2078,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 </li>
               ))}
             </ol>
-            <label className="dropzone nfm-intro-drop">
-              <span className="dz-icon" aria-hidden="true">⬇</span>
-              <span className="dz-text">
-                <strong>{sessions.length > 0 ? t('Open a session on the left, or drop a new one here') : t('Drop a measuring session here to start')}</strong>
-                <span>{t('.pir + their .frd/.txt exports + .zma/.lim')}</span>
-              </span>
-              <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
-            </label>
             <p className="derived">
-              {t('A tool of its own: it works without a project and keeps its sessions itself. Drop a session’s impulses (.pir) with their FRD exports — the window comes from the export’s header — and the impedances. Merge, accept, export; “Use in project…” hands the project the merged files, exactly as importing the export package would.')}
+              {t('A tool of its own: it works without a project and keeps its sessions itself. Merge, accept, export; “Use in project…” hands the project the merged files, exactly as importing the export package would.')}
             </p>
           </div>
         )}
@@ -2095,7 +2231,7 @@ function WindowStep(p: {
           <p className={used ? 'derived' : 'derived alert'}>
             {used
               ? t('In use: {m}, T = {tt} ms, 1/T = {hz} Hz', {
-                  m: c.winMode === 'proposal' ? t('the proposal') : c.winMode === 'self' ? t('set by hand') : t('the FRD header'),
+                  m: c.winMode === 'proposal' ? (c.winAuto ? t('the proposal, applied by the tool (no FRD window header) — change it here') : t('the proposal')) : c.winMode === 'self' ? t('set by hand') : t('the FRD header'),
                   tt: (1000 / used.oneOverTHz).toFixed(3),
                   hz: used.oneOverTHz.toFixed(1),
                 })

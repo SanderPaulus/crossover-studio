@@ -70,9 +70,13 @@ describe('UI-3 — the merge page under the top bar', () => {
     expect(MERGE).toContain("t('The result goes to the open project: {w}.'");
   });
 
-  it('the empty page shows the route, one line per guide step', () => {
+  it('the empty page shows the route, one line per guide step — since UI-9 below "What you need" and the example button', () => {
     const i = MERGE.indexOf('className="nfm-intro"');
     expect(i).toBeGreaterThan(0);
-    expect(MERGE.slice(i, i + 800)).toContain('GUIDE_STEPS.map');
+    // UI-9 — V15: WAS "within 800 characters of the intro's opening" (the route came first); IS after the
+    // checklist and the example session (Sander, 22-11-2026: what the tool needs comes before how it works).
+    const intro = MERGE.slice(i, MERGE.indexOf('</section>', i));
+    expect(intro).toContain('GUIDE_STEPS.map');
+    expect(intro.indexOf("t('What you need')")).toBeLessThan(intro.indexOf('GUIDE_STEPS.map'));
   });
 });

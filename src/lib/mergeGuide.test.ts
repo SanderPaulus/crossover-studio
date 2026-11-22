@@ -277,7 +277,10 @@ describe('the tool — what a source scan can see', () => {
     expect(eff).toMatch(/a\.stem === tab \? -1/); // the active one first
     expect(eff).not.toMatch(/drivers\.find\(\(d\) => d\.stem === tab\)/);
     expect(eff).not.toMatch(/\btab,/); // switching tabs does not restart the run
-    expect(src).toMatch(/\{step === 'window' &&\s+proposalBusy &&\s+createPortal\(\s+<div className="busy-overlay/);
+    // UI-9 — V15: WAS `step === 'window' &&`; IS steps 3 AND 4, because the proposal is the window in use
+    // where no FRD header exists and must be able to land on step 4 too (a reopened session).
+    expect(src).toMatch(/\{\(step === 'window' \|\| step === 'merge'\) &&\s+proposalBusy &&\s+createPortal\(\s+<div className="busy-overlay/);
+    expect(eff).toMatch(/if \(\(st\.step !== 'window' && st\.step !== 'merge'\) \|\| !session\) return;/);
     expect(src).toMatch(/<progress value=\{proposalBusy\.index\} max=\{proposalBusy\.total\}/);
 
     // the proposals live in the stored tool state: a reopened session does not recompute them
@@ -305,11 +308,16 @@ describe('the tool — what a source scan can see', () => {
     const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
     expect(app).toMatch(/enclosure: d\.enclosure \?\? null/); // the cabinet form's enclosure travels to the tool
   });
-  it('UI-6: "Your cabinet — what the merge needs" sits in step 2, before A–D, and writes the project\'s own fields through the app', () => {
+  it('UI-6: "Your cabinet — what the merge needs" sits in step 2 — since UI-9 AFTER A–D and the planes question, before "Optional" — and writes the project\'s own fields through the app', () => {
     const i = src.indexOf("t('Your cabinet — what the merge needs')");
     expect(i).toBeGreaterThan(0);
-    expect(i).toBeLessThan(src.indexOf("t('How was the measurement set up?')", i)); // before the four measures
-    const block = src.slice(i, src.indexOf("t('Earlier set-up')", i));
+    // UI-9 — V15: WAS "before the four measures"; IS after them (Sander, 22-11-2026: A–D and the question on
+    // top as the required part, the cabinet block — required too, but the project's — right after, and
+    // everything optional under one heading).
+    expect(src.indexOf("t('How was the measurement set up?')")).toBeLessThan(i);
+    expect(src.indexOf("t('Is there anything inside the blue circles?')")).toBeLessThan(i);
+    expect(i).toBeLessThan(src.indexOf("t('Optional')", i));
+    const block = src.slice(i, src.indexOf("t('Optional')", i));
     expect(block).toContain('props.onCabinet({ baffleWidthMm: v })');
     expect(block).toContain('props.onCabinet({ baffleHeightMm: v })');
     expect(block).toContain('props.onSd(w, v)');
