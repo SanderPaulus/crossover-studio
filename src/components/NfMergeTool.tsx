@@ -77,7 +77,7 @@ import {
   yFromAboveBottom,
   type CabinetPatchForMerge,
 } from '../lib/mergeSession.ts';
-import { convertLowEnd, loadValidity, LOAD_RATIO_TOL_DB, LOAD_RATIO_TOL_DEG, type BoxSpec, type MeasuredObject } from '../lib/measuredObject.ts';
+import { LOAD_RATIO_TOL_DB, LOAD_RATIO_TOL_DEG } from '../lib/measuredObject.ts';
 import {
   deleteMergeSession,
   listMergeSessions,
@@ -209,7 +209,8 @@ interface ToolAccepted {
   name: string;
   text: string;
   status: MergeStatus;
-  way: MergeWay;
+  /** UI-10 fase 2 — the way as resolved when the merge was accepted; what "Use in project" reads is `wayOf` LIVE. */
+  way: MergeWay | '';
   acceptedAt: string;
   /** I-4 fase 4 — the same merge on the far field's own export grid, or null with why. */
   textOriginal?: string | null;
@@ -245,7 +246,7 @@ export function stableKey(x: unknown): string {
 function mergeMissing(r: { flags: readonly unknown[] } | null, setupComplete: boolean, c: SourceConfig, proposedValidFromHz: number | null): string[] {
   return [
     !setupComplete ? t('the set-up (step 2)') : null,
-    !c.way ? t('which driver (step 1)') : null,
+    /* UI-10 fase 2: "which driver (step 1)" is gone — the way is an address, asked in step 5, not a merge input */
     !r ? t('a computed merge') : null,
     /* UI-6: the proposal IS the value unless one is stated; only a way with neither still needs it */
     num(c.validFrom) === null && proposedValidFromHz === null ? t('a stated “valid from”') : null,
@@ -255,7 +256,7 @@ function mergeMissing(r: { flags: readonly unknown[] } | null, setupComplete: bo
 /** UI-5 — the same for a far field without a near field. */
 function farMissing(comp: FarComputed | null, c: SourceConfig, proposedValidFromHz: number | null): string[] {
   const ok = comp && comp.error === null;
-  return [!c.way ? t('which driver (step 1)') : null, !ok ? t('a readable window') : null, num(c.validFrom) === null && proposedValidFromHz === null ? t('a stated “valid from”') : null].filter((x): x is string => !!x);
+  return [!ok ? t('a readable window') : null, num(c.validFrom) === null && proposedValidFromHz === null ? t('a stated “valid from”') : null].filter((x): x is string => !!x);
 }
 /** UI-6 — "valid from" as the file will carry it: stated in the tool, else the proposal (the near field's
  *  reach; for a far field alone its gate floor 1/T). Null when neither exists. */
@@ -615,7 +616,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
    *  Proposals (a cache) and the step/tab (navigation) are not in it. */
   const approvalKey = (stem: string): string => {
     const c = st.cfg[stem];
-    return stableKey({ kernel: NF_MERGE_V2_VERSION, c, port: c?.port ? st.cfg[c.port] ?? null : null, rig: st.rig, planes: st.planes, planeQ: st.planeQ, planeList: st.planeList, obj: st.obj, calId: st.calId, roles: st.roles });
+    /* UI-10 fase 2 — the WAY is an address (step 5), not something the merge was computed from: out of the key.
+     * (Approvals made before this carry it; they read "changed since approval" once and are re-approved.) */
+    return stableKey({ kernel: NF_MERGE_V2_VERSION, c: c ? { ...c, way: '' } : c, port: c?.port ? st.cfg[c.port] ?? null : null, rig: st.rig, planes: st.planes, planeQ: st.planeQ, planeList: st.planeList, obj: st.obj, calId: st.calId, roles: st.roles });
   };
   const approvalOf = (stem: string): Approval => {
     const a = st.accepted[stem];
@@ -662,7 +665,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   const calChoice = chooseCalibration(session?.calibration ?? null, chosenCal);
   const drivers = session?.sources.filter((s) => s.kind === 'driver') ?? [];
   const farOnly = session?.sources.filter((s) => s.kind === 'far-only') ?? [];
-  const ownGeometry = obj.kind === 'other' && obj.baffle === 'own';
+  /* UI-10 fase 2d (Sander, 22-11-2026: "ik wil mergen met wat we hebben"): the measured object is no longer a
+   * model — only its FRONT still matters to the merge (the near→far model and the heights read it). */
+  const ownGeometry = obj.baffle === 'own';
   /** Step 2: A, C and D as "Your cabinet" states them — a proposal, taken over with one click; never B. */
   const fromDesign = (() => {
     if (!props.designRig) return null;
@@ -676,10 +681,26 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   const dFollowing = (a: string): Partial<RigState> =>
     rig.dFollowsA && fromDesign?.micAboveBottomMm != null && num(a) !== null ? { micHeight: (num(a)! + fromDesign.micAboveBottomMm).toFixed(0) } : {};
 
-  /** S_d: the design's for that way, else the one stated here (step 1). */
-  const sdOf = (c: SourceConfig): number | null => (c.way ? props.sdCm2[c.way] : null) ?? num(c.sdCm2 ?? '');
-  const placementOf = (c: SourceConfig): SourcePlacement =>
-    ownGeometry ? { kind: 'own', aboveBottomMm: num(c.ownHeight) } : { kind: 'cabinet', way: c.way || null, member: c.member || null };
+  /* UI-10 fase 2 — the project's WAY is an ADDRESS, not a merge input (Sander, 22-11-2026: "we hebben dit
+   * alleen nodig als we de merge willen overnemen naar de optimizer, dus pas bij de export fase"). The merge
+   * reads S_d, the enclosure and the height per DRIVER. With a project open those come from "Your cabinet",
+   * keyed by the way the file NAME proposes — read silently, never asked (what the app knows it does not
+   * ask); a driver whose name proposes none keeps its facts in this session. The way itself is asked once,
+   * in step 5, as the address of "Use in project"; a stated one wins over the proposal everywhere. */
+  const wayOf = (stem: string): MergeWay | '' => cfg[stem]?.way || proposeWay(stem)?.way || '';
+  const memberOf = (stem: string): SourceConfig['member'] => cfg[stem]?.member || proposeWay(stem)?.member || '';
+  /** S_d: the design's for the resolved way, else the one stated in step 2 for this driver. */
+  const sdOf = (stem: string): number | null => {
+    const w = wayOf(stem);
+    return (w ? props.sdCm2[w] : null) ?? num(cfg[stem]?.sdCm2 ?? '');
+  };
+  const placementOf = (stem: string): SourcePlacement => {
+    const c = cfg[stem] ?? blankConfig();
+    if (ownGeometry) return { kind: 'own', aboveBottomMm: num(c.ownHeight) };
+    const w = wayOf(stem);
+    if (w && props.geometry.drivers[w].yMm !== null) return { kind: 'cabinet', way: w, member: memberOf(stem) || null };
+    return { kind: 'own', aboveBottomMm: num(c.ownHeight) };
+  };
 
   /* UI-6 — the loudspeaker's own extent for the echo check: the baffle diagonal in metres, from the
    * design's geometry or the measured object's own; null when either side is unknown (then every
@@ -693,10 +714,11 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   /* UI-6 — the "valid from" proposal of a merged way (the WorkPanel shows it, `accept` writes it when nothing
    * is stated): the near field carries the branch to the grid bottom, unless a reflex box was measured
    * without its port (then it must be stated — the cone alone is not the system near the tuning). */
-  const validFromProposalFor = (c: SourceConfig, comp: Computed | null): ValidFromSuggestion | null => {
+  const validFromProposalFor = (stem: string, comp: Computed | null): ValidFromSuggestion | null => {
     const r = comp?.result ?? null;
     if (!r || !comp?.input) return null;
-    const encl = ownGeometry ? 'unknown' : props.geometry.drivers[(c.way || 'low') as MergeWay]?.enclosure ?? 'unknown';
+    const w = wayOf(stem);
+    const encl = ownGeometry || !w ? 'unknown' : props.geometry.drivers[w]?.enclosure ?? 'unknown';
     return suggestValidFrom({
       enclosure: encl === 'sealed' ? 'sealed' : encl === 'ported' ? 'reflex' : 'unknown',
       boxTuneHz: null,
@@ -735,7 +757,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const g = { route };
     const far = impulseOfItem(src.far, session.name, g.route === 'frd');
     const near = impulseOfItem(src.near, session.name, false);
-    const sd = sdOf(c);
+    const sd = sdOf(src.stem);
     /* UI-6 — the band and the AN4 f0 FOLLOW THE WINDOW IN USE: the proposal for this gate is the value
      * unless the Advanced block states one, and the result says which (`bandSource`, `f0Source`).
      * Until UI-6 (B-4) the proposal was shown and used only once taken over: a window set by hand left
@@ -770,7 +792,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     }
     let echoes: EchoTerm[] = [];
     if (withEchoes) {
-      const h = sourceAboveBottomMm(placementOf(c), props.geometry);
+      const h = sourceAboveBottomMm(placementOf(src.stem), props.geometry);
       if ('missing' in h) return { ...out, error: `height: the tool needs ${h.missing.join('; ')}` };
       if (rigSetup.bottomAboveFloorMm === null) return { ...out, error: 'set-up: state the cabinet bottom above the floor' };
       out.heightMm = rigSetup.bottomAboveFloorMm + h.mm;
@@ -847,28 +869,13 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     status: statusFor(d.stem),
     accepted: approvalOf(d.stem) === 'current',
     stale: approvalOf(d.stem) === 'stale',
-    validFrom: effectiveValidFrom(cfg[d.stem], validFromProposalFor(cfg[d.stem], computed.get(d.stem) ?? null))?.hz ?? null,
+    validFrom: effectiveValidFrom(cfg[d.stem], validFromProposalFor(d.stem, computed.get(d.stem) ?? null))?.hz ?? null,
     windowSrc: cfg[d.stem]?.winMode === 'proposal' ? 'proposal' : cfg[d.stem]?.winMode === 'self' ? 'self' : 'header',
   }));
 
-  /* ---- measured object and the validity for the target ---- */
-  const validity = useMemo(() => {
-    if (obj.kind !== 'other') return obj.kind === 'target' ? { fromHz: null as number | null, note: t('the session measured the target cabinet: no load limit'), ratio: null } : null;
-    const load = (kind: 'sealed' | 'vented', fb: string, same: boolean): BoxSpec['load'] =>
-      kind === 'sealed'
-        ? { kind: 'sealed' }
-        : { kind: 'vented', port: same ? { kind: 'same-as-other' } : { kind: 'measured', fbHz: num(fb) ?? NaN, source: 'stated', ...(num(obj.qL) !== null ? { qL: num(obj.qL)! } : {}) } };
-    const measured: MeasuredObject = {
-      kind: 'other',
-      label: obj.label || t('measured object'),
-      baffle: obj.baffle === 'identical' ? 'identical' : { widthMm: num(obj.baffleW) ?? NaN, heightMm: num(obj.baffleH) ?? NaN },
-      box: { netVolumeL: num(obj.volume) ?? NaN, load: load(obj.load, obj.fb, false) },
-    };
-    const target: BoxSpec = { netVolumeL: num(obj.targetVolume) ?? NaN, load: load(obj.targetLoad, obj.targetFb, obj.targetLoad === 'vented' && obj.targetSamePort) };
-    const ts = num(obj.fs) !== null && num(obj.vas) !== null ? { fsHz: num(obj.fs)!, vasL: num(obj.vas)!, count: num(obj.count) ?? 1, ...(num(obj.qts) !== null ? { qts: num(obj.qts)! } : {}) } : null;
-    const v = loadValidity({ target, setup: { session: session?.name ?? '', object: measured }, ts, tolDb: num(obj.tolDb) ?? undefined, tolDeg: num(obj.tolDeg) ?? undefined });
-    return { fromHz: v.fromHz, note: v.note, ratio: v.ratio };
-  }, [obj, session]);
+  /* UI-10 fase 2d — the "valid for the target" limit and the low-end conversion are gone from the tool: the merge is
+   * the measurement, and where it was measured goes into the file as provenance (`obj.label`). The library
+   * (`measuredObject.ts`) stays with its own tests; nothing in the app calls it. */
 
   /* ---- I-4 far-only: a way without near field, gated with its own header and on the session's level ---- */
   const farComputed = useMemo(() => {
@@ -910,7 +917,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
   }, [session, chosenCal]);
   const acceptFar = (src: SessionSource, c: SourceConfig, comp: FarComputed) => {
     const vf = effectiveValidFrom(c, farValidFromProposal(comp));
-    if (!session || comp.error !== null || !c.way || !src.far || !vf) return;
+    if (!session || comp.error !== null || !src.far || !vf) return;
     const text = renderFarOnlyFrd({
       label: src.label,
       farName: src.far.name,
@@ -925,13 +932,13 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       timeBaseShared: session.timeBaseShared,
     });
     const name = `${src.stem.replace(/\s+/g, '_')}_far_gated.frd`;
-    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal: null, originalNote: 'a far field alone has no merge grid to rebuild on', status: 'unchecked', way: c.way as MergeWay, acceptedAt: new Date().toISOString(), fp: approvalKey(src.stem) } } }));
+    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal: null, originalNote: 'a far field alone has no merge grid to rebuild on', status: 'unchecked', way: wayOf(src.stem), acceptedAt: new Date().toISOString(), fp: approvalKey(src.stem) } } }));
   };
 
   /* ---- accept: the merge becomes part of the tool's session ---- */
   const accept = (src: SessionSource, c: SourceConfig, comp: Computed) => {
-    const vf = effectiveValidFrom(c, validFromProposalFor(c, comp));
-    if (!session || !comp.result || !comp.input || !c.way || !vf) return;
+    const vf = effectiveValidFrom(c, validFromProposalFor(src.stem, comp));
+    if (!session || !comp.result || !comp.input || !vf) return;
     const input = comp.input;
     const finish = (raw: NonNullable<Computed['result']>) => {
     let result = raw;
@@ -949,10 +956,6 @@ export default function NfMergeTool(props: NfMergeToolProps) {
         }),
       };
     }
-    if (validity?.ratio && validity.fromHz !== null && obj.lowEnd === 'convert') {
-      const cv = convertLowEnd(result.freq, result.spl, result.phaseDeg, validity.ratio, validity.fromHz);
-      result = { ...result, spl: cv.spl, phaseDeg: cv.phaseDeg };
-    }
     const w = comp.window;
     const text = renderMergedFrdV2({
       branchLabel: src.label,
@@ -967,9 +970,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
         `${input.gate.referenceMs.toFixed(4)} ms on the ${session.timeBaseShared ? 'session' : 'file'} time base (${w?.source === 'stated' ? 'the reference STATED in the merge tool: no FRD export' : "the phase zero of the far field's FRD export"})` +
         (w ? `; window ${w.source === 'header' ? 'from the header' : w.source === 'stated' ? `STATED in the merge tool (no FRD export), left ${input.gate.leftMs} ms, right ${input.gate.rightMs} ms, Tukey ${input.gate.rightTaper}` : `CHOSEN shorter than the header's ${w.headerRightMs} ms`}, 1/T = ${w.oneOverTHz.toFixed(1)} Hz` : ''),
       madeOn: new Date().toISOString().slice(0, 10),
-      measuredObjectNote: obj.kind === 'other' ? `${obj.label || 'measured object'}, baffle ${obj.baffle}, ${obj.volume} L ${obj.load}` : obj.kind === 'target' ? 'the target cabinet' : null,
-      targetValidFromHz: validity?.fromHz ?? null,
-      targetValidityNote: validity ? `${validity.note} This file: ${obj.lowEnd === 'convert' ? 'CONVERTED with the model ratio below the limit' : 'MARKED below the limit'}.` : null,
+      measuredObjectNote: ownGeometry ? `measured on its own front, ${obj.baffleW} × ${obj.baffleH} mm` : null,
+      targetValidFromHz: null,
+      targetValidityNote: null,
       calibrationNote: !src.far?.pir ? 'as exported by the measuring program (FRD route: the file is already calibrated)' : calChoice.kind === 'none' ? null : calChoice.note,
       portWeightNote: input.port ? (c.portWeightStatus === 'provisional' ? 'PROVISIONAL' : 'stated') : null,
       acceptReason: comp.result!.flags.length > 0 ? c.reason : null,
@@ -993,11 +996,11 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       }
     } else originalNote = 'the far field came without an FRD export';
     const name = `${src.stem.replace(/\s+/g, '_')}_merged_v2.frd`;
-    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal, originalNote, status: statusOf(comp.result!, sstat), way: c.way as MergeWay, acceptedAt: new Date().toISOString(), fp: approvalKey(src.stem) } } }));
+    setSt((s) => ({ ...s, accepted: { ...s.accepted, [src.stem]: { name, text, textOriginal, originalNote, status: statusOf(comp.result!, sstat), way: wayOf(src.stem), acceptedAt: new Date().toISOString(), fp: approvalKey(src.stem) } } }));
   };
   const acceptedOf = (way: MergeWay): AcceptedSource[] =>
     Object.entries(currentAccepted)
-      .filter(([, a]) => a.way === way)
+      .filter(([stem]) => wayOf(stem) === way)
       .map(([source, a]) => ({ source, name: a.name, text: a.text, session: current!.name, sessionId: current!.id, status: a.status }));
 
   /* ---- B-4 guide: the session's phase zero, heights, AN4, and the window proposal per driver ---- */
@@ -1008,8 +1011,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const peaks = fars.map((x) => arrivalMs(impulseOfItem(x.far!, session.name, false)));
     return sessionReferenceMs(hdr && !('error' in hdr) ? hdr.gate.referenceMs : null, peaks);
   }, [session]);
-  const heightAboveFloor = (c: SourceConfig): { mm: number; from: string } | { missing: string[] } => {
-    const h = sourceAboveBottomMm(placementOf(c), props.geometry);
+  const heightAboveFloor = (stem: string): { mm: number; from: string } | { missing: string[] } => {
+    const h = sourceAboveBottomMm(placementOf(stem), props.geometry);
     if ('missing' in h) return h;
     if (rigSetup.bottomAboveFloorMm === null) return { missing: ['A: the cabinet bottom above the floor (step 2)'] };
     return { mm: rigSetup.bottomAboveFloorMm + h.mm, from: h.from };
@@ -1023,10 +1026,10 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     if (!session || !src.far?.pir || !src.near || !sessionRef) return { reason: !src.far?.pir ? 'an FRD-only far field is already gated: only its header window exists' : 'no session reference' } as const;
     const f0 = f0Proposal(c);
     if ('reason' in f0) return { reason: f0.reason } as const;
-    const h = heightAboveFloor(c);
+    const h = heightAboveFloor(src.stem);
     const unknown = st.planeQ === 'unknown';
     if ('missing' in h && !unknown) return { reason: `height above the floor: ${h.missing.join('; ')}` } as const;
-    const sd = sdOf(c);
+    const sd = sdOf(src.stem);
     // MERGE_GUIDE_VERSION is in the key: a proposal persisted in the session (U-9/I-4) must not outlive the rule that made it
     const key = JSON.stringify([MERGE_GUIDE_VERSION, src.stem, sessionRef.ms, f0.f0Hz, sd, 'mm' in h ? h.mm : null, rigSetup, planes, st.planeQ]);
     return { key, f0, sd, heightMm: 'mm' in h ? h.mm : null, unknown } as const;
@@ -1176,13 +1179,9 @@ export default function NfMergeTool(props: NfMergeToolProps) {
         if (pr.role === 'unknown') continue;
         roles[f.name] = { role: /\b(port|poort|vent|reflex|pr)\b/.test(pr.stem) ? 'port' : pr.role, stem: pr.stem };
       }
-      const nextCfg = { ...s.cfg };
-      for (const d of [...drivers, ...farOnly]) {
-        const c = { ...blankConfig(), ...nextCfg[d.stem] };
-        const pw = proposeWay(d.stem);
-        if (!c.way && pw) nextCfg[d.stem] = { ...c, way: pw.way, member: c.member || (pw.member ?? '') };
-      }
-      return { ...s, roles, cfg: nextCfg, rolesConfirmed: true };
+      /* UI-10 fase 2: the way is no longer written here from the name — `wayOf` reads the proposal live, so step 5
+       * can still say "proposed from the file name" and a stated way stays distinguishable from a proposed one. */
+      return { ...s, roles, rolesConfirmed: true };
     });
   const [setups, setSetups] = useState<StoredSetup[]>([]);
   const [setupName, setSetupName] = useState('');
@@ -1216,7 +1215,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     let worst = 0;
     for (const d of drivers) {
       if (!d.far?.pir || !d.near?.pir) continue;
-      const h = heightAboveFloor(cfg[d.stem]);
+      const h = heightAboveFloor(d.stem);
       if (!('mm' in h)) continue;
       const pathMm = Math.hypot(rigSetup.micDistanceMm, rigSetup.micHeightMm - h.mm);
       const measuredMm = (directPeakMs(d.far.pir) - directPeakMs(d.near.pir)) * 343;
@@ -1415,62 +1414,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     })}
                   </tbody>
                 </table>
-                <h4>{t('Which driver of the design each one is')}</h4>
-                <ul className="nfm-wayprops">
-                  {drivers.map((d) => {
-                    const c = cfg[d.stem];
-                    const pw = proposeWay(d.stem);
-                    const pair = (props.geometry.drivers[(c.way || pw?.way || 'low') as MergeWay].count ?? 1) >= 2;
-                    const nearPk = d.near?.pir ? directPeakMs(d.near.pir) : null;
-                    const farPk = d.far?.pir ? directPeakMs(d.far.pir) : null;
-                    return (
-                      <li key={d.stem}>
-                        <strong>{d.label}</strong>{' '}
-                        <select value={c.way} onChange={(e) => setC(d.stem, { way: e.target.value as MergeWay | '' })} aria-label={t('which driver')}>
-                          <option value="">—</option>
-                          <option value="low">{t('low')}</option>
-                          <option value="mid">{t('mid')}</option>
-                          <option value="high">{t('high')}</option>
-                        </select>{' '}
-                        {pair && (
-                          <select value={c.member} onChange={(e) => setC(d.stem, { member: e.target.value as SourceConfig['member'] })} aria-label={t('member of the pair')}>
-                            <option value="">—</option>
-                            <option value="upper">{t('upper')}</option>
-                            <option value="lower">{t('lower')}</option>
-                          </select>
-                        )}{' '}
-                        {c.way && props.sdCm2[c.way] === null && (
-                          <>
-                            {' '}
-                            S_d <Field value={c.sdCm2 ?? ''} onCommit={(v) => setC(d.stem, { sdCm2: v })} ariaLabel={t('cone area of {d}', { d: d.label })} /> cm²{' '}
-                            <span className="derived">{t('(the design states none; needed for ka = 1)')}</span>
-                          </>
-                        )}{' '}
-                        {!c.way && pw && (
-                          <span className="nfm-proposed">
-                            {t('proposed')}: {t(pw.way)}
-                            {pw.member ? ` · ${t(pw.member)}` : ''}
-                          </span>
-                        )}
-                        {nearPk !== null && farPk !== null && nearPk >= farPk && (
-                          <span className="nl-warning"> {t('the near field peaks later ({n} ms) than the far field ({f} ms): are the roles swapped?', { n: nearPk.toFixed(2), f: farPk.toFixed(2) })}</span>
-                        )}
-                      </li>
-                    );
-                  })}
-                  {farOnly.map((f) => (
-                    <li key={f.stem}>
-                      <strong>{f.label}</strong>{' '}
-                      <select value={cfg[f.stem].way} onChange={(e) => setC(f.stem, { way: e.target.value as MergeWay | '' })} aria-label={t('which driver')}>
-                        <option value="">—</option>
-                        <option value="low">{t('low')}</option>
-                        <option value="mid">{t('mid')}</option>
-                        <option value="high">{t('high')}</option>
-                      </select>{' '}
-                      <span className="derived">{t('far field only: no merge, but handed over gated and on this session’s level, so it sits beside the merges')}</span>
-                    </li>
-                  ))}
-                </ul>
+                {/* UI-10 fase 2 — the question "which driver of the design each one is" is gone from this step: the merge
+                    does not need it (S_d and height are asked per driver in step 2) and "Use in project" asks it in step 5. */}
                 <button type="button" className="nfm-primary" onClick={confirmRoles}>
                   {t('Take over the proposals and confirm')}
                 </button>{' '}
@@ -1509,6 +1454,21 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                       own fields, so the tool works without the optimizer and the optimizer finds them filled. */}
                   <h3>{t('How was the measurement set up?')}</h3>
                   <p className="derived">{t('Required: the four measures and one question, once per set-up. The tool keeps them.')}</p>
+                  {/* UI-10 fase 2b (Sander, 22-11-2026): an earlier set-up is offered FIRST — before you type the four
+                      measures again — and only when there is one; a choice out of nothing is no choice. */}
+                  {setups.length > 0 && (
+                    <p className="nfm-earlier-setup">
+                      {t('Use an earlier set-up')}{' '}
+                      <select value="" onChange={(e) => loadSetup(e.target.value)} aria-label={t('earlier set-up')}>
+                        <option value="">{t('— choose, or fill in the measures below —')}</option>
+                        {setups.map((x) => (
+                          <option key={x.id} value={x.id}>
+                            {x.name} — {x.savedAt.slice(0, 10)}
+                          </option>
+                        ))}
+                      </select>
+                    </p>
+                  )}
                   {fromDesign && (
                     <div className="nfm-card nfm-from-design">
                       <p>
@@ -1640,15 +1600,13 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                   )}
                   {st.planeQ === 'unknown' && <p className="derived">{t('The merges of this session will be called “not checked for reflections”.')}</p>}
                   <p className="derived nfm-heights">
-                    {ownGeometry ? t('Driver heights above the measured object’s bottom (its own geometry)') : t('Driver heights from your design')}:{' '}
+                    {t('Driver heights')}:{' '}
                     {drivers.map((d, i) => {
-                      const h = heightAboveFloor(cfg[d.stem]);
+                      const h = heightAboveFloor(d.stem);
                       return (
                         <span key={d.stem}>
                           {i > 0 ? ' · ' : ''}
                           {d.label}{' '}
-                          {ownGeometry && <Field value={cfg[d.stem].ownHeight} onCommit={(v) => setC(d.stem, { ownHeight: v })} ariaLabel={t('height of {d} above the object’s bottom', { d: d.label })} />}
-                          {ownGeometry ? ' mm → ' : ''}
                           {'mm' in h ? `${h.mm.toFixed(0)} mm ${t('above the floor')}` : t('— {m}', { m: h.missing.join('; ') })}
                         </span>
                       );
@@ -1657,15 +1615,33 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                   {!sstat.complete && <p className="derived alert">{t('Still missing: {m}.', { m: sstat.missing.join('; ') })}</p>}
                   {/* UI-9 — the cabinet block is required too, but it comes from the project: it follows the four
                       measures, which are typed here and nowhere else (Sander, 22-11-2026: A–D and the question on top). */}
-                  {!ownGeometry && (
-                    <div className="nfm-card nfm-cabinet-min">
+                  <div className="nfm-card nfm-cabinet-min">
                       <h3>{t('Your cabinet — what the merge needs')}</h3>
+                      {/* UI-10 fase 2d — where it was measured is PROVENANCE (one optional line in the file), and the only
+                          thing about that cabinet the merge reads is its FRONT. No target box, no T/S, no limit, no conversion. */}
+                      <p className="nfm-abcd">
+                        <strong>{t('Front')}</strong>{' '}
+                        <select value={obj.baffle} onChange={(e) => setObj({ baffle: e.target.value as 'identical' | 'own' })} aria-label={t('baffle')}>
+                          <option value="identical">{t('the front of “Your cabinet”')}</option>
+                          <option value="own">{t('its own front')}</option>
+                        </select>
+                        {ownGeometry && (
+                          <>
+                            {' '}
+                            <Field value={obj.baffleW} onCommit={(v) => setObj({ baffleW: v })} ariaLabel={t('baffle width')} /> ×{' '}
+                            <Field value={obj.baffleH} onCommit={(v) => setObj({ baffleH: v })} ariaLabel={t('baffle height')} /> mm
+                          </>
+                        )}
+                        <br />
+                        <span className="derived">{t('The only thing about the cabinet you measured in that the merge reads: the near→far model takes its width, and the driver heights stand on it.')}</span>
+                      </p>
                       <p className="derived">
                         {t('These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.')}{' '}
                         <button type="button" className="linkish" onClick={props.onOpenCabinet}>
                           {t('Open the full “Your cabinet” →')}
                         </button>
                       </p>
+                      {!ownGeometry && (
                       <p className="nfm-abcd">
                         {t('front panel')}{' '}
                         <Field value={props.geometry.baffleWidthMm !== null ? String(props.geometry.baffleWidthMm) : ''} onCommit={(v) => props.onCabinet({ baffleWidthMm: v })} ariaLabel={t('front panel width')} /> ×{' '}
@@ -1679,130 +1655,76 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                               : t('Width: the near→far model and the echo extent. Height: where each driver stands above the floor.')}
                         </span>
                       </p>
-                      {(['low', 'mid', 'high'] as MergeWay[])
-                        .filter((w) => drivers.some((d) => cfg[d.stem]?.way === w) || farOnly.some((d) => cfg[d.stem]?.way === w))
-                        .map((w) => {
-                          const g = props.geometry.drivers[w];
-                          const members = drivers.filter((d) => cfg[d.stem]?.way === w).length + farOnly.filter((d) => cfg[d.stem]?.way === w).length;
-                          const h = aboveBottomFromY(g.yMm, props.geometry.baffleHeightMm, props.geometry.refFromTopMm);
-                          const H = props.geometry.baffleHeightMm;
-                          return (
-                            <p className="nfm-abcd" key={w}>
-                              <strong>{t(w === 'low' ? 'woofer' : w === 'mid' ? 'midrange' : 'tweeter')}</strong>{' '}
-                              S_d <Field value={props.sdCm2[w] !== null ? String(props.sdCm2[w]) : ''} onCommit={(v) => props.onSd(w, v)} ariaLabel={t('{w}: S_d', { w })} /> cm² ·{' '}
-                              {t('centre above the cabinet bottom')}{' '}
-                              <Field
-                                value={h !== null ? String(Math.round(h * 10) / 10) : ''}
-                                onCommit={(v) => {
-                                  const hv = num(v);
-                                  if (hv === null || H === null) return;
-                                  const y = yFromAboveBottom(hv, H, props.geometry.refFromTopMm);
-                                  props.onCabinet({ refFromTopMm: String(y.refFromTopMm), drivers: { [w]: { yMm: String(Math.round(y.yMm * 10) / 10), ...(members >= 2 && (g.count ?? 0) < 2 ? { count: String(members) } : {}) } } });
-                                }}
-                                title={H === null ? t('state the front panel height first') : undefined}
-                                ariaLabel={t('{w}: height above the bottom', { w })}
-                              />{' '}
-                              mm
-                              {members >= 2 && (
-                                <>
-                                  {' · '}
-                                  {t('spacing of the pair')} <Field value={g.spacingMm !== null ? String(g.spacingMm) : ''} onCommit={(v) => props.onCabinet({ drivers: { [w]: { spacingMm: v, count: String(members) } } })} ariaLabel={t('{w}: spacing', { w })} /> mm
-                                </>
-                              )}
-                              <br />
-                              <span className="derived">
-                                {props.sdCm2[w] === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : ''}
-                                {h === null ? t('Without the height: no reflection model and no arrival check for this driver.') : ''}
-                              </span>
-                            </p>
-                          );
-                        })}
+                      )}
+                      {/* UI-10 fase 2 — one row per DRIVER (Sander, 22-11-2026): the merge reads S_d and the height per
+                          driver; the project's way is only the key that finds them in "Your cabinet", proposed from the
+                          file name and never asked here. A driver whose name proposes no way keeps its facts in this
+                          session. */}
+                      {[...drivers, ...farOnly].map((d) => {
+                        const w = wayOf(d.stem);
+                        const c = cfg[d.stem];
+                        const g = w ? props.geometry.drivers[w] : null;
+                        const members = w ? [...drivers, ...farOnly].filter((x) => wayOf(x.stem) === w).length : 1;
+                        const pair = members >= 2 || (g?.count ?? 1) >= 2;
+                        const H = props.geometry.baffleHeightMm;
+                        const hProj = g ? aboveBottomFromY(g.yMm, H, props.geometry.refFromTopMm) : null;
+                        const sd = w ? props.sdCm2[w] : null;
+                        const hOwn = ownGeometry || !w; // the height lives in the session: its own front, or no way to file it under
+                        const placed = sourceAboveBottomMm(placementOf(d.stem), props.geometry);
+                        return (
+                          <p className="nfm-abcd" key={d.stem}>
+                            <strong>{d.label}</strong>{' '}
+                            S_d <Field value={sd !== null ? String(sd) : (c.sdCm2 ?? '')} onCommit={(v) => (w ? props.onSd(w, v) : setC(d.stem, { sdCm2: v }))} ariaLabel={t('{w}: S_d', { w: d.label })} /> cm² ·{' '}
+                            {pair && !hOwn ? t('centre of the pair above the cabinet bottom') : t('centre above the cabinet bottom')}{' '}
+                            <Field
+                              value={!hOwn && hProj !== null ? String(Math.round(hProj * 10) / 10) : c.ownHeight}
+                              onCommit={(v) => {
+                                if (hOwn) {
+                                  setC(d.stem, { ownHeight: v });
+                                  return;
+                                }
+                                const hv = num(v);
+                                if (hv === null || H === null) return;
+                                const y = yFromAboveBottom(hv, H, props.geometry.refFromTopMm);
+                                props.onCabinet({ refFromTopMm: String(y.refFromTopMm), drivers: { [w]: { yMm: String(Math.round(y.yMm * 10) / 10), ...(members >= 2 && (g?.count ?? 0) < 2 ? { count: String(members) } : {}) } } });
+                              }}
+                              title={!hOwn && H === null ? t('state the front panel height first') : undefined}
+                              ariaLabel={t('{w}: height above the bottom', { w: d.label })}
+                            />{' '}
+                            mm
+                            {pair && !hOwn && g && (
+                              <>
+                                {' · '}
+                                {t('spacing of the pair')} <Field value={g.spacingMm !== null ? String(g.spacingMm) : ''} onCommit={(v) => props.onCabinet({ drivers: { [w]: { spacingMm: v, count: String(members) } } })} ariaLabel={t('{w}: spacing', { w: d.label })} /> mm{' '}
+                                <select value={memberOf(d.stem)} onChange={(e) => setC(d.stem, { member: e.target.value as SourceConfig['member'] })} aria-label={t('member of the pair')}>
+                                  <option value="">—</option>
+                                  <option value="upper">{t('upper')}</option>
+                                  <option value="lower">{t('lower')}</option>
+                                </select>
+                              </>
+                            )}
+                            <br />
+                            <span className="derived">
+                              {ownGeometry ? t('Height above the bottom of the measured cabinet (its own front). ') : w ? t('Read from “Your cabinet” ({w}); what you type here lands there. ', { w: t(WAY_LABEL[w]) }) : t('Kept in this session: the file name does not say which driver of the design this is. ')}
+                              {sdOf(d.stem) === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : ''}
+                              {'missing' in placed ? t('Without the height: no reflection model and no arrival check for this driver.') : pair && !hOwn ? t('This one: {h} mm above the bottom.', { h: placed.mm.toFixed(0) }) : ''}
+                            </span>
+                          </p>
+                        );
+                      })}
                     </div>
-                  )}
                   <h4 className="nfm-optional-head">{t('Optional')}</h4>
-                  <p className="derived">{t('An earlier set-up to reuse, a name to keep this one under, and the measured object when it is not the target cabinet.')}</p>
-                  <p>
-                    {t('Earlier set-up')}{' '}
-                    <select value="" onChange={(e) => loadSetup(e.target.value)} aria-label={t('earlier set-up')}>
-                      <option value="">{t('— choose, or fill in a new one —')}</option>
-                      {setups.map((x) => (
-                        <option key={x.id} value={x.id}>
-                          {x.name} — {x.savedAt.slice(0, 10)}
-                        </option>
-                      ))}
-                    </select>
-                  </p>
+                  <p className="derived">{t('A name to keep this set-up under for a next session.')}</p>
                   <p>
                     <Field value={setupName} onCommit={setSetupName} width={18} placeholder={t('name, e.g. test cabinet on table — Aug 2026')} ariaLabel={t('set-up name')} />{' '}
                     <button type="button" disabled={!setupName.trim()} onClick={saveCurrentSetup}>
                       {t('Keep this set-up')}
                     </button>
                   </p>
-                  <div className="nfm-tile">
-                <strong>{t('Measured object')}</strong>{' '}
-                <select value={obj.kind} onChange={(e) => setObj({ kind: e.target.value as ObjectState['kind'] })} aria-label={t('Measured object')}>
-                  <option value="">—</option>
-                  <option value="target">{t('the target cabinet (optimizer)')}</option>
-                  <option value="other">{t('another object')}</option>
-                </select>
-                {obj.kind === 'other' && (
-                  <span className="nfm-obj">
-                    <Field value={obj.label} onCommit={(v) => setObj({ label: v })} width={7} placeholder={t('name')} ariaLabel={t('name')} /> {t('baffle')}{' '}
-                    <select value={obj.baffle} onChange={(e) => setObj({ baffle: e.target.value as 'identical' | 'own' })} aria-label={t('baffle')}>
-                      <option value="identical">{t('identical to the target')}</option>
-                      <option value="own">{t('own geometry')}</option>
-                    </select>
-                    {obj.baffle === 'own' && (
-                      <>
-                        {' '}
-                        <Field value={obj.baffleW} onCommit={(v) => setObj({ baffleW: v })} ariaLabel={t('baffle width')} /> ×{' '}
-                        <Field value={obj.baffleH} onCommit={(v) => setObj({ baffleH: v })} ariaLabel={t('baffle height')} /> mm
-                      </>
-                    )}{' '}
-                    {t('net volume')} <Field value={obj.volume} onCommit={(v) => setObj({ volume: v })} ariaLabel={t('net volume')} /> L{' '}
-                    <select value={obj.load} onChange={(e) => setObj({ load: e.target.value as 'sealed' | 'vented' })} aria-label={t('load')}>
-                      <option value="vented">{t('vented')}</option>
-                      <option value="sealed">{t('sealed')}</option>
-                    </select>
-                    {obj.load === 'vented' && (
-                      <>
-                        {' '}f_b <Field value={obj.fb} onCommit={(v) => setObj({ fb: v })} ariaLabel="f_b" /> Hz Q_l <Field value={obj.qL} onCommit={(v) => setObj({ qL: v })} ariaLabel="Q_l" />
-                      </>
-                    )}
-                    {' · '}
-                    {t('target')} <Field value={obj.targetVolume} onCommit={(v) => setObj({ targetVolume: v })} ariaLabel={t('target volume')} /> L{' '}
-                    <select value={obj.targetLoad} onChange={(e) => setObj({ targetLoad: e.target.value as 'sealed' | 'vented' })} aria-label={t('target load')}>
-                      <option value="vented">{t('vented')}</option>
-                      <option value="sealed">{t('sealed')}</option>
-                    </select>
-                    {obj.targetLoad === 'vented' && (
-                      <label>
-                        {' '}
-                        <input type="checkbox" checked={obj.targetSamePort} onChange={(e) => setObj({ targetSamePort: e.target.checked })} /> {t('same port')}
-                      </label>
-                    )}
-                    {' · T/S '}f_s <Field value={obj.fs} onCommit={(v) => setObj({ fs: v })} ariaLabel="f_s" /> Q_ts{' '}
-                    <Field value={obj.qts} onCommit={(v) => setObj({ qts: v })} ariaLabel="Q_ts" /> V_as <Field value={obj.vas} onCommit={(v) => setObj({ vas: v })} ariaLabel="V_as" /> L ×{' '}
-                    <Field value={obj.count} onCommit={(v) => setObj({ count: v })} ariaLabel={t('driver count')} width={3} />
-                  </span>
-                )}
-              </div>
-              <div className="nfm-tile">
-                <strong>{t('Valid for the target')}</strong>{' '}
-                {validity ? (
-                  <>
-                    <span className={validity.fromHz === null && obj.kind === 'other' ? 'derived alert' : 'derived'}>{validity.note}</span>{' '}
-                    ±<Field value={obj.tolDb} onCommit={(v) => setObj({ tolDb: v })} width={3} ariaLabel={t('level tolerance')} /> dB ±
-                    <Field value={obj.tolDeg} onCommit={(v) => setObj({ tolDeg: v })} width={3} ariaLabel={t('phase tolerance')} />°{' '}
-                    <select value={obj.lowEnd} onChange={(e) => setObj({ lowEnd: e.target.value as 'mark' | 'convert' })} aria-label={t('below the limit')}>
-                      <option value="mark">{t('below: mark as measured object')}</option>
-                      <option value="convert">{t('below: convert with the model ratio')}</option>
-                    </select>
-                  </>
-                ) : (
-                  <span className="derived">{t('state the measured object')}</span>
-                )}
-              </div>
+                  {/* UI-10 fase 2c (Sander, 22-11-2026: "bij de keuze another object krijg ik deze warboel aan invoer
+                      velden"): one card, one labelled row per thing — where it was measured, the front, the two
+                      boxes, the driver — each with its reason; the tolerances behind a fold. Nothing was dropped: the
+                      limit still reads every field it read. */}
                 </div>
               </div>
             )}
@@ -1840,14 +1762,15 @@ export default function NfMergeTool(props: NfMergeToolProps) {
               <WindowStep
                 key={active.stem}
                 src={active}
+                way={wayOf(active.stem)}
                 c={cfg[active.stem]}
                 proposal={proposals[active.stem]?.res ?? null}
                 f0={f0Proposal(cfg[active.stem])}
                 headerGate={activeGate && !('error' in activeGate) && activeGate.route === 'pir' ? activeGate.gate : null}
-                sd={sdOf(cfg[active.stem])}
+                sd={sdOf(active.stem)}
                 sessionName={session.name}
                 cur={cur}
-                enclosure={cfg[active.stem].way ? props.geometry.drivers[cfg[active.stem].way as MergeWay]?.enclosure ?? null : null}
+                enclosure={wayOf(active.stem) ? props.geometry.drivers[wayOf(active.stem) as MergeWay]?.enclosure ?? null : null}
                 setC={(p) => setC(active.stem, p)}
                 onTakeOver={(pr) => takeOver(active.stem, pr)}
                 onGoto={goto}
@@ -1879,6 +1802,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 comp={farComputed.get(activeFar.stem) ?? null}
                 step={step}
                 approval={approvalOf(activeFar.stem)}
+                way={wayOf(activeFar.stem)}
                 setC={(p) => setC(activeFar.stem, p)}
                 onGoto={goto}
               />
@@ -1913,10 +1837,11 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     setC={(p) => setC(active.stem, p)}
                     setupComplete={sstat.complete}
                     approval={approvalOf(active.stem)}
-                    validFromProposal={validFromProposalFor(cfg[active.stem], cur)}
+                    validFromProposal={validFromProposalFor(active.stem, cur)}
+                    way={wayOf(active.stem)}
                     onGoto={goto}
                   />
-                  <Charts comp={cur} bare={bare} reflectionModel={reflectionModel} setReflectionModel={setReflectionModel} sd={sdOf(cfg[active.stem])} targetFromHz={validity?.fromHz ?? null} />
+                  <Charts comp={cur} bare={bare} reflectionModel={reflectionModel} setReflectionModel={setReflectionModel} sd={sdOf(active.stem)} />
                 </div>
               </>
             )}
@@ -1967,13 +1892,21 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 />
                 <ExportPanel
                   session={session}
-                  merges={Object.entries(currentAccepted).map(([source, a]) => ({ source, fileName: a.name, text: a.text, textOriginal: a.textOriginal ?? null, way: a.way, status: a.status }))}
+                  merges={Object.entries(currentAccepted).map(([source, a]) => ({ source, fileName: a.name, text: a.text, textOriginal: a.textOriginal ?? null, way: wayOf(source) || null, status: a.status }))}
                   rig={rigSetup}
-                  measuredObjectNote={obj.kind === 'other' ? `${obj.label}, ${obj.volume} L ${obj.load}` : obj.kind === 'target' ? 'the target cabinet' : 'not stated'}
-                  targetNote={obj.kind === 'other' ? `${obj.targetVolume} L ${obj.targetLoad}` : 'the measured object'}
+                  measuredObjectNote={ownGeometry ? `its own front, ${obj.baffleW} × ${obj.baffleH} mm` : 'not stated'}
+                  targetNote={'the measured cabinet — the merge is the measurement (UI-10 fase 2d)'}
                   onClose={() => goto('merge')}
                 />
-                <UsePanel acceptedOf={acceptedOf} accepted={currentAccepted} inProject={props.inProject} onUse={props.onUse} onUseAll={props.onUseAll} responseNames={props.responseNames} />
+                <UsePanel
+                  acceptedOf={acceptedOf}
+                  addresses={Object.keys(currentAccepted).map((stem) => ({ stem, label: session.sources.find((x) => x.stem === stem)?.label ?? stem, way: wayOf(stem), proposed: !cfg[stem]?.way, proposedWay: proposeWay(stem)?.way ?? '' }))}
+                  onWay={(stem, way) => setC(stem, { way })}
+                  inProject={props.inProject}
+                  onUse={props.onUse}
+                  onUseAll={props.onUseAll}
+                  responseNames={props.responseNames}
+                />
               </div>
             )}
 
@@ -1986,7 +1919,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                 const stem = src.stem;
                 const ap = approvalOf(stem);
                 const missing = active
-                  ? mergeMissing(cur?.result ?? null, sstat.complete, cfg[stem], validFromProposalFor(cfg[stem], cur)?.hz ?? null)
+                  ? mergeMissing(cur?.result ?? null, sstat.complete, cfg[stem], validFromProposalFor(stem, cur)?.hz ?? null)
                   : farMissing(farComputed.get(stem) ?? null, cfg[stem], farValidFromProposal(farComputed.get(stem) ?? null)?.hz ?? null);
                 const canAccept = missing.length === 0;
                 const flagged = !!active && (cur?.result?.flags.length ?? 0) > 0;
@@ -2181,6 +2114,8 @@ function WindowStep(p: {
   enclosure: string | null;
   setC: (patch: Partial<SourceConfig>) => void;
   onTakeOver: (pr: WindowProposal) => void;
+  /** UI-10 fase 2 — the resolved way (an address; the pod hint reads whether this is the tweeter). */
+  way: MergeWay | '';
   onGoto: (step: GuideStep) => void;
 }) {
   const { c, setC } = p;
@@ -2265,17 +2200,29 @@ function WindowStep(p: {
               {pr.question && <p className="nl-warning">{t(pr.question)}</p>}
             </>
           )}
-          <p>
-            <button type="button" className="nfm-primary" disabled={!pr || !f0} onClick={() => pr && f0 && p.onTakeOver(pr)}>
-              {t('Take over the proposal')}
-            </button>{' '}
-            <button type="button" disabled={!p.headerGate} onClick={fromHeader} title={p.headerGate ? '' : t('no FRD export with a window header')}>
-              {t('Window from the FRD header')}
-            </button>{' '}
-            <button type="button" disabled={!p.src.far?.pir} onClick={bySelf}>
-              {t('Set it yourself')}
-            </button>
-          </p>
+          {/* UI-10 nazorg (Sander, 22-11-2026: "als ik Take over Proposal klik, dan blijft ie blauw. alsof ik er nog een
+              keer op kan klikken"): the three are ONE choice. The one in use is pressed and ticked; the primary
+              colour marks the proposal only while nothing is chosen yet — afterwards there is no call to action left. */}
+          {(() => {
+            const mode = c.winMode ?? '';
+            const cls = (on: boolean, primary: boolean) => `nfm-choice${on ? ' is-on' : ''}${primary ? ' nfm-primary' : ''}`;
+            return (
+              <p role="group" aria-label={t('which window')}>
+                <button type="button" className={cls(mode === 'proposal', mode === '')} aria-pressed={mode === 'proposal'} disabled={!pr || !f0} onClick={() => pr && f0 && p.onTakeOver(pr)}>
+                  {mode === 'proposal' ? '✓ ' : ''}
+                  {t('Take over the proposal')}
+                </button>{' '}
+                <button type="button" className={cls(mode === 'header', false)} aria-pressed={mode === 'header'} disabled={!p.headerGate} onClick={fromHeader} title={p.headerGate ? '' : t('no FRD export with a window header')}>
+                  {mode === 'header' ? '✓ ' : ''}
+                  {t('Window from the FRD header')}
+                </button>{' '}
+                <button type="button" className={cls(mode === 'self', false)} aria-pressed={mode === 'self'} disabled={!p.src.far?.pir} onClick={bySelf}>
+                  {mode === 'self' ? '✓ ' : ''}
+                  {t('Set it yourself')}
+                </button>
+              </p>
+            );
+          })()}
           {c.winMode === 'self' && (
             <p>
               {t('reference')} <Field value={c.pirRef ?? ''} onCommit={(v) => setC({ pirRef: v })} ariaLabel={t('window reference')} /> ms · {t('left')}{' '}
@@ -2325,7 +2272,7 @@ function WindowStep(p: {
             <label className="nfm-inline-check">
               <input type="checkbox" checked={!!c.inPod} onChange={(e) => setC({ inPod: e.target.checked })} /> {t('this driver sits in its own pod')}
             </label>
-            {!c.inPod && p.enclosure === 'sealed' && c.way !== 'high' && (
+            {!c.inPod && p.enclosure === 'sealed' && p.way !== 'high' && (
               <span className="derived nfm-pod-hint">
                 {' '}
                 {t('“Your cabinet” gives this way its own sealed enclosure. Is that a pod with its own baffle? Then tick this and state its diameter: the model’s f0 follows from the pod, not from the cabinet width.')}
@@ -2418,6 +2365,8 @@ function WorkPanel(p: {
   approval: Approval;
   /** UI-6 — the "valid from" proposal, computed by the parent (one place; `accept` writes the same one). */
   validFromProposal: ValidFromSuggestion | null;
+  /** UI-10 fase 2 — the way as the parent resolves it (stated in step 5, else proposed from the name): an address, shown and never asked here. */
+  way: MergeWay | '';
   onGoto: (step: GuideStep) => void;
 }) {
   const { src, c, comp, session, setC } = p;
@@ -2444,8 +2393,8 @@ function WorkPanel(p: {
         {t('near field')}: {src.near?.name} · {t('far field')}: {src.far?.name}
       </p>
       <p>
-        {t('which driver')}: <strong>{c.way ? t(c.way) : '—'}</strong>
-        {c.member ? ` · ${t(c.member)}` : ''} {back('files', 1)}
+        {t('goes to')}: <strong>{p.way ? t(WAY_LABEL[p.way]) : t('not stated')}</strong>
+        {c.member ? ` · ${t(c.member)}` : ''} {back('export', 5)}
       </p>
       <p className="derived">
         {comp?.heightMm != null ? t('{h} mm above the floor, from {from}', { h: comp.heightMm.toFixed(0), from: t(comp.heightFrom) }) : ''}
@@ -2549,14 +2498,16 @@ function WorkPanel(p: {
  */
 function UsePanel(p: {
   acceptedOf: (way: MergeWay) => AcceptedSource[];
-  accepted: Record<string, ToolAccepted>;
+  /** UI-10 fase 2 — every accepted driver with the way it goes to: stated in step 5 (here), else proposed from its name. */
+  addresses: { stem: string; label: string; way: MergeWay | ''; proposed: boolean; proposedWay: MergeWay | '' }[];
+  onWay: (stem: string, way: MergeWay | '') => void;
   inProject: Record<MergeWay, AcceptedSource[]>;
   onUse: (way: MergeWay, sources: AcceptedSource[]) => Prepared;
   /** UI-6 — every accepted way of the session at once, checked against each other (one deed). */
   onUseAll: (plan: { way: MergeWay; sources: AcceptedSource[] }[]) => Partial<Record<MergeWay, Prepared>>;
   responseNames: Record<MergeWay, string | null>;
 }) {
-  const ways = [...new Set(Object.values(p.accepted).map((a) => a.way))];
+  const ways = [...new Set(p.addresses.map((a) => a.way).filter((w): w is MergeWay => w !== ''))];
   const [useWay, setUseWay] = useState<MergeWay | ''>('');
   const way = (useWay || ways[0] || '') as MergeWay | '';
   const toUse = way ? p.acceptedOf(way) : [];
@@ -2615,11 +2566,31 @@ function UsePanel(p: {
     }
     if (!res.ok) setUses((m) => ({ ...m, [way]: { kind: 'error', way, reason: res.reason } }));
   };
-  if (ways.length === 0) return <p className="derived">{t('Nothing accepted yet: accept a merge in step 4 first.')}</p>;
+  if (p.addresses.length === 0) return <p className="derived">{t('Nothing accepted yet: accept a merge in step 4 first.')}</p>;
   const wayLabel = (w: MergeWay) => t(w === 'low' ? 'woofer' : w === 'mid' ? 'midrange' : 'tweeter');
+  const unaddressed = p.addresses.filter((a) => !a.way).length;
   return (
     <div className="nfm-use">
       <h4>{t('Use in project')}</h4>
+      {/* UI-10 fase 2 (Sander, 22-11-2026): the ONE place that asks which driver of the design a merge becomes —
+          the merge itself never needed it. Proposed from the file name; a choice here wins. */}
+      <p className="derived">{t('Which driver of the design each merge becomes. Proposed from the file name; your choice here wins.')}</p>
+      <ul className="nfm-use-address">
+        {p.addresses.map((a) => (
+          <li key={a.stem}>
+            <strong>{a.label}</strong> →{' '}
+            <select value={a.proposed ? '' : a.way} onChange={(e) => p.onWay(a.stem, e.target.value as MergeWay | '')} aria-label={t('which driver of the design')}>
+              {/* the empty option IS the proposal where the name gives one — choosing it is "no own choice", not "none" */}
+              <option value="">{a.proposedWay ? t('as proposed: {w}', { w: wayLabel(a.proposedWay) }) : '—'}</option>
+              <option value="low">{t('woofer')}</option>
+              <option value="mid">{t('midrange')}</option>
+              <option value="high">{t('tweeter')}</option>
+            </select>{' '}
+            <span className="derived">{a.way ? (a.proposed ? t('proposed from the file name') : t('stated by you')) : t('state it, or this merge is not handed over')}</span>
+          </li>
+        ))}
+      </ul>
+      {unaddressed > 0 && <p className="derived alert">{t('{n} accepted merge(s) without a destination: not handed over until you choose one.', { n: unaddressed })}</p>}
       {/* UI-6 (Sander, 15-11-2026: "per tab Use in project is not intuitive"): ONE button hands every
           accepted way over at once, each to the way chosen in step 1, pairs summed; the per-way form
           below is the exception. */}
@@ -2709,7 +2680,7 @@ interface OverviewRow {
  * and "accept" hands a gated file over beside the merges. No residual, no echo check: there is no
  * near field to hold the far field against, and the panel says so instead of showing an empty one.
  */
-function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarComputed | null; step: GuideStep; approval: Approval; setC: (patch: Partial<SourceConfig>) => void; onGoto: (s: GuideStep) => void }) {
+function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarComputed | null; step: GuideStep; approval: Approval; way: MergeWay | ''; setC: (patch: Partial<SourceConfig>) => void; onGoto: (s: GuideStep) => void }) {
   const { src, c, comp } = p;
   const ok = comp && comp.error === null ? comp : null;
   const vfp = farValidFromProposal(comp);
@@ -2721,9 +2692,9 @@ function FarOnlyPanel(p: { src: SessionSource; c: SourceConfig; comp: FarCompute
         <h4>{t('Sources')}</h4>
         <p className="derived">{t('far field: {f} · no near field in this session: nothing is merged, the far field is handed over as measured, through its gate', { f: src.far?.name ?? '—' })}</p>
         <p>
-          {t('which driver')}: <strong>{c.way ? t(c.way) : t('not stated')}</strong>{' '}
-          <button type="button" className="linkish" onClick={() => p.onGoto('files')}>
-            {t('change in step {n}', { n: 1 })}
+          {t('goes to')}: <strong>{p.way ? t(WAY_LABEL[p.way]) : t('not stated')}</strong>{' '}
+          <button type="button" className="linkish" onClick={() => p.onGoto('export')}>
+            {t('change in step {n}', { n: 5 })}
           </button>
         </p>
         <h4>{t('Window')}</h4>
@@ -2875,7 +2846,7 @@ function DriverOverview(p: { rows: OverviewRow[]; active: string; onSelect: (ste
 }
 const tmsFmt = (v: number | null) => (v === null ? '—' : v.toFixed(3));
 
-function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionModel: boolean; setReflectionModel: (v: boolean) => void; sd: number | null; targetFromHz: number | null }) {
+function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionModel: boolean; setReflectionModel: (v: boolean) => void; sd: number | null }) {
   const comp = p.comp;
   const withSetUp = comp?.result;
   const inp = comp?.input;
@@ -2919,7 +2890,6 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
   const markers = [
     { x: gateHz, label: '1/T' },
     ...(ka ? [{ x: ka, label: 'ka = 1' }] : []),
-    ...(p.targetFromHz ? [{ x: p.targetFromHz, label: t('target limit'), color: '#c0392b' }] : []),
   ];
   const spl: Series[] = [
     { id: 'pred', label: t('near field + model'), color: '#2980b9', x: grid, y: norm(r.predictionDb), dash: '5 3' },
@@ -3066,7 +3036,7 @@ function Charts(p: { comp: Computed | null; bare: Computed | null; reflectionMod
 
 function ExportPanel(p: {
   session: LoadedSession;
-  merges: { source: string; fileName: string; text: string; textOriginal: string | null; way: MergeWay; status: MergeStatus }[];
+  merges: { source: string; fileName: string; text: string; textOriginal: string | null; way: MergeWay | null; status: MergeStatus }[];
   rig: RigSetup;
   measuredObjectNote: string;
   targetNote: string;

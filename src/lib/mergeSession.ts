@@ -650,7 +650,8 @@ export interface ExportInput {
   session: LoadedSession;
   /** Each accepted merge: its text on the merge grid, and — when the far field came with an FRD
    *  export — the same merge computed on that export's own grid (`textOriginal`). */
-  merges: { source: string; fileName: string; text: string; textOriginal?: string | null; way: MergeWay; status?: string | null }[];
+  /** `way`: the project branch the merge goes to — null when none is stated yet (UI-10 fase 2: an address, recorded in the index only). */
+  merges: { source: string; fileName: string; text: string; textOriginal?: string | null; way: MergeWay | null; status?: string | null }[];
   rig: RigSetup;
   measuredObjectNote: string;
   targetNote: string;
@@ -794,7 +795,7 @@ export function sourceAboveBottomMm(
   if (p.kind === 'own') {
     return p.aboveBottomMm !== null && Number.isFinite(p.aboveBottomMm)
       ? { mm: p.aboveBottomMm, from: "the measured object's own geometry" }
-      : { missing: ["this driver's height above the measured object's bottom (its own geometry)"] };
+      : { missing: ["this driver's height above the cabinet bottom (step 2)"] };
   }
   const missing: string[] = [];
   if (!p.way) missing.push('which driver of the cabinet this source is');

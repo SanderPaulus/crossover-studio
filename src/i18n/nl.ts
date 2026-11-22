@@ -2388,48 +2388,14 @@ export const nl: Record<string, string> = {
     'links {l} ms · referentie {r} ms · rechts {rt} ms · Tukey {a}',
   'Measured object':
     'Gemeten object',
-  'the target cabinet (optimizer)':
-    'de doelkast (optimizer)',
-  'another object':
-    'een ander object',
-  'name':
-    'naam',
   'baffle':
     'front',
-  'identical to the target':
-    'gelijk aan de doelkast',
-  'own geometry':
-    'eigen geometrie',
   'baffle width':
     'frontbreedte',
   'baffle height':
     'fronthoogte',
-  'net volume':
-    'netto volume',
-  'vented':
-    'reflex',
   'target':
     'doel',
-  'target volume':
-    'doelvolume',
-  'same port':
-    'zelfde poort',
-  'driver count':
-    'aantal drivers',
-  'Valid for the target':
-    'Geldig voor de doelkast',
-  'level tolerance':
-    'niveautolerantie',
-  'phase tolerance':
-    'fasetolerantie',
-  'below the limit':
-    'onder de grens',
-  'below: mark as measured object':
-    'eronder: markeren als gemeten object',
-  'below: convert with the model ratio':
-    'eronder: omrekenen met de modelverhouding',
-  'state the measured object':
-    'stel het gemeten object',
   'Set-up (required)':
     'Opstelling (verplicht)',
   'cabinet bottom above the floor':
@@ -2458,8 +2424,6 @@ export const nl: Record<string, string> = {
     'Opstelling onvolledig: {m}. Een merge kan pas geaccepteerd worden als de opstelling gesteld is ("onbekend" telt als gesteld).',
   'far field only':
     'alleen ver veld',
-  'far field only: no merge, but handed over gated and on this session’s level, so it sits beside the merges':
-    'alleen ver veld: geen merge, maar wel gegated en op het niveau van deze sessie overgedragen, zodat het naast de merges staat',
   'far field: {f} · no near field in this session: nothing is merged, the far field is handed over as measured, through its gate':
     'ver veld: {f} · geen nabij veld in deze sessie: er wordt niets gemerged, het verre veld gaat over zoals gemeten, door zijn venster',
   'the FRD export’s own':
@@ -2478,8 +2442,6 @@ export const nl: Record<string, string> = {
     'het enige bestand, overgenomen',
   'the set-up (step 2)':
     'de opstelling (stap 2)',
-  'which driver (step 1)':
-    'welke driver (stap 1)',
   'a computed merge':
     'een berekende merge',
   'a stated “valid from”':
@@ -2586,8 +2548,6 @@ export const nl: Record<string, string> = {
     'Merge accepteren',
   'Export session…':
     'Sessie exporteren…',
-  'target limit':
-    'doelgrens',
   'near field + model':
     'nabijveld + model',
   'far field, gated as in the header':
@@ -2618,8 +2578,6 @@ export const nl: Record<string, string> = {
     'Optioneel',
   'Required: the four measures and one question, once per set-up. The tool keeps them.':
     'Verplicht: de vier maten en één vraag, eenmaal per opstelling. De tool bewaart ze.',
-  'An earlier set-up to reuse, a name to keep this one under, and the measured object when it is not the target cabinet.':
-    'Een eerdere opstelling om te hergebruiken, een naam om deze onder te bewaren, en het gemeten object als dat niet de doelkast is.',
   'the proposal, applied by the tool (no FRD window header) — change it here':
     'het voorstel, door de tool toegepast (geen FRD-vensterkop) — hier te wijzigen',
   'the proposal, applied by the tool (no FRD window header)':
@@ -2763,10 +2721,6 @@ export const nl: Record<string, string> = {
     'Sessie {s} verwijderen',
   'No stored sessions yet.':
     'Nog geen opgeslagen sessies.',
-  'load':
-    'belasting',
-  'target load':
-    'belasting doelkast',
   'accepted':
     'geaccepteerd',
   'not yet accepted':
@@ -2795,8 +2749,6 @@ export const nl: Record<string, string> = {
     'GEKOZEN, T = {t} ms (kop {h} ms), 1/T = {hz} Hz',
   'Open a stored session on the left, or drop a new one.':
     'Open links een opgeslagen sessie, of sleep een nieuwe hierheen.',
-  'which driver':
-    'welke driver',
   'member of the pair':
     'lid van het paar',
   'upper':
@@ -3038,12 +2990,8 @@ export const nl: Record<string, string> = {
     'impuls, piek op {ms} ms',
   'FRD text':
     'FRD-tekst',
-  'Which driver of the design each one is':
-    'Welke driver van het ontwerp elk bestand is',
   'cone area of {d}':
     'conusoppervlak van {d}',
-  '(the design states none; needed for ka = 1)':
-    '(het ontwerp noemt er geen; nodig voor ka = 1)',
   'the near field peaks later ({n} ms) than the far field ({f} ms): are the roles swapped?':
     'het nabije veld piekt later ({n} ms) dan het verre veld ({f} ms): zijn de rollen verwisseld?',
   'Take over the proposals and confirm':
@@ -3092,12 +3040,8 @@ export const nl: Record<string, string> = {
     'Zonder S_d kan de bovenkant van de band (ka = 1) niet voorgesteld worden. ',
   'Without the height: no reflection model and no arrival check for this driver.':
     'Zonder de hoogte: geen reflectiemodel en geen aankomstcontrole voor deze driver.',
-  'Earlier set-up':
-    'Eerdere opstelling',
   'earlier set-up':
     'eerdere opstelling',
-  '— choose, or fill in a new one —':
-    '— kies, of vul een nieuwe in —',
   'Cabinet bottom above the floor':
     'Kastbodem boven de vloer',
   'A: cabinet bottom above the floor':
@@ -3158,12 +3102,6 @@ export const nl: Record<string, string> = {
     '+ nog een vlak',
   'The merges of this session will be called “not checked for reflections”.':
     'De merges van deze sessie heten dan “niet op reflecties gecontroleerd”.',
-  'Driver heights above the measured object’s bottom (its own geometry)':
-    'Driverhoogtes boven de bodem van het gemeten object (zijn eigen geometrie)',
-  'Driver heights from your design':
-    'Driverhoogtes uit je ontwerp',
-  'height of {d} above the object’s bottom':
-    'hoogte van {d} boven de bodem van het object',
   'above the floor':
     'boven de vloer',
   '— {m}':
@@ -3355,4 +3293,27 @@ export const nl: Record<string, string> = {
   "changed since approval — left out": "gewijzigd na goedkeuring — gaat niet mee",
   "not approved — left out": "niet goedgekeurd — gaat niet mee",
   "approve in step 4": "goedkeuren in stap 4",
+  "goes to": "gaat naar",
+  "proposed from the file name": "voorgesteld uit de bestandsnaam",
+  "stated by you": "door jou gesteld",
+  "state it, or this merge is not handed over": "kies hem, anders gaat deze merge niet over",
+  "which driver of the design": "welke driver van het ontwerp",
+  "centre of the pair above the cabinet bottom": "midden van het paar boven de kastbodem",
+  "This one: {h} mm above the bottom.": "Deze: {h} mm boven de bodem.",
+  "Kept in this session: the file name does not say which driver of the design this is. ": "Bewaard in deze sessie: de bestandsnaam zegt niet welke driver van het ontwerp dit is. ",
+  "Read from “Your cabinet” ({w}); what you type here lands there. ": "Gelezen uit “Jouw kast” ({w}); wat je hier typt landt daar. ",
+  "Which driver of the design each merge becomes. Proposed from the file name; your choice here wins.": "Welke driver van het ontwerp elke merge wordt. Voorgesteld uit de bestandsnaam; jouw keuze hier wint.",
+  "{n} accepted merge(s) without a destination: not handed over until you choose one.": "{n} goedgekeurde merge(s) zonder bestemming: gaan niet over tot je er een kiest.",
+  "as proposed: {w}": "zoals voorgesteld: {w}",
+  "Use an earlier set-up": "Gebruik een eerdere opstelling",
+  "— choose, or fill in the measures below —": "— kies er een, of vul de maten hieronder in —",
+  "Measured in": "Gemeten in",
+  "its own front": "een eigen front",
+  "the front of “Your cabinet”": "het front van “Jouw kast”",
+  "Driver heights": "Driverhoogten",
+  "Height above the bottom of the measured cabinet (its own front). ": "Hoogte boven de bodem van de gemeten kast (eigen front). ",
+  "A name to keep this set-up under for a next session.": "Een naam om deze opstelling onder te bewaren voor een volgende sessie.",
+  "Front": "Front",
+  "The only thing about the cabinet you measured in that the merge reads: the near→far model takes its width, and the driver heights stand on it.": "Het enige van de kast waarin je gemeten hebt dat de merge leest: het nabij→ver-model neemt zijn breedte, en de driverhoogten staan erop.",
+  "which window": "welk venster",
 };

@@ -309,7 +309,9 @@ describe('B-4 — a driver height comes from geometry, and the tool asks for wha
     const r = sourceAboveBottomMm({ kind: 'cabinet', way: 'mid', member: null }, { ...none, drivers: { ...none.drivers, mid: { ...none.drivers.mid, yMm: null } } });
     expect(r).toEqual({ missing: ['front panel height', 'reference point below the top', "the mid driver's vertical offset"] });
     expect(sourceAboveBottomMm({ kind: 'cabinet', way: null, member: null }, g())).toEqual({ missing: ['which driver of the cabinet this source is'] });
-    expect(sourceAboveBottomMm({ kind: 'own', aboveBottomMm: null }, null)).toEqual({ missing: ["this driver's height above the measured object's bottom (its own geometry)"] });
+    // UI-10 fase 2 — V15: WAS "…above the measured object's bottom (its own geometry)"; IS neutral, because a driver
+    // whose file name proposes no way is placed by its own height too, and step 2 is where that is typed.
+    expect(sourceAboveBottomMm({ kind: 'own', aboveBottomMm: null }, null)).toEqual({ missing: ["this driver's height above the cabinet bottom (step 2)"] });
     expect(sourceAboveBottomMm({ kind: 'own', aboveBottomMm: 333 }, null)).toMatchObject({ mm: 333 });
   });
 });

@@ -151,11 +151,14 @@ describe('I-4 far-only — the tool and the app (source scans)', () => {
   const tool = src('../components/NfMergeTool.tsx');
   const app = src('../App.tsx');
   it('a far-only way gets its driver in step 1, a tab in steps 3 and 4, its own panel, and an accept that hands a gated file over', () => {
-    expect(tool).toMatch(/for \(const d of \[\.\.\.drivers, \.\.\.farOnly\]\)/); // confirmRoles proposes a way for it
+    // UI-10 fase 2 — V15: WAS "confirmRoles proposes a way for it" (`for (const d of [...drivers, ...farOnly])`);
+    // IS: the way is read live from the name (`wayOf`), the far-only driver has its row in step 2 and its address in step 5.
+    expect(tool).toMatch(/\{\[\.\.\.drivers, \.\.\.farOnly\]\.map\(\(d\) => \{\s*const w = wayOf\(d\.stem\);/); // the step-2 row
+    expect(tool).toMatch(/way=\{wayOf\(activeFar\.stem\)\}/);
     expect(tool).toMatch(/\{\[\.\.\.drivers, \.\.\.farOnly\]\.map\(\(d\) => \{/); // the tabs
     expect(tool).toMatch(/\(step === 'window' \|\| step === 'merge'\) && activeFar && \(\s*<FarOnlyPanel/);
     expect(tool).toMatch(/renderFarOnlyFrd\(\{/);
-    expect(tool).toMatch(/status: 'unchecked', way: c\.way as MergeWay/);
+    expect(tool).toMatch(/status: 'unchecked', way: wayOf\(src\.stem\)/); // UI-10 fase 2: the resolved way, '' allowed
     expect(tool).not.toMatch(/far field only, no merge needed/);
     // the same calibration as the merges: derived first, else the file, else none — read from the one choice
     const far = tool.slice(tool.indexOf('const farComputed = useMemo'), tool.indexOf('const acceptFar ='));

@@ -26,7 +26,9 @@ describe('UI-5 — the fingerprint', () => {
    * the output holds for a stated echo past the gate; an approval given under 2.3 must read "changed
    * since approval" and not carry a result the tool no longer produces. */
   it('the kernel version is in the key, first: an approval outlives neither a setting nor the arithmetic', () => {
-    expect(SRC).toMatch(/return stableKey\(\{ kernel: NF_MERGE_V2_VERSION, c, port:/);
+    // UI-10 fase 2 — V15: WAS `c,` whole; IS the config WITHOUT its way: the way is the address of "Use in
+    // project" (step 5), not something the merge was computed from, so choosing it must not read as a change.
+    expect(SRC).toMatch(/return stableKey\(\{ kernel: NF_MERGE_V2_VERSION, c: c \? \{ \.\.\.c, way: '' \} : c, port:/);
     expect(stableKey({ kernel: 'nf-merge/2.3', c: 1 })).not.toBe(stableKey({ kernel: 'nf-merge/2.4', c: 1 }));
   });
 });
@@ -40,7 +42,8 @@ describe('UI-5 — approval in the tool', () => {
     expect(SRC).toMatch(/const currentAccepted[\s\S]{0,200}approvalOf\(stem\) === 'current'/);
     expect(SRC).toMatch(/const acceptedOf = \(way: MergeWay\): AcceptedSource\[\] =>\s+Object\.entries\(currentAccepted\)/);
     expect(SRC).toMatch(/merges=\{Object\.entries\(currentAccepted\)/);
-    expect(SRC).toMatch(/<UsePanel acceptedOf=\{acceptedOf\} accepted=\{currentAccepted\}/);
+    // UI-10 fase 2 — V15: WAS `accepted={currentAccepted}`; IS the addresses built FROM currentAccepted (the way per stem).
+    expect(SRC).toMatch(/<UsePanel\s+acceptedOf=\{acceptedOf\}\s+addresses=\{Object\.keys\(currentAccepted\)/);
     expect(SRC).not.toMatch(/merges=\{Object\.entries\(st\.accepted\)/);
     expect(SRC).toContain('const withdraw = (stem: string)');
   });

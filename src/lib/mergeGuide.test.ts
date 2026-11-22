@@ -304,7 +304,7 @@ describe('the tool — what a source scan can see', () => {
     expect(src.match(/setC\(\{ validFrom: validFromProposal/g)?.length).toBe(1); // the handler, and nowhere else
     expect(src).toMatch(/onClick=\{takeOverValidFrom\}/);
     expect(src).not.toMatch(/useEffect\([^;]*validFromProposal/); // no effect fills it in
-    expect(src).toMatch(/!c\.inPod && p\.enclosure === 'sealed' && c\.way !== 'high'/);
+    expect(src).toMatch(/!c\.inPod && p\.enclosure === 'sealed' && p\.way !== 'high'/); // UI-10 fase 2: the resolved way comes in as a prop
     const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
     expect(app).toMatch(/enclosure: d\.enclosure \?\? null/); // the cabinet form's enclosure travels to the tool
   });

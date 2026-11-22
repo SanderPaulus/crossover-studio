@@ -163,6 +163,15 @@ Compare rechts is opnieuw de analysekolom met het Engine-v2-paneel.
    daar de eerste handeling in. Geen "How it works"-lijst naast een upload die zelf stap 1 is.
 11. **Eerst wat nodig is en waarom, dan de handeling** (Sander, 22-11-2026): een stap die iets van de
    gebruiker vraagt zegt eerst wat en waarom, en biedt dan pas het veld of de dropzone aan.
+13. **De merge is de meting** (Sander, 22-11-2026: "ik wil geen simulatie van een grotere kast, ik wil
+   mergen met wat we hebben"): de merge-tool vraagt niets waarvan het antwoord een model is dat de
+   meting zou verbouwen. Waar gemeten is, is herkomst; alleen wat de merge zelf leest (het front) is
+   een veld.
+12. **Een begrip uit een ándere tool wordt pas gevraagd waar het nodig is** (Sander, 22-11-2026, over
+   "welke driver van het ontwerp" in de merge-tool): de weg van het project is een adres voor de
+   overdracht naar de optimizer en geen eigenschap van de meting. De merge vraagt per driver wat zij
+   nodig heeft (S_d, hoogte, kasttype); het adres komt in de exportstap, en wat de app al weet
+   (de bestandsnaam) stelt zij voor in plaats van te vragen.
 
 ## 6. Voorgestelde volgorde van werk (elke stap een eigen sessie, met eigen meting vóór/ná)
 
@@ -197,3 +206,23 @@ uitklap telt niet mee: wat de gebruiker niet ziet, weegt niet.
   plus een regel die de telling niet kon zien en Sander wel: **een landingspagina is de eerste stap van
   de flow en geen pagina óver de flow.** Vóór: 433 woorden, 44 % hulptekst, langste alinea 44, 1199 px.
   Ná: 254 woorden, 23 %, langste alinea 16, 951 px.
+- **Fase 2 (22-11-2026): de weg van het ontwerp uit stap 1 en 2 van de merge-tool.** Sanders vraag
+  ("waarom hebben we deze vraag bij de bestanden nodig?") en zijn antwoord ("alleen bij de export
+  fase"). Stap 1 vraagt alleen nog de rollen; stap 2 vraagt S_d, hoogte en paarlid per DRIVER (uit
+  "Your cabinet" waar de bestandsnaam een weg voorstelt, anders in de sessie); stap 5 vraagt het adres,
+  voorgesteld uit de naam. Goedkeuren vereist geen weg meer. Regel 2 en 12 van §5.
+- **Fase 2b (22-11-2026): "Earlier set-up" uit Optional naar de kop van stap 2, alleen als er een is**
+  (Sander: "als er geen eerdere setup is geweest dan hebben we deze vraag niet nodig; en als er wel een
+  was hoort die bovenaan"). Regel 1 en 6 van §5, en een regel die erbij hoort: **een keuze uit niets is
+  geen keuze** — een select met alleen de lege optie wordt niet getoond.
+- **Fase 2c (22-11-2026): het "Measured object"-blok van stap 2** (Sander: "bij de keuze another object
+  krijg ik deze warboel aan invoervelden"). Van één regel losse velden naar één kaart met een rij per
+  ding — Gemeten in · Front · Gemeten kast · Doelkast · Driver · Geldig voor de doelkast — elk met zijn
+  reden in één zin, en de toleranties achter een vouw. Geen veld geschrapt: de grens leest wat zij las;
+  het ontbrekende f_b-veld van de doelkast is erbij gekomen. Regel 1, 3 en 5 van §5.
+- **Fase 2d (22-11-2026): de doelkast, de T/S, de toleranties en het omrekenen weg** (Sander: "we hebben
+  gemeten wat we hebben gemeten … ik wil mergen met wat we hebben"). De "valid for the target"-grens was
+  een model dat de optimizer nooit las; "convert with the model ratio" was een simulatie van de grotere
+  kast. Over: alleen de keuze "het front van Jouw kast / een eigen front: B × H" in het kastblok (een
+  herkomstveld "Gemeten in" is dezelfde avond weer geschrapt: niets las het), met de hoogten per driver boven dát front. Regel 13 van
+  §5; de kaart van fase 2c heeft één middag bestaan.

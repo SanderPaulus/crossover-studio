@@ -10643,3 +10643,174 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   "zonder FRD-kop is het voorstel het venster" had laten vallen (hersteld), de tweede mat de
   start-kaart-versie van vóór Sanders tweede correctie, de derde (269,2 s, groen) de upload-eerst-volgorde
   van vóór zijn derde. Geen volle run: alleen weergave.
+
+### UI-10 fase 2 — de weg van het ontwerp is een adres: per driver gevraagd wat de merge nodig heeft, het adres in stap 5 (22-11-2026)
+
+- **Aanleiding (Sander):** "waarom hebben we deze vraag bij de bestanden nodig?" over *Which driver of the
+  design each one is* in stap 1; daarna "maar wat hebben we er aan als iemand hier alleen is om NF en FF te
+  mergen"; en het besluit: "we hebben dit alleen nodig als we de merge willen overnemen naar de optimizer,
+  dus pas bij de export fase."
+- **De meting vooraf:** de merge leest per driver vier dingen — S_d, kasttype, hoogte boven de kastbodem
+  en bij een paar welk lid — en "low/mid/high" was alleen de SLEUTEL waarmee ze uit "Your cabinet" kwamen,
+  plus het adres van "Use in project". Zonder gekozen weg weigerde de tool te goedkeuren
+  (`mergeMissing`/`farMissing`: "which driver (step 1)"), ook met S_d en hoogte bekend. Een merge-only
+  gebruiker struikelde dus over een begrip uit de optimizer.
+- **Wat er nu geldt** (`src/components/NfMergeTool.tsx`):
+  - `wayOf(stem)` = gesteld in stap 5, anders `proposeWay` uit de bestandsnaam; `memberOf` idem. Het is
+    een LEZING en geen opslag: `confirmRoles` schrijft geen weg meer, zodat stap 5 "voorgesteld uit de
+    bestandsnaam" van "door jou gesteld" kan onderscheiden.
+  - **Stap 1** vraagt alleen de rollen; het blok "Which driver of the design each one is" is weg.
+  - **Stap 2** "Your cabinet — what the merge needs" is één rij per DRIVER: S_d, midden boven de bodem,
+    bij een paar de afstand en het lid. Waar de naam een weg voorstelt lezen en schrijven de velden "Your
+    cabinet" (UI-6's ene kast blijft); waar niet, blijven ze in de sessie (`sdCm2`, `ownHeight`) en zegt
+    de rij dat. `placementOf` valt op de eigen hoogte terug zodra het project er geen heeft.
+  - **Stap 4** toont "goes to: midrange · change in step 5"; goedkeuren vereist geen weg.
+  - **Stap 5** is de ENE plek die vraagt: per goedgekeurde driver een select, de lege optie heet "as
+    proposed: midrange" waar de naam een voorstel geeft, een keuze wint; een merge zonder adres wordt
+    gemeld en niet overgedragen. `acceptedOf` leest het adres LIVE.
+  - **De vingerafdruk van UI-5 draagt de weg niet meer** (`c: { ...c, way: '' }`): een adres kiezen is
+    geen wijziging van de merge. Goedkeuringen van vóór fase 2 lezen daardoor één keer "changed since
+    approval".
+  - `ToolAccepted.way` en `ExportInput.merges[].way` mogen leeg/null zijn (alleen de index-JSON noemt hem).
+- **Tests:** `src/lib/ui10WayAddress.test.ts` (5 claims: stap 1 zonder vraag, de lezing, stap 2 per driver
+  met de sessie-terugval, goedkeuring en vingerafdruk zonder weg incl. een `stableKey`-tegenproef, stap 5).
+  In V15-vorm: `ui5Approval` (de sleutel, de UsePanel-props), `farOnly` (de weg wordt gelezen, niet
+  geschreven), `mergeGuide` (de pod-hint leest `p.way`), `mergeSession` (de neutrale ontbreektekst).
+- **Browsercontrole (dev-server, de voorbeeldsessie, 22-11-2026):** stap 1 zonder de vraag; stap 2 met vijf
+  rijen op naam (mid 69 cm² / 814 mm, woofer down en up 255 / 431,6 / afstand 275,75 met het lid
+  lower/upper uit de naam en "This one: 294 / 569 mm", tweeter 5,6 / 954), alle "Read from Your cabinet";
+  stap 3 → 4 → mid goedgekeurd zonder weg; stap 4 "goes to: midrange · change in step 5"; stap 5 "mid →
+  as proposed: midrange · proposed from the file name", plan "midrange: mid"; tweeter gekozen → "stated by
+  you", plan "tweeter: mid", de goedkeuring blijft ✓. Console zonder app-fout (de ene 500 was de kapotte
+  tussenversie van `nl.ts` van 19:11, hersteld vóór de meting).
+- **Gemeten 22-11-2026:** `npx tsc -b` groen. `npm run test:fast` **267,1 s, 255 bestanden (254 geslaagd,
+  1 overgeslagen), 3339 tests (3335 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 19:18:41, run gestart 19:19:16 (de H-2-regel).** +1 bestand en
+  +5 tests tegen fase 1's 3334: exact `ui10WayAddress.test.ts`; de vier herschreven bestanden veranderden van
+  inhoud en niet van telling. Vier gerichte runs ervóór hadden samen vier rode bronscans, alle vier pins op de
+  oude vorm (hierboven, V15). Geen volle run: geen motor-, poort-, venster- of corpuscode geraakt —
+  `mergeSession.ts` veranderde één ontbreektekst en één type.
+- **Niet gedaan:** het kasttype per driver blijft uit het project komen (zonder voorgestelde weg 'unknown');
+  een eigen kasttype-keuze per driver in stap 2 is een volgende stap. De demo-/voorbeeldsessie van 17:27 in
+  deze browser draagt nu een goedgekeurde mid (de controle hierboven); verder is niets aan opgeslagen sessies
+  veranderd.
+
+### UI-10 fase 2b — "Earlier set-up" vooraan in stap 2, en alleen als er een is (22-11-2026)
+
+- **Aanleiding (Sander, met screenshot van het Optional-blok):** "Als er geen eerdere setup is geweest dan
+  hebben we deze vraag niet nodig. En als er wel een eerdere setup was hoort deze vraag dan niet bovenaan
+  ipv onderaan als alles al is ingevoerd." Beide kloppen: de select stond onder "Optional", ná de vier
+  maten, en toonde ook met nul opgeslagen opstellingen zijn lege optie.
+- **Wat er nu geldt:** `{setups.length > 0 && <p className="nfm-earlier-setup">Use an earlier set-up …</p>}`
+  direct onder de kopregel van stap 2 ("Required: the four measures …"), vóór A–D; de lege optie heet
+  "— choose, or fill in the measures below —". Onder Optional blijven de naam om de huidige opstelling te
+  bewaren en het gemeten object; de lede zegt dat. Eén select, één plek (gepind).
+- **Tests:** `mergeDemoSession.test.ts`, de stap-2-volgordeclaim in V15-vorm (WAS onder Optional; IS ná de
+  kopregel achter de guard; `t('Earlier set-up')` bestaat niet meer; precies één `loadSetup`-select).
+- **Browsercontrole (dev-server, 22-11-2026):** zonder opgeslagen opstelling staat er niets boven A–D en
+  leest de Optional-lede "A name to keep this set-up under …"; ná "Keep this set-up" (naam "UI-10
+  controle") verschijnt "Use an earlier set-up — choose, or fill in the measures below — / UI-10 controle —
+  2026-11-22" als derde kind van het formulier, direct onder de kopregel. Die opstelling staat sindsdien in
+  de opslag van de browser-pane. **Bijvangst, gemeld en niet gerepareerd:** een directe URL naar een
+  sessie-id die de opslag niet (meer) kent toont de melding "No stored session “…”" én valt stil terug op
+  de laatst geopende sessie, terwijl de URL het oude id houdt — twee uitspraken over welke sessie open is.
+
+### UI-10 fase 2c — het "Measured object"-blok van stap 2 als kaart met rijen (22-11-2026)
+
+- **Aanleiding (Sander, met screenshot):** "bij de keuze another object krijg ik deze warboel aan invoer
+  velden te zien. Lekker overzichtelijk maar niet heus. … En hebben we al die vragen echt nodig."
+- **Wat elk veld doet, nagegaan vóór er gesneden is** (`validity` in `NfMergeTool.tsx` → `loadValidity` in
+  `src/lib/measuredObject.ts`): de gemeten kast (volume, gesloten/reflex, f_b, Q_l) en de doelkast
+  (volume, gesloten/reflex, dezelfde poort of een eigen f_b) voeden de twee kastmodellen; de T/S van de
+  driver (f_s, Q_ts, V_as, aantal) zijn wat die modellen nodig hebben; de toleranties (±0,2 dB, ±5°,
+  conventies met defaults) bepalen waar de verhouding "gelijk genoeg" is; `lowEnd` kiest of de band
+  eronder gemarkeerd of met de modelverhouding omgerekend wordt (gelezen bij `accept`, regel 972/992).
+  **Antwoord op "hebben we al die vragen nodig": ja, als de meting in een andere kast is gedaan — de grens
+  is anders niet te berekenen, en P4 verbiedt een gok. Gemeten in de doelkast zelf: geen enkele vraag.**
+  Eén veld ONTBRAK: de f_b van de doelkast (`targetFb` bestond in de staat zonder invoer, dus een reflex-
+  doelkast zonder "dezelfde poort" kon de grens nooit halen).
+- **Wat er nu staat:** één kaart (`nfm-object`), één rij per ding met het label vooraan en de reden in
+  één `derived`-zin: **Gemeten in** (de kast waar deze merge voor is / een testkast of andere kast — met
+  waarom het ertoe doet), **Front** (hetzelfde als de doelkast / een eigen: B × H), **Gemeten kast**
+  (volume · gesloten/reflex · f_b · Q_l · naam, optioneel), **Doelkast** (volume · gesloten/reflex ·
+  dezelfde poort als de gemeten kast, anders f_b), **Driver** (f_s · Q_ts · V_as · ×n, "van het datablad"),
+  **Geldig voor de doelkast** (de zin van `loadValidity`, rood als de grens niet te berekenen is), en
+  achter een vouw de toleranties en de keuze voor de band eronder. Alleen "Gemeten in" is zichtbaar
+  zolang de keuze leeg of "de doelkast" is. Dezelfde `aria-label`s als voorheen; geen state-wijziging.
+- **Teksten:** zeventien nieuwe NL-strings; de oude ("another object", "identical to the target", "own
+  geometry", "same port", "state the measured object", "the target cabinet (optimizer)") zijn weg waar
+  niets ze meer leest.
+- **Browsercontrole (dev-server, de sessie session-2026-11-22, 22-11-2026):** de kaart staat onder
+  Optional met de zeven rijen in deze volgorde — Measured in · Front · Measured box · Target box · Driver ·
+  Valid for the target · de vouw "Tolerance of the limit, and what happens below it" (dicht) — met per rij
+  het label vooraan, de velden met eenheid erachter en de reden eronder; alle twaalf invoervelden en de
+  vijf selects dragen hun oude `aria-label`. De grens-zin leest rood zolang f_s en V_as ontbreken. **Bijvangst,
+  gemeld:** bij het openen van de merge-pagina in een leeg project stond de Design-wizard eroverheen (de
+  wizard opent zichzelf op een leeg project en kijkt niet naar de plek); de pane-klikken op de werkbalk
+  van UI-10 fase 2b kwamen daarop terecht. **Gedicht:** `openWizardForEmpty` in `App.tsx` keert terug zodra
+  het adres met `#/merge` begint — dezelfde lezing als de welkomstkaart (`!mergeRoute.open`); gepind in
+  `ui3Layout.test.tsx` (+1 claim). De knop "Wizard" in de werkbalk blijft op elke plek: dat is een daad.
+- **Gemeten 22-11-2026:** `npx tsc -b` groen. `npm run test:fast` **271,8 s, 255 bestanden (254 geslaagd,
+  1 overgeslagen), 3340 tests (3336 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 19:41:31, run gestart 19:42:07 (de H-2-regel).** +1 test tegen
+  fase 2's 3339: de wizard-claim; fase 2b en 2c voegen geen test toe (claims herschreven in V15-vorm). De run
+  op de fase-2b-boom ervóór (272,1 s, 3339, groen) is een tussenmeting en niet de uitslag van deze commit.
+  Geen volle run: geen motor-, poort-, venster- of corpuscode geraakt.
+
+### UI-10 fase 2d — de merge is de meting: doelkast, T/S, toleranties en omrekenen uit de merge-tool (22-11-2026)
+
+- **Aanleiding (Sander, op de vraag waarom de doelkast nodig was):** "we hebben gemeten wat we hebben gemeten
+  toch. ik wil geen simulatie van een grotere kast. ik wil mergen met wat we hebben." En op het voorstel:
+  "Ja, schrap het."
+- **Wat er weg is, en waarom dat kon (nagegaan vóór het schrappen):** de "valid for the target"-grens
+  (`loadValidity`: twee kastmodellen uit volume, f_b, Q_l en de T/S van de driver, vergeleken tot ±0,2 dB /
+  ±5°) schreef alleen een kopregel (`Merge target valid from`) die **de optimizer nooit leest** — die leest
+  `Valid from`, de geldigheid van de meting zelf (nagegaan: geen enkele lezer buiten `nfMergeV2Block`,
+  `mergeSession`'s exportindex en de tool). "Below: convert with the model ratio" (`convertLowEnd`) rekende
+  het laag om naar de andere kast: precies de simulatie die Sander niet wil. De kaart van fase 2c
+  (dezelfde middag) heeft dus één middag bestaan; de fase-2c-entry hierboven beschrijft haar als tussenstand.
+- **Wat er staat** (`NfMergeTool.tsx`): in het kastblok van stap 2 één rij **"Front"** met de keuze **"the
+  front of “Your cabinet” / its own front"**, en bij een eigen front B × H. (Een tekstveld "Measured in" als
+  herkomst heeft een kwartier bestaan: Sander — "waar is dit invoerveld voor nodig?" — niets las het, dus weg;
+  de kop van het bestand zegt alleen nog of er op een eigen front gemeten is.) Dat front is
+  het ENIGE van de gemeten kast dat de merge leest (het nabij→ver-model leest de breedte; de hoogten staan erop),
+  dus het is het enige dat een veld blijft. Met een eigen front verdwijnt de projectfrontregel, en de hoogte
+  per driver (`hOwn = ownGeometry || !w`) wordt in de sessie bewaard en gevraagd als "hoogte boven de bodem van
+  de gemeten kast". `ownGeometry` is sindsdien `obj.baffle === 'own'` (was: `obj.kind === 'other' && …`). De
+  hoogteregel onder de vlakkenvraag is een uitlezing; het ene invoerveld voor een hoogte staat in het blok.
+  `targetValidFromHz`/`targetValidityNote` worden `null` doorgegeven (de kop zegt "not stated"); de
+  grafiekmarker "target limit" is weg. `ObjectState` houdt zijn oude velden voor opgeslagen sessies; de app
+  leest ze niet meer. `measuredObject.ts` en zijn tests blijven als bibliotheek.
+- **Tests:** `src/lib/mergeIsTheMeasurement.test.ts` (4 claims: geen import of aanroep van het model of de
+  omrekening, de herkomstregel en de null-doorgave, het front als enige veld van de gemeten kast met de
+  guards eromheen, één invoerveld voor een hoogte). `ui10WayAddress.test.ts` en `mergeDemoSession.test.ts`
+  in V15-vorm (de `hOwn`-tak; de stap-2-volgorde zonder de kaart). 31 NL-strings verwijderd, 7 toegevoegd.
+- **Browsercontrole (dev-server, session-2026-11-22, 22-11-2026):** de kaart is weg, de Optional-lede leest
+  "A name to keep this set-up under for a next session."; het kastblok opent met "Front [the front of “Your
+  cabinet” ▾]" en de uitleg in één zin (gecontroleerd vóór het tekstveld eruit ging); "its own front" gekozen → B × H verschijnt, de projectfrontregel
+  verdwijnt en de mid-rij leest "Height above the bottom of the measured cabinet (its own front)"; terug op
+  "the front of Your cabinet" is alles als voorheen. De wizard opent niet meer over de merge-pagina (fase 2c).
+  Console zonder fout.
+
+### UI-10 nazorg — de vensterkeuze in stap 3 toont wat in gebruik is (22-11-2026)
+
+- **Aanleiding (Sander, met screenshot):** "als ik Take over Proposal klik, dan blijft ie blauw. alsof ik er nog
+  een keer op kan klikken." De knop was een permanente blauwe call-to-action; de staat stond alleen in de regel
+  "In use: the proposal" eronder.
+- **Wat er nu geldt:** de drie knoppen (voorstel / FRD-kop / zelf) zijn ÉÉN keuze (`role="group"`): de knop van
+  het venster in gebruik is `aria-pressed` en draagt een ✓, en de primaire kleur staat alleen op het voorstel
+  zolang er nog niets gekozen is — daarna is er geen handeling meer die om aandacht vraagt. CSS:
+  `.nfm-choice[aria-pressed='true']`. Gepind in `ui3Layout.test.tsx` (+1 claim).
+- **Browsercontrole (dev-server, session-2026-11-22, 22-11-2026):** op stap 3 leest de knop in gebruik
+  "✓ Take over the proposal", `aria-pressed="true"`, zachtblauw (rgba 42/120/214/0,16) en vet; de twee andere
+  gewoon. Het voorstel-knopje stond daar uitgeschakeld omdat het project geen frontbreedte heeft (geen f0): de
+  staat komt uit het eerder toegepaste venster.
+- **Gemeten 22-11-2026 (de eindboom van fase 2 t/m 2d én deze nazorg):** `npx tsc -b` groen. `npm run test:fast`
+  **263,2 s, 256 bestanden (255 geslaagd, 1 overgeslagen), 3345 tests (3341 geslaagd, 4 overgeslagen), in één
+  keer groen, alleen gedraaid met de dev-server gestopt; laatste bronbewerking 20:04:54, run gestart 20:05:53
+  (de H-2-regel).** +1 bestand en +5 tests tegen fase 2c's 3340: `mergeIsTheMeasurement.test.ts` (4) en de
+  pressed-claim in `ui3Layout.test.tsx` (1). **Drie runs ertussen zijn weggegooid**, alle drie om de
+  H-2-reden: 3344 (fase-2d-boom, groen) mat een boom waaraan tijdens de run het "Measured in"-veld werd
+  verwijderd; 3344 (groen) idem met de vensterkeuze erin bewerkt; de run van fase 2c (3340, 271,8 s) is de
+  tussenmeting die bij die entry staat. Geen volle run: geen motor-, poort-, venster-, metriek- of corpuscode
+  geraakt in fase 2 t/m 2d.

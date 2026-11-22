@@ -121,16 +121,25 @@ describe('UI-9 — the merge page for a first-time visitor (source scan on NfMer
     expect(src).toMatch(/c\.winAuto \? t\('the proposal, applied by the tool \(no FRD window header\) — change it here'\)/);
     expect(src.match(/takeOver\([^)]*, true\)/g)?.length).toBe(1); // the effect is the only automatic caller
   });
-  it('step 2: the four measures and the question come first, the cabinet block after them, and the rest under "Optional"', () => {
+  it('step 2: an earlier set-up is offered FIRST and only when there is one; then the four measures and the question, the cabinet block, and the rest under "Optional"', () => {
     const h3 = src.indexOf("t('How was the measurement set up?')");
     const required = src.indexOf("t('Required: the four measures and one question, once per set-up. The tool keeps them.')");
+    // UI-10 fase 2b — V15: WAS "Earlier set-up" under "Optional", after everything was typed (Sander, 22-11-2026:
+    // "als er wel een eerdere setup was hoort deze vraag dan niet bovenaan"); IS right after the heading, behind
+    // `setups.length > 0` — a choice out of nothing is no choice.
+    const earlier = src.indexOf("t('Use an earlier set-up')");
     const planes = src.indexOf("t('Is there anything inside the blue circles?')");
     const cabinet = src.indexOf("t('Your cabinet — what the merge needs')");
     const optional = src.indexOf('<h4 className="nfm-optional-head">');
-    const earlier = src.indexOf("t('Earlier set-up')");
-    const measured = src.indexOf("t('Measured object')");
+    // UI-10 fase 2d — V15: the "Measured object" card is gone (Sander: "ik wil mergen met wat we hebben"); the
+    // provenance line and the own-front choice live in the cabinet block, so "Optional" is the last anchor.
+    const keep = src.indexOf("t('Keep this set-up')");
     expect(h3).toBeGreaterThan(0);
-    expect([h3, required, planes, cabinet, optional, earlier, measured]).toEqual([h3, required, planes, cabinet, optional, earlier, measured].slice().sort((a, b) => a - b));
+    expect([h3, required, earlier, planes, cabinet, optional, keep]).toEqual([h3, required, earlier, planes, cabinet, optional, keep].slice().sort((a, b) => a - b));
+    expect(src).not.toContain("t('Measured object')");
+    expect(src.slice(earlier - 120, earlier)).toMatch(/\{setups\.length > 0 && \(\s*<p className="nfm-earlier-setup">/);
+    expect(src).not.toContain("t('Earlier set-up')");
+    expect(src.match(/onChange=\{\(e\) => loadSetup\(e\.target\.value\)\}/g)?.length).toBe(1); // one select, one place
     expect(src).not.toContain("t('Four measures, once per set-up. The tool keeps them.')");
   });
 });

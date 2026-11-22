@@ -5256,6 +5256,8 @@ details.v2-stage-need > summary { cursor: pointer; }
 .nfm-window { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; line-height: 1.9; }
 .nfm-window-used { font-weight: 600; }
 .nfm-accepted { color: #15803d; font-size: 0.85em; }
+.nfm-use-address { list-style: none; padding: 0; margin: 0 0 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.nfm-use-address select { min-width: 7em; }
 .nfm-use { margin-top: 0.5rem; padding: 0.5rem; border: 1px dashed var(--accent); border-radius: 6px; }
 .nfm-use-status { margin: 0.4rem 0 0; }
 .nfm-use-done { color: var(--ok, #4caf50); }
@@ -5357,3 +5359,6 @@ label.nfm-inline-check input { width: auto; margin: 0; }
 .nfm-overview-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
 .nfm-overview-table th { text-align: left; font-weight: 500; opacity: 0.75; padding: 0.1rem 0.5rem 0.1rem 0; white-space: nowrap; vertical-align: top; }
 .nfm-overview-table td { padding: 0.1rem 0; }
+/* UI-10 nazorg — the window choice: the one in use is pressed, not a call to action */
+.nfm-choice[aria-pressed='true'] { background: rgba(42, 120, 214, 0.16); border-color: #2a78d6; color: inherit; font-weight: 600; }
+.nfm-choice[aria-pressed='true']:hover { background: rgba(42, 120, 214, 0.22); }

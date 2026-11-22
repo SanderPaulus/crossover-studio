@@ -8944,6 +8944,9 @@ export default function App() {
     // no-regie problem the card exists to solve.
     const openWizardForEmpty = () => {
       if (!localStorage.getItem('ads-welcomed')) return;
+      /* UI-10 fase 2c — the wizard is Design's: on the merge page (`#/merge…`, its own place since UI-3) it
+       * opened over a page that hides the design workplace. Read from the address, as the welcome card does. */
+      if (location.hash.startsWith('#/merge')) return;
       /* U-9 fase 3 (B-3 c) — guided starts on its own first step instead. */
       if (uiMode === 'guided') {
         setDesignTab('import');

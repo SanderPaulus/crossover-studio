@@ -70,6 +70,24 @@ describe('UI-3 — the merge page under the top bar', () => {
     expect(MERGE).toContain("t('The result goes to the open project: {w}.'");
   });
 
+  it('step 3: the three window buttons are ONE choice — the one in use is pressed and ticked, the primary colour only while nothing is chosen (UI-10 nazorg)', () => {
+    // Sander, 22-11-2026: "als ik Take over Proposal klik, dan blijft ie blauw. alsof ik er nog een keer op kan klikken".
+    const i = MERGE.indexOf("const cls = (on: boolean, primary: boolean) => `nfm-choice${on ? ' is-on' : ''}${primary ? ' nfm-primary' : ''}`;");
+    expect(i).toBeGreaterThan(0);
+    const group = MERGE.slice(i, MERGE.indexOf('})()}', i));
+    expect(group).toMatch(/<p role="group" aria-label=\{t\('which window'\)\}>/);
+    expect(group).toMatch(/className=\{cls\(mode === 'proposal', mode === ''\)\} aria-pressed=\{mode === 'proposal'\}/);
+    expect(group).toMatch(/className=\{cls\(mode === 'header', false\)\} aria-pressed=\{mode === 'header'\}/);
+    expect(group).toMatch(/className=\{cls\(mode === 'self', false\)\} aria-pressed=\{mode === 'self'\}/);
+    expect((group.match(/\? '✓ ' : ''/g) ?? []).length).toBe(3);
+    expect(MERGE).not.toMatch(/className="nfm-primary" disabled=\{!pr \|\| !f0\}/); // the old always-blue button
+    const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.nfm-choice\[aria-pressed='true'\] \{/);
+  });
+  it('the design wizard does not open itself over the merge page (UI-10 fase 2c)', () => {
+    const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+    expect(app).toMatch(/const openWizardForEmpty = \(\) => \{\s*if \(!localStorage\.getItem\('ads-welcomed'\)\) return;\s*(?:\/\*[\s\S]*?\*\/\s*)?if \(location\.hash\.startsWith\('#\/merge'\)\) return;/);
+  });
   it('the empty page shows the route, one line per guide step — since UI-9 below "What you need" and the example button', () => {
     const i = MERGE.indexOf('className="nfm-landing"');
     expect(i).toBeGreaterThan(0);
