@@ -5194,8 +5194,7 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-needs-list li { margin: 0.2rem 0; }
 .nfm-optional-head { margin: 1rem 0 0.1rem; color: var(--muted); font-weight: 600; }
 /* UI-10 — the merge landing page: one column, one primary action, a table for what is needed. */
-.nfm-layout-landing { grid-template-columns: minmax(0, 1fr); }
-.nfm-landing { display: flex; flex-direction: column; gap: 1.25rem; max-width: 52rem; }
+.nfm-landing { display: flex; flex-direction: column; gap: 1.25rem; max-width: 64rem; }
 .nfm-landing > .nfm-steps { margin-bottom: 0; }
 .nfm-landing .nfm-stepbody { display: flex; flex-direction: column; gap: 1rem; }
 .nfm-landing .nfm-stepbody > h3 { margin-bottom: 0; }
@@ -5209,8 +5208,19 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-needs-table { border-collapse: collapse; width: 100%; font-size: 0.92em; }
 .nfm-needs-table th { text-align: left; font-weight: 600; color: var(--muted); padding: 0.3rem 0.6rem 0.3rem 0; border-bottom: 1px solid var(--border); }
 .nfm-needs-table td { padding: 0.45rem 0.6rem 0.45rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
-.nfm-needs-table td:first-child { white-space: nowrap; }
+.nfm-needs-table td:first-child { width: 38%; }
 .nfm-needs-table td:last-child { white-space: nowrap; }
+/* UI-10 audit (22-11-2026, 375 px): three columns leave the "Why" cell 115 px wide — on a phone each row becomes a
+   card: What, the pill beside it, Why below. The table markup stays (it is the content); only the layout changes. */
+@media (max-width: 560px) {
+  .nfm-needs-table thead { display: none; }
+  .nfm-needs-table, .nfm-needs-table tbody, .nfm-needs-table tr { display: block; width: 100%; }
+  .nfm-needs-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+  .nfm-needs-table td { display: block; border: 0; padding: 0; width: auto; }
+  .nfm-needs-table td:first-child { grid-column: 1; grid-row: 1; width: auto; } /* the 38 % of the wide layout would squeeze it to 94 px here */
+  .nfm-needs-table td:last-child { grid-column: 2; grid-row: 1; }
+  .nfm-needs-table td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; margin-top: 0.25rem; color: var(--muted); }
+}
 .nfm-need { display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.85em; font-weight: 600; border: 1px solid var(--border); }
 .nfm-need-required { color: var(--fg); border-color: var(--accent); }
 .nfm-need-export { color: var(--muted); }
@@ -5248,7 +5258,14 @@ details.v2-stage-need > summary { cursor: pointer; }
 .nfm-layout { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
 .nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0; }
 /* After the base rule on purpose: in one column the sessions block must scroll away, not cover the steps. */
-@media (max-width: 900px) { .nfm-layout { grid-template-columns: minmax(0, 1fr); } .nfm-sessions { position: static; } }
+@media (max-width: 900px) { .nfm-layout { grid-template-columns: minmax(0, 1fr); } .nfm-sessions { position: static; order: 2; } }
+/* UI-10 audit (22-11-2026, 375 px): in one column the side list (sessions, calibration) came FIRST and pushed the
+   open session's step bar ~600 px down the phone; it is context, not the work, so it follows the work (order: 2). */
+/* UI-10 fase 1 nazorg (Sander, 22-11-2026, breed scherm): without a session there is no side list, so the landing
+   takes ONE column. This rule must come AFTER `.nfm-layout` above — same specificity, the later one wins; it sat
+   before it and lost, and the landing fell into the 18 rem side column (the pane's 870 px hid that behind the
+   narrow-screen rule). `.nfm-layout.nfm-layout-landing` makes the order irrelevant as well. */
+.nfm-layout.nfm-layout-landing { grid-template-columns: minmax(0, 1fr); }
 .nfm-sessions ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9em; }
 .nfm-sessions li.active a { font-weight: 700; }
 .nfm-main { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
@@ -5283,7 +5300,10 @@ details.v2-stage-need > summary { cursor: pointer; }
 .nfm-flags { color: #b45309; border-color: #b45309; }
 .nfm-unchecked { color: var(--muted); }
 .nfm-body { display: grid; grid-template-columns: minmax(18rem, 26rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
-@media (max-width: 1000px) { .nfm-body { grid-template-columns: minmax(0, 1fr); } }
+/* UI-10 audit (22-11-2026): the body stacked only under 1000 px, so at 1050 px the charts column was 266 px
+   wide next to a 26 rem work panel — an SPL chart with a legend in a sliver. Stacking under 1200 px keeps
+   the charts at 500 px or more whenever they stand beside the panel. */
+@media (max-width: 1200px) { .nfm-body { grid-template-columns: minmax(0, 1fr); } }
 .nfm-work h4 { margin: 0.75rem 0 0.25rem; }
 .nfm-work h4:first-child { margin-top: 0; }
 .nfm-work p { margin: 0.25rem 0; }
@@ -5295,14 +5315,20 @@ details.v2-stage-need > summary { cursor: pointer; }
 .nfm-check-ok .nfm-icon { color: #15803d; }
 .nfm-check-info .nfm-icon { color: var(--accent); }
 .nfm-check-bad .nfm-icon { color: #b91c1c; }
-.nfm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr)); gap: 0.75rem; min-width: 0; }
+/* UI-10 audit (22-11-2026): a bare `minmax(28rem, 1fr)` forces a 448 px track on a 375 px phone and the
+   charts ran off the right edge of the page; `min(28rem, 100%)` lets the track shrink to the container. */
+.nfm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(28rem, 100%), 1fr)); gap: 0.75rem; min-width: 0; }
 .nfm-chart { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; min-width: 0; }
 /* UI-8 — before / after the set-up: the block spans the chart grid, the two merges sit side by side where they fit */
 .nfm-before-after { grid-column: 1 / -1; }
-.nfm-before-after-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr)); gap: 0.75rem; min-width: 0; }
+.nfm-before-after-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr)); gap: 0.75rem; min-width: 0; }
 .nfm-before-after-pair em { display: block; font-style: normal; font-weight: 600; margin: 0.35rem 0 0.1rem; }
 .nfm-echoes { margin: 0.25rem 0 0; padding-left: 1rem; font-size: 0.85em; }
 .nfm-export { border: 1px solid var(--accent); border-radius: 8px; padding: 0.75rem; background: var(--panel); }
+/* UI-10 audit (22-11-2026): a <select> is as wide as its longest option, and the Grid select of the export
+   block (54 characters) ran 53 px past the page on a 375 px phone. No select in the tool may be wider than
+   the line it stands in. */
+.nf-merge-tool select { max-width: 100%; }
 .nfm-warn { border-left: 3px solid #b45309; padding-left: 0.5rem; }
 .nfm-head { max-height: 14rem; overflow: auto; font-size: 0.75em; background: var(--bg); padding: 0.5rem; border-radius: 6px; }
 .nfm-provenance { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.4rem 0.6rem; border-left: 3px solid #15803d; margin-top: 0.4rem; }

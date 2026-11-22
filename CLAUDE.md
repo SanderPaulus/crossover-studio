@@ -17,6 +17,12 @@
 - Volledige gevalideerde bestanden, nooit losse blokken. Benoemde constanten bovenaan met commentaar.
 - Typecheck vóór elke oplevering; rapporteer per deliverable resultaat + testuitslag.
 - Golden-reference-suite is de acceptatie-autoriteit; falen = niet af, ongeacht hoe plausibel de code oogt.
+- **Elke UI-wijziging wordt vóór de oplevering op TWEE breedtes bekeken: de pane zoals hij staat (~870 px) én een
+  desktop van minstens 1600 px (`resize_window` 1800 × 1000, daarna `preset: "desktop"`), met een screenshot van
+  beide in de controle. Een bronscan ziet geen layout; één breedte is geen controle.** Ingevoerd 22-11-2026
+  nadat de merge-landing op een breed scherm in de zijkolom bleek te vallen (CSS-cascade) terwijl de pane het
+  achter de smal-scherm-regel verborg (UI-10 fase 1 nazorg). Geldt ook voor tabellen (kolombreedtes) en voor
+  alles wat `grid-template-columns` of een `max-width` raakt.
 
 ## Commando's
 
@@ -10814,3 +10820,63 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   verwijderd; 3344 (groen) idem met de vensterkeuze erin bewerkt; de run van fase 2c (3340, 271,8 s) is de
   tussenmeting die bij die entry staat. Geen volle run: geen motor-, poort-, venster-, metriek- of corpuscode
   geraakt in fase 2 t/m 2d.
+
+### UI-10 fase 1 nazorg — de landing viel op een breed scherm in de zijkolom (22-11-2026)
+
+- **Aanleiding (Sander, screenshot op een scherm van ~2000 px):** "wat the fuck heb je met de opmaak gedaan":
+  de stappenbalk over twee regels, de dropzone 80 px breed, de "Why"-kolom van de tabel 100 px, alles in een
+  strook links.
+- **Oorzaak, een CASCADE-fout en geen layoutkeuze:** `.nfm-layout-landing { grid-template-columns: minmax(0, 1fr) }`
+  stond in `index.css` VÓÓR `.nfm-layout { grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr) }`. Zelfde
+  specificiteit, dus de latere regel wint: de landing — zonder zijlijst het enige kind van het grid — viel in
+  de 18 rem brede zijkolom, en alleen de tabel stak eruit omdat haar eerste kolom `white-space: nowrap` droeg.
+  **Waarom de browsercontrole het niet zag:** de pane is 870 px breed, en onder 900 px zet de
+  smal-scherm-regel het grid zelf op één kolom. Een controle op één breedte is een controle op één breedte.
+- **Reparatie:** de regel heet `.nfm-layout.nfm-layout-landing` (hogere specificiteit) én staat ná `.nfm-layout`;
+  de "What"-kolom wrapt (38 %), alleen de pil-kolom blijft `nowrap`; de leeskolom van de landing is 64 rem in
+  plaats van 52. `mergeDemoSession.test.ts` (+1 claim) pint de volgorde in het CSS-bestand, de dubbele
+  klasse en het verdwenen `nowrap` — de UI-6-vorm voor de sticky-regel.
+- **Browsercontrole op 1800 × 1000 (viewport-emulatie in de pane, daarna teruggezet):** grid één kolom van
+  1752 px, de landing 1024 px breed, de stappenbalk op één regel (28 px hoog), de dropzone 620 px, de
+  "Why"-kolom 547 px.
+
+### UI-10 audit — de merge-tool op vijf breedtes, vóór de push (22-11-2026)
+
+- **Aanleiding (Sander, na de cascade-fout):** "je mag pushen, mits je zelf een audit uitvoert op je eigen
+  werk … het ontwerp is adaptive, dat moet goed getest zijn." Gedaan op de voorbeeldsessie, in de
+  browser-pane met viewport-emulatie: de landing en de stappen 1 t/m 5 (stap 4 op de mid- én de
+  tweeter-tab, stap 5 met het exportblok open) op **375, 768, 1050, 1280 en 1800 px**, met een
+  DOM-sonde per breedte (elementen voorbij de rechterrand van de tool, invoervelden onder 44 px,
+  tekstblokken onder 220 px op een breed scherm, het aantal regels van de stappenbalk, overlappende
+  knoppen, `scrollWidth` van het document) en een screenshot op 375 en 1800. Daarna de viewport
+  teruggezet (`preset: "desktop"`). Console zonder app-fout (alleen de HMR-websocketruis van de pane).
+- **Vijf defecten, alle vijf CSS en niets anders.** De eerste twee stonden al in de werkboom (de
+  telefoon-helft van de cascade-nazorg), de laatste drie kwamen uit de audit:
+  1. **Landing op 375 px:** de "Why"-kolom van de tabel 115 px — de rijen stapelen sindsdien als kaart
+     (`@media (max-width: 560px)`: wat / pil op regel 1, waarom op regel 2).
+  2. **Landing op 375 px met een open sessie:** de zijlijst stond BOVEN de inhoud — `order: 2` in de
+     900 px-regel.
+  3. **Stap 4 op 375 px:** `.nfm-charts` en `.nfm-before-after-pair` dwongen met een kale
+     `minmax(28rem, 1fr)` / `minmax(24rem, 1fr)` een spoor van 448 / 384 px in een kolom van 327 px; het
+     blok "Before / after the set-up" liep tot 472 px rechts de pagina uit. Nu `minmax(min(28rem, 100%), 1fr)`.
+  4. **Stap 4 op 1050 px:** de body (werkpaneel 26 rem + grafieken) stapelde pas onder 1000 px, dus op
+     1050 px stond een SPL-grafiek met legenda in 266 px. Stapelen onder 1200 px: op 1050 gestapeld met
+     680 px grafiek, op 1280 naast elkaar met 496 px, op 1800 met 1016 px.
+  5. **Stap 5 op 375 px:** de Grid-select van het exportblok (opties van 54 tekens) was 367 px en liep
+     53 px voorbij de pagina; `.nf-merge-tool select { max-width: 100%; }` — geen select in de tool is
+     breder dan zijn regel.
+- **Wat schoon was, gemeten:** stap 1, 2 en 3 op alle vier de breedtes (stap 3: de vensterkeuze stapelt op
+  375 px tot drie regels zonder overloop; op 1800 px twee kolommen van 835 + 597 px); de tweeter-tab van
+  stap 4 (far-field-only-paneel, vier tabrijen op 375 px); stap 5 op 768, 1050 en 1800; de stappenbalk
+  nergens op meer dan één regel vanaf 768 px; geen enkel invoerveld onder 44 px; geen overlappende knoppen.
+- **Bijvangst buiten de merge-tool, gemeld en niet gerepareerd:** op 375 px kapt de bovenbalk van de app
+  het logo af ("Crossc") en wrapt zij naar twee regels — UI-3 noteerde de bovenbalk op telefoonbreedte al
+  als niet nagelopen.
+- **Tests:** `mergeDemoSession.test.ts` +1 claim (de drie CSS-regels van de audit, de verdwenen kale
+  `minmax`-vormen, de verplaatste breakpoint en de zijlijst-volgorde). `mergeGuide.test.ts` in V15-vorm
+  (de smallere regex op de 900 px-regel, omdat `order: 2` erbij kwam).
+- **Gemeten 22-11-2026:** `npx tsc -b` groen. `npm run test:fast` **259,2 s, 256 bestanden (255 geslaagd,
+  1 overgeslagen), 3347 tests (3343 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 21:09:28, run gestart 21:10:28 (de H-2-regel).** +2 tests
+  tegen de 3345 van de UI-10-nazorg: de cascade-claim van de fase-1-nazorg en de audit-claim hierboven;
+  geen nieuw bestand. Geen volle run: uitsluitend CSS, twee tests en CLAUDE.md geraakt.

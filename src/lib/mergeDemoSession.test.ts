@@ -88,6 +88,31 @@ describe('UI-9 — the merge page for a first-time visitor (source scan on NfMer
     expect(src).toMatch(/if \(props\.geometry\.baffleWidthMm === null && props\.geometry\.baffleHeightMm === null\) \{\s*const cab = mergeDemoCabinet\(\);\s*props\.onCabinet\(cab\.patch\);/);
     expect(src).toMatch(/import\('\.\.\/lib\/mergeDemoSession\.ts'\)|from '\.\.\/lib\/mergeDemoSession\.ts'/);
   });
+  it('the landing takes one column on a wide screen: its grid rule outranks `.nfm-layout` by specificity AND order (nazorg: it sat before it and lost)', () => {
+    const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const layout = css.indexOf('.nfm-layout { display: grid; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);');
+    const landing = css.indexOf('.nfm-layout.nfm-layout-landing { grid-template-columns: minmax(0, 1fr); }');
+    expect(layout).toBeGreaterThan(0);
+    expect(landing).toBeGreaterThan(layout);
+    expect(css).not.toMatch(/^\.nfm-layout-landing \{/m); // the single-class form that lost
+    expect(css).not.toContain('.nfm-needs-table td:first-child { white-space: nowrap; }'); // the What column wraps; only the pill column is tight
+  });
+  it('the responsive audit of 22-11-2026: no grid track or select wider than its container, and the charts never stand beside the panel in a sliver', () => {
+    // Measured at 375 / 768 / 1050 / 1280 / 1800 px on the landing and steps 1–5 before the push (Sander:
+    // "het ontwerp is adaptive, dat moet goed getest zijn"). Three defects, each a CSS rule and nothing else:
+    const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    // (1) step 4 on a phone: a bare `minmax(28rem, 1fr)` forced a 448 px chart track into a 327 px column.
+    expect(css).toContain('.nfm-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(28rem, 100%), 1fr));');
+    expect(css).toContain('.nfm-before-after-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));');
+    expect(css).not.toMatch(/\.nfm-(charts|before-after-pair) \{[^}]*minmax\(2[48]rem, 1fr\)/);
+    // (2) step 4 at 1050 px: the body stacked only under 1000 px, leaving 266 px for an SPL chart beside the 26 rem panel.
+    expect(css).toContain('@media (max-width: 1200px) { .nfm-body { grid-template-columns: minmax(0, 1fr); } }');
+    expect(css).not.toContain('@media (max-width: 1000px) { .nfm-body');
+    // (3) step 5 on a phone: the Grid select (54-character options) ran 53 px past the page.
+    expect(css).toContain('.nf-merge-tool select { max-width: 100%; }');
+    // The phone fixes of the landing from the same audit: the needs table stacks and the aside moves below the main column.
+    expect(css).toMatch(/\.nfm-sessions \{ position: static; order: 2; \}/);
+  });
   it('the landing page is step 1 of the step bar: the four-row "What you need" TABLE first, then one start card (drop zone + example), and only then earlier sessions and calibration', () => {
     // UI-10 — V15: WAS a prose checklist above a second zone with the sessions aside and the calibration
     // zone above it all (Sander, 22-11-2026: "eerst die lange zin en dan onder de calibratie bestand van

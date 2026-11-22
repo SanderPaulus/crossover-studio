@@ -336,7 +336,8 @@ describe('the tool — what a source scan can see', () => {
   it('in one column the sessions block scrolls away: the narrow-screen rule comes after the sticky rule', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8');
     const sticky = css.indexOf('.nfm-sessions { display: flex; flex-direction: column; gap: 0.5rem; position: sticky');
-    const narrow = css.search(/@media \(max-width: 900px\) \{[^}]*\}[^}]*\.nfm-sessions \{ position: static; \}/);
+    // UI-10 audit — V15: the narrow rule also sends the side list AFTER the work (`order: 2`); the claim is the same order of rules.
+    const narrow = css.search(/@media \(max-width: 900px\) \{[^}]*\}[^}]*\.nfm-sessions \{ position: static; order: 2; \}/);
     expect(sticky).toBeGreaterThan(-1);
     expect(narrow).toBeGreaterThan(sticky);
   });
