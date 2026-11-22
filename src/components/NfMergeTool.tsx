@@ -1260,6 +1260,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
             </span>
             <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
           </label>
+          {/* UI-9 nazorg (Sander, 22-11-2026): one line on WHY each file type, where the files go in. */}
+          <p className="derived nfm-filetypes">{t('Per driver: .pir — the impulse, near and far field: the window, the timing and the reflections (required) · .frd/.txt — the SPL export: the level and the mic calibration (or one .mic file) · .zma/.lim — the impedance, handed on to the project.')}</p>
           <ul>
             {sessions.map((s) => (
               <li key={s.id} className={s.id === current?.id ? 'active' : ''}>

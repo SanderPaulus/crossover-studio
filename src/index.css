@@ -5193,6 +5193,7 @@ details.v2-more.cd-more > .cd-grid { margin-top: 0; }
 .nfm-needs-list { margin: 0.25rem 0 0.5rem; padding-left: 1.1rem; }
 .nfm-needs-list li { margin: 0.2rem 0; }
 .nfm-optional-head { margin: 1rem 0 0.1rem; color: var(--muted); font-weight: 600; }
+.nfm-filetypes { margin: 0.25rem 0 0.4rem; font-size: 0.8em; line-height: 1.35; }
 .nfm-intro-steps .nfm-step-num { flex: none; width: 1.6em; height: 1.6em; border: 1px solid var(--border); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85em; }
 /* UI-3 — project menu, places, empty project, folded inventory */
 .project-menu { position: relative; }

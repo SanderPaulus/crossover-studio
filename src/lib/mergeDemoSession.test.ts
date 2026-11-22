@@ -97,6 +97,9 @@ describe('UI-9 — the merge page for a first-time visitor (source scan on NfMer
     expect(src).toMatch(/<strong>\{t\('Optional'\)\}<\/strong>/);
     expect(src.match(/t\('\.pir impulses \(required\) · their \.frd\/\.txt exports and \.zma\/\.lim impedances \(optional\)'\)/g)?.length).toBe(2);
     expect(src).not.toContain("t('.pir + their .frd/.txt exports + .zma/.lim')");
+    // UI-9 nazorg: one line under the New-session zone on WHY each file type (Sander, 22-11-2026)
+    const aside = src.slice(src.indexOf('<aside className="nfm-sessions">'), src.indexOf('</aside>'));
+    expect(aside).toMatch(/<p className="derived nfm-filetypes">\{t\('Per driver: \.pir — the impulse, near and far field: the window, the timing and the reflections \(required\) · \.frd\/\.txt — the SPL export: the level and the mic calibration \(or one \.mic file\) · \.zma\/\.lim — the impedance, handed on to the project\.'\)\}<\/p>/);
   });
   it('without an FRD header the proposal is the window in use as soon as it lands — applied by the tool, said in the readout; a header or a chosen window is never touched', () => {
     const eff = src.slice(src.indexOf("if (!c || c.winMode || !d.far || !d.near) continue;") - 200, src.indexOf("const takeOver = (stem: string, pr: WindowProposal, auto = false) =>"));

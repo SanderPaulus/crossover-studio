@@ -10578,3 +10578,10 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   draait nu ook op stap 4). Beide in V15-vorm herschreven, geen claim versoepeld, en de laag is opnieuw en
   alleen gedraaid op de boom die gecommit wordt. Geen volle run: geen motor-, poort-, venster-, metriek- of
   corpuscode geraakt.
+- **Nazorg (Sander, 22-11-2026): "kan je een korte bondige uitleg geven (1 regel) waarom de type bestanden
+  nodig zijn".** Eén regel onder de "New session"-zone (`.nfm-filetypes`): *.pir — de impuls, nabij- en
+  ver-veld: het venster, de timing en de reflecties (verplicht) · .frd/.txt — de SPL-export: het niveau en de
+  mic-kalibratie (of één .mic-bestand) · .zma/.lim — de impedantie, doorgegeven aan het project.* Gepind in de
+  checklist-claim van `mergeDemoSession.test.ts`. In de browser gezien. **Gemeten:** `npm run test:fast`
+  **265,96 s, 254 bestanden (253 + 1 overgeslagen), 3334 tests (3330 + 4), groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 17:50:48, run gestart 17:51:39.** Geen nieuwe test.

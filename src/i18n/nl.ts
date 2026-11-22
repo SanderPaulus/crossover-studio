@@ -2650,6 +2650,8 @@ export const nl: Record<string, string> = {
     'het voorstel, door de tool toegepast (geen FRD-vensterkop) — hier te wijzigen',
   'the proposal, applied by the tool (no FRD window header)':
     'het voorstel, door de tool toegepast (geen FRD-vensterkop)',
+  'Per driver: .pir — the impulse, near and far field: the window, the timing and the reflections (required) · .frd/.txt — the SPL export: the level and the mic calibration (or one .mic file) · .zma/.lim — the impedance, handed on to the project.':
+    'Per driver: .pir — de impuls, nabij- en ver-veld: het venster, de timing en de reflecties (verplicht) · .frd/.txt — de SPL-export: het niveau en de mic-kalibratie (of één .mic-bestand) · .zma/.lim — de impedantie, doorgegeven aan het project.',
   'Before / after the set-up':
     'Vóór / ná de opstelling',
   'Before — without the set-up':
