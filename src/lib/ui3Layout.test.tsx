@@ -71,12 +71,19 @@ describe('UI-3 — the merge page under the top bar', () => {
   });
 
   it('the empty page shows the route, one line per guide step — since UI-9 below "What you need" and the example button', () => {
-    const i = MERGE.indexOf('className="nfm-intro"');
+    const i = MERGE.indexOf('className="nfm-landing"');
     expect(i).toBeGreaterThan(0);
     // UI-9 — V15: WAS "within 800 characters of the intro's opening" (the route came first); IS after the
     // checklist and the example session (Sander, 22-11-2026: what the tool needs comes before how it works).
-    const intro = MERGE.slice(i, MERGE.indexOf('</section>', i));
+    // UI-10: the intro became the landing page (`nfm-landing`); the claim is unchanged.
+    const intro = MERGE.slice(i, MERGE.indexOf('nfm-foot', i));
     expect(intro).toContain('GUIDE_STEPS.map');
-    expect(intro.indexOf("t('What you need')")).toBeLessThan(intro.indexOf('GUIDE_STEPS.map'));
+    // UI-10 nazorg — V15: WAS "What you need" before a route list; IS the route as the STEP BAR of the
+    // session view, step 1 active (Sander, 22-11-2026: the upload is step 1), with the table and the drop
+    // zone as step 1's body — the table FIRST (Sander, same day: "begin deze pagina eerst met wat we nodig
+    // hebben en waarom, niet eerst met uploaden").
+    expect(intro.indexOf('<ol className="nfm-steps"')).toBeLessThan(intro.indexOf("t('What you need')"));
+    expect(intro.indexOf("t('What you need')")).toBeLessThan(intro.indexOf('className="nfm-start"'));
+    expect(intro).not.toContain("t('How it works')}</h3>");
   });
 });

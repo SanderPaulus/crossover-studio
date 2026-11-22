@@ -75,7 +75,7 @@ describe('UI-9 — the merge page for a first-time visitor (source scan on NfMer
     expect(src).toMatch(/onDrop: \(e: DragEvent\) => \{\s*if \(e\.defaultPrevented\) return;/);
     expect(src).toMatch(/if \(zone !== 'page'\) e\.stopPropagation\(\);/);
     expect(src).toMatch(/<section className=\{`nf-merge-tool\$\{dropArmed === 'page' \? ' drop-armed' : ''\}`\} id="nf-merge-tool" \{\.\.\.fileDrop\('page', \(f\) => void onFiles\(f\)\)\}>/);
-    expect(src.match(/\{\.\.\.fileDrop\('session', \(f\) => void onFiles\(f\)\)\}/g)?.length).toBe(2); // the sessions aside and the intro zone
+    expect(src.match(/\{\.\.\.fileDrop\('session', \(f\) => void onFiles\(f\)\)\}/g)?.length).toBe(2); // the side list's zone and the landing's
     expect(src.match(/\{\.\.\.fileDrop\('cal', \(f\) => void onCalFile\(f\)\)\}/g)?.length).toBe(1);
     expect(src).not.toMatch(/<label className="dropzone[^"]*">/); // no zone left without the handlers
     expect(src).toMatch(/const onFiles = async \(files: FileList \| File\[\] \| null\)/);
@@ -88,18 +88,29 @@ describe('UI-9 — the merge page for a first-time visitor (source scan on NfMer
     expect(src).toMatch(/if \(props\.geometry\.baffleWidthMm === null && props\.geometry\.baffleHeightMm === null\) \{\s*const cab = mergeDemoCabinet\(\);\s*props\.onCabinet\(cab\.patch\);/);
     expect(src).toMatch(/import\('\.\.\/lib\/mergeDemoSession\.ts'\)|from '\.\.\/lib\/mergeDemoSession\.ts'/);
   });
-  it('the empty page opens with "What you need" — required, for the level, optional — and names FRD and impedances optional on every zone', () => {
-    const needs = src.indexOf("t('What you need')");
-    expect(needs).toBeGreaterThan(0);
-    expect(needs).toBeLessThan(src.indexOf("t('How it works')"));
-    expect(src).toMatch(/<strong>\{t\('Required'\)\}<\/strong>/);
-    expect(src).toMatch(/<strong>\{t\('For the level'\)\}<\/strong>/);
-    expect(src).toMatch(/<strong>\{t\('Optional'\)\}<\/strong>/);
-    expect(src.match(/t\('\.pir impulses \(required\) · their \.frd\/\.txt exports and \.zma\/\.lim impedances \(optional\)'\)/g)?.length).toBe(2);
-    expect(src).not.toContain("t('.pir + their .frd/.txt exports + .zma/.lim')");
-    // UI-9 nazorg: one line under the New-session zone on WHY each file type (Sander, 22-11-2026)
-    const aside = src.slice(src.indexOf('<aside className="nfm-sessions">'), src.indexOf('</aside>'));
-    expect(aside).toMatch(/<p className="derived nfm-filetypes">\{t\('Per driver: \.pir — the impulse, near and far field: the window, the timing and the reflections \(required\) · \.frd\/\.txt — the SPL export: the level and the mic calibration \(or one \.mic file\) · \.zma\/\.lim — the impedance, handed on to the project\.'\)\}<\/p>/);
+  it('the landing page is step 1 of the step bar: the four-row "What you need" TABLE first, then one start card (drop zone + example), and only then earlier sessions and calibration', () => {
+    // UI-10 — V15: WAS a prose checklist above a second zone with the sessions aside and the calibration
+    // zone above it all (Sander, 22-11-2026: "eerst die lange zin en dan onder de calibratie bestand van
+    // de mic de uitleg"); IS one column in reading order, and the aside renders only with a session open.
+    const landing = src.slice(src.indexOf('<div className="nfm-landing">'), src.indexOf('<p className="derived nfm-foot">'));
+    // UI-10 nazorg (Sander: "how it works staat onder de upload section" — "denk er eens goed over na"):
+    // the upload IS step 1. The landing shows the session view's own step bar with step 1 active and 2–5
+    // to come, and step 1's body holds the table, the drop zone and the example. No separate route.
+    // V15 (Sander, 22-11-2026: "begin deze pagina eerst met wat we nodig hebben en waarom, niet eerst met
+    // uploaden"): WAS start card then table; IS the table FIRST, then the start card.
+    const order = ['<ol className="nfm-steps"', 'GUIDE_STEPS.map', '<div className="nfm-stepbody">', "t('Files')", 'className="nfm-needs"', '<table className="nfm-needs-table">', 'className="nfm-start"', "t('Load the example session →')", 'className="nfm-earlier"', 'className="nfm-cal-landing"'].map((k) => landing.indexOf(k));
+    expect(landing).not.toContain('className="nfm-how"');
+    expect(landing).toMatch(/disabled=\{i !== 0\} aria-current=\{i === 0 \? 'step' : undefined\} title=\{t\(STEP_HINT\[k\]\)\}/); // steps 2–5 greyed, each with its hint
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect(order).toEqual(order.slice().sort((a, b) => a - b));
+    expect((landing.match(/<tr>/g) ?? []).length).toBe(5); // the header row and four rows: .pir, .frd/.txt or .mic, .zma/.lim, cabinet and set-up
+    expect(landing).toMatch(/nfm-need-required.*required.*nfm-need-export.*for export.*nfm-need-optional.*optional.*nfm-need-required/s);
+    expect(landing).not.toMatch(/\.derived[^<]*\{t\('[^']{120,}'\)\}/); // no explanatory paragraph over 120 characters: the table says it
+    expect(src).toMatch(/\{session && \(\s*<aside className="nfm-sessions">/); // the side list only with a session open
+    expect(src).not.toContain('nfm-filetypes'); // the long one-liner is gone
+    expect(src.match(/\{sessionList\}/g)?.length).toBe(2); // one list element, two places
+    expect(src.match(/\{calZone\}/g)?.length).toBe(2);
+    expect(src.match(/\{calList\}/g)?.length).toBe(2);
   });
   it('without an FRD header the proposal is the window in use as soon as it lands — applied by the tool, said in the readout; a header or a chosen window is never touched', () => {
     const eff = src.slice(src.indexOf("if (!c || c.winMode || !d.far || !d.near) continue;") - 200, src.indexOf("const takeOver = (stem: string, pr: WindowProposal, auto = false) =>"));

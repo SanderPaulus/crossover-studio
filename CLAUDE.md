@@ -10585,3 +10585,61 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   checklist-claim van `mergeDemoSession.test.ts`. In de browser gezien. **Gemeten:** `npm run test:fast`
   **265,96 s, 254 bestanden (253 + 1 overgeslagen), 3334 tests (3330 + 4), groen, alleen gedraaid met de
   dev-server gestopt; laatste bronbewerking 17:50:48, run gestart 17:51:39.** Geen nieuwe test.
+
+### UI-10 fase 1 — de landingspagina van de merge-tool herbouwd (22-11-2026)
+
+- **Aanleiding (Sander, met screenshot):** "neem deze page nou. eerst die lange zin en dan onder de
+  calibratie bestand van de mic de uitleg. Als ik aan jou vraag een audit te doen op de UI … verwacht
+  ik dat je dit ondervangt." Terecht: de pagina van UI-9 zette de sessielijst met een dropzone, een
+  regel van 42 woorden over bestandstypen en de kalibratiezone BOVEN de uitleg, en daaronder nog een
+  tweede dropzone — vier blokken voordat de bezoeker wist wat hij moest doen.
+- **Twee correcties van Sander onderweg, en de tweede is de kern.** (1) "how it works staat onder de
+  upload section" — mijn eerste antwoord was de vijf stappen als strip BOVEN de upload zetten. (2) "dat
+  is inderdaad verkeerd … denk er eens goed over na": de vijf stappen zijn geen uitleg naast de pagina,
+  **de upload IS stap 1.** De landingspagina toont daarom dezelfde stappenbalk als de sessieweergave —
+  "1 Files" actief, 2–5 grijs (uitgeschakeld, elk met zijn hint als tooltip) — en de inhoud van stap 1 is
+  de dropzone, het voorbeeld en de tabel. Een apart "How it works" bestaat niet meer: de balk is de route,
+  en wat je na het uploaden ziet is dezelfde balk met stap 2 erbij.
+- **Een derde correctie, dezelfde avond:** "begin deze pagina eerst met wat we nodig hebben en waarom,
+  niet eerst met uploaden, dit hebben we daarnet ook al besproken." Binnen stap 1 staat de tabel daarom
+  BOVEN de upload: eerst weten wat je nodig hebt, dan pas de handeling.
+- **Wat er nu staat, in leesvolgorde en zonder herhaling** (`nfm-landing`, alleen zonder open sessie):
+  1. **De stappenbalk**, stap 1 actief; eronder de kop "Files" met de ene hintzin van stap 1.
+  2. **What you need** als TABEL met vier rijen en drie kolommen (wat · waarom · nodig): `.pir`
+     (verplicht), `.frd/.txt` óf één `.mic` (voor export), `.zma/.lim` (optioneel), kast en opstelling
+     (verplicht). De "nodig"-kolom is een pil met drie vormen; geen enkele zin boven de twintig woorden.
+  3. **Start**: één dropzone ("Drop your measurement files here — or click to choose them") naast één
+     kaart "No measurements yet? [Load the example session →]". Eén primaire handeling, één alternatief.
+  4. **Earlier sessions** — alleen als er zijn.
+  5. **Microphone calibration** — één compacte zone en de lijst; de uitleg van de bestandsvorm staat
+     in de tooltip.
+  De zijlijst (`aside.nfm-sessions`) rendert ALLEEN met een open sessie, met één compacte zone
+  ("New session — drop or click"), de sessielijst en de kalibratie; de lange regel is weg. Sessielijst,
+  kalibratiezone en -lijst zijn ÉÉN element elk (`sessionList`, `calZone`, `calList`), op twee plaatsen
+  gerenderd (A3g voor JSX). Veertien NL-strings van UI-9 zijn vervangen door de nieuwe.
+- **Hoe dit zich tot de inventaris verhoudt:** dit is regel 1 (één veld, één regel), 4 (getallen en
+  feiten in een tabel), 6 (verplicht eerst) en 7 (herhaling weg) van `docs/UI-10_inventaris.md` §5,
+  toegepast op het scherm dat de aanleiding was; de rest van §6 volgt in die volgorde.
+- **Gemeten met het telscript van de inventaris, vóór → ná** (één opgeslagen sessie en één
+  kalibratiebestand aanwezig): woorden 433 → **254**, hulptekst 189 (44 %) → **59 (23 %)**, langste
+  alinea 44 → **16** woorden, hoogte 1199 → **951 px**, knoppen 4 → 8 (de vijf stapknoppen erbij, vier
+  ervan uitgeschakeld). Dat is de "ná"-regel die §8 van de inventaris belooft.
+- `mergeDemoSession.test.ts` (9 claims, in V15-vorm): de landing in leesvolgorde (stappenbalk → "Files"
+  → tabel → start → voorbeeld → eerdere sessies → kalibratie; geen `nfm-how` meer; 2–5 uitgeschakeld met
+  hint), precies vijf `<tr>`, de drie pil-vormen in volgorde,
+  geen uitlegalinea boven 120 tekens, de aside alleen met sessie, de lange regel weg, de drie gedeelde
+  elementen elk tweemaal gerenderd. `ui3Layout.test.tsx`: het anker `nfm-intro` → `nfm-landing`, en de route
+  is sindsdien de stappenbalk vóór de tabel vóór de start-kaart (V15, tweemaal herschreven).
+- **Browsercontrole (dev-server, 22-11-2026):** de landing als eerste bezoeker: de stappenbalk
+  "1 Files · 2 Set-up · 3 Window · 4 Merge per driver · 5 Export" met stap 1 actief en 2–5 grijs, de kop
+  "Files" met zijn hintzin, de tabel, de start-kaart, kalibratie; met één opgeslagen sessie verschijnt
+  "Earlier sessions" zonder bullet (eigen lijstklasse); met een sessie open de compacte zijlijst en
+  dezelfde balk met stap 2 erbij. Console leeg, geen 4xx.
+- **Gemeten 22-11-2026:** `npx tsc -b` groen. `npm run test:fast` **260,4 s, 254 bestanden (253 geslaagd,
+  1 overgeslagen), 3334 tests (3330 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 18:48:16, run gestart 18:49:03 (de H-2-regel).** Geen nieuwe
+  test tegen UI-9's 3334: de claims zijn herschreven, niet geteld. **Drie eerdere runs zijn weggegooid**,
+  alle drie om de H-2-reden: de eerste (3333 tests) mat een boom waaruit een `slice`-vervanging de claim
+  "zonder FRD-kop is het voorstel het venster" had laten vallen (hersteld), de tweede mat de
+  start-kaart-versie van vóór Sanders tweede correctie, de derde (269,2 s, groen) de upload-eerst-volgorde
+  van vóór zijn derde. Geen volle run: alleen weergave.

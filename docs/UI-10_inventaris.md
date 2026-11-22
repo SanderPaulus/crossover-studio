@@ -158,6 +158,11 @@ Compare rechts is opnieuw de analysekolom met het Engine-v2-paneel.
    rapport en in CLAUDE.md.
 9. **Vaste maten:** velden 6 em, getallen rechts uitgelijnd, eenheden in een vaste kolom; knoppenrijen
    hoogstens vier knoppen breed.
+10. **Een lege pagina is stap 1 van de flow, niet een pagina óver de flow** (Sander, 22-11-2026, bij de
+   merge-tool): toon de stappenbalk die de gebruiker straks ook ziet, met de eerste stap actief, en zet
+   daar de eerste handeling in. Geen "How it works"-lijst naast een upload die zelf stap 1 is.
+11. **Eerst wat nodig is en waarom, dan de handeling** (Sander, 22-11-2026): een stap die iets van de
+   gebruiker vraagt zegt eerst wat en waarom, en biedt dan pas het veld of de dropzone aan.
 
 ## 6. Voorgestelde volgorde van werk (elke stap een eigen sessie, met eigen meting vóór/ná)
 
@@ -182,3 +187,13 @@ Het telscript staat in `docs/UI-10_census.js` (plakken in de console van de pagi
 lengte, `<details>` open/dicht, `scrollHeight`. Navigatie door de app via de zichtbare knoppen
 ("Your project" … "Your build", de expert-tabs, "next →" in de merge-tool, "Compare"). Een dichte
 uitklap telt niet mee: wat de gebruiker niet ziet, weegt niet.
+
+## 8. Voortgang
+
+- **Fase 1 (22-11-2026): de landingspagina van de merge-tool** — Sanders eigen voorbeeld. De pagina
+  is stap 1 van de eigen stappenbalk (2–5 grijs): "What you need" als tabel van vier rijen, dáárna één
+  start-kaart (dropzone + voorbeeldsessie), en pas daarna eerdere sessies en kalibratie; de zijlijst alleen
+  met een open sessie; geen apart "How it works" meer — de balk is de route. Regel 1, 4, 6 en 7 van §5,
+  plus een regel die de telling niet kon zien en Sander wel: **een landingspagina is de eerste stap van
+  de flow en geen pagina óver de flow.** Vóór: 433 woorden, 44 % hulptekst, langste alinea 44, 1199 px.
+  Ná: 254 woorden, 23 %, langste alinea 16, 951 px.

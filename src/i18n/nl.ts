@@ -2610,38 +2610,12 @@ export const nl: Record<string, string> = {
     'zonder opstelling',
   'with the set-up':
     'met opstelling',
-  'New session — drop the files here, or click to choose them':
-    'Nieuwe sessie — sleep de bestanden hierheen, of klik om ze te kiezen',
-  '.pir impulses (required) · their .frd/.txt exports and .zma/.lim impedances (optional)':
-    '.pir-impulsen (verplicht) · hun .frd/.txt-exports en .zma/.lim-impedanties (optioneel)',
-  'Add a calibration file — drop it here, or click':
-    'Kalibratiebestand toevoegen — sleep het hierheen, of klik',
   'Fetching the example session…':
     'Voorbeeldsessie ophalen…',
   'What you need':
     'Wat je nodig hebt',
-  'Required':
-    'Verplicht',
-  'per driver a near-field and a far-field impulse (.pir) from one dual-channel session; the cabinet front (width, height) and per driver S_d and the height above the bottom — from “Your cabinet”, or typed in step 2; the four measures of the set-up and one question about walls and ceiling.':
-    'per driver een nabij-veld- en een ver-veldimpuls (.pir) uit één tweekanaalssessie; het kastfront (breedte, hoogte) en per driver S_d en de hoogte boven de bodem — uit “Jouw kast”, of ingevuld in stap 2; de vier maten van de opstelling en één vraag over wanden en plafond.',
-  'For the level':
-    'Voor het niveau',
-  'the FRD exports of the far fields, or a microphone calibration file. Without either the tool merges and fits, but export and “Use in project” refuse.':
-    'de FRD-exports van de verre velden, of een kalibratiebestand van de microfoon. Zonder een van beide mergt en fit de tool wel, maar weigeren export en “Gebruik in project”.',
   'Optional':
     'Optioneel',
-  'impedances (.zma/.lim, handed on to the project), a port near field for a vented box, the measured object when it is not the target cabinet.':
-    'impedanties (.zma/.lim, doorgegeven aan het project), een poort-nabijveld bij een basreflexkast, het gemeten object als dat niet de doelkast is.',
-  'Load the example session (KOAN 2951, Aug 2026) →':
-    'Laad de voorbeeldsessie (KOAN 2951, aug 2026) →',
-  'The real August measurement of the demo loudspeaker: eight impulses, its calibration file and the set-up as stated — the whole route in two presses.':
-    'De echte augustusmeting van de demoluidspreker: acht impulsen, haar kalibratiebestand en de opstelling zoals gesteld — de hele route in twee klikken.',
-  'Open a session on the left, or drop a new one here — or click to choose the files':
-    'Open links een sessie, of sleep hier een nieuwe heen — of klik om de bestanden te kiezen',
-  'Drop your measuring session here to start — or click to choose the files':
-    'Sleep je meetsessie hierheen om te beginnen — of klik om de bestanden te kiezen',
-  'A tool of its own: it works without a project and keeps its sessions itself. Merge, accept, export; “Use in project…” hands the project the merged files, exactly as importing the export package would.':
-    'Een tool op zichzelf: werkt zonder project en bewaart zijn sessies zelf. Mergen, goedkeuren, exporteren; “Gebruik in project…” geeft het project de gemergde bestanden, precies alsof je het exportpakket importeert.',
   'Required: the four measures and one question, once per set-up. The tool keeps them.':
     'Verplicht: de vier maten en één vraag, eenmaal per opstelling. De tool bewaart ze.',
   'An earlier set-up to reuse, a name to keep this one under, and the measured object when it is not the target cabinet.':
@@ -2650,8 +2624,56 @@ export const nl: Record<string, string> = {
     'het voorstel, door de tool toegepast (geen FRD-vensterkop) — hier te wijzigen',
   'the proposal, applied by the tool (no FRD window header)':
     'het voorstel, door de tool toegepast (geen FRD-vensterkop)',
-  'Per driver: .pir — the impulse, near and far field: the window, the timing and the reflections (required) · .frd/.txt — the SPL export: the level and the mic calibration (or one .mic file) · .zma/.lim — the impedance, handed on to the project.':
-    'Per driver: .pir — de impuls, nabij- en ver-veld: het venster, de timing en de reflecties (verplicht) · .frd/.txt — de SPL-export: het niveau en de mic-kalibratie (of één .mic-bestand) · .zma/.lim — de impedantie, doorgegeven aan het project.',
+  '.pir impulses per driver (near and far field); their .frd/.txt exports and .zma/.lim impedances if you have them':
+    '.pir-impulsen per driver (nabij- en ver-veld); hun .frd/.txt-exports en .zma/.lim-impedanties als je die hebt',
+  'New session — drop or click':
+    'Nieuwe sessie — slepen of klikken',
+  'Add a .mic file — drop or click':
+    '.mic-bestand toevoegen — slepen of klikken',
+  'Drop your measurement files here — or click to choose them':
+    'Sleep je meetbestanden hierheen — of klik om ze te kiezen',
+  '.pir per driver, with the .frd/.txt exports and .zma/.lim if you have them':
+    '.pir per driver, met de .frd/.txt-exports en .zma/.lim als je die hebt',
+  'No measurements yet?':
+    'Nog geen metingen?',
+  'Load the example session →':
+    'Laad de voorbeeldsessie →',
+  'The KOAN 2951 measurement of August 2026, set-up included.':
+    'De KOAN 2951-meting van augustus 2026, opstelling inbegrepen.',
+  'What':
+    'Wat',
+  'Why':
+    'Waarom',
+  'Needed':
+    'Nodig',
+  'near and far field, per driver':
+    'nabij- en ver-veld, per driver',
+  'Your measurement itself: the window, the timing and the reflections come from it.':
+    'Je meting zelf: het venster, de timing en de reflecties komen eruit.',
+  'required':
+    'verplicht',
+  'ARTA’s export of the same far field, or one .mic file':
+    'de ARTA-export van hetzelfde verre veld, of één .mic-bestand',
+  'Sets the level and the microphone correction. Without it the tool merges, but export and “Use in project” refuse.':
+    'Zet het niveau en de microfooncorrectie. Zonder mergt de tool wel, maar weigeren export en “Gebruik in project”.',
+  'for export':
+    'voor export',
+  'impedance':
+    'impedantie',
+  'Passed on to the project; the merge itself does not read it.':
+    'Gaat door naar het project; de merge zelf leest hem niet.',
+  'optional':
+    'optioneel',
+  'Cabinet and set-up':
+    'Kast en opstelling',
+  'front size, S_d, driver heights, the four measures':
+    'frontmaten, S_d, driverhoogten, de vier maten',
+  'Typed in step 2, or taken from “Your cabinet” when a project is open.':
+    'Ingevuld in stap 2, of overgenomen uit “Jouw kast” als er een project open is.',
+  'Earlier sessions':
+    'Eerdere sessies',
+  'Works without a project; sessions are kept in this browser.':
+    'Werkt zonder project; sessies blijven in deze browser bewaard.',
   'Before / after the set-up':
     'Vóór / ná de opstelling',
   'Before — without the set-up':
@@ -2994,8 +3016,6 @@ export const nl: Record<string, string> = {
     'rol',
   'content':
     'inhoud',
-  'impedance':
-    'impedantie',
   'not read by this tool':
     'niet gelezen door deze tool',
   'FRD export of {p}':

@@ -1227,6 +1227,64 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     return { ok: worst <= ARRIVAL_CHECK_MM, text: `${worst <= ARRIVAL_CHECK_MM ? '✓' : '!'} ${rows.join(' · ')}${worst > ARRIVAL_CHECK_MM ? ' — ' + t('more than {x} mm apart: check C, D or the driver heights', { x: ARRIVAL_CHECK_MM }) : ''}` };
   })();
 
+  /* UI-10 — the stored-session list, the calibration zone and the calibration list are rendered in two
+   * places (the side list with a session open, the landing page without) from ONE element each. */
+  const sessionList = (
+    <ul className="nfm-session-list">
+      {sessions.map((s) => (
+        <li key={s.id} className={s.id === current?.id ? 'active' : ''}>
+          <a href={`#/merge/${s.id}`}>{s.name}</a>
+          <span className="derived"> · {t('{n} file(s)', { n: s.files })} · {s.savedAt.slice(0, 16).replace('T', ' ')}</span>{' '}
+          <button
+            type="button"
+            className="icon"
+            aria-label={t('Delete session {s}', { s: s.name })}
+            onClick={() =>
+              void deleteMergeSession(s.id).then(() => {
+                if (s.id === current?.id) {
+                  setCurrent(null);
+                  props.onOpenId(null);
+                }
+                return refreshList();
+              })
+            }
+          >
+            ✕
+          </button>
+        </li>
+      ))}
+      {sessions.length === 0 && <li className="derived">{t('No stored sessions yet.')}</li>}
+    </ul>
+  );
+  const calZone = (
+    <label className={`dropzone nfm-cal-drop nfm-zone-compact${dropArmed === 'cal' ? ' drop-armed' : ''}`} title={t('ARTA / REW / JustOct text: frequency, dB, optional phase')} {...fileDrop('cal', (f) => void onCalFile(f))}>
+      <span className="dz-text">
+        <strong>{t('Add a .mic file — drop or click')}</strong>
+      </span>
+      <input type="file" accept=".mic,.txt,.cal,.frd" aria-label={t('calibration file')} onChange={(e) => void onCalFile(e.target.files)} />
+    </label>
+  );
+  const calList = (
+    <>
+      {calError && <p className="derived alert" role="alert">{calError}</p>}
+      <ul className="nfm-cal-list">
+        {cals.map((c) => (
+          <li key={c.id}>
+            {c.name}
+            <span className="derived">
+              {' '}
+              · {c.freq.length} {t('points')}, {c.freq[0]}–{c.freq[c.freq.length - 1]} Hz{c.phaseDeg ? ` · ${t('with phase')}` : ''}
+              {c.sensitivityNote ? ` · ${c.sensitivityNote}` : ''}
+            </span>{' '}
+            <button type="button" className="icon" aria-label={t('Delete calibration {s}', { s: c.name })} onClick={() => void deleteMicCal(c.id).then(refreshCals)}>
+              ✕
+            </button>
+          </li>
+        ))}
+        {cals.length === 0 && <li className="derived">{t('No calibration files yet.')}</li>}
+      </ul>
+    </>
+  );
   return (
     <section className={`nf-merge-tool${dropArmed === 'page' ? ' drop-armed' : ''}`} id="nf-merge-tool" {...fileDrop('page', (f) => void onFiles(f))}>
       {/* UI-3 — a page under the app's own top bar: a heading that says what
@@ -1249,70 +1307,25 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       </header>
       {storeError && <p className="derived alert">{storeError}</p>}
 
-      <div className="nfm-layout">
+      <div className={`nfm-layout${session ? '' : ' nfm-layout-landing'}`}>
+        {session && (
         <aside className="nfm-sessions">
           <strong>{t('Sessions')}</strong>
-          <label className={`dropzone${dropArmed === 'session' ? ' drop-armed' : ''}`} {...fileDrop('session', (f) => void onFiles(f))}>
+          {/* UI-10 (Sander, 22-11-2026): with a session open this is a side list — one compact zone, no
+              explanation beside it; what the file types are is said once, on the landing page. */}
+          <label className={`dropzone nfm-zone-compact${dropArmed === 'session' ? ' drop-armed' : ''}`} title={t('.pir impulses per driver (near and far field); their .frd/.txt exports and .zma/.lim impedances if you have them')} {...fileDrop('session', (f) => void onFiles(f))}>
             <span className="dz-icon" aria-hidden="true">⬇</span>
             <span className="dz-text">
-              <strong>{t('New session — drop the files here, or click to choose them')}</strong>
-              <span>{t('.pir impulses (required) · their .frd/.txt exports and .zma/.lim impedances (optional)')}</span>
+              <strong>{t('New session — drop or click')}</strong>
             </span>
             <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
           </label>
-          {/* UI-9 nazorg (Sander, 22-11-2026): one line on WHY each file type, where the files go in. */}
-          <p className="derived nfm-filetypes">{t('Per driver: .pir — the impulse, near and far field: the window, the timing and the reflections (required) · .frd/.txt — the SPL export: the level and the mic calibration (or one .mic file) · .zma/.lim — the impedance, handed on to the project.')}</p>
-          <ul>
-            {sessions.map((s) => (
-              <li key={s.id} className={s.id === current?.id ? 'active' : ''}>
-                <a href={`#/merge/${s.id}`}>{s.name}</a>
-                <span className="derived"> · {t('{n} file(s)', { n: s.files })} · {s.savedAt.slice(0, 16).replace('T', ' ')}</span>{' '}
-                <button
-                  type="button"
-                  className="icon"
-                  aria-label={t('Delete session {s}', { s: s.name })}
-                  onClick={() =>
-                    void deleteMergeSession(s.id).then(() => {
-                      if (s.id === current?.id) {
-                        setCurrent(null);
-                        props.onOpenId(null);
-                      }
-                      return refreshList();
-                    })
-                  }
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-            {sessions.length === 0 && <li className="derived">{t('No stored sessions yet.')}</li>}
-          </ul>
+          {sessionList}
           <strong>{t('Microphone calibration')}</strong>
-          <label className={`dropzone nfm-cal-drop${dropArmed === 'cal' ? ' drop-armed' : ''}`} {...fileDrop('cal', (f) => void onCalFile(f))}>
-            <span className="dz-text">
-              <strong>{t('Add a calibration file — drop it here, or click')}</strong>
-              <span>{t('ARTA / REW / JustOct text: frequency, dB, optional phase')}</span>
-            </span>
-            <input type="file" accept=".mic,.txt,.cal,.frd" aria-label={t('calibration file')} onChange={(e) => void onCalFile(e.target.files)} />
-          </label>
-          {calError && <p className="derived alert" role="alert">{calError}</p>}
-          <ul>
-            {cals.map((c) => (
-              <li key={c.id}>
-                {c.name}
-                <span className="derived">
-                  {' '}
-                  · {c.freq.length} {t('points')}, {c.freq[0]}–{c.freq[c.freq.length - 1]} Hz{c.phaseDeg ? ` · ${t('with phase')}` : ''}
-                  {c.sensitivityNote ? ` · ${c.sensitivityNote}` : ''}
-                </span>{' '}
-                <button type="button" className="icon" aria-label={t('Delete calibration {s}', { s: c.name })} onClick={() => void deleteMicCal(c.id).then(refreshCals)}>
-                  ✕
-                </button>
-              </li>
-            ))}
-            {cals.length === 0 && <li className="derived">{t('No calibration files yet.')}</li>}
-          </ul>
+          {calZone}
+          {calList}
         </aside>
+        )}
 
         {session && current && (
           <div className="nfm-main">
@@ -2035,54 +2048,94 @@ export default function NfMergeTool(props: NfMergeToolProps) {
           </div>
         )}
         {!session && (
-          /* UI-3 — the empty page shows the route, not just "open a session". */
-          <div className="nfm-intro">
-            {/* UI-9 — what the tool NEEDS comes first, as a list with required and optional marked, and
-                the example session as one press: a visitor who came from the demo project has no .pir
-                files and until now met three drop zones and no way to see the tool work. */}
-            <div className="nfm-card nfm-needs">
-              <h3>{t('What you need')}</h3>
-              <ul className="nfm-needs-list">
-                <li>
-                  <strong>{t('Required')}</strong> — {t('per driver a near-field and a far-field impulse (.pir) from one dual-channel session; the cabinet front (width, height) and per driver S_d and the height above the bottom — from “Your cabinet”, or typed in step 2; the four measures of the set-up and one question about walls and ceiling.')}
-                </li>
-                <li>
-                  <strong>{t('For the level')}</strong> — {t('the FRD exports of the far fields, or a microphone calibration file. Without either the tool merges and fits, but export and “Use in project” refuse.')}
-                </li>
-                <li>
-                  <strong>{t('Optional')}</strong> — {t('impedances (.zma/.lim, handed on to the project), a port near field for a vented box, the measured object when it is not the target cabinet.')}
-                </li>
-              </ul>
-              <p>
-                <button type="button" className="nfm-primary" disabled={demoBusy !== null} onClick={() => void loadDemoSession()}>
-                  {demoBusy ?? t('Load the example session (KOAN 2951, Aug 2026) →')}
-                </button>{' '}
-                <span className="derived">{t('The real August measurement of the demo loudspeaker: eight impulses, its calibration file and the set-up as stated — the whole route in two presses.')}</span>
-              </p>
-            </div>
-            <label className={`dropzone nfm-intro-drop${dropArmed === 'session' ? ' drop-armed' : ''}`} {...fileDrop('session', (f) => void onFiles(f))}>
-              <span className="dz-icon" aria-hidden="true">⬇</span>
-              <span className="dz-text">
-                <strong>{sessions.length > 0 ? t('Open a session on the left, or drop a new one here — or click to choose the files') : t('Drop your measuring session here to start — or click to choose the files')}</strong>
-                <span>{t('.pir impulses (required) · their .frd/.txt exports and .zma/.lim impedances (optional)')}</span>
-              </span>
-              <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
-            </label>
-            <h3>{t('How it works')}</h3>
-            <ol className="nfm-intro-steps">
+          /* UI-10 — the landing page, rebuilt after Sander's audit of 22-11-2026 ("eerst die lange zin
+             en dan onder de calibratie bestand van de mic de uitleg"). One primary action (the drop zone)
+             with the example beside it; what the tool needs as a four-row TABLE and not as prose; the
+             route; and only then the stored sessions and calibration files, which a first visitor does
+             not have. Nothing is said twice. */
+          <div className="nfm-landing">
+
+            {/* UI-10 (Sander, 22-11-2026): the upload IS step 1. The landing page shows the same step bar
+                the session view shows — step 1 active, 2–5 still to come — and step 1's body is the drop
+                zone, the example and what the tool needs. No separate "how it works": the bar is the route. */}
+            <ol className="nfm-steps" aria-label={t('How it works')}>
               {GUIDE_STEPS.map((k, i) => (
-                <li key={k}>
-                  <span className="nfm-step-num">{i + 1}</span>
-                  <span>
-                    <strong>{t(STEP_LABEL[k])}</strong>
-                    <span className="derived"> — {t(STEP_HINT[k])}</span>
-                  </span>
+                <li key={k} className={`nfm-step nfm-step-${i === 0 ? 'active' : 'todo'}`}>
+                  <button type="button" disabled={i !== 0} aria-current={i === 0 ? 'step' : undefined} title={t(STEP_HINT[k])}>
+                    <span className="nfm-step-num">{i + 1}</span> {t(STEP_LABEL[k])}
+                  </button>
                 </li>
               ))}
             </ol>
-            <p className="derived">
-              {t('A tool of its own: it works without a project and keeps its sessions itself. Merge, accept, export; “Use in project…” hands the project the merged files, exactly as importing the export package would.')}
-            </p>
+            <div className="nfm-stepbody">
+              <h3>{t('Files')}</h3>
+              <p className="derived">{t(STEP_HINT.files)}</p>
+            <section className="nfm-needs" aria-label={t('What you need')}>
+              <h3>{t('What you need')}</h3>
+              <table className="nfm-needs-table">
+                <thead>
+                  <tr>
+                    <th>{t('What')}</th>
+                    <th>{t('Why')}</th>
+                    <th>{t('Needed')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>.pir</strong> — {t('near and far field, per driver')}</td>
+                    <td>{t('Your measurement itself: the window, the timing and the reflections come from it.')}</td>
+                    <td><span className="nfm-need nfm-need-required">{t('required')}</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>.frd / .txt</strong> — {t('ARTA’s export of the same far field, or one .mic file')}</td>
+                    <td>{t('Sets the level and the microphone correction. Without it the tool merges, but export and “Use in project” refuse.')}</td>
+                    <td><span className="nfm-need nfm-need-export">{t('for export')}</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>.zma / .lim</strong> — {t('impedance')}</td>
+                    <td>{t('Passed on to the project; the merge itself does not read it.')}</td>
+                    <td><span className="nfm-need nfm-need-optional">{t('optional')}</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>{t('Cabinet and set-up')}</strong> — {t('front size, S_d, driver heights, the four measures')}</td>
+                    <td>{t('Typed in step 2, or taken from “Your cabinet” when a project is open.')}</td>
+                    <td><span className="nfm-need nfm-need-required">{t('required')}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section className="nfm-start" aria-label={t('Start')}>
+              <label className={`dropzone nfm-intro-drop${dropArmed === 'session' ? ' drop-armed' : ''}`} {...fileDrop('session', (f) => void onFiles(f))}>
+                <span className="dz-icon" aria-hidden="true">⬇</span>
+                <span className="dz-text">
+                  <strong>{t('Drop your measurement files here — or click to choose them')}</strong>
+                  <span>{t('.pir per driver, with the .frd/.txt exports and .zma/.lim if you have them')}</span>
+                </span>
+                <input type="file" multiple accept=".pir,.frd,.txt,.zma,.lim" onChange={(e) => void onFiles(e.target.files)} />
+              </label>
+              <div className="nfm-start-alt">
+                <strong>{t('No measurements yet?')}</strong>
+                <button type="button" className="nfm-primary" disabled={demoBusy !== null} onClick={() => void loadDemoSession()}>
+                  {demoBusy ?? t('Load the example session →')}
+                </button>
+                <span className="derived">{t('The KOAN 2951 measurement of August 2026, set-up included.')}</span>
+              </div>
+            </section>
+            </div>
+
+            {sessions.length > 0 && (
+              <section className="nfm-earlier" aria-label={t('Earlier sessions')}>
+                <h3>{t('Earlier sessions')}</h3>
+                {sessionList}
+              </section>
+            )}
+            <section className="nfm-cal-landing" aria-label={t('Microphone calibration')}>
+              <h3>{t('Microphone calibration')}</h3>
+              {calZone}
+              {calList}
+            </section>
+            <p className="derived nfm-foot">{t('Works without a project; sessions are kept in this browser.')}</p>
           </div>
         )}
       </div>
