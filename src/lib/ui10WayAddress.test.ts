@@ -34,12 +34,20 @@ describe('UI-10 fase 2 — the way is asked once, in step 5, and the merge never
   });
   it('step 2 asks the facts per DRIVER, writing through to "Your cabinet" where the name proposes a way and keeping them in the session where it does not', () => {
     const block = code.slice(code.indexOf("t('Your cabinet — what the merge needs')"), code.indexOf("t('Optional')", code.indexOf("t('Your cabinet — what the merge needs')")));
-    expect(block).toMatch(/\{\[\.\.\.drivers, \.\.\.farOnly\]\.map\(\(d\) => \{\s*const w = wayOf\(d\.stem\);/);
+    // UI-11 — V15: WAS every source of the session, the far-field-only tweeter included; IS the ways that MERGE —
+    // a far-field-only way is gated and exported as it is and the tool reads no cabinet fact of it (Sander, 23-11-2026).
+    expect(block).toMatch(/\{drivers\.map\(\(d\) => \{\s*const w = wayOf\(d\.stem\);/);
+    expect(block).not.toMatch(/\[\.\.\.drivers, \.\.\.farOnly\]\.map/);
+    expect(block).toContain("t('{list}: far field only — nothing to merge, so nothing about the cabinet to ask here.'");
     expect(block).not.toMatch(/\(\['low', 'mid', 'high'\] as MergeWay\[\]\)/); // no longer one row per way
-    expect(block).toContain("onCommit={(v) => (w ? props.onSd(w, v) : setC(d.stem, { sdCm2: v }))}");
-    // UI-10 fase 2d — V15: WAS `if (!w)`; IS `if (hOwn)` = its own front OR no way to file it under: both keep the height in the session.
+    /* UI-11 — V15: WAS one `onCommit` that branched on the way (`w ? props.onSd(w, v) : setC(...)`) and a height
+       field that converted above-bottom to y; IS two branches of ONE map: with a way the project's own driver
+       fields (the `CabinetForm` components, S_d through `props.onSd(w, v)`), without one the session's two facts. */
     expect(block).toMatch(/const hOwn = ownGeometry \|\| !w;/);
-    expect(block).toMatch(/if \(hOwn\) \{\s*setC\(d\.stem, \{ ownHeight: v \}\);\s*return;\s*\}/);
+    expect(block).toMatch(/if \(!hOwn\) \{\s*const pd = props\.cabinet\.drivers\[w\];/);
+    expect(block).toContain("onChange={(v) => props.onSd(w, v)}");
+    expect(block).toContain("onCommit={(v) => setC(d.stem, { sdCm2: v })}");
+    expect(block).toContain("onCommit={(v) => setC(d.stem, { ownHeight: v })}");
     expect(block).toContain("t('Kept in this session: the file name does not say which driver of the design this is. ')");
     expect(block).not.toMatch(/<select value=\{c\.way\}|value=\{cfg\[[a-z.]+\]\.way\}/); // no way select in step 2 either
   });

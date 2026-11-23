@@ -39,6 +39,8 @@ import {
   type PlaneEcho,
 } from '../lib/nfMergeV2.ts';
 import { renderMergedFrdV2 } from '../lib/nfMergeV2Block.ts';
+import { applyCabinetPatch, applyRefFromTop, type CabinetDriver, type CabinetState } from '../lib/cabinetState.ts';
+import { CabinetBoxFields, DriverCountFields, DriverMountingFields, DriverPositionFields, DriverSdField, type CabinetRow, type SetCabinet } from './CabinetForm.tsx';
 import { largestDelta, setUpReachesGate } from '../lib/mergeBeforeAfter.ts';
 import { MERGE_DEMO_SESSION_NAME, fetchMergeDemoSession, mergeDemoCabinet, mergeDemoSetup } from '../lib/mergeDemoSession.ts';
 import { addHeaderLines, gridText, phaseConventionText, phaseZeroMsOf, type ExportGrid, type ExportPhase } from '../lib/mergeExport.ts';
@@ -62,6 +64,7 @@ import {
   reflectionReachMm,
   setupStatus,
   sourceAboveBottomMm,
+  pairStacks,
   statusOf,
   type CabinetGeometryForMerge,
   type DroppedFile,
@@ -73,9 +76,6 @@ import {
   type SessionSource,
   type SourcePlacement,
   type Surface,
-  aboveBottomFromY,
-  yFromAboveBottom,
-  type CabinetPatchForMerge,
 } from '../lib/mergeSession.ts';
 import { LOAD_RATIO_TOL_DB, LOAD_RATIO_TOL_DEG } from '../lib/measuredObject.ts';
 import {
@@ -107,12 +107,13 @@ export interface NfMergeToolProps {
   onUse: (way: MergeWay, sources: AcceptedSource[]) => Prepared;
   /** UI-6 — every accepted way of the session at once, checked against each other (one deed). */
   onUseAll: (plan: { way: MergeWay; sources: AcceptedSource[] }[]) => Partial<Record<MergeWay, Prepared>>;
-  /** UI-6 — "Your cabinet" inside the tool: what it types lands in the project's own cabinet form and
-   *  driver cards (one mechanism, two entrances), so the tool stands on its own without the optimizer. */
-  onCabinet: (patch: CabinetPatchForMerge) => void;
+  /** UI-11 — "Your cabinet" inside the tool IS the project's cabinet state, drawn by the same components as
+   *  Design → Setup (one form, two entrances); the tool stands on its own without the optimizer. */
+  cabinet: CabinetState;
+  setCabinet: SetCabinet;
+  /** S_d per way as typed (the number the field shows); `sdCm2` above is the parsed reading. */
+  sdText: Record<MergeWay, string>;
   onSd: (way: MergeWay, value: string) => void;
-  /** UI-6 — one link to the full form (Design → Setup) for whoever wants more than the four figures. */
-  onOpenCabinet: () => void;
   /** The name of each branch's current response, so "done" is read back from the project, not assumed. */
   responseNames: Record<MergeWay, string | null>;
   /** The measurement set-up as "Your cabinet" states it (mic distance and angle, reference height); nulls where it does not. */
@@ -121,6 +122,17 @@ export interface NfMergeToolProps {
   openId: string | null;
   onOpenId: (id: string | null) => void;
 }
+
+/** UI-11 — one row of the cabinet form inside the tool: the card grid of Design → Setup (label, fields, hint). */
+const mergeRow: CabinetRow = (label, fields, note) => (
+  <>
+    <span className="cd-label">{label}</span>
+    <span className="cd-fields">
+      {fields}
+      {note ? <span className="cd-hint">{note}</span> : null}
+    </span>
+  </>
+);
 
 /** A form value committed on blur, so a merge is not recomputed on every keystroke. */
 function Field(p: { value: string; onCommit: (v: string) => void; width?: number; placeholder?: string; title?: string; ariaLabel?: string }) {
@@ -595,7 +607,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       setTab(loaded.sources.find((x) => x.kind === 'driver')?.stem ?? '');
       if (props.geometry.baffleWidthMm === null && props.geometry.baffleHeightMm === null) {
         const cab = mergeDemoCabinet();
-        props.onCabinet(cab.patch);
+        props.setCabinet((c) => applyCabinetPatch(c, cab.patch));
         for (const w of ['low', 'mid', 'high'] as MergeWay[]) if (props.sdCm2[w] === null) props.onSd(w, cab.sdCm2[w]);
       }
       props.onOpenId(id);
@@ -1635,84 +1647,91 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                         <br />
                         <span className="derived">{t('The only thing about the cabinet you measured in that the merge reads: the near→far model takes its width, and the driver heights stand on it.')}</span>
                       </p>
-                      <p className="derived">
-                        {t('These are the project’s own cabinet and driver fields; what you type here lands in “Your cabinet” and on the driver cards, and what is filled in there already shows here.')}{' '}
-                        <button type="button" className="linkish" onClick={props.onOpenCabinet}>
-                          {t('Open the full “Your cabinet” →')}
-                        </button>
-                      </p>
+                      {/* UI-11 — ONE FORM, TWO ENTRANCES. These rows are the same components that draw "Your cabinet"
+                          and the driver cards in Design → Setup (`CabinetForm.tsx`): the box first, then one driver
+                          per file of this session, with the fields the merge reads — S_d, how many, where on the
+                          front, which panel it fires from. A pair that does not stack (side walls, opposed) is not
+                          asked which member is the upper one: `pairStacks` is the one rule, shared with the height
+                          reader. A driver whose name proposes no way keeps its two facts in this session. */}
+                      <p className="derived">{t('One form, two entrances: these are “Your cabinet” and the driver cards of the project, so what you type here is what the optimizer reads, and what stands there already shows here.')}</p>
                       {!ownGeometry && (
-                      <p className="nfm-abcd">
-                        {t('front panel')}{' '}
-                        <Field value={props.geometry.baffleWidthMm !== null ? String(props.geometry.baffleWidthMm) : ''} onCommit={(v) => props.onCabinet({ baffleWidthMm: v })} ariaLabel={t('front panel width')} /> ×{' '}
-                        <Field value={props.geometry.baffleHeightMm !== null ? String(props.geometry.baffleHeightMm) : ''} onCommit={(v) => props.onCabinet({ baffleHeightMm: v })} ariaLabel={t('front panel height')} /> mm ({t('width × height')})
-                        <br />
-                        <span className="derived">
-                          {props.geometry.baffleWidthMm === null
-                            ? t('Without the width there is no near→far model (AN4 reads it) and no echo extent: no merge.')
-                            : props.geometry.baffleHeightMm === null
-                              ? t('Without the height no driver height can be placed above the floor: no reflection model, no arrival check.')
-                              : t('Width: the near→far model and the echo extent. Height: where each driver stands above the floor.')}
-                        </span>
-                      </p>
+                        <div className="cd-grid nfm-cabinet-grid">
+                          <CabinetBoxFields
+                            cabinet={props.cabinet}
+                            setCabinet={props.setCabinet}
+                            onCommitRefTop={(v) => props.setCabinet((c) => applyRefFromTop(c, v))}
+                            showAboveFloor={false}
+                            row={mergeRow}
+                            frontNote={
+                              props.geometry.baffleWidthMm === null
+                                ? t('Without the width there is no near→far model (AN4 reads it) and no echo extent: no merge.')
+                                : props.geometry.baffleHeightMm === null
+                                  ? t('Without the height no driver height can be placed above the floor: no reflection model, no arrival check.')
+                                  : t('Width: the near→far model and the echo extent. Height: where each driver stands above the floor.')
+                            }
+                          />
+                        </div>
                       )}
-                      {/* UI-10 fase 2 — one row per DRIVER (Sander, 22-11-2026): the merge reads S_d and the height per
-                          driver; the project's way is only the key that finds them in "Your cabinet", proposed from the
-                          file name and never asked here. A driver whose name proposes no way keeps its facts in this
-                          session. */}
-                      {[...drivers, ...farOnly].map((d) => {
+                      {/* Only the ways that MERGE: a far-field-only way (a tweeter with no near field) is gated and
+                          exported as it is, and the tool reads no cabinet fact of it — asking would be the question
+                          Sander spotted (23-11-2026). */}
+                      {farOnly.length > 0 && (
+                        <p className="derived">
+                          {t('{list}: far field only — nothing to merge, so nothing about the cabinet to ask here.', { list: farOnly.map((d) => d.label).join(', ') })}
+                        </p>
+                      )}
+                      {drivers.map((d) => {
                         const w = wayOf(d.stem);
                         const c = cfg[d.stem];
-                        const g = w ? props.geometry.drivers[w] : null;
-                        const members = w ? [...drivers, ...farOnly].filter((x) => wayOf(x.stem) === w).length : 1;
-                        const pair = members >= 2 || (g?.count ?? 1) >= 2;
-                        const H = props.geometry.baffleHeightMm;
-                        const hProj = g ? aboveBottomFromY(g.yMm, H, props.geometry.refFromTopMm) : null;
-                        const sd = w ? props.sdCm2[w] : null;
-                        const hOwn = ownGeometry || !w; // the height lives in the session: its own front, or no way to file it under
+                        const members = w ? drivers.filter((x) => wayOf(x.stem) === w).length : 1;
+                        const hOwn = ownGeometry || !w; // the facts live in the session: its own front, or no way to file them under
                         const placed = sourceAboveBottomMm(placementOf(d.stem), props.geometry);
-                        return (
-                          <p className="nfm-abcd" key={d.stem}>
-                            <strong>{d.label}</strong>{' '}
-                            S_d <Field value={sd !== null ? String(sd) : (c.sdCm2 ?? '')} onCommit={(v) => (w ? props.onSd(w, v) : setC(d.stem, { sdCm2: v }))} ariaLabel={t('{w}: S_d', { w: d.label })} /> cm² ·{' '}
-                            {pair && !hOwn ? t('centre of the pair above the cabinet bottom') : t('centre above the cabinet bottom')}{' '}
-                            <Field
-                              value={!hOwn && hProj !== null ? String(Math.round(hProj * 10) / 10) : c.ownHeight}
-                              onCommit={(v) => {
-                                if (hOwn) {
-                                  setC(d.stem, { ownHeight: v });
-                                  return;
-                                }
-                                const hv = num(v);
-                                if (hv === null || H === null) return;
-                                const y = yFromAboveBottom(hv, H, props.geometry.refFromTopMm);
-                                props.onCabinet({ refFromTopMm: String(y.refFromTopMm), drivers: { [w]: { yMm: String(Math.round(y.yMm * 10) / 10), ...(members >= 2 && (g?.count ?? 0) < 2 ? { count: String(members) } : {}) } } });
-                              }}
-                              title={!hOwn && H === null ? t('state the front panel height first') : undefined}
-                              ariaLabel={t('{w}: height above the bottom', { w: d.label })}
-                            />{' '}
-                            mm
-                            {pair && !hOwn && g && (
-                              <>
-                                {' · '}
-                                {t('spacing of the pair')} <Field value={g.spacingMm !== null ? String(g.spacingMm) : ''} onCommit={(v) => props.onCabinet({ drivers: { [w]: { spacingMm: v, count: String(members) } } })} ariaLabel={t('{w}: spacing', { w: d.label })} /> mm{' '}
+                        if (!hOwn) {
+                          const pd = props.cabinet.drivers[w];
+                          const setD = (patch: Partial<CabinetDriver>) => props.setCabinet((cab) => ({ ...cab, drivers: { ...cab.drivers, [w]: { ...cab.drivers[w], ...patch } } }));
+                          const stacks = pairStacks(props.geometry, w);
+                          return (
+                            <div className="cd-grid nfm-cabinet-grid" key={d.stem}>
+                              <span className="cd-label"><strong>{d.label}</strong></span>
+                              <span className="cd-fields">
+                                <DriverCountFields d={pd} set={setD} />
+                                {members >= 2 && !(Number(pd.count) > 1) ? <span className="cd-hint nl-warning">{t('{n} files of this session are this way — set how many drivers it has.', { n: members })}</span> : null}
+                              </span>
+                              {mergeRow(t('Position'), <DriverPositionFields cabinet={props.cabinet} role={w} set={setD} />)}
+                              {stacks && members >= 2 ? mergeRow(
+                                t('member of the pair'),
                                 <select value={memberOf(d.stem)} onChange={(e) => setC(d.stem, { member: e.target.value as SourceConfig['member'] })} aria-label={t('member of the pair')}>
                                   <option value="">—</option>
                                   <option value="upper">{t('upper')}</option>
                                   <option value="lower">{t('lower')}</option>
-                                </select>
-                              </>
-                            )}
+                                </select>,
+                                t('the pair stacks on the front: this file is one of the two'),
+                              ) : null}
+                              {mergeRow(t('Mounting'), <DriverMountingFields d={pd} set={setD} />, Number(pd.count) > 1 && !stacks ? t('this pair does not stack, so both sit at the pair’s centre height — no upper or lower') : undefined)}
+                              {mergeRow('S_d', <><DriverSdField value={props.sdText[w]} onChange={(v) => props.onSd(w, v)} ariaLabel={t('{w}: S_d', { w: d.label })} /> cm²</>, sdOf(d.stem) === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : undefined)}
+                              <span className="derived" style={{ gridColumn: '1 / -1' }}>
+                                {t('Read from “Your cabinet” ({w}); what you type here lands there. ', { w: t(WAY_LABEL[w]) })}
+                                {'missing' in placed ? t('Without the height: no reflection model and no arrival check for this driver.') : t('This one: {h} mm above the bottom.', { h: placed.mm.toFixed(0) })}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <p className="nfm-abcd" key={d.stem}>
+                            <strong>{d.label}</strong>{' '}
+                            S_d <Field value={c.sdCm2 ?? ''} onCommit={(v) => setC(d.stem, { sdCm2: v })} ariaLabel={t('{w}: S_d', { w: d.label })} /> cm² ·{' '}
+                            {t('centre above the cabinet bottom')}{' '}
+                            <Field value={c.ownHeight} onCommit={(v) => setC(d.stem, { ownHeight: v })} ariaLabel={t('{w}: height above the bottom', { w: d.label })} /> mm
                             <br />
                             <span className="derived">
-                              {ownGeometry ? t('Height above the bottom of the measured cabinet (its own front). ') : w ? t('Read from “Your cabinet” ({w}); what you type here lands there. ', { w: t(WAY_LABEL[w]) }) : t('Kept in this session: the file name does not say which driver of the design this is. ')}
+                              {ownGeometry ? t('Height above the bottom of the measured cabinet (its own front). ') : t('Kept in this session: the file name does not say which driver of the design this is. ')}
                               {sdOf(d.stem) === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : ''}
-                              {'missing' in placed ? t('Without the height: no reflection model and no arrival check for this driver.') : pair && !hOwn ? t('This one: {h} mm above the bottom.', { h: placed.mm.toFixed(0) }) : ''}
+                              {'missing' in placed ? t('Without the height: no reflection model and no arrival check for this driver.') : ''}
                             </span>
                           </p>
                         );
                       })}
-                    </div>
+                  </div>
                   <h4 className="nfm-optional-head">{t('Optional')}</h4>
                   <p className="derived">{t('A name to keep this set-up under for a next session.')}</p>
                   <p>

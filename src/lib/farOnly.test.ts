@@ -152,8 +152,11 @@ describe('I-4 far-only — the tool and the app (source scans)', () => {
   const app = src('../App.tsx');
   it('a far-only way gets its driver in step 1, a tab in steps 3 and 4, its own panel, and an accept that hands a gated file over', () => {
     // UI-10 fase 2 — V15: WAS "confirmRoles proposes a way for it" (`for (const d of [...drivers, ...farOnly])`);
-    // IS: the way is read live from the name (`wayOf`), the far-only driver has its row in step 2 and its address in step 5.
-    expect(tool).toMatch(/\{\[\.\.\.drivers, \.\.\.farOnly\]\.map\(\(d\) => \{\s*const w = wayOf\(d\.stem\);/); // the step-2 row
+    // IS: the way is read live from the name (`wayOf`) and the far-only driver has its address in step 5.
+    // UI-11 — V15: WAS also "its row in step 2"; IS no row there — a far-only way merges nothing and the tool reads
+    // no cabinet fact of it, so step 2 names it in one line instead (Sander, 23-11-2026: the tweeter needs no merge).
+    expect(tool).toMatch(/\{drivers\.map\(\(d\) => \{\s*const w = wayOf\(d\.stem\);/); // the step-2 row, merging ways only
+    expect(tool).toContain("t('{list}: far field only — nothing to merge, so nothing about the cabinet to ask here.'");
     expect(tool).toMatch(/way=\{wayOf\(activeFar\.stem\)\}/);
     expect(tool).toMatch(/\{\[\.\.\.drivers, \.\.\.farOnly\]\.map\(\(d\) => \{/); // the tabs
     expect(tool).toMatch(/\(step === 'window' \|\| step === 'merge'\) && activeFar && \(\s*<FarOnlyPanel/);

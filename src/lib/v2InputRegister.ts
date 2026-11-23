@@ -2351,6 +2351,12 @@ export interface V2FormField {
   form: V2GovernedForm;
   /** A source fragment unique to this control, e.g. `value={d.count}`. */
   control: string;
+  /** UI-11 — the file the control lives in when it is not `App.tsx`: the cabinet form's fields are ONE
+   *  component (`components/CabinetForm.tsx`), composed into the cards, the ledger and the merge tool. */
+  file?: string;
+  /** UI-11 — for a control in a component: the JSX that mounts it in `App.tsx`, where its PLACEMENT (always /
+   *  more / conditional) is decided. The guard checks the placement at the site and the control in the file. */
+  site?: string;
 }
 
 /**
@@ -2371,26 +2377,29 @@ export const V2_FORM_FIELDS: readonly V2FormField[] = Object.freeze([
   { row: 'micDistance', form: 'cabinet', control: "cab('micDistanceMm')" },
   { row: 'micElevation', form: 'cabinet', control: "cab('micElevationDeg')" },
   { row: 'gateOverride', form: 'cabinet', control: "cab('gateMs')" },
-  { row: 'refDriver', form: 'cabinet', control: 'value={cabinet.refDriver}' },
-  { row: 'baffle-width', form: 'cabinet', control: "cab('baffleWidthMm')" },
-  { row: 'baffleHeight', form: 'cabinet', control: "cab('baffleHeightMm')" },
+  /* UI-11 — the box fields moved to the component; their SITE in App.tsx is the one mount in each of the
+     two renderings (cards and ledger), and the merge tool mounts them a third time by the same name. */
+  { row: 'refDriver', form: 'cabinet', control: 'value={cabinet.refDriver}', file: 'components/CabinetForm.tsx', site: '<CabinetBoxFields' },
+  { row: 'baffle-width', form: 'cabinet', control: 'value={cabinet.baffleWidthMm}', file: 'components/CabinetForm.tsx', site: '<CabinetBoxFields' },
+  { row: 'baffleHeight', form: 'cabinet', control: 'value={cabinet.baffleHeightMm}', file: 'components/CabinetForm.tsx', site: '<CabinetBoxFields' },
   { row: 'cabinetDepth', form: 'cabinet', control: "cab('cabinetDepthMm')" },
-  { row: 'referencePoint', form: 'cabinet', control: 'refTopVeld()' },
-  { row: 'referencePoint', form: 'cabinet', control: "cab('refHeightMm')" },
+  { row: 'referencePoint', form: 'cabinet', control: 'value={draft ?? p.cabinet.refFromTopMm}', file: 'components/CabinetForm.tsx', site: '<CabinetBoxFields' },
+  { row: 'referencePoint', form: 'cabinet', control: 'value={cabinet.refHeightMm}', file: 'components/CabinetForm.tsx', site: '<CabinetBoxFields' },
   { row: 'listeningPosition', form: 'cabinet', control: "cab('listenDistanceM')" },
   { row: 'listeningPosition', form: 'cabinet', control: "cab('listenEarHeightMm')" },
   // ---- Setup tab → driver card ----
-  { row: 'sourceCount', form: 'driver-card', control: 'value={d.count}' },
-  { row: 'sourceCount', form: 'driver-card', control: 'value={d.spacingMm}' },
-  { row: 'positions', form: 'driver-card', control: 'value={d.xMm}' },
-  { row: 'positions', form: 'driver-card', control: 'yMm: String(Math.round(' },
-  { row: 'mounting', form: 'driver-card', control: 'value={d.facing}' },
-  { row: 'mounting', form: 'driver-card', control: 'value={d.depthMm}' },
-  { row: 'mounting', form: 'driver-card', control: 'value={d.tiltDeg}' },
-  { row: 'mounting', form: 'driver-card', control: 'checked={d.opposed}' },
+  /* UI-11 — the driver's count, position and mounting are the component's; the card mounts them. */
+  { row: 'sourceCount', form: 'driver-card', control: 'value={d.count}', file: 'components/CabinetForm.tsx', site: '<DriverCountFields' },
+  { row: 'sourceCount', form: 'driver-card', control: 'value={d.spacingMm}', file: 'components/CabinetForm.tsx', site: '<DriverCountFields' },
+  { row: 'positions', form: 'driver-card', control: 'value={d.xMm}', file: 'components/CabinetForm.tsx', site: '<DriverPositionFields' },
+  { row: 'positions', form: 'driver-card', control: 'yMm: String(Math.round(', file: 'components/CabinetForm.tsx', site: '<DriverPositionFields' },
+  { row: 'mounting', form: 'driver-card', control: 'value={d.facing}', file: 'components/CabinetForm.tsx', site: '<DriverMountingFields' },
+  { row: 'mounting', form: 'driver-card', control: 'value={d.depthMm}', file: 'components/CabinetForm.tsx', site: '<DriverMountingFields' },
+  { row: 'mounting', form: 'driver-card', control: 'value={d.tiltDeg}', file: 'components/CabinetForm.tsx', site: '<DriverMountingFields' },
+  { row: 'mounting', form: 'driver-card', control: 'checked={d.opposed}', file: 'components/CabinetForm.tsx', site: '<DriverMountingFields' },
   { row: 'chamber', form: 'driver-card', control: 'value={d.enclosure}' },
   { row: 'chamber', form: 'driver-card', control: 'value={d.fbHz}' },
-  { row: 'sd', form: 'driver-card', control: 'value={sdCm2[role]}' },
+  { row: 'sd', form: 'driver-card', control: 'value={sd}', file: 'components/CabinetForm.tsx', site: '<DriverSdField' },
   { row: 'xmaxMm', form: 'driver-card', control: 'value={xmaxMm[role]}' },
   { row: 'acousticCentre', form: 'driver-card', control: 'value={v2Meas[role].zMm}' },
   { row: 'rotSym', form: 'driver-card', control: 'value={v2Meas[role].rotSym}' },

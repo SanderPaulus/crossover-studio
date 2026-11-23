@@ -3316,4 +3316,14 @@ export const nl: Record<string, string> = {
   "Front": "Front",
   "The only thing about the cabinet you measured in that the merge reads: the near→far model takes its width, and the driver heights stand on it.": "Het enige van de kast waarin je gemeten hebt dat de merge leest: het nabij→ver-model neemt zijn breedte, en de driverhoogten staan erop.",
   "which window": "welk venster",
+  // UI-11 — één kastformulier, twee ingangen
+  "how many": "hoeveel",
+  "x from the centre line": "x vanaf de middellijn",
+  "below the top": "onder de bovenkant",
+  "One form, two entrances: these are “Your cabinet” and the driver cards of the project, so what you type here is what the optimizer reads, and what stands there already shows here.":
+    "Eén formulier, twee ingangen: dit zijn “Je kast” en de driverkaarten van het project, dus wat je hier typt leest de optimizer, en wat daar al staat zie je hier.",
+  "{n} files of this session are this way — set how many drivers it has.": "{n} bestanden van deze sessie zijn deze weg — stel in hoeveel drivers hij heeft.",
+  "the pair stacks on the front: this file is one of the two": "het paar staat boven elkaar op het front: dit bestand is een van de twee",
+  "{list}: far field only — nothing to merge, so nothing about the cabinet to ask here.": "{list}: alleen verveld — niets te mergen, dus hier niets over de kast te vragen.",
+  "this pair does not stack, so both sit at the pair’s centre height — no upper or lower": "dit paar staat niet boven elkaar, dus beide zitten op de hoogte van het paarmidden — geen boven of onder",
 };

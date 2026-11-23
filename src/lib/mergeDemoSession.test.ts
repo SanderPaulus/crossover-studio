@@ -85,7 +85,7 @@ describe('UI-9 — the merge page for a first-time visitor (source scan on NfMer
     expect(src).toMatch(/const existing = sessions\.find\(\(x\) => x\.name === MERGE_DEMO_SESSION_NAME\);\s*if \(existing\) \{\s*props\.onOpenId\(existing\.id\);\s*return;/);
     expect(src).toMatch(/rig: \{ \.\.\.base\.rig, \.\.\.setup\.rig \},\s*planeQ: setup\.planeQ,/);
     expect(src).toMatch(/await saveMicCal\(\{ id: calId, \.\.\.r\.cal \}\);/);
-    expect(src).toMatch(/if \(props\.geometry\.baffleWidthMm === null && props\.geometry\.baffleHeightMm === null\) \{\s*const cab = mergeDemoCabinet\(\);\s*props\.onCabinet\(cab\.patch\);/);
+    expect(src).toMatch(/if \(props\.geometry\.baffleWidthMm === null && props\.geometry\.baffleHeightMm === null\) \{\s*const cab = mergeDemoCabinet\(\);\s*props\.setCabinet\(\(c\) => applyCabinetPatch\(c, cab\.patch\)\);/);
     expect(src).toMatch(/import\('\.\.\/lib\/mergeDemoSession\.ts'\)|from '\.\.\/lib\/mergeDemoSession\.ts'/);
   });
   it('the landing takes one column on a wide screen: its grid rule outranks `.nfm-layout` by specificity AND order (nazorg: it sat before it and lost)', () => {

@@ -45,6 +45,11 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = readFileSync(join(HERE, '..', 'App.tsx'), 'utf-8');
+/* UI-11 — the cabinet form's fields are ONE component; a field that names it as its `file` is scanned there,
+   and its PLACEMENT is read at its `site` (the JSX that mounts it) in the governed region of App.tsx. */
+const CABINET_FORM = readFileSync(join(HERE, '..', 'components', 'CabinetForm.tsx'), 'utf-8');
+const inFile = (f: { file?: string }) => (f.file ? CABINET_FORM : APP);
+const siteOf = (f: { control: string; site?: string }) => f.site ?? f.control;
 
 const rowById = (id: string): V2InputRow | undefined => V2_INPUT_REGISTER.find((r) => r.id === id);
 
@@ -234,11 +239,14 @@ describe('U-3b — the placement rule', () => {
  * ==================================================================== */
 
 describe('U-3b — every control of a governed form is in the register', () => {
-  it('every inventoried control names a real row and occurs in App.tsx', () => {
+  it('every inventoried control names a real row and occurs in its file, and a component field is mounted in its region', () => {
+    /* UI-11 — V15: WAS "occurs in App.tsx"; IS "occurs in the file it names" — and for a field of the component,
+       its SITE occurs in the governed region of App.tsx, so a field nobody mounts any more is still a red test. */
     for (const f of V2_FORM_FIELDS) {
       expect(rowById(f.row), `${f.row} is not a register row`).toBeDefined();
       expect(V2_GOVERNED_FORMS, f.control).toContain(f.form);
-      expect(sliceOf(f.form).includes(f.control), `${f.form}: ${f.control} not found`).toBe(true);
+      expect(inFile(f).includes(f.control), `${f.form}: ${f.control} not found in ${f.file ?? 'App.tsx'}`).toBe(true);
+      expect(sliceOf(f.form).includes(siteOf(f)), `${f.form}: ${siteOf(f)} not mounted`).toBe(true);
     }
   });
 
@@ -262,7 +270,7 @@ describe('U-3b — every control of a governed form is in the register', () => {
   it('the driver card and the v2 panel hold no control the inventory does not name', () => {
     for (const form of ['driver-card', 'v2-panel'] as const) {
       const R = sliceOf(form);
-      const tokens = fieldsOf(form).map((f) => f.control);
+      const tokens = fieldsOf(form).filter((f) => !f.file).map((f) => f.control); // UI-11: the component's own are scanned below
       const at = [...R.matchAll(/<(input|select|textarea)\b/g)].map((m) => m.index!);
       expect(at.length, `${form}: controls found`).toBeGreaterThan(10);
       for (let i = 0; i < at.length; i++) {
@@ -282,10 +290,19 @@ describe('U-3b — every control of a governed form is in the register', () => {
     for (const m of R.matchAll(/cab\('[A-Za-z]+'\)/g)) {
       expect(tokens.has(m[0]), `${m[0]} has no register row`).toBe(true);
     }
-    // The two controls that do not go through `cab`, and nothing else: the
-    // reference-point field (a draft-and-commit input) and the origin select.
-    expect((R.match(/refTopVeld\(\)/g) ?? []).length).toBeGreaterThan(0);
-    expect((R.match(/<select/g) ?? []).length).toBe((R.match(/value=\{cabinet\.refDriver\}/g) ?? []).length);
+    /* UI-11 — V15: WAS "the reference-point field (`refTopVeld()`) and the origin select, and nothing else";
+       IS: those two, the front panel and the reference height live in `components/CabinetForm.tsx`, so the
+       App region holds NO `<select>` of its own, and the component is scanned like the driver card — every
+       `<input>`/`<select>` there matches exactly one inventoried control filed under that file. */
+    expect((R.match(/<select/g) ?? []).length).toBe(0);
+    const own = V2_FORM_FIELDS.filter((f) => f.file === 'components/CabinetForm.tsx').map((f) => f.control);
+    const at = [...CABINET_FORM.matchAll(/<(input|select)\b/g)].map((m) => m.index!);
+    expect(at.length, 'CabinetForm: controls found').toBeGreaterThan(10);
+    for (let i = 0; i < at.length; i++) {
+      const seg = CABINET_FORM.slice(at[i], at[i + 1] ?? Math.min(at[i] + 900, CABINET_FORM.length));
+      const hit = own.filter((tk) => seg.includes(tk));
+      expect(hit.length, `CabinetForm: the control at offset ${at[i]} matches ${hit.length} — ${seg.slice(0, 160).replace(/\s+/g, ' ')}`).toBe(1);
+    }
   });
 });
 
@@ -427,13 +444,14 @@ describe('U-3b — the app puts each control where its placement says', () => {
          * pins its guard); it has no placement to obey. */
         if (rowById(f.row)!.effect === 'niets') continue;
         const p = placementOf(rowById(f.row)!);
-        const uses = usesOf(R, f.control);
-        expect(uses.length, `${form}: ${f.control} is rendered at all`).toBeGreaterThan(0);
+        /* UI-11 — a component field is placed where it is MOUNTED (its site), not where its tag lives. */
+        const uses = usesOf(R, siteOf(f));
+        expect(uses.length, `${form}: ${siteOf(f)} is rendered at all`).toBeGreaterThan(0);
         if (p === 'more') {
           for (const at of uses) {
             expect(insideSomeDetails(R, at), `${form}: ${f.control} (${f.row}) at ${at} is in the default view`).toBe(true);
           }
-          expect(more.includes(f.control), `${form}: ${f.control} (${f.row}) is behind the form's own disclosure`).toBe(true);
+          expect(more.includes(siteOf(f)), `${form}: ${siteOf(f)} (${f.row}) is behind the form's own disclosure`).toBe(true);
         } else if (p === 'always') {
           for (const at of uses) {
             expect(inMore(at), `${form}: ${f.control} (${f.row}) should be in the default view`).toBe(false);
@@ -502,7 +520,8 @@ describe('U-3b — the app puts each control where its placement says', () => {
      * over nothing. */
     for (const form of V2_GOVERNED_FORMS) expect(sliceOf(form).length, form).toBeGreaterThan(5000);
     expect(sliceOf('cabinet')).toContain("cab('micDistanceMm')");
-    expect(sliceOf('driver-card')).toContain('value={sdCm2[role]}');
+    expect(sliceOf('driver-card')).toContain('<DriverSdField value={sdCm2[role]}'); // UI-11: the mount of the component's field
+    expect(CABINET_FORM).toContain('value={sd}');
     expect(sliceOf('v2-panel')).toContain('value={engineV2Settings.runSeed}');
     expect(V2_FORM_FIELDS.length).toBeGreaterThan(50);
   });

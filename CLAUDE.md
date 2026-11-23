@@ -10880,3 +10880,93 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
   dev-server gestopt; laatste bronbewerking 21:09:28, run gestart 21:10:28 (de H-2-regel).** +2 tests
   tegen de 3345 van de UI-10-nazorg: de cascade-claim van de fase-1-nazorg en de audit-claim hierboven;
   geen nieuw bestand. Geen volle run: uitsluitend CSS, twee tests en CLAUDE.md geraakt.
+
+### UI-11-guards ("Your cabinet" is één formulier met drie ingangen; de merge-tool vraagt een zijwoofer-paar niet meer wie de bovenste is; 23-11-2026)
+
+- **Aanleiding (Sander, met screenshot van het merge-kastblok):** "wie zegt dat de woofer up en down is? mijn
+  maat heeft namelijk 2 woofers, ieder aan 1 zijkant." Gemeten vóór er iets veranderde: `proposeWay` leest
+  up/down uit de BESTANDSNAAM; de driverkaart kende al "montage: zijkant / tegenover", en `sourceAboveBottomMm`
+  behandelde zo'n paar al als niet-gestapeld — maar het merge-blok in stap 2 las die montage niet en vroeg
+  tussenafstand en upper/lower voor élk paar. Drie tekeningen van dezelfde velden (guided-kaarten, expert-ledger,
+  het merge-blok), en de derde wist minder dan de andere twee (A3g). Sanders besluit: "Your cabinet" volledig
+  hergebruiken.
+- **`src/lib/cabinetState.ts` (`cabinet-state/1.0`):** de typen `CabinetDriver`/`CabinetState`, de lege waarden,
+  `FACING_LABEL` en `asFacing` zijn VERBATIM uit `App.tsx` verhuisd (een component mag geen type uit de app
+  importeren waarin hij gemonteerd wordt), plus twee zuivere transformaties: `applyRefFromTop` (was `commitRefTop`
+  in App: de referentiemarker verschuift, elke opgeslagen y schuift mee, de referentiedriver blijft 0,0, een
+  eerste invoer schuift niets) en `applyCabinetPatch` (de UI-6-patch van de demosessie).
+- **`src/components/CabinetForm.tsx` (`cabinet-form/1.0`) — ELK VELD ÉÉN IMPLEMENTATIE:** `CabinetBoxFields`
+  (mic gericht op, front B × H, referentiepunt onder de top · boven de vloer; `layout: 'wide' | 'narrow'` — het
+  expert-ledger is een kolom van 15 rem en krijgt één veld per rij, nagemeten op 1800 px waar de samengevoegde
+  rij over drie regels wrapte), `RefTopField` (de draft-en-commit, nu met eigen state in plaats van in App),
+  `DriverCountFields`, `DriverPositionFields` (x en "onder de top", de referentiedriver als zin),
+  `DriverMountingFields` (paneel, diepte, kanteling, "tegenover" alleen voor een niet-front-paar) en
+  `DriverSdField`. De layout is van de aanroeper (een rij-renderer); het veld en wat het schrijft niet. Geen
+  `engine2/`-import; de motorgrens-lijst van vier UI-ingangen blijft staan.
+- **DE DRIE INGANGEN MONTEREN, TEKENEN NIET:** `App.tsx` monteert `<CabinetBoxFields` twee keer (de guided
+  kaart "The box" met kaartrijen; het ledger met `rij` en `layout="narrow"`) en de driverfeiten één keer per
+  kaart (`<DriverCountFields` in de kop, `<DriverPositionFields` in beide takken van de positierij,
+  `<DriverMountingFields` binnen de `v2-more`-vouw, `<DriverSdField` in de datasheetrij); de merge-tool
+  (stap 2, "Your cabinet — what the merge needs") monteert dezelfde componenten op het ECHTE `CabinetState`
+  van het project (`cabinet`, `setCabinet`, `sdText` als props; `onCabinet`, `onOpenCabinet` en de link
+  "Open the full Your cabinet" zijn weg — er is geen "volle formulier" meer om naar te linken). `cab-grid`
+  per driver, `.nfm-cabinet-grid`. Kastdiepte, mic-afstand, gate en luisterpositie blijven App-velden (de
+  merge leest ze niet).
+- **`pairStacks(geom, way)` in `mergeSession.ts` — ÉÉN REGEL, TWEE LEZERS:** "upper of lower" betekent alleen
+  iets als een paar verticaal op het front staat (front, niet tegenover, baffle hoger dan breed). De
+  hoogte-lezer `sourceAboveBottomMm` leest hem (was zijn eigen inline uitdrukking), en de merge-tool vraagt het
+  lid alleen waar hij ja zegt; een niet-stapelend paar krijgt de regel "beide zitten op de hoogte van het
+  paarmidden — geen boven of onder". **Nagemeten in de browser:** twee woofers "fires left" → geen
+  lidselect, beide 432 mm boven de bodem, het "tegenover"-vinkje erbij; terug op "fires forward" → de select
+  terug, 294 en 569 mm.
+- **Bijvangst, gerepareerd:** de referentiedriver (de tweeter, waar de mic op gericht is) las in de merge
+  "Without the height: no reflection model" — `mergeGeometry` gaf zijn y als `null` door terwijl hij 0 is per
+  definitie (de bafflekening las het al zo). Sinds UI-11 `yMm: r === cabinet.refDriver ? 0 : n(d.yMm)`: de
+  tweeter leest 880 mm boven de bodem.
+- **Guards, in V15-vorm:** `v2InputRegister.ts` — `V2FormField` kent `file` (het bestand waarin het veld
+  woont) en `site` (de JSX die het in App monteert, waar de PLAATSING beslist wordt); vijftien velden
+  verhuisd naar `components/CabinetForm.tsx` met hun tokens (`value={cabinet.baffleWidthMm}`,
+  `value={draft ?? p.cabinet.refFromTopMm}`, `value={sd}` …). `v2InputPlacement.test.ts`: een veld moet in
+  zíjn bestand staan én zijn site in de bestuurde regio; de driftscan over de component (elke `<input>`/
+  `<select>` precies één token); de plaatsingsclaims lezen de site. `u9Fase2.test.ts`: `tokensFor(file)` leest
+  het bestand van het veld, `CabinetForm.tsx` in de componentlijst, de `refTopVeld`-uitzondering weg, de
+  App-vloer 140 → 125 (147 → 132 controls). `mergeGuide`, `ui10WayAddress`, `mergeIsTheMeasurement`,
+  `mergeDemoSession`: de pins op het oude blok (`props.onCabinet`, `yFromAboveBottom`, de link) herschreven
+  naar de montage van de componenten. **Nieuw:** `src/components/cabinetForm.test.tsx` (10 claims): de
+  referentiecommit met de hand (244 → 254 schuift −66 naar −56, de referentiedriver blijft leeg, dezelfde
+  waarde geeft hetzelfde object, een eerste invoer schuift niets), de render van elk veld uit de staat (de
+  ruler-lezing 310 = 244 − (−66); narrow = 5 rijen, dezelfde inputs), `pairStacks` in vijf gevallen en de
+  hoogte-lezer als tweede lezer (met de bronscan dat de regel maar één spelling heeft), en de drie ingangen als
+  bronscans (geen enkel verhuisd token staat nog in App, geen `onCabinet`/`onOpenCabinet` in de tool).
+- **Eén eigen fout onderweg, door de guard gevangen:** de vervanging van de S_d-input in de driverkaart had de
+  oude input laten staan NAAST de nieuwe (een `cut` met een leeg eindanker); `v2InputPlacement` meldde een
+  `<input … value={sdCm2[role]}` zonder token. Een tweede: een generieke invoerhelper in de component was voor
+  beide guards onzichtbaar; de drie box-velden zijn gewone `<input>`s met een eigen token geworden.
+- **Browsercontrole (dev-server, de voorbeeldsessie en de driewegdemo):** de merge-kaart op 870 én 1800 px (de
+  box, drie drivers, de tweeter als referentie), het expert-ledger op beide breedtes (één veld per rij), de
+  guided kaart "The box" op beide, de woofer-driverkaart op beide met de vouw open; nergens een element buiten
+  zijn container; console zonder fout.
+- **Nazorg, dezelfde avond (Sander, met screenshot): "vreemder nog de tweeter terwijl die helemaal geen NF/FF
+  merger nodig heeft."** Terecht: het blok liep over `[...drivers, ...farOnly]`, en een weg met alleen een verveld
+  wordt niet gemergd — de tool leest er geen enkel kastfeit van (nagegaan: de aankomstcontrole loopt over
+  `drivers`, `compute` bestaat alleen voor far+near, en `farMissing` vraagt alleen een venster en "valid from").
+  Sinds de nazorg loopt het blok over `drivers` en staat er één regel: "tweeter: far field only — nothing to
+  merge, so nothing about the cabinet to ask here." In de browser gezien: drie drivergrids, de tweeter als zin.
+  `ui10WayAddress.test.ts` pint het in V15-vorm. **En over "woofer up / woofer down": dat zijn de BESTANDSNAMEN van
+  de voorbeeldsessie** — de Koan heeft zijn paar wél boven elkaar op het front, dus daar is de lidvraag juist; bij
+  een zijpaar verdwijnt zij zodra de montage dat zegt (hierboven nagemeten).
+- **Eén volle snelle run is weggegooid**, om de H-2-reden: zij was groen (259,9 s, 256 bestanden, 3353 + 4
+  overgeslagen) maar mat de boom van vóór de nazorg; de uitslag hieronder is de run op de boom die gecommit wordt.
+- **De tweede run had één rode claim en zij deed haar werk:** de I-4-bronscan in `farOnly.test.ts` pinde dat een
+  far-only weg "zijn rij in stap 2" heeft — precies de rij die de nazorg weghaalt. Herankerd in V15-vorm (geen rij,
+  wel de zin), niet versoepeld, en de laag opnieuw en alleen gedraaid.
+- **Gemeten 23-11-2026:** `npx tsc -b` groen. `npm run test:fast` **263,7 s, 257 bestanden (256 geslaagd,
+  1 overgeslagen), 3357 tests (3353 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 19:40:49, run gestart 19:41:04 (de H-2-regel).** +1 bestand
+  en +10 tests tegen de UI-10-audit (256/3347): exact `cabinetForm.test.tsx`; elk herschreven bestand veranderde
+  van inhoud en niet van telling. GEEN nieuwe referentie: de V43-waarde van 289 s blijft staan. Geen volle run:
+  geen motor-, poort-, venster-, metriek- of corpuscode geraakt — `mergeSession.ts` kreeg één geëxporteerde
+  regel die de hoogte-lezer al had, verbatim.
+- **Niet gedaan:** de f0 van het nabij→ver-model leest nog altijd de FRONTbreedte, ook voor een zijwoofer
+  (daar is de diepte het relevante paneel) — een eigen besluit, benoemd aan Sander; de nog smalle
+  tussenafstand-input (4,4 rem, "275.7…") is de bestaande kaartstijl.

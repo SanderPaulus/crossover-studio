@@ -37,7 +37,8 @@ describe('UI-10 fase 2d — the merge is the measurement: no target box, no mode
     expect(block).toMatch(/<strong>\{t\('Front'\)\}<\/strong>\{' '\}\s*<select value=\{obj\.baffle\}/);
     expect(block).toMatch(/<option value="identical">\{t\('the front of “Your cabinet”'\)\}<\/option>\s*<option value="own">\{t\('its own front'\)\}<\/option>/);
     expect(block).toMatch(/\{ownGeometry && \(\s*<>\s*\{' '\}\s*<Field value=\{obj\.baffleW\}/); // W × H only with its own front
-    expect(block).toMatch(/\{!ownGeometry && \(\s*<p className="nfm-abcd">\s*\{t\('front panel'\)\}/); // the project's front only without
+    // UI-11 — V15: WAS the project's front as a paragraph of two fields; IS the box component, mounted only without an own front.
+    expect(block).toMatch(/\{!ownGeometry && \(\s*<div className="cd-grid nfm-cabinet-grid">\s*<CabinetBoxFields/);
     expect(block).toMatch(/const hOwn = ownGeometry \|\| !w;/);
     // the block is no longer hidden behind !ownGeometry: it IS where the own front is typed
     expect(code).not.toMatch(/\{!ownGeometry && \(\s*<div className="nfm-card nfm-cabinet-min">/);

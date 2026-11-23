@@ -308,30 +308,29 @@ describe('the tool — what a source scan can see', () => {
     const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
     expect(app).toMatch(/enclosure: d\.enclosure \?\? null/); // the cabinet form's enclosure travels to the tool
   });
-  it('UI-6: "Your cabinet — what the merge needs" sits in step 2 — since UI-9 AFTER A–D and the planes question, before "Optional" — and writes the project\'s own fields through the app', () => {
+  it('UI-6: "Your cabinet — what the merge needs" sits in step 2 — since UI-9 AFTER A–D and the planes question, before "Optional" — and IS the project\'s own form, drawn by the same components as Design → Setup (UI-11)', () => {
     const i = src.indexOf("t('Your cabinet — what the merge needs')");
     expect(i).toBeGreaterThan(0);
-    // UI-9 — V15: WAS "before the four measures"; IS after them (Sander, 22-11-2026: A–D and the question on
-    // top as the required part, the cabinet block — required too, but the project's — right after, and
-    // everything optional under one heading).
     expect(src.indexOf("t('How was the measurement set up?')")).toBeLessThan(i);
     expect(src.indexOf("t('Is there anything inside the blue circles?')")).toBeLessThan(i);
     expect(i).toBeLessThan(src.indexOf("t('Optional')", i));
     const block = src.slice(i, src.indexOf("t('Optional')", i));
-    expect(block).toContain('props.onCabinet({ baffleWidthMm: v })');
-    expect(block).toContain('props.onCabinet({ baffleHeightMm: v })');
-    expect(block).toContain('props.onSd(w, v)');
-    expect(block).toContain('yFromAboveBottom(hv, H, props.geometry.refFromTopMm)'); // the one conversion, never a second formula
+    /* UI-11 — V15: WAS a third rendering of the cabinet fields (`props.onCabinet({ baffleWidthMm: v })`,
+       `yFromAboveBottom` as the one conversion, and a link to "the full form"); IS the form itself — the box
+       and driver components of `CabinetForm.tsx`, mounted on the project's `CabinetState`, so nothing here
+       is a second implementation of a field and the link to "the full form" has nothing left to link to. */
+    expect(block).toContain('<CabinetBoxFields');
+    expect(block).toContain('<DriverCountFields d={pd} set={setD} />');
+    expect(block).toContain('<DriverPositionFields cabinet={props.cabinet} role={w} set={setD} />');
+    expect(block).toContain('<DriverMountingFields d={pd} set={setD} />');
+    expect(block).toContain('<DriverSdField value={props.sdText[w]} onChange={(v) => props.onSd(w, v)}');
+    expect(block).not.toMatch(/props\.onCabinet|onOpenCabinet|yFromAboveBottom|aboveBottomFromY/);
     expect(block).not.toMatch(/useState/); // no state of its own: the project's fields are the state
-    expect(block).toContain('onClick={props.onOpenCabinet}'); // and one link to the full form for whoever wants more
+    expect(block).toMatch(/onCommitRefTop=\{\(v\) => props\.setCabinet\(\(c\) => applyRefFromTop\(c, v\)\)\}/); // the one commit rule, shared with Setup
     const app = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'App.tsx'), 'utf8');
-    expect(app).toContain('onOpenCabinet={openCabinetFromMerge}');
-    expect(app).toMatch(/const openCabinetFromMerge = useCallback\(\(\) => \{\s*location\.hash = '#\/';\s*setUiMode\(designView\);\s*setDesignTab\('data'\);/);
-    expect(app).toContain('onCabinet={mergeCabinetPatch}');
+    expect(app).toMatch(/cabinet=\{cabinet\}\s*setCabinet=\{setCabinet\}\s*sdText=\{sdCm2\}/);
     expect(app).toMatch(/onSd=\{\(way, v\) => setSdCm2\(\(q\) => \(\{ \.\.\.q, \[way\]: v \}\)\)\}/);
-    const patch = app.slice(app.indexOf('const mergeCabinetPatch'), app.indexOf('const mergeGeometry'));
-    expect(patch).toContain('setCabinet((c) =>');
-    expect(patch).not.toMatch(/useState/);
+    expect(app).not.toMatch(/openCabinetFromMerge|mergeCabinetPatch/);
   });
   it('in one column the sessions block scrolls away: the narrow-screen rule comes after the sticky rule', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.css'), 'utf8');

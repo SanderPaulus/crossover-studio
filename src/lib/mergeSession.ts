@@ -788,6 +788,18 @@ export type SourcePlacement =
   | { kind: 'cabinet'; way: MergeWay | null; member: 'single' | 'upper' | 'lower' | null }
   | { kind: 'own'; aboveBottomMm: number | null };
 
+/**
+ * UI-11 — does a pair of this way STACK vertically on the front? Only then does "upper or lower"
+ * mean anything: a pair in the side walls, an opposed pair, or a pair on a baffle wider than tall
+ * sits at the pair's centre height. One rule, two readers (the height reader below and the merge
+ * tool's step 2, which asks for the member only where this says yes).
+ */
+export function pairStacks(geom: CabinetGeometryForMerge, way: MergeWay): boolean {
+  const d = geom.drivers[way];
+  const pair = (d.count ?? 1) >= 2;
+  return pair && d.facingFront && !d.opposed && geom.baffleWidthMm !== null && geom.baffleHeightMm !== null && geom.baffleHeightMm >= geom.baffleWidthMm;
+}
+
 export function sourceAboveBottomMm(
   p: SourcePlacement,
   geom: CabinetGeometryForMerge | null,
@@ -806,7 +818,7 @@ export function sourceAboveBottomMm(
   if (geom.refFromTopMm === null) missing.push('reference point below the top');
   if (d.yMm === null) missing.push(`the ${p.way} driver's vertical offset`);
   const pair = (d.count ?? 1) >= 2;
-  const stacked = pair && d.facingFront && !d.opposed && geom.baffleWidthMm !== null && geom.baffleHeightMm !== null && geom.baffleHeightMm >= geom.baffleWidthMm;
+  const stacked = pairStacks(geom, p.way);
   if (pair && d.facingFront && !d.opposed && geom.baffleWidthMm === null) missing.push('front panel width (the axis a pair stacks on)');
   if (stacked) {
     if (d.spacingMm === null) missing.push(`the ${p.way} pair's spacing`);

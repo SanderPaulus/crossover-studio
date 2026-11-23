@@ -5388,3 +5388,8 @@ label.nfm-inline-check input { width: auto; margin: 0; }
 /* UI-10 nazorg — the window choice: the one in use is pressed, not a call to action */
 .nfm-choice[aria-pressed='true'] { background: rgba(42, 120, 214, 0.16); border-color: #2a78d6; color: inherit; font-weight: 600; }
 .nfm-choice[aria-pressed='true']:hover { background: rgba(42, 120, 214, 0.22); }
+
+/* UI-11 — the cabinet form inside the merge tool (step 2): the card grid of Design → Setup, one grid
+   for the box and one per driver of the session, drawn by the same components (`CabinetForm.tsx`). */
+.nfm-cabinet-grid { margin: 0.5rem 0; padding-top: 0.4rem; border-top: 1px solid var(--border, #d0d5dd); }
+.nfm-cabinet-grid .cd-label strong { color: var(--fg, inherit); font-size: 0.9rem; }

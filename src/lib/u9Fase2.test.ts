@@ -137,8 +137,9 @@ function braceSpan(src: string, from: number): [number, number] {
 const EXEMPT: Record<string, [number, number]> = {
   wizard: parenSpan(APP, APP.indexOf("{wizardOpen && uiMode !== 'guided' && (")),
   guidedRequirement: braceSpan(APP, APP.indexOf('const v2RequirementField = (')),
+  /* UI-11 — V15: WAS also `cabinetRefTop` (the `refTopVeld` helper); IS gone — the reference-point field is
+     `RefTopField` in `components/CabinetForm.tsx`, filed by token like every other control of that file. */
   cabinetHelper: parenSpan(APP, APP.indexOf('=> (', APP.indexOf('const veld = ('))),
-  cabinetRefTop: parenSpan(APP, APP.indexOf('=> (', APP.indexOf('const refTopVeld = ('))),
 };
 const exempt = (at: number) => Object.values(EXEMPT).some(([a, b]) => at >= a && at < b);
 
@@ -153,7 +154,9 @@ const PANEL = (() => {
 /** The tokens that may identify a control of `file`. */
 function tokensFor(file: string): { row: string; control: string }[] {
   const app = V2_APP_CONTROLS.filter((c) => c.file === file);
-  return file === 'App.tsx' ? [...V2_FORM_FIELDS, ...app] : app;
+  /* UI-11 — V15: WAS every form field in App.tsx; IS each form field in the file it names (default App.tsx):
+     the cabinet form's fields live in `components/CabinetForm.tsx` since UI-11. */
+  return [...V2_FORM_FIELDS.filter((f) => (f.file ?? 'App.tsx') === file), ...app];
 }
 
 const COMPONENT_FILES = [
@@ -163,6 +166,7 @@ const COMPONENT_FILES = [
   'components/MeasuringGuide.tsx',
   'components/CatalogManager.tsx',
   'components/NfMergeTool.tsx',
+  'components/CabinetForm.tsx', // UI-11
 ];
 
 /* ================================================================== *
@@ -182,7 +186,9 @@ describe('U-9 fase 2 (1): every control of the app has a register row', () => {
     /* A floor that says the scan is not empty, not a count. I-4 fase 3 moved the eight
        controls of the I-2 near-field slot into the merge tool (`NfMergeTool.tsx`) (filed whole below):
        155 → 147, so the floor went from 150 to 140. */
-    expect(tags.length).toBeGreaterThan(140);
+    /* UI-11 — V15: WAS > 140 (147); IS > 125 — the fifteen controls of the cabinet form moved to
+       `components/CabinetForm.tsx`, filed by token there: 147 → 132. */
+    expect(tags.length).toBeGreaterThan(125);
     for (const { at, tag } of tags) {
       const hit = [...new Set(tokens.filter((tk) => tag.includes(tk.control)).map((tk) => tk.control))];
       expect(hit.length, `App.tsx@${at}: ${tag.slice(0, 140).replace(/\s+/g, ' ')} matches ${hit.length} tokens`).toBe(1);
@@ -206,7 +212,7 @@ describe('U-9 fase 2 (1): every control of the app has a register row', () => {
   });
 
   it('every token names a row with an effect and a group, and occurs in its file', () => {
-    for (const c of [...V2_APP_CONTROLS.map((x) => ({ ...x })), ...V2_FORM_FIELDS.map((x) => ({ ...x, file: 'App.tsx' }))]) {
+    for (const c of [...V2_APP_CONTROLS.map((x) => ({ ...x })), ...V2_FORM_FIELDS.map((x) => ({ ...x, file: x.file ?? 'App.tsx' }))]) {
       const row = V2_INPUT_REGISTER.find((r) => r.id === c.row);
       expect(row, c.row).toBeDefined();
       expect(row!.group, c.row).toBeTruthy();

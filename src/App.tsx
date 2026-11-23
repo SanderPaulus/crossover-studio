@@ -39,7 +39,8 @@ import { assessNetwork, notSimulatedTag, type NetworkReadiness } from './lib/net
 import { solveNetwork, type Netlist } from './lib/network.ts';
 import type { WayWiring } from './lib/engine2/ingest/wiring.ts';
 import type { DriverMinCrossover } from './lib/engine2/predesign/xoWindow.ts';
-import type { CabinetPatchForMerge } from './lib/mergeSession.ts';
+import { FACING_LABEL, applyRefFromTop, asFacing, emptyCabinet, type CabinetDriver, type CabinetState } from './lib/cabinetState.ts';
+import { CabinetBoxFields, DriverCountFields, DriverMountingFields, DriverPositionFields, DriverSdField } from './components/CabinetForm.tsx';
 import {
   canonicalModelForRole,
   isTweeterModel,
@@ -107,7 +108,6 @@ import {
   rotationLevelOffsetDb,
   trueOffAxisDeg,
   unloadingRisk,
-  type DriverFacing,
   type DriverPlacement,
   type Enclosure,
 } from './lib/cabinet.ts';
@@ -652,15 +652,6 @@ const EXPERT_TAB_LABEL: Record<DesignTab, string> = {
   network: 'Network',
 };
 
-/* Facing directions as short summary labels — t()-keys, one place. */
-const FACING_LABEL: Record<string, string> = {
-  front: 'front-firing',
-  rear: 'rear-firing',
-  left: 'left-firing',
-  right: 'right-firing',
-  up: 'up-firing',
-  down: 'down-firing',
-};
 
 const PANEL_LABEL: Record<PanelKey, string> = {
   directivity: 'Directivity',
@@ -1238,126 +1229,7 @@ const emptyNearField = (): NearFieldSlot => ({
   mergedName: null,
 });
 
-/** Cabinet geometry + measurement context, as typed (strings so a field can be
- *  empty; every consumer treats absent as "criterion does not apply"). */
-interface CabinetDriver {
-  /** Offset from the measurement reference point, mm. +x right, +y up. */
-  xMm: string;
-  yMm: string;
-  enclosure: Enclosure;
-  /** Box corner: Fc for sealed, Fb for ported. */
-  fbHz: string;
-  /** How many IDENTICAL drivers make up this branch ('' or '1' = one). Dual
-   *  woofers are ordinary (MTM, 2.5-way), and the count is not cosmetic: n
-   *  drivers displace n times the air, so the excursion floor drops by √n —
-   *  while each cone still beams as itself, which is why Sd stays the single
-   *  driver's datasheet value instead of being pre-multiplied. */
-  count: string;
-  /** Centre-to-centre spacing BETWEEN those drivers, mm. Only meaningful when
-   *  count > 1: it sets where the array's own vertical lobing starts, which is
-   *  a different (and usually lower) ceiling than cone beaming. */
-  spacingMm: string;
-  /** How far the acoustic centre sits behind the baffle plane, mm. '' = 0 =
-   *  on the baffle, which is what a normal front-mounted driver effectively
-   *  is. A side-firing woofer's centre is typically half a cabinet back, and
-   *  that is hundreds of microseconds of pure geometry. */
-  depthMm: string;
-  /** Which way the driver radiates. Side-firing woofers are an ordinary
-   *  design; without this the app judges their angle, their baffle and their
-   *  arrival time against the front panel they are not on. */
-  facing: DriverFacing;
-  /** Sloped/stepped baffle: degrees this driver is aimed further UP. */
-  tiltDeg: string;
-  /** count > 1 drivers sit on BOTH opposing panels, firing away from each
-   *  other — how side-mounted woofers are normally built (force cancelling). */
-  opposed: boolean;
-}
-interface CabinetState {
-  /**
-   * Microphone distance during the FRD sweeps, mm.
-   *
-   * ⚠ ONE GLOBAL NUMBER FOR EVERY SWEEP, AND THAT IS NOT WHAT A DATASET LOOKS
-   * LIKE. Sanders Koan measurements were taken in two sessions with different
-   * geometry — session 1 with the mic 935 mm high, session 2 at 1000 mm
-   * distance and 1387 mm high — and this field can only hold one of them. It
-   * surfaced through the gate: the 4.5 ms sitting in `gateMs` was session 1's
-   * mid window, standing in for branches measured in session 2 (see A3h).
-   *
-   * The gate half is fixed — a file states its own window. This half cannot be
-   * fixed the same way: ARTA writes no distance into the export, so it needs a
-   * field PER SOURCE rather than a better parser. It is not cosmetic — mic
-   * distance feeds `trueOffAxisDeg`, the rig path excess, the derived mounting
-   * depth and the far-field verdict, so getting it wrong moves physics and not
-   * just a band.
-   *
-   * Deliberately left as is until A5 (positions per source), where the per-
-   * source record exists to put it on. Written down here so A5 meets it.
-   */
-  micDistanceMm: string;
-  /** Fixed VERTICAL angle of the rig, degrees; + = mic above the reference
-   *  plane. Usually 0 (mic level with the reference point). Signed on purpose:
-   *  on a driver 380 mm low at 500 mm, ±10° swings the true angle 31°↔43°. */
-  micElevationDeg: string;
-  /** The reflection-free window the operator used, ms — a claim about the RIG,
-   *  for the cabinet ledger's "honest down to" line.
-   *
-   *  A3h: it no longer stands in for a file that states no window. A window
-   *  belongs to a sweep, not to a project — Sanders 4.5 ms was the mid gate
-   *  from an earlier session at 935 mm and silently became the data floor for
-   *  two branches measured at 1 m through a 5.021 ms window. The files decide
-   *  their own validity now, and where they all agree the ledger reads them
-   *  rather than this field. '' = predict from geometry. */
-  gateMs: string;
-  baffleWidthMm: string;
-  baffleHeightMm: string;
-  /** Front-to-back, mm. Only needed once a driver fires sideways: then THAT
-   *  is the width of the panel it radiates from. */
-  cabinetDepthMm: string;
-  /** How far below the top of the baffle the reference point sits, mm. */
-  refFromTopMm: string;
-  /** Height of the reference point above the floor, mm. */
-  refHeightMm: string;
-  listenDistanceM: string;
-  listenEarHeightMm: string;
-  /** Which driver the microphone was aimed at, if any. That driver IS the
-   *  reference point, so its offset is 0,0 BY DEFINITION — the app should
-   *  know it rather than ask for it (Sander: "de tweeter is toch de
-   *  reference? dan hoef ik toch geen offset in te vullen?"). '' = the mic
-   *  was aimed at some other spot and every driver has a real offset. */
-  refDriver: '' | BranchRole;
-  drivers: Record<BranchRole, CabinetDriver>;
-}
-const emptyCabinetDriver = (): CabinetDriver => ({
-  xMm: '',
-  yMm: '',
-  enclosure: 'unknown',
-  fbHz: '',
-  count: '',
-  spacingMm: '',
-  depthMm: '',
-  facing: 'front',
-  tiltDeg: '',
-  opposed: false,
-});
-const emptyCabinet = (): CabinetState => ({
-  micDistanceMm: '',
-  micElevationDeg: '',
-  gateMs: '',
-  baffleWidthMm: '',
-  baffleHeightMm: '',
-  cabinetDepthMm: '',
-  refFromTopMm: '',
-  refHeightMm: '',
-  listenDistanceM: '',
-  listenEarHeightMm: '',
-  refDriver: '',
-  drivers: { low: emptyCabinetDriver(), mid: emptyCabinetDriver(), high: emptyCabinetDriver() },
-});
-const FACINGS: readonly DriverFacing[] = ['front', 'rear', 'left', 'right', 'up', 'down'];
-/** A stored facing, or 'front' — an unknown value must read as the ordinary
- *  case, never crash a restore. */
-const asFacing = (v: string | undefined): DriverFacing =>
-  FACINGS.find((f) => f === v) ?? 'front';
+/* UI-11 — the cabinet types, the empty values and FACING_LABEL live in `src/lib/cabinetState.ts`. */
 
 /** Restore a cabinet block from a project/autosave, filling every gap with the
  *  empty default — an older file simply has no geometry, and that must read as
@@ -2949,40 +2821,8 @@ export default function App() {
    * make the outcome depend on how you type ("260" vs clear-then-type).
    * First-time entry (old field empty) shifts nothing: the offsets were
    * entered reference-relative back then, and are already the truth. */
-  const [refTopDraft, setRefTopDraft] = useState<string | null>(null);
-  function commitRefTop() {
-    if (refTopDraft === null) return;
-    const v = refTopDraft;
-    setRefTopDraft(null);
-    setCabinet((c) => {
-      if (v === c.refFromTopMm) return c;
-      const oldTop = Number(c.refFromTopMm);
-      const newTop = Number(v);
-      const delta =
-        c.refFromTopMm.trim() !== '' &&
-        v.trim() !== '' &&
-        Number.isFinite(oldTop) &&
-        Number.isFinite(newTop)
-          ? newTop - oldTop
-          : 0;
-      const shift = (d: CabinetDriver, role: BranchRole): CabinetDriver =>
-        delta === 0 ||
-        role === c.refDriver || // the reference driver IS the point: stays 0,0
-        d.yMm.trim() === '' ||
-        !Number.isFinite(Number(d.yMm))
-          ? d
-          : { ...d, yMm: String(Math.round((Number(d.yMm) + delta) * 10) / 10) };
-      return {
-        ...c,
-        refFromTopMm: v,
-        drivers: {
-          low: shift(c.drivers.low, 'low'),
-          mid: shift(c.drivers.mid, 'mid'),
-          high: shift(c.drivers.high, 'high'),
-        },
-      };
-    });
-  }
+  /* UI-11 — the reference-point commit is `applyRefFromTop` (lib) behind `RefTopField` (component). */
+  const commitRefTop = useCallback((v: string) => setCabinet((c) => applyRefFromTop(c, v)), []);
 
   /* Keyboard-first layer (Linear/Figma): command palette, shortcuts overlay,
    * issues list, held reference trace. The key listener binds ONCE and routes
@@ -5552,34 +5392,15 @@ export default function App() {
     },
     [woofer, midDrv, tweeter, welcomeOpen, applyBranchUse],
   );
-  /* UI-6 — the one link from the merge tool to the full form: Design → Setup; the merge session stays
-   * where it is. A named handler, not a jump inside "Use in project" (B-4 nazorg pins that page clean). */
-  const openCabinetFromMerge = useCallback(() => {
-    location.hash = '#/';
-    setUiMode(designView);
-    setDesignTab('data');
-  }, [designView]);
-  /* UI-6 — the merge tool writes "Your cabinet": the same state the cabinet form and the driver cards
-   * hold, nothing beside it. A patch touches only what it names. */
-  const mergeCabinetPatch = useCallback((patch: CabinetPatchForMerge) => {
-    setCabinet((c) => {
-      const next: CabinetState = { ...c, drivers: { ...c.drivers } };
-      if (patch.baffleWidthMm !== undefined) next.baffleWidthMm = patch.baffleWidthMm;
-      if (patch.baffleHeightMm !== undefined) next.baffleHeightMm = patch.baffleHeightMm;
-      if (patch.refFromTopMm !== undefined) next.refFromTopMm = patch.refFromTopMm;
-      for (const [role, d] of Object.entries(patch.drivers ?? {}) as [BranchRole, { yMm?: string; count?: string; spacingMm?: string }][]) {
-        next.drivers[role] = { ...c.drivers[role], ...(d.yMm !== undefined ? { yMm: d.yMm } : {}), ...(d.count !== undefined ? { count: d.count } : {}), ...(d.spacingMm !== undefined ? { spacingMm: d.spacingMm } : {}) };
-      }
-      return next;
-    });
-  }, []);
   /** I-4 B-4 — the optimizer's cabinet geometry as the merge tool reads it (nulls where the project
    *  states nothing; the tool then asks). Driver heights are derived there, never typed per source. */
   const mergeGeometry = useMemo((): CabinetGeometryForMerge => {
     const n = (v: string) => (v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
     const one = (r: BranchRole) => {
       const d = cabinet.drivers[r];
-      return { yMm: n(d.yMm), count: n(d.count), spacingMm: n(d.spacingMm), facingFront: d.facing === 'front', opposed: d.opposed, enclosure: d.enclosure ?? null };
+      /* UI-11 — the reference driver IS the point: its y is 0 by definition (the baffle drawing reads it the same
+         way), so the merge tool places it at the reference height instead of asking for a height it cannot have. */
+      return { yMm: r === cabinet.refDriver ? 0 : n(d.yMm), count: n(d.count), spacingMm: n(d.spacingMm), facingFront: d.facing === 'front', opposed: d.opposed, enclosure: d.enclosure ?? null };
     };
     return {
       baffleWidthMm: n(cabinet.baffleWidthMm),
@@ -15041,8 +14862,6 @@ export default function App() {
                     /* Distance from the top of the front panel down to the
                        measurement reference point: the offset that turns a
                        ruler reading into this app's y. Null = not known yet. */
-                    const fromTopBase =
-                      Number(cabinet.refFromTopMm) > 0 ? Number(cabinet.refFromTopMm) : null;
                     const box = cabinetInfo.boxOf(role);
                     const edge = cabinetInfo.edgeOf(role);
                     const dia = cabinetInfo.diaOf(role);
@@ -15115,110 +14934,25 @@ export default function App() {
                             className="inline-num"
                             title={t("How many IDENTICAL drivers make up this branch. Dual woofers displace twice the air, so the excursion floor drops by √2 — but each cone still beams as itself, so Sd below stays the SINGLE driver's datasheet number. With more than one, their centre-to-centre spacing sets where the array's own vertical lobing starts, which is usually a lower ceiling than cone beaming.")}
                           >
-                            {'× '}
-                            <input
-                              type="number"
-                              min={1}
-                              step={1}
-                              placeholder="1"
-                              value={d.count}
-                              onChange={(e) => set({ count: e.target.value })}
-                            />
-                            {Number(d.count) > 1 ? ' ' + t('drivers, spaced') + ' ' : ' ' + t('driver')}
-                            {Number(d.count) > 1 && (
-                              <>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  value={d.spacingMm}
-                                  onChange={(e) => set({ spacingMm: e.target.value })}
-                                />
-                                {' ' + t('mm apart')}
-                              </>
-                            )}
+                            <DriverCountFields d={d} set={set} />
                           </span>
                           <span className="cd-summary">{samenvatting}</span>
                         </summary>
                         <div className="cd-grid">
                           <span className="cd-label">{t('Position')}</span>
                           {cabinet.refDriver === role ? (
-                            /* Deze driver ÍS het referentiepunt, dus 0,0 is
-                               geen invoer maar een gevolg. Ernaar vragen
-                               nodigt uit tot de enige fout die het niet kan
-                               zijn -- Sander typte hier -50 voor de tweeter
-                               waar de microfoon nou juist op stond. */
+                            /* Deze driver ÍS het referentiepunt, dus 0,0 is geen invoer maar een gevolg (UI-11: the
+                               component says so; the `cd-pre` keeps the grid). */
                             <span className="cd-fields">
                               <span className="cd-pre" />
-                              <em>
-                                {t('0, 0 — the mic was aimed here, so this driver defines the origin')}
-                                {(() => {
-                                  // Its height is not unknown, it was fixed on the cabinet
-                                  // step. Saying so beats making the designer go and look.
-                                  const top = Number(cabinet.refFromTopMm);
-                                  const floor = Number(cabinet.refHeightMm);
-                                  const bits = [
-                                    top > 0 ? t('{mm} mm below the top', { mm: Math.round(top) }) : '',
-                                    floor > 0 ? t('{mm} mm above the floor', { mm: Math.round(floor) }) : '',
-                                  ].filter(Boolean);
-                                  return bits.length > 0 ? ` (${bits.join(', ')})` : '';
-                                })()}
-                              </em>
+                              <DriverPositionFields cabinet={cabinet} role={role} set={set} />
                             </span>
                           ) : (
                           <span
                             className="cd-fields"
                             title={t("Where this driver's centre sits on the front panel, measured the way a ruler measures it: across from the centre line, and DOWN from the top. The app converts to its internal origin (the measurement reference point) using the reference height you gave on the cabinet step, so you never type the same fact twice — and centre-to-centre spacing per pair, with it the vertical-lobing ceiling, is derived from these.")}
                           >
-                            <span className="cd-pre">x</span>
-                            <input
-                              type="number"
-                              step={5}
-                              placeholder="0"
-                              value={d.xMm}
-                              onChange={(e) => set({ xMm: e.target.value })}
-                            />
-                            {fromTopBase !== null ? ' ' + t('mm from the centre line') + ' · ' : ' mm · y '}
-                            {/* Measured from the TOP of the front panel, because that
-                                is where a ruler starts (Sanders). Storage keeps the
-                                reference-point origin — every geometry function, the
-                                project format and the tests are written in it — so
-                                this is a pure input conversion: down-from-top =
-                                refFromTop − y. Without a reference height there is
-                                nothing to convert with, and the field falls back to
-                                the raw y with the unit text saying so. */}
-                            <input
-                              type="number"
-                              step={5}
-                              placeholder="0"
-                              value={
-                                fromTopBase !== null
-                                  ? d.yMm.trim() === ''
-                                    ? ''
-                                    : String(
-                                        Math.round((fromTopBase - Number(d.yMm)) * 10) / 10,
-                                      )
-                                  : d.yMm
-                              }
-                              onChange={(e) => {
-                                if (fromTopBase === null) {
-                                  set({ yMm: e.target.value });
-                                  return;
-                                }
-                                const v = e.target.value;
-                                if (v.trim() === '' || !Number.isFinite(Number(v))) {
-                                  set({ yMm: v.trim() === '' ? '' : d.yMm });
-                                  return;
-                                }
-                                set({ yMm: String(Math.round((fromTopBase - Number(v)) * 10) / 10) });
-                              }}
-                            />
-                            {fromTopBase !== null ? ' ' + t('mm below the top') : ' mm'}
-                            <span className="cd-hint">
-                              {fromTopBase !== null
-                                ? t('as a ruler measures it — across from the centre line, down from the top of the front panel')
-                                : t('from the reference point · y up — add the reference height on the cabinet step to measure from the top instead')}
-                            </span>
+                            <DriverPositionFields cabinet={cabinet} role={role} set={set} />
                           </span>
                           )}
 
@@ -15276,13 +15010,7 @@ export default function App() {
                             title={t('The numbers a driver datasheet gives, for ONE driver. Sd gives the effective piston diameter — the honest one for every beaming rule, since a nominal size includes a surround that does not radiate. Sd and Xmax together give the level-aware excursion floor; Xmax with Bl and M_ms gives the allowed voltage on the resonance, and with it the DERIVED drive limit M-C judges against (V49).')}
                           >
                             <span className="cd-pre">Sd</span>
-                            <input
-                              type="number"
-                              min={0}
-                              step={1}
-                              value={sdCm2[role]}
-                              onChange={(e) => setSdCm2((q) => ({ ...q, [role]: e.target.value }))}
-                            />
+                            <DriverSdField value={sdCm2[role]} onChange={(v) => setSdCm2((q) => ({ ...q, [role]: v }))} />
                             {' cm² · Xmax '}
                             <input
                               type="number"
@@ -15486,58 +15214,7 @@ export default function App() {
                             className="cd-fields"
                             title={t("Which panel this driver radiates from, and how far its acoustic centre sits behind the baffle plane. Side-firing woofers are an ordinary design, and without this the app judges the driver against a front baffle it is not on: it would read ~0° off-axis when it is really 90°, take the baffle step from the wrong panel width, and charge half a cabinet of mounting depth (hundreds of µs) to the driver's acoustic centre — which is what makes a perfectly normal speaker trip the timing check.")}
                           >
-                            <span className="cd-pre" />
-                            <select
-                              value={d.facing}
-                              onChange={(e) => set({ facing: e.target.value as DriverFacing })}
-                            >
-                              <option value="front">{t('fires forward')}</option>
-                              <option value="rear">{t('fires backward')}</option>
-                              <option value="left">{t('fires left')}</option>
-                              <option value="right">{t('fires right')}</option>
-                              <option value="up">{t('fires up')}</option>
-                              <option value="down">{t('fires down')}</option>
-                            </select>
-                            {' · ' + t('depth') + ' '}
-                            <input
-                              type="number"
-                              min={0}
-                              step={5}
-                              placeholder="0"
-                              value={d.depthMm}
-                              onChange={(e) => set({ depthMm: e.target.value })}
-                            />
-                            {' mm · ' + t('tilt') + ' '}
-                            <input
-                              type="number"
-                              step={1}
-                              placeholder="0"
-                              value={d.tiltDeg}
-                              onChange={(e) => set({ tiltDeg: e.target.value })}
-                            />
-                            {'°'}
-                            {Number(d.count) > 1 && d.facing !== 'front' && (
-                              <label
-                                className="cd-inline-check"
-                                title={t('These drivers sit on BOTH opposing panels, firing away from each other — the force-cancelling arrangement side-mounted woofers are normally built in. They then have two different true angles, and a sweep measures their sum.')}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={d.opposed}
-                                  onChange={(e) => set({ opposed: e.target.checked })}
-                                />{' '}
-                                {t('opposed pair')}
-                              </label>
-                            )}
-                            <span className="cd-hint">
-                              {/* ACOUSTIC centre, and say so: "0 for a flush-mounted
-                                  driver" invited the flange reading — a flush-mounted
-                                  cone's centre still sits its cone depth back, which is
-                                  exactly what confused the measured-depth readout. */}
-                              {d.facing === 'front'
-                                ? t('acoustic centre behind the baffle — a flush-mounted cone still sits its cone depth back · tilt + = aimed up')
-                                : t('acoustic centre from the front, along the cabinet · tilt + = aimed up')}
-                            </span>
+                            <DriverMountingFields d={d} set={set} />
                           </span>
 
                         {measuredDepth?.depths[role] !== undefined && (
@@ -18141,8 +17818,9 @@ export default function App() {
             inProject={mergeV2}
             onUse={acceptMergeV2}
             onUseAll={acceptMergeV2All}
-            onCabinet={mergeCabinetPatch}
-            onOpenCabinet={openCabinetFromMerge}
+            cabinet={cabinet}
+            setCabinet={setCabinet}
+            sdText={sdCm2}
             onSd={(way, v) => setSdCm2((q) => ({ ...q, [way]: v }))}
             responseNames={{ low: woofer?.name ?? null, mid: midDrv?.name ?? null, high: tweeter?.name ?? null }}
             designRig={mergeDesignRig}
@@ -19005,26 +18683,7 @@ export default function App() {
                 );
                 const cab = (k: keyof CabinetState) => (v: string) =>
                   setCabinet((c) => ({ ...c, [k]: v }));
-                /* Reference height: draft while focused, commit on blur/Enter
-                   (Esc discards). See commitRefTop for why this field must
-                   not write through per keystroke like the others. */
-                const refTopVeld = () => (
-                  <input
-                    type="number"
-                    step={5}
-                    value={refTopDraft ?? cabinet.refFromTopMm}
-                    onChange={(e) => setRefTopDraft(e.target.value)}
-                    onBlur={commitRefTop}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.currentTarget.blur();
-                      if (e.key === 'Escape') {
-                        setRefTopDraft(null);
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    title={t('How far below the top of the front panel the reference point sits. Correcting this moves the REFERENCE MARKER only — drivers keep the below-top positions you typed.')}
-                  />
-                );
+                /* UI-11 — the reference-point field is `RefTopField` (components/CabinetForm.tsx). */
                 const eerlijk = cabinetInfo.reliable;
                 const teLaag =
                   eerlijk && Number(fMin) > 0 && Number(fMin) < eerlijk.fromHz * 0.95;
@@ -19054,9 +18713,6 @@ export default function App() {
                         dir: cabinetInfo.listenAngle >= 0 ? t('below') : t('above'),
                       })
                     : '';
-                const mis =
-                  Number(cabinet.baffleHeightMm) > 0 &&
-                  Number(cabinet.refFromTopMm) > Number(cabinet.baffleHeightMm);
 
                 if (uiMode === 'guided') {
                   const kaart = (
@@ -19133,38 +18789,22 @@ export default function App() {
                           t('Add the baffle size and the app can tell the cabinet apart from the driver — and draw your front panel on the next step.')
                         ),
                         <>
-                          <span className="cd-label">{t('Mic aimed at')}</span>
-                          <span className="cd-fields">
-                            <select
-                              value={cabinet.refDriver}
-                              onChange={(e) =>
-                                setCabinet((c) => ({
-                                  ...c,
-                                  refDriver: e.target.value as '' | BranchRole,
-                                }))
-                              }
-                            >
-                              <option value="">{t('another spot on the baffle')}</option>
-                              <option value="high">{t('the tweeter')}</option>
-                              <option value="mid">{t('the midrange')}</option>
-                              <option value="low">{t('the woofer')}</option>
-                            </select>
-                            <span className="cd-hint">
-                              {t('that driver becomes 0,0 — you never type its own offset')}
-                            </span>
-                          </span>
-                          <span className="cd-label">{t('Front panel')}</span>
-                          <span className="cd-fields">
-                            {t('width') + ' '}
-                            {veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))}
-                            {' × ' + t('height') + ' '}
-                            {veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm
-                          </span>
-                          <span className="cd-label">{t('Reference point')}</span>
-                          <span className="cd-fields">
-                            {refTopVeld()} {t('mm below the top')} ·{' '}
-                            {veld(cabinet.refHeightMm, cab('refHeightMm'))} {t('mm above the floor')}
-                          </span>
+                          {/* UI-11 — the box fields are ONE component, laid out as card rows here and as ledger rows below. */}
+                          <CabinetBoxFields
+                            cabinet={cabinet}
+                            setCabinet={setCabinet}
+                            onCommitRefTop={commitRefTop}
+                            frontNote={stapUit}
+                            row={(label, fields, note) => (
+                              <>
+                                <span className="cd-label">{label}</span>
+                                <span className="cd-fields">
+                                  {fields}
+                                  {note ? <span className="cd-hint">{note}</span> : null}
+                                </span>
+                              </>
+                            )}
+                          />
                           {cabinetInfo.offBaffle.length > 0 && (
                             <>
                               <span className="cd-label">{t('Cabinet depth')}</span>
@@ -19173,11 +18813,6 @@ export default function App() {
                                 {t('the panel a side-firing driver radiates from')}
                               </span>
                             </>
-                          )}
-                          {mis && (
-                            <span className="derived alert" style={{ gridColumn: '1 / -1' }}>
-                              {t('the reference point cannot sit {ref} mm below the top of a {h} mm front panel — one of the two is the other field', { ref: cabinet.refFromTopMm, h: cabinet.baffleHeightMm })}
-                            </span>
                           )}
                         </>,
                       )}
@@ -19242,49 +18877,13 @@ export default function App() {
                         </>,
                       )}
                     <div className="lg-sec">{t('The cabinet')}</div>
-                    {rij(
-                      t('Mic was aimed at'),
-                      <select
-                        value={cabinet.refDriver}
-                        onChange={(e) =>
-                          setCabinet((c) => ({ ...c, refDriver: e.target.value as '' | BranchRole }))
-                        }
-                      >
-                        <option value="">{t('another spot on the baffle')}</option>
-                        <option value="high">{t('the tweeter')}</option>
-                        <option value="mid">{t('the midrange')}</option>
-                        <option value="low">{t('the woofer')}</option>
-                      </select>,
-                      cabinet.refDriver ? t('that driver is 0,0 — you do not type its offset') : '',
-                    )}
-                    {rij(
-                      t('Front panel width'),
-                      <>{veld(cabinet.baffleWidthMm, cab('baffleWidthMm'))} mm</>,
-                      stapUit,
-                    )}
-                    {rij(
-                      t('Front panel height'),
-                      <>{veld(cabinet.baffleHeightMm, cab('baffleHeightMm'))} mm</>,
-                    )}
+                    <CabinetBoxFields cabinet={cabinet} setCabinet={setCabinet} onCommitRefTop={commitRefTop} frontNote={stapUit} row={rij} layout="narrow" />
                     {cabinetInfo.offBaffle.length > 0 &&
                       rij(
                         t('Cabinet depth'),
                         <>{veld(cabinet.cabinetDepthMm, cab('cabinetDepthMm'))} mm</>,
                         t('the panel a side-firing driver radiates from'),
                       )}
-                    {rij(
-                      t('Reference point, below top'),
-                      <>{refTopVeld()} mm</>,
-                      mis ? (
-                        <strong className="alert">{t('deeper than the baffle is tall')}</strong>
-                      ) : (
-                        ''
-                      ),
-                    )}
-                    {rij(
-                      t('Reference point, above floor'),
-                      <>{veld(cabinet.refHeightMm, cab('refHeightMm'))} mm</>,
-                    )}
                     <details className="v2-more">
                       <summary>{t(V2_MORE_HEADING)}</summary>
                       <div className="lg">
