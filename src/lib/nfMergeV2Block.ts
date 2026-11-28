@@ -54,6 +54,8 @@ export interface MergeV2FileInput {
   portWeightNote?: string | null;
   /** B-2 §8 (3): a merge with flags accepted anyway — the reason, required, goes into Merge status. */
   acceptReason?: string | null;
+  /** UI-12: one near field standing for a pair — what it stands for, what carries the pair, and the stated driving state (`pairNearField.ts`). */
+  nearFieldStandsForNote?: string | null;
 }
 
 export interface ParsedMergeV2 {
@@ -84,6 +86,8 @@ export interface ParsedMergeV2 {
   targetValidFromHz: number | null;
   targetValidity: string | null;
   calibration: string | null;
+  /** UI-12: `Merge near field stands for`, verbatim; null when the merge is one cone's own. */
+  nearFieldStandsFor: string | null;
 }
 
 /** A block field is ONE line, and an `=` inside a value would be read as the next field's name. */
@@ -136,6 +140,7 @@ export function renderMergeBlockV2(x: MergeV2FileInput): string[] {
       `Tukey ${fx(g.rightTaper, DECIMALS.taper)} (left and right are lengths from the reference)`,
     `* Merge model = ${modelText(inp.model)}`,
     `* Merge port weight = ${inp.port ? fx(inp.port.weight, DECIMALS.weight) + (x.portWeightNote ? ` (${oneLine(x.portWeightNote)})` : '') : 'none'}`,
+    `* Merge near field stands for = ${x.nearFieldStandsForNote ? oneLine(x.nearFieldStandsForNote) : 'this cone alone'}`,
     `* Merge cone echoes = ${echoesText(inp.echoes)}`,
     `* Merge port echoes = ${inp.port ? echoesText(inp.port.echoes ?? []) : 'none'}`,
     `* Merge fit band = ${fx(inp.fitBandHz[0], DECIMALS.hz)}-${fx(inp.fitBandHz[1], DECIMALS.hz)} Hz`,
@@ -240,6 +245,7 @@ export function parseMergeBlockV2(text: string): ParsedMergeV2 | null {
     targetValidFromHz: null,
     targetValidity: null,
     calibration: null,
+    nearFieldStandsFor: null,
   };
   for (const line of text.split(/\r?\n/)) {
     if (!/^\s*[*;#]/.test(line)) break; // the block is the comment head
@@ -288,6 +294,7 @@ export function parseMergeBlockV2(text: string): ParsedMergeV2 | null {
       case 'merge target valid from': out.targetValidFromHz = /^none$/i.test(v) ? null : named(v, ''); break;
       case 'merge target validity': out.targetValidity = /^not stated$/i.test(v) ? null : v; break;
       case 'merge calibration': out.calibration = /^none\b/i.test(v) ? null : v; break;
+      case 'merge near field stands for': out.nearFieldStandsFor = /^this cone alone$/i.test(v) ? null : v; break;
     }
   }
   return out.kind && /^nf-merge\/2\./.test(out.version) ? out : null;

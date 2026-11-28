@@ -19,7 +19,8 @@ import { t } from '../lib/i18n.ts';
 import { parseFrd } from '../lib/parsers/frd.ts';
 import { chooseCalibration, micCorrectionAt, parseMicCal, type MicCal } from '../lib/micCal.ts';
 import { renderFarOnlyFrd } from '../lib/farOnly.ts';
-import { suggestValidFrom, type ValidFromSuggestion } from '../lib/nfMerge.ts';
+import { portWeight, suggestValidFrom, type ValidFromSuggestion } from '../lib/nfMerge.ts';
+import { pairNearFieldFact, type PairDriven, type PairNearFieldFact } from '../lib/pairNearField.ts';
 import { an4F0, rigFromDesign, GUIDE_STEPS, KNEE_DEG, MERGE_GUIDE_VERSION, proposeBandsGuide, proposeWindowSteps, sessionReferenceMs, type GuideStep, type WindowProposal } from '../lib/mergeGuide.ts';
 import { envelope } from '../lib/fft.ts';
 import { zipStore } from '../lib/zip.ts';
@@ -178,9 +179,13 @@ interface SourceConfig {
   podDiameter?: string;
   /** The cone area (cm²) when the design states none: asked once, in step 1. */
   sdCm2?: string;
+  /** UI-12: for a way with more drivers than files — were the other drivers driven while this near field was measured? '' = not stated (P4). */
+  nearDriven?: PairDriven;
   port: string;
   portWeight: string;
   portWeightStatus: 'stated' | 'provisional';
+  /** UI-12: the port mouth diameter (mm) — with S_d and the way's count it PROPOSES the Keele weight g/N; a typed weight wins. */
+  portMouthMm?: string;
   /** The port mouth's height above the object's bottom (its own geometry). */
   portHeightAboveBottom: string;
   model: 'an4' | 'shelf' | 'none';
@@ -431,6 +436,8 @@ interface Computed {
   f0Source: 'stated' | 'proposed' | null;
   heightMm: number | null;
   heightFrom: string;
+  /** UI-12 — what the port weight rests on: 'stated' | 'provisional' (typed) or 'proposed' (Keele's g/N from the mouth, S_d and the count). */
+  portWeightNote: string | null;
   echoes: EchoTerm[];
   window: { source: 'header' | 'chosen' | 'stated'; headerRightMs: number; oneOverTHz: number } | null;
 }
@@ -706,6 +713,28 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     const w = wayOf(stem);
     return (w ? props.sdCm2[w] : null) ?? num(cfg[stem]?.sdCm2 ?? '');
   };
+  /* UI-12 — one near field for a pair: the count comes from "Your cabinet" (step 2), the files from this
+   * session, the driving state from the one question; null below two drivers or with a file per member. */
+  const pairFactOf = (stem: string, gainDb: number | null) => {
+    const w = wayOf(stem);
+    if (!w) return null;
+    return pairNearFieldFact({
+      count: props.geometry.drivers[w].count,
+      files: drivers.filter((x) => wayOf(x.stem) === w).length,
+      driven: cfg[stem]?.nearDriven ?? '',
+      gainDb,
+    });
+  };
+  /* UI-12 — the port weight: typed wins; otherwise PROPOSED from the mouth diameter, the cone's S_d and how
+   * many drivers of the way share it (`portWeight`, the one place that knows Keele's g/N). No default. */
+  const portWeightOf = (stem: string, c: SourceConfig): { weight: number; status: 'stated' | 'provisional' | 'proposed'; note: string } | { weight: null; note: string } => {
+    const typed = num(c.portWeight);
+    if (typed !== null) return { weight: typed, status: c.portWeightStatus, note: c.portWeightStatus };
+    const sd = sdOf(stem);
+    const w = wayOf(stem);
+    const r = portWeight({ portDiaMm: num(c.portMouthMm ?? ''), coneDiaMm: sd && sd > 0 ? 2 * Math.sqrt(sd / Math.PI) * 10 : null, sharedBy: w ? props.geometry.drivers[w].count : null });
+    return r.weight === null ? { weight: null, note: r.note } : { weight: r.weight, status: 'proposed', note: `proposed: ${r.note}` };
+  };
   const placementOf = (stem: string): SourcePlacement => {
     const c = cfg[stem] ?? blankConfig();
     if (ownGeometry) return { kind: 'own', aboveBottomMm: num(c.ownHeight) };
@@ -746,7 +775,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
     c.inPod ? an4F0(num(c.podDiameter ?? ''), 'the pod diameter') : an4F0(ownGeometry ? num(obj.baffleW) : props.geometry.baffleWidthMm, 'the baffle width');
   const compute = (src: SessionSource, c: SourceConfig, withEchoes: boolean): Computed => {
     const notes: string[] = [];
-    const out: Computed = { input: null, result: null, error: null, notes, proposalNote: '', fit: null, splice: null, bandSource: null, f0Used: null, f0Source: null, heightMm: null, heightFrom: '', echoes: [], window: null };
+    const out: Computed = { input: null, result: null, error: null, notes, proposalNote: '', fit: null, splice: null, bandSource: null, f0Used: null, f0Source: null, heightMm: null, heightFrom: '', portWeightNote: null, echoes: [], window: null };
     if (!session || !src.far || !src.near) return { ...out, error: 'no far and near field for this source' };
     const g0 = gateOf(src.far);
     let gate: Gate;
@@ -816,11 +845,20 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       }
     }
     out.echoes = echoes;
+    /* UI-12 — one near field standing for a pair: said, and the driving state reported (warned when the
+     * other cones were passive — the one thing the level fit cannot repair). Never a correction. */
+    const pf = pairFactOf(src.stem, null);
+    if (pf) {
+      notes.push(pf.header);
+      if (pf.warning) notes.push(`⚠ ${pf.warning}`);
+    }
     const portSrc = c.port ? session.sources.find((s) => s.stem === c.port) : undefined;
     let port: MergeV2Input['port'] = null;
     if (portSrc?.near) {
-      const w = num(c.portWeight);
-      if (w === null) return { ...out, error: 'port weight: state it (Keele, from the mouth diameter) — no default' };
+      const pw = portWeightOf(src.stem, c);
+      if (pw.weight === null) return { ...out, error: `port weight: ${pw.note} State the weight, or the mouth diameter (with S_d and how many drivers share the port it is proposed).` };
+      const w = pw.weight;
+      out.portWeightNote = pw.status === 'proposed' ? pw.note : pw.status === 'provisional' ? 'PROVISIONAL' : 'stated';
       let portEchoes: EchoTerm[] = [];
       const ph = num(c.portHeightAboveBottom);
       if (withEchoes && echoes.some((e) => e.kind === 'plane')) {
@@ -986,7 +1024,8 @@ export default function NfMergeTool(props: NfMergeToolProps) {
       targetValidFromHz: null,
       targetValidityNote: null,
       calibrationNote: !src.far?.pir ? 'as exported by the measuring program (FRD route: the file is already calibrated)' : calChoice.kind === 'none' ? null : calChoice.note,
-      portWeightNote: input.port ? (c.portWeightStatus === 'provisional' ? 'PROVISIONAL' : 'stated') : null,
+      portWeightNote: input.port ? comp.portWeightNote : null,
+      nearFieldStandsForNote: pairFactOf(src.stem, result.fit.gainDb)?.header ?? null,
       acceptReason: comp.result!.flags.length > 0 ? c.reason : null,
     });
     return text;
@@ -1708,6 +1747,27 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                                 t('the pair stacks on the front: this file is one of the two'),
                               ) : null}
                               {mergeRow(t('Mounting'), <DriverMountingFields d={pd} set={setD} />, Number(pd.count) > 1 && !stacks ? t('this pair does not stack, so both sit at the pair’s centre height — no upper or lower') : undefined)}
+                              {/* UI-12 — more drivers than files: this near field stands for ONE of them and the level fit
+                                  carries the pair; the one question the fit cannot answer is whether the others were
+                                  driven during that measurement (M-2: 15.8 dB at f_b between the two states). */}
+                              {(() => {
+                                const pf = pairFactOf(d.stem, null);
+                                if (!pf) return null;
+                                return mergeRow(
+                                  t('Near field'),
+                                  <>
+                                    <span className="derived">{t('of one of {n} drivers — the far field is the whole way’s; the splice fits the level, so that gain carries the pair.', { n: String(pd.count) })}</span>
+                                    <br />
+                                    {t('Were all {n} driven during that near-field measurement?', { n: String(pd.count) })}{' '}
+                                    <select value={c?.nearDriven ?? ''} onChange={(e) => setC(d.stem, { nearDriven: e.target.value as PairDriven })} aria-label={t('{w}: all driven during the near field', { w: d.label })}>
+                                      <option value="">{t('not stated')}</option>
+                                      <option value="all">{t('yes, all driven')}</option>
+                                      <option value="one">{t('no — one driven, the others passive')}</option>
+                                    </select>
+                                    {pf.warning ? <><br /><span className="nl-warning">{t('A passive cone in the same box loads it differently: below the splice the shape is not the pair’s. M-2 measured 15.8 dB at f_b between the two states. Not corrected — measure again with all driven.')}</span></> : null}
+                                  </>,
+                                );
+                              })()}
                               {mergeRow('S_d', <><DriverSdField value={props.sdText[w]} onChange={(v) => props.onSd(w, v)} ariaLabel={t('{w}: S_d', { w: d.label })} /> cm²</>, sdOf(d.stem) === null ? t('Without S_d the top of the band (ka = 1) cannot be proposed. ') : undefined)}
                               <span className="derived" style={{ gridColumn: '1 / -1' }}>
                                 {t('Read from “Your cabinet” ({w}); what you type here lands there. ', { w: t(WAY_LABEL[w]) })}
@@ -1858,6 +1918,7 @@ export default function NfMergeTool(props: NfMergeToolProps) {
                     approval={approvalOf(active.stem)}
                     validFromProposal={validFromProposalFor(active.stem, cur)}
                     way={wayOf(active.stem)}
+                    pairFact={pairFactOf(active.stem, cur?.result?.fit.gainDb ?? null)}
                     onGoto={goto}
                   />
                   <Charts comp={cur} bare={bare} reflectionModel={reflectionModel} setReflectionModel={setReflectionModel} sd={sdOf(active.stem)} />
@@ -2386,6 +2447,8 @@ function WorkPanel(p: {
   validFromProposal: ValidFromSuggestion | null;
   /** UI-10 fase 2 — the way as the parent resolves it (stated in step 5, else proposed from the name): an address, shown and never asked here. */
   way: MergeWay | '';
+  /** UI-12 — one near field for a pair, as the parent reads it (count from the cabinet, files from the session, the stated driving state). */
+  pairFact: PairNearFieldFact | null;
   onGoto: (step: GuideStep) => void;
 }) {
   const { src, c, comp, session, setC } = p;
@@ -2418,6 +2481,12 @@ function WorkPanel(p: {
       <p className="derived">
         {comp?.heightMm != null ? t('{h} mm above the floor, from {from}', { h: comp.heightMm.toFixed(0), from: t(comp.heightFrom) }) : ''}
       </p>
+      {p.pairFact ? (
+        <p className={p.pairFact.warning ? 'nl-warning' : 'derived'}>
+          {t('Near field')}: {p.pairFact.header}
+          {p.pairFact.warning ? ` ⚠ ${p.pairFact.warning}` : ''} {back('setup', 2)}
+        </p>
+      ) : null}
       {ports.length > 0 && (
         <p>
           {t('port')}{' '}
@@ -2431,13 +2500,19 @@ function WorkPanel(p: {
           </select>
           {c.port && (
             <>
+              {' '}
+              {t('mouth Ø')} <Field value={c.portMouthMm ?? ''} onCommit={(v) => setC({ portMouthMm: v })} ariaLabel={t('port mouth diameter')} /> mm
               {' × '}
-              <Field value={c.portWeight} onCommit={(v) => setC({ portWeight: v })} ariaLabel={t('port weight')} />{' '}
+              <Field value={c.portWeight} onCommit={(v) => setC({ portWeight: v })} ariaLabel={t('port weight')} placeholder={comp?.input?.port ? comp.input.port.weight.toFixed(3) : ''} />{' '}
               <select value={c.portWeightStatus} onChange={(e) => setC({ portWeightStatus: e.target.value as 'stated' | 'provisional' })} aria-label={t('port weight status')}>
                 <option value="provisional">{t('provisional')}</option>
                 <option value="stated">{t('stated')}</option>
               </select>{' '}
               {t('mouth above the object’s bottom')} <Field value={c.portHeightAboveBottom} onCommit={(v) => setC({ portHeightAboveBottom: v })} ariaLabel={t('mouth above the object’s bottom')} /> mm
+              <br />
+              {/* UI-12 — the weight: typed wins; empty is PROPOSED as Keele's g/N from the mouth diameter, the cone's S_d
+                  and how many drivers of the way share the port (step 2) — the pair question, on the port side. */}
+              <span className="derived">{comp?.portWeightNote ? comp.portWeightNote : t('Empty = proposed from the mouth diameter, S_d and how many drivers share the port (step 2); a typed weight wins.')}</span>
             </>
           )}
         </p>

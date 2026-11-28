@@ -10970,3 +10970,61 @@ Wie een vloer nodig heeft roept die aan en verzint geen eigen drempel.
 - **Niet gedaan:** de f0 van het nabij→ver-model leest nog altijd de FRONTbreedte, ook voor een zijwoofer
   (daar is de diepte het relevante paneel) — een eigen besluit, benoemd aan Sander; de nog smalle
   tussenafstand-input (4,4 rem, "275.7…") is de bestaande kaartstijl.
+
+### UI-12-guards (één nabijveld voor een paar: gezegd, de aandrijftoestand gevraagd, de poortweging g/N voorgesteld; 26-11-2026)
+
+- **Aanleiding (Sanders vriend, via Sander):** twee zijwoofers, één verveld op 0° met beide spelend,
+  één nabijveld van ÉÉN woofer — "in de merger zou ik moeten kunnen aangeven dat het nearfield van
+  1 woofer is". **Gemeten vóór er iets veranderde:** de merge was daar al goed voor. De splice fit het
+  NIVEAU in de splice-band, dus de ~20·log N dB tussen één conus en het paar zit in die gain; op de
+  0°-as tellen N gelijke conussen overal even hard op, en de vorm van het nabijveld is die van elke
+  conus in dezelfde kast. "Hoeveel" stond al in stap 2 (UI-11), en een zijpaar stapelt niet. Wat
+  ontbrak: de tool ZEI het nergens (dus de optie was onzichtbaar), en vroeg niet het ene dat de fit
+  niet kan herstellen — of de andere woofer meespeelde tijdens het nabijveld. M-2 mat 15,8 dB bij
+  f_b tussen die twee toestanden (12-09-2026).
+- **`src/lib/pairNearField.ts` (`pair-near-field/1.0`)** — het feit als zuivere functie, zonder
+  engine-import: alleen voor een weg met MEER drivers (Your cabinet, stap 2) dan bestanden (de
+  sessie); een paar met een bestand per lid (casus 1: woofer up en down) is twee gewone merges en
+  krijgt niets. De zin, de gestelde aandrijftoestand (`'' | 'all' | 'one'`; leeg = niet gesteld,
+  P4), en op `'one'` de waarschuwing met het M-2-getal — gerapporteerd, nooit gecorrigeerd (A3h: een
+  modelfactor op een meting in de verkeerde toestand is de plausibel-foute laag).
+- **Waar het staat:** stap 2 de rij "Nabijveld" onder het paar (de zin + "Speelden alle N mee?"
+  met drie antwoorden; "nee" kleurt de waarschuwing); stap 4 dezelfde zin mét de gain van déze
+  merge; `compute` zet het feit en de waarschuwing in de notities; de bestandskop draagt
+  `Merge near field stands for = …` ("this cone alone" zonder paar) en `parseMergeBlockV2` leest
+  hem terug (`nearFieldStandsFor`). Eén functie, vier lezers.
+- **De poortweging stelt N uit de telling voor.** `portWeightOf`: getypt wint; leeg wordt
+  VOORGESTELD als Keele's g/N via `portWeight` (`nfMerge.ts`, de ene functie die de deling door N
+  kent) uit het nieuwe veld "monding Ø", de S_d van de conus en de telling van stap 2. Geen
+  default: ontbreekt een van de drie, dan noemt de fout wat ontbreekt. De kop draagt
+  `proposed: …` als weging-notitie. **Nagemeten op casus 1: 74 mm / 180,2 mm / 2 → 0,205**, het
+  getal van de augustuskop.
+- **`src/lib/pairNearField.test.ts` (5 claims):** het feit met de hand (null onder twee, bij een
+  ongestelde telling en bij een bestand per lid; de zin, de gain, de toestanden), de waarschuwing
+  met het getal en "Not corrected", de kopregel heen en terug op een echte casus-1-merge, g/N via
+  de ene functie (de deling wordt gevraagd en niet aangenomen), en de bedrading als bronscan
+  (de rij achter het feit, de notitie in `compute`, de kopregel met de gain van de merge, de
+  resolver in `compute` en geen kale `num(c.portWeight)` meer).
+- **Een I-2-bronscan ging rood en deed haar werk:** `nfMerge.test.ts` pinde de kale weigering
+  "port weight: state it". Herankerd in V15-vorm: de weigering noemt wat het VOORSTEL miste
+  (monding, S_d, de telling), nog steeds een naam en nooit een getal, en `sharedBy` leest de
+  telling en nooit een literal.
+- **Browsercontrole (dev-server, de voorbeeldsessie in de pane, de mid TIJDELIJK op twee drivers,
+  26-11-2026):** de rij op 870 px (screenshot) én op 1800 px (geen element buiten het grid,
+  `scrollWidth` 1800); "nee" toont de waarschuwing; stap 4 leest de volle zin met "change in step
+  2"; de poort op woofer down zonder weging weigert met de monding bij naam en stelt na "74" exact
+  `g 0.411 and weight 0.205` voor. Alles teruggezet (telling leeg, poort none). Console leeg.
+- **Niet gedaan:** een nabijveld van het PAAR als één bestand (de mic staat altijd bij één conus,
+  dus die vorm bestaat niet); de f0 van een zijwoofer leest nog de frontbreedte (UI-11, open);
+  de notitie in `compute` is in de browser niet gezien omdat de mid van de pane-sessie geen hoogte
+  heeft en dus niet mergt — gedekt door de bronscan.
+- **Gemeten 26-11-2026:** `npx tsc -b` groen. `npm run test:fast` **9425,7 s, 257 bestanden (256 geslaagd,
+  1 overgeslagen), 3362 tests (3358 geslaagd, 4 overgeslagen), in één keer groen, alleen gedraaid met de
+  dev-server gestopt; laatste bronbewerking 11:30:40, run gestart 11:44:22 (de H-2-regel).** +1 bestand en
+  +5 tests tegen UI-11's 3357 (3353 + 4): exact `pairNearField.test.ts`; `nfMerge.test.ts` veranderde van
+  inhoud en niet van telling. **DE TIJD IS GEEN METING VAN DE LAAG EN GEEN NIEUWE REFERENTIE:** de machine
+  stond de hele ochtend onder een vreemde belasting (load average 15–21 zonder eigen zwaar proces; `tsc -b`
+  kostte meer dan drie minuten, één `threeWayDesign`-claim 1076 s waar hij 15 s kost), en de V43-waarde van
+  289 s blijft staan. **De eerste snelle run is weggegooid** (2695 s, 1 rood: de I-2-pin hierboven, daarna
+  herankerd), om de H-2-reden. Geen volle run: geen motor-, poort-, venster-, metriek- of corpuscode
+  geraakt — `nfMergeV2Block.ts` kreeg één kopregel en één parserveld, de merge-kern is onaangeraakt.

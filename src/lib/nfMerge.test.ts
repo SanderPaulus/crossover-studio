@@ -822,7 +822,13 @@ describe('I-2 — the app wiring', () => {
 
   /** Every refusal names the input it is missing (P4) — none of them fills one in. */
   it('refuses by naming the missing input rather than substituting one', () => {
-    expect(SECTION).toContain("'port weight: state it");
+    /* UI-12 — V15: WAS a bare "port weight: state it" refusal; IS the weight PROPOSED as Keele's g/N through
+     * `portWeight` (mouth diameter, the cone's S_d, how many drivers share the port — the count of step 2),
+     * and the refusal names what THAT proposal lacked. Still a name, never a substituted number: the share
+     * is read from the cabinet, not assumed. */
+    expect(SECTION).toContain('error: `port weight: ${pw.note}');
+    expect(SECTION).toMatch(/portWeight\(\{ portDiaMm: num\(c\.portMouthMm \?\? ''\), coneDiaMm: [^,]+, sharedBy: w \? props\.geometry\.drivers\[w\]\.count : null \}\)/);
+    expect(SECTION).not.toMatch(/sharedBy:\s*(1|2)\b/);
     /* UI-6 — V15: WAS a bare "state f0" refusal; IS the AN4 f0 proposed from the pod or baffle width, and
      * the refusal names what THAT proposal lacked (the pod diameter, the baffle width) — still a name,
      * never a substituted number. */
